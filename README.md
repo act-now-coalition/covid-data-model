@@ -10,3 +10,4 @@
   * [Mapping](https://systems.jhu.edu/research/public-health/ncov/)
   * [Data](https://github.com/CSSEGISandData/COVID-19)
 * [Scraped Data](https://github.com/lazd/coronadatascraper)
+  * [Historical Snapshots](https://github.com/lazd/coronadatascraper-cache)
