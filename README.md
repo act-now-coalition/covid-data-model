@@ -12,3 +12,4 @@
 * [Scraped Data](https://github.com/lazd/coronadatascraper)
   * [Historical Snapshots](https://github.com/lazd/coronadatascraper-cache)
 * [Penn-Chime](http://penn-chime.phl.io/)
+* [Imperial College Model](https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf)
