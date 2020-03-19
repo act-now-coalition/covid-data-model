@@ -7,12 +7,12 @@ CA,USA,1.8
 CO,USA,1.9
 Connecticut,USA,2
 Delaware,USA,2.2
-District of Columbia,USA,4.4
+DC,USA,4.4
 FL,USA,2.6
 Georgia,USA,2.4
-Hawaii,USA,1.9
+HI,USA,1.9
 Idaho,USA,1.9
-Illinois,USA,2.5
+IL,USA,2.5
 Indiana,USA,2.7
 Iowa,USA,3
 Kansas,USA,3.3
@@ -27,26 +27,26 @@ Mississippi,USA,4
 Missouri,USA,3.1
 Montana,USA,3.3
 Nebraska,USA,3.6
-Nevada,USA,2.1
-New Hampshire,USA,2.1
-New Jersey,USA,2.4
-New Mexico,USA,1.8
-New York,USA,2.7
-North Carolina,USA,2.1
-North Dakota,USA,4.3
-Ohio,USA,2.8
-Oklahoma,USA,2.8
-Oregon,USA,1.6
+NV,USA,2.1
+NH,USA,2.1
+NJ,USA,2.4
+NM,USA,1.8
+NY,USA,2.7
+NC,USA,2.1
+ND,USA,4.3
+OH,USA,2.8
+OK,USA,2.8
+OR,USA,1.6
 Pennsylvania,USA,2.9
-Rhode Island,USA,2.1
-South Carolina,USA,2.4
-South Dakota,USA,4.8
-Tennessee,USA,2.9
+RI,USA,2.1
+SC,USA,2.4
+SD,USA,4.8
+TN,USA,2.9
 TX,USA,2.3
-Utah,USA,1.8
+UT,USA,1.8
 Vermont,USA,2.1
 Virginia,USA,2.1
-Washington,USA,1.7
-West Virginia,USA,3.8
+WA,USA,1.7
+WV,USA,3.8
 Wisconsin,USA,2.1
 Wyoming,USA,3.5
