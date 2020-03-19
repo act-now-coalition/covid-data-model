@@ -123,6 +123,8 @@ def forecast_region(state, country, iterations):
         datetime.timedelta(days=model_interval *
                            rolling_intervals_for_current_infected)
 
+    logged_overwhelmed = False
+
     # Step through existing empirical data
     while True:
         if snapshot_date <= today:
@@ -166,8 +168,11 @@ def forecast_region(state, country, iterations):
             cumulative_deaths += int(round(newly_infected *
                                            case_fatality_rate))
         else:
+            if not logged_overwhelmed:
+                logging.info('Hospitals in {} overwhelmed on {}'.format(state, snapshot_date))
+            logged_overwhelmed = True
             cumulative_deaths += int(round(newly_infected *
-                                           case_fatality_rate_hospitals_overwhelmed))
+                                           (case_fatality_rate_hospitals_overwhelmed + case_fatality_rate_hospitals_overwhelmed)))
 
         est_actual_chance_of_infection = None
         actual_reported = 0
