@@ -104,7 +104,6 @@ def forecast_region(state, country, iterations):
             '% Susceptible']
     rows = []
 
-    effective_r0 = r0_initial
     previous_confirmed = 0
     previous_ending_susceptible = pop
     previous_newly_infected = 0
@@ -138,6 +137,7 @@ def forecast_region(state, country, iterations):
         pprint.pprint(snapshot)
 
         # Use an empirical R0, if available. Otherwise, use the default.
+        effective_r0 = r0_initial
         if snapshot['confirmed'] is not None and previous_confirmed > 0:
             effective_r0 = snapshot['confirmed'] / previous_confirmed
         previous_confirmed = snapshot['confirmed']
@@ -222,6 +222,6 @@ def forecast_region(state, country, iterations):
 
 #forecast_region('New South Wales', 'Australia', 50)
 #forecast_region('Queensland', 'Australia', 50)
-forecast = forecast_region('CA', 'USA', 50)
+forecast = forecast_region('TX', 'USA', 50)
 #forecast = forecast_region('FL', 'USA', 50)
 forecast.to_csv(path_or_buf='results.csv', index=False)
