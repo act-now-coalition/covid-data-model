@@ -44,9 +44,9 @@ def get_snapshot(date, province_state, country_region):
 
     try:
         row = filtered_snapshot.iloc[0]
-        confirmed = row.at['Confirmed']
-        deaths = row.at['Deaths']
-        recovered = row.at['Recovered']
+        confirmed = int(row.at['Confirmed'])
+        deaths = int(row.at['Deaths'])
+        recovered = int(row.at['Recovered'])
     except IndexError as e:
         pass
 
@@ -65,19 +65,19 @@ def forecast_region(province_state, country_region, iterations):
             'Date',
             'Eff. R0',
             'Beg. Susceptible',
-            'New Infected',
-            'Prev. Infections',
-            'Recovered or Died',
+            'New Inf.',
+            'Prev. Inf.',
+            'Recov. or Died',
             'End Susceptible',
             'Actual Reported',
-            'Pred. Hospitalized',
-            'Cum. Infected',
+            'Pred. Hosp.',
+            'Cum. Inf.',
             'Cum. Deaths',
-            'Avail. Hospital Beds',
+            'Avail. Hosp. Beds',
             'S&P 500',
-            'Est. Actual Chance of Infection',
-            'Pred. Chance of Infection',
-            'Cum. Pred. Chance of Infection',
+            'Est. Actual Chance of Inf.',
+            'Pred. Chance of Inf.',
+            'Cum. Pred. Chance of Inf.',
             'R0',
             '% Susceptible']
     rows = []
@@ -133,29 +133,31 @@ def forecast_region(province_state, country_region, iterations):
         predicted_hospitalized = newly_infected * hospitalization_rate
 
         if (available_hospital_beds > predicted_hospitalized):
-            cumulative_deaths += newly_infected * case_fatality_rate
+            cumulative_deaths += int(newly_infected * case_fatality_rate)
         else:
-            cumulative_deaths += newly_infected * case_fatality_rate_hospitals_overwhelmed
+            cumulative_deaths += int(newly_infected * case_fatality_rate_hospitals_overwhelmed)
 
         est_actual_chance_of_infection = None
+        actual_reported = None
         if snapshot['confirmed'] is not None:
             est_actual_chance_of_infection = (snapshot['confirmed'] / hospitalization_rate * 2) / pop
+            actual_reported = int(snapshot['confirmed'])
 
-        ending_susceptible = pop - newly_infected - previously_infected - recovered_or_died
+        ending_susceptible = int(pop - newly_infected - previously_infected - recovered_or_died)
 
         row = ('',
                snapshot_date,
-               effective_r0,
-               previous_ending_susceptible,  # Beginning susceptible
-               newly_infected,
-               previously_infected,
-               recovered_or_died,
-               ending_susceptible,
-               snapshot['confirmed'],
-               predicted_hospitalized,
-               cumulative_infected,
-               cumulative_deaths,
-               available_hospital_beds,
+               round(effective_r0, 2),
+               int(previous_ending_susceptible),  # Beginning susceptible
+               int(newly_infected),
+               int(previously_infected),
+               int(recovered_or_died),
+               int(ending_susceptible),
+               actual_reported,
+               int(predicted_hospitalized),
+               int(cumulative_infected),
+               int(cumulative_deaths),
+               int(available_hospital_beds),
                None,  # S&P 500
                est_actual_chance_of_infection,
                None,
@@ -179,9 +181,11 @@ def forecast_region(province_state, country_region, iterations):
     forecast = pd.DataFrame(rows, columns=cols)
 
     pprint.pprint(forecast)
+    return forecast
 
 
 
 #forecast_region('New South Wales', 'Australia', 50)
 #forecast_region('Queensland', 'Australia', 50)
-forecast_region('California', 'US', 50)
+forecast = forecast_region('California', 'US', 50)
+forecast.to_csv(path_or_buf='results.csv', index=False)
