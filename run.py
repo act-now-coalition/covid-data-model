@@ -151,6 +151,7 @@ def forecast_region(province_state, country_region, iterations):
                None,
                None,
                None)
+        rows.append(row)
 
         current_infected_series.append(newly_infected)
 
