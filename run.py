@@ -219,9 +219,12 @@ def forecast_region(state, country, iterations):
     pprint.pprint(forecast)
     return forecast
 
+states = populations['state'].tolist()
+for state in states:
+    forecast = forecast_region(state, 'USA', 25)
+    forecast.to_csv(path_or_buf='results/{}.csv'.format(state), index=False)
 
 #forecast_region('New South Wales', 'Australia', 50)
 #forecast_region('Queensland', 'Australia', 50)
-forecast = forecast_region('TX', 'USA', 50)
 #forecast = forecast_region('FL', 'USA', 50)
-forecast.to_csv(path_or_buf='results.csv', index=False)
+
