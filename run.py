@@ -17,6 +17,7 @@ initial_hospitalization_rate = .05
 case_fatality_rate = .011
 case_fatality_rate_hospitals_overwhelmed = .01
 hospital_capacity_change_daily_rate = 1.05
+max_hospital_capacity_factor = 2.08
 initial_hospital_bed_utilization = .6
 
 model_interval = 4
@@ -113,10 +114,11 @@ def forecast_region(state, country, iterations):
     cumulative_deaths = 0
     available_hospital_beds = round(
         beds * (1 - initial_hospital_bed_utilization), 0)
+    original_available_hospital_beds = available_hospital_beds
 
     # @TODO: See if today's data is already available. If so, don't subtract an additional day.
     # @TODO: Switch back to 1 after testing
-    today = datetime.date.today() - datetime.timedelta(days=4)
+    today = datetime.date.today() - datetime.timedelta(days=1)
 
     snapshot_date = today - \
         datetime.timedelta(days=model_interval *
@@ -202,7 +204,9 @@ def forecast_region(state, country, iterations):
         current_infected_series.append(newly_infected)
         previous_newly_infected = newly_infected
         previous_ending_susceptible = ending_susceptible
-        available_hospital_beds *= hospital_capacity_change_daily_rate
+
+        if available_hospital_beds < max_hospital_capacity_factor * original_available_hospital_beds:
+            available_hospital_beds *= hospital_capacity_change_daily_rate
         snapshot_date += datetime.timedelta(days=model_interval)
 
     # for i in range(0, iterations):
