@@ -1,52 +1,52 @@
-Province/State,Country/Region,Beds Per 1000
-Alabama,US,3.1
-Alaska,US,2.2
-Arizona,US,1.9
-Arkansas,US,3.2
-California,US,1.8
-Colorado,US,1.9
-Connecticut,US,2
-Delaware,US,2.2
-District of Columbia,US,4.4
-Florida,US,2.6
-Georgia,US,2.4
-Hawaii,US,1.9
-Idaho,US,1.9
-Illinois,US,2.5
-Indiana,US,2.7
-Iowa,US,3
-Kansas,US,3.3
-Kentucky,US,3.2
-Louisiana,US,3.3
-Maine,US,2.5
-Maryland,US,1.9
-Massachusetts,US,2.3
-Michigan,US,2.5
-Minnesota,US,2.5
-Mississippi,US,4
-Missouri,US,3.1
-Montana,US,3.3
-Nebraska,US,3.6
-Nevada,US,2.1
-New Hampshire,US,2.1
-New Jersey,US,2.4
-New Mexico,US,1.8
-New York,US,2.7
-North Carolina,US,2.1
-North Dakota,US,4.3
-Ohio,US,2.8
-Oklahoma,US,2.8
-Oregon,US,1.6
-Pennsylvania,US,2.9
-Rhode Island,US,2.1
-South Carolina,US,2.4
-South Dakota,US,4.8
-Tennessee,US,2.9
-Texas,US,2.3
-Utah,US,1.8
-Vermont,US,2.1
-Virginia,US,2.1
-Washington,US,1.7
-West Virginia,US,3.8
-Wisconsin,US,2.1
-Wyoming,US,3.5
+state,country,bedspermille
+Alabama,USA,3.1
+Alaska,USA,2.2
+Arizona,USA,1.9
+Arkansas,USA,3.2
+CA,USA,1.8
+CO,USA,1.9
+Connecticut,USA,2
+Delaware,USA,2.2
+District of Columbia,USA,4.4
+FL,USA,2.6
+Georgia,USA,2.4
+Hawaii,USA,1.9
+Idaho,USA,1.9
+Illinois,USA,2.5
+Indiana,USA,2.7
+Iowa,USA,3
+Kansas,USA,3.3
+Kentucky,USA,3.2
+Louisiana,USA,3.3
+Maine,USA,2.5
+Maryland,USA,1.9
+Massachusetts,USA,2.3
+Michigan,USA,2.5
+Minnesota,USA,2.5
+Mississippi,USA,4
+Missouri,USA,3.1
+Montana,USA,3.3
+Nebraska,USA,3.6
+Nevada,USA,2.1
+New Hampshire,USA,2.1
+New Jersey,USA,2.4
+New Mexico,USA,1.8
+New York,USA,2.7
+North Carolina,USA,2.1
+North Dakota,USA,4.3
+Ohio,USA,2.8
+Oklahoma,USA,2.8
+Oregon,USA,1.6
+Pennsylvania,USA,2.9
+Rhode Island,USA,2.1
+South Carolina,USA,2.4
+South Dakota,USA,4.8
+Tennessee,USA,2.9
+TX,USA,2.3
+Utah,USA,1.8
+Vermont,USA,2.1
+Virginia,USA,2.1
+Washington,USA,1.7
+West Virginia,USA,3.8
+Wisconsin,USA,2.1
+Wyoming,USA,3.5
