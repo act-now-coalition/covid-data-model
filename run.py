@@ -103,16 +103,16 @@ def forecast_region(province_state, country_region, iterations):
         if snapshot_date <= today:
             snapshot = get_snapshot(snapshot_date, province_state, country_region)
         else:
-            snapshot = {'confirmed': None, 'deaths': deaths, 'recovered': recovered}
+            snapshot = {'confirmed': None, 'deaths': None, 'recovered': None}
 
         # Run the model until enough iterations are complete.
-        if snapshot_date > today + datetime.timedelta(days = iterations * model_interval)
+        if snapshot_date > today + datetime.timedelta(days = iterations * model_interval):
             break  # @TODO change to work predictively
 
         pprint.pprint(snapshot)
 
         # Use an empirical R0, if available. Otherwise, use the default.
-        if previous_confirmed > 0 && snapshot['confirmed'] is not None:
+        if snapshot['confirmed'] is not None and previous_confirmed > 0:
             effective_r0 = snapshot['confirmed'] / previous_confirmed
         previous_confirmed = snapshot['confirmed']
 
@@ -164,8 +164,9 @@ def forecast_region(province_state, country_region, iterations):
                None)
         rows.append(row)
 
+        # Prepare for the next iteration
         current_infected_series.append(newly_infected)
-
+        previous_newly_infected = newly_infected
         available_hospital_beds *= hospital_capacity_change_daily_rate
         snapshot_date += datetime.timedelta(days=model_interval)
 
