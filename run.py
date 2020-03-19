@@ -167,6 +167,7 @@ def forecast_region(province_state, country_region, iterations):
         # Prepare for the next iteration
         current_infected_series.append(newly_infected)
         previous_newly_infected = newly_infected
+        previous_ending_susceptible = ending_susceptible
         available_hospital_beds *= hospital_capacity_change_daily_rate
         snapshot_date += datetime.timedelta(days=model_interval)
 
