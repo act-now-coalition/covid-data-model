@@ -103,13 +103,16 @@ def forecast_region(province_state, country_region, iterations):
         if snapshot_date <= today:
             snapshot = get_snapshot(snapshot_date, province_state, country_region)
         else:
-            #snapshot = {'confirmed': confirmed, 'deaths': deaths, 'recovered': recovered}
+            snapshot = {'confirmed': None, 'deaths': deaths, 'recovered': recovered}
+
+        # Run the model until enough iterations are complete.
+        if snapshot_date > today + datetime.timedelta(days = iterations * model_interval)
             break  # @TODO change to work predictively
 
         pprint.pprint(snapshot)
 
         # Use an empirical R0, if available. Otherwise, use the default.
-        if previous_confirmed > 0:
+        if previous_confirmed > 0 && snapshot['confirmed'] is not None:
             effective_r0 = snapshot['confirmed'] / previous_confirmed
         previous_confirmed = snapshot['confirmed']
 
@@ -134,7 +137,9 @@ def forecast_region(province_state, country_region, iterations):
         else:
             cumulative_deaths += newly_infected * case_fatality_rate_hospitals_overwhelmed
 
-        est_actual_chance_of_infection = (snapshot['confirmed'] / hospitalization_rate * 2) / pop
+        est_actual_chance_of_infection = None
+        if snapshot['confirmed'] is not None:
+            est_actual_chance_of_infection = (snapshot['confirmed'] / hospitalization_rate * 2) / pop
 
         ending_susceptible = pop - newly_infected - previously_infected - recovered_or_died
 
@@ -164,10 +169,10 @@ def forecast_region(province_state, country_region, iterations):
         available_hospital_beds *= hospital_capacity_change_daily_rate
         snapshot_date += datetime.timedelta(days=model_interval)
 
-    for i in range(0, iterations):
-        row = ('', snapshot_date, 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S')
-        rows.append(row)
-        snapshot_date += datetime.timedelta(days=model_interval)
+    #for i in range(0, iterations):
+    #    row = ('', snapshot_date, 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S')
+    #    rows.append(row)
+    #    snapshot_date += datetime.timedelta(days=model_interval)
 
     forecast = pd.DataFrame(rows, columns=cols)
 
