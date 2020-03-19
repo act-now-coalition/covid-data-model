@@ -13,6 +13,7 @@ full_timeseries = pd.read_csv('data/timeseries.csv')
 # Modeling Assumptions
 r0_initial = 2.4
 hospitalization_rate = .073
+initial_hospitalization_rate = .05
 case_fatality_rate = .011
 case_fatality_rate_hospitals_overwhelmed = .01
 hospital_capacity_change_daily_rate = 1.05
@@ -137,7 +138,7 @@ def forecast_region(state, country, iterations):
                 effective_r0 * previous_ending_susceptible / pop
         else:
             # We assume the first positive cases were exclusively hospitalized ones.
-            actual_infected_vs_tested_positive = 1 / hospitalization_rate  # ~20
+            actual_infected_vs_tested_positive = 1 / initial_hospitalization_rate  # ~20
             newly_infected = snapshot['confirmed'] * \
                 actual_infected_vs_tested_positive
 
