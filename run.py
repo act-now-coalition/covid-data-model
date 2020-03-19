@@ -63,21 +63,21 @@ def forecast_region(province_state, country_region, iterations):
 
     cols = ['Note',
             'Date',
-            'Effective R0',
-            'Beginning Susceptible',
+            'Eff. R0',
+            'Beg. Susceptible',
             'New Infected',
-            'Previously Infections',
+            'Prev. Infections',
             'Recovered or Died',
-            'Ending Susceptible',
-            'Actual Reported (Hospitalized?)',
-            'Predicted Hospitalized',
-            'Cumulative Infected',
-            'Cumulative Deaths',
-            'Available Hospital Beds',
+            'End Susceptible',
+            'Actual Reported',
+            'Pred. Hospitalized',
+            'Cum. Infected',
+            'Cum. Deaths',
+            'Avail. Hospital Beds',
             'S&P 500',
-            'Estimated Actual Chance of Infection',
-            'Predicted Chance of Infection',
-            'Cumulative Predicted Chance of Infection',
+            'Est. Actual Chance of Infection',
+            'Pred. Chance of Infection',
+            'Cum. Pred. Chance of Infection',
             'R0',
             '% Susceptible']
     rows = []
@@ -91,16 +91,22 @@ def forecast_region(province_state, country_region, iterations):
     recovered_or_died = 0
     cumulative_infected = 0
     cumulative_deaths = 0
-    available_hospital_beds = beds * (1 - initial_hospital_bed_utilization)
+    available_hospital_beds = round(beds * (1 - initial_hospital_bed_utilization), 0)
 
     # @TODO: See if today's data is already available. If so, don't subtract an additional day.
-    today = datetime.date.today() - datetime.timedelta(days = 1)
+    today = datetime.date.today() - datetime.timedelta(days = 3)  # @TODO: Switch back to 1 after testing
 
     snapshot_date = today - datetime.timedelta(days = model_interval * rolling_intervals_for_current_infected)
 
     # Step through existing empirical data
-    while snapshot_date <= today:
-        snapshot = get_snapshot(snapshot_date, province_state, country_region)
+    while True:
+        if snapshot_date <= today:
+            snapshot = get_snapshot(snapshot_date, province_state, country_region)
+        else:
+            #snapshot = {'confirmed': confirmed, 'deaths': deaths, 'recovered': recovered}
+            break  # @TODO change to work predictively
+
+        pprint.pprint(snapshot)
 
         # Use an empirical R0, if available. Otherwise, use the default.
         if previous_confirmed > 0:
@@ -112,7 +118,7 @@ def forecast_region(province_state, country_region, iterations):
             newly_infected = previous_newly_infected * effective_r0 * previous_ending_susceptible / pop
         else:
             # We assume the first positive cases were exclusively hospitalized ones.
-            actual_infected_vs_tested_positive = 1 / hospitalization_rate
+            actual_infected_vs_tested_positive = 1 / hospitalization_rate  # ~20
             newly_infected = snapshot['confirmed'] * actual_infected_vs_tested_positive
 
         # Assume infected cases from before the rolling interval have concluded.
@@ -129,7 +135,8 @@ def forecast_region(province_state, country_region, iterations):
             cumulative_deaths += newly_infected * case_fatality_rate_hospitals_overwhelmed
 
         est_actual_chance_of_infection = (snapshot['confirmed'] / hospitalization_rate * 2) / pop
-        predicted_chance_of_infection = None
+
+        ending_susceptible = pop - newly_infected - previously_infected - recovered_or_died
 
         row = ('',
                snapshot_date,
@@ -138,16 +145,15 @@ def forecast_region(province_state, country_region, iterations):
                newly_infected,
                previously_infected,
                recovered_or_died,
-               pop - newly_infected - previously_infected - recovered_or_died,  # Ending Susceptible
+               ending_susceptible,
                snapshot['confirmed'],
                predicted_hospitalized,
                cumulative_infected,
                cumulative_deaths,
                available_hospital_beds,
                None,  # S&P 500
-               snapshot['confirmed'],
                est_actual_chance_of_infection,
-               predicted_chance_of_infection,
+               None,
                None,
                None,
                None)
@@ -159,7 +165,7 @@ def forecast_region(province_state, country_region, iterations):
         snapshot_date += datetime.timedelta(days=model_interval)
 
     for i in range(0, iterations):
-        row = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S')
+        row = ('', snapshot_date, 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S')
         rows.append(row)
         snapshot_date += datetime.timedelta(days=model_interval)
 
