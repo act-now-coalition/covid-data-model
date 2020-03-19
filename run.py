@@ -138,7 +138,7 @@ def forecast_region(province_state, country_region, iterations):
             cumulative_deaths += int(newly_infected * case_fatality_rate_hospitals_overwhelmed)
 
         est_actual_chance_of_infection = None
-        actual_reported = None
+        actual_reported = 0
         if snapshot['confirmed'] is not None:
             est_actual_chance_of_infection = (snapshot['confirmed'] / hospitalization_rate * 2) / pop
             actual_reported = int(snapshot['confirmed'])
