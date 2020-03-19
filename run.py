@@ -11,12 +11,12 @@ populations = pd.read_csv("data/populations.csv")
 full_timeseries = pd.read_csv('data/timeseries.csv')
 
 # Modeling Assumptions
-r0_initial = 2.8
-hospitalization_rate = .05
-case_fatality_rate = .015
-case_fatality_rate_hospitals_overwhelmed = .015
+r0_initial = 2.4
+hospitalization_rate = .073
+case_fatality_rate = .011
+case_fatality_rate_hospitals_overwhelmed = .01
 hospital_capacity_change_daily_rate = 1.05
-initial_hospital_bed_utilization = .5
+initial_hospital_bed_utilization = .6
 
 model_interval = 4
 rolling_intervals_for_current_infected = 3
