@@ -5,9 +5,10 @@ import pandas as pd
 import pprint
 import datetime
 
-# Fixed Data Sources
+# Data Sources
 beds = pd.read_csv("data/beds.csv")
 populations = pd.read_csv("data/populations.csv")
+full_timeseries = pd.read_csv('data/timeseries.csv')
 
 # Modeling Assumptions
 r0_initial = 2.8
@@ -22,40 +23,44 @@ rolling_intervals_for_current_infected = 3
 
 logging.basicConfig(level=logging.DEBUG)
 
-def get_population(province_state, country_region):
-    matching_pops = populations[(populations["Province/State"] == province_state) & (populations["Country/Region"] == country_region)]
-    return int(matching_pops.iloc[0].at["Population"])
+def get_population(state, country):
+    matching_pops = populations[(populations["state"] == state) & (populations["country"] == country)]
+    return int(matching_pops.iloc[0].at["population"])
 
-def get_beds(province_state, country_region):
-    matching_beds = beds[(beds["Province/State"] == province_state) & (beds["Country/Region"] == country_region)]
-    beds_per_mille = matching_beds.iloc[0].at["Beds Per 1000"]
-    return int(beds_per_mille * get_population(province_state, country_region) / 1000)
+def get_beds(state, country):
+    matching_beds = beds[(beds["state"] == state) & (beds["country"] == country)]
+    beds_per_mille = float(matching_beds.iloc[0].at["bedspermille"])
+    return int(beds_per_mille * get_population(state, country) / 1000)
 
-def get_snapshot(date, province_state, country_region):
-    snapshot_filename = 'data/{}.csv'.format(date.strftime('%m-%d-%Y'))
-    logging.debug('Loading: {}'.format(snapshot_filename))
-    full_snapshot = pd.read_csv(snapshot_filename)
-    filtered_snapshot = full_snapshot[(full_snapshot["Province/State"] == province_state) & (full_snapshot["Country/Region"] == country_region)]
-    pprint.pprint(filtered_snapshot)
+def get_snapshot(date, state, country):
+    #snapshot_filename = 'data/{}.csv'.format(date.strftime('%m-%d-%Y'))
+    #logging.debug('Loading: {}'.format(snapshot_filename))
+    #full_snapshot = pd.read_csv(snapshot_filename)
+    #filtered_snapshot = full_snapshot[(full_snapshot["Province/State"] == state) & (full_snapshot["Country/Region"] == country)]
+    #pprint.pprint(filtered_snapshot)
+
+    filtered_timeseries = full_timeseries[(full_timeseries["state"] == state) & (full_timeseries["country"] == country) & (full_timeseries['date'] == date.strftime('%Y-%m-%d'))]
+
+    pprint.pprint(filtered_timeseries)
 
     confirmed = 0
     deaths = 0
     recovered = 0
 
     try:
-        row = filtered_snapshot.iloc[0]
-        confirmed = int(row.at['Confirmed'])
-        deaths = int(row.at['Deaths'])
-        recovered = int(row.at['Recovered'])
+        #row = filtered_snapshot.iloc[0]
+        confirmed = int(filtered_timeseries['cases'].sum())
+        deaths = int(filtered_timeseries['recovered'].sum())
+        recovered = int(filtered_timeseries['deaths'].sum())
     except IndexError as e:
         pass
 
     return {'confirmed': confirmed, 'deaths': deaths, 'recovered': recovered}
 
-def forecast_region(province_state, country_region, iterations):
-    logging.info('Building results for {} in {}'.format(province_state, country_region))
-    pop = get_population(province_state, country_region)
-    beds = get_beds(province_state, country_region)
+def forecast_region(state, country, iterations):
+    logging.info('Building results for {} in {}'.format(state, country))
+    pop = get_population(state, country)
+    beds = get_beds(state, country)
     logging.debug('This location has {} beds for {} people'.format(beds, pop))
 
     logging.debug('Loading daily report from {} days ago'.format(model_interval))
@@ -94,14 +99,14 @@ def forecast_region(province_state, country_region, iterations):
     available_hospital_beds = round(beds * (1 - initial_hospital_bed_utilization), 0)
 
     # @TODO: See if today's data is already available. If so, don't subtract an additional day.
-    today = datetime.date.today() - datetime.timedelta(days = 3)  # @TODO: Switch back to 1 after testing
+    today = datetime.date.today() - datetime.timedelta(days = 4)  # @TODO: Switch back to 1 after testing
 
     snapshot_date = today - datetime.timedelta(days = model_interval * rolling_intervals_for_current_infected)
 
     # Step through existing empirical data
     while True:
         if snapshot_date <= today:
-            snapshot = get_snapshot(snapshot_date, province_state, country_region)
+            snapshot = get_snapshot(snapshot_date, state, country)
         else:
             snapshot = {'confirmed': None, 'deaths': None, 'recovered': None}
 
@@ -187,5 +192,6 @@ def forecast_region(province_state, country_region, iterations):
 
 #forecast_region('New South Wales', 'Australia', 50)
 #forecast_region('Queensland', 'Australia', 50)
-forecast = forecast_region('California', 'US', 50)
+forecast = forecast_region('CA', 'USA', 50)
+#forecast = forecast_region('FL', 'USA', 50)
 forecast.to_csv(path_or_buf='results.csv', index=False)

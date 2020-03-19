@@ -1,52 +1,52 @@
-Province/State,Country/Region,Population
-California,US,39512223
-Texas,US,28995881
-Florida,US,21477737
-New York,US,19453561
-Pennsylvania,US,12801989
-Illinois,US,12671821
-Ohio,US,11689100
-Georgia,US,10617423
-North Carolina,US,10488084
-Michigan,US,9986857
-New Jersey,US,8882190
-Virginia,US,8535519
-Washington,US,7614893
-Arizona,US,7278717
-Massachusetts,US,6949503
-Tennessee,US,6833174
-Indiana,US,6732219
-Missouri,US,6137428
-Maryland,US,6045680
-Wisconsin,US,5822434
-Colorado,US,5758736
-Minnesota,US,5639632
-South Carolina,US,5148714
-Alabama,US,4903185
-Louisiana,US,4648794
-Kentucky,US,4467673
-Oregon,US,4217737
-Oklahoma,US,3956971
-Connecticut,US,3565287
-Utah,US,3205958
-Iowa,US,3155070
-Nevada,US,3080156
-Arkansas,US,3017825
-Mississippi,US,2976149
-Kansas,US,2913314
-New Mexico,US,2096829
-Nebraska,US,1934408
-West Virginia,US,1792065
-Idaho,US,1787147
-Hawaii,US,1415872
-New Hampshire,US,1359711
-Maine,US,1344212
-Montana,US,1068778
-Rhode Island,US,1059361
-Delaware,US,973764
-South Dakota,US,884659
-North Dakota,US,762062
-Alaska,US,731545
-District of Columbia,US,705749
-Vermont,US,623989
-Wyoming,US,578759
+state,country,population
+CA,USA,39512223
+TX,USA,28995881
+FL,USA,21477737
+New York,USA,19453561
+Pennsylvania,USA,12801989
+Illinois,USA,12671821
+Ohio,USA,11689100
+Georgia,USA,10617423
+North Carolina,USA,10488084
+Michigan,USA,9986857
+New Jersey,USA,8882190
+Virginia,USA,8535519
+Washington,USA,7614893
+Arizona,USA,7278717
+Massachusetts,USA,6949503
+Tennessee,USA,6833174
+Indiana,USA,6732219
+Missouri,USA,6137428
+Maryland,USA,6045680
+Wisconsin,USA,5822434
+Colorado,USA,5758736
+Minnesota,USA,5639632
+South Carolina,USA,5148714
+Alabama,USA,4903185
+Louisiana,USA,4648794
+Kentucky,USA,4467673
+Oregon,USA,4217737
+Oklahoma,USA,3956971
+Connecticut,USA,3565287
+Utah,USA,3205958
+Iowa,USA,3155070
+Nevada,USA,3080156
+Arkansas,USA,3017825
+Mississippi,USA,2976149
+Kansas,USA,2913314
+New Mexico,USA,2096829
+Nebraska,USA,1934408
+West Virginia,USA,1792065
+Idaho,USA,1787147
+Hawaii,USA,1415872
+New Hampshire,USA,1359711
+Maine,USA,1344212
+Montana,USA,1068778
+Rhode Island,USA,1059361
+Delaware,USA,973764
+South Dakota,USA,884659
+North Dakota,USA,762062
+Alaska,USA,731545
+District of Columbia,USA,705749
+Vermont,USA,623989
+Wyoming,USA,578759
