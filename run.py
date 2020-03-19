@@ -13,7 +13,6 @@ full_timeseries = pd.read_csv('data/timeseries.csv')
 # Modeling Assumptions
 r0_initial = 2.4
 hospitalization_rate = .073
-initial_hospitalization_rate = .05
 case_fatality_rate = .011
 case_fatality_rate_hospitals_overwhelmed = .01
 hospital_capacity_change_daily_rate = 1.05
@@ -35,7 +34,7 @@ def get_beds(state, country):
     matching_beds = beds[(beds["state"] == state) &
                          (beds["country"] == country)]
     beds_per_mille = float(matching_beds.iloc[0].at["bedspermille"])
-    return int(round(beds_per_mille * get_population(state, country) / 1000))
+    return int(beds_per_mille * get_population(state, country) / 1000)
 
 
 def get_snapshot(date, state, country):
@@ -45,8 +44,16 @@ def get_snapshot(date, state, country):
     #filtered_snapshot = full_snapshot[(full_snapshot["Province/State"] == state) & (full_snapshot["Country/Region"] == country)]
     # pprint.pprint(filtered_snapshot)
 
+    # First, attempt to pull the state-level data without aggregating.
     filtered_timeseries = full_timeseries[(full_timeseries["state"] == state) & (
-        full_timeseries["country"] == country) & (full_timeseries['date'] == date.strftime('%Y-%m-%d'))]
+        full_timeseries["country"] == country) & (full_timeseries['date'] == date.strftime('%Y-%m-%d')) & (full_timeseries["county"].isna())]
+
+    pprint.pprint(filtered_timeseries)
+
+    # Switch to aggregating across counties if that returns no cases.
+    if int(filtered_timeseries['cases'].sum()) == 0:
+          filtered_timeseries = full_timeseries[(full_timeseries["state"] == state) & (
+              full_timeseries["country"] == country) & (full_timeseries['date'] == date.strftime('%Y-%m-%d'))]
 
     pprint.pprint(filtered_timeseries)
 
@@ -138,7 +145,7 @@ def forecast_region(state, country, iterations):
                 effective_r0 * previous_ending_susceptible / pop
         else:
             # We assume the first positive cases were exclusively hospitalized ones.
-            actual_infected_vs_tested_positive = 1 / initial_hospitalization_rate  # ~20
+            actual_infected_vs_tested_positive = 1 / hospitalization_rate  # ~20
             newly_infected = snapshot['confirmed'] * \
                 actual_infected_vs_tested_positive
 
@@ -153,35 +160,34 @@ def forecast_region(state, country, iterations):
         predicted_hospitalized = newly_infected * hospitalization_rate
 
         if (available_hospital_beds > predicted_hospitalized):
-            cumulative_deaths += int(round(newly_infected *
-                                           case_fatality_rate))
+            cumulative_deaths += int(newly_infected * case_fatality_rate)
         else:
-            cumulative_deaths += int(round(newly_infected *
-                                           case_fatality_rate_hospitals_overwhelmed))
+            cumulative_deaths += int(newly_infected *
+                                     case_fatality_rate_hospitals_overwhelmed)
 
         est_actual_chance_of_infection = None
         actual_reported = 0
         if snapshot['confirmed'] is not None:
             est_actual_chance_of_infection = (
                 snapshot['confirmed'] / hospitalization_rate * 2) / pop
-            actual_reported = int(round(snapshot['confirmed']))
+            actual_reported = int(snapshot['confirmed'])
 
-        ending_susceptible = int(round(
-            pop - newly_infected - previously_infected - recovered_or_died))
+        ending_susceptible = int(
+            pop - newly_infected - previously_infected - recovered_or_died)
 
         row = ('',
                snapshot_date,
                round(effective_r0, 2),
                int(previous_ending_susceptible),  # Beginning susceptible
-               int(round(newly_infected)),
-               int(round(previously_infected)),
-               int(round(recovered_or_died)),
-               int(round(ending_susceptible)),
+               int(newly_infected),
+               int(previously_infected),
+               int(recovered_or_died),
+               int(ending_susceptible),
                actual_reported,
-               int((predicted_hospitalized)),
-               int((cumulative_infected)),
-               int((cumulative_deaths)),
-               int((available_hospital_beds)),
+               int(predicted_hospitalized),
+               int(cumulative_infected),
+               int(cumulative_deaths),
+               int(available_hospital_beds),
                None,  # S&P 500
                est_actual_chance_of_infection,
                None,
@@ -210,6 +216,6 @@ def forecast_region(state, country, iterations):
 
 #forecast_region('New South Wales', 'Australia', 50)
 #forecast_region('Queensland', 'Australia', 50)
-forecast = forecast_region('NY', 'USA', 50)
+forecast = forecast_region('CA', 'USA', 50)
 #forecast = forecast_region('FL', 'USA', 50)
 forecast.to_csv(path_or_buf='results.csv', index=False)
