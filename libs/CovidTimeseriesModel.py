@@ -7,31 +7,18 @@ class CovidTimeseriesModel:
 	def __init__(self):
 		logging.basicConfig(level=logging.CRITICAL)
 
-
-	def get_population(self, state, country, populations):
-			matching_pops = populations[(populations["state"] == state) & (
-		    populations["country"] == country)]
-			return int(matching_pops.iloc[0].at["population"])
-
-
-	def get_beds(self, state, country, beds_data, populations_data):
-		matching_beds = beds_data[(beds_data["state"] == state) &
-		                          (beds_data["country"] == country)]
-		beds_per_mille = float(matching_beds.iloc[0].at["bedspermille"])
-		return int(round(beds_per_mille * self.get_population(state, country, populations_data) / 1000))
-
-
-	def get_snapshot(self, date, state, country, full_timeseries):
+	def get_snapshot(self, date, datasets, model_parameters):
 	# First, attempt to pull the state-level data without aggregating.
-		filtered_timeseries = full_timeseries[(full_timeseries["state"] == state) & (
-		    full_timeseries["country"] == country) & (full_timeseries['date'] == date.strftime('%Y-%m-%d')) & (full_timeseries["county"].isna())]
+		full_timeseries = datasets['timeseries']
+		filtered_timeseries = full_timeseries[(full_timeseries["state"] == model_parameters['state']) & (
+		    full_timeseries["country"] == model_parameters['country']) & (full_timeseries['date'] == date.strftime('%Y-%m-%d')) & (full_timeseries["county"].isna())]
 
 		#pprint.pprint(filtered_timeseries)
 
 		# Switch to aggregating across counties if that returns no cases.
 		if int(filtered_timeseries['cases'].sum()) == 0:
-		      filtered_timeseries = full_timeseries[(full_timeseries["state"] == state) & (
-		          full_timeseries["country"] == country) & (full_timeseries['date'] == date.strftime('%Y-%m-%d'))]
+		      filtered_timeseries = full_timeseries[(full_timeseries["state"] == model_parameters['state']) & (
+		          full_timeseries["country"] == model_parameters['country']) & (full_timeseries['date'] == date.strftime('%Y-%m-%d'))]
 
 		#pprint.pprint(filtered_timeseries)
 
@@ -89,7 +76,7 @@ class CovidTimeseriesModel:
 	    return previous_snapshot['available_hospital_beds'] > snapshot['predicted_hospitalized']
 
 
-	def calculate_cumulative_deaths(self, snapshot, previous_snapshot, case_fatality_rate, case_fatality_rate_hospitals_overwhelmed, logged_overwhelmed, state):
+	def calculate_cumulative_deaths(self, snapshot, previous_snapshot, case_fatality_rate, case_fatality_rate_hospitals_overwhelmed, logged_overwhelmed):
 	    # If the number of hospital beds available is exceeded by the number of patients that need hospitalization,
 	    #  the death rate increases
 	    # Can be significantly improved in the future
@@ -136,11 +123,11 @@ class CovidTimeseriesModel:
 	def calculate_available_hospital_beds(self, snapshot, previous_snapshot, max_hospital_capacity_factor, original_available_hospital_beds, hospital_capacity_change_daily_rate):
 	    available_hospital_beds = previous_snapshot['available_hospital_beds']
 	    if available_hospital_beds < max_hospital_capacity_factor * original_available_hospital_beds:
-	            # Hospitals can try to increase their capacity for the sick
-	            available_hospital_beds *= hospital_capacity_change_daily_rate
+	    	# Hospitals can try to increase their capacity for the sick
+	    	available_hospital_beds *= hospital_capacity_change_daily_rate
 	    return available_hospital_beds
 
-	def iterate_model(self, iterations, country, state, pop, beds, model_parameters):
+	def iterate_model(self, iterations, datasets, model_parameters):
 	    """
 	    The guts. Creates the initial conditions, then iterates the model over the data for a specified number
 	    of iterations
@@ -157,13 +144,12 @@ class CovidTimeseriesModel:
 	    max_hospital_capacity_factor = model_parameters['max_hospital_capacity_factor']
 	    hospital_capacity_change_daily_rate = model_parameters['hospital_capacity_change_daily_rate']
 
-
 	    # @TODO: See if today's data is already available. If so, don't subtract an additional day.
 	    # @TODO: Switch back to 1 after testing
 	    today = datetime.date.today() - datetime.timedelta(days=2)
 	    # Set the initial snapshot date
 	    init_date = today - datetime.timedelta(days=model_interval * rolling_intervals_for_current_infected)
-	    original_available_hospital_beds = round(beds * (1 - initial_hospital_bed_utilization), 0)
+	    original_available_hospital_beds = round(datasets['beds'] * (1 - initial_hospital_bed_utilization), 0)
 
 	    init_snapshot = {
 	        'date': init_date,
@@ -177,7 +163,7 @@ class CovidTimeseriesModel:
 	        'cumulative_infected': 0,
 	        'cumulative_deaths': 0,
 	        'recovered_or_died': 0,
-	        'ending_susceptible': pop,
+	        'ending_susceptible': datasets['population'],
 	        'predicted_hospitalized': 0,
 	        'available_hospital_beds': original_available_hospital_beds
 
@@ -190,7 +176,7 @@ class CovidTimeseriesModel:
 	        # TODO: If we build the list of snapshots ahead of time, we can change the while loop to a for loop. Dunno if we need to do that
 	        # Step through existing empirical data
 	        if snapshot_date <= today:
-	            snapshot = self.get_snapshot(snapshot_date, state, country, model_parameters['full_timeseries'])
+	            snapshot = self.get_snapshot(snapshot_date, datasets, model_parameters)
 	        # If the snapshot date is past today's date, we're projecting from here on out
 	        else:
 	            snapshot = {'confirmed': None, 'deaths': None, 'recovered': None}
@@ -208,7 +194,7 @@ class CovidTimeseriesModel:
 	        snapshot['newly_infected'] = self.calculate_newly_infected(
 	            snapshot,
 	            previous_snapshot,
-	            pop,
+	            datasets['population'],
 	            initial_hospitalization_rate
 	        )
 	        # Assume infected cases from before the rolling interval have concluded.
@@ -233,20 +219,19 @@ class CovidTimeseriesModel:
 	            previous_snapshot,
 	            case_fatality_rate,
 	            case_fatality_rate_hospitals_overwhelmed,
-	            logged_overwhelmed,
-	            state
-	        )
+	            logged_overwhelmed
+			)
 	        # Recalculate the estimated chance of infection
 	        snapshot['est_actual_chance_of_infection'] = self.calculate_estimated_actual_chance_of_infection(
 	            snapshot,
 	            previous_snapshot,
 	            hospitalization_rate,
-	            pop
+	            datasets['population']
 	        )
 	        # Note the actual number of reported cases
 	        snapshot['actual_reported'] = self.calculate_actual_reported(snapshot, previous_snapshot)
 	        # Recalculate how many people are susceptible at the end of the cycle
-	        snapshot['ending_susceptible'] = self.calculate_ending_susceptible(snapshot, previous_snapshot, pop)
+	        snapshot['ending_susceptible'] = self.calculate_ending_susceptible(snapshot, previous_snapshot, datasets['population'])
 	        # Recalculate how many hospital beds are left
 	        snapshot['available_hospital_beds'] = self.calculate_available_hospital_beds(
 	            snapshot,
@@ -262,19 +247,14 @@ class CovidTimeseriesModel:
 	        snapshot_date += datetime.timedelta(days=model_interval)
 	    return snapshot_series
 
-	def forecast_region(self, state, country, iterations, model_parameters):
-	    logging.info('Building results for {} in {}'.format(state, country))
-	    pop = self.get_population(state, country,  model_parameters['populations_data'])
-	    beds = self.get_beds(state, country, model_parameters['beds_data'], model_parameters['populations_data'])
-	    logging.debug('This location has {} beds for {} people'.format(beds, pop))
+	def forecast_region(self,iterations, datasets, model_parameters):
+	    logging.info('Building results for {} in {}'.format(model_parameters['state'], model_parameters['country']))
+	    logging.debug('This location has {} beds for {} people'.format(datasets['beds'], datasets['population']))
 	    logging.debug('Loading daily report from {} days ago'.format(model_parameters['model_interval']))
 
 	    snapshot_series = self.iterate_model(
 	        iterations,
-	        country,
-	        state,
-	        pop,
-	        beds,
+	        datasets,
 	        model_parameters
 	    )
 
