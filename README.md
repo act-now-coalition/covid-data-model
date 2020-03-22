@@ -8,13 +8,22 @@ Check It Out in Jupyter
 
 ## Resources
 
+### Models
+
 * [R-Based Model](https://alhill.shinyapps.io/COVID19seir/)
   * [Source Code](https://github.com/alsnhll/SEIR_COVID19)
+* [Penn-Chime](http://penn-chime.phl.io/)
+* [Imperial College Model](https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf)
+
+### SRI Data Sources
+
 * Johns Hopkins Data
   * [Mapping](https://systems.jhu.edu/research/public-health/ncov/)
   * [Data](https://github.com/CSSEGISandData/COVID-19)
 * [Scraped Data](https://github.com/lazd/coronadatascraper)
   * [Historical Snapshots](https://github.com/lazd/coronadatascraper-cache)
-* [Penn-Chime](http://penn-chime.phl.io/)
-* [Imperial College Model](https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf)
+
+### Containment Data Sources
+
 * [US State-Level Containment Policies](https://www.multistate.us/pages/covid-19-policy-tracker)
+* [AEI Action Tracker](https://www.aei.org/covid-2019-action-tracker/)
