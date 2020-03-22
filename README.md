@@ -15,7 +15,7 @@ Check It Out in Jupyter
 * [Penn-Chime](http://penn-chime.phl.io/)
 * [Imperial College Model](https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf)
 
-### SRI Data Sources
+### SIR Data Sources
 
 * Johns Hopkins Data
   * [Mapping](https://systems.jhu.edu/research/public-health/ncov/)
