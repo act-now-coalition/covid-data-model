@@ -27,3 +27,4 @@ Check It Out in Jupyter
 
 * [US State-Level Containment Policies](https://www.multistate.us/pages/covid-19-policy-tracker)
 * [AEI Action Tracker](https://www.aei.org/covid-2019-action-tracker/)
+* [LA Times Tracker](https://www.latimes.com/projects/california-coronavirus-cases-tracking-outbreak/) (California only)
