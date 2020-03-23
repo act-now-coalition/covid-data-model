@@ -112,15 +112,12 @@ class CovidTimeseriesModel:
                 'recovered': None
             }
 
-    def iterate_model(self, iterations, model_parameters):
-        """
-        The guts. Creates the initial conditions, then iterates the model over the data for a specified number
-        of iterations
-        """
+    def initialize_parameters(self, model_parameters):
+        """Perform all of the necessary setup prior to the model's execution"""
         # Get the earliest date in the data
         model_parameters['init_date'] = model_parameters['timeseries'].sort_values('date')['date'].iloc[0]
-        original_available_hospital_beds = round(model_parameters['beds'] * (1 - model_parameters['initial_hospital_bed_utilization']), 0)
-
+        model_parameters['original_available_hospital_beds'] = round(
+            model_parameters['beds'] * (1 - model_parameters['initial_hospital_bed_utilization']), 0)
         # Prepare the initial conditions for the loop
         # Initialize the series with the init current_cycle
         cycle_series = [
@@ -139,9 +136,17 @@ class CovidTimeseriesModel:
                 'recovered_or_died': 0,
                 'ending_susceptible': model_parameters['population'],
                 'predicted_hospitalized': 0,
-                'available_hospital_beds': original_available_hospital_beds
+                'available_hospital_beds': model_parameters['original_available_hospital_beds']
             },
         ]
+        return cycle_series, model_parameters
+
+    def iterate_model(self, iterations, model_parameters):
+        """
+        The guts. Creates the initial conditions, iterates the model over the data for a specified number
+        of iterations, collects the results, and returns them
+        """
+        cycle_series, model_parameters = self.initialize_parameters(model_parameters)
         previous_cycle = cycle_series[0]
         for i in range(0, len(model_parameters['timeseries']) + iterations - 1):
             # Step through existing empirical data
@@ -197,7 +202,7 @@ class CovidTimeseriesModel:
                 current_cycle,
                 previous_cycle,
                 model_parameters['max_hospital_capacity_factor'],
-                original_available_hospital_beds,
+                model_parameters['original_available_hospital_beds'],
                 model_parameters['hospital_capacity_change_daily_rate']
             )
             # Prepare for the next iteration
@@ -207,7 +212,6 @@ class CovidTimeseriesModel:
 
     def forecast_region(self, iterations, model_parameters):
         cycle_series = self.iterate_model(iterations, model_parameters)
-
         return pd.DataFrame({
             'Note': ['' for s in cycle_series],
             'Date': [s['date'] for s in cycle_series],
