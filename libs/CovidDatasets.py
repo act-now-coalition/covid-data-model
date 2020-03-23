@@ -16,7 +16,8 @@ class CovidDatasets:
 
 	def get_all_timeseries(self):
 		if(self.TIME_SERIES_DATA is None):
-			self.TIME_SERIES_DATA = pd.read_csv(self.TIME_SERIES_URL, parse_dates=[self.DATE_FIELD])
+			self.TIME_SERIES_DATA = pd.read_csv(self.TIME_SERIES_URL)
+			self.TIME_SERIES_DATA[self.DATE_FIELD] = pd.to_datetime(self.TIME_SERIES_DATA[self.DATE_FIELD])
 		return self.TIME_SERIES_DATA
 
 	def get_all_population(self):
