@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import pprint
 import datetime
+import json
+import math
 
 # Data Sources
 beds = pd.read_csv("data/beds.csv")
@@ -12,16 +14,19 @@ full_timeseries = pd.read_csv('data/timeseries.csv')
 
 # Modeling Assumptions
 r0_initial = 2.4
-hospitalization_rate = .073
-initial_hospitalization_rate = .05
+hospitalization_rate = .0727
 case_fatality_rate = .011
 case_fatality_rate_hospitals_overwhelmed = .01
 hospital_capacity_change_daily_rate = 1.05
 max_hospital_capacity_factor = 2.08
 initial_hospital_bed_utilization = .6
 
+length_of_average_infection = 14
+
 model_interval = 4
-rolling_intervals_for_current_infected = 3
+rolling_intervals_for_current_infected = math.floor(length_of_average_infection / model_interval)
+
+pprint.pprint(rolling_intervals_for_current_infected)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -74,7 +79,7 @@ def get_snapshot(date, state, country):
     return {'confirmed': confirmed, 'deaths': deaths, 'recovered': recovered}
 
 
-def forecast_region(state, country, iterations):
+def forecast_region(state, country, iterations, interventions):
     logging.info('Building results for {} in {}'.format(state, country))
     pop = get_population(state, country)
     beds = get_beds(state, country)
@@ -117,19 +122,24 @@ def forecast_region(state, country, iterations):
 
     # @TODO: See if today's data is already available. If so, don't subtract an additional day.
     # @TODO: Switch back to 1 after testing
-    today = datetime.date.today() - datetime.timedelta(days=1)
+    today = datetime.date.today() - datetime.timedelta(days=3)
 
-    snapshot_date = today - \
-        datetime.timedelta(days=model_interval *
-                           rolling_intervals_for_current_infected)
+    #snapshot_date = today - \
+    #    datetime.timedelta(days=model_interval *
+    #                       rolling_intervals_for_current_infected)
 
-    logged_overwhelmed = False
+    # Always start the model on March 3rd
+    snapshot_date = datetime.date(2020, 3, 3)
+
+    overwhelmed_date = None
+    forecast_iterations = 0
 
     # Step through existing empirical data
     while True:
         if snapshot_date <= today:
             snapshot = get_snapshot(snapshot_date, state, country)
         else:
+            forecast_iterations += 1
             snapshot = {'confirmed': None, 'deaths': None, 'recovered': None}
 
         # Run the model until enough iterations are complete.
@@ -144,15 +154,30 @@ def forecast_region(state, country, iterations):
             effective_r0 = snapshot['confirmed'] / previous_confirmed
         previous_confirmed = snapshot['confirmed']
 
+        #if forecast_iterations in interventions:
+        #    effective_r0 = interventions[forecast_iterations]
+        #else:
+        #effective_r0 = r0_initial
+
+        # @TODO: Remove rounding
+        #effective_r0 = round(effective_r0, 2)
+
         if previous_newly_infected > 0:
             # If we have previously known cases, use the R0 to estimate newly infected cases.
             newly_infected = previous_newly_infected * \
                 effective_r0 * previous_ending_susceptible / pop
-        else:
+            logging.debug('{} = {} * {} * {} / {}'.format(newly_infected, previous_newly_infected, effective_r0, previous_ending_susceptible, pop))
+        elif snapshot['confirmed'] is not None:
             # We assume the first positive cases were exclusively hospitalized ones.
-            actual_infected_vs_tested_positive = 1 / initial_hospitalization_rate  # ~20
-            newly_infected = snapshot['confirmed'] * \
-                actual_infected_vs_tested_positive
+            newly_infected = snapshot['confirmed'] / hospitalization_rate
+        else:
+            newly_infected = 0
+
+        # @TODO: Remove rounding
+        # Round at each stage. The spreadsheet does this, but we probably shouldn't.
+        #pprint.pprint(newly_infected)
+        #newly_infected = int(round(newly_infected, 0))
+
 
         # Assume infected cases from before the rolling interval have concluded.
         if (len(current_infected_series) >= 4):
@@ -168,9 +193,9 @@ def forecast_region(state, country, iterations):
             cumulative_deaths += int(round(newly_infected *
                                            case_fatality_rate))
         else:
-            if not logged_overwhelmed:
+            if overwhelmed_date is None:
+                overwhelmed_date = snapshot_date
                 logging.info('Hospitals in {} overwhelmed on {}'.format(state, snapshot_date))
-            logged_overwhelmed = True
             cumulative_deaths += int(round(newly_infected *
                                            (case_fatality_rate_hospitals_overwhelmed + case_fatality_rate_hospitals_overwhelmed)))
 
