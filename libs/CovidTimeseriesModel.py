@@ -138,7 +138,7 @@ class CovidTimeseriesModel:
         cycle_series = [
             {
                 # We want the initial cycle to be one interval behind the first iteration of data we have
-                'date': model_parameters['init_date'] - datetime.timedelta(days=model_parameters['model_interval']),
+                'date': model_parameters['init_date'],
                 'r': model_parameters['r0'],
                 'cases': 0,
                 'actual_reported': 0,
@@ -161,7 +161,7 @@ class CovidTimeseriesModel:
         of iterations, collects the results, and returns them"""
         cycle_series, model_parameters = self.initialize_parameters(model_parameters)
         previous_cycle = cycle_series[0]
-        for i in range(0, model_parameters['total_iterations']):
+        for i in range(1, model_parameters['total_iterations']):
             # Step through existing empirical data
             current_cycle = self.make_cycle(i, model_parameters)
             logging.debug('Calculating values for {}'.format(current_cycle['date']))
