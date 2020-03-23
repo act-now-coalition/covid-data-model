@@ -1,4 +1,6 @@
 import logging
+import math
+
 import pandas as pd
 import datetime
 
@@ -104,8 +106,6 @@ class CovidTimeseriesModel:
         else:
             # If we have exceeded the number of rows in the collected data, we go into projection mode.
             return {
-                # Calculate the date of this current_cycle. Should be the initial date, plus one interval for every entry
-                # in the timeseries list, plus one for the initial current_cycle
                 'date': current_cycle_date,
                 'cases': None,
                 'deaths': None,
@@ -116,6 +116,16 @@ class CovidTimeseriesModel:
         """Perform all of the necessary setup prior to the model's execution"""
         # Get the earliest date in the data
         model_parameters['init_date'] = model_parameters['timeseries'].sort_values('date')['date'].iloc[0]
+        # Get the latest date in the data
+        model_parameters['last_date'] = model_parameters['timeseries'].sort_values('date')['date'].iloc[-1]
+        # Calculate the number of iterations needed to cover the data
+        model_parameters['data_iterations'] = math.floor(
+            # timedelta subtraction is not inclusive, but we need it to be, so we'll add one day
+            (model_parameters['last_date'] - (model_parameters['init_date'] - datetime.timedelta(days=1))) /
+            datetime.timedelta(days=model_parameters['model_interval'])
+        )
+        # Sum the data and projection interations for a single number of iterations to cycle the model
+        model_parameters['total_iterations'] = model_parameters['data_iterations'] + model_parameters['projection_iterations']
         model_parameters['original_available_hospital_beds'] = round(
             model_parameters['beds'] * (1 - model_parameters['initial_hospital_bed_utilization']), 0)
         # Prepare the initial conditions for the loop
@@ -141,14 +151,12 @@ class CovidTimeseriesModel:
         ]
         return cycle_series, model_parameters
 
-    def iterate_model(self, iterations, model_parameters):
-        """
-        The guts. Creates the initial conditions, iterates the model over the data for a specified number
-        of iterations, collects the results, and returns them
-        """
+    def iterate_model(self, model_parameters):
+        """The guts. Creates the initial conditions, iterates the model over the data for a specified number
+        of iterations, collects the results, and returns them"""
         cycle_series, model_parameters = self.initialize_parameters(model_parameters)
         previous_cycle = cycle_series[0]
-        for i in range(0, len(model_parameters['timeseries']) + iterations - 1):
+        for i in range(0, model_parameters['total_iterations']):
             # Step through existing empirical data
             current_cycle = self.make_cycle(i, model_parameters)
             logging.debug('Calculating values for {}'.format(current_cycle['date']))
@@ -175,9 +183,11 @@ class CovidTimeseriesModel:
                 model_parameters['rolling_intervals_for_current_infected']
             )
             # Calculate the cumulative number of infected individuals
-            current_cycle['cumulative_infected'] = previous_cycle['cumulative_infected'] + current_cycle['newly_infected']
+            current_cycle['cumulative_infected'] = previous_cycle['cumulative_infected'] + \
+                                                   current_cycle['newly_infected']
             # Predict the number of patients that will require hospitilzation
-            current_cycle['predicted_hospitalized'] = current_cycle['newly_infected'] * model_parameters['hospitalization_rate']
+            current_cycle['predicted_hospitalized'] = current_cycle['newly_infected'] * \
+                                                      model_parameters['hospitalization_rate']
             # Calculate the number of cumulative deaths
             current_cycle['cumulative_deaths'] = self.calculate_cumulative_deaths(
                 current_cycle,
@@ -210,8 +220,8 @@ class CovidTimeseriesModel:
             previous_cycle = current_cycle
         return cycle_series
 
-    def forecast_region(self, iterations, model_parameters):
-        cycle_series = self.iterate_model(iterations, model_parameters)
+    def forecast_region(self, model_parameters):
+        cycle_series = self.iterate_model(model_parameters)
         return pd.DataFrame({
             'Note': ['' for s in cycle_series],
             'Date': [s['date'] for s in cycle_series],
