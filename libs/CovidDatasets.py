@@ -16,7 +16,8 @@ class CovidDatasets:
 	POPULATION_DATA = None
 	start_date = datetime.datetime(year=2020, month=3, day=3)
 	# Initializer / Instance Attributes
-	def __init__(self):
+	def __init__(self, model_interval):
+		self._model_interval = model_interval
 		logging.basicConfig(level=logging.CRITICAL)
 
 	def backfill_to_init_date(self, series):
@@ -39,14 +40,29 @@ class CovidDatasets:
 		new_series = series.append(synthetic_series)
 		return new_series.sort_values('date').reset_index()
 
+	def step_down(self, i, series):
+		# A function to calculate how much to step down the number of cases from the following day
+		#  The goal is for the synthetic cases to halve once every iteration of the model interval.
+
+		# I have no idea how this code works, but it does, and it took me two hours and the help of four people to
+		#  write it. If you break it, I will fly down from Alaska, find you, take you back with me into the frozen
+		#  wastes on a dogsled, and leave you for the wolves. We still do that up here.
+
+		min_row = series[series['cases'] > 0].min()  # Find the smallest number of cases that is not 0
+		y = min_row['cases'] * math.pow(2, (i - min_row['level_0'])/self._model_interval)
+		return y
+
 	def backfill_synthetic_cases(self, series):
 		# Fill in all values prior to the first non-zero values. Use 1/2 following value. Decays into nothing
 		# sort the dataframe in reverse date order, so we traverse from latest to earliest
-		series = series.sort_values(self.DATE_FIELD, ascending=False).reset_index()
-		for i in range(0, len(series)):
+		series = series.sort_values(self.DATE_FIELD).reset_index()
+		for a in range(0, len(series)):
+			i = len(series) - a - 1
 			if series.iloc[i]['cases'] == 0:
-				series.at[i, 'cases'] = math.floor(series.iloc[i - 1]['cases'] / 2)
+				series.at[i, 'cases'] = self.step_down(i, series)
 		return series
+
+
 
 	def backfill(self, series):
 		# Backfill the data as necessary for the model
