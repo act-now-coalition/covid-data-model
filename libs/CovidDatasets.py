@@ -62,8 +62,6 @@ class CovidDatasets:
 				series.at[i, 'cases'] = self.step_down(i, series)
 		return series
 
-
-
 	def backfill(self, series):
 		# Backfill the data as necessary for the model
 		return self.backfill_synthetic_cases(
@@ -96,14 +94,39 @@ class CovidDatasets:
 		return self.BED_DATA
 
 	def get_timeseries_by_country_state(self, country, state):
-		# First, attempt to pull the state-level data without aggregating.
-		return self.backfill(
-			self.get_all_timeseries()[
-				(self.get_all_timeseries()["state"] == state) &
-				(self.get_all_timeseries()["country"] == country) &
-				(self.get_all_timeseries()["county"].isna())
-			]
-		)
+		# First, pull all available state data
+		state_data = self.get_all_timeseries()[
+			(self.get_all_timeseries()["state"] == state) &
+			(self.get_all_timeseries()["country"] == country) &
+			(self.get_all_timeseries()["county"].isna())
+		]
+		# Second pull all county data for the state
+		county_data = self.get_all_timeseries()[
+			(self.get_all_timeseries()["state"] == state) &
+			(self.get_all_timeseries()["country"] == country) &
+			(self.get_all_timeseries()["county"].notna())
+		][['date', 'country', 'state', 'cases', 'deaths', 'recovered', 'active']].groupby(
+			['date', 'country', 'state'], as_index=False
+		)[['cases', 'deaths', 'recovered', 'active']].sum()
+		# Now we fill in whatever gaps we can in the state data using the county data
+		curr_date = state_data['date'].min()  # Start on the first date of state data we have
+		county_data_to_insert = []
+		while curr_date > self.start_date:
+			curr_date -= datetime.timedelta(days=1)
+			# If there is no state data for a day, we need to get some country data for the day
+			if len(state_data[state_data['date'] == curr_date]) == 0:
+				county_data_for_date = copy(county_data[county_data['date'] == curr_date])
+				if len(county_data_for_date) == 0:  # If there's no county data, we're SOL.
+					continue  # TODO: Revisit. This should be more intelligent
+				county_data_for_date = county_data_for_date.iloc[0]
+				new_state_row = copy(state_data.iloc[0])  # Copy the first row of the state data to get the right format
+				new_state_row['date'] = county_data_for_date['date']
+				new_state_row['cases'] = county_data_for_date['cases']
+				new_state_row['deaths'] = county_data_for_date['deaths']
+				new_state_row['recovered'] = county_data_for_date['recovered']
+				new_state_row['active'] = county_data_for_date['active']
+				county_data_to_insert.append(copy(new_state_row))
+		return state_data.append(pd.DataFrame(county_data_to_insert))
 
 	def get_timeseries_by_country(self, country):
 		return self.get_all_timeseries()[self.get_all_timeseries()["country"] == country]
