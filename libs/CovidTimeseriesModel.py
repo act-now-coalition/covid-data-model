@@ -8,29 +8,29 @@ class CovidTimeseriesModel:
     def __init__(self):
         logging.basicConfig(level=logging.CRITICAL)
 
-    def calculate_r(self, cycle, previous_cycle, r0):
+    def calculate_r(self, current_cycle, previous_cycle, r0):
         # Calculate the r0 value based on the current and past number of confirmed cases
-        if cycle['cases'] is not None:
+        if current_cycle['cases'] is not None:
             if previous_cycle['cases'] > 0:
-                return cycle['cases'] / previous_cycle['cases']
+                return current_cycle['cases'] / previous_cycle['cases']
         return r0
 
-    def calculate_effective_r(self, cycle, previous_cycle, pop):
+    def calculate_effective_r(self, current_cycle, previous_cycle, pop):
         # Calculate effective r by accounting for herd-immunity
-        return cycle['r'] * (previous_cycle['ending_susceptible'] / pop)
+        return current_cycle['r'] * (previous_cycle['ending_susceptible'] / pop)
 
-    def calculate_newly_infected(self, cycle, previous_cycle, pop, initial_hospitalization_rate):
+    def calculate_newly_infected(self, current_cycle, previous_cycle, pop, initial_hospitalization_rate):
         if previous_cycle['newly_infected'] > 0:
             # If we have previously known cases, use the R0 to estimate newly infected cases.
-            newly_infected = previous_cycle['newly_infected'] * self.calculate_effective_r(cycle,
+            newly_infected = previous_cycle['newly_infected'] * self.calculate_effective_r(current_cycle,
                                                                                               previous_cycle, pop)
         else:
             # TODO: Review. I'm having trouble following this block
             # We assume the first positive cases were exclusively hospitalized ones.
             actual_infected_vs_tested_positive = 1 / initial_hospitalization_rate  # ~20
-            if cycle['cases'] is not None:
-                confirmed = cycle['cases']
-            newly_infected = cycle['cases'] * actual_infected_vs_tested_positive
+            if current_cycle['cases'] is not None:
+                confirmed = current_cycle['cases']
+            newly_infected = current_cycle['cases'] * actual_infected_vs_tested_positive
         return newly_infected
 
     def calculate_currently_infected(self, cycle_series, rolling_intervals_for_current_infected):
@@ -40,26 +40,26 @@ class CovidTimeseriesModel:
             ss['newly_infected'] for ss in cycle_series[-rolling_intervals_for_current_infected:]
         )
 
-    def hospital_is_overloaded(self, cycle, previous_cycle):
+    def hospital_is_overloaded(self, current_cycle, previous_cycle):
         # Determine if a hospital is overloaded. Trivial now, but will likely become more complicated in the near future
-        return previous_cycle['available_hospital_beds'] > cycle['predicted_hospitalized']
+        return previous_cycle['available_hospital_beds'] > current_cycle['predicted_hospitalized']
 
-    def calculate_cumulative_deaths(self, cycle, previous_cycle, case_fatality_rate,
+    def calculate_cumulative_deaths(self, current_cycle, previous_cycle, case_fatality_rate,
                                     case_fatality_rate_hospitals_overwhelmed):
         # If the number of hospital beds available is exceeded by the number of patients that need hospitalization,
         #  the death rate increases
         # Can be significantly improved in the future
-        if self.hospital_is_overloaded(cycle, previous_cycle):
-            return previous_cycle['cumulative_deaths'] + round(cycle['newly_infected'] * case_fatality_rate)
+        if self.hospital_is_overloaded(current_cycle, previous_cycle):
+            return previous_cycle['cumulative_deaths'] + round(current_cycle['newly_infected'] * case_fatality_rate)
         else:
             return previous_cycle['cumulative_deaths'] + round(
-                cycle['newly_infected'] * (case_fatality_rate + case_fatality_rate_hospitals_overwhelmed)
+                current_cycle['newly_infected'] * (case_fatality_rate + case_fatality_rate_hospitals_overwhelmed)
             )
 
-    def calcluate_recovered_or_died(self, snapsnot, previous_cycle, cycle_series,
+    def calcluate_recovered_or_died(self, current_cycle, previous_cycle, cycle_series,
                                     rolling_intervals_for_current_infected):
-        # Recovered or died (RoD) is a cumulative number. We take the number of RoD from last cycle, and add to it
-        #  the number of individuals who were newly infected a set number of cycles ago (rolling_intervals_for_current_infected)
+        # Recovered or died (RoD) is a cumulative number. We take the number of RoD from last current_cycle, and add to it
+        #  the number of individuals who were newly infected a set number of current_cycles ago (rolling_intervals_for_current_infected)
         #  (RICI). It is assumed that after the RICI, an infected interval has either recovered or died.
         # Can be improved in the future
         if len(cycle_series) >= (rolling_intervals_for_current_infected + 1):
@@ -68,25 +68,25 @@ class CovidTimeseriesModel:
         else:
             return previous_cycle['recovered_or_died']
 
-    def calculate_ending_susceptible(self, cycle, previous_cycle, pop):
+    def calculate_ending_susceptible(self, current_cycle, previous_cycle, pop):
         # Number of people who haven't been sick yet
         return round(
-            pop - (cycle['newly_infected'] + cycle['currently_infected'] + cycle['recovered_or_died'])
+            pop - (current_cycle['newly_infected'] + current_cycle['currently_infected'] + current_cycle['recovered_or_died'])
         )
 
-    def calculate_estimated_actual_chance_of_infection(self, cycle, previous_cycle, hospitalization_rate, pop):
+    def calculate_estimated_actual_chance_of_infection(self, current_cycle, previous_cycle, hospitalization_rate, pop):
         # Reflects the model logic, but probably needs to be changed
-        if cycle['cases'] is not None:
-            return ((cycle['cases'] / hospitalization_rate) * 2) / pop
+        if current_cycle['cases'] is not None:
+            return ((current_cycle['cases'] / hospitalization_rate) * 2) / pop
         return None
 
-    def calculate_actual_reported(self, cycle, previous_cycle):
+    def calculate_actual_reported(self, current_cycle, previous_cycle):
         # Needs to account for creating synthetic data for missing records
-        if cycle['cases'] is not None:
-            return round(cycle['cases'])
+        if current_cycle['cases'] is not None:
+            return round(current_cycle['cases'])
         return 0
 
-    def calculate_available_hospital_beds(self, cycle, previous_cycle, max_hospital_capacity_factor,
+    def calculate_available_hospital_beds(self, current_cycle, previous_cycle, max_hospital_capacity_factor,
                                           original_available_hospital_beds, hospital_capacity_change_daily_rate):
         available_hospital_beds = previous_cycle['available_hospital_beds']
         if available_hospital_beds < max_hospital_capacity_factor * original_available_hospital_beds:
@@ -94,24 +94,23 @@ class CovidTimeseriesModel:
             available_hospital_beds *= hospital_capacity_change_daily_rate
         return available_hospital_beds
 
-    def get_cycle(self, i, model_parameters):
+    def make_cycle(self, i, model_parameters):
         if i < len(model_parameters['timeseries']):
             # Grab the cycle corresponding to this iteration
             # The data comes in as a DataFrame, but within the model we use a dict. We can revisit that decision
             # First we need to sort the list by date  to ensure we're getting the correct one
-            cycle = model_parameters['timeseries'].sort_values('date').iloc[i].to_dict()
+            return model_parameters['timeseries'].sort_values('date').iloc[i].to_dict()
         else:
             # If we have exceeded the number of rows in the collected data, we go into projection mode.
-            cycle = {
-                # Calculate the date of this cycle. Should be the initial date, plus one interval for every entry
-                # in the timeseries list, plus one for the initial cycle
+            return {
+                # Calculate the date of this current_cycle. Should be the initial date, plus one interval for every entry
+                # in the timeseries list, plus one for the initial current_cycle
                 'date': model_parameters['init_date'] +
                         datetime.timedelta(days=model_parameters['model_interval'] * (i + 1)),
                 'cases': None,
                 'deaths': None,
                 'recovered': None
             }
-        return cycle
 
     def iterate_model(self, iterations, model_parameters):
         """
@@ -137,7 +136,7 @@ class CovidTimeseriesModel:
         original_available_hospital_beds = round(model_parameters['beds'] * (1 - initial_hospital_bed_utilization), 0)
 
         # Prepare the initial conditions for the loop
-        # Initialize the series with the init cycle
+        # Initialize the series with the init current_cycle
         cycle_series = [
             {
                 # We want the initial cycle to be one interval behind the first iteration of data we have
@@ -160,64 +159,64 @@ class CovidTimeseriesModel:
         previous_cycle = cycle_series[0]
         for i in range(0, len(model_parameters['timeseries']) + iterations - 1):
             # Step through existing empirical data
-            cycle = self.get_cycle(i, model_parameters)
-            logging.debug('Calculating values for {}'.format(cycle['date']))
+            current_cycle = self.make_cycle(i, model_parameters)
+            logging.debug('Calculating values for {}'.format(current_cycle['date']))
 
             # Calculate the r0 value
-            cycle['r'] = self.calculate_r(cycle, previous_cycle, r0)
+            current_cycle['r'] = self.calculate_r(current_cycle, previous_cycle, r0)
             # Calculate the number of newly infected cases
-            cycle['newly_infected'] = self.calculate_newly_infected(
-                cycle,
+            current_cycle['newly_infected'] = self.calculate_newly_infected(
+                current_cycle,
                 previous_cycle,
                 model_parameters['population'],
                 initial_hospitalization_rate
             )
             # Assume infected cases from before the rolling interval have concluded.
-            cycle['recovered_or_died'] = self.calcluate_recovered_or_died(
-                cycle,
+            current_cycle['recovered_or_died'] = self.calcluate_recovered_or_died(
+                current_cycle,
                 previous_cycle,
                 cycle_series,
                 rolling_intervals_for_current_infected
             )
             # Calculate the number of people who have already been infected
-            cycle['currently_infected'] = self.calculate_currently_infected(
+            current_cycle['currently_infected'] = self.calculate_currently_infected(
                 cycle_series,
                 rolling_intervals_for_current_infected
             )
             # Calculate the cumulative number of infected individuals
-            cycle['cumulative_infected'] = previous_cycle['cumulative_infected'] + cycle['newly_infected']
+            current_cycle['cumulative_infected'] = previous_cycle['cumulative_infected'] + current_cycle['newly_infected']
             # Predict the number of patients that will require hospitilzation
-            cycle['predicted_hospitalized'] = cycle['newly_infected'] * hospitalization_rate
+            current_cycle['predicted_hospitalized'] = current_cycle['newly_infected'] * hospitalization_rate
             # Calculate the number of cumulative deaths
-            cycle['cumulative_deaths'] = self.calculate_cumulative_deaths(
-                cycle,
+            current_cycle['cumulative_deaths'] = self.calculate_cumulative_deaths(
+                current_cycle,
                 previous_cycle,
                 case_fatality_rate,
                 case_fatality_rate_hospitals_overwhelmed,
             )
             # Recalculate the estimated chance of infection
-            cycle['est_actual_chance_of_infection'] = self.calculate_estimated_actual_chance_of_infection(
-                cycle,
+            current_cycle['est_actual_chance_of_infection'] = self.calculate_estimated_actual_chance_of_infection(
+                current_cycle,
                 previous_cycle,
                 hospitalization_rate,
                 model_parameters['population']
             )
             # Note the actual number of reported cases
-            cycle['actual_reported'] = self.calculate_actual_reported(cycle, previous_cycle)
-            # Recalculate how many people are susceptible at the end of the cycle
-            cycle['ending_susceptible'] = self.calculate_ending_susceptible(cycle, previous_cycle,
+            current_cycle['actual_reported'] = self.calculate_actual_reported(current_cycle, previous_cycle)
+            # Recalculate how many people are susceptible at the end of the current_cycle
+            current_cycle['ending_susceptible'] = self.calculate_ending_susceptible(current_cycle, previous_cycle,
                                                                                model_parameters['population'])
             # Recalculate how many hospital beds are left
-            cycle['available_hospital_beds'] = self.calculate_available_hospital_beds(
-                cycle,
+            current_cycle['available_hospital_beds'] = self.calculate_available_hospital_beds(
+                current_cycle,
                 previous_cycle,
                 max_hospital_capacity_factor,
                 original_available_hospital_beds,
                 hospital_capacity_change_daily_rate
             )
             # Prepare for the next iteration
-            cycle_series.append(cycle)
-            previous_cycle = cycle
+            cycle_series.append(current_cycle)
+            previous_cycle = current_cycle
             # Advance the clock
         return cycle_series
 
