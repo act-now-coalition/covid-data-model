@@ -16,8 +16,7 @@ class CovidDatasets:
 	POPULATION_DATA = None
 	start_date = datetime.datetime(year=2020, month=3, day=3)
 	# Initializer / Instance Attributes
-	def __init__(self, model_interval):
-		self._model_interval = model_interval
+	def __init__(self):
 		logging.basicConfig(level=logging.CRITICAL)
 
 	def backfill_to_init_date(self, series):
@@ -40,7 +39,7 @@ class CovidDatasets:
 		new_series = series.append(synthetic_series)
 		return new_series.sort_values('date').reset_index()
 
-	def step_down(self, i, series):
+	def step_down(self, i, series, model_interval):
 		# A function to calculate how much to step down the number of cases from the following day
 		#  The goal is for the synthetic cases to halve once every iteration of the model interval.
 
@@ -49,23 +48,24 @@ class CovidDatasets:
 		#  wastes on a dogsled, and leave you for the wolves. We still do that up here.
 
 		min_row = series[series['cases'] > 0].min()  # Find the smallest number of cases that is not 0
-		y = min_row['cases'] * math.pow(2, (i - min_row['level_0'])/self._model_interval)
+		y = min_row['cases'] * math.pow(2, (i - min_row['level_0'])/model_interval)
 		return y
 
-	def backfill_synthetic_cases(self, series):
+	def backfill_synthetic_cases(self, series, model_interval):
 		# Fill in all values prior to the first non-zero values. Use 1/2 following value. Decays into nothing
 		# sort the dataframe in reverse date order, so we traverse from latest to earliest
 		series = series.sort_values(self.DATE_FIELD).reset_index()
 		for a in range(0, len(series)):
 			i = len(series) - a - 1
 			if series.iloc[i]['cases'] == 0:
-				series.at[i, 'cases'] = self.step_down(i, series)
+				series.at[i, 'cases'] = self.step_down(i, series, model_interval)
 		return series
 
-	def backfill(self, series):
+	def backfill(self, series, model_interval):
 		# Backfill the data as necessary for the model
 		return self.backfill_synthetic_cases(
-			self.backfill_to_init_date(series)
+			self.backfill_to_init_date(series),
+			model_interval
 		)
 
 	def cutoff(self, series):
@@ -73,9 +73,9 @@ class CovidDatasets:
 		#  we must trim it from the series
 		return series[series[self.DATE_FIELD] >= self.start_date]
 
-	def prep_data(self, series):
-		# We have some requirements of the data's format, and that is enforced here.
-		return self.cutoff(self.backfill(series))
+	def prep_data(self, series, model_interval):
+		# We have some requirements of the data's window, and that is enforced here.
+		return self.cutoff(self.backfill(series, model_interval))
 
 	def get_all_timeseries(self):
 		if(self.TIME_SERIES_DATA is None):
@@ -93,19 +93,20 @@ class CovidDatasets:
 			self.BED_DATA = pd.read_csv(self.BED_URL)
 		return self.BED_DATA
 
-	def get_timeseries_by_country_state(self, country, state):
+	def combine_state_county_data(self, country, state):
+		# Create a single dataset from state and county data, using state data preferentially.
 		# First, pull all available state data
 		state_data = self.get_all_timeseries()[
 			(self.get_all_timeseries()["state"] == state) &
 			(self.get_all_timeseries()["country"] == country) &
 			(self.get_all_timeseries()["county"].isna())
-		]
+			]
 		# Second pull all county data for the state
 		county_data = self.get_all_timeseries()[
 			(self.get_all_timeseries()["state"] == state) &
 			(self.get_all_timeseries()["country"] == country) &
 			(self.get_all_timeseries()["county"].notna())
-		][['date', 'country', 'state', 'cases', 'deaths', 'recovered', 'active']].groupby(
+			][['date', 'country', 'state', 'cases', 'deaths', 'recovered', 'active']].groupby(
 			['date', 'country', 'state'], as_index=False
 		)[['cases', 'deaths', 'recovered', 'active']].sum()
 		# Now we fill in whatever gaps we can in the state data using the county data
@@ -126,7 +127,12 @@ class CovidDatasets:
 				new_state_row['recovered'] = county_data_for_date['recovered']
 				new_state_row['active'] = county_data_for_date['active']
 				county_data_to_insert.append(copy(new_state_row))
-		return state_data.append(pd.DataFrame(county_data_to_insert))
+			state_county_data = state_data.append(pd.DataFrame(county_data_to_insert))
+		return state_county_data
+
+	def get_timeseries_by_country_state(self, country, state, model_interval):
+		#  Prepare a state-level dataset that uses county data to fill in any potential gaps
+		return self.prep_data(self.combine_state_county_data(country, state), model_interval)
 
 	def get_timeseries_by_country(self, country):
 		return self.get_all_timeseries()[self.get_all_timeseries()["country"] == country]
