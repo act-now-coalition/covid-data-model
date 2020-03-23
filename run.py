@@ -26,6 +26,9 @@ length_of_average_infection = 14
 model_interval = 4
 rolling_intervals_for_current_infected = math.floor(length_of_average_infection / model_interval)
 
+max_search_intervals_for_synthesis = 10
+compounding_factor_for_synthesis_per_interval = .5
+
 pprint.pprint(rolling_intervals_for_current_infected)
 
 logging.basicConfig(level=logging.DEBUG)
@@ -78,6 +81,28 @@ def get_snapshot(date, state, country):
 
     return {'confirmed': confirmed, 'deaths': deaths, 'recovered': recovered}
 
+def get_snapshot_or_synthesize(date, state, country):
+    snapshot_for_date = get_snapshot(date, state, country)
+
+    if snapshot_for_date['confirmed'] > 0:
+        return snapshot_for_date
+
+    logging.debug('No cases for early date {}. Synthesizing.'.format(date))
+
+    snapshot_for_date['synthetic'] = True
+
+    factor = compounding_factor_for_synthesis_per_interval
+    for i in range(1, max_search_intervals_for_synthesis + 1):
+        future_date = date + datetime.timedelta(days = model_interval * i)
+
+        future_snapshot = get_snapshot(future_date, state, country)
+
+        logging.debug('Checking cases for date {}: {}'.format(future_date, future_snapshot['confirmed']))
+
+        if future_snapshot['confirmed'] > 0:
+            snapshot_for_date['confirmed'] = future_snapshot['confirmed'] * factor
+            return snapshot_for_date
+        factor *= compounding_factor_for_synthesis_per_interval
 
 def forecast_region(state, country, iterations, interventions):
     logging.info('Building results for {} in {}'.format(state, country))
@@ -137,7 +162,8 @@ def forecast_region(state, country, iterations, interventions):
     # Step through existing empirical data
     while True:
         if snapshot_date <= today:
-            snapshot = get_snapshot(snapshot_date, state, country)
+            snapshot = get_snapshot_or_synthesize(snapshot_date, state, country)
+            #snapshot = get_snapshot(snapshot_date, state, country)
         else:
             forecast_iterations += 1
             snapshot = {'confirmed': None, 'deaths': None, 'recovered': None}
@@ -152,7 +178,12 @@ def forecast_region(state, country, iterations, interventions):
         effective_r0 = r0_initial
         if snapshot['confirmed'] is not None and previous_confirmed > 0:
             effective_r0 = snapshot['confirmed'] / previous_confirmed
-        previous_confirmed = snapshot['confirmed']
+
+        # Skip updating previous_confirmed if the current interval's data is
+        # synthetic. This causes fallback on the next iteration to the default
+        # r0, which is more desirable than an r0 derived from synthetic data.
+        if not 'synthetic' in snapshot:
+            previous_confirmed = snapshot['confirmed']
 
         # Apply interventions in a forward-looking way from their beginning dates.
         # Removal of interventions is treated as its own intervention.
@@ -210,7 +241,7 @@ def forecast_region(state, country, iterations, interventions):
         if snapshot['confirmed'] is not None:
             est_actual_chance_of_infection = (
                 snapshot['confirmed'] / hospitalization_rate * 2) / pop
-            actual_reported = int(round(snapshot['confirmed']))
+            actual_reported = round(snapshot['confirmed'], 2)
 
         ending_susceptible = int(round(
             pop - newly_infected - previously_infected - recovered_or_died))
