@@ -1,5 +1,6 @@
 .~lock.*
 results/*.csv
+results/*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
