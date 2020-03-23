@@ -28,8 +28,6 @@ class CovidTimeseriesModel:
             # TODO: Review. I'm having trouble following this block
             # We assume the first positive cases were exclusively hospitalized ones.
             actual_infected_vs_tested_positive = 1 / initial_hospitalization_rate  # ~20
-            if current_cycle['cases'] is not None:
-                confirmed = current_cycle['cases']
             newly_infected = current_cycle['cases'] * actual_infected_vs_tested_positive
         return newly_infected
 
@@ -95,18 +93,20 @@ class CovidTimeseriesModel:
         return available_hospital_beds
 
     def make_cycle(self, i, model_parameters):
-        if i < len(model_parameters['timeseries']):
+        # Check if the date we are trying to model is within the data we have
+        current_cycle_date = model_parameters['init_date'] + datetime.timedelta(days=model_parameters['model_interval'] * i)
+        dates = model_parameters['timeseries']['date']
+        if any(dates.isin([current_cycle_date])):
             # Grab the cycle corresponding to this iteration
             # The data comes in as a DataFrame, but within the model we use a dict. We can revisit that decision
             # First we need to sort the list by date  to ensure we're getting the correct one
-            return model_parameters['timeseries'].sort_values('date').iloc[i].to_dict()
+            return model_parameters['timeseries'][model_parameters['timeseries']['date'] == current_cycle_date].to_dict('records')[0]
         else:
             # If we have exceeded the number of rows in the collected data, we go into projection mode.
             return {
                 # Calculate the date of this current_cycle. Should be the initial date, plus one interval for every entry
                 # in the timeseries list, plus one for the initial current_cycle
-                'date': model_parameters['init_date'] +
-                        datetime.timedelta(days=model_parameters['model_interval'] * (i + 1)),
+                'date': current_cycle_date,
                 'cases': None,
                 'deaths': None,
                 'recovered': None
@@ -117,23 +117,9 @@ class CovidTimeseriesModel:
         The guts. Creates the initial conditions, then iterates the model over the data for a specified number
         of iterations
         """
-        # Unpack the model parameters
-        r0 = model_parameters['r0']
-        rolling_intervals_for_current_infected = model_parameters['rolling_intervals_for_current_infected']
-        case_fatality_rate = model_parameters['case_fatality_rate']
-        case_fatality_rate_hospitals_overwhelmed = model_parameters['case_fatality_rate_hospitals_overwhelmed']
-        initial_hospital_bed_utilization = model_parameters['initial_hospital_bed_utilization']
-        initial_hospitalization_rate = model_parameters['initial_hospitalization_rate']
-        hospitalization_rate = model_parameters['hospitalization_rate']
-        max_hospital_capacity_factor = model_parameters['max_hospital_capacity_factor']
-        hospital_capacity_change_daily_rate = model_parameters['hospital_capacity_change_daily_rate']
-
-        # @TODO: See if today's data is already available. If so, don't subtract an additional day.
-        # @TODO: Switch back to 1 after testing
-        today = datetime.date.today() - datetime.timedelta(days=2)
         # Get the earliest date in the data
         model_parameters['init_date'] = model_parameters['timeseries'].sort_values('date')['date'].iloc[0]
-        original_available_hospital_beds = round(model_parameters['beds'] * (1 - initial_hospital_bed_utilization), 0)
+        original_available_hospital_beds = round(model_parameters['beds'] * (1 - model_parameters['initial_hospital_bed_utilization']), 0)
 
         # Prepare the initial conditions for the loop
         # Initialize the series with the init current_cycle
@@ -141,7 +127,7 @@ class CovidTimeseriesModel:
             {
                 # We want the initial cycle to be one interval behind the first iteration of data we have
                 'date': model_parameters['init_date'] - datetime.timedelta(days=model_parameters['model_interval']),
-                'r': r0,
+                'r': model_parameters['r0'],
                 'cases': 0,
                 'actual_reported': 0,
                 'current_infected': 0,
@@ -163,42 +149,42 @@ class CovidTimeseriesModel:
             logging.debug('Calculating values for {}'.format(current_cycle['date']))
 
             # Calculate the r0 value
-            current_cycle['r'] = self.calculate_r(current_cycle, previous_cycle, r0)
+            current_cycle['r'] = self.calculate_r(current_cycle, previous_cycle, model_parameters['r0'])
             # Calculate the number of newly infected cases
             current_cycle['newly_infected'] = self.calculate_newly_infected(
                 current_cycle,
                 previous_cycle,
                 model_parameters['population'],
-                initial_hospitalization_rate
+                model_parameters['initial_hospitalization_rate']
             )
             # Assume infected cases from before the rolling interval have concluded.
             current_cycle['recovered_or_died'] = self.calcluate_recovered_or_died(
                 current_cycle,
                 previous_cycle,
                 cycle_series,
-                rolling_intervals_for_current_infected
+                model_parameters['rolling_intervals_for_current_infected']
             )
             # Calculate the number of people who have already been infected
             current_cycle['currently_infected'] = self.calculate_currently_infected(
                 cycle_series,
-                rolling_intervals_for_current_infected
+                model_parameters['rolling_intervals_for_current_infected']
             )
             # Calculate the cumulative number of infected individuals
             current_cycle['cumulative_infected'] = previous_cycle['cumulative_infected'] + current_cycle['newly_infected']
             # Predict the number of patients that will require hospitilzation
-            current_cycle['predicted_hospitalized'] = current_cycle['newly_infected'] * hospitalization_rate
+            current_cycle['predicted_hospitalized'] = current_cycle['newly_infected'] * model_parameters['hospitalization_rate']
             # Calculate the number of cumulative deaths
             current_cycle['cumulative_deaths'] = self.calculate_cumulative_deaths(
                 current_cycle,
                 previous_cycle,
-                case_fatality_rate,
-                case_fatality_rate_hospitals_overwhelmed,
+                model_parameters['case_fatality_rate'],
+                model_parameters['case_fatality_rate_hospitals_overwhelmed'],
             )
             # Recalculate the estimated chance of infection
             current_cycle['est_actual_chance_of_infection'] = self.calculate_estimated_actual_chance_of_infection(
                 current_cycle,
                 previous_cycle,
-                hospitalization_rate,
+                model_parameters['hospitalization_rate'],
                 model_parameters['population']
             )
             # Note the actual number of reported cases
@@ -210,14 +196,13 @@ class CovidTimeseriesModel:
             current_cycle['available_hospital_beds'] = self.calculate_available_hospital_beds(
                 current_cycle,
                 previous_cycle,
-                max_hospital_capacity_factor,
+                model_parameters['max_hospital_capacity_factor'],
                 original_available_hospital_beds,
-                hospital_capacity_change_daily_rate
+                model_parameters['hospital_capacity_change_daily_rate']
             )
             # Prepare for the next iteration
             cycle_series.append(current_cycle)
             previous_cycle = current_cycle
-            # Advance the clock
         return cycle_series
 
     def forecast_region(self, iterations, model_parameters):
