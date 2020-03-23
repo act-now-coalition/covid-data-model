@@ -1,6 +1,5 @@
 import logging
 import math
-
 import pandas as pd
 import datetime
 
@@ -10,22 +9,28 @@ class CovidTimeseriesModel:
     def __init__(self):
         logging.basicConfig(level=logging.CRITICAL)
 
-    def calculate_r(self, current_cycle, previous_cycle, r0):
+    def calculate_r(self, current_cycle, previous_cycle, model_parameters):
         # Calculate the r0 value based on the current and past number of confirmed cases
         if current_cycle['cases'] is not None:
             if previous_cycle['cases'] > 0:
                 return current_cycle['cases'] / previous_cycle['cases']
-        return r0
+        return model_parameters['r0']
 
-    def calculate_effective_r(self, current_cycle, previous_cycle, pop):
+    def calculate_effective_r(self, current_cycle, previous_cycle, model_parameters):
+        # In order to account for interventions, we need to allow effective r to be changed manually.
+        if model_parameters['interventions'] is not None:
+            # The interventions come in as a dict, with date's as keys and effective r's as values
+            # Find the most recent intervention we have passed
+            for d in sorted(model_parameters['interventions'].keys())[::-1]:
+                if current_cycle['date'] >= d:  # If the current cycle occurs on or after an intervention
+                    return model_parameters['interventions'][d]
         # Calculate effective r by accounting for herd-immunity
-        return current_cycle['r'] * (previous_cycle['ending_susceptible'] / pop)
+        return current_cycle['r'] * (previous_cycle['ending_susceptible'] / model_parameters['population'])
 
     def calculate_newly_infected(self, current_cycle, previous_cycle, pop, initial_hospitalization_rate):
         if previous_cycle['newly_infected'] > 0:
             # If we have previously known cases, use the R0 to estimate newly infected cases.
-            newly_infected = previous_cycle['newly_infected'] * self.calculate_effective_r(current_cycle,
-                                                                                              previous_cycle, pop)
+            newly_infected = previous_cycle['newly_infected'] * current_cycle['effective_r']
         else:
             # TODO: Review. I'm having trouble following this block
             # We assume the first positive cases were exclusively hospitalized ones.
@@ -162,7 +167,8 @@ class CovidTimeseriesModel:
             logging.debug('Calculating values for {}'.format(current_cycle['date']))
 
             # Calculate the r0 value
-            current_cycle['r'] = self.calculate_r(current_cycle, previous_cycle, model_parameters['r0'])
+            current_cycle['r'] = self.calculate_r(current_cycle, previous_cycle, model_parameters)
+            current_cycle['effective_r'] = self.calculate_effective_r(current_cycle, previous_cycle, model_parameters)
             # Calculate the number of newly infected cases
             current_cycle['newly_infected'] = self.calculate_newly_infected(
                 current_cycle,
@@ -230,7 +236,8 @@ class CovidTimeseriesModel:
                 datetime.datetime(year=s['date'].year, month=s['date'].month, day=s['date'].day).timestamp()
                 for s in cycle_series
             ],
-            'Eff. R0': [s['r'] for s in cycle_series],
+            'R': [s['r'] for s in cycle_series],
+            #'Effective R.': [s['effective_r'] for s in cycle_series],
             'Beg. Susceptible': [s['ending_susceptible'] for s in cycle_series],
             'New Inf.': [s['newly_infected'] for s in cycle_series],
             'Curr. Inf.': [s['currently_infected'] for s in cycle_series],
