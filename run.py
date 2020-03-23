@@ -154,6 +154,12 @@ def forecast_region(state, country, iterations, interventions):
             effective_r0 = snapshot['confirmed'] / previous_confirmed
         previous_confirmed = snapshot['confirmed']
 
+        # Apply interventions in a forward-looking way from their beginning dates.
+        # Removal of interventions is treated as its own intervention.
+        for begin_date in interventions:
+            if snapshot_date >= begin_date:
+                effective_r0 = interventions[begin_date]
+
         #if forecast_iterations in interventions:
         #    effective_r0 = interventions[forecast_iterations]
         #else:
@@ -251,8 +257,37 @@ def forecast_region(state, country, iterations, interventions):
 
 states = populations['state'].tolist()
 for state in states:
-    forecast = forecast_region(state, 'USA', 25, {})
-    forecast.to_csv(path_or_buf='results/{}.csv'.format(state), index=False)
+    interventions = {}
+    forecast = forecast_region(state, 'USA', 50, interventions)
+    forecast.to_csv(path_or_buf='results/{}_nothing.csv'.format(state), index=False)
+
+    interventions = {
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 4, 20): 1.1,
+        datetime.date(2020, 5, 22): 0.8,
+        datetime.date(2020, 6, 23): r0_initial
+    }
+    forecast = forecast_region(state, 'USA', 50, interventions)
+    forecast.to_csv(path_or_buf='results/{}_flatten.csv'.format(state), index=False)
+
+    interventions = {
+        datetime.date(2020, 3, 23): 1.7,
+        datetime.date(2020, 6, 23): r0_initial
+    }
+    forecast = forecast_region(state, 'USA', 50, interventions)
+    forecast.to_csv(path_or_buf='results/{}_pessimistic.csv'.format(state), index=False)
+
+    interventions = {
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 3, 31): 0.3,
+        datetime.date(2020, 4, 28): 0.2,
+        datetime.date(2020, 5,  6): 0.1,
+        datetime.date(2020, 5, 10): 0.35,
+        datetime.date(2020, 5, 18): r0_initial
+    }
+    forecast = forecast_region(state, 'USA', 50, interventions)
+    forecast.to_csv(path_or_buf='results/{}_fullcontainment.csv'.format(state), index=False)
+
 
 #forecast_region('New South Wales', 'Australia', 50)
 #forecast_region('Queensland', 'Australia', 50)
