@@ -31,4 +31,5 @@ Check It Out in Jupyter
 
 ### Hospital Capacity Data
 
-* [US](https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Hospital-Service-Area-File)
+* [American Hospital Directory](https://www.ahd.com/states/hospital_CA.html) (Link is to CA data, but seems to support any state)
+* [Medicare Claims for Inpatients](https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Hospital-Service-Area-File)
