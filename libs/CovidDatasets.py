@@ -17,7 +17,7 @@ class CovidDatasets:
     start_date = datetime.datetime(year=2020, month=3, day=3)
     # Initializer / Instance Attributes
     def __init__(self, filter_past_date=None):
-        self.filter_past_date = filter_past_date
+        self.filter_past_date = pd.Timestamp(filter_past_date)
         logging.basicConfig(level=logging.CRITICAL)
 
     def get_all_countries(self):
@@ -95,7 +95,7 @@ class CovidDatasets:
             self.TIME_SERIES_DATA = pd.read_csv(self.TIME_SERIES_URL)
             self.TIME_SERIES_DATA[self.DATE_FIELD] = pd.to_datetime(self.TIME_SERIES_DATA[self.DATE_FIELD])
             if self.filter_past_date is not None:
-                self.TIME_SERIES_DATA = self.TIME_SERIES_DATA[self.DATE_FIELD <= self.filter_past_date]
+                self.TIME_SERIES_DATA = self.TIME_SERIES_DATA[self.TIME_SERIES_DATA[self.DATE_FIELD] <= self.filter_past_date]
         return self.TIME_SERIES_DATA
 
     def get_all_population(self):
