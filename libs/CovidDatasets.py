@@ -52,6 +52,7 @@ class CovidDatasets:
 		return y
 
 	def backfill_synthetic_cases(self, series, model_interval):
+		series['synthetic'] = None
 		# Fill in all values prior to the first non-zero values. Use 1/2 following value. Decays into nothing
 		# sort the dataframe in reverse date order, so we traverse from latest to earliest
 		series = series.sort_values(self.DATE_FIELD).reset_index()
@@ -59,6 +60,7 @@ class CovidDatasets:
 			i = len(series) - a - 1
 			if series.iloc[i]['cases'] == 0:
 				series.at[i, 'cases'] = self.step_down(i, series, model_interval)
+				series.at[i, 'synthetic'] = 1
 		return series
 
 	def backfill(self, series, model_interval):
@@ -127,7 +129,7 @@ class CovidDatasets:
 				new_state_row['recovered'] = county_data_for_date['recovered']
 				new_state_row['active'] = county_data_for_date['active']
 				county_data_to_insert.append(copy(new_state_row))
-			state_county_data = state_data.append(pd.DataFrame(county_data_to_insert))
+		state_county_data = state_data.append(pd.DataFrame(county_data_to_insert)).sort_values('date')
 		return state_county_data
 
 	def get_timeseries_by_country_state(self, country, state, model_interval):
