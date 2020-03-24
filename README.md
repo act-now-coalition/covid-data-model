@@ -14,6 +14,9 @@ Check It Out in Jupyter
   * [Source Code](https://github.com/alsnhll/SEIR_COVID19)
 * [Penn-Chime](http://penn-chime.phl.io/)
 * [Imperial College Model](https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf)
+* [Astor Sq ICU Beds Model](https://docs.google.com/spreadsheets/d/1DlC5kh9ve-Giv96XTnhCiB6vQAkQCjl5bDSjT68Q0FY/htmlview#)
+* [Epidemic Calculator built by Open AI member](https://gabgoh.github.io/COVID/index.html)
+* [Hopkins IDD Model](https://github.com/HopkinsIDD/COVIDScenarioPipeline)
 
 ### SIR Data Sources
 
