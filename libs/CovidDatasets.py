@@ -19,6 +19,12 @@ class CovidDatasets:
 	def __init__(self):
 		logging.basicConfig(level=logging.CRITICAL)
 
+	def get_all_countries(self):
+		return self.get_all_population()['country'].unique()
+
+	def get_all_states_by_country(self, country):
+		return self.get_all_population()[self.get_all_population()['country'] == country]['state'].dropna().unique()
+
 	def backfill_to_init_date(self, series, model_interval):
 		# We need to make sure that the data starts from Mar3, no matter when our records begin
 		series = series.sort_values(self.DATE_FIELD).reset_index()
@@ -146,8 +152,11 @@ class CovidDatasets:
 	def get_population_by_country_state(self, country, state):
 		matching_pops = self.get_all_population()[(self.get_all_population()["state"] == state) & (
 		self.get_all_population()["country"] == country)]
-		return int(matching_pops.iloc[0].at["population"])
-
+		try:
+			return int(matching_pops.iloc[0].at["population"])
+		except IndexError as e:
+			logging.error('No population data for {}, {}'.format(state, country))
+			raise e
 	def get_beds_by_country_state(self, country, state):
 		matching_beds = self.get_all_beds()[(self.get_all_beds()["state"] == state) &
 								  (self.get_all_beds()["country"] == country)]

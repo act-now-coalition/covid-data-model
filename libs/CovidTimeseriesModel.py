@@ -23,7 +23,7 @@ class CovidTimeseriesModel:
             # Find the most recent intervention we have passed
             for d in sorted(model_parameters['interventions'].keys())[::-1]:
                 if current_cycle['date'] >= d:  # If the current cycle occurs on or after an intervention
-                    return model_parameters['interventions'][d]
+                    return model_parameters['interventions'][d] * (previous_cycle['ending_susceptible'] / model_parameters['population'])
         # Calculate effective r by accounting for herd-immunity
         return current_cycle['r'] * (previous_cycle['ending_susceptible'] / model_parameters['population'])
 
