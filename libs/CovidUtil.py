@@ -1,4 +1,4 @@
-from libs.CovidDatasets import CovidDatasets
+from libs.CovidDatasets import CDSDataset
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 
 

@@ -4,7 +4,7 @@ import datetime
 import time
 import os.path
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CovidDatasets
+from libs.CovidDatasets import CDSDataset
 from libs.CovidUtil import CovidUtil
 
 class CovidTimeseriesModelTest(unittest.TestCase):
@@ -25,7 +25,7 @@ class CovidTimeseriesModelTest(unittest.TestCase):
         )
 
     def test_cds_dataset(self):
-        self._test_model(CovidDatasets(), 'cds_data')
+        self._test_model(CDSDataset(), 'cds_data')
 
     def _test_model(self, dataset, sub_dir):
         r0 = 2.4

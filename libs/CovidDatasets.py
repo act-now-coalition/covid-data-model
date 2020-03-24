@@ -29,12 +29,6 @@ class Dataset:
 		self._BED_DATA = None
 		self._POPULATION_DATA = None
 
-	def get_all_countries(self):
-		return self.get_all_population()[self.COUNTRY_FIELD].unique()
-
-	def get_all_states_by_country(self, country):
-		return self.get_all_population()[self.get_all_population()[self.COUNTRY_FIELD] == country][self.STATE_FIELD].dropna().unique()
-
 	def backfill_to_init_date(self, series, model_interval):
 		# We need to make sure that the data starts from Mar3, no matter when our records begin
 		series = series.sort_values(self.DATE_FIELD).reset_index()  # Sort the series by the date of the record
@@ -101,20 +95,13 @@ class Dataset:
 		return self.cutoff(self.backfill(series, model_interval))
 
 	def get_all_timeseries(self):
-		if(self._TIME_SERIES_DATA is None):
-			self._TIME_SERIES_DATA = pd.read_csv(self._TIME_SERIES_URL)
-			self._TIME_SERIES_DATA[self.DATE_FIELD] = pd.to_datetime(self._TIME_SERIES_DATA[self.DATE_FIELD])
-		return self._TIME_SERIES_DATA
+		raise NotImplementedError('The \'get_all_timeseries\' method must be overriden by the child class')
 
 	def get_all_population(self):
-		if(self._POPULATION_DATA is None):
-			self._POPULATION_DATA = pd.read_csv(self._POPULATION_URL)
-		return self._POPULATION_DATA
+		raise NotImplementedError('The \'get_all_population\' method must be overriden by the child class')
 
 	def get_all_beds(self):
-		if(self._BED_DATA is None):
-			self._BED_DATA = pd.read_csv(self._BED_URL)
-		return self._BED_DATA
+		raise NotImplementedError('The \'get_all_beds\' method must be overriden by the child class')
 
 	def combine_state_county_data(self, country, state):
 		# Create a single dataset from state and county data, using state data preferentially.
@@ -175,13 +162,50 @@ class Dataset:
 		return int(round(beds_per_mille * self.get_population_by_country_state(country, state) / 1000))
 
 
-class CovidDatasets(Dataset):
-	"""CoronaDataScraper Dataset"""
+class JHUDataset(Dataset):
 	def __init__(self):
 		super().__init__(
-			timeseries_url="https://coronadatascraper.com/timeseries.csv",
+			timeseries_url="https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv 	",
 			population_url='https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv',
 			beds_url='https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv',
 			start_date=datetime.datetime(year=2020, month=3, day=3)
 		)
 
+
+
+class CDSDataset(Dataset):
+	"""CoronaDataScraper Dataset"""
+	def __init__(self, test=False):
+		if test:
+			import os; print(os.getcwd())
+			super().__init__(
+				timeseries_url=r"data\cds\timeseries.csv",
+				population_url=r"data\cds\populations.csv",
+				beds_url=r"data\cds\beds.csv",
+				start_date=datetime.datetime(year=2020, month=3, day=3)
+			)
+		else:
+			super().__init__(
+				timeseries_url="https://coronadatascraper.com/timeseries.csv",
+				population_url='https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv',
+				beds_url='https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv',
+				start_date=datetime.datetime(year=2020, month=3, day=3)
+			)
+
+	def get_all_timeseries(self):
+		if(self._TIME_SERIES_DATA is None):
+			self._TIME_SERIES_DATA = pd.read_csv(self._TIME_SERIES_URL, parse_dates=[self.DATE_FIELD])
+		return self._TIME_SERIES_DATA
+
+	def get_all_population(self):
+		if(self._POPULATION_DATA is None):
+			self._POPULATION_DATA = pd.read_csv(self._POPULATION_URL)
+		return self._POPULATION_DATA
+
+	def get_all_beds(self):
+		if(self._BED_DATA is None):
+			self._BED_DATA = pd.read_csv(self._BED_URL)
+		return self._BED_DATA
+
+	def get_all_states_by_country(self, country):
+		return self.get_all_population()[self.get_all_population()[self.COUNTRY_FIELD] == country][self.STATE_FIELD].dropna().unique()
