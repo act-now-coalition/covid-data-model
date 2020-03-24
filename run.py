@@ -44,7 +44,7 @@ def model_state(country, state, interventions=None):
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
     r0 = 2.4
-    Dataset = CovidDatasets()
+    Dataset = CovidDatasets(filter_past_date=datetime.date(2020, 3, 19))
     POP = Dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
