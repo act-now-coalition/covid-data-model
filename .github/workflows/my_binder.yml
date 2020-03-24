@@ -7,6 +7,7 @@ jobs:
   mybinder-build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@master
       - uses: s-weigand/trigger-mybinder-build@v1
         with:
-          target-repo: covid-projections/covid-data-model/${GITHUB_REF##*/}
+          target-repo: covid-projections/covid-data-model/
