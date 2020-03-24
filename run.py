@@ -1,5 +1,6 @@
 import datetime
 import time
+import json
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CovidDatasets
 
@@ -13,8 +14,7 @@ def record_results(res, directory, name, num, pop):
     vals['Population'] = pop
     # Write the results to the specified directory
     with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
-        out.write(
-            str(vals[[
+        json.dump(vals[[
                 'Date',
                 'R',
                 'Beg. Susceptible',
@@ -34,8 +34,7 @@ def record_results(res, directory, name, num, pop):
                 'Population',
                 'R0',
                 '% Susceptible'
-            ]].values.tolist())
-        )
+            ]].values.tolist(), out)
 
 def model_state(country, state, interventions=None):
     ## Constants
@@ -74,25 +73,53 @@ def model_state(country, state, interventions=None):
 r0 = 2.4
 
 INTERVENTIONS = [
-    None,
-    {
+    None,  # No Intervention
+    {  # Flatten the Curve
         datetime.date(2020, 3, 23): 1.3,
         datetime.date(2020, 4, 20): 1.1,
         datetime.date(2020, 5, 22): 0.8,
         datetime.date(2020, 6, 23): r0
     },
-    {
-        datetime.date(2020, 3, 23): 1.7,
-        datetime.date(2020, 6, 23): r0
-    },
-    {
+    {  # Full Containment
         datetime.date(2020, 3, 23): 1.3,
         datetime.date(2020, 3, 31): 0.3,
         datetime.date(2020, 4, 28): 0.2,
         datetime.date(2020, 5,  6): 0.1,
         datetime.date(2020, 5, 10): 0.35,
         datetime.date(2020, 5, 18): r0
-    }
+    },
+    {  # @TODO: Model w/ FlatteningTheCurve (2 wk delay)
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 4, 20): 1.1,
+        datetime.date(2020, 5, 22): 0.8,
+        datetime.date(2020, 6, 23): r0
+    },
+    {  # @TODO: Model w/ FlatteningTheCurve (1 mo delay)
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 4, 20): 1.1,
+        datetime.date(2020, 5, 22): 0.8,
+        datetime.date(2020, 6, 23): r0
+    },
+    {  # @TODO: Full Containment (1 wk dly)
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 3, 31): 0.3,
+        datetime.date(2020, 4, 28): 0.2,
+        datetime.date(2020, 5,  6): 0.1,
+        datetime.date(2020, 5, 10): 0.35,
+        datetime.date(2020, 5, 18): r0
+    },
+    {  # @TODO: Full Containment (2 wk dly)
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 3, 31): 0.3,
+        datetime.date(2020, 4, 28): 0.2,
+        datetime.date(2020, 5,  6): 0.1,
+        datetime.date(2020, 5, 10): 0.35,
+        datetime.date(2020, 5, 18): r0
+    },
+    {  # Social Distancing
+        datetime.date(2020, 3, 23): 1.7,
+        datetime.date(2020, 6, 23): r0
+    },
 ]
 
 Dataset = CovidDatasets()
