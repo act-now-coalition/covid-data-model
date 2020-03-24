@@ -10,4 +10,5 @@ jobs:
       - uses: actions/checkout@master
       - uses: s-weigand/trigger-mybinder-build@v1
         with:
-          target-repo: covid-projections/covid-data-model/
+          target-repo: covid-projections/covid-data-model
+          target-state: ${{ github.head_ref }}
