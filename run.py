@@ -52,7 +52,7 @@ def model_state(country, state, interventions=None):
         'timeseries': Dataset.get_timeseries_by_country_state(country, state, MODEL_INTERVAL),
         'beds': Dataset.get_beds_by_country_state(country, state),
         'population': POP,
-        'projection_iterations': 25, # Number of iterations into the future to project
+        'projection_iterations': 24, # Number of iterations into the future to project
         'r0': r0,
         'interventions': interventions,
         'hospitalization_rate': HOSPITALIZATION_RATE,
