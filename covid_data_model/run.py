@@ -1,16 +1,9 @@
-import csv
-import logging
-import numpy as np
-import pandas as pd
-import pprint
-import datetime
-import json
 import math
+import logging
+import pprint
 
-# Data Sources
-beds = pd.read_csv("data/beds.csv")
-populations = pd.read_csv("data/populations.csv")
-full_timeseries = pd.read_csv("data/timeseries.csv")
+import pandas as pd
+import datetime
 
 # Modeling Assumptions
 r0_initial = 2.4
@@ -36,20 +29,21 @@ pprint.pprint(rolling_intervals_for_current_infected)
 logging.basicConfig(level=logging.DEBUG)
 
 
-def get_population(state, country):
+def get_population(populations, state, country):
     matching_pops = populations[
         (populations["state"] == state) & (populations["country"] == country)
     ]
     return int(matching_pops.iloc[0].at["population"])
 
 
-def get_beds(state, country):
+def get_beds(beds, state, country, country_population):
     matching_beds = beds[(beds["state"] == state) & (beds["country"] == country)]
+
     beds_per_mille = float(matching_beds.iloc[0].at["bedspermille"])
-    return int(round(beds_per_mille * get_population(state, country) / 1000))
+    return int(round(beds_per_mille * country_population / 1000))
 
 
-def get_snapshot(date, state, country):
+def get_snapshot(full_timeseries, date, state, country):
     # snapshot_filename = 'data/{}.csv'.format(date.strftime('%m-%d-%Y'))
     # logging.debug('Loading: {}'.format(snapshot_filename))
     # full_snapshot = pd.read_csv(snapshot_filename)
@@ -85,14 +79,14 @@ def get_snapshot(date, state, country):
         confirmed = int(filtered_timeseries["cases"].sum())
         deaths = int(filtered_timeseries["recovered"].sum())
         recovered = int(filtered_timeseries["deaths"].sum())
-    except IndexError as e:
+    except IndexError:
         pass
 
     return {"confirmed": confirmed, "deaths": deaths, "recovered": recovered}
 
 
-def get_snapshot_or_synthesize(date, state, country):
-    snapshot_for_date = get_snapshot(date, state, country)
+def get_snapshot_or_synthesize(date, state, country, full_timeseries):
+    snapshot_for_date = get_snapshot(full_timeseries, date, state, country)
 
     if snapshot_for_date["confirmed"] > 0:
         return snapshot_for_date
@@ -105,7 +99,7 @@ def get_snapshot_or_synthesize(date, state, country):
     for i in range(1, max_search_intervals_for_synthesis + 1):
         future_date = date + datetime.timedelta(days=model_interval * i)
 
-        future_snapshot = get_snapshot(future_date, state, country)
+        future_snapshot = get_snapshot(full_timeseries, future_date, state, country)
 
         logging.debug(
             "Checking cases for date {}: {}".format(
@@ -119,10 +113,10 @@ def get_snapshot_or_synthesize(date, state, country):
         factor *= compounding_factor_for_synthesis_per_interval
 
 
-def forecast_region(state, country, iterations, interventions):
+def forecast_region(
+    state, country, beds, pop, iterations, interventions, full_timeseries
+):
     logging.info("Building results for {} in {}".format(state, country))
-    pop = get_population(state, country)
-    beds = get_beds(state, country)
     logging.debug("This location has {} beds for {} people".format(beds, pop))
 
     logging.debug("Loading daily report from {} days ago".format(model_interval))
@@ -177,7 +171,9 @@ def forecast_region(state, country, iterations, interventions):
     # Step through existing empirical data
     while True:
         if snapshot_date <= today:
-            snapshot = get_snapshot_or_synthesize(snapshot_date, state, country)
+            snapshot = get_snapshot_or_synthesize(
+                snapshot_date, state, country, full_timeseries
+            )
             # snapshot = get_snapshot(snapshot_date, state, country)
         else:
             forecast_iterations += 1
@@ -197,7 +193,7 @@ def forecast_region(state, country, iterations, interventions):
         # Skip updating previous_confirmed if the current interval's data is
         # synthetic. This causes fallback on the next iteration to the default
         # r0, which is more desirable than an r0 derived from synthetic data.
-        if not "synthetic" in snapshot:
+        if "synthetic" not in snapshot:
             previous_confirmed = snapshot["confirmed"]
 
         # Apply interventions in a forward-looking way from their beginning dates.
@@ -331,41 +327,67 @@ def forecast_region(state, country, iterations, interventions):
     return forecast
 
 
-states = populations["state"].tolist()
-for state in states:
-    interventions = {}
-    forecast = forecast_region(state, "USA", 50, interventions)
-    forecast.to_csv(path_or_buf="results/{}_nothing.csv".format(state), index=False)
+def main(beds_by_country, populations, full_timeseries, country):
+    states = populations["state"].tolist()
+    for state in states:
+        interventions = {}
+        pop = get_population(populations, state, country)
+        beds = get_beds(beds_by_country, state, country, pop)
 
-    interventions = {
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0_initial,
-    }
-    forecast = forecast_region(state, "USA", 50, interventions)
-    forecast.to_csv(path_or_buf="results/{}_flatten.csv".format(state), index=False)
+        forecast = forecast_region(
+            state, country, beds, pop, 50, interventions, full_timeseries
+        )
+        forecast.to_csv(
+            path_or_buf="results/{}_nothing.csv".format(state), index=False
+        )
 
-    interventions = {
-        datetime.date(2020, 3, 23): 1.7,
-        datetime.date(2020, 6, 23): r0_initial,
-    }
-    forecast = forecast_region(state, "USA", 50, interventions)
-    forecast.to_csv(path_or_buf="results/{}_pessimistic.csv".format(state), index=False)
+        interventions = {
+            datetime.date(2020, 3, 23): 1.3,
+            datetime.date(2020, 4, 20): 1.1,
+            datetime.date(2020, 5, 22): 0.8,
+            datetime.date(2020, 6, 23): r0_initial,
+        }
+        forecast = forecast_region(
+            state, country, beds, pop, 50, interventions, full_timeseries
+        )
+        forecast.to_csv(
+            path_or_buf="results/{}_flatten.csv".format(state), index=False
+        )
 
-    interventions = {
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5, 6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0_initial,
-    }
-    forecast = forecast_region(state, "USA", 50, interventions)
-    forecast.to_csv(
-        path_or_buf="results/{}_fullcontainment.csv".format(state), index=False
-    )
+        interventions = {
+            datetime.date(2020, 3, 23): 1.7,
+            datetime.date(2020, 6, 23): r0_initial,
+        }
+        forecast = forecast_region(
+            state, country, beds, pop, 50, interventions, full_timeseries
+        )
+        forecast.to_csv(
+            path_or_buf="results/{}_pessimistic.csv".format(state), index=False
+        )
 
+        interventions = {
+            datetime.date(2020, 3, 23): 1.3,
+            datetime.date(2020, 3, 31): 0.3,
+            datetime.date(2020, 4, 28): 0.2,
+            datetime.date(2020, 5, 6): 0.1,
+            datetime.date(2020, 5, 10): 0.35,
+            datetime.date(2020, 5, 18): r0_initial,
+        }
+        forecast = forecast_region(
+            state, country, beds, pop, 50, interventions, full_timeseries
+        )
+        forecast.to_csv(
+            path_or_buf="results/{}_fullcontainment.csv".format(state), index=False
+        )
+
+
+if __name__ == "__main__":
+    # Data Sources
+    beds = pd.read_csv("data/beds.csv")
+    populations = pd.read_csv("data/populations.csv")
+    full_timeseries = pd.read_csv("data/timeseries.csv")
+    country = "USA"
+    main(beds, populations, full_timeseries, country)
 
 # forecast_region('New South Wales', 'Australia', 50)
 # forecast_region('Queensland', 'Australia', 50)

@@ -3,3 +3,4 @@ matplotlib==3.2.1
 seaborn==0.10.0
 pandas==1.0.3
 plotly==4.5.4
+jupyter==1.0.0
