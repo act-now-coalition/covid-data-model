@@ -19,8 +19,15 @@ class CovidDatasets:
 	def __init__(self):
 		logging.basicConfig(level=logging.CRITICAL)
 
-	def backfill_to_init_date(self, series):
+	def backfill_to_init_date(self, series, model_interval):
 		# We need to make sure that the data starts from Mar3, no matter when our records begin
+		series = series.sort_values(self.DATE_FIELD).reset_index()
+		data_rows = series[series['cases'] > 0]
+		interval_rows = data_rows[data_rows['date'].apply(lambda d: (d - self.start_date).days % model_interval == 0)]
+		min_interval_row = interval_rows[interval_rows['date'] == interval_rows['date'].min()].iloc[0]
+		series = series[series['date'] >= min_interval_row['date']]
+
+		series['synthetic'] = None
 		init_data_date = series[self.DATE_FIELD].min()
 		synthetic_interval = (init_data_date - self.start_date).days # The number of days we need to create to backfill to Mar3
 		template = series.iloc[0] # grab a row for us to copy structure and data from
@@ -33,6 +40,7 @@ class CovidDatasets:
 			synthetic_row['deaths'] = 0
 			synthetic_row['recovered'] = 0
 			synthetic_row['active'] = 0
+			synthetic_row['synthetic'] = 1
 			synthetic_data.append(copy(synthetic_row)) # We need to copy it to prevent alteration by reference
 		pd.set_option('mode.chained_assignment', 'warn') # Turn the anxiety back on
 		synthetic_series = pd.DataFrame(synthetic_data)
@@ -42,31 +50,27 @@ class CovidDatasets:
 	def step_down(self, i, series, model_interval):
 		# A function to calculate how much to step down the number of cases from the following day
 		#  The goal is for the synthetic cases to halve once every iteration of the model interval.
+		#
+		# interval_rows = data_rows[data_rows['date'].apply(lambda d: (d - self.start_date).days % model_interval == 0)]
+		# min_interval_row = interval_rows[interval_rows['date'] == interval_rows['date'].min()].iloc[0]
 
-		# I have no idea how this code works, but it does, and it took me two hours and the help of four people to
-		#  write it. If you break it, I will fly down from Alaska, find you, take you back with me into the frozen
-		#  wastes on a dogsled, and leave you for the wolves. We still do that up here.
-
-		min_row = series[series['cases'] > 0].min()  # Find the smallest number of cases that is not 0
-		y = min_row['cases'] * math.pow(2, (i - min_row['level_0'])/model_interval)
+		min_row = series[series['cases'] > 0].min()
+		y = min_row['cases'] / (math.pow(2, (1 / model_interval)))
 		return y
 
 	def backfill_synthetic_cases(self, series, model_interval):
-		series['synthetic'] = None
 		# Fill in all values prior to the first non-zero values. Use 1/2 following value. Decays into nothing
-		# sort the dataframe in reverse date order, so we traverse from latest to earliest
-		series = series.sort_values(self.DATE_FIELD).reset_index()
+		#  sort the dataframe in reverse date order, so we traverse from latest to earliest
 		for a in range(0, len(series)):
 			i = len(series) - a - 1
 			if series.iloc[i]['cases'] == 0:
 				series.at[i, 'cases'] = self.step_down(i, series, model_interval)
-				series.at[i, 'synthetic'] = 1
 		return series
 
 	def backfill(self, series, model_interval):
 		# Backfill the data as necessary for the model
 		return self.backfill_synthetic_cases(
-			self.backfill_to_init_date(series),
+			self.backfill_to_init_date(series, model_interval),
 			model_interval
 		)
 
