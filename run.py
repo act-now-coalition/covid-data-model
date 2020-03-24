@@ -1,6 +1,6 @@
 import datetime
 import time
-import json
+import simplejson
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CovidDatasets
 
@@ -9,12 +9,12 @@ def record_results(res, directory, name, num, pop):
     import os.path
     vals = copy.copy(res)
     # Format the date in the manner the front-end expects
-    vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year)) 
+    vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year))
     # Set the population
     vals['Population'] = pop
     # Write the results to the specified directory
     with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
-        json.dump(vals[[
+        simplejson.dump(vals[[
                 'Date',
                 'R',
                 'Beg. Susceptible',
@@ -34,7 +34,7 @@ def record_results(res, directory, name, num, pop):
                 'Population',
                 'R0',
                 '% Susceptible'
-            ]].values.tolist(), out)
+            ]].values.tolist(), out, ignore_nan=True)
 
 def model_state(country, state, interventions=None):
     ## Constants
