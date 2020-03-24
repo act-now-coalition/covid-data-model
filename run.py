@@ -12,7 +12,7 @@ def record_results(res, directory, name, num, pop):
     # Set the population
     vals['Population'] = pop
     # Write the results to the specified directory
-    with open( os.path.join(directory, name.lower() + '.' + str(num) + '.json').format(name), 'w') as out:
+    with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
         out.write(
             str(vals[[
                 'Date',
