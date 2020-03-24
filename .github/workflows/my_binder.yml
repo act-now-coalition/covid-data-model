@@ -1,0 +1,14 @@
+name: MyBinder
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  mybinder-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: s-weigand/trigger-mybinder-build@v1
+        with:
+          target-repo: covid-projections/covid-data-model/$GITHUB_REF
