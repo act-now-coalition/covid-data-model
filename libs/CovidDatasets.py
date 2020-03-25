@@ -17,7 +17,10 @@ class CovidDatasets:
     start_date = datetime.datetime(year=2020, month=3, day=3)
     # Initializer / Instance Attributes
     def __init__(self, filter_past_date=None):
-        self.filter_past_date = pd.Timestamp(filter_past_date)
+        if filter_past_date is not None:
+            self.filter_past_date = pd.Timestamp(filter_past_date)
+        else:
+            self.filter_past_date = None
         logging.basicConfig(level=logging.CRITICAL)
 
     def get_all_countries(self):
