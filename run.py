@@ -1,8 +1,11 @@
 import datetime
 import time
 import simplejson
+import logging
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CovidDatasets
+
+logging.basicConfig(level=logging.INFO)
 
 def record_results(res, directory, name, num, pop):
     import copy
@@ -12,6 +15,14 @@ def record_results(res, directory, name, num, pop):
     vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year))
     # Set the population
     vals['Population'] = pop
+
+    # Add in some fields that the spreadsheet had but aren't used on the site.
+    vals['S&P 500'] = None
+    vals['Est. Actual Chance of Inf.'] = None
+    vals['Pred. Chance of Inf.'] = None
+    vals['Cum. Pred. Chance of Inf.'] = None
+    vals['% Susceptible'] = None
+    vals['R0'] = None
     # Write the results to the specified directory
     with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
         simplejson.dump(vals[[
@@ -56,7 +67,6 @@ def model_state(country, state, interventions=None):
         'r0': r0,
         'interventions': interventions,
         'hospitalization_rate': HOSPITALIZATION_RATE,
-        'initial_hospitalization_rate': .05,
         'case_fatality_rate': .0109341104294479,
         'hospitalized_cases_requiring_icu_care': HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
         # Assumes that anyone who needs ICU care and doesn't get it dies
@@ -67,6 +77,8 @@ def model_state(country, state, interventions=None):
         'model_interval': 4, # In days
         'total_infected_period': 12, # In days
         'rolling_intervals_for_current_infected': int(round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)),
+        'estimated_new_cases_per_death': 0,
+        'estimated_new_cases_per_confirmed': 1 / HOSPITALIZATION_RATE
     }
     return CovidTimeseriesModel().forecast_region(model_parameters=MODEL_PARAMETERS)
 
@@ -124,6 +136,7 @@ INTERVENTIONS = [
 
 Dataset = CovidDatasets()
 for state in Dataset.get_all_states_by_country('USA'):
+    logging.info('Generating data for state: {}'. format(state))
     for i in range(0, len(INTERVENTIONS)):
         intervention = INTERVENTIONS[i]
         record_results(

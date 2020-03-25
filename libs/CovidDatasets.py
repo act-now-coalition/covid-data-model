@@ -10,6 +10,9 @@ class CovidDatasets:
     POPULATION_URL = 'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
     BED_URL = 'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
     TIME_SERIES_URL = "https://coronadatascraper.com/timeseries.csv"
+    #POPULATION_URL = 'data/populations.csv'
+    #BED_URL = 'data/beds.csv'
+    #TIME_SERIES_URL = "data/timeseries.csv"
     DATE_FIELD = "date"
     TIME_SERIES_DATA = None
     BED_DATA = None
@@ -17,7 +20,10 @@ class CovidDatasets:
     start_date = datetime.datetime(year=2020, month=3, day=3)
     # Initializer / Instance Attributes
     def __init__(self, filter_past_date=None):
-        self.filter_past_date = pd.Timestamp(filter_past_date)
+        if filter_past_date is not None:
+            self.filter_past_date = pd.Timestamp(filter_past_date)
+        else:
+            self.filter_past_date = None
         logging.basicConfig(level=logging.CRITICAL)
 
     def get_all_countries(self):
@@ -93,9 +99,13 @@ class CovidDatasets:
     def get_all_timeseries(self):
         if(self.TIME_SERIES_DATA is None):
             self.TIME_SERIES_DATA = pd.read_csv(self.TIME_SERIES_URL)
+            logging.info('Loaded {} entries in timeseries.'.format(len(self.TIME_SERIES_DATA.index)))
             self.TIME_SERIES_DATA[self.DATE_FIELD] = pd.to_datetime(self.TIME_SERIES_DATA[self.DATE_FIELD])
             if self.filter_past_date is not None:
+                logging.info('Filtering timeseries to exclude data after: {}'.format(self.filter_past_date))
                 self.TIME_SERIES_DATA = self.TIME_SERIES_DATA[self.TIME_SERIES_DATA[self.DATE_FIELD] <= self.filter_past_date]
+        if len(self.TIME_SERIES_DATA.index) == 0:
+            raise Exception('No timeseries data entries.')
         return self.TIME_SERIES_DATA
 
     def get_all_population(self):
@@ -124,6 +134,11 @@ class CovidDatasets:
             ][['date', 'country', 'state', 'cases', 'deaths', 'recovered', 'active']].groupby(
             ['date', 'country', 'state'], as_index=False
         )[['cases', 'deaths', 'recovered', 'active']].sum()
+
+        if len(state_data.index) == 0 and len(county_data.index) == 0:
+            self.get_all_timeseries()[(self.get_all_timeseries()["state"] == state)].head()
+            raise Exception('No county or state-level date for {}, {}'.format(state, country))
+
         # Now we fill in whatever gaps we can in the state data using the county data
         curr_date = state_data['date'].min()  # Start on the first date of state data we have
         county_data_to_insert = []
@@ -147,7 +162,8 @@ class CovidDatasets:
 
     def get_timeseries_by_country_state(self, country, state, model_interval):
         #  Prepare a state-level dataset that uses county data to fill in any potential gaps
-        return self.prep_data(self.combine_state_county_data(country, state), model_interval)
+        state_data = self.combine_state_county_data(country, state)
+        return self.prep_data(state_data, model_interval)
 
     def get_timeseries_by_country(self, country):
         return self.get_all_timeseries()[self.get_all_timeseries()["country"] == country]
