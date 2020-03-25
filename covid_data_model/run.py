@@ -337,9 +337,7 @@ def main(beds_by_country, populations, full_timeseries, country):
         forecast = forecast_region(
             state, country, beds, pop, 50, interventions, full_timeseries
         )
-        forecast.to_csv(
-            path_or_buf="results/{}_nothing.csv".format(state), index=False
-        )
+        forecast.to_csv(path_or_buf="results/{}_nothing.csv".format(state), index=False)
 
         interventions = {
             datetime.date(2020, 3, 23): 1.3,
@@ -350,9 +348,7 @@ def main(beds_by_country, populations, full_timeseries, country):
         forecast = forecast_region(
             state, country, beds, pop, 50, interventions, full_timeseries
         )
-        forecast.to_csv(
-            path_or_buf="results/{}_flatten.csv".format(state), index=False
-        )
+        forecast.to_csv(path_or_buf="results/{}_flatten.csv".format(state), index=False)
 
         interventions = {
             datetime.date(2020, 3, 23): 1.7,

@@ -12,6 +12,6 @@ lint:
 	pytest --pylint -m pylint --pylint-error-types=EF fritzml/
 
 fmt:
-	black covid-data-model/ tests/
+	black covid_data_model/ tests/
 
 .PHONY: setup setup-tests test lint fmt
