@@ -135,6 +135,10 @@ class CovidDatasets:
             ['date', 'country', 'state'], as_index=False
         )[['cases', 'deaths', 'recovered', 'active']].sum()
 
+        # Fill holes.
+        state_data = state_data.fillna({'deaths': 0})
+        county_data = county_data.fillna({'deaths': 0})
+
         if len(state_data.index) == 0 and len(county_data.index) == 0:
             self.get_all_timeseries()[(self.get_all_timeseries()["state"] == state)].head()
             raise Exception('No county or state-level date for {}, {}'.format(state, country))
