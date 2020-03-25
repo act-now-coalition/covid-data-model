@@ -25,6 +25,7 @@ Check It Out in Jupyter
   * [Data](https://github.com/CSSEGISandData/COVID-19)
 * [Scraped Data](https://github.com/lazd/coronadatascraper)
   * [Historical Snapshots](https://github.com/lazd/coronadatascraper-cache)
+  * [Splunk aggregation & dashboard (JHU data)](https://github.com/splunk/corona_virus)
 
 ### Containment Data Sources
 
