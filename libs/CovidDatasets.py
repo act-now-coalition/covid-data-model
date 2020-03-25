@@ -3,7 +3,68 @@ import logging
 import math
 from copy import copy
 import pandas as pd
+import os.path
+import datetime
 
+# Dict to transform longhand state names to abbreviations
+us_state_abbrev = {
+    'Alabama': 'AL',
+    'Alaska': 'AK',
+    'American Samoa': 'AS',
+    'Arizona': 'AZ',
+    'Arkansas': 'AR',
+    'California': 'CA',
+    'Colorado': 'CO',
+    'Connecticut': 'CT',
+    'Delaware': 'DE',
+    'District of Columbia': 'DC',
+    'Florida': 'FL',
+    'Georgia': 'GA',
+    'Guam': 'GU',
+    'Hawaii': 'HI',
+    'Idaho': 'ID',
+    'Illinois': 'IL',
+    'Indiana': 'IN',
+    'Iowa': 'IA',
+    'Kansas': 'KS',
+    'Kentucky': 'KY',
+    'Louisiana': 'LA',
+    'Maine': 'ME',
+    'Maryland': 'MD',
+    'Massachusetts': 'MA',
+    'Michigan': 'MI',
+    'Minnesota': 'MN',
+    'Mississippi': 'MS',
+    'Missouri': 'MO',
+    'Montana': 'MT',
+    'Nebraska': 'NE',
+    'Nevada': 'NV',
+    'New Hampshire': 'NH',
+    'New Jersey': 'NJ',
+    'New Mexico': 'NM',
+    'New York': 'NY',
+    'North Carolina': 'NC',
+    'North Dakota': 'ND',
+    'Northern Mariana Islands':'MP',
+    'Ohio': 'OH',
+    'Oklahoma': 'OK',
+    'Oregon': 'OR',
+    'Pennsylvania': 'PA',
+    'Puerto Rico': 'PR',
+    'Rhode Island': 'RI',
+    'South Carolina': 'SC',
+    'South Dakota': 'SD',
+    'Tennessee': 'TN',
+    'Texas': 'TX',
+    'Utah': 'UT',
+    'Vermont': 'VT',
+    'Virgin Islands': 'VI',
+    'Virginia': 'VA',
+    'Washington': 'WA',
+    'West Virginia': 'WV',
+    'Wisconsin': 'WI',
+    'Wyoming': 'WY'
+}
 
 class Dataset:
 	"""Base class of the Dataset objects. Standardizes the output so that data from multiple differet sources can 
@@ -20,10 +81,7 @@ class Dataset:
 	ACTIVE_FIELD = 'active'
 	SYNTHETIC_FIELD = 'synthetic'
 
-	def __init__(self, timeseries_url, population_url, beds_url, start_date):
-		self._TIME_SERIES_URL = timeseries_url
-		self._POPULATION_URL = population_url
-		self._BED_URL = beds_url
+	def __init__(self, start_date):
 		self._START_DATE = start_date
 		self._TIME_SERIES_DATA = None
 		self._BED_DATA = None
@@ -155,6 +213,7 @@ class Dataset:
 		except IndexError as e:
 			logging.error('No population data for {}, {}'.format(state, country))
 			raise e
+
 	def get_beds_by_country_state(self, country, state):
 		matching_beds = self.get_all_beds()[(self.get_all_beds()[self.STATE_FIELD] == state) &
 								  (self.get_all_beds()[self.COUNTRY_FIELD] == country)]
@@ -163,34 +222,88 @@ class Dataset:
 
 
 class JHUDataset(Dataset):
-	def __init__(self):
-		super().__init__(
-			timeseries_url="https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv 	",
-			population_url='https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv',
-			beds_url='https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv',
-			start_date=datetime.datetime(year=2020, month=3, day=3)
-		)
+	_CONFIRMED_GLOBAL_URL = r'https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+	_DEATHS_GLOBAL_URL = r'https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
 
+	_POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
+	_BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
+
+	def __init__(self):
+		super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3))
+
+	def transform_jhu_timeseries(self):
+		""""Takes a list of JHU daily reports, mashes them into a single report, then restructures and renames the data
+		to fit the model's expectations"""
+		daily_reports_dir = r'data\jhu\csse_covid_19_daily_reports'
+		# Compile a list of all of the day reports available
+		day_reports = [
+			# For each data file in the directory
+			pd.read_csv(os.path.join(daily_reports_dir, f))  # Read the csv file
+				.assign(**{'Date': datetime.datetime.strptime(f.split('.')[0], '%M-%d-%Y')})
+			# Append the record dates by converting the file name into a datetime object
+			for f in os.listdir(daily_reports_dir) if os.path.splitext(f)[1] == '.csv'  # Only process the csv files
+		]
+		full_report = pd.concat(day_reports).reset_index()  # Concat said reports into a single DataFrame
+
+		def parse_county(state):
+			if ',' in state:
+				return state.split(',')[0]
+
+		def parse_state(state):
+			if ',' in state:
+				state = state.split(',')[1]
+			if state in us_state_abbrev:
+				return us_state_abbrev[state]
+			return state
+
+		def parse_country(country):
+			if country == 'US':
+				return 'USA'
+			return country
+
+		full_report['County'] = full_report['Province/State'].dropna().apply(
+			parse_county)  # Separate the county name from the state name
+		full_report['Province/State'] = full_report['Province/State'].dropna().apply(
+			parse_state)  # Map the state names to their abbreviations
+		full_report['Country/Region'] = full_report['Country/Region'].apply(parse_country)
+		full_report = full_report.rename(
+			columns={
+				'Country/Region': 'country',
+				'Province/State': 'state',
+				'County': 'county',
+				'Confirmed': 'cases',
+				'Deaths': 'deaths',
+				'Recovered': 'recovered'
+			}
+		)
+		return full_report.drop('index', axis=1)
+
+	def get_all_timeseries(self):
+		res = self.transform_jhu_timeseries()
+		return res
+
+	def get_all_population(self):
+		if(self._POPULATION_DATA is None):
+			self._POPULATION_DATA = pd.read_csv(self._POPULATION_URL)
+		return self._POPULATION_DATA
+
+	def get_all_beds(self):
+		if(self._BED_DATA is None):
+			self._BED_DATA = pd.read_csv(self._BEDS_URL)
+		return self._BED_DATA
+
+	def get_all_states_by_country(self, country):
+		return self.get_all_population()[self.get_all_population()[self.COUNTRY_FIELD] == country][self.STATE_FIELD].dropna().unique()
 
 
 class CDSDataset(Dataset):
 	"""CoronaDataScraper Dataset"""
-	def __init__(self, test=False):
-		if test:
-			import os; print(os.getcwd())
-			super().__init__(
-				timeseries_url=r"data\cds\timeseries.csv",
-				population_url=r"data\cds\populations.csv",
-				beds_url=r"data\cds\beds.csv",
-				start_date=datetime.datetime(year=2020, month=3, day=3)
-			)
-		else:
-			super().__init__(
-				timeseries_url="https://coronadatascraper.com/timeseries.csv",
-				population_url='https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv',
-				beds_url='https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv',
-				start_date=datetime.datetime(year=2020, month=3, day=3)
-			)
+	_TIME_SERIES_URL = r'https://coronadatascraper.com/timeseries.csv'
+	_POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
+	_BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
+
+	def __init__(self):
+		super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3))
 
 	def get_all_timeseries(self):
 		if(self._TIME_SERIES_DATA is None):
@@ -204,7 +317,7 @@ class CDSDataset(Dataset):
 
 	def get_all_beds(self):
 		if(self._BED_DATA is None):
-			self._BED_DATA = pd.read_csv(self._BED_URL)
+			self._BED_DATA = pd.read_csv(self._BEDS_URL)
 		return self._BED_DATA
 
 	def get_all_states_by_country(self, country):
