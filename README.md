@@ -25,12 +25,14 @@ Check It Out in Jupyter
   * [Data](https://github.com/CSSEGISandData/COVID-19)
 * [Scraped Data](https://github.com/lazd/coronadatascraper)
   * [Historical Snapshots](https://github.com/lazd/coronadatascraper-cache)
+  * [Splunk aggregation & dashboard (JHU data)](https://github.com/splunk/corona_virus)
 
 ### Containment Data Sources
 
 * [US State-Level Containment Policies](https://www.multistate.us/pages/covid-19-policy-tracker)
 * [AEI Action Tracker](https://www.aei.org/covid-2019-action-tracker/)
   * Their source: [National Governors Association](https://www.nga.org/coronavirus/#actions)
+* [Survey of Shelter-in-Place Orders](https://www.kslaw.com/pages/covid-19-executive-orders)
 * [LA Times Tracker](https://www.latimes.com/projects/california-coronavirus-cases-tracking-outbreak/) (California only)
 * [Local Action Tracker](https://www.nlc.org/program-initiative/covid-19-local-action-tracker)
 
