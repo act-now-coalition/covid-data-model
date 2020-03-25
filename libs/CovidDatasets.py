@@ -234,12 +234,12 @@ class JHUDataset(Dataset):
 	def transform_jhu_timeseries(self):
 		""""Takes a list of JHU daily reports, mashes them into a single report, then restructures and renames the data
 		to fit the model's expectations"""
-		daily_reports_dir = r'data\jhu\csse_covid_19_daily_reports'
+		daily_reports_dir = os.path.join('data', 'jhu', 'csse_covid_19_daily_reports')
 		# Compile a list of all of the day reports available
 		day_reports = [
 			# For each data file in the directory
 			pd.read_csv(os.path.join(daily_reports_dir, f))  # Read the csv file
-				.assign(**{'Date': datetime.datetime.strptime(f.split('.')[0], '%M-%d-%Y')})
+				.assign(**{'date': datetime.datetime.strptime(f.split('.')[0], '%m-%d-%Y')})
 			# Append the record dates by converting the file name into a datetime object
 			for f in os.listdir(daily_reports_dir) if os.path.splitext(f)[1] == '.csv'  # Only process the csv files
 		]
