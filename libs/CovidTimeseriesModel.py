@@ -5,14 +5,40 @@ import datetime
 
 import pprint
 
-#class CovidTimeseriesCycle:
-#    def __init__(self):
 
+# @TODO: Switch to this model.
+class CovidTimeseriesCycle(object):
+    def __init__(self, model_parameters, init_data_cycle):
+        # There are some assumptions made when we create the fisrt data cycle. This encapsulates all of those
+        #  assumptions into one place
+
+        self.date = model_parameters['init_date']
+        self.r0 = model_parameters['r0']
+        self.effective_r0 = None
+        self.cases = init_data_cycle['cases']
+        self.actual_reported = init_data_cycle['cases']
+        self.current_infected = 0
+        self.newly_infected_from_confirmed = init_data_cycle['cases'] * model_parameters['estimated_new_cases_per_confirmed']
+        self.newly_infected_from_deaths = 0
+        self.newly_infected = self.newly_infected_from_confirmed + self.newly_infected_from_deaths
+        self.currently_infected = 0
+        self.cumulative_infected = None
+        self.cumulative_deaths = None
+        self.recovered_or_died = 0
+        self.ending_susceptible = model_parameters['population'] - (init_data_cycle['cases'] / model_parameters['hospitalization_rate'])
+        self.predicted_hospitalized = 0
+        self.available_hospital_beds = model_parameters['original_available_hospital_beds']
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        pass
 
 class CovidTimeseriesModel:
     # Initializer / Instance Attributes
     def __init__(self):
-        logging.basicConfig(level=logging.CRITICAL)
+        logging.basicConfig(level=logging.ERROR)
 
     def calculate_r(self, current_cycle, previous_cycle, model_parameters):
         # Calculate the r0 value based on the current and past number of confirmed cases
