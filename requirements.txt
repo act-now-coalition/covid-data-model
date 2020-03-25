@@ -5,3 +5,4 @@ pandas==1.0.3
 plotly==4.5.4
 jupyter==1.0.0
 simplejson==3.17.0
+boto3==1.12.28
