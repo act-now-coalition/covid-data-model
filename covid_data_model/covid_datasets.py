@@ -7,7 +7,6 @@ import pandas as pd
 
 
 class CovidDatasets:
-
     ## Constants
     POPULATION_URL = "https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv"
     BED_URL = "https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv"
@@ -17,6 +16,7 @@ class CovidDatasets:
     BED_DATA = None
     POPULATION_DATA = None
     start_date = datetime.datetime(year=2020, month=3, day=3)
+
     # Initializer / Instance Attributes
     def __init__(self, filter_past_date=None):
         self.filter_past_date = pd.Timestamp(filter_past_date)
@@ -77,9 +77,10 @@ class CovidDatasets:
         return new_series.sort_values("date").reset_index()
 
     def step_down(self, i, series, model_interval):
-        # A function to calculate how much to step down the number of cases from the following day
-        #  The goal is for the synthetic cases to halve once every iteration of the model interval.
-        #
+        """Calculates how much to step down the number of cases from the following day.
+
+        The goal is for the synthetic cases to halve once every iteration of the model interval.
+        """
         # interval_rows = data_rows[data_rows['date'].apply(lambda d: (d - self.start_date).days % model_interval == 0)]
         # min_interval_row = interval_rows[interval_rows['date'] == interval_rows['date'].min()].iloc[0]
 
@@ -88,8 +89,11 @@ class CovidDatasets:
         return y
 
     def backfill_synthetic_cases(self, series, model_interval):
-        # Fill in all values prior to the first non-zero values. Use 1/2 following value. Decays into nothing
-        #  sort the dataframe in reverse date order, so we traverse from latest to earliest
+        """Fill in all values prior to the first non-zero values.
+
+        Use 1/2 following value. Decays into nothing
+        Sort the dataframe in reverse date order, so we traverse from latest to earliest.
+        """
         for a in range(0, len(series)):
             i = len(series) - a - 1
             if series.iloc[i]["cases"] == 0:
@@ -97,7 +101,7 @@ class CovidDatasets:
         return series
 
     def backfill(self, series, model_interval):
-        # Backfill the data as necessary for the model
+        """Backfill the data as necessary for the model"""
         return self.backfill_synthetic_cases(
             self.backfill_to_init_date(series, model_interval), model_interval
         )
@@ -134,7 +138,7 @@ class CovidDatasets:
         return self.BED_DATA
 
     def combine_state_county_data(self, country, state):
-        # Create a single dataset from state and county data, using state data preferentially.
+        """Create a single dataset from state and county data, using state data preferentially."""
         # First, pull all available state data
         state_data = self.get_all_timeseries()[
             (self.get_all_timeseries()["state"] == state)
@@ -185,7 +189,7 @@ class CovidDatasets:
         return state_county_data
 
     def get_timeseries_by_country_state(self, country, state, model_interval):
-        #  Prepare a state-level dataset that uses county data to fill in any potential gaps
+        """Prepare a state-level dataset that uses county data to fill in any potential gaps"""
         return self.prep_data(
             self.combine_state_county_data(country, state), model_interval
         )
