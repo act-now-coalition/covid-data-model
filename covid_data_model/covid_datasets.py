@@ -5,34 +5,64 @@ from copy import copy
 
 import pandas as pd
 
+POPULATION_URL = "https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv"
+BED_URL = "https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv"
+TIME_SERIES_URL = "https://coronadatascraper.com/timeseries.csv"
+
 
 class CovidDatasets:
-    ## Constants
-    POPULATION_URL = "https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv"
-    BED_URL = "https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv"
-    TIME_SERIES_URL = "https://coronadatascraper.com/timeseries.csv"
     DATE_FIELD = "date"
-    TIME_SERIES_DATA = None
-    BED_DATA = None
-    POPULATION_DATA = None
     start_date = datetime.datetime(year=2020, month=3, day=3)
 
     # Initializer / Instance Attributes
-    def __init__(self, filter_past_date=None):
+    def __init__(
+        self,
+        time_series_url=TIME_SERIES_URL,
+        bed_data_url=BED_URL,
+        population_data_url=POPULATION_URL,
+        filter_past_date=None,
+    ):
         self.filter_past_date = pd.Timestamp(filter_past_date)
-        logging.basicConfig(level=logging.CRITICAL)
+
+        timeseries_data, beds_data, population_data = self.load_covid_data(
+            population_data_url, bed_data_url, time_series_url
+        )
+        if self.filter_past_date:
+            timeseries_data = timeseries_data[
+                timeseries_data[self.DATE_FIELD] <= self.filter_past_date
+            ]
+
+        self.timeseries_data = timeseries_data
+        self.beds_data = beds_data
+        self.population_data = population_data
+
+    def load_covid_data(self, population_url: str, beds_url: str, time_series_url: str):
+        """Load COVID data from urls, applying basic preprocessing.
+
+        Args:
+            population_url: URL or path to data containing population stats for states
+                and countries.
+            beds_url: URL or path to data on hospital bed capacity.
+            time_series_url: URL or path to outbreak stats.
+
+        Returns: Tuple of data.
+        """
+        time_series_data = pd.read_csv(time_series_url)
+        time_series_data[self.DATE_FIELD] = pd.to_datetime(
+            time_series_data[self.DATE_FIELD]
+        )
+
+        population_data = pd.read_csv(population_url)
+        bed_data = pd.read_csv(beds_url)
+        return time_series_data, bed_data, population_data
 
     def get_all_countries(self):
-        return self.get_all_population()["country"].unique()
+        return self.population_data["country"].unique()
 
     def get_all_states_by_country(self, country):
-        return (
-            self.get_all_population()[self.get_all_population()["country"] == country][
-                "state"
-            ]
-            .dropna()
-            .unique()
-        )
+        total_population = self.population_data
+        country_population = total_population[total_population["country"] == country]
+        return country_population["state"].dropna().unique()
 
     def backfill_to_init_date(self, series, model_interval):
         # We need to make sure that the data starts from Mar3, no matter when our records begin
@@ -115,42 +145,20 @@ class CovidDatasets:
         # We have some requirements of the data's window, and that is enforced here.
         return self.cutoff(self.backfill(series, model_interval))
 
-    def get_all_timeseries(self):
-        if self.TIME_SERIES_DATA is None:
-            self.TIME_SERIES_DATA = pd.read_csv(self.TIME_SERIES_URL)
-            self.TIME_SERIES_DATA[self.DATE_FIELD] = pd.to_datetime(
-                self.TIME_SERIES_DATA[self.DATE_FIELD]
-            )
-            if self.filter_past_date is not None:
-                self.TIME_SERIES_DATA = self.TIME_SERIES_DATA[
-                    self.TIME_SERIES_DATA[self.DATE_FIELD] <= self.filter_past_date
-                ]
-        return self.TIME_SERIES_DATA
-
-    def get_all_population(self):
-        if self.POPULATION_DATA is None:
-            self.POPULATION_DATA = pd.read_csv(self.POPULATION_URL)
-        return self.POPULATION_DATA
-
-    def get_all_beds(self):
-        if self.BED_DATA is None:
-            self.BED_DATA = pd.read_csv(self.BED_URL)
-        return self.BED_DATA
-
     def combine_state_county_data(self, country, state):
         """Create a single dataset from state and county data, using state data preferentially."""
         # First, pull all available state data
-        state_data = self.get_all_timeseries()[
-            (self.get_all_timeseries()["state"] == state)
-            & (self.get_all_timeseries()["country"] == country)
-            & (self.get_all_timeseries()["county"].isna())
+        state_data = self.timeseries_data[
+            (self.timeseries_data["state"] == state)
+            & (self.timeseries_data["country"] == country)
+            & (self.timeseries_data["county"].isna())
         ]
         # Second pull all county data for the state
         county_data = (
-            self.get_all_timeseries()[
-                (self.get_all_timeseries()["state"] == state)
-                & (self.get_all_timeseries()["country"] == country)
-                & (self.get_all_timeseries()["county"].notna())
+            self.timeseries_data[
+                (self.timeseries_data["state"] == state)
+                & (self.timeseries_data["country"] == country)
+                & (self.timeseries_data["county"].notna())
             ][["date", "country", "state", "cases", "deaths", "recovered", "active"]]
             .groupby(["date", "country", "state"], as_index=False)[
                 ["cases", "deaths", "recovered", "active"]
@@ -195,14 +203,12 @@ class CovidDatasets:
         )
 
     def get_timeseries_by_country(self, country):
-        return self.get_all_timeseries()[
-            self.get_all_timeseries()["country"] == country
-        ]
+        return self.timeseries_data[self.timeseries_data["country"] == country]
 
     def get_population_by_country_state(self, country, state):
-        matching_pops = self.get_all_population()[
-            (self.get_all_population()["state"] == state)
-            & (self.get_all_population()["country"] == country)
+        matching_pops = self.population_data[
+            (self.population_data["state"] == state)
+            & (self.population_data["country"] == country)
         ]
         try:
             return int(matching_pops.iloc[0].at["population"])
@@ -211,9 +217,8 @@ class CovidDatasets:
             raise e
 
     def get_beds_by_country_state(self, country, state):
-        matching_beds = self.get_all_beds()[
-            (self.get_all_beds()["state"] == state)
-            & (self.get_all_beds()["country"] == country)
+        matching_beds = self.beds_data[
+            (self.beds_data["state"] == state) & (self.beds_data["country"] == country)
         ]
         beds_per_mille = float(matching_beds.iloc[0].at["bedspermille"])
         return int(
