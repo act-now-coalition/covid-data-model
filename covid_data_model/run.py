@@ -87,7 +87,9 @@ def model_state(country, state, interventions=None):
     return timeseries_model.forecast_region()
 
 
-def main(interventions: List[Intervention], output_folder: str, states: List[str] = None):
+def main(
+    interventions: List[Intervention], output_folder: str, states: List[str] = None
+):
     """Run intervention models.
 
     Args:
@@ -113,6 +115,7 @@ def main(interventions: List[Intervention], output_folder: str, states: List[str
             results[state][intervention.name] = state_model_results
 
     return results
+
 
 r0 = 2.4
 

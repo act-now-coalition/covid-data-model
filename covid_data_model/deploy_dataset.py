@@ -10,13 +10,15 @@ def make_dataset():
     """
     ########### FILL IN BELOW ###########
 
-    result = {'key': 'my-key', 'body': 'my-data'}
+    result = {"key": "my-key", "body": "my-data"}
 
     ########### FILL IN ABOVE ###########
     return result
 
 
-def persist_to_s3(s3_client, bucket_name: str, key: str = 'my_public_identifier', body: str = 'empty'):
+def persist_to_s3(
+    s3_client, bucket_name: str, key: str = "my_public_identifier", body: str = "empty"
+):
     """Persists specific data onto an s3 bucket.
 
     This method assumes versioned is handled on the bucket itself.
@@ -29,10 +31,9 @@ def persist_to_s3(s3_client, bucket_name: str, key: str = 'my_public_identifier'
         [ResponseMetadata] -- the AWS SDK response object
     """
 
-    response = s3_client.put_object(Bucket=bucket_name,
-                             Key=key,
-                             Body=body,
-                             ACL='public-read')
+    response = s3_client.put_object(
+        Bucket=bucket_name, Key=key, Body=body, ACL="public-read"
+    )
     return response
 
 
@@ -48,10 +49,10 @@ def handler(event, context):
     """
     # Supplied by ENV on AWS
     # BUCKET_NAME format is s3://{BUCKET_NAME}
-    bucket_name = os.environ.get('BUCKET_NAME')
+    bucket_name = os.environ.get("BUCKET_NAME")
 
     data = make_dataset()
-    s3_client = boto3.client('s3')  # Create an S3 client
+    s3_client = boto3.client("s3")  # Create an S3 client
 
     return persist_to_s3(s3_client, bucket_name, **data)
 
