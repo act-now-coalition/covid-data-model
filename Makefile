@@ -9,7 +9,7 @@ test:
 	pytest tests/
 
 lint:
-	pytest --pylint -m pylint --pylint-error-types=EF fritzml/
+	pytest --pylint -m pylint --pylint-error-types=EF .
 
 fmt:
 	black covid_data_model/ tests/
