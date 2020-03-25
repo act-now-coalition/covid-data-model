@@ -1,6 +1,8 @@
 .~lock.*
 results/*.csv
 results/*.json
+results/test/*.csv
+results/test/*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -131,3 +133,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Mac Folders
+.DS_Store
