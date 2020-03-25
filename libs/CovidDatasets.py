@@ -81,7 +81,12 @@ class Dataset:
     ACTIVE_FIELD = 'active'
     SYNTHETIC_FIELD = 'synthetic'
 
-    def __init__(self, start_date):
+    def __init__(self, start_date, filter_past_date=None):
+        if filter_past_date is not None:
+            self.filter_past_date = pd.Timestamp(filter_past_date)
+        else:
+            self.filter_past_date = None
+
         self._START_DATE = start_date
         self._TIME_SERIES_DATA = None
         self._BED_DATA = None
@@ -153,7 +158,13 @@ class Dataset:
         return self.cutoff(self.backfill(series, model_interval))
 
     def get_all_timeseries(self):
-        raise NotImplementedError('The \'get_all_timeseries\' method must be overriden by the child class')
+        timeseries = self.get_raw_timeseries()
+        if self.filter_past_date is not None:
+            timeseries = timeseries[timeseries[self.DATE_FIELD] <= self.filter_past_date]
+        return timeseries
+
+    def get_raw_timeseries(self):
+        raise NotImplementedError('The \'get_raw_timeseries\' method must be overriden by the child class')
 
     def get_all_population(self):
         raise NotImplementedError('The \'get_all_population\' method must be overriden by the child class')
@@ -228,8 +239,8 @@ class JHUDataset(Dataset):
     _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
     _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
 
-    def __init__(self):
-        super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3))
+    def __init__(self, filter_past_date=None):
+        super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
 
     def transform_jhu_timeseries(self):
         """"Takes a list of JHU daily reports, mashes them into a single report, then restructures and renames the data
@@ -278,7 +289,7 @@ class JHUDataset(Dataset):
         )
         return full_report.drop('index', axis=1)
 
-    def get_all_timeseries(self):
+    def get_raw_timeseries(self):
         res = self.transform_jhu_timeseries()
         return res
 
@@ -302,10 +313,10 @@ class CDSDataset(Dataset):
     _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
     _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
 
-    def __init__(self):
-        super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3))
+    def __init__(self, filter_past_date=None):
+        super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
 
-    def get_all_timeseries(self):
+    def get_raw_timeseries(self):
         if(self._TIME_SERIES_DATA is None):
             self._TIME_SERIES_DATA = pd.read_csv(self._TIME_SERIES_URL, parse_dates=[self.DATE_FIELD])
         return self._TIME_SERIES_DATA
