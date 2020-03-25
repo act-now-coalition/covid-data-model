@@ -1,20 +1,20 @@
 import datetime
 import time
+import simplejson
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CovidDatasets
+from libs.CovidDatasets import CDSDataset
 
 def record_results(res, directory, name, num, pop):
     import copy
     import os.path
     vals = copy.copy(res)
     # Format the date in the manner the front-end expects
-    vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year)) 
+    vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year))
     # Set the population
     vals['Population'] = pop
     # Write the results to the specified directory
-    with open( os.path.join(directory, name.lower() + '.' + str(num) + '.json').format(name), 'w') as out:
-        out.write(
-            str(vals[[
+    with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
+        simplejson.dump(vals[[
                 'Date',
                 'R',
                 'Beg. Susceptible',
@@ -34,8 +34,7 @@ def record_results(res, directory, name, num, pop):
                 'Population',
                 'R0',
                 '% Susceptible'
-            ]].values.tolist())
-        )
+            ]].values.tolist(), out, ignore_nan=True)
 
 def model_state(country, state, interventions=None):
     ## Constants
@@ -45,7 +44,7 @@ def model_state(country, state, interventions=None):
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
     r0 = 2.4
-    Dataset = CovidDatasets()
+    Dataset = CDSDataset(filter_past_date=datetime.date(2020, 3, 19))
     POP = Dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
@@ -53,7 +52,7 @@ def model_state(country, state, interventions=None):
         'timeseries': Dataset.get_timeseries_by_country_state(country, state, MODEL_INTERVAL),
         'beds': Dataset.get_beds_by_country_state(country, state),
         'population': POP,
-        'projection_iterations': 25, # Number of iterations into the future to project
+        'projection_iterations': 24, # Number of iterations into the future to project
         'r0': r0,
         'interventions': interventions,
         'hospitalization_rate': HOSPITALIZATION_RATE,
@@ -69,33 +68,61 @@ def model_state(country, state, interventions=None):
         'total_infected_period': 12, # In days
         'rolling_intervals_for_current_infected': int(round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)),
     }
-    return CovidTimeseriesModel().forecast_region(model_parameters=MODEL_PARAMETERS)
+    return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
 
 r0 = 2.4
 
 INTERVENTIONS = [
-    None,
-    {
+    None,  # No Intervention
+    {  # Flatten the Curve
         datetime.date(2020, 3, 23): 1.3,
         datetime.date(2020, 4, 20): 1.1,
         datetime.date(2020, 5, 22): 0.8,
         datetime.date(2020, 6, 23): r0
     },
-    {
-        datetime.date(2020, 3, 23): 1.7,
-        datetime.date(2020, 6, 23): r0
-    },
-    {
+    {  # Full Containment
         datetime.date(2020, 3, 23): 1.3,
         datetime.date(2020, 3, 31): 0.3,
         datetime.date(2020, 4, 28): 0.2,
         datetime.date(2020, 5,  6): 0.1,
         datetime.date(2020, 5, 10): 0.35,
         datetime.date(2020, 5, 18): r0
-    }
+    },
+    {  # @TODO: Model w/ FlatteningTheCurve (2 wk delay)
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 4, 20): 1.1,
+        datetime.date(2020, 5, 22): 0.8,
+        datetime.date(2020, 6, 23): r0
+    },
+    {  # @TODO: Model w/ FlatteningTheCurve (1 mo delay)
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 4, 20): 1.1,
+        datetime.date(2020, 5, 22): 0.8,
+        datetime.date(2020, 6, 23): r0
+    },
+    {  # @TODO: Full Containment (1 wk dly)
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 3, 31): 0.3,
+        datetime.date(2020, 4, 28): 0.2,
+        datetime.date(2020, 5,  6): 0.1,
+        datetime.date(2020, 5, 10): 0.35,
+        datetime.date(2020, 5, 18): r0
+    },
+    {  # @TODO: Full Containment (2 wk dly)
+        datetime.date(2020, 3, 23): 1.3,
+        datetime.date(2020, 3, 31): 0.3,
+        datetime.date(2020, 4, 28): 0.2,
+        datetime.date(2020, 5,  6): 0.1,
+        datetime.date(2020, 5, 10): 0.35,
+        datetime.date(2020, 5, 18): r0
+    },
+    {  # Social Distancing
+        datetime.date(2020, 3, 23): 1.7,
+        datetime.date(2020, 6, 23): r0
+    },
 ]
 
-Dataset = CovidDatasets()
+Dataset = CDSDataset()
 for state in Dataset.get_all_states_by_country('USA'):
     for i in range(0, len(INTERVENTIONS)):
         intervention = INTERVENTIONS[i]
