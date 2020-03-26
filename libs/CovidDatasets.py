@@ -93,7 +93,7 @@ class Dataset:
 
     def backfill_to_init_date(self, series, model_interval):
         # We need to make sure that the data starts from Mar3, no matter when our records begin
-        series = series.sort_values(self.DATE_FIELD).reset_index()  # Sort the series by the date of the record
+        series = series.sort_values(self.DATE_FIELD).reset_index(drop=True)  # Sort the series by the date of the record
         data_rows = series[series[self.CASE_FIELD] > 0]  # Find those rows that actually have reported cases
         interval_rows = data_rows[data_rows[self.DATE_FIELD].apply(
             lambda d: (d - self._START_DATE).days % model_interval == 0
@@ -117,7 +117,7 @@ class Dataset:
             synthetic_data.append(copy(synthetic_row)) # We need to copy it to prevent alteration by reference
         pd.set_option('mode.chained_assignment', 'warn')  # Turn the anxiety back on
         # Take the synthetic data, and glue it to the bottom of the real records
-        return series.append(pd.DataFrame(synthetic_data)).sort_values(self.DATE_FIELD)
+        return series.append(pd.DataFrame(synthetic_data)).sort_values(self.DATE_FIELD).reset_index(drop=True)
 
     def step_down(self, i, series, model_interval):
         # A function to calculate how much to step down the number of cases from the following day
@@ -175,12 +175,11 @@ class Dataset:
     def combine_state_county_data(self, country, state):
         # Create a single dataset from state and county data, using state data preferentially.
         # First, pull all available state data
-        ts = self.get_all_timeseries()
-        state_data = ts[
+        state_data = self.get_all_timeseries()[
             (self.get_all_timeseries()[self.STATE_FIELD] == state) &
             (self.get_all_timeseries()[self.COUNTRY_FIELD] == country) &
             (self.get_all_timeseries()[self.COUNTY_FIELD].isna())
-            ].reset_index()
+            ].reset_index(drop=True)
         # Second pull all county data for the state
         county_data = self.get_all_timeseries()[
             (self.get_all_timeseries()[self.STATE_FIELD] == state) &
@@ -206,8 +205,7 @@ class Dataset:
                 new_state_row[self.DEATH_FIELD] = county_data_for_date[self.DEATH_FIELD]
                 new_state_row[self.RECOVERED_FIELD] = county_data_for_date[self.RECOVERED_FIELD]
                 county_data_to_insert.append(copy(new_state_row))
-        state_county_data = state_data.append(pd.DataFrame(county_data_to_insert)).sort_values(self.DATE_FIELD)
-        return state_county_data
+        return state_data.append(pd.DataFrame(county_data_to_insert)).sort_values(self.DATE_FIELD)
 
     def get_timeseries_by_country_state(self, country, state, model_interval):
         #  Prepare a state-level dataset that uses county data to fill in any potential gaps
@@ -228,14 +226,12 @@ class Dataset:
     def get_beds_by_country_state(self, country, state):
         matching_beds = self.get_all_beds()[(self.get_all_beds()[self.STATE_FIELD] == state) &
                                   (self.get_all_beds()[self.COUNTRY_FIELD] == country)]
-        beds_per_mille = float(matching_beds.iloc[0].at["bedspermille"])
-        return int(round(beds_per_mille * self.get_population_by_country_state(country, state) / 1000))
+        return int(round(float(matching_beds.iloc[0].at["bedspermille"]) * self.get_population_by_country_state(country, state) / 1000))
 
 
 class JHUDataset(Dataset):
     _CONFIRMED_GLOBAL_URL = r'https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
     _DEATHS_GLOBAL_URL = r'https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
-
     _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
     _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
 
@@ -295,13 +291,10 @@ class JHUDataset(Dataset):
                 # Append the record dates by converting the file name into a datetime object
                 # Only process the csv files
                 day_reports.append(df)
-        full_report = pd.concat(day_reports)  # Concat said reports into a single DataFrame
-        full_report = full_report.reset_index()
-        return full_report.drop('index', axis=1)
+        return pd.concat(day_reports).reset_index(drop=True)  # Concat said reports into a single DataFrame
 
     def get_raw_timeseries(self):
-        res = self.transform_jhu_timeseries()
-        return res
+        return self.transform_jhu_timeseries()
 
     def get_all_population(self):
         if(self._POPULATION_DATA is None):
