@@ -78,7 +78,6 @@ class Dataset:
 	CASE_FIELD = 'cases'
 	DEATH_FIELD = 'deaths'
 	RECOVERED_FIELD = 'recovered'
-	ACTIVE_FIELD = 'active'
 	SYNTHETIC_FIELD = 'synthetic'
 
 	def __init__(self, start_date):
@@ -109,7 +108,6 @@ class Dataset:
 			synthetic_row[self.CASE_FIELD] = 0
 			synthetic_row[self.DEATH_FIELD] = 0
 			synthetic_row[self.RECOVERED_FIELD] = 0
-			synthetic_row[self.ACTIVE_FIELD] = 0
 			synthetic_row[self.SYNTHETIC_FIELD] = 1
 			synthetic_data.append(copy(synthetic_row)) # We need to copy it to prevent alteration by reference
 		pd.set_option('mode.chained_assignment', 'warn')  # Turn the anxiety back on
@@ -174,9 +172,9 @@ class Dataset:
 			(self.get_all_timeseries()[self.STATE_FIELD] == state) &
 			(self.get_all_timeseries()[self.COUNTRY_FIELD] == country) &
 			(self.get_all_timeseries()["county"].notna())
-			][[self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD, self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD, self.ACTIVE_FIELD]].groupby(
+			][[self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD, self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].groupby(
 			[self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD], as_index=False
-		)[[self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD, self.ACTIVE_FIELD]].sum()
+		)[[self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].sum()
 		# Now we fill in whatever gaps we can in the state data using the county data
 		curr_date = state_data[self.DATE_FIELD].min()  # Start on the first date of state data we have
 		county_data_to_insert = []
@@ -193,7 +191,6 @@ class Dataset:
 				new_state_row[self.CASE_FIELD] = county_data_for_date[self.CASE_FIELD]
 				new_state_row[self.DEATH_FIELD] = county_data_for_date[self.DEATH_FIELD]
 				new_state_row[self.RECOVERED_FIELD] = county_data_for_date[self.RECOVERED_FIELD]
-				new_state_row[self.ACTIVE_FIELD] = county_data_for_date[self.ACTIVE_FIELD]
 				county_data_to_insert.append(copy(new_state_row))
 		state_county_data = state_data.append(pd.DataFrame(county_data_to_insert)).sort_values(self.DATE_FIELD)
 		return state_county_data
