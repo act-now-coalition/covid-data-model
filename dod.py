@@ -9,7 +9,10 @@ latest = datetime.date.today() - datetime.timedelta(days=1)
 url = 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_daily_reports/{}.csv'.format(
     latest.strftime("%m-%d-%Y"))
 raw_df = pd.read_csv(url)
+
 raw_df.info()
+
+#raw_df.to_csv('dod_input.csv')
 
 column_mapping = {"Province_State": "Province/State",
                   "Country_Region": "Country/Region",
@@ -55,3 +58,15 @@ us_only = final_df[(final_df["Country/Region"] == "US")]
 pprint.pprint(us_only.head())
 
 us_only.to_csv("results/counties.csv")
+
+states_group = us_only.groupby(['Province/State'])
+states_agg = states_group.aggregate({
+    'Confirmed': 'sum',
+    'Recovered': 'sum',
+    'Deaths': 'sum',
+    'Active': 'sum',
+
+    # People tested is currently null
+    #'People Tested': 'sum'
+})
+print(states_agg)
