@@ -32,7 +32,7 @@ Check It Out in Jupyter
 * [US State-Level Containment Policies](https://www.multistate.us/pages/covid-19-policy-tracker)
 * [AEI Action Tracker](https://www.aei.org/covid-2019-action-tracker/)
   * Their source: [National Governors Association](https://www.nga.org/coronavirus/#actions)
-* [Survey of Shelter-in-Place Orders](https://www.kslaw.com/pages/covid-19-executive-orders)
+* [NYTimes Stay-At-Home Orders](https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html)
 * [LA Times Tracker](https://www.latimes.com/projects/california-coronavirus-cases-tracking-outbreak/) (California only)
 * [Local Action Tracker](https://www.nlc.org/program-initiative/covid-19-local-action-tracker)
 
