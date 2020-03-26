@@ -249,7 +249,7 @@ class CovidTimeseriesModel:
             previous_cycle = current_cycle
         return cycle_series
 
-    def forecast_region(self, model_parameters):
+    def forecast(self, model_parameters):
         cycle_series = self.iterate_model(model_parameters)
         return pd.DataFrame({
             'Note': ['' for s in cycle_series],
