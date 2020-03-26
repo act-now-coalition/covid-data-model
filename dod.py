@@ -111,6 +111,7 @@ states_remapped.info()
 # TODO: filter out county-specific columns
 state_cols = cols + ['Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction']
 states_final = pd.DataFrame(states_remapped, columns=state_cols)
+states_final['Shape'] = 'Point'
 states_final.info()
 states_final = states_final.fillna("<Null>")
 pprint.pprint(states_final.head())
