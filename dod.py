@@ -88,15 +88,13 @@ states_agg = states_group.aggregate({
     'Longitude': 'first'
     # People tested is currently null
     #'People Tested': 'sum'
-}).drop(
-    # This value snuck in as a state in the original data
-    ['Recovered']
-)
+})
 states_agg.info()
 states_abbrev = states_agg.merge(
     abbrev_df, left_index=True, right_on='state', how='left'
 ).merge(
-    interventions_df, left_on='abbreviation', right_on='state', how='left'
+    # inner merge to filter to only the 50 states
+    interventions_df, left_on='abbreviation', right_on='state', how='inner'
 ).merge(
     projections_df, left_on='state_y', right_on='State', how='left'
 ).drop(['abbreviation', 'state_y', 'State'], axis=1)
