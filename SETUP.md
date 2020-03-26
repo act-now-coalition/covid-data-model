@@ -51,12 +51,17 @@ pip install -r requirements.txt -r requirements_test.txt
 
 We use [pytest](https://docs.pytest.org/en/latest/contents.html) as our test runner.
 
-To run unit tests:
+To run all tests:
 ```
 make test
 ```
 
-To run linting:
+To run just unittests:
+```
+make unittest
+```
+
+To run just linting:
 ```
 make lint
 ```
