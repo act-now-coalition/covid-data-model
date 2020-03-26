@@ -117,7 +117,7 @@ class Dataset:
             synthetic_data.append(copy(synthetic_row)) # We need to copy it to prevent alteration by reference
         pd.set_option('mode.chained_assignment', 'warn')  # Turn the anxiety back on
         # Take the synthetic data, and glue it to the bottom of the real records
-        return series.append(pd.DataFrame(synthetic_data)).sort_values(self.DATE_FIELD).reset_index()
+        return series.append(pd.DataFrame(synthetic_data)).sort_values(self.DATE_FIELD)
 
     def step_down(self, i, series, model_interval):
         # A function to calculate how much to step down the number of cases from the following day
@@ -175,11 +175,12 @@ class Dataset:
     def combine_state_county_data(self, country, state):
         # Create a single dataset from state and county data, using state data preferentially.
         # First, pull all available state data
-        state_data = self.get_all_timeseries()[
+        ts = self.get_all_timeseries()
+        state_data = ts[
             (self.get_all_timeseries()[self.STATE_FIELD] == state) &
             (self.get_all_timeseries()[self.COUNTRY_FIELD] == country) &
             (self.get_all_timeseries()["county"].isna())
-            ]
+            ].reset_index()
         # Second pull all county data for the state
         county_data = self.get_all_timeseries()[
             (self.get_all_timeseries()[self.STATE_FIELD] == state) &
@@ -239,18 +240,20 @@ class JHUDataset(Dataset):
     _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
 
     # JHU seems to change the names of their fields a lot, so this provides a simple way to wrangle them all
-    _fieldname_map = {
-        'Country/Region': 'country',
-        'Country_Region': 'country',
-        'Province/State': 'state',
-        'Province_State': 'state',
-        'Confirmed': 'cases',
-        'Deaths': 'deaths',
-        'Recovered': 'recovered'
-    }
+
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
+        self._fieldname_map = {
+            'Country/Region': 'country',
+            'Country_Region': 'country',
+            'Province/State': 'state',
+            'Province_State': 'state',
+            'Admin2': self.COUNTY_FIELD,
+            'Confirmed': 'cases',
+            'Deaths': 'deaths',
+            'Recovered': 'recovered'
+        }
 
     def transform_jhu_timeseries(self):
         """"Takes a list of JHU daily reports, mashes them into a single report, then restructures and renames the data
@@ -273,19 +276,22 @@ class JHUDataset(Dataset):
                 return 'USA'
             return country
 
-
         day_reports = []
         for f in os.listdir(daily_reports_dir):
             if os.path.splitext(f)[1] == '.csv':
                 # For each data file in the directory
                 df = pd.read_csv(os.path.join(daily_reports_dir, f))
                 df = df.rename(columns=self._fieldname_map)
-                df = df.assign(**{'date': datetime.datetime.strptime(f.split('.')[0], '%m-%d-%Y')})
+                df = df.assign(**{self.DATE_FIELD: datetime.datetime.strptime(f.split('.')[0], '%m-%d-%Y')})
                 # Select out the subset of fields we care about
-                df = df[['date', 'country', 'state', 'cases', 'deaths', 'recovered']]
-                df['county'] = df['state'].dropna().apply(parse_county)
-                df['state'] = df['state'].dropna().apply(parse_state)
-                df['country'] = df['country'].apply(parse_country)
+                if self.COUNTY_FIELD not in df.columns:
+                    df[self.COUNTY_FIELD] = df[self.STATE_FIELD].dropna().apply(parse_county)
+                df = df[[self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD, self.COUNTY_FIELD, self.CASE_FIELD,
+                         self.DEATH_FIELD, self.RECOVERED_FIELD]]
+                # Parse the states from their longhand into their abbreviations
+                df[self.STATE_FIELD] = df[self.STATE_FIELD].dropna().apply(parse_state)
+                # Parse the 'US' entries into 'USA'
+                df[self.COUNTRY_FIELD] = df[self.COUNTRY_FIELD].apply(parse_country)
                 # Append the record dates by converting the file name into a datetime object
                 # Only process the csv files
                 day_reports.append(df)
