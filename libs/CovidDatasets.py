@@ -179,18 +179,18 @@ class Dataset:
         state_data = ts[
             (self.get_all_timeseries()[self.STATE_FIELD] == state) &
             (self.get_all_timeseries()[self.COUNTRY_FIELD] == country) &
-            (self.get_all_timeseries()["county"].isna())
+            (self.get_all_timeseries()[self.COUNTY_FIELD].isna())
             ].reset_index()
         # Second pull all county data for the state
         county_data = self.get_all_timeseries()[
             (self.get_all_timeseries()[self.STATE_FIELD] == state) &
             (self.get_all_timeseries()[self.COUNTRY_FIELD] == country) &
-            (self.get_all_timeseries()["county"].notna())
+            (self.get_all_timeseries()[self.COUNTY_FIELD].notna())
             ][[self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD, self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].groupby(
             [self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD], as_index=False
         )[[self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].sum()
         # Now we fill in whatever gaps we can in the state data using the county data
-        curr_date = state_data[self.DATE_FIELD].min()  # Start on the first date of state data we have
+        curr_date = state_data[self.DATE_FIELD].max()  # Start on the last date of state data we have
         county_data_to_insert = []
         while curr_date > self._START_DATE:
             curr_date -= datetime.timedelta(days=1)
@@ -245,14 +245,14 @@ class JHUDataset(Dataset):
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
         self._fieldname_map = {
-            'Country/Region': 'country',
-            'Country_Region': 'country',
-            'Province/State': 'state',
-            'Province_State': 'state',
+            'Country/Region': self.COUNTRY_FIELD,
+            'Country_Region': self.COUNTRY_FIELD,
+            'Province/State': self.STATE_FIELD,
+            'Province_State': self.STATE_FIELD,
             'Admin2': self.COUNTY_FIELD,
-            'Confirmed': 'cases',
-            'Deaths': 'deaths',
-            'Recovered': 'recovered'
+            'Confirmed': self.CASE_FIELD,
+            'Deaths': self.DEATH_FIELD,
+            'Recovered': self.RECOVERED_FIELD
         }
 
     def transform_jhu_timeseries(self):
