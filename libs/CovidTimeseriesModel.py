@@ -65,7 +65,7 @@ class CovidTimeseriesModel:
                 current_cycle['newly_infected'] * (case_fatality_rate + case_fatality_rate_hospitals_overwhelmed)
             )
 
-    def calcluate_recovered_or_died(self, current_cycle, previous_cycle, cycle_series,
+    def calculuate_recovered_or_died(self, current_cycle, previous_cycle, cycle_series,
                                     rolling_intervals_for_current_infected):
         # Recovered or died (RoD) is a cumulative number. We take the number of RoD from last current_cycle, and add to it
         #  the number of individuals who were newly infected a set number of current_cycles ago (rolling_intervals_for_current_infected)
@@ -201,7 +201,7 @@ class CovidTimeseriesModel:
                         )
             current_cycle['currently_infected'] = curr_i
             # Calculate the number of people who have recovered or died
-            rod = self.calcluate_recovered_or_died(
+            rod = self.calculuate_recovered_or_died(
                 current_cycle,
                 previous_cycle,
                 cycle_series,
