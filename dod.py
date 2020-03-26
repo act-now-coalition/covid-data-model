@@ -83,7 +83,9 @@ states_agg = states_group.aggregate({
     'Recovered': 'sum',
     'Deaths': 'sum',
     'Active': 'sum',
-    'Country/Region': 'first'
+    'Country/Region': 'first',
+    'Latitude': 'first',
+    'Longitude': 'first'
     # People tested is currently null
     #'People Tested': 'sum'
 }).drop(
