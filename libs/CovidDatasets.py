@@ -236,6 +236,17 @@ class JHUDataset(Dataset):
     _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
     _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
 
+    # JHU seems to change the names of their fields a lot, so this provides a simple way to wrangle them all
+    _fieldname_map = {
+        'Country/Region': 'country',
+        'Country_Region': 'country',
+        'Province/State': 'state',
+        'Province_State': 'state',
+        'Confirmed': 'cases',
+        'Deaths': 'deaths',
+        'Recovered': 'recovered'
+    }
+
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
 
@@ -244,15 +255,6 @@ class JHUDataset(Dataset):
         to fit the model's expectations"""
         daily_reports_dir = os.path.join('data', 'jhu', 'csse_covid_19_daily_reports')
         # Compile a list of all of the day reports available
-        day_reports = [
-            # For each data file in the directory
-            pd.read_csv(os.path.join(daily_reports_dir, f))  # Read the csv file
-                .assign(**{'date': datetime.datetime.strptime(f.split('.')[0], '%m-%d-%Y')})
-            # Append the record dates by converting the file name into a datetime object
-            for f in os.listdir(daily_reports_dir) if os.path.splitext(f)[1] == '.csv'  # Only process the csv files
-        ]
-        full_report = pd.concat(day_reports).reset_index()  # Concat said reports into a single DataFrame
-
         def parse_county(state):
             if ',' in state:
                 return state.split(',')[0]
@@ -269,21 +271,24 @@ class JHUDataset(Dataset):
                 return 'USA'
             return country
 
-        full_report['County'] = full_report['Province/State'].dropna().apply(
-            parse_county)  # Separate the county name from the state name
-        full_report['Province/State'] = full_report['Province/State'].dropna().apply(
-            parse_state)  # Map the state names to their abbreviations
-        full_report['Country/Region'] = full_report['Country/Region'].apply(parse_country)
-        full_report = full_report.rename(
-            columns={
-                'Country/Region': 'country',
-                'Province/State': 'state',
-                'County': 'county',
-                'Confirmed': 'cases',
-                'Deaths': 'deaths',
-                'Recovered': 'recovered'
-            }
-        )
+
+        day_reports = []
+        for f in os.listdir(daily_reports_dir):
+            if os.path.splitext(f)[1] == '.csv':
+                # For each data file in the directory
+                df = pd.read_csv(os.path.join(daily_reports_dir, f))
+                df = df.rename(columns=self._fieldname_map)
+                df = df.assign(**{'date': datetime.datetime.strptime(f.split('.')[0], '%m-%d-%Y')})
+                # Select out the subset of fields we care about
+                df = df[['date', 'country', 'state', 'cases', 'deaths', 'recovered']]
+                df['county'] = df['state'].dropna().apply(parse_county)
+                df['state'] = df['state'].dropna().apply(parse_state)
+                df['country'] = df['country'].apply(parse_country)
+                # Append the record dates by converting the file name into a datetime object
+                # Only process the csv files
+                day_reports.append(df)
+        full_report = pd.concat(day_reports)  # Concat said reports into a single DataFrame
+        full_report = full_report.reset_index()
         return full_report.drop('index', axis=1)
 
     def get_raw_timeseries(self):
