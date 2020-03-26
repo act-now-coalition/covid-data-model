@@ -18,28 +18,5 @@ Check It Out in Jupyter
 * [Epidemic Calculator built by Open AI member](https://gabgoh.github.io/COVID/index.html)
 * [Hopkins IDD Model](https://github.com/HopkinsIDD/COVIDScenarioPipeline)
 
-### SIR Data Sources
-
-* Johns Hopkins Data
-  * [Mapping](https://systems.jhu.edu/research/public-health/ncov/)
-  * [Data](https://github.com/CSSEGISandData/COVID-19)
-* [Scraped Data](https://github.com/lazd/coronadatascraper)
-  * [Historical Snapshots](https://github.com/lazd/coronadatascraper-cache)
-  * [Splunk aggregation & dashboard (JHU data)](https://github.com/splunk/corona_virus)
-
-### Containment Data Sources
-
-* [US State-Level Containment Policies](https://www.multistate.us/pages/covid-19-policy-tracker)
-* [AEI Action Tracker](https://www.aei.org/covid-2019-action-tracker/)
-  * Their source: [National Governors Association](https://www.nga.org/coronavirus/#actions)
-* [NYTimes Stay-At-Home Orders](https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html)
-* [LA Times Tracker](https://www.latimes.com/projects/california-coronavirus-cases-tracking-outbreak/) (California only)
-* [Local Action Tracker](https://www.nlc.org/program-initiative/covid-19-local-action-tracker)
-* [National Association of Counties Tracker](https://ce.naco.org/?dset=COVID-19&ind=Emergency%20Declaration%20Types) -- looks promising
-
-### Hospital Capacity Data
-
-* [American Hospital Directory](https://www.ahd.com/states/hospital_CA.html) (Link is to CA data, but seems to support any state)
-* [Medicare Claims for Inpatients](https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Hospital-Service-Area-File)
-* [CA Healthcare Facilities](https://data.chhs.ca.gov/dataset/licensed-healthcare-facility-listing/resource/641c5557-7d65-4379-8fea-6b7dedbda40b?inner_span=True)
-* [American Hosptial Association](https://www.ahadata.com/aha-hospital-statistics/) (paywalled)
+### Data Sources
+See [covid-data-public](https://github.com/covid-projections/covid-data-public) for data sources being used or considered.
