@@ -153,13 +153,15 @@ class Dataset:
 
     def prep_data(self, series, model_interval):
         # We have some requirements of the data's window, and that is enforced here.
-        return self.cutoff(self.backfill(series, model_interval))
+        return self.backfill(self.cutoff(series), model_interval)
 
     def get_all_timeseries(self):
-        timeseries = self.get_raw_timeseries()
-        if self.filter_past_date is not None:
-            timeseries = timeseries[timeseries[self.DATE_FIELD] <= self.filter_past_date]
-        return timeseries
+        if self._TIME_SERIES_DATA is None:
+            self._TIME_SERIES_DATA = self.get_raw_timeseries()
+            if self.filter_past_date is not None:
+                self._TIME_SERIES_DATA \
+                    = self._TIME_SERIES_DATA[self._TIME_SERIES_DATA[self.DATE_FIELD] <= self.filter_past_date]
+        return self._TIME_SERIES_DATA
 
     def get_raw_timeseries(self):
         raise NotImplementedError('The \'get_raw_timeseries\' method must be overriden by the child class')
