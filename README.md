@@ -35,6 +35,7 @@ Check It Out in Jupyter
 * [NYTimes Stay-At-Home Orders](https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html)
 * [LA Times Tracker](https://www.latimes.com/projects/california-coronavirus-cases-tracking-outbreak/) (California only)
 * [Local Action Tracker](https://www.nlc.org/program-initiative/covid-19-local-action-tracker)
+* [National Association of Counties Tracker](https://ce.naco.org/?dset=COVID-19&ind=Emergency%20Declaration%20Types) -- looks promising
 
 ### Hospital Capacity Data
 
