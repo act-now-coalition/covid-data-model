@@ -15,4 +15,4 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-1
           function_name: model-staging
-          source: libs/DeployDataset.py
+          source: deploy_dod_dataset.py

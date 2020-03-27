@@ -1,24 +1,11 @@
 import boto3
 import os
 
+from libs.build_dod_dataset import get_usa_by_county_df, get_usa_by_states_df
 s3 = boto3.client('s3')  # Create an S3 client
 # Supplied by ENV on AWS
 # BUCKET_NAME format is s3://{BUCKET_NAME}
 bucket_name = os.environ.get('BUCKET_NAME')
-
-
-def make_dataset():
-    """Used to create the target dataset.
-
-    Returns:
-        dict -- With a key {str} and body {str}
-    """
-    ########### FILL IN BELOW ###########
-
-    result = {'key': 'my-key', 'body': 'my-data'}
-
-    ########### FILL IN ABOVE ###########
-    return result
 
 
 def persist_to_s3(key='my_public_identifier', body='empty'):
@@ -47,13 +34,26 @@ def handler(event, context):
         context {} -- Used by AWs uses this parameter to provide runtime information
 
     Returns:
-        [ResponseMetadata] -- the AWS SDK response object
     """
-    data = make_dataset()
+    print('creating states.csv')
+    states_csv_buffer = get_usa_by_states_df().to_csv()
+    states_blob = {'key': 'states.csv', 'body': states_csv_buffer}
+    print('persisting states.csv')
+    persist_to_s3(**states_blob)
 
-    return persist_to_s3(**data)
+    print('creating counties.csv')
+    counties_csv_buffer = get_usa_by_county_df().to_csv()
+    counties_blob = {'key': 'counties.csv', 'body': counties_csv_buffer}
+    print('persisting counties.csv')
+    persist_to_s3(**counties_blob)
+
+    print('finished job')
 
 
 if __name__ == "__main__":
-    # used for locally testing
+    """
+    Used for local testing i.e.
+
+    AWS_PROFILE=covidactnow BUCKET_NAME=covidactnow-models-staging python deploy_dod_dataset.py
+    """
     handler({}, {})

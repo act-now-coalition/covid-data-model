@@ -3,7 +3,7 @@ import numpy as np
 import requests
 import datetime
 import pprint
-from us_state_abbrev import us_state_abbrev, us_fips
+from .us_state_abbrev import us_state_abbrev, us_fips
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
 latest = datetime.date.today() - datetime.timedelta(days=1)
@@ -136,7 +136,6 @@ def get_usa_by_states_df():
     assert states_final['Combined Key'].value_counts().max() == 1
 
     return states_final
-
 
 # us_only = get_usa_by_county_df()
 # us_only.to_csv("results/counties.csv")
