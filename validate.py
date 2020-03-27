@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-from libs.build_params import INTERVENTIONS, OUTPUT_DIR, US_STATE_ABBREV
+import libs.build_params as build_params
 
 def run_run_py(datasource: str) -> None:
   '''
@@ -37,9 +37,9 @@ def validate_results(result_dir: str) -> None:
   For each state, check that we have a file for each intervention,
   and that the file is non-empty
   '''
-  per_state_expected = len(INTERVENTIONS)
+  per_state_expected = len(build_params.INTERVENTIONS)
   missing_or_empty = []
-  for state in US_STATE_ABBREV.values():
+  for state in build_params.US_STATE_ABBREV.values():
     if state in UNSUPPORTED_REGIONS:
       continue
     for i in range(per_state_expected):
@@ -61,11 +61,11 @@ if __name__ == '__main__':
   parser.add_argument('-d', '--data-source', required=True, help='Path or URL to an instance of the covid-data-public repo')
 
   args = parser.parse_args()
-  clear_result_dir(OUTPUT_DIR)
+  clear_result_dir(build_params.OUTPUT_DIR)
   try:
     run_run_py(args.data_source)
   except subprocess.CalledProcessError as e:
     print(f'run.py failed with code {e.returncode}')
     print(e.stderr.decode('utf-8'))
     sys.exit(e.returncode)
-  validate_results(OUTPUT_DIR)
+  validate_results(build_params.OUTPUT_DIR)
