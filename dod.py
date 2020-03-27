@@ -58,16 +58,20 @@ def get_usa_by_county_df():
                     }
     remapped_df = raw_df.rename(columns=column_mapping)
 
-    final_df = pd.DataFrame(remapped_df, columns=output_cols)
+    # USA only
+    us_df = remapped_df[(remapped_df["Country/Region"] == "US")]
+
+    final_df = pd.DataFrame(us_df, columns=output_cols)
     final_df["Shape"] = "Point"
     final_df['Last Update'] = pd.to_datetime(final_df['Last Update'])
     final_df['Last Update'] = final_df['Last Update'].dt.strftime(
         '%-m/%-d/%Y %H:%M')
 
     final_df = final_df.fillna("<Null>")
+    # handle serializing FIPS without trailing 0
+    final_df['State/County FIPS Code'] = final_df['State/County FIPS Code'].astype(str).str.replace('\.0','')
 
-    us_df = final_df[(final_df["Country/Region"] == "US")]
-    return us_df
+    return final_df
 
 
 def get_usa_by_states_df():
@@ -114,6 +118,7 @@ def get_usa_by_states_df():
     states_final = pd.DataFrame(states_remapped, columns=state_cols)
     states_final['Shape'] = 'Point'
     states_final = states_final.fillna("<Null>")
+    states_final['Combined Key'] = states_final['Province/State']
 
     return states_final
 
