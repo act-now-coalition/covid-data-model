@@ -72,8 +72,8 @@ us_state_abbrev = {
 }
 
 
-local_public_data = tempfile.mkdtemp()
-
+local_public_data_dir = tempfile.TemporaryDirectory()
+local_public_data = local_public_data_dir.name
 
 def get_public_data_base_url():
     # COVID_DATA_PUBLIC could be set, to for instance 
@@ -90,7 +90,6 @@ def create_local_copy_public_data():
     Creates a local copy of the public data repository. This is done to avoid
     downloading the file again for each intervention type.
     """
-    # TODO: This doesn't clean up right now and will leave copies in temp.
     github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
     public_data_local_url = f'file://localhost{local_public_data}/covid-data-public-master'
     logging.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
