@@ -196,7 +196,7 @@ class Dataset:
             [self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD], as_index=False
         )[[self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].sum()
         # Now we fill in whatever gaps we can in the state data using the county data
-        curr_date = state_data[self.DATE_FIELD].max()  # Start on the last date of state data we have
+        curr_date = max(state_data[self.DATE_FIELD].max(), county_data[self.DATE_FIELD].max()) # Start on the last date of state data we have
         county_data_to_insert = []
         while curr_date > self._START_DATE:
             curr_date -= datetime.timedelta(days=1)
