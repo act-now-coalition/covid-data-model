@@ -5,7 +5,7 @@ import datetime
 import time
 import simplejson
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CDSDataset as _Dataset
+from libs.CovidDatasets import CDSDataset as Dataset
 
 
 def record_results(res, directory, name, num, pop):
@@ -48,8 +48,8 @@ def model_state(country, state, interventions=None):
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
     r0 = 2.4
-    Dataset = _Dataset(filter_past_date=datetime.date(2020, 3, 19))
-    POP = Dataset.get_population_by_country_state(country, state)
+    dataset = Dataset(filter_past_date=datetime.date(2020, 3, 19))
+    POP = dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
         # Pack the changeable model parameters
@@ -127,8 +127,8 @@ INTERVENTIONS = [
     },
 ]
 
-Dataset = _Dataset()
-for state in Dataset.get_all_states_by_country('USA'):
+dataset = Dataset()
+for state in dataset.get_all_states_by_country('USA'):
     for i in range(0, len(INTERVENTIONS)):
         intervention = INTERVENTIONS[i]
         logging.info("Processing Intervention {} of {}, State: {}".format(i+1, len(INTERVENTIONS), state))
@@ -137,5 +137,5 @@ for state in Dataset.get_all_states_by_country('USA'):
             'results/test',
             state,
             i,
-            Dataset.get_population_by_country_state('USA', state)
+            dataset.get_population_by_country_state('USA', state)
         )
