@@ -8,6 +8,8 @@ from us_state_abbrev import us_state_abbrev, us_fips
 # @TODO: Attempt today. If that fails, attempt yesterday.
 latest = datetime.date.today() - datetime.timedelta(days=1)
 
+NULL_VALUE = "<Null>"
+
 def get_interventions_df():
     interventions_url = 'https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json'
     interventions = requests.get(interventions_url).json()
@@ -42,6 +44,10 @@ output_cols = ["Province/State",
     "Shape"
 ]
 
+county_replace_with_null = {
+    "Unassigned": NULL_VALUE
+}
+
 def get_usa_by_county_df():
     url = 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_daily_reports/{}.csv'.format(
         latest.strftime("%m-%d-%Y"))
@@ -67,9 +73,14 @@ def get_usa_by_county_df():
     final_df['Last Update'] = final_df['Last Update'].dt.strftime(
         '%-m/%-d/%Y %H:%M')
 
-    final_df = final_df.fillna("<Null>")
+    final_df['County'] = final_df['County'].replace(county_replace_with_null)
+    final_df['Combined Key'] = final_df['Combined Key'].str.replace('Unassigned, ','')
+    final_df = final_df.fillna(NULL_VALUE)
     # handle serializing FIPS without trailing 0
     final_df['State/County FIPS Code'] = final_df['State/County FIPS Code'].astype(str).str.replace('\.0','')
+
+    # assert unique key test
+    assert final_df['Combined Key'].value_counts().max() == 1
 
     return final_df
 
@@ -117,9 +128,12 @@ def get_usa_by_states_df():
     state_cols = output_cols + ['Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction']
     states_final = pd.DataFrame(states_remapped, columns=state_cols)
     states_final['Shape'] = 'Point'
-    states_final = states_final.fillna("<Null>")
+    states_final = states_final.fillna(NULL_VALUE)
     states_final['Combined Key'] = states_final['Province/State']
     states_final['State/County FIPS Code'] = states_final['Province/State'].map(us_fips)
+
+    # assert unique key test
+    assert states_final['Combined Key'].value_counts().max() == 1
 
     return states_final
 
