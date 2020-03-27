@@ -235,6 +235,10 @@ class Dataset:
         return int(round(float(matching_beds.iloc[0].at["bedspermille"]) * self.get_population_by_country_state(country, state) / 1000))
 
 
+    def get_all_states_by_country(self, country):
+        return self.get_all_population()[self.get_all_population()[self.COUNTRY_FIELD] == country][self.STATE_FIELD].dropna().unique()
+
+
 class JHUDataset(Dataset):
     # The date of the first JHU data snapshot.
     _FIRST_JHU_DATE = datetime.date(2020, 1, 22)
@@ -350,5 +354,3 @@ class CDSDataset(Dataset):
             self._BED_DATA = pd.read_csv(self._BEDS_URL)
         return self._BED_DATA
 
-    def get_all_states_by_country(self, country):
-        return self.get_all_population()[self.get_all_population()[self.COUNTRY_FIELD] == country][self.STATE_FIELD].dropna().unique()

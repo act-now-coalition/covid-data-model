@@ -4,11 +4,12 @@ import datetime
 import time
 import os.path
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CDSDataset
+from libs.CovidDatasets import CDSDataset, Dataset, JHUDataset
 from libs.CovidUtil import CovidUtil
 
 class CovidTimeseriesModelTest(unittest.TestCase):
     r0 = 2.4
+    num_snapshot_tests = 50
     interventions = [
         None,
         {
@@ -47,21 +48,64 @@ class CovidTimeseriesModelTest(unittest.TestCase):
             15/10
         )
 
-    def test_cds_dataset(self):
-        self._test_model(CDSDataset(), self.interventions, 4, 'cds_data')
+    def _build_test_parameter_sets(self):
+        dataset = CDSDataset()
+        states = dataset.get_all_states_by_country('USA')
+        MODEL_INTERVAL = 4
+        sets = []
+        for state in states[:2]:
+            for intervention in self.interventions:
+                sets.append(
+                    CovidUtil().initialize_model_parameters({
+                        # Pack the changeable model parameters
+                        'timeseries': dataset.get_timeseries_by_country_state('USA', state, MODEL_INTERVAL),
+                        'beds': dataset.get_beds_by_country_state('USA', state),
+                        'population': dataset.get_population_by_country_state('USA', state),
+                        'projection_iterations': 25,  # Number of iterations into the future to project
+                        'r0': 2.4,
+                        'interventions': intervention,
+                        'hospitalization_rate': .0727,
+                        'initial_hospitalization_rate': .05,
+                        'case_fatality_rate': .0109341104294479,
+                        'hospitalized_cases_requiring_icu_care': .1397,
+                        # Assumes that anyone who needs ICU care and doesn't get it dies
+                        'hospital_capacity_change_daily_rate': 1.05,
+                        'max_hospital_capacity_factor': 2.07,
+                        'initial_hospital_bed_utilization': .6,
+                        'model_interval': MODEL_INTERVAL,  # In days
+                        'total_infected_period': 12,  # In days
+                    })
+                )
+        return sets
 
-    def _test_model(self, dataset, interventions, model_interval, sub_dir):
-        for state in dataset.get_all_states_by_country('USA'):
-            print('Testing {}'.format(state))
-            for i in range(0, len(interventions)):
-                print(i)
-                intervention = interventions[i]
-                res = CovidUtil().model_us_state(state, dataset, model_interval, intervention).fillna('')
-                o_fp = os.path.join('results', sub_dir, state + '.' + str(i) + '.csv')
-                snapshot = pd.read_csv(o_fp, parse_dates=['Date']).fillna('')
-                pd.testing.assert_frame_equal(res, snapshot, check_dtype=False)
+    def _compare_snapshot_tests(self, model_params, snapshots):
+        """Compare the output of the model in its current state to the outputs it had at a previous vetted state"""
+        for i in range(0, len(model_params)):
+            with self.subTest(state=model_params[i]['state'], i=i):
+                # SubTest will make it easier to tell which snapshot failed, if any
+                pd.testing.assert_frame_equal(
+                    CovidTimeseriesModel().forecast(model_params[i]),
+                    snapshots[i]
+                )
 
-    # TODO: Make it so that each state is a separate test, so if one fails we know which one.
+    def _update_snapshots(self):
+        """Update the snapshots"""
+        with open(r'test/snapshots/snapshots.json', 'w') as out:
+            for snap in [
+                df.to_json() for df in [
+                    CovidTimeseriesModel().forecast(p)
+                    for p in self._build_test_parameter_sets()
+                ]
+            ]:
+                out.write(snap)
+                out.write('\n')
+
+    def _read_snapshot_file(self):
+        """Read the snapsnot file into memory and construct the DataFrames"""
+        with open(r'test/snapshots/snapshots.json') as snaps_file:
+            return [pd.read_json(j) for j in snaps_file]
+
+
 
 if __name__ == '__main__':
     unittest.main()
