@@ -4,7 +4,6 @@ import math
 from copy import copy
 import pandas as pd
 import os.path
-import datetime
 import urllib
 from urllib.request import urlopen
 
@@ -50,7 +49,7 @@ us_state_abbrev = {
     'New York': 'NY',
     'North Carolina': 'NC',
     'North Dakota': 'ND',
-    'Northern Mariana Islands':'MP',
+    'Northern Mariana Islands': 'MP',
     'Ohio': 'OH',
     'Oklahoma': 'OK',
     'Oregon': 'OR',
@@ -74,7 +73,7 @@ us_state_abbrev = {
 
 local_public_data = tempfile.TemporaryDirectory()
 local_public_data_populated = False
-#public_data_base_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
+# public_data_base_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
 public_data_base_url = 'file://localhost' + local_public_data.name + '/covid-data-public-master'
 
 
@@ -91,13 +90,15 @@ def create_local_copy_public_data():
         tempzip.write(zipresp.read())
 
     with ZipFile(local_public_data.name + "/master.zip") as zf:
-        zf.extractall(path = local_public_data.name)
+        zf.extractall(path=local_public_data.name)
 
     local_public_data_populated = True
 
+
 class Dataset:
-    """Base class of the Dataset objects. Standardizes the output so that data from multiple differet sources can 
-    be fed into the model with as little hassle as possible."""
+    """Base class of the Dataset objects. Standardizes the output so that data
+    from multiple differenmt sources can be fed into the model with as little
+    hassle as possible."""
 
     _POPULATION_URL = public_data_base_url + '/data/misc/populations.csv'
     _BEDS_URL = public_data_base_url + '/data/beds-kff/beds.csv'
@@ -147,7 +148,7 @@ class Dataset:
             synthetic_row[self.DEATH_FIELD] = 0
             synthetic_row[self.RECOVERED_FIELD] = 0
             synthetic_row[self.SYNTHETIC_FIELD] = 1
-            synthetic_data.append(copy(synthetic_row)) # We need to copy it to prevent alteration by reference
+            synthetic_data.append(copy(synthetic_row))  # We need to copy it to prevent alteration by reference
         pd.set_option('mode.chained_assignment', 'warn')  # Turn the anxiety back on
         # Take the synthetic data, and glue it to the bottom of the real records
         return series.append(pd.DataFrame(synthetic_data)).sort_values(self.DATE_FIELD)
@@ -251,7 +252,7 @@ class Dataset:
 
     def get_population_by_country_state(self, country, state):
         matching_pops = self.get_all_population()[(self.get_all_population()[self.STATE_FIELD] == state) & (
-        self.get_all_population()[self.COUNTRY_FIELD] == country)]
+            self.get_all_population()[self.COUNTRY_FIELD] == country)]
         try:
             return int(matching_pops.iloc[0].at["population"])
         except IndexError as e:
@@ -259,8 +260,10 @@ class Dataset:
             raise e
 
     def get_beds_by_country_state(self, country, state):
-        matching_beds = self.get_all_beds()[(self.get_all_beds()[self.STATE_FIELD] == state) &
-                                  (self.get_all_beds()[self.COUNTRY_FIELD] == country)]
+        matching_beds = self.get_all_beds()[
+            (self.get_all_beds()[self.STATE_FIELD] == state) &
+            (self.get_all_beds()[self.COUNTRY_FIELD] == country)
+        ]
         beds_per_mille = float(matching_beds.iloc[0].at["bedspermille"])
         return int(round(beds_per_mille * self.get_population_by_country_state(country, state) / 1000))
 
@@ -289,6 +292,7 @@ class JHUDataset(Dataset):
         """"Takes a list of JHU daily reports, mashes them into a single report, then restructures and renames the data
         to fit the model's expectations"""
         daily_reports_dir = os.path.join('data', 'jhu', 'csse_covid_19_daily_reports')
+
         # Compile a list of all of the day reports available
         def parse_county(state):
             if ',' in state:
