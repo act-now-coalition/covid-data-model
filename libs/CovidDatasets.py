@@ -232,7 +232,7 @@ class Dataset:
             [self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD], as_index=False
         )[[self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].sum()
         # Now we fill in whatever gaps we can in the state data using the county data
-        curr_date = state_data[self.DATE_FIELD].max()  # Start on the last date of state data we have
+        curr_date = max(state_data[self.DATE_FIELD].max(), county_data[self.DATE_FIELD].max()) # Start on the last date of state data we have
         county_data_to_insert = []
         while curr_date > self._START_DATE:
             curr_date -= datetime.timedelta(days=1)
@@ -240,6 +240,7 @@ class Dataset:
             if len(state_data[state_data[self.DATE_FIELD] == curr_date]) == 0:
                 county_data_for_date = copy(county_data[county_data[self.DATE_FIELD] == curr_date])
                 if len(county_data_for_date) == 0:  # If there's no county data, we're SOL.
+                    logging.info("NO COUNTY DATA: {}".format(curr_date))
                     continue  # TODO: Revisit. This should be more intelligent
                 county_data_for_date = county_data_for_date.iloc[0]
                 new_state_row = copy(state_data.iloc[0])  # Copy the first row of the state data to get the right format
@@ -300,11 +301,12 @@ class JHUDataset(Dataset):
         # Compile a list of all of the day reports available
         def parse_county(state):
             if ',' in state:
-                return state.split(',')[0]
+                return state.split(',')[0].strip()
 
         def parse_state(state):
+            state = state.strip()
             if ',' in state:
-                state = state.split(',')[1]
+                state = state.split(',')[1].strip()
             if state in us_state_abbrev:
                 return us_state_abbrev[state]
             return state
