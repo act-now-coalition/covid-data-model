@@ -77,6 +77,7 @@ local_public_data_populated = False
 def get_public_data_base_url():
     if not local_public_data_populated:
         create_local_copy_public_data()
+        local_public_data_populated = True
     return f'file://localhost{local_public_data.name}/covid-data-public-master'
 
 
