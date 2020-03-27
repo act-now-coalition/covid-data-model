@@ -1,9 +1,9 @@
-name: deploy to lambda
+name: deploy to SIR dataset lambda
 on: [push]
 jobs:
 
   deploy_source:
-    name: deploy dataset as a scheduled lambda func
+    name: deploy SIR state and county datasets as a scheduled lambda func
     runs-on: ubuntu-latest
     steps:
       - name: checkout source code
@@ -14,5 +14,5 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-1
-          function_name: model-staging
+          function_name: covidactnow-schedule-sir-dataset
           source: deploy_dod_dataset.py
