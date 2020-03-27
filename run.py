@@ -1,18 +1,31 @@
+#!/usr/bin/env python
+"""
+Run Covid data model.
+
+Execution:
+    ./run.py run-model
+
+"""
 import logging
-logging.basicConfig(level=logging.INFO)
+
 
 import datetime
 import time
 import simplejson
+import click
+
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CDSDataset
 
-def record_results(res, directory, name, num, pop):
+_logger = logging.getLogger(__name__)
+
+
+def record_results(result, directory, name, num, pop):
     import copy
     import os.path
-    vals = copy.copy(res)
+    vals = copy.copy(result)
     # Format the date in the manner the front-end expects
-    vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year))
+    vals['Date'] = result['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year))
     # Set the population
     vals['Population'] = pop
     # Write the results to the specified directory
@@ -125,14 +138,33 @@ INTERVENTIONS = [
     },
 ]
 
-Dataset = CDSDataset()
-for state in Dataset.get_all_states_by_country('USA'):
-    for i in range(0, len(INTERVENTIONS)):
-        intervention = INTERVENTIONS[i]
-        record_results(
-            model_state('USA', state, intervention),
-            'results/test',
-            state,
-            i,
-            Dataset.get_population_by_country_state('USA', state)
-        )
+
+@click.group()
+def main():
+    pass
+
+
+@main.command()
+@click.option(
+    '--output-dir', default='results/test', help="Model results output directory"
+)
+def run_model(output_dir):
+
+    dataset = CDSDataset()
+    logging.info(f'Running model on {dataset.__class__.__name__}. Saving output to {output_dir}')
+    for state in dataset.get_all_states_by_country('USA'):
+        for i in range(0, len(INTERVENTIONS)):
+            _logger.info(f"Running intervention {i} for {state}")
+            intervention = INTERVENTIONS[i]
+            record_results(
+                model_state('USA', state, intervention),
+                output_dir,
+                state,
+                i,
+                dataset.get_population_by_country_state('USA', state)
+            )
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    main()
