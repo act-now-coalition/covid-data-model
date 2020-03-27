@@ -74,7 +74,10 @@ us_state_abbrev = {
 local_public_data = tempfile.TemporaryDirectory()
 local_public_data_populated = False
 # public_data_base_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
-public_data_base_url = 'file://localhost' + local_public_data.name + '/covid-data-public-master'
+def get_public_data_base_url():
+    if not local_public_data_populated:
+        create_local_copy_public_data()
+    return f'file://localhost{local_public_data.name}/covid-data-public-master'
 
 
 def create_local_copy_public_data():
@@ -100,8 +103,8 @@ class Dataset:
     from multiple differenmt sources can be fed into the model with as little
     hassle as possible."""
 
-    _POPULATION_URL = public_data_base_url + '/data/misc/populations.csv'
-    _BEDS_URL = public_data_base_url + '/data/beds-kff/beds.csv'
+    _POPULATION_URL = f"{get_public_data_base_url()}/data/misc/populations.csv"
+    _BEDS_URL = f"{get_public_data_base_url()}/data/beds-kff/beds.csv"
 
     # The output fields need to be standardized, regardless of the input fieldnames. It is the responsibility of the
     #  child class to conform the fieldnames of their data to these fieldnames
@@ -266,9 +269,7 @@ class Dataset:
 class JHUDataset(Dataset):
     # The date of the first JHU data snapshot.
     _FIRST_JHU_DATE = datetime.date(2020, 1, 22)
-    if not local_public_data_populated:
-        create_local_copy_public_data()
-    _JHU_URL_TEMPLATE = f'{public_data_base_url}data/cases-jhu/csse_covid_19_daily_reports/{{}}.csv'
+    _JHU_URL_TEMPLATE = f'{get_public_data_base_url()}/data/cases-jhu/csse_covid_19_daily_reports/{{}}.csv'
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
@@ -366,7 +367,7 @@ class JHUDataset(Dataset):
 
 class CDSDataset(Dataset):
     """CoronaDataScraper Dataset"""
-    _TIME_SERIES_URL = public_data_base_url + '/data/cases-cds/timeseries.csv'
+    _TIME_SERIES_URL = f"{get_public_data_base_url()}/data/cases-cds/timeseries.csv"
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
