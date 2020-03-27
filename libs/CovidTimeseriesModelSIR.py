@@ -352,13 +352,35 @@ class CovidTimeseriesModelSIR:
 
         delta = (end_date - start_date).days
 
-        t = np.linspace(0, delta - 1, delta)
+        t = np.arange(0, delta, 0.1)
+
+        steps = len(t)
 
         ret = odeint(
             deriv, y0, t, args=(beta, alpha, gamma, rho, mu, pop_dict["total"])
         )
 
-        return ret.T
+        return ret.T, steps
+
+    def dataframe_ify(self, data, start, end, steps):
+        timesteps = pd.date_range(
+            start=start, end=end, periods=steps, freq=None,
+        ).to_list()
+
+        sir_df = pd.DataFrame(
+            zip(data[0], data[1], data[2], data[3], data[4], data[5]),
+            columns=[
+                "susceptible",  # "exposed",
+                "infected_a",
+                "infected_b",
+                "infected_c",
+                "recovered",
+                "dead",
+            ],
+            index=timesteps,
+        )
+
+        return sir_df.resample("1D").sum()
 
     def iterate_model(self, model_parameters):
         """The guts. Creates the initial conditions, and runs the SIR model for the
@@ -407,7 +429,7 @@ class CovidTimeseriesModelSIR:
         # init_params = self.generate_seird_params(model_parameters)
         init_params = self.harvard_model_params()
 
-        (S, Ia, Ib, Ic, R, D) = self.seird(
+        (data, steps) = self.seird(
             model_parameters["init_date"],
             model_parameters["last_date"],
             pop_dict,
@@ -418,33 +440,11 @@ class CovidTimeseriesModelSIR:
             init_params["mu"],
         )
 
-        # print(E)
-
-        if model_parameters["interventions"] is not None:
-            self.run_interventions(
-                S, Ia, Ib, Ic, R, D, model_parameters["interventions"],
-            )
-
-        dates = pd.date_range(
-            start=model_parameters["init_date"],
-            end=(model_parameters["last_date"] - datetime.timedelta(days=1)),
-            freq="D",
-        ).to_list()
-
         # this dataframe should start on the last day of the actual data
         # and have the same values for those initial days, so we combine it with
         # the slice of timeseries from the actual_init_date to actual_end_date - 1
-        sir_df = pd.DataFrame(
-            zip(S, Ia, Ib, Ic, R, D),
-            columns=[
-                "susceptible",  # "exposed",
-                "infected_a",
-                "infected_b",
-                "infected_c",
-                "recovered",
-                "dead",
-            ],
-            index=dates,
+        sir_df = self.dataframe_ify(
+            data, model_parameters["init_date"], model_parameters["last_date"], steps,
         )
 
         sir_df["infected"] = (
@@ -513,6 +513,11 @@ class CovidTimeseriesModelSIR:
         combined_df["infected_a"] = combined_df["infected_a"].fillna(
             combined_df["infected"]
         )
+
+        if model_parameters["interventions"] is not None:
+            combo_df, counterfactuals = self.run_interventions(
+                combined_df, model_parameters
+            )
 
         # set some of the paramters... I'm sure I'm misinterpreting some
         # and of course a lot of these don't move like they should for the model yet
