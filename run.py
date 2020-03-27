@@ -2,7 +2,7 @@ import datetime
 import time
 import simplejson
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CovidDatasets
+from libs.CovidDatasets import CDSDataset
 
 def record_results(res, directory, name, num, pop):
     import copy
@@ -44,7 +44,7 @@ def model_state(country, state, interventions=None):
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
     r0 = 2.4
-    Dataset = CovidDatasets(filter_past_date=datetime.date(2020, 3, 19))
+    Dataset = CDSDataset(filter_past_date=datetime.date(2020, 3, 19))
     POP = Dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
@@ -68,7 +68,7 @@ def model_state(country, state, interventions=None):
         'total_infected_period': 12, # In days
         'rolling_intervals_for_current_infected': int(round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)),
     }
-    return CovidTimeseriesModel().forecast_region(model_parameters=MODEL_PARAMETERS)
+    return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
 
 r0 = 2.4
 
@@ -122,7 +122,7 @@ INTERVENTIONS = [
     },
 ]
 
-Dataset = CovidDatasets()
+Dataset = CDSDataset()
 for state in Dataset.get_all_states_by_country('USA'):
     for i in range(0, len(INTERVENTIONS)):
         intervention = INTERVENTIONS[i]
