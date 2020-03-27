@@ -3,7 +3,7 @@ import numpy as np
 import requests
 import datetime
 import pprint
-from us_state_abbrev import us_state_abbrev
+from us_state_abbrev import us_state_abbrev, us_fips
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
 latest = datetime.date.today() - datetime.timedelta(days=1)
@@ -119,6 +119,7 @@ def get_usa_by_states_df():
     states_final['Shape'] = 'Point'
     states_final = states_final.fillna("<Null>")
     states_final['Combined Key'] = states_final['Province/State']
+    states_final['State/County FIPS Code'] = states_final['Province/State'].map(us_fips)
 
     return states_final
 

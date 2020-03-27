@@ -47,7 +47,7 @@ us_state_abbrev = {
     'New York': 'NY',
     'North Carolina': 'NC',
     'North Dakota': 'ND',
-    'Northern Mariana Islands':'MP',
+    'Northern Mariana Islands': 'MP',
     'Ohio': 'OH',
     'Oklahoma': 'OK',
     'Oregon': 'OR',
@@ -68,6 +68,65 @@ us_state_abbrev = {
     'Wyoming': 'WY'
 }
 
+us_fips = {
+    "Alabama":	"01",
+    "Alaska":	"02",
+    "Arizona":	"04",
+    "Arkansas":	"05",
+    "California":	"06",
+    "Colorado":	"08",
+    "Connecticut":	"09",
+    "Delaware":	"10",
+    "Florida":	"12",
+    "Georgia":	"13",
+    "Hawaii":	"15",
+    "Idaho":	"16",
+    "Illinois":	"17",
+    "Indiana":	"18",
+    "Iowa":	"19",
+    "Kansas":	"20",
+    "Kentucky":	"21",
+    "Louisiana":	"22",
+    "Maine":	"23",
+    "Maryland":	"24",
+    "Massachusetts":	"25",
+    "Michigan":	"26",
+    "Minnesota":	"27",
+    "Mississippi":	"28",
+    "Missouri":	"29",
+    "Montana":	"30",
+    "Nebraska":	"31",
+    "Nevada":	"32",
+    "New Hampshire":	"33",
+    "New Jersey":	"34",
+    "New Mexico":	"35",
+    "New York":	"36",
+    "North Carolina":	"37",
+    "North Dakota":	"38",
+    "Ohio":	"39",
+    "Oklahoma":	"40",
+    "Oregon":	"41",
+    "Pennsylvania":	"42",
+    "Rhode Island":	"44",
+    "South Carolina":	"45",
+    "South Dakota":	"46",
+    "Tennessee":	"47",
+    "Texas":	"48",
+    "Utah":	"49",
+    "Vermont":	"50",
+    "Virginia":	"51",
+    "Washington":	"53",
+    "West Virginia":	"54",
+    "Wisconsin":	"55",
+    "Wyoming":	"56",
+    "American Samoa":	"60",
+    "Guam":	"66",
+    "Northern Mariana Islands":	"69",
+    "Puerto Rico":	"72",
+    "Virgin Islands":	"78",
+}
+
+
 # thank you to @kinghelix and @trevormarburger for this idea
 abbrev_us_state = dict(map(reversed, us_state_abbrev.items()))
 
@@ -75,4 +134,5 @@ abbrev_us_state = dict(map(reversed, us_state_abbrev.items()))
 if __name__ == '__main__':
     print("Wisconin --> WI?", us_state_abbrev['Wisconsin'] == 'WI')
     print("WI --> Wisconin?", abbrev_us_state['WI'] == 'Wisconsin')
-    print("Number of entries (50 states, DC, 5 Territories) == 56? ", 56 == len(us_state_abbrev))
+    print("Number of entries (50 states, DC, 5 Territories) == 56? ",
+          56 == len(us_state_abbrev))
