@@ -4,6 +4,7 @@ import math
 from copy import copy
 import pandas as pd
 import os.path
+import os
 import urllib
 from urllib.request import urlopen
 
@@ -72,13 +73,11 @@ us_state_abbrev = {
 
 
 local_public_data = tempfile.TemporaryDirectory()
-local_public_data_populated = False
 # public_data_base_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
 def get_public_data_base_url():
-    if not local_public_data_populated:
+    if not os.getenv('COVID_DATA_PUBLIC', False):
         create_local_copy_public_data()
-        local_public_data_populated = True
-    return f'file://localhost{local_public_data.name}/covid-data-public-master'
+    return os.getenv('COVID_DATA_PUBLIC')
 
 
 def create_local_copy_public_data():
@@ -87,7 +86,8 @@ def create_local_copy_public_data():
     downloading the file again for each intervention type.
     """
     github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
-    logging.info(f"Creating a Local Copy of {github_zip_url}")
+    public_data_local_url = 'file://localhost{local_public_data.name}/covid-data-public-master'
+    logging.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
 
     zipresp = urlopen(github_zip_url)
     with open(local_public_data.name + "/master.zip", "wb") as tempzip:
@@ -96,7 +96,7 @@ def create_local_copy_public_data():
     with ZipFile(local_public_data.name + "/master.zip") as zf:
         zf.extractall(path=local_public_data.name)
 
-    local_public_data_populated = True
+    os.environ['COVID_DATA_PUBLIC'] = public_data_local_url
 
 
 class Dataset:
