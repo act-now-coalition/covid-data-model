@@ -5,6 +5,7 @@ from copy import copy
 import pandas as pd
 import os.path
 import datetime
+import urllib
 
 # Dict to transform longhand state names to abbreviations
 us_state_abbrev = {
@@ -69,7 +70,12 @@ us_state_abbrev = {
 class Dataset:
     """Base class of the Dataset objects. Standardizes the output so that data from multiple differet sources can 
     be fed into the model with as little hassle as possible."""
-    # The output fields need to be standardized, regardless of the input fieldnames. It is the responsibility of the 
+
+    _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/populations.csv'
+    _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/beds-kff/beds.csv'
+
+
+    # The output fields need to be standardized, regardless of the input fieldnames. It is the responsibility of the
     #  child class to conform the fieldnames of their data to these fieldnames
     DATE_FIELD = 'date'
     COUNTRY_FIELD = 'country'
@@ -230,13 +236,9 @@ class Dataset:
 
 
 class JHUDataset(Dataset):
-    _CONFIRMED_GLOBAL_URL = r'https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
-    _DEATHS_GLOBAL_URL = r'https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
-    _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
-    _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
-
-    # JHU seems to change the names of their fields a lot, so this provides a simple way to wrangle them all
-
+    # The date of the first JHU data snapshot.
+    _FIRST_JHU_DATE = datetime.date(2020, 1, 22)
+    _JHU_URL_TEMPLATE = 'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
@@ -273,25 +275,41 @@ class JHUDataset(Dataset):
             return country
 
         day_reports = []
-        for f in os.listdir(daily_reports_dir):
-            if os.path.splitext(f)[1] == '.csv':
-                # For each data file in the directory
-                df = pd.read_csv(os.path.join(daily_reports_dir, f))
-                df = df.rename(columns=self._fieldname_map)
-                df = df.assign(**{self.DATE_FIELD: datetime.datetime.strptime(f.split('.')[0], '%m-%d-%Y')})
-                # Select out the subset of fields we care about
-                if self.COUNTY_FIELD not in df.columns:
-                    df[self.COUNTY_FIELD] = df[self.STATE_FIELD].dropna().apply(parse_county)
-                df = df[[self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD, self.COUNTY_FIELD, self.CASE_FIELD,
-                         self.DEATH_FIELD, self.RECOVERED_FIELD]]
-                # Parse the states from their longhand into their abbreviations
-                df[self.STATE_FIELD] = df[self.STATE_FIELD].dropna().apply(parse_state)
-                # Parse the 'US' entries into 'USA'
-                df[self.COUNTRY_FIELD] = df[self.COUNTRY_FIELD].apply(parse_country)
-                # Append the record dates by converting the file name into a datetime object
-                # Only process the csv files
-                day_reports.append(df)
-        return pd.concat(day_reports).reset_index(drop=True)  # Concat said reports into a single DataFrame
+        snapshot_date = self._FIRST_JHU_DATE
+        while True:
+            csv_url = self._JHU_URL_TEMPLATE.format(snapshot_date.strftime('%m-%d-%Y'))
+            logging.info('Loading URL: {}'.format(csv_url))
+
+            # For each data file
+            try:
+                df = pd.read_csv(csv_url)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    logging.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
+                    break
+                raise
+
+            df = df.rename(columns=self._fieldname_map)
+            snapshot_date_as_datetime = datetime.datetime.combine(snapshot_date, datetime.datetime.min.time())
+            df = df.assign(**{self.DATE_FIELD: snapshot_date_as_datetime})
+            # Select out the subset of fields we care about
+            if self.COUNTY_FIELD not in df.columns:
+                df[self.COUNTY_FIELD] = df[self.STATE_FIELD].dropna().apply(parse_county)
+            df = df[[self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD, self.COUNTY_FIELD, self.CASE_FIELD,
+                     self.DEATH_FIELD, self.RECOVERED_FIELD]]
+            # Parse the states from their longhand into their abbreviations
+            df[self.STATE_FIELD] = df[self.STATE_FIELD].dropna().apply(parse_state)
+            # Parse the 'US' entries into 'USA'
+            df[self.COUNTRY_FIELD] = df[self.COUNTRY_FIELD].apply(parse_country)
+            # Append the record dates by converting the file name into a datetime object
+            # Only process the csv files
+            day_reports.append(df)
+            snapshot_date += datetime.timedelta(days=1)
+        full_report = pd.concat(day_reports)  # Concat said reports into a single DataFrame
+        full_report = full_report.reset_index()
+
+        full_report.info()
+        return full_report.drop('index', axis=1)
 
     def get_raw_timeseries(self):
         return self.transform_jhu_timeseries()
@@ -312,9 +330,7 @@ class JHUDataset(Dataset):
 
 class CDSDataset(Dataset):
     """CoronaDataScraper Dataset"""
-    _TIME_SERIES_URL = r'https://coronadatascraper.com/timeseries.csv'
-    _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/populations.csv'
-    _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-model/master/data/beds.csv'
+    _TIME_SERIES_URL = r'https://github.com/covid-projections/covid-data-public/raw/master/data/cases-cds/timeseries.csv'
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
