@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-import libs.build_params as build_params
+from libs import build_params
 
 def run_run_py(datasource: str) -> None:
   '''
