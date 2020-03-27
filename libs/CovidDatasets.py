@@ -290,7 +290,8 @@ class JHUDataset(Dataset):
         return f'{get_public_data_base_url()}/data/cases-jhu/csse_covid_19_daily_reports/{{}}.csv'
 
     def __init__(self, filter_past_date=None):
-        super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
+        start_date = datetime.datetime(year=2020, month=3, day=3)
+        super().__init__(start_date=start_date, filter_past_date=filter_past_date)
         self._fieldname_map = {
             'Country/Region': self.COUNTRY_FIELD,
             'Country_Region': self.COUNTRY_FIELD,
