@@ -125,14 +125,17 @@ INTERVENTIONS = [
     },
 ]
 
-Dataset = CDSDataset()
-for state in Dataset.get_all_states_by_country('USA'):
-    for i in range(0, len(INTERVENTIONS)):
-        intervention = INTERVENTIONS[i]
-        record_results(
-            model_state('USA', state, intervention),
-            'results/test',
-            state,
-            i,
-            Dataset.get_population_by_country_state('USA', state)
-        )
+OUTPUT_DIR = 'results/test'
+
+if __name__ == '__main__':
+    Dataset = CDSDataset()
+    for state in Dataset.get_all_states_by_country('USA'):
+        for i in range(0, len(INTERVENTIONS)):
+            intervention = INTERVENTIONS[i]
+            record_results(
+                model_state('USA', state, intervention),
+                OUTPUT_DIR,
+                state,
+                i,
+                Dataset.get_population_by_country_state('USA', state)
+            )
