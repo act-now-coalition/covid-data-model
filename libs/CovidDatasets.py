@@ -83,7 +83,7 @@ def create_local_copy_public_data():
     downloading the file again for each intervention type.
     """
     github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
-    logging.info("Creating a Local Copy of {}".format(github_zip_url))
+    logging.info(f"Creating a Local Copy of {github_zip_url}")
 
     zipresp = urlopen(github_zip_url)
     with open(local_public_data.name + "/master.zip", "wb") as tempzip:
@@ -268,7 +268,7 @@ class JHUDataset(Dataset):
     _FIRST_JHU_DATE = datetime.date(2020, 1, 22)
     if not local_public_data_populated:
         create_local_copy_public_data()
-    _JHU_URL_TEMPLATE = public_data_base_url + 'data/cases-jhu/csse_covid_19_daily_reports/{}.csv'
+    _JHU_URL_TEMPLATE = f'{public_data_base_url}data/cases-jhu/csse_covid_19_daily_reports/{{}}.csv'
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
