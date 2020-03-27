@@ -103,7 +103,9 @@ def main():
 @click.option(
     '--output-dir', default='results/test', help="Model results output directory"
 )
-def run_model(dataset_name, output_dir):
+@click.option('--country', default='USA')
+@click.option('--state', '-s', multiple=True)
+def run_model(dataset_name, output_dir, country, state):
     # filter_past_date = datetime.date(2020, 3, 19)
     filter_past_date = None
     if dataset_name == 'JHU':
@@ -111,10 +113,14 @@ def run_model(dataset_name, output_dir):
     elif dataset_name == 'CDS':
         dataset = CDSDataset(filter_past_date=filter_past_date)
 
+    # `state` is always a list (but the naming doesn't make it plural)
+    # If no states are provided, get all states for a given country.
+    states = state or dataset.get_all_states_by_country(country)
     _logger.info(
         f'Running model on {dataset.__class__.__name__}. Saving output to {output_dir}'
     )
-    for state in dataset.get_all_states_by_country('USA'):
+
+    for state in states:
         for i, intervention in enumerate(build_params.INTERVENTIONS):
             _logger.info(f"Running intervention {i} for {state}")
             model_output = model_state(dataset, 'USA', state, intervention)
