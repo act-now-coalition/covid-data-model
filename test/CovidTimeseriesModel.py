@@ -48,6 +48,14 @@ class CovidTimeseriesModelTest(unittest.TestCase):
             15/10
         )
 
+    def test_model(self):
+        """Compare the output of the model in it's current state to the outputs it's had in the past"""
+        self._compare_snapshot_tests(
+            self._build_test_parameter_sets(),
+            self._get_snapshots()
+        )
+
+
     def _build_test_parameter_sets(self):
         dataset = CDSDataset()
         states = dataset.get_all_states_by_country('USA')
@@ -85,7 +93,8 @@ class CovidTimeseriesModelTest(unittest.TestCase):
                 # SubTest will make it easier to tell which snapshot failed, if any
                 pd.testing.assert_frame_equal(
                     CovidTimeseriesModel().forecast(model_params[i]),
-                    snapshots[i]
+                    snapshots[i],
+                    check_dtype=False
                 )
 
     def _update_snapshots(self):
@@ -100,11 +109,17 @@ class CovidTimeseriesModelTest(unittest.TestCase):
                 out.write(snap)
                 out.write('\n')
 
-    def _read_snapshot_file(self):
+    def _get_snapshots(self):
         """Read the snapsnot file into memory and construct the DataFrames"""
-        with open(r'test/snapshots/snapshots.json') as snaps_file:
-            return [pd.read_json(j) for j in snaps_file]
-
+        snaps = []
+        with open(r'snapshots/snapshots.json') as snaps_file:
+            for s in snaps_file:
+                # We don't want
+                snap = pd.read_json(s, convert_dates=False)
+                # read_json doesn't let us specify the columns to parse as dates, so we have to do it ourselves
+                snap['Date'] = pd.to_datetime(snap['Date'], unit='ms')
+                snaps.append(snap)
+        return snaps
 
 
 if __name__ == '__main__':

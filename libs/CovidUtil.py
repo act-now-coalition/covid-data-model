@@ -7,8 +7,13 @@ class CovidUtil:
     def initialize_model_parameters(self, model_params):
         #  Some of the model parameters are interdependent, which can make them clumsy to change around. This
         #  function is intended to hold all of the logic for computing the necessary derivative model parameters
+        # Take note of the country and state being modeled
+        model_params['state'] = model_params['timeseries'].iloc[0]['state']
+        model_params['country'] = model_params['timeseries'].iloc[0]['country']
+        # Calculate the case fatality rate once the hospitals are overwhelmed
         model_params['case_fatality_rate_hospitals_overwhelmed'] = \
             model_params['hospitalization_rate'] * model_params['hospitalized_cases_requiring_icu_care']
+        # Caluclate the width (in model intervals) of the rolling interval that people are infected for
         model_params['rolling_intervals_for_current_infected'] = \
             int(round(model_params['total_infected_period'] / model_params['model_interval'], 0))
         return model_params
