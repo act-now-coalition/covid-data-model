@@ -13,6 +13,8 @@ from zipfile import ZipFile
 
 from libs.build_params import US_STATE_ABBREV as us_state_abbrev
 
+_logger = logging.getLogger(__name__)
+
 local_public_data_dir = tempfile.TemporaryDirectory()
 local_public_data = local_public_data_dir.name
 
@@ -34,7 +36,7 @@ def create_local_copy_public_data():
     """
     github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
     public_data_local_url = f'file://localhost{local_public_data}/covid-data-public-master'
-    logging.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
+    _logger.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
 
     zipresp = urlopen(github_zip_url)
     with open(local_public_data + "/master.zip", "wb") as tempzip:
@@ -187,7 +189,7 @@ class Dataset:
             if len(state_data[state_data[self.DATE_FIELD] == curr_date]) == 0:
                 county_data_for_date = copy(county_data[county_data[self.DATE_FIELD] == curr_date])
                 if len(county_data_for_date) == 0:  # If there's no county data, we're SOL.
-                    logging.info("NO COUNTY DATA: {}".format(curr_date))
+                    _logger.warning(f"No county data on {curr_date}")
                     continue  # TODO: Revisit. This should be more intelligent
                 county_data_for_date = county_data_for_date.iloc[0]
                 new_state_row = copy(state_data.iloc[0])  # Copy the first row of the state data to get the right format
@@ -213,7 +215,7 @@ class Dataset:
         try:
             return int(matching_pops.iloc[0].at["population"])
         except IndexError as e:
-            logging.error('No population data for {}, {}'.format(state, country))
+            _logger.error('No population data for {}, {}'.format(state, country))
             raise e
 
     def get_beds_by_country_state(self, country, state):
@@ -270,19 +272,19 @@ class JHUDataset(Dataset):
         snapshot_date = self._FIRST_JHU_DATE
         while True:
             csv_url = self.jhu_url_template.format(snapshot_date.strftime('%m-%d-%Y'))
-            logging.debug('Loading URL: {}'.format(csv_url))
+            _logger.debug('Loading URL: {}'.format(csv_url))
 
             # For each data file
             try:
                 df = pd.read_csv(csv_url)
             except urllib.error.HTTPError as e:
                 if e.code == 404:
-                    logging.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
+                    _logger.info('Received a 404 for date {snapshot_date}. Ending iteration.')
                     break
                 raise
             except urllib.error.URLError as e:
                 if isinstance(e.reason, FileNotFoundError):
-                    logging.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
+                    _logger.info(f'Received a 404 for date {snapshot_date}. Ending iteration.')
                     break
 
                 raise
