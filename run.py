@@ -4,6 +4,7 @@ Run Covid data model.
 Execution:
     ./run.py run-model [JHU|CDS] [--output-dir]
 """
+import os
 import logging
 import simplejson
 import click
@@ -131,6 +132,24 @@ def run_model(dataset_name, output_dir, country, state):
                 i,
                 dataset.get_population_by_country_state('USA', state)
             )
+
+
+@main.command()
+@click.argument('dataset-name', type=click.Choice(['JHU', 'CDS']), default='CDS')
+@click.option('--data-source', '-d', required=True)
+@click.option(
+    '--output-dir', default='results/test', help="Model results output directory"
+)
+@click.pass_context
+def validate(ctx, dataset_name, data_source, output_dir):
+    existing_path = os.getenv("COVID_DATA_PUBLIC")
+    os.environ['COVID_DATA_PUBLIC'] = data_source
+
+    try:
+        ctx.invoke(run_model, dataset_name=dataset_name, output_dir=output_dir)
+    finally:
+        if existing_path:
+            os.environ['COVID_DATA_PUBLIC'] = existing_path
 
 
 if __name__ == "__main__":
