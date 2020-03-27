@@ -16,6 +16,7 @@ from libs.build_params import US_STATE_ABBREV as us_state_abbrev
 local_public_data_dir = tempfile.TemporaryDirectory()
 local_public_data = local_public_data_dir.name
 
+
 def get_public_data_base_url():
     # COVID_DATA_PUBLIC could be set, to for instance
     # "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
@@ -50,8 +51,13 @@ class Dataset:
     from multiple differenmt sources can be fed into the model with as little
     hassle as possible."""
 
-    _POPULATION_URL = f"{get_public_data_base_url()}/data/misc/populations.csv"
-    _BEDS_URL = f"{get_public_data_base_url()}/data/beds-kff/beds.csv"
+    @property
+    def population_url(self):
+        return f"{get_public_data_base_url()}/data/misc/populations.csv"
+
+    @property
+    def beds_url(self):
+        return f"{get_public_data_base_url()}/data/beds-kff/beds.csv"
 
     # The output fields need to be standardized, regardless of the input fieldnames. It is the responsibility of the
     #  child class to conform the fieldnames of their data to these fieldnames
@@ -219,10 +225,14 @@ class Dataset:
 class JHUDataset(Dataset):
     # The date of the first JHU data snapshot.
     _FIRST_JHU_DATE = datetime.date(2020, 1, 22)
-    _JHU_URL_TEMPLATE = f'{get_public_data_base_url()}/data/cases-jhu/csse_covid_19_daily_reports/{{}}.csv'
+
+    @property
+    def jhu_url_template(self):
+        return f'{get_public_data_base_url()}/data/cases-jhu/csse_covid_19_daily_reports/{{}}.csv'
 
     def __init__(self, filter_past_date=None):
-        super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
+        start_date = datetime.datetime(year=2020, month=3, day=3)
+        super().__init__(start_date=start_date, filter_past_date=filter_past_date)
         self._fieldname_map = {
             'Country/Region': self.COUNTRY_FIELD,
             'Country_Region': self.COUNTRY_FIELD,
@@ -237,7 +247,6 @@ class JHUDataset(Dataset):
     def transform_jhu_timeseries(self):
         """"Takes a list of JHU daily reports, mashes them into a single report, then restructures and renames the data
         to fit the model's expectations"""
-        daily_reports_dir = os.path.join('data', 'jhu', 'csse_covid_19_daily_reports')
 
         # Compile a list of all of the day reports available
         def parse_county(state):
@@ -260,7 +269,7 @@ class JHUDataset(Dataset):
         day_reports = []
         snapshot_date = self._FIRST_JHU_DATE
         while True:
-            csv_url = self._JHU_URL_TEMPLATE.format(snapshot_date.strftime('%m-%d-%Y'))
+            csv_url = self.jhu_url_template.format(snapshot_date.strftime('%m-%d-%Y'))
             logging.debug('Loading URL: {}'.format(csv_url))
 
             # For each data file
@@ -275,6 +284,7 @@ class JHUDataset(Dataset):
                 if isinstance(e.reason, FileNotFoundError):
                     logging.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
                     break
+
                 raise
 
             df = df.rename(columns=self._fieldname_map)
@@ -304,12 +314,12 @@ class JHUDataset(Dataset):
 
     def get_all_population(self):
         if(self._POPULATION_DATA is None):
-            self._POPULATION_DATA = pd.read_csv(self._POPULATION_URL)
+            self._POPULATION_DATA = pd.read_csv(self.population_url)
         return self._POPULATION_DATA
 
     def get_all_beds(self):
         if(self._BED_DATA is None):
-            self._BED_DATA = pd.read_csv(self._BEDS_URL)
+            self._BED_DATA = pd.read_csv(self.beds_url)
         return self._BED_DATA
 
     def get_all_states_by_country(self, country):
@@ -318,24 +328,29 @@ class JHUDataset(Dataset):
 
 class CDSDataset(Dataset):
     """CoronaDataScraper Dataset"""
-    _TIME_SERIES_URL = f"{get_public_data_base_url()}/data/cases-cds/timeseries.csv"
+    @property
+    def timeseries_url(self):
+        return f"{get_public_data_base_url()}/data/cases-cds/timeseries.csv"
 
     def __init__(self, filter_past_date=None):
-        super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
+        super().__init__(
+            start_date=datetime.datetime(year=2020, month=3, day=3),
+            filter_past_date=filter_past_date
+        )
 
     def get_raw_timeseries(self):
         if(self._TIME_SERIES_DATA is None):
-            self._TIME_SERIES_DATA = pd.read_csv(self._TIME_SERIES_URL, parse_dates=[self.DATE_FIELD])
+            self._TIME_SERIES_DATA = pd.read_csv(self.timeseries_url, parse_dates=[self.DATE_FIELD])
         return self._TIME_SERIES_DATA
 
     def get_all_population(self):
         if(self._POPULATION_DATA is None):
-            self._POPULATION_DATA = pd.read_csv(self._POPULATION_URL)
+            self._POPULATION_DATA = pd.read_csv(self.population_url)
         return self._POPULATION_DATA
 
     def get_all_beds(self):
         if(self._BED_DATA is None):
-            self._BED_DATA = pd.read_csv(self._BEDS_URL)
+            self._BED_DATA = pd.read_csv(self.beds_url)
         return self._BED_DATA
 
     def get_all_states_by_country(self, country):
