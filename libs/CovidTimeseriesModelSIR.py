@@ -239,6 +239,16 @@ class CovidTimeseriesModelSIR:
             available_hospital_beds *= hospital_capacity_change_daily_rate
         return available_hospital_beds
 
+    def run_interventions(self, interventions, combined_df, seird_params):
+        ## for each intervention (in order)
+        ## grab initial conditions (conditions at intervention date)
+        ## adjust seird_params based on intervention
+        ## run model from that date with initial conditions and new params
+        ## merge new dataframes, keep old one as counterfactual for that intervention
+        ## rinse, repeat
+
+        return post_interventions_df, counterfactuals
+
     def initialize_parameters(self, model_parameters):
         """Perform all of the necessary setup prior to the model's execution"""
         # want first and last days from the actual values in timeseries
@@ -342,12 +352,12 @@ class CovidTimeseriesModelSIR:
             first_infected = pop_dict["infected"]
 
         y0 = (
-            susceptible,
             pop_dict.get("exposed", 0),
             first_infected,
             pop_dict.get("infected_b", 0),
             pop_dict.get("infected_c", 0),
             pop_dict["recovered"],
+            pop_dict["deaths"],
         )
 
         delta = (end_date - start_date).days
@@ -370,7 +380,7 @@ class CovidTimeseriesModelSIR:
         sir_df = pd.DataFrame(
             zip(data[0], data[1], data[2], data[3], data[4], data[5]),
             columns=[
-                "susceptible",  # "exposed",
+                "exposed",  # "susceptible"
                 "infected_a",
                 "infected_b",
                 "infected_c",
@@ -387,8 +397,6 @@ class CovidTimeseriesModelSIR:
         specified number of iterations with the given inputs"""
 
         ## TODO:
-        ## implement Harvard SEIRD model
-        #
         ## implement interventions
         #
         ## pull together interventions into the date they take place
@@ -465,6 +473,7 @@ class CovidTimeseriesModelSIR:
         # kill last row that is initial conditions on SEIRD
         actuals = timeseries.loc[:, actual_cols].head(-1)
 
+        # it wasn't a df thing, you can rip all this out
         actuals.rename(
             columns={"population": "total", "deaths": "dead", "active": "infected"},
             inplace=True,
@@ -516,7 +525,7 @@ class CovidTimeseriesModelSIR:
 
         if model_parameters["interventions"] is not None:
             combo_df, counterfactuals = self.run_interventions(
-                combined_df, model_parameters
+                model_parameters["interventions"], combined_df, init_params
             )
 
         # set some of the paramters... I'm sure I'm misinterpreting some
@@ -568,6 +577,7 @@ class CovidTimeseriesModelSIR:
 
         # return combined_df.to_dict("records")  # cycle_series
         return combined_df
+        # return soln_test
 
     def forecast_region(self, model_parameters):
         cycle_series = self.iterate_model(model_parameters)
