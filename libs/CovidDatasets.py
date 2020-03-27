@@ -72,9 +72,11 @@ us_state_abbrev = {
 }
 
 
-local_public_data = tempfile.TemporaryDirectory()
-# public_data_base_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
 def get_public_data_base_url():
+    # COVID_DATA_PUBLIC could be set, to for instance 
+    # "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
+    # which would not locally copy the data.
+
     if not os.getenv('COVID_DATA_PUBLIC', False):
         create_local_copy_public_data()
     return os.getenv('COVID_DATA_PUBLIC')
@@ -85,16 +87,18 @@ def create_local_copy_public_data():
     Creates a local copy of the public data repository. This is done to avoid
     downloading the file again for each intervention type.
     """
+    # TODO: This doesn't clean up right now and will leave copies in temp.
+    local_public_data = tempfile.mkdtemp()
     github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
-    public_data_local_url = 'file://localhost{local_public_data.name}/covid-data-public-master'
+    public_data_local_url = f'file://localhost{local_public_data}/covid-data-public-master'
     logging.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
 
     zipresp = urlopen(github_zip_url)
-    with open(local_public_data.name + "/master.zip", "wb") as tempzip:
+    with open(local_public_data + "/master.zip", "wb") as tempzip:
         tempzip.write(zipresp.read())
 
-    with ZipFile(local_public_data.name + "/master.zip") as zf:
-        zf.extractall(path=local_public_data.name)
+    with ZipFile(local_public_data + "/master.zip") as zf:
+        zf.extractall(path=local_public_data)
 
     os.environ['COVID_DATA_PUBLIC'] = public_data_local_url
 
