@@ -4,6 +4,7 @@ logging.basicConfig(level=logging.INFO)
 import datetime
 import time
 import simplejson
+from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CDSDataset
 
@@ -72,60 +73,6 @@ def model_state(country, state, interventions=None):
         'rolling_intervals_for_current_infected': int(round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)),
     }
     return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
-
-r0 = 2.4
-
-INTERVENTIONS = [
-    None,  # No Intervention
-    {  # Flatten the Curve
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # Full Containment
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # @TODO: Model w/ FlatteningTheCurve (2 wk delay)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # @TODO: Model w/ FlatteningTheCurve (1 mo delay)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # @TODO: Full Containment (1 wk dly)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # @TODO: Full Containment (2 wk dly)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # Social Distancing
-        datetime.date(2020, 3, 23): 1.7,
-        datetime.date(2020, 6, 23): r0
-    },
-]
-
-OUTPUT_DIR = 'results/test'
 
 if __name__ == '__main__':
     Dataset = CDSDataset()
