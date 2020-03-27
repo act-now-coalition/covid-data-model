@@ -139,3 +139,6 @@ dmypy.json
 
 # VScode
 *.vscode
+
+#IntelliJ PyCharm IDE settings
+.idea
