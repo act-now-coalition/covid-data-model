@@ -434,8 +434,10 @@ class CovidTimeseriesModelSIR:
             "deaths": timeseries.loc[init_date, "deaths"],
         }
 
-        # init_params = self.generate_seird_params(model_parameters)
-        init_params = self.harvard_model_params()
+        if model_parameters["use_harvard"]:
+            init_params = self.harvard_model_params()
+        else:
+            init_params = self.generate_seird_params(model_parameters)
 
         (data, steps) = self.seird(
             model_parameters["init_date"],
@@ -501,15 +503,7 @@ class CovidTimeseriesModelSIR:
         actuals = actuals.loc[:, all_cols]
         sir_df = sir_df.loc[:, all_cols]
 
-        print(actuals.shape)
-        print(actuals.columns)
-
-        print(sir_df.shape)
-        print(sir_df.columns)
         combined_df = pd.concat([actuals, sir_df])
-
-        print(combined_df.shape)
-        print(combined_df.columns)
 
         # this should be done, but belt and suspenders for the diffs()
         combined_df.sort_index(inplace=True)
