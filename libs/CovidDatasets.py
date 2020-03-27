@@ -6,6 +6,10 @@ import pandas as pd
 import os.path
 import datetime
 import urllib
+from urllib.request import urlopen
+
+import tempfile
+from zipfile import ZipFile
 
 # Dict to transform longhand state names to abbreviations
 us_state_abbrev = {
@@ -67,13 +71,36 @@ us_state_abbrev = {
     'Wyoming': 'WY'
 }
 
+
+local_public_data = tempfile.TemporaryDirectory()
+local_public_data_populated = False
+#public_data_base_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
+public_data_base_url = 'file://localhost' + local_public_data.name + '/covid-data-public-master'
+
+
+def create_local_copy_public_data():
+    """
+    Creates a local copy of the public data repository. This is done to avoid
+    downloading the file again for each intervention type.
+    """
+    github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
+    logging.info("Creating a Local Copy of {}".format(github_zip_url))
+
+    zipresp = urlopen(github_zip_url)
+    with open(local_public_data.name + "/master.zip", "wb") as tempzip:
+        tempzip.write(zipresp.read())
+
+    with ZipFile(local_public_data.name + "/master.zip") as zf:
+        zf.extractall(path = local_public_data.name)
+
+    local_public_data_populated = True
+
 class Dataset:
     """Base class of the Dataset objects. Standardizes the output so that data from multiple differet sources can 
     be fed into the model with as little hassle as possible."""
 
-    _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/populations.csv'
-    _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/beds-kff/beds.csv'
-
+    _POPULATION_URL = public_data_base_url + '/data/misc/populations.csv'
+    _BEDS_URL = public_data_base_url + '/data/beds-kff/beds.csv'
 
     # The output fields need to be standardized, regardless of the input fieldnames. It is the responsibility of the
     #  child class to conform the fieldnames of their data to these fieldnames
@@ -241,7 +268,9 @@ class Dataset:
 class JHUDataset(Dataset):
     # The date of the first JHU data snapshot.
     _FIRST_JHU_DATE = datetime.date(2020, 1, 22)
-    _JHU_URL_TEMPLATE = 'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'
+    if not local_public_data_populated:
+        create_local_copy_public_data()
+    _JHU_URL_TEMPLATE = public_data_base_url + 'data/cases-jhu/csse_covid_19_daily_reports/{}.csv'
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
@@ -281,13 +310,18 @@ class JHUDataset(Dataset):
         snapshot_date = self._FIRST_JHU_DATE
         while True:
             csv_url = self._JHU_URL_TEMPLATE.format(snapshot_date.strftime('%m-%d-%Y'))
-            logging.info('Loading URL: {}'.format(csv_url))
+            logging.debug('Loading URL: {}'.format(csv_url))
 
             # For each data file
             try:
                 df = pd.read_csv(csv_url)
             except urllib.error.HTTPError as e:
                 if e.code == 404:
+                    logging.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
+                    break
+                raise
+            except urllib.error.URLError as e:
+                if isinstance(e.reason, FileNotFoundError):
                     logging.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
                     break
                 raise
