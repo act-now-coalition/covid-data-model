@@ -4,8 +4,12 @@ import math
 from copy import copy
 import pandas as pd
 import os.path
-import datetime
+import os
 import urllib
+from urllib.request import urlopen
+
+import tempfile
+from zipfile import ZipFile
 
 # Dict to transform longhand state names to abbreviations
 us_state_abbrev = {
@@ -46,7 +50,7 @@ us_state_abbrev = {
     'New York': 'NY',
     'North Carolina': 'NC',
     'North Dakota': 'ND',
-    'Northern Mariana Islands':'MP',
+    'Northern Mariana Islands': 'MP',
     'Ohio': 'OH',
     'Oklahoma': 'OK',
     'Oregon': 'OR',
@@ -67,13 +71,46 @@ us_state_abbrev = {
     'Wyoming': 'WY'
 }
 
+
+local_public_data_dir = tempfile.TemporaryDirectory()
+local_public_data = local_public_data_dir.name
+
+def get_public_data_base_url():
+    # COVID_DATA_PUBLIC could be set, to for instance 
+    # "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
+    # which would not locally copy the data.
+
+    if not os.getenv('COVID_DATA_PUBLIC', False):
+        create_local_copy_public_data()
+    return os.getenv('COVID_DATA_PUBLIC')
+
+
+def create_local_copy_public_data():
+    """
+    Creates a local copy of the public data repository. This is done to avoid
+    downloading the file again for each intervention type.
+    """
+    github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
+    public_data_local_url = f'file://localhost{local_public_data}/covid-data-public-master'
+    logging.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
+
+    zipresp = urlopen(github_zip_url)
+    with open(local_public_data + "/master.zip", "wb") as tempzip:
+        tempzip.write(zipresp.read())
+
+    with ZipFile(local_public_data + "/master.zip") as zf:
+        zf.extractall(path=local_public_data)
+
+    os.environ['COVID_DATA_PUBLIC'] = public_data_local_url
+
+
 class Dataset:
-    """Base class of the Dataset objects. Standardizes the output so that data from multiple differet sources can 
-    be fed into the model with as little hassle as possible."""
+    """Base class of the Dataset objects. Standardizes the output so that data
+    from multiple differenmt sources can be fed into the model with as little
+    hassle as possible."""
 
-    _POPULATION_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/populations.csv'
-    _BEDS_URL = r'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/beds-kff/beds.csv'
-
+    _POPULATION_URL = f"{get_public_data_base_url()}/data/misc/populations.csv"
+    _BEDS_URL = f"{get_public_data_base_url()}/data/beds-kff/beds.csv"
 
     # The output fields need to be standardized, regardless of the input fieldnames. It is the responsibility of the
     #  child class to conform the fieldnames of their data to these fieldnames
@@ -120,7 +157,7 @@ class Dataset:
             synthetic_row[self.DEATH_FIELD] = 0
             synthetic_row[self.RECOVERED_FIELD] = 0
             synthetic_row[self.SYNTHETIC_FIELD] = 1
-            synthetic_data.append(copy(synthetic_row)) # We need to copy it to prevent alteration by reference
+            synthetic_data.append(copy(synthetic_row))  # We need to copy it to prevent alteration by reference
         pd.set_option('mode.chained_assignment', 'warn')  # Turn the anxiety back on
         # Take the synthetic data, and glue it to the bottom of the real records
         return series.append(pd.DataFrame(synthetic_data)).sort_values(self.DATE_FIELD).reset_index(drop=True)
@@ -195,7 +232,7 @@ class Dataset:
             [self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD], as_index=False
         )[[self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].sum()
         # Now we fill in whatever gaps we can in the state data using the county data
-        curr_date = state_data[self.DATE_FIELD].max()  # Start on the last date of state data we have
+        curr_date = max(state_data[self.DATE_FIELD].max(), county_data[self.DATE_FIELD].max()) # Start on the last date of state data we have
         county_data_to_insert = []
         while curr_date > self._START_DATE:
             curr_date -= datetime.timedelta(days=1)
@@ -203,6 +240,7 @@ class Dataset:
             if len(state_data[state_data[self.DATE_FIELD] == curr_date]) == 0:
                 county_data_for_date = copy(county_data[county_data[self.DATE_FIELD] == curr_date])
                 if len(county_data_for_date) == 0:  # If there's no county data, we're SOL.
+                    logging.info("NO COUNTY DATA: {}".format(curr_date))
                     continue  # TODO: Revisit. This should be more intelligent
                 county_data_for_date = county_data_for_date.iloc[0]
                 new_state_row = copy(state_data.iloc[0])  # Copy the first row of the state data to get the right format
@@ -221,8 +259,10 @@ class Dataset:
         return self.get_all_timeseries()[self.get_all_timeseries()[self.COUNTRY_FIELD] == country]
 
     def get_population_by_country_state(self, country, state):
-        matching_pops = self.get_all_population()[(self.get_all_population()[self.STATE_FIELD] == state) & (
-        self.get_all_population()[self.COUNTRY_FIELD] == country)]
+        matching_pops = self.get_all_population()[
+            (self.get_all_population()[self.STATE_FIELD] == state) &
+            (self.get_all_population()[self.COUNTRY_FIELD] == country)
+        ]
         try:
             return int(matching_pops.iloc[0].at["population"])
         except IndexError as e:
@@ -238,7 +278,7 @@ class Dataset:
 class JHUDataset(Dataset):
     # The date of the first JHU data snapshot.
     _FIRST_JHU_DATE = datetime.date(2020, 1, 22)
-    _JHU_URL_TEMPLATE = 'https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'
+    _JHU_URL_TEMPLATE = f'{get_public_data_base_url()}/data/cases-jhu/csse_covid_19_daily_reports/{{}}.csv'
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
@@ -257,14 +297,16 @@ class JHUDataset(Dataset):
         """"Takes a list of JHU daily reports, mashes them into a single report, then restructures and renames the data
         to fit the model's expectations"""
         daily_reports_dir = os.path.join('data', 'jhu', 'csse_covid_19_daily_reports')
+
         # Compile a list of all of the day reports available
         def parse_county(state):
             if ',' in state:
-                return state.split(',')[0]
+                return state.split(',')[0].strip()
 
         def parse_state(state):
+            state = state.strip()
             if ',' in state:
-                state = state.split(',')[1]
+                state = state.split(',')[1].strip()
             if state in us_state_abbrev:
                 return us_state_abbrev[state]
             return state
@@ -278,13 +320,18 @@ class JHUDataset(Dataset):
         snapshot_date = self._FIRST_JHU_DATE
         while True:
             csv_url = self._JHU_URL_TEMPLATE.format(snapshot_date.strftime('%m-%d-%Y'))
-            logging.info('Loading URL: {}'.format(csv_url))
+            logging.debug('Loading URL: {}'.format(csv_url))
 
             # For each data file
             try:
                 df = pd.read_csv(csv_url)
             except urllib.error.HTTPError as e:
                 if e.code == 404:
+                    logging.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
+                    break
+                raise
+            except urllib.error.URLError as e:
+                if isinstance(e.reason, FileNotFoundError):
                     logging.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
                     break
                 raise
@@ -330,7 +377,7 @@ class JHUDataset(Dataset):
 
 class CDSDataset(Dataset):
     """CoronaDataScraper Dataset"""
-    _TIME_SERIES_URL = r'https://github.com/covid-projections/covid-data-public/raw/master/data/cases-cds/timeseries.csv'
+    _TIME_SERIES_URL = f"{get_public_data_base_url()}/data/cases-cds/timeseries.csv"
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
