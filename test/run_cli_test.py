@@ -23,6 +23,5 @@ def test_runs_all_interventions_on_one_state(tmpdir, dataset_name):
         assert path.read_bytes()
 
 
-
 # TODO(chris): Would like to add a test that runs all the states on one intervention.
 # I don't think that we should run the entire generation in the unittests.
