@@ -72,6 +72,9 @@ us_state_abbrev = {
 }
 
 
+local_public_data = tempfile.mkdtemp()
+
+
 def get_public_data_base_url():
     # COVID_DATA_PUBLIC could be set, to for instance 
     # "https://raw.githubusercontent.com/covid-projections/covid-data-public/master"
@@ -88,7 +91,6 @@ def create_local_copy_public_data():
     downloading the file again for each intervention type.
     """
     # TODO: This doesn't clean up right now and will leave copies in temp.
-    local_public_data = tempfile.mkdtemp()
     github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
     public_data_local_url = f'file://localhost{local_public_data}/covid-data-public-master'
     logging.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
@@ -257,8 +259,10 @@ class Dataset:
         return self.get_all_timeseries()[self.get_all_timeseries()[self.COUNTRY_FIELD] == country]
 
     def get_population_by_country_state(self, country, state):
-        matching_pops = self.get_all_population()[(self.get_all_population()[self.STATE_FIELD] == state) & (
-            self.get_all_population()[self.COUNTRY_FIELD] == country)]
+        matching_pops = self.get_all_population()[
+            (self.get_all_population()[self.STATE_FIELD] == state) &
+            (self.get_all_population()[self.COUNTRY_FIELD] == country)
+        ]
         try:
             return int(matching_pops.iloc[0].at["population"])
         except IndexError as e:

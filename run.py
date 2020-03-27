@@ -5,8 +5,7 @@ import datetime
 import time
 import simplejson
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CDSDataset as Dataset
-
+from libs.CovidDatasets import CDSDataset
 
 def record_results(res, directory, name, num, pop):
     import copy
@@ -17,7 +16,7 @@ def record_results(res, directory, name, num, pop):
     # Set the population
     vals['Population'] = pop
     # Write the results to the specified directory
-    with open(os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
+    with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
         simplejson.dump(vals[[
                 'Date',
                 'R',
@@ -41,15 +40,15 @@ def record_results(res, directory, name, num, pop):
             ]].values.tolist(), out, ignore_nan=True)
 
 def model_state(country, state, interventions=None):
-    # Constants
+    ## Constants
     start_time = time.time()
     HOSPITALIZATION_RATE = .0727
     HOSPITALIZED_CASES_REQUIRING_ICU_CARE = .1397
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
     r0 = 2.4
-    dataset = Dataset(filter_past_date=datetime.date(2020, 3, 19))
-    POP = dataset.get_population_by_country_state(country, state)
+    Dataset = CDSDataset(filter_past_date=datetime.date(2020, 3, 19))
+    POP = Dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
         # Pack the changeable model parameters
@@ -68,12 +67,11 @@ def model_state(country, state, interventions=None):
         'hospital_capacity_change_daily_rate': 1.05,
         'max_hospital_capacity_factor': 2.07,
         'initial_hospital_bed_utilization': .6,
-        'model_interval': 4,  # In days
-        'total_infected_period': 12,  # In days
+        'model_interval': 4, # In days
+        'total_infected_period': 12, # In days
         'rolling_intervals_for_current_infected': int(round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)),
     }
     return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
-
 
 r0 = 2.4
 
@@ -127,15 +125,14 @@ INTERVENTIONS = [
     },
 ]
 
-dataset = Dataset()
-for state in dataset.get_all_states_by_country('USA'):
+Dataset = CDSDataset()
+for state in Dataset.get_all_states_by_country('USA'):
     for i in range(0, len(INTERVENTIONS)):
         intervention = INTERVENTIONS[i]
-        logging.info("Processing Intervention {} of {}, State: {}".format(i+1, len(INTERVENTIONS), state))
         record_results(
             model_state('USA', state, intervention),
             'results/test',
             state,
             i,
-            dataset.get_population_by_country_state('USA', state)
+            Dataset.get_population_by_country_state('USA', state)
         )
