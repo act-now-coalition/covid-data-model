@@ -372,7 +372,7 @@ class JHUDataset(Dataset):
 
 class CDSDataset(Dataset):
     """CoronaDataScraper Dataset"""
-    _TIME_SERIES_URL = r'https://github.com/covid-projections/covid-data-public/raw/master/data/cases-cds/timeseries.csv'
+    _TIME_SERIES_URL = public_data_base_url + '/data/cases-cds/timeseries.csv'
 
     def __init__(self, filter_past_date=None):
         super().__init__(start_date=datetime.datetime(year=2020, month=3, day=3), filter_past_date=filter_past_date)
