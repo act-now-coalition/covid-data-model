@@ -13,12 +13,12 @@ def record_results(res, directory, name, num, pop, beds, min_begin_date=None, ma
     import os.path
 
     # Indexes used by website JSON:
-    # hospitalizations: 8,
-    # beds: 11,
-    # cumulativeDeaths: 10,
-    # cumulativeInfected: 9,
-    # totalPopulation: 16,
     # date: 0,
+    # hospitalizations: 8,
+    # cumulativeInfected: 9,
+    # cumulativeDeaths: 10,
+    # beds: 11,
+    # totalPopulation: 16,
 
     # Columns from Harvard model output:
     # date, total, susceptible, exposed, infected, infected_a, infected_b, infected_c, recovered, dead
@@ -47,6 +47,10 @@ def record_results(res, directory, name, num, pop, beds, min_begin_date=None, ma
 
     website_ordering = pd.DataFrame(res, columns=cols)
 
+    # @TODO: Find a better way of restricting to every fourth day.
+    #        Alternatively, change the website's expectations.
+    website_ordering = pd.DataFrame(website_ordering[website_ordering.index % 4 == 0])
+
     if min_begin_date is not None:
         website_ordering = pd.DataFrame(
             website_ordering[website_ordering['date'] >= min_begin_date])
@@ -59,7 +63,9 @@ def record_results(res, directory, name, num, pop, beds, min_begin_date=None, ma
     website_ordering['beds'] = beds  # @TODO: Scale upwards over time with a defined formula.
     website_ordering['population'] = pop
     website_ordering = website_ordering.astype(
-        {"infected_b": int, "infected": int, "dead": int, "population": int})
+        {"infected_b": int, "infected": int, "dead": int, "beds": int, "population": int})
+    website_ordering = website_ordering.astype(
+        {"infected_b": str, "infected": str, "dead": str, "beds": str, "population": str})
 
     with open(os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
         simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
