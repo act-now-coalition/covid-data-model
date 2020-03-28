@@ -5,6 +5,7 @@ from copy import copy
 import pandas as pd
 import os.path
 import os
+import pathlib
 import urllib
 from urllib.request import urlopen
 
@@ -17,6 +18,13 @@ local_public_data_dir = tempfile.TemporaryDirectory()
 local_public_data = local_public_data_dir.name
 
 _logger = logging.getLogger(__name__)
+LOCAL_PUBLIC_DATA_PATH = (
+    pathlib.Path(__file__).parent / '..' / '..' / 'covid-data-public'
+).resolve()
+LOCAL_PUBLIC_DATA_URI = (
+    'file://' + str(LOCAL_PUBLIC_DATA_PATH)
+)
+
 
 
 def get_public_data_base_url():
@@ -230,7 +238,7 @@ class JHUDataset(Dataset):
 
     @property
     def jhu_url_template(self):
-        return f'{get_public_data_base_url()}/data/cases-jhu/csse_covid_19_daily_reports/{{}}.csv'
+        return os.path.join(LOCAL_PUBLIC_DATA_URI, 'data/cases-jhu/csse_covid_19_daily_reports/{}.csv')
 
     def __init__(self, filter_past_date=None):
         start_date = datetime.datetime(year=2020, month=3, day=3)
