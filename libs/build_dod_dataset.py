@@ -169,7 +169,7 @@ def join_and_output_shapefile(df, shp, pivot_shp_field, pivot_df_column, output_
 
 
 def get_usa_state_shapefile(output_filename):
-    join_and_output_shapefile(get_usa_by_states_df(), shapefile.Reader('data/tl_2019_us_state/tl_2019_us_state'),
+    join_and_output_shapefile(get_usa_by_states_df(), shapefile.Reader('../covid-data-public/data/shapefiles-uscensus/tl_2019_us_state'),
         'STATEFP', 'State/County FIPS Code', output_filename)
 
 def get_usa_county_shapefile(output_filename):
@@ -177,12 +177,11 @@ def get_usa_county_shapefile(output_filename):
     # ironically we have to re-pad the dataframe column to easily match GEOID in the shapefile
     df['State/County FIPS Code'] = df['State/County FIPS Code'].astype(str).str.rjust(5, '0')
 
-    join_and_output_shapefile(df, shapefile.Reader('data/tl_2019_us_county/tl_2019_us_county'),
+    join_and_output_shapefile(df, shapefile.Reader('../covid-data-public/data/shapefiles-uscensus/tl_2019_us_county'),
         'GEOID', 'State/County FIPS Code', output_filename)
 
 # us_only = get_usa_by_county_df()
 # us_only.to_csv("results/counties.csv")
-
 
 # states_final = get_usa_by_states_df()
 # states_final.to_csv('results/states.csv')
