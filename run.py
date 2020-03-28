@@ -1,12 +1,23 @@
+#!/usr/bin/env python
+"""
+Run Covid data model.
+Execution:
+    ./run.py run-model [JHU|CDS] [--output-dir]
+"""
 import logging
-logging.basicConfig(level=logging.INFO)
-
 import datetime
 import time
+
 import simplejson
+import click
+
 from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CDSDataset
+from libs.CovidDatasets import JHUDataset
+
+_logger = logging.getLogger(__name__)
+
 
 def record_results(res, directory, name, num, pop):
     import copy
@@ -74,15 +85,47 @@ def model_state(country, state, interventions=None):
     }
     return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
 
-if __name__ == '__main__':
-    Dataset = CDSDataset()
-    for state in Dataset.get_all_states_by_country('USA'):
-        for i in range(0, len(INTERVENTIONS)):
-            intervention = INTERVENTIONS[i]
+
+@click.group()
+def main():
+    """Entrypoint for Data Model CLI."""
+    pass
+
+
+@main.command()
+@click.argument('dataset_name', type=click.Choice(['JHU', 'CDS']), default="CDS")
+@click.option(
+    '--output-dir', default='results/test', help="Model results output directory"
+)
+@click.option('--country', default='USA')
+@click.option('--state', '-s', multiple=True)
+def run_model(dataset_name, output_dir, country, state):
+    # filter_past_date = datetime.date(2020, 3, 19)
+    filter_past_date = None
+    if dataset_name == 'JHU':
+        dataset = JHUDataset(filter_past_date=filter_past_date)
+    elif dataset_name == 'CDS':
+        dataset = CDSDataset(filter_past_date=filter_past_date)
+
+    # `state` is always a list (but the naming doesn't make it plural)
+    # If no states are provided, get all states for a given country.
+    states = state or dataset.get_all_states_by_country(country)
+    _logger.info(
+        f'Running model on {dataset.__class__.__name__}. Saving output to {output_dir}'
+    )
+    for state in states:
+        for i, intervention in enumerate(INTERVENTIONS):
+            _logger.info(f"Running intervention {i} for {state}")
+            model_output = model_state('USA', state, intervention)
             record_results(
-                model_state('USA', state, intervention),
-                OUTPUT_DIR,
+                model_output,
+                output_dir,
                 state,
                 i,
-                Dataset.get_population_by_country_state('USA', state)
+                dataset.get_population_by_country_state('USA', state)
             )
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    main()
