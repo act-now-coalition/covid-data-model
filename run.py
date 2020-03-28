@@ -1,72 +1,87 @@
-import logging
-logging.basicConfig(level=logging.INFO)
-
-import datetime
-import time
+from libs.CovidDatasets import CDSDataset, JHUDataset
+from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
+from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 import simplejson
+import time
+import datetime
+import pandas as pd
 import logging
-from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CDSDataset
-
 logging.basicConfig(level=logging.INFO)
 
-def record_results(res, directory, name, num, pop):
-    import copy
+
+def record_results(res, directory, name, num, pop, beds, min_begin_date=None, max_end_date=None):
     import os.path
-    vals = copy.copy(res)
-    # Format the date in the manner the front-end expects
-    vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year))
-    # Set the population
-    vals['Population'] = pop
 
-    # Add in some fields that the spreadsheet had but aren't used on the site.
-    vals['S&P 500'] = None
-    vals['Est. Actual Chance of Inf.'] = None
-    vals['Pred. Chance of Inf.'] = None
-    vals['Cum. Pred. Chance of Inf.'] = None
-    vals['% Susceptible'] = None
-    vals['R0'] = None
-    # Write the results to the specified directory
-    with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
-        simplejson.dump(vals[[
-                'Date',
-                'R',
-                'Beg. Susceptible',
-                'New Inf.',
-                'Curr. Inf.',
-                'Recov. or Died',
-                'End Susceptible',
-                'Actual Reported',
-                'Pred. Hosp.',
-                'Cum. Inf.',
-                'Cum. Deaths',
-                'Avail. Hosp. Beds',
-                'S&P 500',
-                'Est. Actual Chance of Inf.',
-                'Pred. Chance of Inf.',
-                'Cum. Pred. Chance of Inf.',
-                'Population',
-                'R0',
-                '% Susceptible'
-            ]].values.tolist(), out, ignore_nan=True)
+    # Indexes used by website JSON:
+    # hospitalizations: 8,
+    # beds: 11,
+    # cumulativeDeaths: 10,
+    # cumulativeInfected: 9,
+    # totalPopulation: 16,
+    # date: 0,
 
-def model_state(country, state, interventions=None):
-    ## Constants
+    # Columns from Harvard model output:
+    # date, total, susceptible, exposed, infected, infected_a, infected_b, infected_c, recovered, dead
+    # infected_b == Hospitalized
+    # infected_c == Hospitalized in ICU
+
+    cols = ['date',
+            'a',
+            'b',
+            'c',
+            'd',
+            'e',
+            'f',
+            'g',
+            'infected_b',
+            'infected',
+            'dead',
+            'beds',
+            'i',
+            'j',
+            'k',
+            'l',
+            'population',
+            'm',
+            'n']
+
+    website_ordering = pd.DataFrame(res, columns=cols)
+
+    if min_begin_date is not None:
+        website_ordering = pd.DataFrame(
+            website_ordering[website_ordering['date'] >= min_begin_date])
+    if max_end_date is not None:
+        website_ordering = pd.DataFrame(
+            website_ordering[website_ordering['date'] <= max_end_date])
+
+    website_ordering['date'] = website_ordering['date'].dt.strftime(
+        '%-m/%-d/%y')
+    website_ordering['beds'] = beds
+    website_ordering['population'] = pop
+    website_ordering = website_ordering.astype(
+        {"infected_b": int, "infected": int, "dead": int, "population": int})
+
+    with open(os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
+        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+
+
+def model_state(dataset, country, state, interventions=None):
+
+    # Constants
     start_time = time.time()
     HOSPITALIZATION_RATE = .0727
     HOSPITALIZED_CASES_REQUIRING_ICU_CARE = .1397
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
-    r0 = 2.4
-    Dataset = CDSDataset(filter_past_date=datetime.date(2020, 3, 19))
-    POP = Dataset.get_population_by_country_state(country, state)
+    POP = dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
         # Pack the changeable model parameters
-        'timeseries': Dataset.get_timeseries_by_country_state(country, state, MODEL_INTERVAL),
-        'beds': Dataset.get_beds_by_country_state(country, state),
+        'timeseries': dataset.get_timeseries_by_country_state(country, state, MODEL_INTERVAL),
+        'beds': dataset.get_beds_by_country_state(country, state),
         'population': POP,
-        'projection_iterations': 24, # Number of iterations into the future to project
+        # 'projection_iterations': 25, # Number of iterations into the future to project
+        'projection_iterations': 80,  # Number of iterations into the future to project
         'r0': r0,
         'interventions': interventions,
         'hospitalization_rate': HOSPITALIZATION_RATE,
@@ -77,75 +92,47 @@ def model_state(country, state, interventions=None):
         'hospital_capacity_change_daily_rate': 1.05,
         'max_hospital_capacity_factor': 2.07,
         'initial_hospital_bed_utilization': .6,
-        'model_interval': 4, # In days
-        'total_infected_period': 12, # In days
+        'model_interval': 4,  # In days
+        'total_infected_period': 12,  # In days
         'rolling_intervals_for_current_infected': int(round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)),
-        'estimated_new_cases_per_death': 0,
-        'estimated_new_cases_per_confirmed': 1 / HOSPITALIZATION_RATE
+        'estimated_new_cases_per_death': 32,
+        'estimated_new_cases_per_confirmed': 20,
+        # added for seird model
+        'incubation_period': 5,  # In days
+        'duration_mild_infections': 10,  # In days
+        'icu_time_death': 7,  # Time from ICU admission to death, In days
+        'hospital_time_recovery': 11,  # Duration of hospitalization, In days
+        # If True use the harvard parameters directly, if not calculate off the above
+        'use_harvard_params': True,
+        # If True use the harvard model inputs for inital conditions and N (recreate their graph)
+        'use_harvard_init': False,
     }
-    return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
+    return CovidTimeseriesModelSIR().forecast_region(model_parameters=MODEL_PARAMETERS)
 
-r0 = 2.4
 
-INTERVENTIONS = [
-    None,  # No Intervention
-    {  # Flatten the Curve
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # Full Containment
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # @TODO: Model w/ FlatteningTheCurve (2 wk delay)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # @TODO: Model w/ FlatteningTheCurve (1 mo delay)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # @TODO: Full Containment (1 wk dly)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # @TODO: Full Containment (2 wk dly)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # Social Distancing
-        datetime.date(2020, 3, 23): 1.7,
-        datetime.date(2020, 6, 23): r0
-    },
-]
+if __name__ == '__main__':
+    # @TODO: Remove interventions override once support is in the Harvard model.
+    INTERVENTIONS = [None]
+    country = 'USA'
+    min_date = datetime.datetime(2020, 3, 7)
+    max_date = datetime.datetime(2020, 7, 6)
 
-Dataset = CDSDataset()
-for state in Dataset.get_all_states_by_country('USA'):
-    logging.info('Generating data for state: {}'. format(state))
-    for i in range(0, len(INTERVENTIONS)):
-        intervention = INTERVENTIONS[i]
-        record_results(
-            model_state('USA', state, intervention),
-            'results/test',
-            state,
-            i,
-            Dataset.get_population_by_country_state('USA', state)
-        )
+    dataset = JHUDataset()
+    for state in dataset.get_all_states_by_country(country):
+        logging.info('Generating data for state: {}'. format(state))
+        beds = dataset.get_beds_by_country_state(country, state)
+        for i in range(0, len(INTERVENTIONS)):
+            intervention = INTERVENTIONS[i]
+            [results, soln] = model_state(
+                dataset, country, state, intervention)
+            record_results(
+                results,
+                OUTPUT_DIR,
+                state,
+                i,
+                dataset.get_population_by_country_state(country, state),
+                beds,
+                min_date,
+                max_date
+            )
+
