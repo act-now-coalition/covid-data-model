@@ -349,8 +349,6 @@ class CovidTimeseriesModelSIR:
             steps = steps * 10
         else:
             N = pop_dict["total"]
-            # N = 1000
-
             # assume that the first time you see an infected population it is mildly so
             # after that, we'll have them broken out
             if "infected_a" in pop_dict:
@@ -369,11 +367,7 @@ class CovidTimeseriesModelSIR:
                 )
             )
 
-            # delta = (end_date - start_date).days
-            # t = np.arange(0, delta, 0.1)
-            # steps = len(t)
-
-            steps = 3650
+            steps = 365
             t = np.arange(0, steps, 1)
 
         print(y0)
