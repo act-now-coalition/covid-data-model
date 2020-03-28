@@ -1,5 +1,4 @@
 import logging
-logging.basicConfig(level=logging.INFO)
 
 import datetime
 import time
@@ -7,6 +6,7 @@ import simplejson
 from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CDSDataset
+
 
 def record_results(res, directory, name, num, pop):
     import copy
@@ -75,6 +75,7 @@ def model_state(country, state, interventions=None):
     return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     Dataset = CDSDataset()
     for state in Dataset.get_all_states_by_country('USA'):
         for i in range(0, len(INTERVENTIONS)):
