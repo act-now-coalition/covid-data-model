@@ -56,7 +56,7 @@ def record_results(res, directory, name, num, pop, beds, min_begin_date=None, ma
 
     website_ordering['date'] = website_ordering['date'].dt.strftime(
         '%-m/%-d/%y')
-    website_ordering['beds'] = beds
+    website_ordering['beds'] = beds  # @TODO: Scale upwards over time with a defined formula.
     website_ordering['population'] = pop
     website_ordering = website_ordering.astype(
         {"infected_b": int, "infected": int, "dead": int, "population": int})
