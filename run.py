@@ -94,7 +94,7 @@ def main():
 @main.command()
 @click.argument('dataset_name', type=click.Choice(['JHU', 'CDS']), default="CDS")
 @click.option(
-    '--output-dir', default='results/test', help="Model results output directory"
+    '--output-dir', '-o', default='results/test', help="Model results output directory"
 )
 @click.option('--country', default='USA')
 @click.option('--state', '-s', multiple=True)
