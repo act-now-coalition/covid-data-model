@@ -348,12 +348,8 @@ class CovidTimeseriesModelSIR:
             t = np.arange(0, steps, 0.1)
             steps = steps * 10
         else:
-            # N = pop_dict["total"]
-            N = 1000
-
-            susceptible = (
-                N - pop_dict["infected"] - pop_dict["recovered"] - pop_dict["deaths"]
-            )
+            N = pop_dict["total"]
+            # N = 1000
 
             # assume that the first time you see an infected population it is mildly so
             # after that, we'll have them broken out
@@ -364,7 +360,7 @@ class CovidTimeseriesModelSIR:
 
             y0 = np.array(
                 (
-                    1.0,  # pop_dict.get("exposed", 0),
+                    pop_dict.get("exposed", 0),
                     float(first_infected),
                     float(pop_dict.get("infected_b", 0)),
                     float(pop_dict.get("infected_c", 0)),
@@ -377,9 +373,8 @@ class CovidTimeseriesModelSIR:
             # t = np.arange(0, delta, 0.1)
             # steps = len(t)
 
-            steps = 365
-            t = np.arange(0, steps, 0.1)
-            steps = steps * 10
+            steps = 3650
+            t = np.arange(0, steps, 1)
 
         print(y0)
         print(beta, alpha, gamma, rho, mu, N)
@@ -388,8 +383,10 @@ class CovidTimeseriesModelSIR:
         return ret.T, steps, ret
 
     def dataframe_ify(self, data, start, end, steps):
+        last_period = start + datetime.timedelta(days=(steps / 10))
+
         timesteps = pd.date_range(
-            start=start, end=end, periods=steps, freq=None,
+            start=start, end=last_period, periods=steps, freq=None,
         ).to_list()
 
         sir_df = pd.DataFrame(
@@ -405,7 +402,11 @@ class CovidTimeseriesModelSIR:
             index=timesteps,
         )
 
-        return sir_df.resample("1D").sum()
+        # reample the values to be daily
+        # drop anything after the end day
+        sir_df.resample("1D").sum().loc[:end]
+
+        return sir_df
 
     def iterate_model(self, model_parameters):
         """The guts. Creates the initial conditions, and runs the SIR model for the
@@ -440,6 +441,8 @@ class CovidTimeseriesModelSIR:
         timeseries.sort_index(inplace=True)
 
         init_date = model_parameters["init_date"].to_pydatetime().date()
+
+        print(timeseries.tail())
 
         # load the initial populations
         pop_dict = {
@@ -524,12 +527,7 @@ class CovidTimeseriesModelSIR:
             ]
 
             actuals = actuals.loc[:, all_cols]
-
-            print(actuals.tail())
-
             sir_df = sir_df.loc[:, all_cols]
-
-            print(sir_df.head())
 
             combined_df = pd.concat([actuals, sir_df])
 
