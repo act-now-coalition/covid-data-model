@@ -3,6 +3,7 @@ import numpy as np
 import requests
 import datetime
 import pprint
+import shapefile
 from .us_state_abbrev import us_state_abbrev, us_fips
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
@@ -136,6 +137,48 @@ def get_usa_by_states_df():
     assert states_final['Combined Key'].value_counts().max() == 1
 
     return states_final
+
+# note it's unclear to me if 'Incident Rate' is a number, float, etc
+def join_and_output_shapefile(df, shp, pivot_shp_field, pivot_df_column, output_filename):
+    fields = ['Confirmed', 'Recovered', 'Deaths', 'Active', 'Incident Rate', 'People Tested', 'Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction']
+    fields = [field for field in fields if field in df.columns]
+
+    shp_writer = shapefile.Writer(output_filename)
+    shp_writer.fields = shp.fields # Preserve fields that come from the census
+
+    for field_name in fields:
+        if field_name == 'Intervention': # Intervention is currently our only non-integer field
+            shp_writer.field(field_name, 'C', size=32)
+        else:
+            shp_writer.field(field_name, 'N', size=14)
+
+    for shapeRecord in shp.shapeRecords():
+        try:
+            row = df[df[pivot_df_column] == shapeRecord.record[pivot_shp_field]].iloc[0]
+        except:
+            continue
+
+        new_record = shapeRecord.record.as_dict()
+        for field_name in fields:
+            # random bad data seems to come back as this weird string, not too sure about this
+            new_record[field_name] = None if row[field_name] == '<Null>' else row[field_name]
+        shp_writer.shape(shapeRecord.shape)
+        shp_writer.record(**new_record)
+
+    shp_writer.close()
+
+
+def get_usa_state_shapefile(output_filename):
+    join_and_output_shapefile(get_usa_by_states_df(), shapefile.Reader('data/tl_2019_us_state/tl_2019_us_state'),
+        'STATEFP', 'State/County FIPS Code', output_filename)
+
+def get_usa_county_shapefile(output_filename):
+    df = get_usa_by_county_df()
+    # ironically we have to re-pad the dataframe column to easily match GEOID in the shapefile
+    df['State/County FIPS Code'] = df['State/County FIPS Code'].astype(str).str.rjust(5, '0')
+
+    join_and_output_shapefile(df, shapefile.Reader('data/tl_2019_us_county/tl_2019_us_county'),
+        'GEOID', 'State/County FIPS Code', output_filename)
 
 # us_only = get_usa_by_county_df()
 # us_only.to_csv("results/counties.csv")
