@@ -6,8 +6,6 @@ import datetime
 
 class CovidTimeseriesModel:
     # Initializer / Instance Attributes
-    def __init__(self):
-        logging.basicConfig(level=logging.CRITICAL)
 
     def calculate_r(self, current_cycle, previous_cycle, model_parameters):
         # Calculate the r0 value based on the current and past number of confirmed cases
