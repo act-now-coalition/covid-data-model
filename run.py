@@ -1,9 +1,12 @@
+import logging
+logging.basicConfig(level=logging.INFO)
+
 import datetime
 import time
 import simplejson
 import logging
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CovidDatasets
+from libs.CovidDatasets import CDSDataset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -55,7 +58,7 @@ def model_state(country, state, interventions=None):
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
     r0 = 2.4
-    Dataset = CovidDatasets(filter_past_date=datetime.date(2020, 3, 19))
+    Dataset = CDSDataset(filter_past_date=datetime.date(2020, 3, 19))
     POP = Dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
@@ -80,7 +83,7 @@ def model_state(country, state, interventions=None):
         'estimated_new_cases_per_death': 0,
         'estimated_new_cases_per_confirmed': 1 / HOSPITALIZATION_RATE
     }
-    return CovidTimeseriesModel().forecast_region(model_parameters=MODEL_PARAMETERS)
+    return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
 
 r0 = 2.4
 
@@ -134,7 +137,7 @@ INTERVENTIONS = [
     },
 ]
 
-Dataset = CovidDatasets()
+Dataset = CDSDataset()
 for state in Dataset.get_all_states_by_country('USA'):
     logging.info('Generating data for state: {}'. format(state))
     for i in range(0, len(INTERVENTIONS)):

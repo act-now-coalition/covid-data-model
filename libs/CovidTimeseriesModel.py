@@ -3,42 +3,9 @@ import math
 import pandas as pd
 import datetime
 
-import pprint
-
-
-# @TODO: Switch to this model.
-class CovidTimeseriesCycle(object):
-    def __init__(self, model_parameters, init_data_cycle):
-        # There are some assumptions made when we create the fisrt data cycle. This encapsulates all of those
-        #  assumptions into one place
-
-        self.date = model_parameters['init_date']
-        self.r0 = model_parameters['r0']
-        self.effective_r0 = None
-        self.cases = init_data_cycle['cases']
-        self.actual_reported = init_data_cycle['cases']
-        self.current_infected = 0
-        self.newly_infected_from_confirmed = init_data_cycle['cases'] * model_parameters['estimated_new_cases_per_confirmed']
-        self.newly_infected_from_deaths = 0
-        self.newly_infected = self.newly_infected_from_confirmed + self.newly_infected_from_deaths
-        self.currently_infected = 0
-        self.cumulative_infected = None
-        self.cumulative_deaths = None
-        self.recovered_or_died = 0
-        self.ending_susceptible = model_parameters['population'] - (init_data_cycle['cases'] / model_parameters['hospitalization_rate'])
-        self.predicted_hospitalized = 0
-        self.available_hospital_beds = model_parameters['original_available_hospital_beds']
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        pass
 
 class CovidTimeseriesModel:
     # Initializer / Instance Attributes
-    def __init__(self):
-        logging.basicConfig(level=logging.ERROR)
 
     def calculate_r(self, current_cycle, previous_cycle, model_parameters):
         # Calculate the r0 value based on the current and past number of confirmed cases
@@ -60,19 +27,11 @@ class CovidTimeseriesModel:
 
     def calculate_newly_infected(self, current_cycle, previous_cycle, model_parameters):
         # If we have previously known cases, use the R0 to estimate newly infected cases.
-        nic = 0
         if previous_cycle['newly_infected'] > 0:
-            nic = previous_cycle['newly_infected'] * current_cycle['effective_r']
-        elif current_cycle['cases'] is not None:
-            if not 'newly_infected' in current_cycle:
-                pprint.pprint(current_cycle)
-            nic = current_cycle['newly_infected'] * model_parameters['estimated_new_cases_per_confirmed']
-
-        nid = 0
-        if current_cycle['deaths'] is not None:
-            nid = current_cycle['deaths'] * model_parameters['estimated_new_cases_per_death']
-
-        return (nic, nid)
+            return previous_cycle['newly_infected'] * current_cycle['effective_r']
+        if current_cycle['cases'] is not None:
+            return current_cycle['newly_infected'] / model_parameters['hospitalization_rate']
+        return 0
 
     def calculate_currently_infected(self, cycle_series, rolling_intervals_for_current_infected):
         # Calculate the number of people who have been infected but are no longer infected (one way or another)
@@ -167,9 +126,6 @@ class CovidTimeseriesModel:
     def build_init_cycle(self, model_parameters, init_data_cycle):
         # There are some assumptions made when we create the fisrt data cycle. This encapsulates all of those
         #  assumptions into one place
-
-        new_cases_from_confirmed = init_data_cycle['cases'] * model_parameters['estimated_new_cases_per_confirmed']
-
         init_cycle = {
             # We want the initial cycle to be one interval behind the first iteration of data we have
             'date': model_parameters['init_date'],
@@ -179,9 +135,7 @@ class CovidTimeseriesModel:
             'actual_reported': init_data_cycle['cases'],
             'current_infected': 0,
             'est_actual_chance_of_infection': 0,
-            'newly_infected_from_confirmed': new_cases_from_confirmed,
-            'newly_infected_from_deaths': 0,
-            'newly_infected': new_cases_from_confirmed,
+            'newly_infected': init_data_cycle['cases'] / model_parameters['hospitalization_rate'],
             'currently_infected': 0,
             'cumulative_infected': None,
             'cumulative_deaths': None,
@@ -229,14 +183,12 @@ class CovidTimeseriesModel:
             eff_r = self.calculate_effective_r(current_cycle, previous_cycle, model_parameters)
             current_cycle['effective_r'] = eff_r
             # Calculate the number of newly infected cases
-            (nic, nid) = self.calculate_newly_infected(
+            ni = self.calculate_newly_infected(
                 current_cycle,
                 previous_cycle,
                 model_parameters
             )
-            current_cycle['newly_infected_from_confirmed'] = nic
-            current_cycle['newly_infected_from_deaths'] = nid
-            current_cycle['newly_infected'] = nic + nid
+            current_cycle['newly_infected'] = ni
             ci = self.calculate_cumulative_infected(current_cycle, previous_cycle)
             # Calculate the cumulative number of infected individuals
             current_cycle['cumulative_infected'] = ci
@@ -295,9 +247,10 @@ class CovidTimeseriesModel:
             previous_cycle = current_cycle
         return cycle_series
 
-    def forecast_region(self, model_parameters):
+    def forecast(self, model_parameters):
         cycle_series = self.iterate_model(model_parameters)
         return pd.DataFrame({
+            'Note': ['' for s in cycle_series],
             'Date': [s['date'] for s in cycle_series],
             'Timestamp': [
                 # Create a UNIX timestamp for each datetime. Easier for graphs to digest down the road
@@ -307,9 +260,7 @@ class CovidTimeseriesModel:
             'R': [s['r'] for s in cycle_series],
             'Effective R.': [s['effective_r'] for s in cycle_series],
             'Beg. Susceptible': [s['ending_susceptible'] for s in cycle_series],
-            'New Inf < C': [int(round(s['newly_infected_from_confirmed'])) for s in cycle_series],
-            'New Inf < D': [int(round(s['newly_infected_from_deaths'])) for s in cycle_series],
-            'New Inf.': [int(round(s['newly_infected'])) for s in cycle_series],
+            'New Inf.': [s['newly_infected'] for s in cycle_series],
             'Curr. Inf.': [s['currently_infected'] for s in cycle_series],
             'Recov. or Died': [s['recovered_or_died'] for s in cycle_series],
             'End Susceptible': [s['ending_susceptible'] for s in cycle_series],
@@ -317,5 +268,11 @@ class CovidTimeseriesModel:
             'Pred. Hosp.': [s['predicted_hospitalized'] for s in cycle_series],
             'Cum. Inf.': [s['cumulative_infected'] for s in cycle_series],
             'Cum. Deaths': [s['cumulative_deaths'] for s in cycle_series],
-            'Avail. Hosp. Beds': [s['available_hospital_beds'] for s in cycle_series]
+            'Avail. Hosp. Beds': [s['available_hospital_beds'] for s in cycle_series],
+            'S&P 500': [None for s in cycle_series],
+            'Est. Actual Chance of Inf.': [s['est_actual_chance_of_infection'] for s in cycle_series],
+            'Pred. Chance of Inf.': [None for s in cycle_series],
+            'Cum. Pred. Chance of Inf.': [None for s in cycle_series],
+            'R0': [None for s in cycle_series],
+            '% Susceptible': [None for s in cycle_series]
         })
