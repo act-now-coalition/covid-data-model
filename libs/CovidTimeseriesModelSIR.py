@@ -25,10 +25,11 @@ import pprint
 def deriv(y0, t, beta, alpha, gamma, rho, mu, N):
     dy = [0, 0, 0, 0, 0, 0]
     S = N - sum(y0)
-    dy[0] = np.dot(beta[1:3], y0[1:3]) * S - alpha * y0[0]  # Exposed
-    dy[1] = alpha * y0[0] - (gamma[1] + rho[1]) * y0[1]  # Ia - Mildly ill
-    dy[2] = rho[1] * y0[1] - (gamma[2] + rho[2]) * y0[2]  # Ib - Hospitalized
-    dy[3] = rho[2] * y0[2] - (gamma[3] + mu) * y0[3]  # Ic - ICU
+
+    dy[0] = (np.dot(beta[1:3], y0[1:3]) * S) - (alpha * y0[0])  # Exposed
+    dy[1] = (alpha * y0[0]) - (gamma[1] + rho[1]) * y0[1]  # Ia - Mildly ill
+    dy[2] = (rho[1] * y0[1]) - (gamma[2] + rho[2]) * y0[2]  # Ib - Hospitalized
+    dy[3] = (rho[2] * y0[2]) - ((gamma[3] + mu) * y0[3])  # Ic - ICU
     dy[4] = np.dot(gamma[1:3], y0[1:3])  # Recovered
     dy[5] = mu * y0[3]  # Deaths
 
@@ -336,41 +337,55 @@ class CovidTimeseriesModelSIR:
     # beta = contact rate
     # gamma = mean recovery rate
     # TODO: add other params from doc
-    def seird(self, start_date, end_date, pop_dict, beta, alpha, gamma, rho, mu):
-        susceptible = (
-            pop_dict["total"]
-            - pop_dict["infected"]
-            - pop_dict["recovered"]
-            - pop_dict["deaths"]
-        )
-
-        # assume that the first time you see an infected population it is mildly so
-        # after that, we'll have them broken out
-        if "infected_a" in pop_dict:
-            first_infected = pop_dict["infected_a"]
+    def seird(
+        self, start_date, end_date, pop_dict, beta, alpha, gamma, rho, mu, harvard_flag
+    ):
+        if harvard_flag:
+            N = 1000
+            y0 = np.zeros(6)
+            y0[0] = 1
+            steps = 365
+            t = np.arange(0, steps, 0.1)
+            steps = steps * 10
         else:
-            first_infected = pop_dict["infected"]
+            # N = pop_dict["total"]
+            N = 1000
 
-        y0 = (
-            pop_dict.get("exposed", 0),
-            first_infected,
-            pop_dict.get("infected_b", 0),
-            pop_dict.get("infected_c", 0),
-            pop_dict["recovered"],
-            pop_dict["deaths"],
-        )
+            susceptible = (
+                N - pop_dict["infected"] - pop_dict["recovered"] - pop_dict["deaths"]
+            )
 
-        delta = (end_date - start_date).days
+            # assume that the first time you see an infected population it is mildly so
+            # after that, we'll have them broken out
+            if "infected_a" in pop_dict:
+                first_infected = pop_dict["infected_a"]
+            else:
+                first_infected = pop_dict["infected"]
 
-        t = np.arange(0, delta, 0.1)
+            y0 = np.array(
+                (
+                    1.0,  # pop_dict.get("exposed", 0),
+                    float(first_infected),
+                    float(pop_dict.get("infected_b", 0)),
+                    float(pop_dict.get("infected_c", 0)),
+                    float(pop_dict["recovered"]),
+                    float(pop_dict["deaths"]),
+                )
+            )
 
-        steps = len(t)
+            # delta = (end_date - start_date).days
+            # t = np.arange(0, delta, 0.1)
+            # steps = len(t)
 
-        ret = odeint(
-            deriv, y0, t, args=(beta, alpha, gamma, rho, mu, pop_dict["total"])
-        )
+            steps = 365
+            t = np.arange(0, steps, 0.1)
+            steps = steps * 10
 
-        return ret.T, steps
+        print(y0)
+        print(beta, alpha, gamma, rho, mu, N)
+        ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
+
+        return ret.T, steps, ret
 
     def dataframe_ify(self, data, start, end, steps):
         timesteps = pd.date_range(
@@ -410,11 +425,11 @@ class CovidTimeseriesModelSIR:
             :, ["cases", "deaths", "recovered"]
         ].fillna(0)
 
-        timeseries["active_calc"] = (
+        timeseries["active"] = (
             timeseries["cases"] - timeseries["deaths"] - timeseries["recovered"]
         )
 
-        timeseries["active"] = timeseries["active"].fillna(timeseries["active_calc"])
+        # timeseries["active"] = timeseries["active"].fillna(timeseries["active_calc"])
 
         model_parameters["timeseries"] = timeseries
 
@@ -428,18 +443,18 @@ class CovidTimeseriesModelSIR:
 
         # load the initial populations
         pop_dict = {
-            "total": timeseries.loc[init_date, "population"],
+            "total": model_parameters["population"],
             "infected": timeseries.loc[init_date, "active"],
             "recovered": timeseries.loc[init_date, "recovered"],
             "deaths": timeseries.loc[init_date, "deaths"],
         }
 
-        if model_parameters["use_harvard"]:
+        if model_parameters["use_harvard_params"]:
             init_params = self.harvard_model_params()
         else:
             init_params = self.generate_seird_params(model_parameters)
 
-        (data, steps) = self.seird(
+        (data, steps, ret) = self.seird(
             model_parameters["init_date"],
             model_parameters["last_date"],
             pop_dict,
@@ -448,6 +463,7 @@ class CovidTimeseriesModelSIR:
             init_params["gamma"],
             init_params["rho"],
             init_params["mu"],
+            model_parameters["use_harvard_init"],
         )
 
         # this dataframe should start on the last day of the actual data
@@ -461,66 +477,78 @@ class CovidTimeseriesModelSIR:
             sir_df["infected_a"] + sir_df["infected_b"] + sir_df["infected_c"]
         )
 
-        sir_df["total"] = pop_dict["total"]
+        if model_parameters["use_harvard_init"]:
+            combined_df = sir_df
+            sir_df["total"] = 1000
 
-        # sir_df["susceptible"] = sir_df.total - (
-        #    sir_df.exposed + sir_df.infected + sir_df.recovered + sir_df.dead
-        # )
-
-        timeseries["susceptible"] = timeseries.population - (
-            timeseries.active + timeseries.recovered + timeseries.deaths
-        )
-
-        actual_cols = ["population", "susceptible", "active", "recovered", "deaths"]
-        # kill last row that is initial conditions on SEIRD
-        actuals = timeseries.loc[:, actual_cols].head(-1)
-
-        # it wasn't a df thing, you can rip all this out
-        actuals.rename(
-            columns={"population": "total", "deaths": "dead", "active": "infected"},
-            inplace=True,
-        )
-
-        actuals.rename(columns={"active": "infected"}, inplace=True)
-        actuals.index = pd.to_datetime(actuals.index, format="%Y-%m-%d")
-
-        actuals["infected_a"] = 0
-        actuals["infected_b"] = 0
-        actuals["infected_c"] = 0
-
-        all_cols = [
-            "total",
-            "susceptible",
-            "exposed",
-            "infected",
-            "infected_a",
-            "infected_b",
-            "infected_c",
-            "recovered",
-            "dead",
-        ]
-
-        actuals = actuals.loc[:, all_cols]
-        sir_df = sir_df.loc[:, all_cols]
-
-        combined_df = pd.concat([actuals, sir_df])
-
-        # this should be done, but belt and suspenders for the diffs()
-        combined_df.sort_index(inplace=True)
-        combined_df.index.name = "date"
-        combined_df.reset_index(inplace=True)
-
-        combined_df["total"] = pop_dict["total"]
-
-        # move the actual infected numbers into infected_a where its NA
-        combined_df["infected_a"] = combined_df["infected_a"].fillna(
-            combined_df["infected"]
-        )
-
-        if model_parameters["interventions"] is not None:
-            combo_df, counterfactuals = self.run_interventions(
-                model_parameters["interventions"], combined_df, init_params
+            sir_df["susceptible"] = sir_df.total - (
+                sir_df.exposed + sir_df.infected + sir_df.recovered + sir_df.dead
             )
+        else:
+            sir_df["total"] = pop_dict["total"]
+
+            sir_df["susceptible"] = sir_df.total - (
+                sir_df.exposed + sir_df.infected + sir_df.recovered + sir_df.dead
+            )
+
+            timeseries["susceptible"] = model_parameters["population"] - (
+                timeseries.active + timeseries.recovered + timeseries.deaths
+            )
+
+            actual_cols = ["population", "susceptible", "active", "recovered", "deaths"]
+            # kill last row that is initial conditions on SEIRD
+            actuals = timeseries.loc[:, actual_cols].head(-1)
+
+            # it wasn't a df thing, you can rip all this out
+            actuals.rename(
+                columns={"population": "total", "deaths": "dead", "active": "infected"},
+                inplace=True,
+            )
+
+            actuals.index = pd.to_datetime(actuals.index, format="%Y-%m-%d")
+
+            actuals["infected_a"] = 0
+            actuals["infected_b"] = 0
+            actuals["infected_c"] = 0
+
+            all_cols = [
+                "total",
+                "susceptible",
+                "exposed",
+                "infected",
+                "infected_a",
+                "infected_b",
+                "infected_c",
+                "recovered",
+                "dead",
+            ]
+
+            actuals = actuals.loc[:, all_cols]
+
+            print(actuals.tail())
+
+            sir_df = sir_df.loc[:, all_cols]
+
+            print(sir_df.head())
+
+            combined_df = pd.concat([actuals, sir_df])
+
+            # this should be done, but belt and suspenders for the diffs()
+            combined_df.sort_index(inplace=True)
+            combined_df.index.name = "date"
+            combined_df.reset_index(inplace=True)
+
+            combined_df["total"] = pop_dict["total"]
+
+            # move the actual infected numbers into infected_a where its NA
+            combined_df["infected_a"] = combined_df["infected_a"].fillna(
+                combined_df["infected"]
+            )
+
+            if model_parameters["interventions"] is not None:
+                combo_df, counterfactuals = self.run_interventions(
+                    model_parameters["interventions"], combined_df, init_params
+                )
 
         # set some of the paramters... I'm sure I'm misinterpreting some
         # and of course a lot of these don't move like they should for the model yet
@@ -570,8 +598,8 @@ class CovidTimeseriesModelSIR:
         # combined_df["available_hospital_beds"] = 0
 
         # return combined_df.to_dict("records")  # cycle_series
-        return combined_df
-        # return soln_test
+        return [combined_df, ret]
+        # return ret
 
     def forecast_region(self, model_parameters):
         cycle_series = self.iterate_model(model_parameters)
