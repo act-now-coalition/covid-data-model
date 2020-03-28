@@ -19,6 +19,7 @@ from libs.CovidDatasets import JHUDataset
 _logger = logging.getLogger(__name__)
 
 
+
 def record_results(res, directory, name, num, pop):
     import copy
     import os.path
