@@ -24,7 +24,7 @@ import pprint
 # In the future could include recovery or infection from the exposed class (asymptomatics)
 def deriv(y0, t, beta, alpha, gamma, rho, mu, N):
     dy = [0, 0, 0, 0, 0, 0]
-    S = N - sum(y0)
+    S = np.max([N - sum(y0), 0])
 
     dy[0] = (np.dot(beta[1:3], y0[1:3]) * S) - (alpha * y0[0])  # Exposed
     dy[1] = (alpha * y0[0]) - (gamma[1] + rho[1]) * y0[1]  # Ia - Mildly ill
@@ -240,16 +240,6 @@ class CovidTimeseriesModelSIR:
             available_hospital_beds *= hospital_capacity_change_daily_rate
         return available_hospital_beds
 
-    def run_interventions(self, interventions, combined_df, seird_params):
-        ## for each intervention (in order)
-        ## grab initial conditions (conditions at intervention date)
-        ## adjust seird_params based on intervention
-        ## run model from that date with initial conditions and new params
-        ## merge new dataframes, keep old one as counterfactual for that intervention
-        ## rinse, repeat
-
-        return post_interventions_df, counterfactuals
-
     def initialize_parameters(self, model_parameters):
         """Perform all of the necessary setup prior to the model's execution"""
         # want first and last days from the actual values in timeseries
@@ -289,6 +279,18 @@ class CovidTimeseriesModelSIR:
             "rho": [0.0, 0.02, 0.02272727],
             "mu": 0.057142857142857134,
         }
+
+    def gen_r0(self, seird_params):
+        b = seird_params["beta"]
+        p = seird_params["rho"]
+        g = seird_params["gamma"]
+        u = seird_params["mu"]
+
+        r0 = (b[1] / (p[1] + g[1])) + (p[1] / (p[1] + g[1])) * (
+            b[2] / (p[2] + g[2]) + (p[2] / (p[2] + g[2])) * (b[3] / (u + g[3]))
+        )
+
+        return r0
 
     # for now just implement Harvard model, in the future use this to change
     # key params due to interventions
@@ -338,7 +340,16 @@ class CovidTimeseriesModelSIR:
     # gamma = mean recovery rate
     # TODO: add other params from doc
     def seird(
-        self, start_date, end_date, pop_dict, beta, alpha, gamma, rho, mu, harvard_flag
+        self,
+        start_date,
+        end_date,
+        pop_dict,
+        beta,
+        alpha,
+        gamma,
+        rho,
+        mu,
+        harvard_flag=False,
     ):
         if harvard_flag:
             N = 1000
@@ -356,37 +367,51 @@ class CovidTimeseriesModelSIR:
             else:
                 first_infected = pop_dict["infected"]
 
-            y0 = np.array(
-                (
-                    pop_dict.get("exposed", 0),
-                    float(first_infected),
-                    float(pop_dict.get("infected_b", 0)),
-                    float(pop_dict.get("infected_c", 0)),
-                    float(pop_dict["recovered"]),
-                    float(pop_dict["deaths"]),
-                )
+            susceptible = pop_dict["total"] - (
+                pop_dict["infected"] + pop_dict["recovered"] + pop_dict["deaths"]
             )
+
+            y0 = [
+                float(first_infected),  # pop_dict.get("exposed", 0),
+                float(first_infected),
+                float(pop_dict.get("infected_b", 0)),
+                float(pop_dict.get("infected_c", 0)),
+                float(pop_dict.get("recovered", 0)),
+                float(pop_dict.get("deaths", 0)),
+            ]
 
             steps = 365
             t = np.arange(0, steps, 1)
 
         print(y0)
         print(beta, alpha, gamma, rho, mu, N)
-        ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
 
-        return ret.T, steps, ret
+        y = np.zeros((6, steps))
+        y[:, 0] = y0
+
+        for day in range(steps - 1):
+            y[:, day + 1] = y[:, day] + deriv(
+                y[:, day], 1, beta, alpha, gamma, rho, mu, N
+            )
+        # for reasons that are beyond me the odeint doesn't work
+        # ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
+
+        return y, steps, np.transpose(y)
 
     def dataframe_ify(self, data, start, end, steps):
-        last_period = start + datetime.timedelta(days=(steps / 10))
+        last_period = start + datetime.timedelta(days=(steps - 1))
 
         timesteps = pd.date_range(
-            start=start, end=last_period, periods=steps, freq=None,
+            # start=start, end=last_period, periods=steps, freq=='D',
+            start=start,
+            end=last_period,
+            freq="D",
         ).to_list()
 
         sir_df = pd.DataFrame(
             zip(data[0], data[1], data[2], data[3], data[4], data[5]),
             columns=[
-                "exposed",  # "susceptible"
+                "exposed",
                 "infected_a",
                 "infected_b",
                 "infected_c",
@@ -397,10 +422,80 @@ class CovidTimeseriesModelSIR:
         )
 
         # reample the values to be daily
+        sir_df.resample("1D").sum()
+
         # drop anything after the end day
-        sir_df.resample("1D").sum().loc[:end]
+        sir_df = sir_df.loc[:end]
 
         return sir_df
+
+    def brute_force_r0(self, seird_params, new_r0, r0):
+        calc_r0 = r0 * 1000
+        change = np.sign(new_r0 - calc_r0) * 0.00005
+        # step = 0.1
+        # direction = 1 if change > 0 else -1
+
+        new_seird_params = seird_params.copy()
+
+        while round(new_r0, 4) != round(calc_r0, 4):
+            new_seird_params["beta"] = [
+                0.0,
+                new_seird_params["beta"][1] + change,
+                0.0,
+                0.0,
+            ]
+            calc_r0 = self.gen_r0(new_seird_params) * 1000
+
+            diff_r0 = new_r0 - calc_r0
+
+            # if the sign has changed, we overshot, turn around with a smaller
+            # step
+            if np.sign(diff_r0) != np.sign(change):
+                change = -change / 2
+
+        return new_seird_params
+
+    def run_interventions(
+        self, model_parameters, pop_dict, combined_df, seird_params, r0
+    ):
+        ## for each intervention (in order)
+        ## grab initial conditions (conditions at intervention date)
+        ## adjust seird_params based on intervention
+        ## run model from that date with initial conditions and new params
+        ## merge new dataframes, keep old one as counterfactual for that intervention
+        ## rinse, repeat
+        interventions = model_parameters["interventions"]
+        end_date = model_parameters["last_date"]
+
+        counterfactuals = {}
+
+        for date, new_r0 in interventions.items():
+            counterfactuals[date] = combined_df
+
+            new_seird_params = self.brute_force_r0(seird_params, new_r0, r0)
+
+            print("target r0: " + str(new_r0))
+            print("new r0: " + str(self.gen_r0(new_seird_params) * 1000))
+
+            (data, steps, ret) = self.seird(
+                date,
+                end_date,
+                pop_dict,
+                new_seird_params["beta"],
+                new_seird_params["alpha"],
+                new_seird_params["gamma"],
+                new_seird_params["rho"],
+                new_seird_params["mu"],
+                False,
+            )
+
+            new_df = self.dataframe_ify(data, date, end_date, steps,)
+
+            early_combo_df = combined_df.copy().loc[:date]
+
+            combo_df = early_combo_df.append(new_df, sort=True)
+
+        return combo_df, counterfactuals
 
     def iterate_model(self, model_parameters):
         """The guts. Creates the initial conditions, and runs the SIR model for the
@@ -436,11 +531,10 @@ class CovidTimeseriesModelSIR:
 
         init_date = model_parameters["init_date"].to_pydatetime().date()
 
-        print(timeseries.tail())
-
         # load the initial populations
         pop_dict = {
-            "total": model_parameters["population"],
+            # "total": model_parameters["population"],
+            "total": 10000,  # model_parameters["population"],
             "infected": timeseries.loc[init_date, "active"],
             "recovered": timeseries.loc[init_date, "recovered"],
             "deaths": timeseries.loc[init_date, "deaths"],
@@ -450,6 +544,8 @@ class CovidTimeseriesModelSIR:
             init_params = self.harvard_model_params()
         else:
             init_params = self.generate_seird_params(model_parameters)
+
+        r0 = self.gen_r0(init_params)
 
         (data, steps, ret) = self.seird(
             model_parameters["init_date"],
@@ -484,9 +580,17 @@ class CovidTimeseriesModelSIR:
         else:
             sir_df["total"] = pop_dict["total"]
 
+            # not sure why the first row is so out of whack, but it's duplicative anyway
+            # since it just represents the inital conditions
+            # sir_df = sir_df.tail(-1)
+
             sir_df["susceptible"] = sir_df.total - (
                 sir_df.exposed + sir_df.infected + sir_df.recovered + sir_df.dead
             )
+
+            # sir_df["exposed"] = sir_df.total - (
+            #    sir_df.susceptible + sir_df.infected + sir_df.recovered + sir_df.dead
+            # )
 
             timeseries["susceptible"] = model_parameters["population"] - (
                 timeseries.active + timeseries.recovered + timeseries.deaths
@@ -525,6 +629,11 @@ class CovidTimeseriesModelSIR:
 
             combined_df = pd.concat([actuals, sir_df])
 
+            if model_parameters["interventions"] is not None:
+                combo_df, counterfactuals = self.run_interventions(
+                    model_parameters, pop_dict, combined_df, init_params, r0
+                )
+
             # this should be done, but belt and suspenders for the diffs()
             combined_df.sort_index(inplace=True)
             combined_df.index.name = "date"
@@ -536,11 +645,6 @@ class CovidTimeseriesModelSIR:
             combined_df["infected_a"] = combined_df["infected_a"].fillna(
                 combined_df["infected"]
             )
-
-            if model_parameters["interventions"] is not None:
-                combo_df, counterfactuals = self.run_interventions(
-                    model_parameters["interventions"], combined_df, init_params
-                )
 
         # set some of the paramters... I'm sure I'm misinterpreting some
         # and of course a lot of these don't move like they should for the model yet
