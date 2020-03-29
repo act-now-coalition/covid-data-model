@@ -5,240 +5,16 @@ import json
 import numpy as np
 import pandas as pd
 import datetime
-from scipy.integrate import odeint
 
 import pprint
 
-
-# The SEIRD model differential equations.
-# https://github.com/alsnhll/SEIR_COVID19/blob/master/SEIR_COVID19.ipynb
-# we'll blow these out to add E, D, and variations on I (to SIR)
-# but these are the basics
-# y = initial conditions
-# t = a grid of time points (in days) - not currently used, but will be for time-dependent functions
-# N = total pop
-# beta = contact rate
-# gamma = mean recovery rate
-# Don't track S because all variables must add up to 1
-# include blank first entry in vector for beta, gamma, p so that indices align in equations and code.
-# In the future could include recovery or infection from the exposed class (asymptomatics)
-def deriv(y0, t, beta, alpha, gamma, rho, mu, N):
-    dy = [0, 0, 0, 0, 0, 0]
-    S = np.max([N - sum(y0), 0])
-
-    dy[0] = (np.dot(beta[1:3], y0[1:3]) * S) - (alpha * y0[0])  # Exposed
-    dy[1] = (alpha * y0[0]) - (gamma[1] + rho[1]) * y0[1]  # Ia - Mildly ill
-    dy[2] = (rho[1] * y0[1]) - (gamma[2] + rho[2]) * y0[2]  # Ib - Hospitalized
-    dy[3] = (rho[2] * y0[2]) - ((gamma[3] + mu) * y0[3])  # Ic - ICU
-    dy[4] = np.dot(gamma[1:3], y0[1:3])  # Recovered
-    dy[5] = mu * y0[3]  # Deaths
-
-    return dy
-
-
-# @TODO: Switch to this model.
-class CovidTimeseriesCycle(object):
-    def __init__(self, model_parameters, init_data_cycle):
-        # There are some assumptions made when we create the fisrt data cycle. This encapsulates all of those
-        #  assumptions into one place
-
-        self.date = model_parameters["init_date"]
-        self.r0 = model_parameters["r0"]
-        self.effective_r0 = None
-        self.cases = init_data_cycle["cases"]
-        self.actual_reported = init_data_cycle["cases"]
-        self.current_infected = 0
-        self.newly_infected_from_confirmed = (
-            init_data_cycle["cases"]
-            * model_parameters["estimated_new_cases_per_confirmed"]
-        )
-        self.newly_infected_from_deaths = 0
-        self.newly_infected = (
-            self.newly_infected_from_confirmed + self.newly_infected_from_deaths
-        )
-        self.currently_infected = 0
-        self.cumulative_infected = None
-        self.cumulative_deaths = None
-        self.recovered_or_died = 0
-        self.ending_susceptible = model_parameters["population"] - (
-            init_data_cycle["cases"] / model_parameters["hospitalization_rate"]
-        )
-        self.predicted_hospitalized = 0
-        self.available_hospital_beds = model_parameters[
-            "original_available_hospital_beds"
-        ]
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        pass
+from .epi_models.HarvardEpi import seir
 
 
 class CovidTimeseriesModelSIR:
     # Initializer / Instance Attributes
     def __init__(self):
         logging.basicConfig(level=logging.ERROR)
-
-    def calculate_r(self, current_cycle, previous_cycle, model_parameters):
-        # Calculate the r0 value based on the current and past number of confirmed cases
-        if current_cycle["cases"] is not None:
-            if previous_cycle["cases"] > 0:
-                return current_cycle["cases"] / previous_cycle["cases"]
-        return model_parameters["r0"]
-
-    def calculate_effective_r(self, current_cycle, previous_cycle, model_parameters):
-        # In order to account for interventions, we need to allow effective r to be changed manually.
-        if model_parameters["interventions"] is not None:
-            # The interventions come in as a dict, with date's as keys and effective r's as values
-            # Find the most recent intervention we have passed
-            for d in sorted(model_parameters["interventions"].keys())[::-1]:
-                if (
-                    current_cycle["date"] >= d
-                ):  # If the current cycle occurs on or after an intervention
-                    return model_parameters["interventions"][d] * (
-                        previous_cycle["ending_susceptible"]
-                        / model_parameters["population"]
-                    )
-        # Calculate effective r by accounting for herd-immunity
-        return current_cycle["r"] * (
-            previous_cycle["ending_susceptible"] / model_parameters["population"]
-        )
-
-    def calculate_newly_infected(self, current_cycle, previous_cycle, model_parameters):
-        # If we have previously known cases, use the R0 to estimate newly infected cases.
-        nic = 0
-        if previous_cycle["newly_infected"] > 0:
-            nic = previous_cycle["newly_infected"] * current_cycle["effective_r"]
-        elif current_cycle["cases"] is not None:
-            if not "newly_infected" in current_cycle:
-                pprint.pprint(current_cycle)
-            nic = (
-                current_cycle["newly_infected"]
-                * model_parameters["estimated_new_cases_per_confirmed"]
-            )
-
-        nid = 0
-        if current_cycle["deaths"] is not None:
-            nid = (
-                current_cycle["deaths"]
-                * model_parameters["estimated_new_cases_per_death"]
-            )
-
-        return (nic, nid)
-
-    def calculate_currently_infected(
-        self, cycle_series, rolling_intervals_for_current_infected
-    ):
-        # Calculate the number of people who have been infected but are no longer infected (one way or another)
-        # Better way:
-        return sum(
-            ss["newly_infected"]
-            for ss in cycle_series[-rolling_intervals_for_current_infected:]
-        )
-
-    def hospital_is_overloaded(self, current_cycle, previous_cycle):
-        # Determine if a hospital is overloaded. Trivial now, but will likely become more complicated in the near future
-        return (
-            previous_cycle["available_hospital_beds"]
-            < current_cycle["predicted_hospitalized"]
-        )
-
-    def calculate_cumulative_infected(self, current_cycle, previous_cycle):
-        if previous_cycle["cumulative_infected"] is None:
-            return current_cycle["newly_infected"]
-        return previous_cycle["cumulative_infected"] + current_cycle["newly_infected"]
-
-    def calculate_cumulative_deaths(
-        self,
-        current_cycle,
-        previous_cycle,
-        case_fatality_rate,
-        case_fatality_rate_hospitals_overwhelmed,
-    ):
-        # If the number of hospital beds available is exceeded by the number of patients that need hospitalization,
-        #  the death rate increases
-        # Can be significantly improved in the future
-        if previous_cycle["cumulative_deaths"] is None:
-            return current_cycle["cumulative_infected"] * case_fatality_rate
-        if not self.hospital_is_overloaded(current_cycle, previous_cycle):
-            return previous_cycle["cumulative_deaths"] + (
-                current_cycle["newly_infected"] * case_fatality_rate
-            )
-        else:
-            return previous_cycle["cumulative_deaths"] + (
-                current_cycle["newly_infected"]
-                * (case_fatality_rate + case_fatality_rate_hospitals_overwhelmed)
-            )
-
-    def calculuate_recovered_or_died(
-        self,
-        current_cycle,
-        previous_cycle,
-        cycle_series,
-        rolling_intervals_for_current_infected,
-    ):
-        # Recovered or died (RoD) is a cumulative number. We take the number of RoD from last current_cycle, and add to it
-        #  the number of individuals who were newly infected a set number of current_cycles ago (rolling_intervals_for_current_infected)
-        #  (RICI). It is assumed that after the RICI, an infected interval has either recovered or died.
-        # Can be improved in the future
-        if len(cycle_series) >= (rolling_intervals_for_current_infected + 1):
-            return (
-                previous_cycle["recovered_or_died"]
-                + cycle_series[-(rolling_intervals_for_current_infected + 1)][
-                    "newly_infected"
-                ]
-            )
-        else:
-            return previous_cycle["recovered_or_died"]
-
-    def calculate_predicted_hospitalized(self, current_cycle, model_parameters):
-        return (
-            current_cycle["newly_infected"] * model_parameters["hospitalization_rate"]
-        )
-
-    def calculate_ending_susceptible(
-        self, current_cycle, previous_cycle, model_parameters
-    ):
-        # Number of people who haven't been sick yet
-        return model_parameters["population"] - (
-            current_cycle["newly_infected"]
-            + current_cycle["currently_infected"]
-            + current_cycle["recovered_or_died"]
-        )
-
-    def calculate_estimated_actual_chance_of_infection(
-        self, current_cycle, previous_cycle, hospitalization_rate, pop
-    ):
-        # Reflects the model logic, but probably needs to be changed
-        if current_cycle["cases"] is not None:
-            return ((current_cycle["cases"] / hospitalization_rate) * 2) / pop
-        return None
-
-    def calculate_actual_reported(self, current_cycle, previous_cycle):
-        # Needs to account for creating synthetic data for missing records
-        if current_cycle["cases"] is not None:
-            return current_cycle["cases"]
-        return None
-
-    def calculate_available_hospital_beds(
-        self,
-        current_cycle,
-        previous_cycle,
-        max_hospital_capacity_factor,
-        original_available_hospital_beds,
-        hospital_capacity_change_daily_rate,
-    ):
-        available_hospital_beds = previous_cycle["available_hospital_beds"]
-        if current_cycle["i"] < 3:
-            return available_hospital_beds
-        if (
-            available_hospital_beds
-            < max_hospital_capacity_factor * original_available_hospital_beds
-        ):
-            # Hospitals can try to increase their capacity for the sick
-            available_hospital_beds *= hospital_capacity_change_daily_rate
-        return available_hospital_beds
 
     def initialize_parameters(self, model_parameters):
         """Perform all of the necessary setup prior to the model's execution"""
@@ -280,11 +56,11 @@ class CovidTimeseriesModelSIR:
             "mu": 0.057142857142857134,
         }
 
-    def gen_r0(self, seird_params):
-        b = seird_params["beta"]
-        p = seird_params["rho"]
-        g = seird_params["gamma"]
-        u = seird_params["mu"]
+    def gen_r0(self, seir_params):
+        b = seir_params["beta"]
+        p = seir_params["rho"]
+        g = seir_params["gamma"]
+        u = seir_params["mu"]
 
         r0 = (b[1] / (p[1] + g[1])) + (p[1] / (p[1] + g[1])) * (
             b[2] / (p[2] + g[2]) + (p[2] / (p[2] + g[2])) * (b[3] / (u + g[3]))
@@ -294,7 +70,7 @@ class CovidTimeseriesModelSIR:
 
     # for now just implement Harvard model, in the future use this to change
     # key params due to interventions
-    def generate_seird_params(self, model_parameters):
+    def generate_seir_params(self, model_parameters):
         fraction_critical = (
             model_parameters["hospitalization_rate"]
             * model_parameters["hospitalized_cases_requiring_icu_care"]
@@ -324,76 +100,14 @@ class CovidTimeseriesModelSIR:
         )
         gamma_3 = (1 / model_parameters["icu_time_death"]) - mu
 
-        seird_params = {
+        seir_params = {
             "beta": beta,
             "alpha": alpha,
             "gamma": [gamma_0, gamma_1, gamma_2, gamma_3],
             "rho": [rho_0, rho_1, rho_2],
             "mu": mu,
         }
-        return seird_params
-
-    # Sets up and runs the integration
-    # start date and end date give the bounds of the simulation
-    # pop_dict contains the initial populations
-    # beta = contact rate
-    # gamma = mean recovery rate
-    # TODO: add other params from doc
-    def seird(
-        self,
-        start_date,
-        end_date,
-        pop_dict,
-        beta,
-        alpha,
-        gamma,
-        rho,
-        mu,
-        harvard_flag=False,
-    ):
-        if harvard_flag:
-            N = 1000
-            y0 = np.zeros(6)
-            y0[0] = 1
-            steps = 365
-            t = np.arange(0, steps, 0.1)
-            steps = steps * 10
-        else:
-            N = pop_dict["total"]
-            # assume that the first time you see an infected population it is mildly so
-            # after that, we'll have them broken out
-            if "infected_a" in pop_dict:
-                first_infected = pop_dict["infected_a"]
-            else:
-                first_infected = pop_dict["infected"]
-
-            susceptible = pop_dict["total"] - (
-                pop_dict["infected"] + pop_dict["recovered"] + pop_dict["deaths"]
-            )
-
-            y0 = [
-                pop_dict.get("exposed", 0),
-                float(first_infected),
-                float(pop_dict.get("infected_b", 0)),
-                float(pop_dict.get("infected_c", 0)),
-                float(pop_dict.get("recovered", 0)),
-                float(pop_dict.get("deaths", 0)),
-            ]
-
-            steps = 365
-            t = np.arange(0, steps, 1)
-
-        y = np.zeros((6, steps))
-        y[:, 0] = y0
-
-        for day in range(steps - 1):
-            y[:, day + 1] = y[:, day] + deriv(
-                y[:, day], 1, beta, alpha, gamma, rho, mu, N
-            )
-        # for reasons that are beyond me the odeint doesn't work
-        # ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
-
-        return y, steps, np.transpose(y)
+        return seir_params
 
     def dataframe_ify(self, data, start, end, steps):
         last_period = start + datetime.timedelta(days=(steps - 1))
@@ -426,22 +140,22 @@ class CovidTimeseriesModelSIR:
 
         return sir_df
 
-    def brute_force_r0(self, seird_params, new_r0, r0):
+    def brute_force_r0(self, seir_params, new_r0, r0):
         calc_r0 = r0 * 1000
         change = np.sign(new_r0 - calc_r0) * 0.00005
         # step = 0.1
         # direction = 1 if change > 0 else -1
 
-        new_seird_params = seird_params.copy()
+        new_seir_params = seir_params.copy()
 
         while round(new_r0, 4) != round(calc_r0, 4):
-            new_seird_params["beta"] = [
+            new_seir_params["beta"] = [
                 0.0,
-                new_seird_params["beta"][1] + change,
+                new_seir_params["beta"][1] + change,
                 0.0,
                 0.0,
             ]
-            calc_r0 = self.gen_r0(new_seird_params) * 1000
+            calc_r0 = self.gen_r0(new_seir_params) * 1000
 
             diff_r0 = new_r0 - calc_r0
 
@@ -450,12 +164,12 @@ class CovidTimeseriesModelSIR:
             if np.sign(diff_r0) != np.sign(change):
                 change = -change / 2
 
-        return new_seird_params
+        return new_seir_params
 
-    def run_interventions(self, model_parameters, combined_df, seird_params, r0):
+    def run_interventions(self, model_parameters, combined_df, seir_params, r0):
         ## for each intervention (in order)
         ## grab initial conditions (conditions at intervention date)
-        ## adjust seird_params based on intervention
+        ## adjust seir_params based on intervention
         ## run model from that date with initial conditions and new params
         ## merge new dataframes, keep old one as counterfactual for that intervention
         ## rinse, repeat
@@ -471,7 +185,7 @@ class CovidTimeseriesModelSIR:
 
                 counterfactuals[date] = combined_df
 
-                new_seird_params = self.brute_force_r0(seird_params, new_r0, r0)
+                new_seir_params = self.brute_force_r0(seir_params, new_r0, r0)
 
                 # this is a dumb way to do this, but it might work
                 combined_df.loc[:, "infected"] = (
@@ -490,15 +204,13 @@ class CovidTimeseriesModelSIR:
                     "deaths": combined_df.loc[date, "dead"],
                 }
 
-                (data, steps, ret) = self.seird(
-                    date,
-                    end_date,
+                (data, steps, ret) = seir(
                     pop_dict,
-                    new_seird_params["beta"],
-                    new_seird_params["alpha"],
-                    new_seird_params["gamma"],
-                    new_seird_params["rho"],
-                    new_seird_params["mu"],
+                    new_seir_params["beta"],
+                    new_seir_params["alpha"],
+                    new_seir_params["gamma"],
+                    new_seir_params["rho"],
+                    new_seir_params["mu"],
                     False,
                 )
 
@@ -520,6 +232,9 @@ class CovidTimeseriesModelSIR:
         ## pull together interventions into the date they take place
         #
         ## nice-to have - counterfactuals for interventions
+
+        # hack for total population
+        model_parameters["population"] = 10000
 
         timeseries = model_parameters["timeseries"].sort_values("date")
 
@@ -556,13 +271,11 @@ class CovidTimeseriesModelSIR:
         if model_parameters["use_harvard_params"]:
             init_params = self.harvard_model_params()
         else:
-            init_params = self.generate_seird_params(model_parameters)
+            init_params = self.generate_seir_params(model_parameters)
 
         r0 = self.gen_r0(init_params)
 
-        (data, steps, ret) = self.seird(
-            model_parameters["init_date"],
-            model_parameters["last_date"],
+        (data, steps, ret) = seir(
             pop_dict,
             init_params["beta"],
             init_params["alpha"],
@@ -593,24 +306,12 @@ class CovidTimeseriesModelSIR:
         else:
             sir_df["total"] = pop_dict["total"]
 
-            # not sure why the first row is so out of whack, but it's duplicative anyway
-            # since it just represents the inital conditions
-            # sir_df = sir_df.tail(-1)
-
-            sir_df["susceptible"] = sir_df.total - (
-                sir_df.exposed + sir_df.infected + sir_df.recovered + sir_df.dead
-            )
-
-            # sir_df["exposed"] = sir_df.total - (
-            #    sir_df.susceptible + sir_df.infected + sir_df.recovered + sir_df.dead
-            # )
-
             timeseries["susceptible"] = model_parameters["population"] - (
                 timeseries.active + timeseries.recovered + timeseries.deaths
             )
 
             actual_cols = ["population", "susceptible", "active", "recovered", "deaths"]
-            # kill last row that is initial conditions on SEIRD
+            # kill last row that is initial conditions on SEIR
             actuals = timeseries.loc[:, actual_cols].head(-1)
 
             # it wasn't a df thing, you can rip all this out
@@ -624,6 +325,8 @@ class CovidTimeseriesModelSIR:
             actuals["infected_a"] = 0
             actuals["infected_b"] = 0
             actuals["infected_c"] = 0
+
+            actuals["exposed"] = 0
 
             all_cols = [
                 "total",
@@ -661,93 +364,23 @@ class CovidTimeseriesModelSIR:
                 combined_df["infected"]
             )
 
-        # set some of the paramters... I'm sure I'm misinterpreting some
-        # and of course a lot of these don't move like they should for the model yet
-        # combined_df["r"] = model_parameters["r0"]
-        # combined_df["effective_r"] = model_parameters["r0"]
-        # combined_df["ending_susceptible"] = combined_df["susceptible"]
-        # combined_df["currently_infected"] = combined_df["infected"]
+            # make infected total represent the sum of the infected stocks
+            combined_df.loc[:, "infected"] = (
+                combined_df.loc[:, "infected_a"]
+                + combined_df.loc[:, "infected_b"]
+                + combined_df.loc[:, "infected_c"]
+            )
 
-        # not sure about these guys... just doing new infections
-        # combined_df["newly_infected_from_confirmed"] = combined_df["infected"].diff()
-        # combined_df["newly_infected_from_deaths"] = combined_df["infected"].diff()
+            combined_df["susceptible"] = combined_df.total - (
+                combined_df.exposed
+                + combined_df.infected
+                + combined_df.recovered
+                + combined_df.dead
+            )
 
-        # fillna
-        # combined_df.loc[
-        #    :, ["newly_infected_from_confirmed", "newly_infected_from_deaths"]
-        # ] = combined_df.loc[
-        #    :, ["newly_infected_from_confirmed", "newly_infected_from_deaths"]
-        # ].fillna(
-        #    0
-        # )
-
-        # cumsum the diff (no D yet)
-        # combined_df["cumulative_infected"] = combined_df[
-        #    "newly_infected_from_confirmed"
-        # ].cumsum()
-
-        # no D yet in model
-        # combined_df["recovered_or_died"] = combined_df["recovered"]
-
-        # cumsum the diff (no D yet)
-        # combined_df["newly_died"] = combined_df["recovered"].diff()
-        # combined_df["cumulative_deaths"] = combined_df["newly_died"].cumsum()
-
-        # have not broken out asymptomatic from hospitalized/severe yet
-        # combined_df["predicted_hospitalized"] = combined_df["infected"]
-
-        # combined_df["newly_infected"] = combined_df["infected"]
-
-        # TODO: work on all these guys
-        # 'actual_reported'
-        # 'predicted_hospitalized'
-        # 'cumulative_infected'
-        # 'cumulative_deaths'
-        # 'available_hospital_beds'
-        # combined_df["actual_reported"] = 0
-        # combined_df["predicted_hospitalized"] = 0
-        # combined_df["available_hospital_beds"] = 0
-
-        # return combined_df.to_dict("records")  # cycle_series
         return [combined_df, ret]
-        # return ret
 
     def forecast_region(self, model_parameters):
         cycle_series = self.iterate_model(model_parameters)
 
         return cycle_series
-
-        tmp = """
-        return pd.DataFrame(
-            {
-                "Date": [s["date"] for s in cycle_series],
-                "Timestamp": [
-                    # Create a UNIX timestamp for each datetime. Easier for graphs to digest down the road
-                    datetime.datetime(
-                        year=s["date"].year, month=s["date"].month, day=s["date"].day
-                    ).timestamp()
-                    for s in cycle_series
-                ],
-                "R": [s["r"] for s in cycle_series],
-                "Effective R.": [s["effective_r"] for s in cycle_series],
-                "Beg. Susceptible": [s["ending_susceptible"] for s in cycle_series],
-                "New Inf < C": [
-                    int(round(s["newly_infected_from_confirmed"])) for s in cycle_series
-                ],
-                "New Inf < D": [
-                    int(round(s["newly_infected_from_deaths"])) for s in cycle_series
-                ],
-                "New Inf.": [int(round(s["newly_infected"])) for s in cycle_series],
-                "Curr. Inf.": [s["currently_infected"] for s in cycle_series],
-                "Recov. or Died": [s["recovered_or_died"] for s in cycle_series],
-                "End Susceptible": [s["ending_susceptible"] for s in cycle_series],
-                "Actual Reported": [s["actual_reported"] for s in cycle_series],
-                "Pred. Hosp.": [s["predicted_hospitalized"] for s in cycle_series],
-                "Cum. Inf.": [s["cumulative_infected"] for s in cycle_series],
-                "Cum. Deaths": [s["cumulative_deaths"] for s in cycle_series],
-                "Avail. Hosp. Beds": [
-                    s["available_hospital_beds"] for s in cycle_series
-                ],
-            }
-        )
-        """
