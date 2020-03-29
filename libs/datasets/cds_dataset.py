@@ -106,5 +106,14 @@ class CDSTimeseriesData(data_source.DataSource):
             & data[cls.Fields.CITY].isnull()
             & data[cls.Fields.STATE].notnull()
         )
-        data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(only_state, "state", "county")
+
+        only_county = (
+            data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
+        )
+        county_hits = numpy.where(only_county, 'county', None)
+        state_hits = numpy.where(only_state, "state", None)
+        county_hits[state_hits != None] = state_hits[state_hits != None]
+        county_hits[county_hits == None] = 'country'
+        data[cls.Fields.AGGREGATE_LEVEL] = county_hits
+
         return data

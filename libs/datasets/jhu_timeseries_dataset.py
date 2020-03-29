@@ -58,7 +58,7 @@ class JHUTimeseriesData(data_source.DataSource):
             date = path.stem
             data = pd.read_csv(path)
             data = data.rename(columns=self.RENAMED_COLUMNS)
-            data[self.Fields.DATE] = pd.Timestamp(date)
+            data[self.Fields.DATE] = pd.to_datetime(date)
             loaded_data.append(data)
 
         data = pd.concat(loaded_data)
