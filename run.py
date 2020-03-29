@@ -45,7 +45,7 @@ def record_results(res, directory, name, num, pop, beds, min_begin_date=None, ma
             'm',
             'n']
 
-    website_ordering = pd.DataFrame(res, columns=cols)
+    website_ordering = pd.DataFrame(res, columns=cols).fillna(0)
 
     # @TODO: Find a better way of restricting to every fourth day.
     #        Alternatively, change the website's expectations.
@@ -68,6 +68,10 @@ def record_results(res, directory, name, num, pop, beds, min_begin_date=None, ma
         {"infected_b": str, "infected": str, "dead": str, "beds": str, "population": str})
 
     with open(os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
+        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+
+    # @TODO: Remove once the frontend no longer expects some states to be lowercase.
+    with open(os.path.join(directory, name.lower() + '.' + str(num) + '.json').format(name), 'w') as out:
         simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
 
 
@@ -109,7 +113,7 @@ def model_state(dataset, country, state, interventions=None):
         'icu_time_death': 7,  # Time from ICU admission to death, In days
         'hospital_time_recovery': 11,  # Duration of hospitalization, In days
         # If True use the harvard parameters directly, if not calculate off the above
-        'use_harvard_params': True,
+        'use_harvard_params': False,
         # If True use the harvard model inputs for inital conditions and N (recreate their graph)
         'use_harvard_init': False,
     }
@@ -118,7 +122,6 @@ def model_state(dataset, country, state, interventions=None):
 
 if __name__ == '__main__':
     # @TODO: Remove interventions override once support is in the Harvard model.
-    INTERVENTIONS = [None]
     country = 'USA'
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
