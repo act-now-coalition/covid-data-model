@@ -3,6 +3,7 @@ import logging
 import numpy
 import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets import data_source
 from libs.datasets import dataset_utils
 
 _logger = logging.getLogger(__name__)
@@ -13,9 +14,8 @@ def fill_missing_county_with_city(row):
 
     """
     if pd.isnull(row.county) and not pd.isnull(row.city):
-        if row.city == 'New York City':
-            print("HI")
-            return 'New York'
+        if row.city == "New York City":
+            return "New York"
         return row.city
 
     return row.county
@@ -38,7 +38,7 @@ def check_uniqueness(data: pd.DataFrame, group: List[str], field: str):
         )
 
 
-class CDSTimeseriesData(object):
+class CDSTimeseriesData(data_source.DataSource):
     DATA_PATH = "data/cases-cds/timeseries.csv"
     SOURCE_NAME = "CDS"
 
@@ -58,7 +58,7 @@ class CDSTimeseriesData(object):
         TESTED = "tested"
         GROWTH_FACTOR = "growthFactor"
         DATE = "date"
-        AGGREGATE_LEVEL = 'aggregate_level'
+        AGGREGATE_LEVEL = "aggregate_level"
 
     COMMON_FIELD_MAP = {
         TimeseriesDataset.Fields.DATE: Fields.DATE,
@@ -72,7 +72,8 @@ class CDSTimeseriesData(object):
 
     def __init__(self, input_path):
         data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE])
-        self.data = self.standardize_data(data)
+        data = self.standardize_data(data)
+        super().__init__(data)
 
     @classmethod
     def build_from_local_github(cls) -> "CDSTimeseriesData":
@@ -97,41 +98,12 @@ class CDSTimeseriesData(object):
             data[(data.date >= "2020-03-23") & data[cls.Fields.CITY].isnull()],
         ]
         data = pd.concat(split_data)
+
         # CDS state level aggregates are identifiable by not having a city or county.
+        only_state = (
+            data[cls.Fields.COUNTY].isnull()
+            & data[cls.Fields.CITY].isnull()
+            & data[cls.Fields.STATE].notnull()
+        )
+        data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(only_state, "state", "county")
         return data
-
-    def to_common(self, state_only=False, county_only=False) -> TimeseriesDataset:
-        if state_only and county_only:
-            raise ValueError("Cannot choose both country and county data.")
-
-        data = self.data
-        if state_only:
-            data = data[no_county_or_city_filter]
-
-            # Check state uniqueness, only works on US right now. Should only be
-            # one country per state-date
-            us_data = data[data[self.Fields.COUNTRY] == "USA"]
-            check_uniqueness(
-                us_data, [self.Fields.DATE, self.Fields.STATE], self.Fields.COUNTRY
-            )
-
-        if county_only:
-            county_and_no_city_filter = (
-                data[self.Fields.COUNTY].notnull()
-            )
-            data = data[county_and_no_city_filter]
-
-            # Check country uniqueness, only works on US right now.
-            us_data = data[data[self.Fields.COUNTRY] == "USA"]
-            group = [self.Fields.DATE, self.Fields.STATE, self.Fields.COUNTY]
-            check_uniqueness(us_data, group, self.Fields.COUNTRY)
-
-        to_common_fields = {value: key for key, value in self.COMMON_FIELD_MAP.items()}
-        final_columns = to_common_fields.values()
-        data = data.rename(columns=to_common_fields)[final_columns]
-        data[TimeseriesDataset.Fields.SOURCE] = self.SOURCE_NAME
-
-        return TimeseriesDataset(data)
-
-    def summarize(self, fields, country="USA"):
-        pass

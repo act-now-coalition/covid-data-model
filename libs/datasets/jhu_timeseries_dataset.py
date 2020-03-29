@@ -1,9 +1,11 @@
+import numpy
 import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
+from libs.datasets import data_source
 
 
-class JHUTimeseriesData(object):
+class JHUTimeseriesData(data_source.DataSource):
     """JHU Timeseries Data.
 
     Originally available at:
@@ -29,6 +31,7 @@ class JHUTimeseriesData(object):
         COMBINED_KEY = "Combined_Key"
         # Added manually in init.
         DATE = "date"
+        AGGREGATE_LEVEL = "aggregate_level"
 
     RENAMED_COLUMNS = {
         "Country/Region": Fields.COUNTRY_REGION,
@@ -60,10 +63,6 @@ class JHUTimeseriesData(object):
         data = pd.concat(loaded_data)
         self.data = self.standardize_data(data)
 
-    def verify(self):
-
-        pass
-
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
@@ -91,25 +90,9 @@ class JHUTimeseriesData(object):
             county_from_state
         )
         data[cls.Fields.STATE] = states
-
+        state_only = data[cls.Fields.FIPS].isnull() & data[cls.Fields.COUNTY].isnull()
+        data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(state_only, "state", "county")
         return data
-
-    def to_common(self, state_only=False, county_only=False) -> TimeseriesDataset:
-
-        data = self.data
-        if state_only:
-            data = data[data[self.Fields.FIPS].isnull() & data[self.Fields.COUNTY].isnull()]
-
-        if county_only:
-            data = data[data[self.Fields.COUNTY].notnull() | data[self.Fields.FIPS].notnull()]
-
-        to_common_fields = {value: key for key, value in self.COMMON_FIELD_MAP.items()}
-        final_columns = to_common_fields.values()
-
-        data = data.rename(columns=to_common_fields)[final_columns]
-        data[TimeseriesDataset.Fields.SOURCE] = self.SOURCE_NAME
-
-        return TimeseriesDataset(data)
 
     @classmethod
     def build_from_local_github(cls) -> "JHUTimeseriesData":
