@@ -18,6 +18,7 @@ def record_results(res, directory, name, num, pop):
     # Set the population
     vals['Population'] = pop
     # Write the results to the specified directory
+    os.makedirs(directory, exist_ok=True)
     with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
         simplejson.dump(vals[[
                 'Date',
