@@ -29,8 +29,9 @@ def run_run_py(datasource: str) -> None:
 
 
 def clear_result_dir(result_dir: str) -> None:
-    for f in os.listdir(result_dir):
-        os.unlink(os.path.join(result_dir, f))
+    if os.path.exists(result_dir):
+        for f in os.listdir(result_dir):
+            os.unlink(os.path.join(result_dir, f))
 
 
 UNSUPPORTED_REGIONS = ["AS", "GU", "MP"]

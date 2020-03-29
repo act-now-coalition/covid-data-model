@@ -3,6 +3,8 @@ import math
 import pandas as pd
 import datetime
 
+_logger = logging.getLogger(__name__)
+
 
 class CovidTimeseriesModel:
     # Initializer / Instance Attributes
@@ -176,7 +178,7 @@ class CovidTimeseriesModel:
             # Step through existing empirical data
             current_cycle = self.make_cycle(i, model_parameters)
             current_cycle['i'] = i  # Note the cycle
-            logging.debug('Calculating values for {}'.format(current_cycle['date']))
+            _logger.debug('Calculating values for {}'.format(current_cycle['date']))
             # Calculate the r0 value
             r = self.calculate_r(current_cycle, previous_cycle, model_parameters)
             current_cycle['r'] = r
