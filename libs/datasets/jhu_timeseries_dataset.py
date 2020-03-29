@@ -49,6 +49,7 @@ class JHUTimeseriesData(data_source.DataSource):
         TimeseriesDataset.Fields.CASES: Fields.CONFIRMED,
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
         TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
+        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
     }
 
     def __init__(self, input_dir):

@@ -68,6 +68,7 @@ class CDSTimeseriesData(data_source.DataSource):
         TimeseriesDataset.Fields.CASES: Fields.CASES,
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
         TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
+        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
     }
 
     def __init__(self, input_path):
