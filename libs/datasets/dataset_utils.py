@@ -3,7 +3,7 @@ import pathlib
 from libs import build_params
 
 LOCAL_PUBLIC_DATA_PATH = (
-    pathlib.Path(__file__).parent.parent / '..' / '..' / 'covid-data-public'
+    pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
 )
 
 
@@ -21,10 +21,14 @@ def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
     return data.applymap(lambda x: x.strip() if type(x) == str else x)
 
 
+def standardize_county(series: pd.Series):
+    return series.apply(lambda x: x if pd.isnull(x) else x.replace(" County", ""))
+
+
 def parse_county_from_state(state):
     if pd.isnull(state):
         return state
-    state_split = [val.strip() for val in state.split(',')]
+    state_split = [val.strip() for val in state.split(",")]
     if len(state_split) == 2:
         return state_split[0]
     return None
@@ -33,15 +37,6 @@ def parse_county_from_state(state):
 def parse_state(state):
     if pd.isnull(state):
         return state
-    state_split = [val.strip() for val in state.split(',')]
+    state_split = [val.strip() for val in state.split(",")]
     state = state_split[1] if len(state_split) == 2 else state_split[0]
     return build_params.US_STATE_ABBREV.get(state, state)
-
-
-def choose_county_from_city(row):
-    """Fills in missing county data with city if available.
-
-    """
-    if pd.isnull(row.county) and not pd.isnull(row.city):
-        return row.city
-    return row.county
