@@ -372,7 +372,7 @@ class CovidTimeseriesModelSIR:
             )
 
             y0 = [
-                float(first_infected),  # pop_dict.get("exposed", 0),
+                pop_dict.get("exposed", 0),
                 float(first_infected),
                 float(pop_dict.get("infected_b", 0)),
                 float(pop_dict.get("infected_c", 0)),
@@ -382,9 +382,6 @@ class CovidTimeseriesModelSIR:
 
             steps = 365
             t = np.arange(0, steps, 1)
-
-        print(y0)
-        print(beta, alpha, gamma, rho, mu, N)
 
         y = np.zeros((6, steps))
         y[:, 0] = y0
@@ -455,9 +452,7 @@ class CovidTimeseriesModelSIR:
 
         return new_seird_params
 
-    def run_interventions(
-        self, model_parameters, pop_dict, combined_df, seird_params, r0
-    ):
+    def run_interventions(self, model_parameters, combined_df, seird_params, r0):
         ## for each intervention (in order)
         ## grab initial conditions (conditions at intervention date)
         ## adjust seird_params based on intervention
@@ -470,32 +465,50 @@ class CovidTimeseriesModelSIR:
         counterfactuals = {}
 
         for date, new_r0 in interventions.items():
-            counterfactuals[date] = combined_df
+            if (pd.Timestamp(date) >= model_parameters["init_date"]) and (
+                pd.Timestamp(date) <= end_date
+            ):
 
-            new_seird_params = self.brute_force_r0(seird_params, new_r0, r0)
+                counterfactuals[date] = combined_df
 
-            print("target r0: " + str(new_r0))
-            print("new r0: " + str(self.gen_r0(new_seird_params) * 1000))
+                new_seird_params = self.brute_force_r0(seird_params, new_r0, r0)
 
-            (data, steps, ret) = self.seird(
-                date,
-                end_date,
-                pop_dict,
-                new_seird_params["beta"],
-                new_seird_params["alpha"],
-                new_seird_params["gamma"],
-                new_seird_params["rho"],
-                new_seird_params["mu"],
-                False,
-            )
+                # this is a dumb way to do this, but it might work
+                combined_df.loc[:, "infected"] = (
+                    combined_df.loc[:, "infected_a"]
+                    + combined_df.loc[:, "infected_b"]
+                    + combined_df.loc[:, "infected_c"]
+                )
 
-            new_df = self.dataframe_ify(data, date, end_date, steps,)
+                pop_dict = {
+                    "total": model_parameters["population"],
+                    "infected": combined_df.loc[date, "infected"],
+                    "infected_a": combined_df.loc[date, "infected_a"],
+                    "infected_b": combined_df.loc[date, "infected_a"],
+                    "infected_c": combined_df.loc[date, "infected_a"],
+                    "recovered": combined_df.loc[date, "recovered"],
+                    "deaths": combined_df.loc[date, "dead"],
+                }
 
-            early_combo_df = combined_df.copy().loc[:date]
+                (data, steps, ret) = self.seird(
+                    date,
+                    end_date,
+                    pop_dict,
+                    new_seird_params["beta"],
+                    new_seird_params["alpha"],
+                    new_seird_params["gamma"],
+                    new_seird_params["rho"],
+                    new_seird_params["mu"],
+                    False,
+                )
 
-            combo_df = early_combo_df.append(new_df, sort=True)
+                new_df = self.dataframe_ify(data, date, end_date, steps,)
 
-        return combo_df, counterfactuals
+                early_combo_df = combined_df.copy().loc[:date]
+
+                combined_df = early_combo_df.append(new_df, sort=True)
+
+        return (combined_df, counterfactuals)
 
     def iterate_model(self, model_parameters):
         """The guts. Creates the initial conditions, and runs the SIR model for the
@@ -533,8 +546,8 @@ class CovidTimeseriesModelSIR:
 
         # load the initial populations
         pop_dict = {
-            # "total": model_parameters["population"],
-            "total": 10000,  # model_parameters["population"],
+            "total": model_parameters["population"],
+            # "total": 10000,  # model_parameters["population"],
             "infected": timeseries.loc[init_date, "active"],
             "recovered": timeseries.loc[init_date, "recovered"],
             "deaths": timeseries.loc[init_date, "deaths"],
@@ -630,9 +643,11 @@ class CovidTimeseriesModelSIR:
             combined_df = pd.concat([actuals, sir_df])
 
             if model_parameters["interventions"] is not None:
-                combo_df, counterfactuals = self.run_interventions(
-                    model_parameters, pop_dict, combined_df, init_params, r0
+                (combined_df, counterfactuals) = self.run_interventions(
+                    model_parameters, combined_df, init_params, r0
                 )
+
+                print(combined_df.tail(1))
 
             # this should be done, but belt and suspenders for the diffs()
             combined_df.sort_index(inplace=True)
