@@ -20,9 +20,9 @@ class DatasetDeployer():
         """
         print('persisting {} to s3'.format(self.key))
 
-        response = s3.put_object(Bucket=bucket_name,
-                                 Key=key,
-                                 Body=body,
+        response = self.s3.put_object(Bucket=self.bucket_name,
+                                 Key=self.key,
+                                 Body=self.body,
                                  ACL='public-read')
         return response
 
