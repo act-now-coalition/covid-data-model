@@ -10,6 +10,8 @@ import pprint
 
 from .epi_models.HarvardEpi import seir
 
+# from .epi_models.SIR import seir
+
 
 class CovidTimeseriesModelSIR:
     # Initializer / Instance Attributes
@@ -234,7 +236,7 @@ class CovidTimeseriesModelSIR:
         ## nice-to have - counterfactuals for interventions
 
         # hack for total population
-        model_parameters["population"] = 10000
+        # model_parameters["population"] = 10000
 
         timeseries = model_parameters["timeseries"].sort_values("date")
 
@@ -262,7 +264,6 @@ class CovidTimeseriesModelSIR:
         # load the initial populations
         pop_dict = {
             "total": model_parameters["population"],
-            # "total": 10000,  # model_parameters["population"],
             "infected": timeseries.loc[init_date, "active"],
             "recovered": timeseries.loc[init_date, "recovered"],
             "deaths": timeseries.loc[init_date, "deaths"],

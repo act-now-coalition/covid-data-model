@@ -3,7 +3,7 @@ import numpy as np
 # odeint might work, moving it out didn't solve the problem
 # but for now let's keep doing the integration manually, it's
 # clearer what's going on and performance didn't seem to take a hit
-# from scipy.integrate import odeint
+from scipy.integrate import odeint
 
 
 # The SEIR model differential equations.
@@ -69,13 +69,15 @@ def seir(
         ]
 
         steps = 365
+        t = np.arange(0, steps, 1)
 
     y = np.zeros((6, steps))
     y[:, 0] = y0
 
-    for day in range(steps - 1):
-        y[:, day + 1] = y[:, day] + deriv(y[:, day], 1, beta, alpha, gamma, rho, mu, N)
+    # for day in range(steps - 1):
+    #    y[:, day + 1] = y[:, day] + deriv(y[:, day], 1, beta, alpha, gamma, rho, mu, N)
     # for reasons that are beyond me the odeint doesn't work
-    # ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
+    ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
 
-    return y, steps, np.transpose(y)
+    # return y, steps, np.transpose(y)
+    return np.transpose(ret), steps, ret
