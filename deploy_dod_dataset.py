@@ -2,58 +2,77 @@ import boto3
 import os
 
 from libs.build_dod_dataset import get_usa_by_county_df, get_usa_by_states_df
-s3 = boto3.client('s3')  # Create an S3 client
-# Supplied by ENV on AWS
-# BUCKET_NAME format is s3://{BUCKET_NAME}
-bucket_name = os.environ.get('BUCKET_NAME')
 
 
-def persist_to_s3(key='my_public_identifier', body='empty'):
-    """Persists specific data onto an s3 bucket.
-    This method assumes versioned is handled on the bucket itself.
+class DatasetDeployer():
 
-    Keyword Arguments:
-        key {str} -- the file name on s3 (default: {'my_public_identifier'})
-        body {str} -- the file content as either json or csv (default: {'empty'})
+    def __init__(self, key='filename.csv', body='a random data'):
+        self.s3 = boto3.client('s3')
+        # Supplied by ENV on AWS
+        # BUCKET_NAME format is s3://{BUCKET_NAME}
+        self.bucket_name = os.environ.get('BUCKET_NAME')
+        self.key = key
+        self.body = body
 
-    Returns:
-        [ResponseMetadata] -- the AWS SDK response object
-    """
-    response = s3.put_object(Bucket=bucket_name,
-                             Key=key,
-                             Body=body,
-                             ACL='public-read')
-    return response
+    def _persist_to_s3(self):
+        """Persists specific data onto an s3 bucket.
+        This method assumes versioned is handled on the bucket itself.
+        """
+        print('persisting {} to s3'.format(self.key))
+
+        response = s3.put_object(Bucket=bucket_name,
+                                 Key=key,
+                                 Body=body,
+                                 ACL='public-read')
+        return response
+
+    def _persist_to_local(self):
+        """Persists specific data onto an s3 bucket.
+        This method assumes versioned is handled on the bucket itself.
+        """
+        print('persisting {} to local'.format(self.key))
+
+        with open(self.key, 'w') as f:
+            f.write(self.body)
+
+        pass
+
+    def persist(self):
+        if self.bucket_name:
+            self._persist_to_s3()
+        else:
+            self._persist_to_local()
+        return
 
 
-def handler(event, context):
+def deploy():
     """The entry function for invokation
 
-    Arguments:
-        event {dict} -- Used by AWS to pass in event data
-        context {} -- Used by AWs uses this parameter to provide runtime information
-
-    Returns:
     """
-    print('creating states.csv')
-    states_csv_buffer = get_usa_by_states_df().to_csv()
-    states_blob = {'key': 'states.csv', 'body': states_csv_buffer}
-    print('persisting states.csv')
-    persist_to_s3(**states_blob)
+    states_blob = {
+        'key': 'states.csv',
+        'body': get_usa_by_states_df().to_csv()
+        }
+    statesObj = DatasetDeployer(**states_blob)
+    statesObj.persist()
 
-    print('creating counties.csv')
-    counties_csv_buffer = get_usa_by_county_df().to_csv()
-    counties_blob = {'key': 'counties.csv', 'body': counties_csv_buffer}
-    print('persisting counties.csv')
-    persist_to_s3(**counties_blob)
+    counties_blob = {
+        'key': 'counties.csv',
+        'body': get_usa_by_county_df().to_csv()
+        }
+    countiesObj = DatasetDeployer(**counties_blob)
+    countiesObj.persist()
 
-    print('finished job')
+    print('finished deploy job')
 
 
 if __name__ == "__main__":
-    """
-    Used for local testing i.e.
+    """Used for manual trigger
 
+    # triggering persistance to s3
     AWS_PROFILE=covidactnow BUCKET_NAME=covidactnow-models-staging python deploy_dod_dataset.py
+
+    # triggering persistance to local
+    python deploy_dod_dataset.py
     """
-    handler({}, {})
+    deploy()

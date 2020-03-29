@@ -80,6 +80,7 @@ def get_usa_by_county_df():
     # handle serializing FIPS without trailing 0
     final_df['State/County FIPS Code'] = final_df['State/County FIPS Code'].astype(str).str.replace('\.0','')
 
+    final_df.index.name = 'OBJECTID'
     # assert unique key test
     assert final_df['Combined Key'].value_counts().max() == 1
 
@@ -133,6 +134,7 @@ def get_usa_by_states_df():
     states_final['Combined Key'] = states_final['Province/State']
     states_final['State/County FIPS Code'] = states_final['Province/State'].map(us_fips)
 
+    states_final.index.name = 'OBJECTID'
     # assert unique key test
     assert states_final['Combined Key'].value_counts().max() == 1
 
