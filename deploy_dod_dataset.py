@@ -1,7 +1,7 @@
 import boto3
 import os
 
-from libs.build_dod_dataset import get_usa_by_county_df, get_usa_by_states_df
+from libs.build_dod_dataset import get_usa_by_county_df, get_usa_by_states_df, get_usa_county_shapefile, get_usa_state_shapefile
 
 
 class DatasetDeployer():
@@ -21,9 +21,9 @@ class DatasetDeployer():
         print('persisting {} to s3'.format(self.key))
 
         response = self.s3.put_object(Bucket=self.bucket_name,
-                                 Key=self.key,
-                                 Body=self.body,
-                                 ACL='public-read')
+                                      Key=self.key,
+                                      Body=self.body,
+                                      ACL='public-read')
         return response
 
     def _persist_to_local(self):
@@ -63,7 +63,10 @@ def deploy():
     countiesObj = DatasetDeployer(**counties_blob)
     countiesObj.persist()
 
-    print('finished deploy job')
+    get_usa_county_shapefile('shapefiles/counties')
+    get_usa_state_shapefile('shapefiles/states')
+
+    print('finished dod job')
 
 
 if __name__ == "__main__":
