@@ -1,66 +1,100 @@
+from libs.CovidDatasets import CDSDataset, JHUDataset
+from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
+from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
+import simplejson
+import time
+import datetime
+import pandas as pd
 import logging
 
-import datetime
-import time
-import simplejson
-from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
-from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CDSDataset
+_logger = logging.getLogger(__name__)
 
-
-def record_results(res, directory, name, num, pop):
-    import copy
+def record_results(res, directory, name, num, pop, beds, min_begin_date=None, max_end_date=None):
     import os.path
-    vals = copy.copy(res)
-    # Format the date in the manner the front-end expects
-    vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year))
-    # Set the population
-    vals['Population'] = pop
-    # Write the results to the specified directory
-    with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
-        simplejson.dump(vals[[
-                'Date',
-                'R',
-                'Beg. Susceptible',
-                'New Inf.',
-                'Curr. Inf.',
-                'Recov. or Died',
-                'End Susceptible',
-                'Actual Reported',
-                'Pred. Hosp.',
-                'Cum. Inf.',
-                'Cum. Deaths',
-                'Avail. Hosp. Beds',
-                'S&P 500',
-                'Est. Actual Chance of Inf.',
-                'Pred. Chance of Inf.',
-                'Cum. Pred. Chance of Inf.',
-                'Population',
-                'R0',
-                '% Susceptible'
-            ]].values.tolist(), out, ignore_nan=True)
 
-def model_state(country, state, interventions=None):
-    ## Constants
+    # Indexes used by website JSON:
+    # date: 0,
+    # hospitalizations: 8,
+    # cumulativeInfected: 9,
+    # cumulativeDeaths: 10,
+    # beds: 11,
+    # totalPopulation: 16,
+
+    # Columns from Harvard model output:
+    # date, total, susceptible, exposed, infected, infected_a, infected_b, infected_c, recovered, dead
+    # infected_b == Hospitalized
+    # infected_c == Hospitalized in ICU
+
+    cols = ['date',
+            'a',
+            'b',
+            'c',
+            'd',
+            'e',
+            'f',
+            'g',
+            'infected_b',
+            'infected',
+            'dead',
+            'beds',
+            'i',
+            'j',
+            'k',
+            'l',
+            'population',
+            'm',
+            'n']
+
+    website_ordering = pd.DataFrame(res, columns=cols).fillna(0)
+
+    # @TODO: Find a better way of restricting to every fourth day.
+    #        Alternatively, change the website's expectations.
+    website_ordering = pd.DataFrame(website_ordering[website_ordering.index % 4 == 0])
+
+    if min_begin_date is not None:
+        website_ordering = pd.DataFrame(
+            website_ordering[website_ordering['date'] >= min_begin_date])
+    if max_end_date is not None:
+        website_ordering = pd.DataFrame(
+            website_ordering[website_ordering['date'] <= max_end_date])
+
+    website_ordering['date'] = website_ordering['date'].dt.strftime(
+        '%-m/%-d/%y')
+    website_ordering['beds'] = beds  # @TODO: Scale upwards over time with a defined formula.
+    website_ordering['population'] = pop
+    website_ordering = website_ordering.astype(
+        {"infected_b": int, "infected": int, "dead": int, "beds": int, "population": int})
+    website_ordering = website_ordering.astype(
+        {"infected_b": str, "infected": str, "dead": str, "beds": str, "population": str})
+
+    with open(os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
+        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+
+    # @TODO: Remove once the frontend no longer expects some states to be lowercase.
+    with open(os.path.join(directory, name.lower() + '.' + str(num) + '.json').format(name), 'w') as out:
+        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+
+
+def model_state(dataset, country, state, interventions=None):
+
+    # Constants
     start_time = time.time()
     HOSPITALIZATION_RATE = .0727
     HOSPITALIZED_CASES_REQUIRING_ICU_CARE = .1397
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
-    r0 = 2.4
-    Dataset = CDSDataset(filter_past_date=datetime.date(2020, 3, 19))
-    POP = Dataset.get_population_by_country_state(country, state)
+    POP = dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
         # Pack the changeable model parameters
-        'timeseries': Dataset.get_timeseries_by_country_state(country, state, MODEL_INTERVAL),
-        'beds': Dataset.get_beds_by_country_state(country, state),
+        'timeseries': dataset.get_timeseries_by_country_state(country, state, MODEL_INTERVAL),
+        'beds': dataset.get_beds_by_country_state(country, state),
         'population': POP,
-        'projection_iterations': 24, # Number of iterations into the future to project
+        # 'projection_iterations': 25, # Number of iterations into the future to project
+        'projection_iterations': 80,  # Number of iterations into the future to project
         'r0': r0,
         'interventions': interventions,
         'hospitalization_rate': HOSPITALIZATION_RATE,
-        'initial_hospitalization_rate': .05,
         'case_fatality_rate': .0109341104294479,
         'hospitalized_cases_requiring_icu_care': HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
         # Assumes that anyone who needs ICU care and doesn't get it dies
@@ -68,22 +102,47 @@ def model_state(country, state, interventions=None):
         'hospital_capacity_change_daily_rate': 1.05,
         'max_hospital_capacity_factor': 2.07,
         'initial_hospital_bed_utilization': .6,
-        'model_interval': 4, # In days
-        'total_infected_period': 12, # In days
+        'model_interval': 4,  # In days
+        'total_infected_period': 12,  # In days
         'rolling_intervals_for_current_infected': int(round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)),
+        'estimated_new_cases_per_death': 32,
+        'estimated_new_cases_per_confirmed': 20,
+        # added for seird model
+        'incubation_period': 5,  # In days
+        'duration_mild_infections': 10,  # In days
+        'icu_time_death': 7,  # Time from ICU admission to death, In days
+        'hospital_time_recovery': 11,  # Duration of hospitalization, In days
+        # If True use the harvard parameters directly, if not calculate off the above
+        'use_harvard_params': False,
+        # If True use the harvard model inputs for inital conditions and N (recreate their graph)
+        'use_harvard_init': False,
     }
-    return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
+    return CovidTimeseriesModelSIR().forecast_region(model_parameters=MODEL_PARAMETERS)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    Dataset = CDSDataset()
-    for state in Dataset.get_all_states_by_country('USA'):
+    # @TODO: Remove interventions override once support is in the Harvard model.
+    country = 'USA'
+    min_date = datetime.datetime(2020, 3, 7)
+    max_date = datetime.datetime(2020, 7, 6)
+
+    dataset = JHUDataset()
+    for state in dataset.get_all_states_by_country(country):
+        logging.info('Generating data for state: {}'. format(state))
+        beds = dataset.get_beds_by_country_state(country, state)
         for i in range(0, len(INTERVENTIONS)):
+            _logger.info(f"Running intervention {i} for {state}")
             intervention = INTERVENTIONS[i]
+            [results, soln] = model_state(
+                dataset, country, state, intervention)
             record_results(
-                model_state('USA', state, intervention),
+                results,
                 OUTPUT_DIR,
                 state,
                 i,
-                Dataset.get_population_by_country_state('USA', state)
+                dataset.get_population_by_country_state(country, state),
+                beds,
+                min_date,
+                max_date
             )
