@@ -241,9 +241,13 @@ class CovidTimeseriesModelSIR:
                 timeseries.active + timeseries.recovered + timeseries.deaths
             )
 
-            actual_cols = ["population", "susceptible", "active", "recovered", "deaths"]
+            actual_cols = ["active", "recovered", "deaths"]
+
             # kill last row that is initial conditions on SEIR
+            print(timeseries.head(1))
             actuals = timeseries.loc[:, actual_cols].head(-1)
+
+            actuals["population"] = model_parameters["population"]
 
             # it wasn't a df thing, you can rip all this out
             actuals.rename(
@@ -271,6 +275,7 @@ class CovidTimeseriesModelSIR:
                 "dead",
             ]
 
+            actuals["susceptible"] = 0
             sir_df["susceptible"] = 0
 
             actuals = actuals.loc[:, all_cols]
