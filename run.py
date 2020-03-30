@@ -1,6 +1,13 @@
-from libs.CovidDatasets import CDSDataset, JHUDataset
+
+from libs.CovidDatasets import CDSDataset as LegacyCDSDataset
+from libs.CovidDatasets import JHUDataset as LegacyJHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
+from libs.datasets.jhu_dataset import JHUDataset
+from libs.datasets.cds_dataset import CDSDataset
+from libs.datasets.dh_beds import DHBeds
+from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets import AggregationLevel
 import simplejson
 import time
 import datetime
@@ -75,21 +82,19 @@ def record_results(res, directory, name, num, pop, beds, min_begin_date=None, ma
         simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
 
 
-def model_state(dataset, country, state, interventions=None):
+def model_state(state, state_timeseries, population, beds, interventions=None):
 
     # Constants
-    start_time = time.time()
     HOSPITALIZATION_RATE = .0727
     HOSPITALIZED_CASES_REQUIRING_ICU_CARE = .1397
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
-    POP = dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
         # Pack the changeable model parameters
-        'timeseries': dataset.get_timeseries_by_country_state(country, state, MODEL_INTERVAL),
-        'beds': dataset.get_beds_by_country_state(country, state),
-        'population': POP,
+        'timeseries': state_timeseries,
+        'beds': beds,
+        'population': population,
         # 'projection_iterations': 25, # Number of iterations into the future to project
         'projection_iterations': 80,  # Number of iterations into the future to project
         'r0': r0,
@@ -127,21 +132,31 @@ if __name__ == '__main__':
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
 
-    dataset = JHUDataset()
-    for state in dataset.get_all_states_by_country(country):
-        logging.info('Generating data for state: {}'. format(state))
-        beds = dataset.get_beds_by_country_state(country, state)
-        for i in range(0, len(INTERVENTIONS)):
-            _logger.info(f"Running intervention {i} for {state}")
-            intervention = INTERVENTIONS[i]
-            [results, soln] = model_state(
-                dataset, country, state, intervention)
+    beds_data = DHBeds.build_from_local_github().to_generic_beds()
+    population_data = CDSDataset.build_from_local_github().to_generic_population()
+    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
+    timeseries = timeseries.get_subset(AggregationLevel.STATE, after='2020-03-07', country=country)
+
+    for state in timeseries.states:
+        _logger.info('Generating data for state: {}'. format(state))
+        state_data = timeseries.get_data(state=state, country=country)
+        beds = beds_data.get_state_level(state)
+        population = population_data.get_state_level(country, state)
+        if not population:
+            _logger.warning(f"Missing population for {state}")
+            continue
+
+        for i, intervention in enumerate(INTERVENTIONS):
+            _logger.info(f"Running intervention {i} for {state}, pop: {population}")
+
+            results, _ = model_state(state, state_data, population, beds, intervention)
+
             record_results(
                 results,
                 OUTPUT_DIR,
                 state,
                 i,
-                dataset.get_population_by_country_state(country, state),
+                population,
                 beds,
                 min_date,
                 max_date
