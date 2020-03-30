@@ -11,7 +11,7 @@ _logger = logging.getLogger(__name__)
 
 
 def record_results(
-    res, directory, name, num, pop, beds, min_begin_date=None, max_end_date=None
+    res, directory, name, num, pop, min_begin_date=None, max_end_date=None
 ):
     import os.path
 
@@ -66,9 +66,6 @@ def record_results(
         )
 
     website_ordering["date"] = website_ordering["date"].dt.strftime("%-m/%-d/%y")
-    website_ordering[
-        "beds"
-    ] = beds  # @TODO: Scale upwards over time with a defined formula.
     website_ordering["population"] = pop
     website_ordering = website_ordering.astype(
         {
@@ -103,7 +100,7 @@ def record_results(
         simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
 
 
-def model_state(dataset, country, state, interventions=None):
+def model_state(dataset, country, state, starting_beds, interventions=None):
 
     # Constants
     start_time = time.time()
@@ -153,7 +150,11 @@ def model_state(dataset, country, state, interventions=None):
         #'model': 'sir',
         "model": "seir",
     }
-    return CovidTimeseriesModelSIR().forecast_region(model_parameters=MODEL_PARAMETERS)
+    [results, soln] = CovidTimeseriesModelSIR().forecast_region(model_parameters=MODEL_PARAMETERS)
+
+    results['beds'] = list(min(starting_beds * MODEL_PARAMETERS["hospital_capacity_change_daily_rate"]**exp, starting_beds * MODEL_PARAMETERS["max_hospital_capacity_factor"]) for exp in range(0, len(results.index)))
+
+    return results
 
 
 if __name__ == "__main__":
@@ -166,18 +167,17 @@ if __name__ == "__main__":
     dataset = JHUDataset()
     for state in dataset.get_all_states_by_country(country):
         logging.info("Generating data for state: {}".format(state))
-        beds = dataset.get_beds_by_country_state(country, state)
+        starting_beds = dataset.get_beds_by_country_state(country, state)
         for i in range(0, len(INTERVENTIONS)):
             _logger.info(f"Running intervention {i} for {state}")
             intervention = INTERVENTIONS[i]
-            [results, soln] = model_state(dataset, country, state, intervention)
+            results = model_state(dataset, country, state, starting_beds, intervention)
             record_results(
                 results,
                 OUTPUT_DIR,
                 state,
                 i,
                 dataset.get_population_by_country_state(country, state),
-                beds,
                 min_date,
                 max_date,
             )
