@@ -11,6 +11,8 @@ from .epi_models.HarvardEpi import (
     seir,
     dataframe_ify,
     generate_epi_params,
+    harvard_model_params,
+    r0_24_params,
     generate_r0,
     brute_force_r0,
 )
@@ -94,6 +96,8 @@ class CovidTimeseriesModelSIR:
                 new_seir_params = brute_force_r0(
                     seir_params, new_r0, r0, model_parameters["population"]
                 )
+
+                # print(json.dumps(new_seir_params))
 
                 pop_dict = {
                     "total": model_parameters["population"],
@@ -179,6 +183,8 @@ class CovidTimeseriesModelSIR:
 
         if model_parameters["use_harvard_params"]:
             init_params = harvard_model_params(model_parameters["population"])
+        elif model_parameters["fix_r0"]:
+            init_params = r0_24_params(model_parameters["population"])
         else:
             init_params = generate_epi_params(model_parameters)
 
@@ -196,6 +202,9 @@ class CovidTimeseriesModelSIR:
                     )
 
         r0 = generate_r0(init_params, model_parameters["population"])
+
+        # print(json.dumps(init_params))
+        # print(r0)
 
         (data, steps, ret) = seir(
             pop_dict,
@@ -306,6 +315,8 @@ class CovidTimeseriesModelSIR:
                 + combined_df.recovered
                 + combined_df.dead
             )
+
+        combined_df["beds"] = model_parameters["beds"]
 
         return [combined_df, ret]
 
