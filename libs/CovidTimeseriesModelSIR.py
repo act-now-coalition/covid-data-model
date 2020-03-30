@@ -42,7 +42,7 @@ class CovidTimeseriesModelSIR:
             -1, actual_values.columns.get_loc("date")
         ]
 
-        # TODO: add check for earlier int date parameter and adjust so that
+        # TODO: add check for earlier initial date parameter and adjust so that
         # we can start the run earlier than the last data point
 
         model_parameters["init_date"] = model_parameters["actual_end_date"]
@@ -59,7 +59,7 @@ class CovidTimeseriesModelSIR:
 
         return model_parameters
 
-    # get the largest key that is less than the intervention date and reurn the relevant r0
+    # get the largest key (intervention date) that is less than the init_date and reurn the relevant r0
     def get_latest_past_intervention(self, interventions, init_date):
         past_dates = [
             interevention_date
@@ -91,7 +91,9 @@ class CovidTimeseriesModelSIR:
 
                 counterfactuals[date] = combined_df
 
-                new_seir_params = brute_force_r0(seir_params, new_r0, r0)
+                new_seir_params = brute_force_r0(
+                    seir_params, new_r0, r0, model_parameters["population"]
+                )
 
                 pop_dict = {
                     "total": model_parameters["population"],
@@ -100,7 +102,7 @@ class CovidTimeseriesModelSIR:
                     "deaths": combined_df.loc[date, "dead"],
                 }
 
-                if model_parameters["interventions"] == "seir":
+                if model_parameters["model"] == "seir":
                     # this is a dumb way to do this, but it might work
                     combined_df.loc[:, "infected"] = (
                         combined_df.loc[:, "infected_a"]
@@ -111,8 +113,6 @@ class CovidTimeseriesModelSIR:
                     pop_dict["infected_a"] = combined_df.loc[date, "infected_a"]
                     pop_dict["infected_b"] = combined_df.loc[date, "infected_b"]
                     pop_dict["infected_c"] = combined_df.loc[date, "infected_c"]
-
-                # print(json.dumps(pop_dict))
 
                 (data, steps, ret) = seir(
                     pop_dict,
@@ -125,8 +125,6 @@ class CovidTimeseriesModelSIR:
                 )
 
                 new_df = dataframe_ify(data, date, end_date, steps,)
-
-                # print(new_df.head(1))
 
                 early_combo_df = combined_df.copy().loc[:date]
 
@@ -191,11 +189,13 @@ class CovidTimeseriesModelSIR:
 
                 if new_r0 is not None:
                     init_params = brute_force_r0(
-                        init_params, new_r0, generate_r0(init_params)
+                        init_params,
+                        new_r0,
+                        generate_r0(init_params, model_parameters["population"]),
+                        model_parameters["population"],
                     )
 
-        r0 = generate_r0(init_params)
-        print(r0)
+        r0 = generate_r0(init_params, model_parameters["population"])
 
         (data, steps, ret) = seir(
             pop_dict,

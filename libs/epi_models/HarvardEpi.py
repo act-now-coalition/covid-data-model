@@ -9,8 +9,9 @@ import pandas as pd
 from scipy.integrate import odeint
 
 
-def brute_force_r0(seir_params, new_r0, r0):
-    calc_r0 = r0 * 1000
+def brute_force_r0(seir_params, new_r0, r0, N):
+    calc_r0 = r0
+
     change = np.sign(new_r0 - calc_r0) * 0.00005
     # step = 0.1
     # direction = 1 if change > 0 else -1
@@ -24,7 +25,7 @@ def brute_force_r0(seir_params, new_r0, r0):
             0.0,
             0.0,
         ]
-        calc_r0 = generate_r0(new_seir_params) * 1000
+        calc_r0 = generate_r0(new_seir_params, N)
 
         diff_r0 = new_r0 - calc_r0
 
@@ -68,26 +69,6 @@ def dataframe_ify(data, start, end, steps):
     return sir_df
 
 
-f = """
-def deriv(y0, t, beta, alpha, gamma, rho, mu, N):
-    dy = [0, 0, 0, 0, 0, 0, 0]
-    # S = np.max([N - sum(y0), 0])
-
-    # print(y0[0])
-
-    # dy[0] = max((y0[0] - (np.dot(beta[1:3], y0[2:4]) * y0[0])), 0)  # Susceptible
-    dy[0] = (
-        0 if y0[0] < 0 else y0[0] - (np.dot(beta[1:3], y0[2:4]) * y0[0])
-    )  # Susceptible
-    dy[1] = (np.dot(beta[1:3], y0[2:4]) * y0[0]) - (alpha * y0[1])  # Exposed
-    dy[2] = (alpha * y0[1]) - (gamma[1] + rho[1]) * y0[2]  # Ia - Mildly ill
-    dy[3] = (rho[1] * y0[2]) - (gamma[2] + rho[2]) * y0[3]  # Ib - Hospitalized
-    dy[4] = (rho[2] * y0[3]) - ((gamma[3] + mu) * y0[4])  # Ic - ICU
-    dy[5] = np.dot(gamma[1:3], y0[2:4])  # Recovered
-    dy[6] = mu * y0[4]  # Deaths
-
-    return dy
-"""
 # The SEIR model differential equations.
 # https://github.com/alsnhll/SEIR_COVID19/blob/master/SEIR_COVID19.ipynb
 # but these are the basics
@@ -143,7 +124,6 @@ def seir(
         )
 
         y0 = [
-            # susceptible,
             pop_dict.get("exposed", 0),
             float(first_infected),
             float(pop_dict.get("infected_b", 0)),
@@ -154,8 +134,6 @@ def seir(
 
         steps = 365
         t = np.arange(0, steps, 1)
-
-    # print("beta: " + str(beta[1]))
 
     ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
 
@@ -217,14 +195,16 @@ def generate_epi_params(model_parameters):
     return seir_params
 
 
-def generate_r0(seir_params):
+def generate_r0(seir_params, N):
     b = seir_params["beta"]
     p = seir_params["rho"]
     g = seir_params["gamma"]
     u = seir_params["mu"]
 
-    r0 = (b[1] / (p[1] + g[1])) + (p[1] / (p[1] + g[1])) * (
-        b[2] / (p[2] + g[2]) + (p[2] / (p[2] + g[2])) * (b[3] / (u + g[3]))
+    r0 = N * (
+        (b[1] / (p[1] + g[1]))
+        + (p[1] / (p[1] + g[1]))
+        * (b[2] / (p[2] + g[2]) + (p[2] / (p[2] + g[2])) * (b[3] / (u + g[3])))
     )
 
     return r0
