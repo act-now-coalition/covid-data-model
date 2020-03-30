@@ -19,7 +19,7 @@ class TimeseriesDataset(object):
         SOURCE = "source"
         IS_SYNTHETIC = "is_synthetic"
         AGGREGATE_LEVEL = "aggregate_level"
-        GENERATED = 'generated'
+        GENERATED = "generated"
 
     def __init__(self, data: pd.DataFrame):
         self.data = data
@@ -29,7 +29,13 @@ class TimeseriesDataset(object):
         return self.data[self.Fields.STATE].dropna().unique().tolist()
 
     def get_subset(
-        self, aggregation_level, on=None, after=None, country=None, state=None, county=None
+        self,
+        aggregation_level,
+        on=None,
+        after=None,
+        country=None,
+        state=None,
+        county=None,
     ) -> "TimeseriesDataset":
         data = self.data
 
@@ -66,7 +72,9 @@ class TimeseriesDataset(object):
             raise ValueError("Source must have field timeseries field map.")
 
         data = source.data
-        to_common_fields = {value: key for key, value in source.TIMESERIES_FIELD_MAP.items()}
+        to_common_fields = {
+            value: key for key, value in source.TIMESERIES_FIELD_MAP.items()
+        }
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
@@ -80,9 +88,14 @@ class TimeseriesDataset(object):
 
     @classmethod
     def _fill_missing_state_with_county(cls, data):
-        state_groupby_fields = [cls.Fields.DATE, cls.Fields.COUNTRY, cls.Fields.SOURCE, cls.Fields.STATE]
+        state_groupby_fields = [
+            cls.Fields.DATE,
+            cls.Fields.COUNTRY,
+            cls.Fields.SOURCE,
+            cls.Fields.STATE,
+        ]
 
-        county_data = data[data.aggregate_level == 'county']
+        county_data = data[data.aggregate_level == "county"]
         state_data = county_data.groupby(state_groupby_fields).sum().reset_index()
         state_data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
         state_data = state_data.set_index(state_groupby_fields)
@@ -91,9 +104,5 @@ class TimeseriesDataset(object):
         existing_state = data[data.aggregate_level == AggregationLevel.STATE.value]
         existing_state = existing_state.set_index(state_groupby_fields)
 
-
         non_matching = state_data[~state_data.index.isin(existing_state.index)]
-        return pd.concat([
-            data,
-            non_matching.reset_index()
-        ])
+        return pd.concat([data, non_matching.reset_index()])

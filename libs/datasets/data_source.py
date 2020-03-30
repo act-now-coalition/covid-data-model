@@ -1,5 +1,3 @@
-
-
 class DataSource(object):
 
     # Subclasses must define mapping from Timeseries fields.
@@ -22,17 +20,20 @@ class DataSource(object):
         """
         raise NotImplementedError("Subclass must implement")
 
-    def to_generic_beds(self) -> 'BedsDataset':
+    def to_generic_beds(self) -> "BedsDataset":
         """Builds generic beds dataset"""
         from libs.datasets.beds import BedsDataset
+
         return BedsDataset.from_source(self)
 
-    def to_generic_population(self) -> 'PopulationDataset':
+    def to_generic_population(self) -> "PopulationDataset":
         """Builds generic beds dataset"""
         from libs.datasets.population import PopulationDataset
+
         return PopulationDataset.from_source(self)
 
-    def to_generic_timeseries(self) -> 'TimeseriesDataset':
+    def to_generic_timeseries(self) -> "TimeseriesDataset":
         """Builds generic beds dataset"""
         from libs.datasets.timeseries import TimeseriesDataset
+
         return TimeseriesDataset.from_source(self)

@@ -49,7 +49,7 @@ class JHUDataset(data_source.DataSource):
         TimeseriesDataset.Fields.CASES: Fields.CONFIRMED,
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
         TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
+        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     def __init__(self, input_dir):
@@ -66,8 +66,7 @@ class JHUDataset(data_source.DataSource):
         data = pd.concat(loaded_data)
         self.data = self.standardize_data(data)
         # print(self.data.columns)
-        recent = self.data[self.data.date == '03-26-2020']
-
+        recent = self.data[self.data.date == "03-26-2020"]
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:

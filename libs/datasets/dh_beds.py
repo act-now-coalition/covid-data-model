@@ -24,7 +24,7 @@ class DHBeds(data_source.DataSource):
         BedsDataset.Fields.STAFFED_BEDS: Fields.STAFFED_BEDS,
         BedsDataset.Fields.LICENSED_BEDS: Fields.LICENSED_BEDS,
         BedsDataset.Fields.ICU_BEDS: Fields.ICU_BEDS,
-        BedsDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
+        BedsDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     def __init__(self, path):
@@ -34,7 +34,7 @@ class DHBeds(data_source.DataSource):
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         # All DH data is aggregated at the county level
-        data[cls.Fields.AGGREGATE_LEVEL] = 'county'
+        data[cls.Fields.AGGREGATE_LEVEL] = "county"
         return data
 
     @classmethod

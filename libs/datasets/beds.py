@@ -18,7 +18,7 @@ class BedsDataset(object):
         # Name of source of dataset, i.e. JHU
         SOURCE = "source"
         AGGREGATE_LEVEL = "aggregate_level"
-        GENERATED = 'generated'
+        GENERATED = "generated"
 
     def __init__(self, data):
         self.data = data
@@ -39,7 +39,10 @@ class BedsDataset(object):
         if fill_missing_state:
             state_groupby_fields = [cls.Fields.SOURCE, cls.Fields.STATE]
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data, state_groupby_fields, AggregationLevel.COUNTY, AggregationLevel.STATE
+                data,
+                state_groupby_fields,
+                AggregationLevel.COUNTY,
+                AggregationLevel.STATE,
             ).reset_index()
 
             non_matching[cls.Fields.GENERATED] = True

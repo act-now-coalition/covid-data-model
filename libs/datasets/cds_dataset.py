@@ -69,7 +69,7 @@ class CDSDataset(data_source.DataSource):
         TimeseriesDataset.Fields.CASES: Fields.CASES,
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
         TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
+        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     POPULATION_FIELD_MAP = {
@@ -77,9 +77,8 @@ class CDSDataset(data_source.DataSource):
         PopulationDataset.Fields.STATE: Fields.STATE,
         PopulationDataset.Fields.COUNTY: Fields.COUNTY,
         PopulationDataset.Fields.POPULATION: Fields.POPULATION,
-        PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
+        PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
-
 
     def __init__(self, input_path):
         data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE])
@@ -114,7 +113,7 @@ class CDSDataset(data_source.DataSource):
         only_county = (
             data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
         )
-        county_hits = numpy.where(only_county, 'county', None)
+        county_hits = numpy.where(only_county, "county", None)
         only_state = (
             data[cls.Fields.COUNTY].isnull()
             & data[cls.Fields.CITY].isnull()
@@ -129,7 +128,7 @@ class CDSDataset(data_source.DataSource):
 
         state_hits = numpy.where(only_state, "state", None)
         county_hits[state_hits != None] = state_hits[state_hits != None]
-        county_hits[only_country] = 'country'
+        county_hits[only_country] = "country"
         data[cls.Fields.AGGREGATE_LEVEL] = county_hits
 
         return data

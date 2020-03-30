@@ -8,20 +8,19 @@ from libs.datasets import dataset_utils
 
 
 class NYTimesTimeseriesData(data_source.DataSource):
-    DATA_URL = 'https://github.com/nytimes/covid-19-data/raw/6cb66d9a821ce8225f6f9ffcb77ce6db9889c14c/us-counties.csv'
+    DATA_URL = "https://github.com/nytimes/covid-19-data/raw/6cb66d9a821ce8225f6f9ffcb77ce6db9889c14c/us-counties.csv"
     SOURCE_NAME = "NYTimes"
 
     class Fields(object):
         DATE = "date"
         COUNTY = "county"
         STATE = "state"
-        FIPS = 'fips'
+        FIPS = "fips"
         CASES = "cases"
         DEATHS = "deaths"
 
-        COUNTRY = 'country'
-        AGGREGATE_LEVEL = 'aggregate_level'
-
+        COUNTRY = "country"
+        AGGREGATE_LEVEL = "aggregate_level"
 
     TIMESERIES_FIELD_MAP = {
         TimeseriesDataset.Fields.DATE: Fields.DATE,
@@ -29,7 +28,7 @@ class NYTimesTimeseriesData(data_source.DataSource):
         TimeseriesDataset.Fields.STATE: Fields.STATE,
         TimeseriesDataset.Fields.COUNTY: Fields.COUNTY,
         TimeseriesDataset.Fields.CASES: Fields.CASES,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
+        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     def __init__(self, input_path):
@@ -43,9 +42,9 @@ class NYTimesTimeseriesData(data_source.DataSource):
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
-        data[cls.Fields.COUNTRY] = 'USA'
+        data[cls.Fields.COUNTRY] = "USA"
         data = dataset_utils.strip_whitespace(data)
         states = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
-        data[cls.Fields.AGGREGATE_LEVEL] = 'county'
+        data[cls.Fields.AGGREGATE_LEVEL] = "county"
 
         return data
