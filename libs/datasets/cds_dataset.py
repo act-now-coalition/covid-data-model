@@ -38,7 +38,7 @@ def check_uniqueness(data: pd.DataFrame, group: List[str], field: str):
         )
 
 
-class CDSTimeseriesData(data_source.DataSource):
+class CDSDataset(data_source.DataSource):
     DATA_PATH = "data/cases-cds/timeseries.csv"
     SOURCE_NAME = "CDS"
 
@@ -60,7 +60,7 @@ class CDSTimeseriesData(data_source.DataSource):
         DATE = "date"
         AGGREGATE_LEVEL = "aggregate_level"
 
-    COMMON_FIELD_MAP = {
+    TIMESERIES_FIELD_MAP = {
         TimeseriesDataset.Fields.DATE: Fields.DATE,
         TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
         TimeseriesDataset.Fields.STATE: Fields.STATE,

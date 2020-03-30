@@ -23,7 +23,7 @@ class NYTimesTimeseriesData(data_source.DataSource):
         AGGREGATE_LEVEL = 'aggregate_level'
 
 
-    COMMON_FIELD_MAP = {
+    TIMESERIES_FIELD_MAP = {
         TimeseriesDataset.Fields.DATE: Fields.DATE,
         TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
         TimeseriesDataset.Fields.STATE: Fields.STATE,

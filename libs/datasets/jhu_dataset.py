@@ -5,7 +5,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import data_source
 
 
-class JHUTimeseriesData(data_source.DataSource):
+class JHUDataset(data_source.DataSource):
     """JHU Timeseries Data.
 
     Originally available at:
@@ -41,7 +41,7 @@ class JHUTimeseriesData(data_source.DataSource):
         "Last Update": Fields.LAST_UPDATE,
     }
 
-    COMMON_FIELD_MAP = {
+    TIMESERIES_FIELD_MAP = {
         TimeseriesDataset.Fields.DATE: Fields.DATE,
         TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY_REGION,
         TimeseriesDataset.Fields.STATE: Fields.STATE,
@@ -54,15 +54,20 @@ class JHUTimeseriesData(data_source.DataSource):
 
     def __init__(self, input_dir):
         loaded_data = []
-        for path in input_dir.glob("*.csv"):
+        for path in sorted(input_dir.glob("*.csv")):
             date = path.stem
             data = pd.read_csv(path)
             data = data.rename(columns=self.RENAMED_COLUMNS)
             data[self.Fields.DATE] = pd.to_datetime(date)
             loaded_data.append(data)
+            # if date == '03-26-2020':
+            #     print(data)
 
         data = pd.concat(loaded_data)
         self.data = self.standardize_data(data)
+        # print(self.data.columns)
+        recent = self.data[self.data.date == '03-26-2020']
+
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
