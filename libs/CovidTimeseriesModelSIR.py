@@ -101,6 +101,7 @@ class CovidTimeseriesModelSIR:
 
                 pop_dict = {
                     "total": model_parameters["population"],
+                    "exposed": combined_df.loc[date, "exposed"],
                     "infected": combined_df.loc[date, "infected"],
                     "recovered": combined_df.loc[date, "recovered"],
                     "deaths": combined_df.loc[date, "dead"],
@@ -176,10 +177,16 @@ class CovidTimeseriesModelSIR:
         # load the initial populations
         pop_dict = {
             "total": model_parameters["population"],
-            "infected": timeseries.loc[init_date, "active"],
+            "infected": timeseries.loc[init_date, "active"]
+            * model_parameters["actual_to_known_infected"],
             "recovered": timeseries.loc[init_date, "recovered"],
             "deaths": timeseries.loc[init_date, "deaths"],
         }
+
+        if model_parameters["exposed_from_infected"]:
+            pop_dict["exposed"] = (
+                model_parameters["exposed_infected_ratio"] * pop_dict["infected"]
+            )
 
         if model_parameters["use_harvard_params"]:
             init_params = harvard_model_params(model_parameters["population"])

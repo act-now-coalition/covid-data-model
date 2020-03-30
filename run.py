@@ -146,12 +146,17 @@ def model_state(dataset, country, state, interventions=None):
         "icu_time_death": 7,  # Time from ICU admission to death, In days
         "hospital_time_recovery": 11,  # Duration of hospitalization, In days
         # If True use the harvard parameters directly, if not calculate off the above
-        "use_harvard_params": False,
+        "use_harvard_params": True,
         # If True use the parameters that make R0 2.4, if not calculate off the above
-        "fix_r0": True,
+        "fix_r0": False,
         # If True use the harvard model inputs for inital conditions and N (recreate their graph)
         "use_harvard_init": False,
-        "beta": 0.25,
+        "actual_to_known_infected": 14,
+        "exposed_from_infected": True,
+        "exposed_infected_ratio": 10,
+        "beta": 0.24,
+        "beta_hospitalized": 0.1,
+        "beta_icu": 0.1,
         #'model': 'sir',
         "model": "seir",
     }
