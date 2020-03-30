@@ -11,6 +11,4 @@ jobs:
           ref: master
       - name: Action Placeholder
         run: |
-        echo "Run Daily Job"
-        
-        
+          echo "Run Daily Job"
