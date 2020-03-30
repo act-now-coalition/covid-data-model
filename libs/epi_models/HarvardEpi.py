@@ -163,9 +163,9 @@ def seir(
 
 
 # for testing purposes, just load the Harvard output
-def harvard_model_params():
+def harvard_model_params(N):
     return {
-        "beta": [0.0, 0.00025, 0.0, 0.0],
+        "beta": [0.0, 0.25 / N, 0.0, 0.0],
         "alpha": 0.2,
         "gamma": [0.0, 0.08, 0.06818182, 0.08571429],
         "rho": [0.0, 0.02, 0.02272727],
@@ -176,6 +176,8 @@ def harvard_model_params():
 # for now just implement Harvard model, in the future use this to change
 # key params due to interventions
 def generate_epi_params(model_parameters):
+    N = model_parameters["population"]
+
     fraction_critical = (
         model_parameters["hospitalization_rate"]
         * model_parameters["hospitalized_cases_requiring_icu_care"]
@@ -184,7 +186,7 @@ def generate_epi_params(model_parameters):
     alpha = 1 / model_parameters["total_infected_period"]
 
     # assume hospitalized don't infect
-    beta = [0, model_parameters["r0"] / 10000, 0, 0]
+    beta = [0, model_parameters["beta"] / N, 0, 0]
 
     # have to calculate these in order and then put them into arrays
     gamma_0 = 0

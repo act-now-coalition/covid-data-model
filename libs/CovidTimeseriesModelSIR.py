@@ -7,20 +7,21 @@ import datetime
 import numpy as np
 import pandas as pd
 
-# from .epi_models.HarvardEpi import (
-#    seir,
-#    dataframe_ify,
-#    generate_epi_params,
-#    generate_r0,
-#    brute_force_r0,
-# )
-from .epi_models.SIR import (
+from .epi_models.HarvardEpi import (
     seir,
     dataframe_ify,
     generate_epi_params,
     generate_r0,
     brute_force_r0,
 )
+
+# from .epi_models.SIR import (
+#    seir,
+#    dataframe_ify,
+#    generate_epi_params,
+#    generate_r0,
+#    brute_force_r0,
+# )
 
 
 class CovidTimeseriesModelSIR:
@@ -111,6 +112,8 @@ class CovidTimeseriesModelSIR:
                     pop_dict["infected_b"] = combined_df.loc[date, "infected_b"]
                     pop_dict["infected_c"] = combined_df.loc[date, "infected_c"]
 
+                # print(json.dumps(pop_dict))
+
                 (data, steps, ret) = seir(
                     pop_dict,
                     new_seir_params["beta"],
@@ -123,9 +126,19 @@ class CovidTimeseriesModelSIR:
 
                 new_df = dataframe_ify(data, date, end_date, steps,)
 
+                # print(new_df.head(1))
+
                 early_combo_df = combined_df.copy().loc[:date]
 
                 combined_df = early_combo_df.append(new_df, sort=True)
+
+                if model_parameters["interventions"] == "seir":
+                    # this is a dumb way to do this, but it might work
+                    combined_df.loc[:, "infected"] = (
+                        combined_df.loc[:, "infected_a"]
+                        + combined_df.loc[:, "infected_b"]
+                        + combined_df.loc[:, "infected_c"]
+                    )
 
         return (combined_df, counterfactuals)
 
@@ -167,7 +180,7 @@ class CovidTimeseriesModelSIR:
         }
 
         if model_parameters["use_harvard_params"]:
-            init_params = harvard_model_params()
+            init_params = harvard_model_params(model_parameters["population"])
         else:
             init_params = generate_epi_params(model_parameters)
 
@@ -182,6 +195,7 @@ class CovidTimeseriesModelSIR:
                     )
 
         r0 = generate_r0(init_params)
+        print(r0)
 
         (data, steps, ret) = seir(
             pop_dict,
@@ -200,7 +214,7 @@ class CovidTimeseriesModelSIR:
             data, model_parameters["init_date"], model_parameters["last_date"], steps,
         )
 
-        if model_parameters["interventions"] == "seir":
+        if model_parameters["model"] == "seir":
             sir_df["infected"] = (
                 sir_df["infected_a"] + sir_df["infected_b"] + sir_df["infected_c"]
             )
@@ -277,7 +291,7 @@ class CovidTimeseriesModelSIR:
                 combined_df["infected"]
             )
 
-            if model_parameters["interventions"] == "seir":
+            if model_parameters["model"] == "seir":
 
                 # make infected total represent the sum of the infected stocks
                 combined_df.loc[:, "infected"] = (
