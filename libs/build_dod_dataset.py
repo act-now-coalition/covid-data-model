@@ -4,12 +4,18 @@ import requests
 import datetime
 import pprint
 import shapefile
+from urllib.parse import urlparse
+
+from .CovidDatasets import get_public_data_base_url
 from .us_state_abbrev import us_state_abbrev, us_fips
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
 latest = datetime.date.today() - datetime.timedelta(days=1)
 
 NULL_VALUE = "<Null>"
+
+def _file_uri_to_path(uri: str) -> str:
+    return urlparse(uri).path
 
 def get_interventions_df():
     interventions_url = 'https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json'
@@ -171,7 +177,9 @@ def join_and_output_shapefile(df, shp, pivot_shp_field, pivot_df_column, output_
 
 
 def get_usa_state_shapefile(output_filename):
-    join_and_output_shapefile(get_usa_by_states_df(), shapefile.Reader('../covid-data-public/data/shapefiles-uscensus/tl_2019_us_state'),
+    public_data_url = get_public_data_base_url()
+    public_data_path = _file_uri_to_path(public_data_url)
+    join_and_output_shapefile(get_usa_by_states_df(), shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_state'),
         'STATEFP', 'State/County FIPS Code', output_filename)
 
 def get_usa_county_shapefile(output_filename):
@@ -179,7 +187,9 @@ def get_usa_county_shapefile(output_filename):
     # ironically we have to re-pad the dataframe column to easily match GEOID in the shapefile
     df['State/County FIPS Code'] = df['State/County FIPS Code'].astype(str).str.rjust(5, '0')
 
-    join_and_output_shapefile(df, shapefile.Reader('../covid-data-public/data/shapefiles-uscensus/tl_2019_us_county'),
+    public_data_url = get_public_data_base_url()
+    public_data_path = _file_uri_to_path(public_data_url)
+    join_and_output_shapefile(df, shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_county'),
         'GEOID', 'State/County FIPS Code', output_filename)
 
 # us_only = get_usa_by_county_df()
