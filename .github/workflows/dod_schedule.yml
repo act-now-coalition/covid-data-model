@@ -8,6 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v1
         with:
-          ref: develop
+          ref: dod
       - name: Install dependencies
         run: echo "test me"
