@@ -7,7 +7,7 @@ import datetime
 import pandas as pd
 import logging
 
-logging.basicConfig(level=logging.INFO)
+_logger = logging.getLogger(__name__)
 
 
 def record_results(
@@ -157,6 +157,7 @@ def model_state(dataset, country, state, interventions=None):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     # @TODO: Remove interventions override once support is in the Harvard model.
     country = "USA"
     min_date = datetime.datetime(2020, 3, 7)
@@ -167,6 +168,7 @@ if __name__ == "__main__":
         logging.info("Generating data for state: {}".format(state))
         beds = dataset.get_beds_by_country_state(country, state)
         for i in range(0, len(INTERVENTIONS)):
+            _logger.info(f"Running intervention {i} for {state}")
             intervention = INTERVENTIONS[i]
             [results, soln] = model_state(dataset, country, state, intervention)
             record_results(
