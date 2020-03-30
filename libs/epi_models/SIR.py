@@ -34,7 +34,7 @@ def dataframe_ify(data, start, end, steps):
     # calculate dead
     sir_df["dead"] = sir_df["recovered"] * 0.008
     # reomve from recovered
-    sir_df["recovered"] = sir_df["recovered"] - sir_df["recovered"]
+    sir_df["recovered"] = sir_df["recovered"] - sir_df["dead"]
 
     sir_df["infected_a"] = 0
     sir_df["infected_b"] = 0
@@ -61,12 +61,11 @@ def deriv(y0, t, beta, gamma, N):
 
     S = y0[0]
 
-    print(y0)
-    print(beta, gamma)
+    beta, gamma = 0.2, 1.0 / 10
 
-    dy[0] = -beta[0] * S * y0[1] / N  # Susceptible
-    dy[1] = beta[0] * S * y0[1] / N - gamma[1] * y0[1]  # Infected
-    dy[2] = gamma[1] * y0[1]  # Recovered
+    dy[0] = -beta * S * y0[1] / N  # Susceptible
+    dy[1] = beta * S * y0[1] / N - gamma * y0[1]  # Infected
+    dy[2] = gamma * y0[1]  # Recovered
 
     return dy
 
@@ -103,7 +102,6 @@ def seir(
     t = np.arange(0, steps, 1)
 
     ret = odeint(deriv, y0, t, args=(beta, gamma, N))
-
     return np.transpose(ret), steps, ret
 
 
@@ -134,11 +132,29 @@ def generate_epi_params(model_parameters):
 
 
 def generate_r0(seir_params):
-    b = seir_params["beta"]
-    g = seir_params["gamma"]
-
-    r0 = (b[1] / (p[1] + g[1])) + (p[1] / (p[1] + g[1])) * (
-        b[2] / (p[2] + g[2]) + (p[2] / (p[2] + g[2])) * (b[3] / (u + g[3]))
-    )
+    r0 = seir_params["beta"] / seir_params["gamma"]
 
     return r0
+
+
+def brute_force_r0(seir_params, new_r0, r0):
+    calc_r0 = r0 * 1000
+    change = np.sign(new_r0 - calc_r0) * 0.00005
+    # step = 0.1
+    # direction = 1 if change > 0 else -1
+
+    new_seir_params = seir_params.copy()
+
+    while round(new_r0, 4) != round(calc_r0, 4):
+        new_seir_params["beta"] = new_seir_params["beta"] + change
+
+        calc_r0 = generate_r0(new_seir_params) * 1000
+
+        diff_r0 = new_r0 - calc_r0
+
+        # if the sign has changed, we overshot, turn around with a smaller
+        # step
+        if np.sign(diff_r0) != np.sign(change):
+            change = -change / 2
+
+    return new_seir_params

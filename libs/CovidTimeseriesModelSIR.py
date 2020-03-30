@@ -7,9 +7,20 @@ import datetime
 import numpy as np
 import pandas as pd
 
-from .epi_models.HarvardEpi import seir, dataframe_ify, generate_epi_params, generate_r0
-
-# from .epi_models.SIR import seir, dataframe_ify, generate_epi_params, generate_r0
+# from .epi_models.HarvardEpi import (
+#    seir,
+#    dataframe_ify,
+#    generate_epi_params,
+#    generate_r0,
+#    brute_force_r0,
+# )
+from .epi_models.SIR import (
+    seir,
+    dataframe_ify,
+    generate_epi_params,
+    generate_r0,
+    brute_force_r0,
+)
 
 
 class CovidTimeseriesModelSIR:
@@ -47,32 +58,6 @@ class CovidTimeseriesModelSIR:
 
         return model_parameters
 
-    def brute_force_r0(self, seir_params, new_r0, r0):
-        calc_r0 = r0 * 1000
-        change = np.sign(new_r0 - calc_r0) * 0.00005
-        # step = 0.1
-        # direction = 1 if change > 0 else -1
-
-        new_seir_params = seir_params.copy()
-
-        while round(new_r0, 4) != round(calc_r0, 4):
-            new_seir_params["beta"] = [
-                0.0,
-                new_seir_params["beta"][1] + change,
-                0.0,
-                0.0,
-            ]
-            calc_r0 = generate_r0(new_seir_params) * 1000
-
-            diff_r0 = new_r0 - calc_r0
-
-            # if the sign has changed, we overshot, turn around with a smaller
-            # step
-            if np.sign(diff_r0) != np.sign(change):
-                change = -change / 2
-
-        return new_seir_params
-
     # get the largest key that is less than the intervention date and reurn the relevant r0
     def get_latest_past_intervention(self, interventions, init_date):
         past_dates = [
@@ -105,24 +90,26 @@ class CovidTimeseriesModelSIR:
 
                 counterfactuals[date] = combined_df
 
-                new_seir_params = self.brute_force_r0(seir_params, new_r0, r0)
-
-                # this is a dumb way to do this, but it might work
-                combined_df.loc[:, "infected"] = (
-                    combined_df.loc[:, "infected_a"]
-                    + combined_df.loc[:, "infected_b"]
-                    + combined_df.loc[:, "infected_c"]
-                )
+                new_seir_params = brute_force_r0(seir_params, new_r0, r0)
 
                 pop_dict = {
                     "total": model_parameters["population"],
                     "infected": combined_df.loc[date, "infected"],
-                    "infected_a": combined_df.loc[date, "infected_a"],
-                    "infected_b": combined_df.loc[date, "infected_b"],
-                    "infected_c": combined_df.loc[date, "infected_c"],
                     "recovered": combined_df.loc[date, "recovered"],
                     "deaths": combined_df.loc[date, "dead"],
                 }
+
+                if model_parameters["interventions"] == "seir":
+                    # this is a dumb way to do this, but it might work
+                    combined_df.loc[:, "infected"] = (
+                        combined_df.loc[:, "infected_a"]
+                        + combined_df.loc[:, "infected_b"]
+                        + combined_df.loc[:, "infected_c"]
+                    )
+
+                    pop_dict["infected_a"] = combined_df.loc[date, "infected_a"]
+                    pop_dict["infected_b"] = combined_df.loc[date, "infected_b"]
+                    pop_dict["infected_c"] = combined_df.loc[date, "infected_c"]
 
                 (data, steps, ret) = seir(
                     pop_dict,
@@ -146,15 +133,7 @@ class CovidTimeseriesModelSIR:
         """The guts. Creates the initial conditions, and runs the SIR model for the
         specified number of iterations with the given inputs"""
 
-        ## TODO:
-        ## implement interventions
-        #
-        ## pull together interventions into the date they take place
-        #
-        ## nice-to have - counterfactuals for interventions
-
-        # hack for total population
-        # model_parameters["population"] = 10000
+        ## TODO: nice-to have - counterfactuals for interventions
 
         timeseries = model_parameters["timeseries"].sort_values("date")
 
@@ -197,14 +176,12 @@ class CovidTimeseriesModelSIR:
                     model_parameters["interventions"], init_date
                 )
 
-                # print("new r0: " + str(new_r0))
                 if new_r0 is not None:
-                    init_params = self.brute_force_r0(
+                    init_params = brute_force_r0(
                         init_params, new_r0, generate_r0(init_params)
                     )
 
         r0 = generate_r0(init_params)
-        # print("effective r0 " + str(r0))
 
         (data, steps, ret) = seir(
             pop_dict,
@@ -223,9 +200,10 @@ class CovidTimeseriesModelSIR:
             data, model_parameters["init_date"], model_parameters["last_date"], steps,
         )
 
-        sir_df["infected"] = (
-            sir_df["infected_a"] + sir_df["infected_b"] + sir_df["infected_c"]
-        )
+        if model_parameters["interventions"] == "seir":
+            sir_df["infected"] = (
+                sir_df["infected_a"] + sir_df["infected_b"] + sir_df["infected_c"]
+            )
 
         if model_parameters["use_harvard_init"]:
             combined_df = sir_df
@@ -244,7 +222,6 @@ class CovidTimeseriesModelSIR:
             actual_cols = ["active", "recovered", "deaths"]
 
             # kill last row that is initial conditions on SEIR
-            print(timeseries.head(1))
             actuals = timeseries.loc[:, actual_cols].head(-1)
 
             actuals["population"] = model_parameters["population"]
@@ -300,12 +277,14 @@ class CovidTimeseriesModelSIR:
                 combined_df["infected"]
             )
 
-            # make infected total represent the sum of the infected stocks
-            combined_df.loc[:, "infected"] = (
-                combined_df.loc[:, "infected_a"]
-                + combined_df.loc[:, "infected_b"]
-                + combined_df.loc[:, "infected_c"]
-            )
+            if model_parameters["interventions"] == "seir":
+
+                # make infected total represent the sum of the infected stocks
+                combined_df.loc[:, "infected"] = (
+                    combined_df.loc[:, "infected_a"]
+                    + combined_df.loc[:, "infected_b"]
+                    + combined_df.loc[:, "infected_c"]
+                )
 
             combined_df["susceptible"] = combined_df.total - (
                 combined_df.exposed
