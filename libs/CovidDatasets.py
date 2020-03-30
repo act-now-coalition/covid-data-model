@@ -1,4 +1,5 @@
 import datetime
+import git
 import logging
 import math
 from copy import copy
@@ -9,7 +10,6 @@ import urllib
 from urllib.request import urlopen
 
 import tempfile
-from zipfile import ZipFile
 
 from libs.build_params import US_STATE_ABBREV as us_state_abbrev
 
@@ -17,6 +17,8 @@ local_public_data_dir = tempfile.TemporaryDirectory()
 local_public_data = local_public_data_dir.name
 
 _logger = logging.getLogger(__name__)
+
+PUBLIC_DATA_REPO = 'https://github.com/covid-projections/covid-data-public'
 
 
 def get_public_data_base_url():
@@ -29,21 +31,22 @@ def get_public_data_base_url():
     return os.getenv('COVID_DATA_PUBLIC')
 
 
+# TODO: support passing a git hash
+def _clone_and_hydrate_repo(repo_url: str, target_dir: str):
+    repo = git.Repo.clone_from(repo_url, target_dir)
+    # this translates to calling `git lfs fetch` directly on the repo
+    # See: https://gitpython.readthedocs.io/en/stable/tutorial.html#using-git-directly
+    repo.git.lfs('fetch')
+
+
 def create_local_copy_public_data():
     """
     Creates a local copy of the public data repository. This is done to avoid
     downloading the file again for each intervention type.
     """
-    github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
-    public_data_local_url = f'file://localhost{local_public_data}/covid-data-public-master'
-    _logger.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
-
-    zipresp = urlopen(github_zip_url)
-    with open(local_public_data + "/master.zip", "wb") as tempzip:
-        tempzip.write(zipresp.read())
-
-    with ZipFile(local_public_data + "/master.zip") as zf:
-        zf.extractall(path=local_public_data)
+    public_data_local_url = f'file://localhost{local_public_data}/'
+    _logger.info(f"Creating a Local Copy of {PUBLIC_DATA_REPO} at {public_data_local_url}")
+    _clone_and_hydrate_repo(PUBLIC_DATA_REPO, local_public_data)
 
     os.environ['COVID_DATA_PUBLIC'] = public_data_local_url
 

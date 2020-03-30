@@ -1,3 +1,4 @@
+GitPython==3.1.0
 numpy==1.18.2
 matplotlib==3.2.1
 seaborn==0.10.0
