@@ -22,8 +22,8 @@ def brute_force_r0(seir_params, new_r0, r0, N):
         new_seir_params["beta"] = [
             0.0,
             new_seir_params["beta"][1] + change,
-            0.0,
-            0.0,
+            new_seir_params["beta"][2],
+            new_seir_params["beta"][3],
         ]
         calc_r0 = generate_r0(new_seir_params, N)
 
@@ -143,11 +143,22 @@ def seir(
 # for testing purposes, just load the Harvard output
 def harvard_model_params(N):
     return {
-        "beta": [0.0, 0.25 / N, 0.0, 0.0],
+        "beta": [0.0, 0.5 / N, 0.1 / N, 0.1 / N],
         "alpha": 0.2,
-        "gamma": [0.0, 0.08, 0.06818182, 0.08571429],
-        "rho": [0.0, 0.02, 0.02272727],
-        "mu": 0.057142857142857134,
+        "gamma": [0.0, 0.133, 0.125, 0.075],
+        "rho": [0.0, 0.033, 0.042],
+        "mu": 0.05,
+    }
+
+
+# for testing purposes, just load the Harvard output
+def r0_24_params(N):
+    return {
+        "beta": [0.0, 0.3719985820912413 / N, 0.1 / N, 0.1 / N],
+        "alpha": 0.2,
+        "gamma": [0.0, 0.133, 0.125, 0.075],
+        "rho": [0.0, 0.033, 0.042],
+        "mu": 0.05,
     }
 
 

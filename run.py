@@ -147,6 +147,8 @@ def model_state(dataset, country, state, interventions=None):
         "hospital_time_recovery": 11,  # Duration of hospitalization, In days
         # If True use the harvard parameters directly, if not calculate off the above
         "use_harvard_params": False,
+        # If True use the parameters that make R0 2.4, if not calculate off the above
+        "fix_r0": True,
         # If True use the harvard model inputs for inital conditions and N (recreate their graph)
         "use_harvard_init": False,
         "beta": 0.25,
