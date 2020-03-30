@@ -9,6 +9,33 @@ import pandas as pd
 from scipy.integrate import odeint
 
 
+def brute_force_r0(seir_params, new_r0, r0):
+    calc_r0 = r0 * 1000
+    change = np.sign(new_r0 - calc_r0) * 0.00005
+    # step = 0.1
+    # direction = 1 if change > 0 else -1
+
+    new_seir_params = seir_params.copy()
+
+    while round(new_r0, 4) != round(calc_r0, 4):
+        new_seir_params["beta"] = [
+            0.0,
+            new_seir_params["beta"][1] + change,
+            0.0,
+            0.0,
+        ]
+        calc_r0 = generate_r0(new_seir_params) * 1000
+
+        diff_r0 = new_r0 - calc_r0
+
+        # if the sign has changed, we overshot, turn around with a smaller
+        # step
+        if np.sign(diff_r0) != np.sign(change):
+            change = -change / 2
+
+    return new_seir_params
+
+
 def dataframe_ify(data, start, end, steps):
     last_period = start + datetime.timedelta(days=(steps - 1))
 
@@ -158,8 +185,6 @@ def generate_epi_params(model_parameters):
 
     # assume hospitalized don't infect
     beta = [0, model_parameters["r0"] / 10000, 0, 0]
-
-    print(beta)
 
     # have to calculate these in order and then put them into arrays
     gamma_0 = 0
