@@ -128,3 +128,12 @@ def get_state_level_data(data, country, state):
     aggregation_filter = data.aggregate_level == AggregationLevel.STATE.value
 
     return data[country_filter & state_filter & aggregation_filter]
+
+
+def get_county_level_data(data, country, state, county):
+    country_filter = data.country == country
+    county_filter = data.county == county
+    state_filter = data.state == state
+    aggregation_filter = data.aggregate_level == AggregationLevel.COUNTY.value
+
+    return data[country_filter & state_filter & aggregation_filter & county_filter]

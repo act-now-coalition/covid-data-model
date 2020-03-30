@@ -28,6 +28,16 @@ class TimeseriesDataset(object):
     def states(self) -> List:
         return self.data[self.Fields.STATE].dropna().unique().tolist()
 
+    def county_keys(self) -> List:
+        # Check to make sure all values are county values
+        county_values = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        county_data = self.data[county_values]
+
+        data = county_data.set_index(
+            [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.COUNTY]
+        )
+        return data.index.to_list()
+
     def get_subset(
         self,
         aggregation_level,

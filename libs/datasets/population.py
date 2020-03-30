@@ -92,3 +92,11 @@ class PopulationDataset(object):
         if len(data):
             return data.iloc[0]
         return None
+
+    def get_county_level(self, country, state, county):
+        data = dataset_utils.get_county_level_data(
+            self.data, country, state, county
+        ).population
+        if len(data):
+            return data.iloc[0]
+        return None

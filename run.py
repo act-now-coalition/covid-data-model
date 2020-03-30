@@ -135,13 +135,15 @@ if __name__ == '__main__':
     beds_data = DHBeds.build_from_local_github().to_generic_beds()
     population_data = CDSDataset.build_from_local_github().to_generic_population()
     timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
-    timeseries = timeseries.get_subset(AggregationLevel.STATE, after='2020-03-07', country=country)
+    timeseries = timeseries.get_subset(
+        AggregationLevel.COUNTY, after='2020-03-07', country=country, state='MA'
+    )
 
-    for state in timeseries.states:
-        _logger.info('Generating data for state: {}'. format(state))
-        state_data = timeseries.get_data(state=state, country=country)
-        beds = beds_data.get_state_level(state)
-        population = population_data.get_state_level(country, state)
+    for country, state, county in timeseries.county_keys():
+        _logger.info(f'Generating data for county: {county}, {state}')
+        cases = timeseries.get_data(state=state, country=country, county=county)
+        beds = beds_data.get_county_level(state, county)
+        population = population_data.get_county_level(country, state, county)
         if not population:
             _logger.warning(f"Missing population for {state}")
             continue
@@ -149,15 +151,18 @@ if __name__ == '__main__':
         for i, intervention in enumerate(INTERVENTIONS):
             _logger.info(f"Running intervention {i} for {state}, pop: {population}")
 
-            results, _ = model_state(state, state_data, population, beds, intervention)
+            try:
+                results, _ = model_state(state, cases, population, beds, intervention)
 
-            record_results(
-                results,
-                OUTPUT_DIR,
-                state,
-                i,
-                population,
-                beds,
-                min_date,
-                max_date
-            )
+                record_results(
+                    results,
+                    OUTPUT_DIR,
+                    state,
+                    i,
+                    population,
+                    beds,
+                    min_date,
+                    max_date
+                )
+            except Exception:
+                print("ohhhhh no")

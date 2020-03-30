@@ -51,7 +51,19 @@ class BedsDataset(object):
         return cls(data)
 
     def get_state_level(self, state):
-        icu_beds = self.data[self.data.state == state].icu_beds
+        aggregation_filter = self.data.aggregate_level == AggregationLevel.STATE.value
+
+        icu_beds = self.data[(self.data.state == state) & aggregation_filter].icu_beds
+        if len(icu_beds):
+            return icu_beds.iloc[0]
+
+        return None
+
+    def get_county_level(self, state, county):
+        aggregation_filter = self.data.aggregate_level == AggregationLevel.COUNTY.value
+        state_filter = self.data.state == state
+        county_filter = self.data.county == county
+        icu_beds = self.data[state_filter & aggregation_filter & county_filter].icu_beds
         if len(icu_beds):
             return icu_beds.iloc[0]
 
