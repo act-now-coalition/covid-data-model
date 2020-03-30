@@ -6,6 +6,8 @@ class DataSource(object):
     # eg: {TimseriesDataset.Fields.DATE: Fields.Date}
     TIMESERIES_FIELD_MAP = None
 
+    BEDS_FIELD_MAP = None
+
     # Name of dataset source.
     SOURCE_NAME = None
 
