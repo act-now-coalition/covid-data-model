@@ -1,9 +1,48 @@
 import numpy as np
+import pandas as pd
 
 # odeint might work, moving it out didn't solve the problem
 # but for now let's keep doing the integration manually, it's
 # clearer what's going on and performance didn't seem to take a hit
 from scipy.integrate import odeint
+import datetime
+
+
+def dataframe_ify(data, start, end, steps):
+    last_period = start + datetime.timedelta(days=(steps - 1))
+
+    timesteps = pd.date_range(
+        # start=start, end=last_period, periods=steps, freq=='D',
+        start=start,
+        end=last_period,
+        freq="D",
+    ).to_list()
+
+    sir_df = pd.DataFrame(
+        # zip(data[0], data[1], data[2], data[3], data[4], data[5], data[6]),
+        zip(data[0], data[1], data[2]),
+        columns=["susceptible", "infected", "recovered",],
+        index=timesteps,
+    )
+
+    # reample the values to be daily
+    sir_df.resample("1D").sum()
+
+    # drop anything after the end day
+    sir_df = sir_df.loc[:end]
+
+    # calculate dead
+    sir_df["dead"] = sir_df["recovered"] * 0.008
+    # reomve from recovered
+    sir_df["recovered"] = sir_df["recovered"] - sir_df["recovered"]
+
+    sir_df["infected_a"] = 0
+    sir_df["infected_b"] = 0
+    sir_df["infected_c"] = 0
+
+    sir_df["exposed"] = 0
+
+    return sir_df
 
 
 # The SEIR model differential equations.
@@ -17,14 +56,17 @@ from scipy.integrate import odeint
 # Don't track S because all variables must add up to 1
 # include blank first entry in vector for beta, gamma, p so that indices align in equations and code.
 # In the future could include recovery or infection from the exposed class (asymptomatics)
-def deriv(y0, t, beta, alpha, gamma, rho, mu, N):
+def deriv(y0, t, beta, gamma, N):
     dy = [0, 0, 0]
 
     S = y0[0]
 
+    print(y0)
+    print(beta, gamma)
+
     dy[0] = -beta[0] * S * y0[1] / N  # Susceptible
-    dy[1] = beta[0] * S * y0[1] / N - gamma[0] * y0[1]  # Infected
-    dy[2] = gamma[0] * y0[1]  # Recovered
+    dy[1] = beta[0] * S * y0[1] / N - gamma[1] * y0[1]  # Infected
+    dy[2] = gamma[1] * y0[1]  # Recovered
 
     return dy
 
@@ -58,16 +100,45 @@ def seir(
     ]
 
     steps = 365
+    t = np.arange(0, steps, 1)
 
-    y = np.zeros((3, steps))
-    y[:, 0] = y0
+    ret = odeint(deriv, y0, t, args=(beta, gamma, N))
 
-    for day in range(steps - 1):
-        y[:, day + 1] = y[:, day] + deriv(y[:, day], 1, beta, alpha, gamma, rho, mu, N)
-        # y[5, day + 1] = y[2, day + 1] * 0.008
-        # y[2, day + 1] = y[2, day + 1] - y[5, day + 1]
-        print(y[:, day + 1])
-    # for reasons that are beyond me the odeint doesn't work
-    # ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
+    return np.transpose(ret), steps, ret
 
-    return y, steps, np.transpose(y)
+
+# for now just implement Harvard model, in the future use this to change
+# key params due to interventions
+def generate_epi_params(model_parameters):
+    fraction_critical = (
+        model_parameters["hospitalization_rate"]
+        * model_parameters["hospitalized_cases_requiring_icu_care"]
+    )
+
+    # assume hospitalized don't infect
+    # TODO make a real beta
+    beta = model_parameters["r0"] / 10000
+
+    gamma = 1 / model_parameters["hospital_time_recovery"]
+
+    seir_params = {
+        "beta": beta,
+        "alpha": 0,
+        "gamma": gamma,
+        "rho": 0,
+        # TODO: add this parameter
+        # "mu": model_parameters["sir_death_rate"],
+        "mu": 0.008,
+    }
+    return seir_params
+
+
+def generate_r0(seir_params):
+    b = seir_params["beta"]
+    g = seir_params["gamma"]
+
+    r0 = (b[1] / (p[1] + g[1])) + (p[1] / (p[1] + g[1])) * (
+        b[2] / (p[2] + g[2]) + (p[2] / (p[2] + g[2])) * (b[3] / (u + g[3]))
+    )
+
+    return r0
