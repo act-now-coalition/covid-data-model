@@ -1,4 +1,5 @@
 import datetime
+import git
 import logging
 import math
 from copy import copy
@@ -9,7 +10,6 @@ import urllib
 from urllib.request import urlopen
 
 import tempfile
-from zipfile import ZipFile
 
 from libs.build_params import US_STATE_ABBREV as us_state_abbrev
 
@@ -34,16 +34,12 @@ def create_local_copy_public_data():
     Creates a local copy of the public data repository. This is done to avoid
     downloading the file again for each intervention type.
     """
-    github_zip_url = "https://github.com/covid-projections/covid-data-public/archive/master.zip"
-    public_data_local_url = f'file://localhost{local_public_data}/covid-data-public-master'
-    _logger.info(f"Creating a Local Copy of {github_zip_url} at {public_data_local_url}")
 
-    zipresp = urlopen(github_zip_url)
-    with open(local_public_data + "/master.zip", "wb") as tempzip:
-        tempzip.write(zipresp.read())
-
-    with ZipFile(local_public_data + "/master.zip") as zf:
-        zf.extractall(path=local_public_data)
+    repo_url = 'https://github.com/covid-projections/covid-data-public'
+    target_dir = tempfile.TemporaryDirectory().name
+    git.Repo.clone_from(repo_url, target_dir, depth=1)
+    public_data_local_url = f'file://localhost{target_dir}/'
+    _logger.info(f"Creating a Local Copy of {repo_url} at {public_data_local_url}")
 
     os.environ['COVID_DATA_PUBLIC'] = public_data_local_url
 
