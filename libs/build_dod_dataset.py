@@ -147,12 +147,11 @@ def get_usa_by_states_df():
     return states_final
 
 # note it's unclear to me if 'Incident Rate' is a number, float, etc
-def join_and_output_shapefile(df, shp, pivot_shp_field, pivot_df_column, output_filename):
+def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
     fields = ['Confirmed', 'Recovered', 'Deaths', 'Active', 'Incident Rate', 'People Tested', 'Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction']
     fields = [field for field in fields if field in df.columns]
 
-    shp_writer = shapefile.Writer(output_filename)
-    shp_writer.fields = shp.fields # Preserve fields that come from the census
+    shp_writer.fields = shp_reader.fields # Preserve fields that come from the census
 
     for field_name in fields:
         if field_name == 'Intervention': # Intervention is currently our only non-integer field
@@ -160,7 +159,7 @@ def join_and_output_shapefile(df, shp, pivot_shp_field, pivot_df_column, output_
         else:
             shp_writer.field(field_name, 'N', size=14)
 
-    for shapeRecord in shp.shapeRecords():
+    for shapeRecord in shp_reader.shapeRecords():
         try:
             row = df[df[pivot_df_column] == shapeRecord.record[pivot_shp_field]].iloc[0]
         except:
@@ -176,21 +175,25 @@ def join_and_output_shapefile(df, shp, pivot_shp_field, pivot_df_column, output_
     shp_writer.close()
 
 
-def get_usa_state_shapefile(output_filename):
+def get_usa_state_shapefile(shp, shx, dbf):
+    shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
-    join_and_output_shapefile(get_usa_by_states_df(), shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_state'),
-        'STATEFP', 'State/County FIPS Code', output_filename)
+    join_and_output_shapefile(get_usa_by_states_df(),
+        shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_state'),
+        'STATEFP', 'State/County FIPS Code', shp_writer)
 
-def get_usa_county_shapefile(output_filename):
+def get_usa_county_shapefile(shp, shx, dbf):
     df = get_usa_by_county_df()
+    shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
     # ironically we have to re-pad the dataframe column to easily match GEOID in the shapefile
     df['State/County FIPS Code'] = df['State/County FIPS Code'].astype(str).str.rjust(5, '0')
 
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
-    join_and_output_shapefile(df, shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_county'),
-        'GEOID', 'State/County FIPS Code', output_filename)
+    join_and_output_shapefile(df,
+        shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_county'),
+        'GEOID', 'State/County FIPS Code', shp_writer)
 
 # us_only = get_usa_by_county_df()
 # us_only.to_csv("results/counties.csv")

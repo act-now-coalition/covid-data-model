@@ -1,3 +1,4 @@
+from io import BytesIO
 import boto3
 import os
 
@@ -32,8 +33,11 @@ class DatasetDeployer():
         """
         print('persisting {} to local'.format(self.key))
 
-        with open(self.key, 'w') as f:
-            f.write(self.body)
+        with open(self.key, 'wb') as f:
+            # hack to allow the local writer to take either bytes or a string
+            # note this assumes that all strings are given in utf-8 and not,
+            # like, ASCII
+            f.write(self.body.encode('UTF-8') if isinstance(self.body, str) else self.body)
 
         pass
 
@@ -63,8 +67,21 @@ def deploy():
     countiesObj = DatasetDeployer(**counties_blob)
     countiesObj.persist()
 
-    get_usa_county_shapefile('shapefiles/counties')
-    get_usa_state_shapefile('shapefiles/states')
+    states_shp = BytesIO()
+    states_shx = BytesIO()
+    states_dbf = BytesIO()
+    get_usa_state_shapefile(states_shp, states_shx, states_dbf)
+    DatasetDeployer(key='states.shp', body=states_shp.getvalue()).persist()
+    DatasetDeployer(key='states.shx', body=states_shx.getvalue()).persist()
+    DatasetDeployer(key='states.dbf', body=states_dbf.getvalue()).persist()
+
+    counties_shp = BytesIO()
+    counties_shx = BytesIO()
+    counties_dbf = BytesIO()
+    get_usa_county_shapefile(counties_shp, counties_shx, counties_dbf)
+    DatasetDeployer(key='counties.shp', body=counties_shp.getvalue()).persist()
+    DatasetDeployer(key='counties.shx', body=counties_shx.getvalue()).persist()
+    DatasetDeployer(key='counties.dbf', body=counties_dbf.getvalue()).persist()
 
     print('finished dod job')
 
