@@ -164,7 +164,12 @@ def generate_epi_params(model_parameters):
     alpha = 1 / model_parameters["total_infected_period"]
 
     # assume hospitalized don't infect
-    beta = [0, model_parameters["beta"] / N, 0, 0]
+    beta = [
+        0,
+        model_parameters["beta"] / N,
+        model_parameters["beta_hospitalized"] / N,
+        model_parameters["beta_icu"] / N,
+    ]
 
     # have to calculate these in order and then put them into arrays
     gamma_0 = 0
@@ -192,6 +197,7 @@ def generate_epi_params(model_parameters):
         "rho": [rho_0, rho_1, rho_2],
         "mu": mu,
     }
+
     return seir_params
 
 

@@ -197,6 +197,9 @@ class CovidTimeseriesModelSIR:
 
         r0 = generate_r0(init_params, model_parameters["population"])
 
+        print(json.dumps(init_params))
+        print(r0)
+
         (data, steps, ret) = seir(
             pop_dict,
             init_params["beta"],
@@ -306,6 +309,8 @@ class CovidTimeseriesModelSIR:
                 + combined_df.recovered
                 + combined_df.dead
             )
+
+        combined_df["beds"] = model_parameters["beds"]
 
         return [combined_df, ret]
 
