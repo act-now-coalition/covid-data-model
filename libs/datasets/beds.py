@@ -3,6 +3,7 @@ import enum
 import pandas as pd
 import datetime
 from libs.datasets import data_source
+from libs.datasets import dataset_utils
 from libs.datasets import AggregationLevel
 
 
@@ -36,25 +37,19 @@ class BedsDataset(object):
         data[cls.Fields.GENERATED] = False
 
         if fill_missing_state:
-            data = cls._fill_missing_state_with_county(data)
+            state_groupby_fields = [cls.Fields.SOURCE, cls.Fields.STATE]
+            non_matching = dataset_utils.aggregate_and_get_nonmatching(
+                data, state_groupby_fields, AggregationLevel.COUNTY, AggregationLevel.STATE
+            ).reset_index()
+
+            non_matching[cls.Fields.GENERATED] = True
+            data = pd.concat([data, non_matching])
 
         return cls(data)
 
-    @classmethod
-    def _fill_missing_state_with_county(cls, data):
-        state_groupby_fields = [cls.Fields.SOURCE, cls.Fields.STATE]
+    def get_state_level(self, state):
+        icu_beds = self.data[self.data.state == state].icu_beds
+        if len(icu_beds):
+            return icu_beds.iloc[0]
 
-        county_data = data[data.aggregate_level == 'county']
-        state_data = county_data.groupby(state_groupby_fields).sum().reset_index()
-        state_data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
-        state_data = state_data.set_index(state_groupby_fields)
-        state_data[cls.Fields.GENERATED] = True
-
-        existing_state = data[data.aggregate_level == AggregationLevel.STATE.value]
-        existing_state = existing_state.set_index(state_groupby_fields)
-
-        non_matching = state_data[~state_data.index.isin(existing_state.index)]
-        return pd.concat([
-            data,
-            non_matching.reset_index()
-        ])
+        return None

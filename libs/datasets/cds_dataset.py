@@ -3,6 +3,7 @@ import logging
 import numpy
 import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.population import PopulationDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 
@@ -71,6 +72,15 @@ class CDSDataset(data_source.DataSource):
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
     }
 
+    POPULATION_FIELD_MAP = {
+        PopulationDataset.Fields.COUNTRY: Fields.COUNTRY,
+        PopulationDataset.Fields.STATE: Fields.STATE,
+        PopulationDataset.Fields.COUNTY: Fields.COUNTY,
+        PopulationDataset.Fields.POPULATION: Fields.POPULATION,
+        PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL
+    }
+
+
     def __init__(self, input_path):
         data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE])
         data = self.standardize_data(data)
@@ -101,19 +111,25 @@ class CDSDataset(data_source.DataSource):
         data = pd.concat(split_data)
 
         # CDS state level aggregates are identifiable by not having a city or county.
+        only_county = (
+            data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
+        )
+        county_hits = numpy.where(only_county, 'county', None)
         only_state = (
             data[cls.Fields.COUNTY].isnull()
             & data[cls.Fields.CITY].isnull()
             & data[cls.Fields.STATE].notnull()
         )
-
-        only_county = (
-            data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
+        only_country = (
+            data[cls.Fields.COUNTY].isnull()
+            & data[cls.Fields.CITY].isnull()
+            & data[cls.Fields.STATE].isnull()
+            & data[cls.Fields.COUNTRY].notnull()
         )
-        county_hits = numpy.where(only_county, 'county', None)
+
         state_hits = numpy.where(only_state, "state", None)
         county_hits[state_hits != None] = state_hits[state_hits != None]
-        county_hits[county_hits == None] = 'country'
+        county_hits[only_country] = 'country'
         data[cls.Fields.AGGREGATE_LEVEL] = county_hits
 
         return data

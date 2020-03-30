@@ -28,12 +28,6 @@ class TimeseriesDataset(object):
     def states(self) -> List:
         return self.data[self.Fields.STATE].dropna().unique().tolist()
 
-    @property
-    def data_by_state(self) -> Iterator:
-        state_timeseries = self.get_aggregation_level(AggregationLevel.STATE)
-        for state in state_timeseries.states:
-            yield state, state_timeseries.get_dataframe(state=state)
-
     def get_subset(
         self, aggregation_level, on=None, after=None, country=None, state=None, county=None
     ) -> "TimeseriesDataset":

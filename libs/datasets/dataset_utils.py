@@ -1,6 +1,7 @@
 import pandas as pd
 import pathlib
 from libs import build_params
+from libs.datasets import AggregationLevel
 
 LOCAL_PUBLIC_DATA_PATH = (
     pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
@@ -103,3 +104,27 @@ def compare_datasets(base, other, group, first_name='first', other_name='second'
     not_matching['delta'] = contains_both[first_name] - contains_both[other_name]
     not_matching['delta_ratio'] = (contains_both[first_name] - contains_both[other_name]) / contains_both[first_name]
     return all_combined, matching, not_matching
+
+
+def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_aggregation):
+
+    from_data = data[data.aggregate_level == from_aggregation.value]
+    new_data = from_data.groupby(groupby_fields).sum().reset_index()
+    new_data['aggregate_level'] = to_aggregation.value
+    new_data = new_data.set_index(groupby_fields)
+
+    existing_data = data[data.aggregate_level == to_aggregation.value]
+    existing_data = existing_data.set_index(groupby_fields)
+
+    non_matching = new_data[~new_data.index.isin(existing_data.index)]
+    return non_matching
+
+
+def get_state_level_data(data, country, state):
+    country_filter = data.country == country
+    state_filter = data.state == state
+    aggregation_filter = (
+        data.aggregate_level == AggregationLevel.STATE.value
+    )
+
+    return data[country_filter & state_filter & aggregation_filter]
