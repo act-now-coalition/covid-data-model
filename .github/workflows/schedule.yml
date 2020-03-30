@@ -1,0 +1,15 @@
+name: test schedule
+on:
+  schedule:
+    - cron: '* * * * *'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          ref: master
+      - name: Install dependencies
+        run: echo "test me"
+        
+        
