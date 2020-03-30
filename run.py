@@ -127,7 +127,7 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         # Assumes that anyone who needs ICU care and doesn't get it dies
         "case_fatality_rate_hospitals_overwhelmed": HOSPITALIZATION_RATE
         * HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
-        "hospital_capacity_change_daily_rate": 1.05,
+        "hospital_capacity_change_daily_rate": 1.01227,  # Equivalent to 1.05 per four days
         "max_hospital_capacity_factor": 2.07,
         "initial_hospital_bed_utilization": 0.6,
         "model_interval": 4,  # In days
@@ -154,7 +154,9 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
     }
     [results, soln] = CovidTimeseriesModelSIR().forecast_region(model_parameters=MODEL_PARAMETERS)
 
-    results['beds'] = list(min(starting_beds * MODEL_PARAMETERS["hospital_capacity_change_daily_rate"]**exp, starting_beds * MODEL_PARAMETERS["max_hospital_capacity_factor"]) for exp in range(0, len(results.index)))
+    available_beds = starting_beds * (1 - MODEL_PARAMETERS["initial_hospital_bed_utilization"])
+
+    results['beds'] = list(min(available_beds * MODEL_PARAMETERS["hospital_capacity_change_daily_rate"]**exp, available_beds * MODEL_PARAMETERS["max_hospital_capacity_factor"]) for exp in range(0, len(results.index)))
 
     return results
 
