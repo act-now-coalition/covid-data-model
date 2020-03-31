@@ -9,6 +9,7 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+%env COVID_DATA_PUBLIC=../covid-data-public
 
 def record_results(
     res, directory, name, num, pop, min_begin_date=None, max_end_date=None
@@ -54,7 +55,8 @@ def record_results(
 
     # @TODO: Find a better way of restricting to every fourth day.
     #        Alternatively, change the website's expectations.
-    website_ordering = pd.DataFrame(website_ordering[website_ordering.index % 4 == 0])
+    website_ordering = pd.DataFrame(
+        website_ordering[website_ordering.index % 4 == 0])
 
     if min_begin_date is not None:
         website_ordering = pd.DataFrame(
@@ -65,7 +67,8 @@ def record_results(
             website_ordering[website_ordering["date"] <= max_end_date]
         )
 
-    website_ordering["date"] = website_ordering["date"].dt.strftime("%-m/%-d/%y")
+    website_ordering["date"] = website_ordering["date"].dt.strftime(
+        "%-m/%-d/%y")
     website_ordering["population"] = pop
     website_ordering = website_ordering.astype(
         {
@@ -87,14 +90,16 @@ def record_results(
     )
 
     with open(
-        os.path.join(directory, name.upper() + "." + str(num) + ".json").format(name),
+        os.path.join(directory, name.upper() + "." +
+                     str(num) + ".json").format(name),
         "w",
     ) as out:
         simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
 
     # @TODO: Remove once the frontend no longer expects some states to be lowercase.
     with open(
-        os.path.join(directory, name.lower() + "." + str(num) + ".json").format(name),
+        os.path.join(directory, name.lower() + "." +
+                     str(num) + ".json").format(name),
         "w",
     ) as out:
         simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
@@ -127,7 +132,8 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         # Assumes that anyone who needs ICU care and doesn't get it dies
         "case_fatality_rate_hospitals_overwhelmed": HOSPITALIZATION_RATE
         * HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
-        "hospital_capacity_change_daily_rate": 1.01227,  # Equivalent to 1.05 per four days
+        # Equivalent to 1.05 per four days
+        "hospital_capacity_change_daily_rate": 1.01227,
         "max_hospital_capacity_factor": 2.07,
         "initial_hospital_bed_utilization": 0.6,
         "model_interval": 4,  # In days
@@ -148,8 +154,10 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "fix_r0": False,
         # If True use the harvard model inputs for inital conditions and N (recreate their graph)
         "use_harvard_init": False,
-        "use_harvard_params": False,  # If True use the harvard parameters directly, if not calculate off the above
-        "fix_r0": False,  # If True use the parameters that make R0 2.4, if not calculate off the above
+        # If True use the harvard parameters directly, if not calculate off the above
+        "use_harvard_params": False,
+        # If True use the parameters that make R0 2.4, if not calculate off the above
+        "fix_r0": False,
         "hospitalization_rate": HOSPITALIZATION_RATE,
         "hospitalized_cases_requiring_icu_care": HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
         "total_infected_period": 12,  # In days
@@ -162,7 +170,7 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "beta_icu": 0.1,
         "presymptomatic_period": 1,
         "exposed_from_infected": True,
-        #'model': 'sir',
+        # 'model': 'sir',
         "model": "seir",
     }
     MODEL_PARAMETERS["exposed_infected_ratio"] = 1 / MODEL_PARAMETERS["beta"]
@@ -201,7 +209,8 @@ if __name__ == "__main__":
         for i in range(0, len(INTERVENTIONS)):
             _logger.info(f"Running intervention {i} for {state}")
             intervention = INTERVENTIONS[i]
-            results = model_state(dataset, country, state, starting_beds, intervention)
+            results = model_state(dataset, country, state,
+                                  starting_beds, intervention)
             record_results(
                 results,
                 OUTPUT_DIR,
