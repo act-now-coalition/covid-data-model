@@ -1,11 +1,19 @@
-from libs.CovidDatasets import CDSDataset, JHUDataset
-from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
-from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
-import simplejson
+import logging
 import time
 import datetime
+
+import simplejson
 import pandas as pd
-import logging
+
+# from libs.CovidDatasets import CDSDataset, JHUDataset
+from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
+from libs.datasets.jhu_dataset import JHUDataset
+from libs.datasets.fips_population import FIPSPopulation
+from libs.datasets.cds_dataset import CDSDataset
+from libs.datasets.dh_beds import DHBeds
+from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets import AggregationLevel
+from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 
 _logger = logging.getLogger(__name__)
 
@@ -100,7 +108,7 @@ def record_results(
         simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
 
 
-def model_state(dataset, country, state, starting_beds, interventions=None):
+def model_state(timeseries, population, starting_beds, interventions=None):
 
     # Constants
     start_time = time.time()
@@ -108,15 +116,12 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
     HOSPITALIZED_CASES_REQUIRING_ICU_CARE = 0.1397
     TOTAL_INFECTED_PERIOD = 12
     MODEL_INTERVAL = 4
-    POP = dataset.get_population_by_country_state(country, state)
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     MODEL_PARAMETERS = {
         # Pack the changeable model parameters
-        "timeseries": dataset.get_timeseries_by_country_state(
-            country, state, MODEL_INTERVAL
-        ),
-        "beds": dataset.get_beds_by_country_state(country, state),
-        "population": POP,
+        "timeseries": timeseries,
+        "beds": starting_beds,
+        "population": population,
         # 'projection_iterations': 25, # Number of iterations into the future to project
         "projection_iterations": 80,  # Number of iterations into the future to project
         "r0": r0,
@@ -191,23 +196,33 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     # @TODO: Remove interventions override once support is in the Harvard model.
     country = "USA"
+
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
+    beds_data = DHBeds.build_from_local_github().to_generic_beds()
+    population_data = FIPSPopulation().to_generic_population()
+    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
+    timeseries = timeseries.get_subset(
+        AggregationLevel.COUNTY, after='2020-03-07', country=country, state='MA'
+    )
+    for country, state, county in timeseries.county_keys():
+        _logger.info(f'Generating data for county: {county}, {state}')
+        cases = timeseries.get_data(state=state, country=country, county=county)
+        beds = beds_data.get_county_level(state, county)
+        population = population_data.get_county_level(country, state, county)
+        if not population:
+            _logger.warning(f"Missing population for {county}, {state}")
+            continue
 
-    dataset = JHUDataset()
-    for state in dataset.get_all_states_by_country(country):
-        logging.info("Generating data for state: {}".format(state))
-        starting_beds = dataset.get_beds_by_country_state(country, state)
-        for i in range(0, len(INTERVENTIONS)):
+        for i, intervention in enumerate(INTERVENTIONS):
             _logger.info(f"Running intervention {i} for {state}")
-            intervention = INTERVENTIONS[i]
-            results = model_state(dataset, country, state, starting_beds, intervention)
+            results = model_state(cases, population, beds, intervention)
             record_results(
                 results,
                 OUTPUT_DIR,
                 state,
                 i,
-                dataset.get_population_by_country_state(country, state),
+                population,
                 min_date,
                 max_date,
             )
