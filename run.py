@@ -119,9 +119,6 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "use_harvard_params": False,  # If True use the harvard parameters directly, if not calculate off the above
         "fix_r0": False,  # If True use the parameters that make R0 2.4, if not calculate off the above
         "days_to_model": 270,
-        "hospitalization_rate": 0.0727,
-        #'hospitalization_rate': 0.2,
-        "hospitalized_cases_requiring_icu_care": 0.1397,
         ## Variables for calculating model parameters Hill -> our names/calcs
         # IncubPeriod: Average incubation period, days - presymptomatic_period
         # DurMildInf: Average duration of mild infections, days - duration_mild_infections
@@ -143,6 +140,8 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "beta": 0.5,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
+        "hospitalization_rate": 0.0727,
+        "hospitalized_cases_requiring_icu_care": 0.1397,
         "case_fatality_rate": 0.0109341104294479,
         "exposed_from_infected": True,
         "exposed_infected_ratio": 1,

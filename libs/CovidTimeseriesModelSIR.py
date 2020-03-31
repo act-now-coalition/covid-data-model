@@ -69,7 +69,9 @@ class CovidTimeseriesModelSIR:
         else:
             return None
 
-    def run_interventions(self, model_parameters, combined_df, seir_params, r0):
+    def run_interventions(
+        self, model_parameters, combined_df, seir_params, model_seir_init, r0
+    ):
         ## for each intervention (in order)
         ## grab initial conditions (conditions at intervention date)
         ## adjust seir_params based on intervention
@@ -87,6 +89,11 @@ class CovidTimeseriesModelSIR:
             ):
 
                 counterfactuals[date] = combined_df
+
+                if new_r0 is None:
+                    new_r0 = generate_r0(
+                        model_seir_init, model_parameters["population"]
+                    )
 
                 new_seir_params = brute_force_r0(
                     seir_params, new_r0, r0, model_parameters["population"]
@@ -203,6 +210,10 @@ class CovidTimeseriesModelSIR:
                     model_parameters["interventions"], init_date
                 )
 
+                # keep these in case we need to go back due to a final
+                # "return to normal" intervention
+                model_seir_init = init_params.copy()
+
                 if new_r0 is not None:
                     init_params = brute_force_r0(
                         init_params,
@@ -212,6 +223,8 @@ class CovidTimeseriesModelSIR:
                     )
 
         r0 = generate_r0(init_params, model_parameters["population"])
+
+        print(r0)
 
         (data, steps, ret) = seir(
             pop_dict,
@@ -284,7 +297,7 @@ class CovidTimeseriesModelSIR:
 
         if model_parameters["interventions"] is not None:
             (combined_df, counterfactuals) = self.run_interventions(
-                model_parameters, combined_df, init_params, r0
+                model_parameters, combined_df, init_params, model_seir_init, r0
             )
 
         # this should be done, but belt and suspenders for the diffs()
