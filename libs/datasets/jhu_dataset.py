@@ -1,8 +1,12 @@
+import logging
 import numpy
 import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
+from libs.datasets import AggregationLevel
+
+_logger = logging.getLogger(__name__)
 
 
 class JHUDataset(data_source.DataSource):
@@ -20,7 +24,7 @@ class JHUDataset(data_source.DataSource):
         FIPS = "FIPS"
         COUNTY = "Admin2"
         STATE = "Province_State"
-        COUNTRY_REGION = "Country_Region"
+        COUNTRY = "Country_Region"
         LAST_UPDATE = "Last_Update"
         LATITUDE = "Latitude"
         LONGITUDE = "Longitude"
@@ -34,7 +38,7 @@ class JHUDataset(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
 
     RENAMED_COLUMNS = {
-        "Country/Region": Fields.COUNTRY_REGION,
+        "Country/Region": Fields.COUNTRY,
         "Province/State": Fields.STATE,
         "Lat": Fields.LATITUDE,
         "Long_": Fields.LONGITUDE,
@@ -43,9 +47,9 @@ class JHUDataset(data_source.DataSource):
 
     TIMESERIES_FIELD_MAP = {
         TimeseriesDataset.Fields.DATE: Fields.DATE,
-        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY_REGION,
+        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
         TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.COUNTY: Fields.COUNTY,
+        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
         TimeseriesDataset.Fields.CASES: Fields.CONFIRMED,
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
         TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
@@ -56,7 +60,7 @@ class JHUDataset(data_source.DataSource):
         loaded_data = []
         for path in sorted(input_dir.glob("*.csv")):
             date = path.stem
-            data = pd.read_csv(path)
+            data = pd.read_csv(path, dtype={"FIPS": str})
             data = data.rename(columns=self.RENAMED_COLUMNS)
             data[self.Fields.DATE] = pd.to_datetime(date)
             loaded_data.append(data)
@@ -64,9 +68,8 @@ class JHUDataset(data_source.DataSource):
             #     print(data)
 
         data = pd.concat(loaded_data)
+        self.data = data
         self.data = self.standardize_data(data)
-        # print(self.data.columns)
-        recent = self.data[self.data.date == "03-26-2020"]
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
@@ -85,9 +88,9 @@ class JHUDataset(data_source.DataSource):
             "UK": "United Kingdom",
             "US": "USA",
         }
-        data = data.replace({cls.Fields.COUNTRY_REGION: country_remap})
-
+        data = data.replace({cls.Fields.COUNTRY: country_remap})
         states = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
+
         county_from_state = data[cls.Fields.STATE].apply(
             dataset_utils.parse_county_from_state
         )
@@ -97,7 +100,29 @@ class JHUDataset(data_source.DataSource):
         data[cls.Fields.STATE] = states
         state_only = data[cls.Fields.FIPS].isnull() & data[cls.Fields.COUNTY].isnull()
         data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(state_only, "state", "county")
+        data = cls._drop_incomplete_county_data(data)
         return data
+
+    @classmethod
+    def _drop_incomplete_county_data(cls, data):
+        """Returns a data frame with incomplete county level data dropped.
+
+        Most of this data is "unassigned" (at least in more recent days.
+        We probably need to either give each state its own fake FIP, or spread this
+        out over the existing counties for the state.
+        """
+        data = data.reset_index()
+        is_county = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        dropped_data = data[is_county & data.FIPS.isnull()]
+
+        _logger.warning(
+            f"Dropping {len(dropped_data)}/{len(data)} rows of county data without FIPS"
+        )
+        return pd.concat([data[~is_county], data[is_county & (~data.FIPS.isnull())]])
+
+    def verify_complete(self):
+        data = self.data
+        data[data[self.Fields.FIPS].isnull() & (data.aggregate_level == "county")]
 
     @classmethod
     def build_from_local_github(cls) -> "JHUTimeseriesData":

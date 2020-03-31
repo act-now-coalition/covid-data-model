@@ -10,7 +10,7 @@ from libs.datasets import AggregationLevel
 class BedsDataset(object):
     class Fields(object):
         STATE = "state"
-        COUNTY = "county"
+        FIPS = "fips"
         STAFFED_BEDS = "staffed_beds"
         LICENSED_BEDS = "licensed_beds"
         ICU_BEDS = "icu_beds"
@@ -19,6 +19,7 @@ class BedsDataset(object):
         SOURCE = "source"
         AGGREGATE_LEVEL = "aggregate_level"
         GENERATED = "generated"
+        COUNTY = "county"
 
     def __init__(self, data):
         self.data = data
@@ -47,6 +48,9 @@ class BedsDataset(object):
 
             non_matching[cls.Fields.GENERATED] = True
             data = pd.concat([data, non_matching])
+
+        fips_data = dataset_utils.build_fips_data_frame()
+        data = dataset_utils.add_county_using_fips(data, fips_data)
 
         return cls(data)
 

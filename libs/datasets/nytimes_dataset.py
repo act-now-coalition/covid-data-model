@@ -26,7 +26,7 @@ class NYTimesTimeseriesData(data_source.DataSource):
         TimeseriesDataset.Fields.DATE: Fields.DATE,
         TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
         TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.COUNTY: Fields.COUNTY,
+        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
         TimeseriesDataset.Fields.CASES: Fields.CASES,
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }

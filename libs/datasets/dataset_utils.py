@@ -1,11 +1,18 @@
-import pandas as pd
+import logging
 import pathlib
+import pandas as pd
 from libs import build_params
 from libs.datasets import AggregationLevel
+from collections import namedtuple
 
 LOCAL_PUBLIC_DATA_PATH = (
     pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
 )
+
+
+_logger = logging.getLogger(__name__)
+
+County = namedtuple("County", ["state", "county", "fips"])
 
 
 def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
@@ -23,7 +30,7 @@ def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def standardize_county(series: pd.Series):
-    return series.apply(lambda x: x if pd.isnull(x) else x.replace(" County", ""))
+    return series.apply(lambda x: x if pd.isnull(x) else x)
 
 
 def parse_county_from_state(state):
@@ -55,11 +62,15 @@ def plot_grouped_data(data, group, series="source", values="cases"):
 
 def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
     """Combines JHU and CDS county data."""
-    data = jhu_data_source.to_common(county_only=True)
-    jhu_usa_data = data.get_country("USA").get_date(after="2020-03-01").data
+    data = jhu_data_source.to_generic_timeseries()
+    jhu_usa_data = data.get_subset(
+        AggregationLevel.COUNTY, country="USA", after="2020-03-01"
+    ).data
 
-    data = cds_data_source.to_common(county_only=True)
-    cds_usa_data = data.get_country("USA").get_date(after="2020-03-01").data
+    data = cds_data_source.to_generic_timeseries()
+    cds_usa_data = data.get_subset(
+        AggregationLevel.COUNTY, country="USA", after="2020-03-01"
+    ).data
 
     # TODO(chris): Better handling of counties that are not consistent.
 
@@ -137,3 +148,60 @@ def get_county_level_data(data, country, state, county):
     aggregation_filter = data.aggregate_level == AggregationLevel.COUNTY.value
 
     return data[country_filter & state_filter & aggregation_filter & county_filter]
+
+
+def build_fips_data_frame():
+    from libs.datasets.fips_population import FIPSPopulation
+
+    return FIPSPopulation().data
+
+
+def add_county_using_fips(data, fips_data):
+    data = data.set_index("fips")
+    fips_data = fips_data.set_index("fips")
+    data = data.join(fips_data[["county"]], on="fips", rsuffix="_r").reset_index()
+
+    non_matching = data[data.county.isnull() & data.fips.notnull()]
+
+    # Not all datasources have country.  If the dataset doesn't have country,
+    # assuming that data is from the us.
+    if "country" in non_matching.columns:
+        non_matching = non_matching[data.country == "USA"]
+
+    if len(non_matching):
+        unique_counties = sorted(non_matching.county.unique())
+        _logger.warning(f"Did not match {len(unique_counties)} counties to fips data.")
+        _logger.warning(f"{unique_counties}")
+        # TODO: Make this an error?
+
+    if "county_r" in data.columns:
+        return data.drop("county").rename({"count_r": "county"}, axis=1)
+    return data
+
+
+def add_fips_using_county(data, fips_data) -> pd.Series:
+    """Gets FIPS code from a data frame with a county."""
+    data = data.set_index(["county", "state"])
+    fips_data = fips_data.set_index(["county", "state"])
+    data = data.join(
+        fips_data[["fips"]], how="left", on=["county", "state"], rsuffix="_r"
+    ).reset_index()
+
+    non_matching = data[data.county.notnull() & data.fips.isnull()]
+
+    # Not all datasources have country.  If the dataset doesn't have country,
+    # assuming that data is from the us.
+    if "country" in non_matching.columns:
+        non_matching = non_matching[data.country == "USA"]
+
+    if len(non_matching):
+        unique_counties = sorted(non_matching.county.unique())
+        _logger.warning(f"Did not match {len(unique_counties)} counties to fips data.")
+        _logger.warning(f"{unique_counties}")
+        # TODO: Make this an error?
+
+    # Handles if a fips column already in the dataframe.
+    if "fips_r" in data.columns:
+        return data.drop("fips").rename({"fips_r": "fips"}, axis=1)
+
+    return data

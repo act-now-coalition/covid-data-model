@@ -2,6 +2,7 @@ from typing import List, Iterator
 import enum
 import pandas as pd
 import datetime
+from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import AggregationLevel
 
@@ -11,11 +12,13 @@ class TimeseriesDataset(object):
         DATE = "date"
         COUNTRY = "country"
         STATE = "state"
-        COUNTY = "county"
         CASES = "cases"
         DEATHS = "deaths"
         RECOVERED = "recovered"
-        # Name of source of dataset, i.e. JHU
+        FIPS = "fips"
+
+        # Generated
+        COUNTY = "county"
         SOURCE = "source"
         IS_SYNTHETIC = "is_synthetic"
         AGGREGATE_LEVEL = "aggregate_level"
@@ -30,13 +33,16 @@ class TimeseriesDataset(object):
 
     def county_keys(self) -> List:
         # Check to make sure all values are county values
-        county_values = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        county_values = (
+            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        )
         county_data = self.data[county_values]
 
         data = county_data.set_index(
             [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.COUNTY]
         )
-        return data.index.to_list()
+
+        return set(data.index.to_list())
 
     def get_subset(
         self,
@@ -46,6 +52,7 @@ class TimeseriesDataset(object):
         country=None,
         state=None,
         county=None,
+        fips=None,
     ) -> "TimeseriesDataset":
         data = self.data
 
@@ -57,6 +64,8 @@ class TimeseriesDataset(object):
             data = data[data.state == state]
         if county:
             data = data[data.county == county]
+        if fips:
+            data = data[data.fips == fips]
 
         if on:
             data = data[data.date == on]
@@ -65,7 +74,9 @@ class TimeseriesDataset(object):
 
         return self.__class__(data)
 
-    def get_data(self, country=None, state=None, county=None) -> pd.DataFrame:
+    def get_data(
+        self, country=None, state=None, county=None, fips=None
+    ) -> pd.DataFrame:
         data = self.data
         if country:
             data = data[data.country == country]
@@ -73,6 +84,8 @@ class TimeseriesDataset(object):
             data = data[data.state == state]
         if county:
             data = data[data.county == county]
+        if fips:
+            data = data[data.fips == fips]
         return data
 
     @classmethod
@@ -92,9 +105,20 @@ class TimeseriesDataset(object):
         if fill_missing_state:
             data = cls._fill_missing_state_with_county(data)
 
+        fips_data = dataset_utils.build_fips_data_frame()
+        data = dataset_utils.add_county_using_fips(data, fips_data)
+
         # Choosing to sort by date
         data = data.sort_values(cls.Fields.DATE)
         return cls(data)
+
+    @classmethod
+    def verify(cls, data):
+        # all county level us data must have a fips code
+        county_level = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        is_us = data[cls.Fields.COUNTRY] == "USA"
+        missing_fips = data[cls.Fields.FIPS].isnull()
+        us_missing_fips = data[county_level & is_us & missing_fips]
 
     @classmethod
     def _fill_missing_state_with_county(cls, data):

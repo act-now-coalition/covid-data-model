@@ -60,12 +60,13 @@ class CDSDataset(data_source.DataSource):
         GROWTH_FACTOR = "growthFactor"
         DATE = "date"
         AGGREGATE_LEVEL = "aggregate_level"
+        FIPS = "fips"
 
     TIMESERIES_FIELD_MAP = {
         TimeseriesDataset.Fields.DATE: Fields.DATE,
         TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
         TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.COUNTY: Fields.COUNTY,
+        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
         TimeseriesDataset.Fields.CASES: Fields.CASES,
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
         TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
@@ -75,7 +76,7 @@ class CDSDataset(data_source.DataSource):
     POPULATION_FIELD_MAP = {
         PopulationDataset.Fields.COUNTRY: Fields.COUNTRY,
         PopulationDataset.Fields.STATE: Fields.STATE,
-        PopulationDataset.Fields.COUNTY: Fields.COUNTY,
+        PopulationDataset.Fields.FIPS: Fields.FIPS,
         PopulationDataset.Fields.POPULATION: Fields.POPULATION,
         PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
@@ -130,5 +131,10 @@ class CDSDataset(data_source.DataSource):
         county_hits[state_hits != None] = state_hits[state_hits != None]
         county_hits[only_country] = "country"
         data[cls.Fields.AGGREGATE_LEVEL] = county_hits
+
+        # Backfilling FIPS data based on county names.
+        # TODO: Fix all missing cases
+        fips_data = dataset_utils.build_fips_data_frame()
+        data = dataset_utils.add_fips_using_county(data, fips_data)
 
         return data

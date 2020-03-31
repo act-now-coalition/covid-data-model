@@ -12,13 +12,13 @@ class PopulationDataset(object):
     class Fields(object):
         COUNTRY = "country"
         STATE = "state"
-        COUNTY = "county"
         POPULATION = "population"
-
+        FIPS = "fips"
         # Name of source of dataset, i.e. JHU
         SOURCE = "source"
         AGGREGATE_LEVEL = "aggregate_level"
         GENERATED = "generated"
+        COUNTY = "county"
 
     def __init__(self, data):
         self.data = data
@@ -35,6 +35,9 @@ class PopulationDataset(object):
         }
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
+
+        fips_data = dataset_utils.build_fips_data_frame()
+        data = dataset_utils.add_county_using_fips(data, fips_data)
 
         # This is a bit hacky - it assumes the dataset could have more than one value
         # for population, and that the highest value is the correct population.
@@ -60,7 +63,7 @@ class PopulationDataset(object):
                 [
                     cls.Fields.COUNTRY,
                     cls.Fields.STATE,
-                    cls.Fields.COUNTY,
+                    cls.Fields.FIPS,
                     cls.Fields.AGGREGATE_LEVEL,
                 ]
             )
