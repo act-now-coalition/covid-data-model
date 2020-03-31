@@ -104,7 +104,10 @@ class TimeseriesDataset(object):
         data[cls.Fields.GENERATED] = False
         if fill_missing_state:
             state_groupby_fields = [
-                cls.Fields.DATE, cls.Fields.SOURCE, cls.Fields.COUNTRY, cls.Fields.STATE
+                cls.Fields.DATE,
+                cls.Fields.SOURCE,
+                cls.Fields.COUNTRY,
+                cls.Fields.STATE,
             ]
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data,
