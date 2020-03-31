@@ -1,49 +1,95 @@
 import logging
-
+import pandas as pd
 import datetime
 import time
 import simplejson
 from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
-from libs.CovidDatasets import CDSDataset
+from libs.CovidDatasets import CDSDataset, JHUDataset
 
 _logger = logging.getLogger(__name__)
 
-
-def record_results(res, directory, name, num, pop):
-    import copy
+def record_results(
+    res, directory, name, num, pop, min_begin_date=None, max_end_date=None
+):
     import os.path
-    vals = copy.copy(res)
-    # Format the date in the manner the front-end expects
-    vals['Date'] = res['Date'].apply(lambda d: "{}/{}/{}".format(d.month, d.day, d.year))
-    # Set the population
-    vals['Population'] = pop
-    # Write the results to the specified directory
-    os.makedirs(directory, exist_ok=True)
-    with open( os.path.join(directory, name.upper() + '.' + str(num) + '.json').format(name), 'w') as out:
-        simplejson.dump(vals[[
-                'Date',
-                'R',
-                'Beg. Susceptible',
-                'New Inf.',
-                'Curr. Inf.',
-                'Recov. or Died',
-                'End Susceptible',
-                'Actual Reported',
-                'Pred. Hosp.',
-                'Cum. Inf.',
-                'Cum. Deaths',
-                'Avail. Hosp. Beds',
-                'S&P 500',
-                'Est. Actual Chance of Inf.',
-                'Pred. Chance of Inf.',
-                'Cum. Pred. Chance of Inf.',
-                'Population',
-                'R0',
-                '% Susceptible'
-            ]].values.tolist(), out, ignore_nan=True)
 
-def model_state(dataset, country, state, interventions=None):
+    # Indexes used by website JSON:
+    # date: 0,
+    # hospitalizations: 8,
+    # cumulativeInfected: 9,
+    # cumulativeDeaths: 10,
+    # beds: 11,
+    # totalPopulation: 16,
+
+    cols = [
+        "Date",
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "Pred. Hosp.",
+        "Cum. Inf.",
+        "Cum. Deaths",
+        "Avail. Hosp. Beds",
+        "i",
+        "j",
+        "k",
+        "l",
+        "population",
+        "m",
+        "n",
+    ]
+
+    website_ordering = pd.DataFrame(res, columns=cols).fillna(0)
+
+    if min_begin_date is not None:
+        website_ordering = pd.DataFrame(
+            website_ordering[website_ordering["Date"] >= min_begin_date]
+        )
+    if max_end_date is not None:
+        website_ordering = pd.DataFrame(
+            website_ordering[website_ordering["Date"] <= max_end_date]
+        )
+
+    website_ordering["Date"] = website_ordering["Date"].dt.strftime("%-m/%-d/%y")
+    website_ordering["population"] = pop
+    website_ordering = website_ordering.astype(
+        {
+            "Pred. Hosp.": int,
+            "Cum. Inf.": int,
+            "Cum. Deaths": int,
+            "Avail. Hosp. Beds": int,
+            "population": int,
+        }
+    )
+    website_ordering = website_ordering.astype(
+        {
+            "Pred. Hosp.": str,
+            "Cum. Inf.": str,
+            "Cum. Deaths": str,
+            "Avail. Hosp. Beds": str,
+            "population": str,
+        }
+    )
+
+    with open(
+        os.path.join(directory, name.upper() + "." + str(num) + ".json").format(name),
+        "w",
+    ) as out:
+        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+
+    # @TODO: Remove once the frontend no longer expects some states to be lowercase.
+    with open(
+        os.path.join(directory, name.lower() + "." + str(num) + ".json").format(name),
+        "w",
+    ) as out:
+        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+
+def model_state(dataset, country, state, starting_beds, interventions=None):
     ## Constants
     start_time = time.time()
     HOSPITALIZATION_RATE = .0727
@@ -56,7 +102,7 @@ def model_state(dataset, country, state, interventions=None):
     MODEL_PARAMETERS = {
         # Pack the changeable model parameters
         'timeseries': dataset.get_timeseries_by_country_state(country, state, MODEL_INTERVAL),
-        'beds': dataset.get_beds_by_country_state(country, state),
+        'beds': starting_beds,
         'population': POP,
         'projection_iterations': 24, # Number of iterations into the future to project
         'r0': r0,
@@ -73,20 +119,32 @@ def model_state(dataset, country, state, interventions=None):
         'model_interval': 4, # In days
         'total_infected_period': 12, # In days
         'rolling_intervals_for_current_infected': int(round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)),
+        'estimated_new_cases_per_death': 180,
+        'estimated_new_cases_per_confirmed': 4
     }
     return CovidTimeseriesModel().forecast(model_parameters=MODEL_PARAMETERS)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    dataset = CDSDataset()
-    for state in dataset.get_all_states_by_country('USA'):
+    # @TODO: Remove interventions override once support is in the Harvard model.
+    country = "USA"
+    min_date = datetime.datetime(2020, 3, 7)
+    max_date = datetime.datetime(2020, 7, 6)
+
+    dataset = JHUDataset()
+    for state in dataset.get_all_states_by_country(country):
+        logging.info("Generating data for state: {}".format(state))
+        starting_beds = dataset.get_beds_by_country_state(country, state)
         for i in range(0, len(INTERVENTIONS)):
             _logger.info(f"Running intervention {i} for {state}")
             intervention = INTERVENTIONS[i]
+            results = model_state(dataset, country, state, starting_beds, intervention)
             record_results(
-                model_state(dataset, 'USA', state, intervention),
+                results,
                 OUTPUT_DIR,
                 state,
                 i,
-                dataset.get_population_by_country_state('USA', state)
+                dataset.get_population_by_country_state(country, state),
+                min_date,
+                max_date,
             )
