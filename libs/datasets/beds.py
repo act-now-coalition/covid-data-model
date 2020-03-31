@@ -2,7 +2,6 @@ from typing import List, Iterator
 import enum
 import pandas as pd
 import datetime
-from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 
@@ -14,19 +13,23 @@ class BedsDataset(object):
         STAFFED_BEDS = "staffed_beds"
         LICENSED_BEDS = "licensed_beds"
         ICU_BEDS = "icu_beds"
+        AGGREGATE_LEVEL = "aggregate_level"
 
-        # Name of source of dataset, i.e. JHU
+        # Fields generated in `from_source`
         COUNTY = "county"
         SOURCE = "source"
-        AGGREGATE_LEVEL = "aggregate_level"
         GENERATED = "generated"
 
     def __init__(self, data):
         self.data = data
 
     @classmethod
-    def from_source(cls, source: data_source.DataSource, fill_missing_state=True):
-        """Loads data from a specific datasource."""
+    def from_source(cls, source: "DataSource", fill_missing_state=True):
+        """Loads data from a specific datasource.
+
+        Remaps columns from source dataset, fills in missing data
+        by computing aggregates, and adds standardized county names from fips.
+        """
         if not source.BEDS_FIELD_MAP:
             raise ValueError("Source must have beds field map.")
 

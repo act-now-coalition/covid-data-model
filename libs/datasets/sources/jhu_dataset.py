@@ -14,7 +14,6 @@ class JHUDataset(data_source.DataSource):
 
     Originally available at:
     https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_daily_reports
-
     """
 
     DATA_FOLDER = "data/cases-jhu/csse_covid_19_daily_reports"
@@ -68,8 +67,7 @@ class JHUDataset(data_source.DataSource):
             #     print(data)
 
         data = pd.concat(loaded_data)
-        self.data = data
-        self.data = self.standardize_data(data)
+        super.__init__(self.standardize_data(data))
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
@@ -119,10 +117,6 @@ class JHUDataset(data_source.DataSource):
             f"Dropping {len(dropped_data)}/{len(data)} rows of county data without FIPS"
         )
         return pd.concat([data[~is_county], data[is_county & (~data.FIPS.isnull())]])
-
-    def verify_complete(self):
-        data = self.data
-        data[data[self.Fields.FIPS].isnull() & (data.aggregate_level == "county")]
 
     @classmethod
     def build_from_local_github(cls) -> "JHUTimeseriesData":

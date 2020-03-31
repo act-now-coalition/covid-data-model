@@ -3,7 +3,6 @@ import enum
 import pandas as pd
 import datetime
 from libs.datasets import dataset_utils
-from libs.datasets import data_source
 from libs.datasets.dataset_utils import AggregationLevel
 
 
@@ -32,6 +31,7 @@ class TimeseriesDataset(object):
         return self.data[self.Fields.STATE].dropna().unique().tolist()
 
     def county_keys(self) -> List:
+        """Returns a list of all (country, state, county) combinations."""
         # Check to make sure all values are county values
         county_values = (
             self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
@@ -89,7 +89,7 @@ class TimeseriesDataset(object):
         return data
 
     @classmethod
-    def from_source(cls, source: data_source.DataSource, fill_missing_state=True):
+    def from_source(cls, source: "DataSource", fill_missing_state=True):
         """Loads data from a specific datasource."""
         if not source.TIMESERIES_FIELD_MAP:
             raise ValueError("Source must have field timeseries field map.")

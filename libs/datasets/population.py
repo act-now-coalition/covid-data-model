@@ -3,7 +3,6 @@ import logging
 import numpy
 import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 
@@ -24,7 +23,7 @@ class PopulationDataset(object):
         self.data = data
 
     @classmethod
-    def from_source(cls, source: data_source.DataSource, fill_missing_state=True):
+    def from_source(cls, source: "DataSource", fill_missing_state=True):
         """Loads data from a specific datasource."""
         if not source.POPULATION_FIELD_MAP:
             raise ValueError("Source must have beds field map.")
