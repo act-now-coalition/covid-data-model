@@ -148,20 +148,41 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "fix_r0": False,
         # If True use the harvard model inputs for inital conditions and N (recreate their graph)
         "use_harvard_init": False,
-        "actual_to_known_infected": 14,
-        "exposed_from_infected": True,
-        "exposed_infected_ratio": 10,
-        "beta": 0.24,
+        "use_harvard_params": False,  # If True use the harvard parameters directly, if not calculate off the above
+        "fix_r0": False,  # If True use the parameters that make R0 2.4, if not calculate off the above
+        "hospitalization_rate": HOSPITALIZATION_RATE,
+        "hospitalized_cases_requiring_icu_care": HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
+        "total_infected_period": 12,  # In days
+        "duration_mild_infections": 6,  # In days
+        "hospital_time_recovery": 11,  # Duration of hospitalization, In days
+        "icu_time_death": 7,  # Time from ICU admission to death, In days
+        "case_fatality_rate": 0.0109341104294479,
+        "beta": 0.5,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
+        "presymptomatic_period": 1,
+        "exposed_from_infected": True,
         #'model': 'sir',
         "model": "seir",
     }
-    [results, soln] = CovidTimeseriesModelSIR().forecast_region(model_parameters=MODEL_PARAMETERS)
+    MODEL_PARAMETERS["exposed_infected_ratio"] = 1 / MODEL_PARAMETERS["beta"]
 
-    available_beds = starting_beds * (1 - MODEL_PARAMETERS["initial_hospital_bed_utilization"])
+    [results, soln] = CovidTimeseriesModelSIR().forecast_region(
+        model_parameters=MODEL_PARAMETERS
+    )
 
-    results['beds'] = list(min(available_beds * MODEL_PARAMETERS["hospital_capacity_change_daily_rate"]**exp, available_beds * MODEL_PARAMETERS["max_hospital_capacity_factor"]) for exp in range(0, len(results.index)))
+    available_beds = starting_beds * (
+        1 - MODEL_PARAMETERS["initial_hospital_bed_utilization"]
+    )
+
+    results["beds"] = list(
+        min(
+            available_beds
+            * MODEL_PARAMETERS["hospital_capacity_change_daily_rate"] ** exp,
+            available_beds * MODEL_PARAMETERS["max_hospital_capacity_factor"],
+        )
+        for exp in range(0, len(results.index))
+    )
 
     return results
 

@@ -97,8 +97,6 @@ class CovidTimeseriesModelSIR:
                     seir_params, new_r0, r0, model_parameters["population"]
                 )
 
-                # print(json.dumps(new_seir_params))
-
                 pop_dict = {
                     "total": model_parameters["population"],
                     "exposed": combined_df.loc[date, "exposed"],
@@ -109,11 +107,16 @@ class CovidTimeseriesModelSIR:
 
                 if model_parameters["model"] == "seir":
                     # this is a dumb way to do this, but it might work
-                    combined_df.loc[:, "infected"] = (
+
+                    combined_df.loc[:, "infected_tmp"] = (
                         combined_df.loc[:, "infected_a"]
                         + combined_df.loc[:, "infected_b"]
                         + combined_df.loc[:, "infected_c"]
                     )
+
+                    combined_df.loc[:, "infected"].fillna(combined_df["infected_tmp"])
+
+                    combined_df.drop("infected_tmp", axis=1, inplace=True)
 
                     pop_dict["infected_a"] = combined_df.loc[date, "infected_a"]
                     pop_dict["infected_b"] = combined_df.loc[date, "infected_b"]
@@ -121,12 +124,12 @@ class CovidTimeseriesModelSIR:
 
                 (data, steps, ret) = seir(
                     pop_dict,
+                    model_parameters,
                     new_seir_params["beta"],
                     new_seir_params["alpha"],
                     new_seir_params["gamma"],
                     new_seir_params["rho"],
                     new_seir_params["mu"],
-                    False,
                 )
 
                 new_df = dataframe_ify(data, date, end_date, steps,)
@@ -137,11 +140,17 @@ class CovidTimeseriesModelSIR:
 
                 if model_parameters["interventions"] == "seir":
                     # this is a dumb way to do this, but it might work
-                    combined_df.loc[:, "infected"] = (
+                    # this is a dumb way to do this, but it might work
+
+                    combined_df.loc[:, "infected_tmp"] = (
                         combined_df.loc[:, "infected_a"]
                         + combined_df.loc[:, "infected_b"]
                         + combined_df.loc[:, "infected_c"]
                     )
+
+                    combined_df.loc[:, "infected"].fillna(combined_df["infected_tmp"])
+
+                    combined_df.drop("infected_tmp", axis=1, inplace=True)
 
         return (combined_df, counterfactuals)
 
@@ -177,8 +186,7 @@ class CovidTimeseriesModelSIR:
         # load the initial populations
         pop_dict = {
             "total": model_parameters["population"],
-            "infected": timeseries.loc[init_date, "active"]
-            * model_parameters["actual_to_known_infected"],
+            "infected": timeseries.loc[init_date, "active"],
             "recovered": timeseries.loc[init_date, "recovered"],
             "deaths": timeseries.loc[init_date, "deaths"],
         }
@@ -215,12 +223,12 @@ class CovidTimeseriesModelSIR:
 
         (data, steps, ret) = seir(
             pop_dict,
+            model_parameters,
             init_params["beta"],
             init_params["alpha"],
             init_params["gamma"],
             init_params["rho"],
             init_params["mu"],
-            model_parameters["use_harvard_init"],
         )
 
         # this dataframe should start on the last day of the actual data

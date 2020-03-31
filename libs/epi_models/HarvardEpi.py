@@ -102,38 +102,34 @@ def deriv(y0, t, beta, alpha, gamma, rho, mu, N):
 # gamma = mean recovery rate
 # TODO: add other params from doc
 def seir(
-    pop_dict, beta, alpha, gamma, rho, mu, harvard_flag=False,
+    pop_dict, model_parameters, beta, alpha, gamma, rho, mu,
 ):
-    if harvard_flag:
-        N = 1000
-        y0 = np.zeros(6)
-        y0[0] = 1
-        steps = 365
 
+    N = pop_dict["total"]
+    # assume that the first time you see an infected population it is mildly so
+    # after that, we'll have them broken out
+    if "infected_b" in pop_dict:
+        mild = pop_dict["infected_a"]
+        hospitalized = pop_dict["infected_b"]
     else:
-        N = pop_dict["total"]
-        # assume that the first time you see an infected population it is mildly so
-        # after that, we'll have them broken out
-        if "infected_a" in pop_dict:
-            first_infected = pop_dict["infected_a"]
-        else:
-            first_infected = pop_dict["infected"]
+        hospitalized = pop_dict["infected"] / 4
+        mild = hospitalized / model_parameters["hospitalization_rate"]
 
-        susceptible = pop_dict["total"] - (
-            pop_dict["infected"] + pop_dict["recovered"] + pop_dict["deaths"]
-        )
+    susceptible = pop_dict["total"] - (
+        pop_dict["infected"] + pop_dict["recovered"] + pop_dict["deaths"]
+    )
 
-        y0 = [
-            pop_dict.get("exposed", 0),
-            float(first_infected),
-            float(pop_dict.get("infected_b", 0)),
-            float(pop_dict.get("infected_c", 0)),
-            float(pop_dict.get("recovered", 0)),
-            float(pop_dict.get("deaths", 0)),
-        ]
+    y0 = [
+        pop_dict.get("exposed", 0),
+        float(mild),
+        float(hospitalized),
+        float(pop_dict.get("infected_c", 0)),
+        float(pop_dict.get("recovered", 0)),
+        float(pop_dict.get("deaths", 0)),
+    ]
 
-        steps = 365
-        t = np.arange(0, steps, 1)
+    steps = 365
+    t = np.arange(0, steps, 1)
 
     ret = odeint(deriv, y0, t, args=(beta, alpha, gamma, rho, mu, N))
 
@@ -172,7 +168,7 @@ def generate_epi_params(model_parameters):
         * model_parameters["hospitalized_cases_requiring_icu_care"]
     )
 
-    alpha = 1 / model_parameters["total_infected_period"]
+    alpha = 1 / model_parameters["presymptomatic_period"]
 
     # assume hospitalized don't infect
     beta = [
