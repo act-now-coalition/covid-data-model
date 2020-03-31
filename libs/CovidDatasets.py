@@ -4,6 +4,7 @@ import logging
 import math
 from copy import copy
 import pandas as pd
+
 import os.path
 import os
 import urllib
@@ -156,6 +157,8 @@ class Dataset:
             if self.filter_past_date is not None:
                 self._TIME_SERIES_DATA \
                     = self._TIME_SERIES_DATA[self._TIME_SERIES_DATA[self.DATE_FIELD] <= self.filter_past_date]
+        if len(self._TIME_SERIES_DATA.index) == 0:
+            raise Exception('No timeseries data entries.')
         return self._TIME_SERIES_DATA
 
     def get_raw_timeseries(self):
@@ -183,6 +186,15 @@ class Dataset:
             ][[self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD, self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].groupby(
             [self.DATE_FIELD, self.COUNTRY_FIELD, self.STATE_FIELD], as_index=False
         )[[self.CASE_FIELD, self.DEATH_FIELD, self.RECOVERED_FIELD]].sum()
+
+        # Fill holes.
+        state_data = state_data.fillna({'deaths': 0})
+        county_data = county_data.fillna({'deaths': 0})
+
+        if len(state_data.index) == 0 and len(county_data.index) == 0:
+            self.get_all_timeseries()[(self.get_all_timeseries()["state"] == state)].head()
+            raise Exception('No county or state-level date for {}, {}'.format(state, country))
+
         # Now we fill in whatever gaps we can in the state data using the county data
         curr_date = max(state_data[self.DATE_FIELD].max(), county_data[self.DATE_FIELD].max()) # Start on the last date of state data we have
         county_data_to_insert = []
@@ -205,7 +217,8 @@ class Dataset:
 
     def get_timeseries_by_country_state(self, country, state, model_interval):
         #  Prepare a state-level dataset that uses county data to fill in any potential gaps
-        return self.prep_data(self.combine_state_county_data(country, state), model_interval)
+        state_data = self.combine_state_county_data(country, state)
+        return self.prep_data(state_data, model_interval)
 
     def get_timeseries_by_country(self, country):
         return self.get_all_timeseries()[self.get_all_timeseries()[self.COUNTRY_FIELD] == country]
