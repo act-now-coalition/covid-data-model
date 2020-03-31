@@ -20,3 +20,31 @@ Check It Out in Jupyter
 
 ### Data Sources
 See [covid-data-public](https://github.com/covid-projections/covid-data-public) for data sources being used or considered.
+
+
+
+### [Setup](./SETUP.md)
+
+
+## Running
+
+
+### Prep
+If you've cloned a covid-data-public repo to a local source
+```bash
+export COVID_DATA_PUBLIC=../covid-data-public
+```
+
+```bash
+mkdir -p results/test/
+```
+
+### Creating the Model
+```bash
+python run.py
+```
+
+### Creating a Local Model
+```bash
+python deploy_dod_dataset.py
+```
