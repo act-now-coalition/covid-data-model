@@ -56,8 +56,9 @@ county_replace_with_null = {
 }
 
 def get_usa_by_county_df():
-    url = 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_daily_reports/{}.csv'.format(
+    url = '../covid-data-public/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
         latest.strftime("%m-%d-%Y"))
+    print(url)
     raw_df = pd.read_csv(url)
 
     column_mapping = {"Province_State": "Province/State",
@@ -139,6 +140,10 @@ def get_usa_by_states_df():
     states_final = states_final.fillna(NULL_VALUE)
     states_final['Combined Key'] = states_final['Province/State']
     states_final['State/County FIPS Code'] = states_final['Province/State'].map(us_fips)
+
+    # temporarily nullify predictions
+    states_final['8-day Hospitalizations Prediction'] = NULL_VALUE
+    states_final['4-day Hospitalizations Prediction'] = NULL_VALUE
 
     states_final.index.name = 'OBJECTID'
     # assert unique key test
