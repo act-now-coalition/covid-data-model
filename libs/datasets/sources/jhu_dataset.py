@@ -4,7 +4,7 @@ import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
-from libs.datasets import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel
 
 _logger = logging.getLogger(__name__)
 

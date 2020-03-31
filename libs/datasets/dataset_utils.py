@@ -1,8 +1,8 @@
+import enum
 import logging
 import pathlib
 import pandas as pd
 from libs import build_params
-from libs.datasets import AggregationLevel
 
 LOCAL_PUBLIC_DATA_PATH = (
     pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
@@ -150,7 +150,7 @@ def get_county_level_data(data, country, state, county):
 
 
 def build_fips_data_frame():
-    from libs.datasets.fips_population import FIPSPopulation
+    from libs.datasets import FIPSPopulation
 
     return FIPSPopulation().data
 

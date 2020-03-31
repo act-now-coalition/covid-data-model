@@ -7,7 +7,7 @@ from libs.datasets import data_source
 from libs.datasets import dataset_utils
 
 
-class NYTimesTimeseriesData(data_source.DataSource):
+class NYTimesDataset(data_source.DataSource):
     DATA_URL = "https://github.com/nytimes/covid-19-data/raw/6cb66d9a821ce8225f6f9ffcb77ce6db9889c14c/us-counties.csv"
     SOURCE_NAME = "NYTimes"
 

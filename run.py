@@ -7,12 +7,12 @@ import pandas as pd
 
 # from libs.CovidDatasets import CDSDataset, JHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
-from libs.datasets.jhu_dataset import JHUDataset
-from libs.datasets.fips_population import FIPSPopulation
-from libs.datasets.cds_dataset import CDSDataset
-from libs.datasets.dh_beds import DHBeds
+from libs.datasets import JHUDataset
+from libs.datasets import FIPSPopulation
+from libs.datasets import CDSDataset
+from libs.datasets import DHBeds
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 
 _logger = logging.getLogger(__name__)

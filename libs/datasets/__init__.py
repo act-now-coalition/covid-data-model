@@ -1,8 +1,8 @@
 import enum
 
 
-from libs.datasets.sources import jhu_dataset
-from libs.datasets.sources import nytimes_dataset
-from libs.datasets.sources import dh_beds
-from libs.datasets.sources import cds_dataset
-from libs.datasets.sources import fips_population
+from libs.datasets.sources.jhu_dataset import JHUDataset
+from libs.datasets.sources.nytimes_dataset import NYTimesDataset
+from libs.datasets.sources.dh_beds import DHBeds
+from libs.datasets.sources.cds_dataset import CDSDataset
+from libs.datasets.sources.fips_population import FIPSPopulation

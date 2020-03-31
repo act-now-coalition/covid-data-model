@@ -4,7 +4,7 @@ import pandas as pd
 import datetime
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
-from libs.datasets import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 class TimeseriesDataset(object):
