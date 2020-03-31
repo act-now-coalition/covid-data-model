@@ -22,23 +22,6 @@ def fill_missing_county_with_city(row):
     return row.county
 
 
-def check_uniqueness(data: pd.DataFrame, group: List[str], field: str):
-    """Logs warning if more than one instance of data when grouped on `group`.
-
-    Args:
-        data: DataFrame
-        group: List of columns to group on
-        field: Column to check for
-    """
-    date_country_count = data.groupby(group).count()
-    non_unique_countries = date_country_count[field] > 1
-    if sum(non_unique_countries) > 1:
-        _logger.warning(
-            f"Found {sum(non_unique_countries)} records that "
-            "have non unique date-country records."
-        )
-
-
 class CDSDataset(data_source.DataSource):
     DATA_PATH = "data/cases-cds/timeseries.csv"
     SOURCE_NAME = "CDS"

@@ -103,7 +103,17 @@ class TimeseriesDataset(object):
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
         data[cls.Fields.GENERATED] = False
         if fill_missing_state:
-            data = cls._fill_missing_state_with_county(data)
+            state_groupby_fields = [
+                cls.Fields.DATE, cls.Fields.SOURCE, cls.Fields.COUNTRY, cls.Fields.STATE
+            ]
+            non_matching = dataset_utils.aggregate_and_get_nonmatching(
+                data,
+                state_groupby_fields,
+                AggregationLevel.COUNTY,
+                AggregationLevel.STATE,
+            ).reset_index()
+            non_matching[cls.Fields.GENERATED] = True
+            data = pd.concat([data, non_matching])
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
@@ -111,32 +121,3 @@ class TimeseriesDataset(object):
         # Choosing to sort by date
         data = data.sort_values(cls.Fields.DATE)
         return cls(data)
-
-    @classmethod
-    def verify(cls, data):
-        # all county level us data must have a fips code
-        county_level = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        is_us = data[cls.Fields.COUNTRY] == "USA"
-        missing_fips = data[cls.Fields.FIPS].isnull()
-        us_missing_fips = data[county_level & is_us & missing_fips]
-
-    @classmethod
-    def _fill_missing_state_with_county(cls, data):
-        state_groupby_fields = [
-            cls.Fields.DATE,
-            cls.Fields.COUNTRY,
-            cls.Fields.SOURCE,
-            cls.Fields.STATE,
-        ]
-
-        county_data = data[data.aggregate_level == "county"]
-        state_data = county_data.groupby(state_groupby_fields).sum().reset_index()
-        state_data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
-        state_data = state_data.set_index(state_groupby_fields)
-        state_data[cls.Fields.GENERATED] = True
-
-        existing_state = data[data.aggregate_level == AggregationLevel.STATE.value]
-        existing_state = existing_state.set_index(state_groupby_fields)
-
-        non_matching = state_data[~state_data.index.isin(existing_state.index)]
-        return pd.concat([data, non_matching.reset_index()])

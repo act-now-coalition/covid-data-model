@@ -38,40 +38,6 @@ class PopulationDataset(object):
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
-
-        # This is a bit hacky - it assumes the dataset could have more than one value
-        # for population, and that the highest value is the correct population.
-        # country_data = data[data[cls.Fields.AGGREGATE_LEVEL] == "country"]
-        # country_pop = (
-        #     country_data.groupby([cls.Fields.AGGREGATE_LEVEL, cls.Fields.COUNTRY])
-        #     .max()
-        #     .reset_index()
-        # )
-
-        # state_data = data[data[cls.Fields.AGGREGATE_LEVEL] == "state"]
-        # state_pop = (
-        #     state_data.groupby(
-        #         [cls.Fields.COUNTRY, cls.Fields.STATE, cls.Fields.AGGREGATE_LEVEL]
-        #     )
-        #     .max()
-        #     .reset_index()
-        # )
-
-        county_data = data[data[cls.Fields.AGGREGATE_LEVEL] == "county"]
-        county_pop = (
-            county_data.groupby(
-                [
-                    cls.Fields.COUNTRY,
-                    cls.Fields.STATE,
-                    cls.Fields.FIPS,
-                    cls.Fields.AGGREGATE_LEVEL,
-                ]
-            )
-            .max()
-            .reset_index()
-        )
-        data = pd.concat([county_pop])
-
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
         data[cls.Fields.GENERATED] = False
 

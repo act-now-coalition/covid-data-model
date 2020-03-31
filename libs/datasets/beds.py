@@ -16,10 +16,10 @@ class BedsDataset(object):
         ICU_BEDS = "icu_beds"
 
         # Name of source of dataset, i.e. JHU
+        COUNTY = "county"
         SOURCE = "source"
         AGGREGATE_LEVEL = "aggregate_level"
         GENERATED = "generated"
-        COUNTY = "county"
 
     def __init__(self, data):
         self.data = data
