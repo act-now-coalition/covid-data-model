@@ -31,8 +31,11 @@ def get_abbrev_df():
         columns=['state', 'abbreviation']
     )
 
-def get_projections_df():
+def get_projections_3_26_df():
     return pd.read_csv('projections_03-26-2020.csv')
+
+def get_projections_df():
+    return pd.read_csv('projections_3_31_2020.csv')
 
 output_cols = ["Province/State",
     "Country/Region",
@@ -100,6 +103,7 @@ def get_usa_by_states_df():
     abbrev_df = get_abbrev_df()
     interventions_df = get_interventions_df()
     projections_df = get_projections_df()
+    print(projections_df)
 
     states_group = us_only.groupby(['Province/State'])
     states_agg = states_group.aggregate({
@@ -130,6 +134,12 @@ def get_usa_by_states_df():
         'Projection2': '8-day Hospitalizations Prediction',
         'intervention': 'Intervention'
     }
+
+    # 'Projection1': '16-day_Hopitalization_Prediction',
+    # 'Projection2': '32-day_Hospitalization_Prediction',
+    # 'Projection1': '16-day_Beds_Shortfall',
+    # 'Projection2': '32-day_Beds_Shortwall',
+
 
     states_remapped = states_abbrev.rename(columns=state_col_remap)
 
