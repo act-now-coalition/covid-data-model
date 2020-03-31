@@ -7,20 +7,29 @@ from libs.datasets.dataset_utils import AggregationLevel
 
 
 class TimeseriesDataset(object):
+    """Represents timeseries Case data.
+
+    To make a data source compatible with the timeseries, it must have the required
+    fields in the Fields class below + metrics. The other fields are generated
+    in the `from_source` method.
+    """
     class Fields(object):
+        # Required Fields
         DATE = "date"
         COUNTRY = "country"
         STATE = "state"
+        FIPS = "fips"
+        AGGREGATE_LEVEL = "aggregate_level"
+
+        # Target metrics
         CASES = "cases"
         DEATHS = "deaths"
         RECOVERED = "recovered"
-        FIPS = "fips"
 
-        # Generated
+        # Generated in from_source
         COUNTY = "county"
         SOURCE = "source"
         IS_SYNTHETIC = "is_synthetic"
-        AGGREGATE_LEVEL = "aggregate_level"
         GENERATED = "generated"
 
     def __init__(self, data: pd.DataFrame):
