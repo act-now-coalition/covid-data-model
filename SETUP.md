@@ -31,6 +31,8 @@ These instructions use `pyenv` to install python `3.7.7` and create a virtualenv
   Optional: Add a `.python-version` file with the name of your virtualenv to the `covid-data-model/` root.
   This will automatically activate the virtualenv when you enter the directory.
 
+4. Install git-lfs
+  On mac, `brew install git-lfs`
 
 ## Install Requirements
 
