@@ -192,6 +192,37 @@ def model_state(timeseries, population, starting_beds, interventions=None):
     return results
 
 
+def run_county_level_forecast(min_date, max_date, country='USA', state=None):
+    beds_data = DHBeds.build_from_local_github().to_generic_beds()
+    population_data = FIPSPopulation().to_generic_population()
+    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
+    timeseries = timeseries.get_subset(
+        AggregationLevel.COUNTY, after=min_date, country=country, state=state
+    )
+
+    for country, state, county in timeseries.county_keys():
+        _logger.info(f'Generating data for county: {county}, {state}')
+        cases = timeseries.get_data(state=state, country=country, county=county)
+        beds = beds_data.get_county_level(state, county)
+        population = population_data.get_county_level(country, state, county)
+        if not population:
+            _logger.warning(f"Missing population for {county}, {state}")
+            continue
+
+        for i, intervention in enumerate(INTERVENTIONS):
+            _logger.info(f"Running intervention {i} for {state}")
+            results = model_state(cases, population, beds, intervention)
+            record_results(
+                results,
+                OUTPUT_DIR,
+                state,
+                i,
+                population,
+                min_date,
+                max_date,
+            )
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     # @TODO: Remove interventions override once support is in the Harvard model.
