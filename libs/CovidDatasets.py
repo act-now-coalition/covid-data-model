@@ -303,7 +303,12 @@ class JHUDataset(Dataset):
                     _logger.info('Received a 404 for date {}. Ending iteration.'.format(snapshot_date))
                     break
                 raise
-
+            except FileNotFoundError:
+                # assuming we're pointing to a locally cached repository
+                _logger.info('File not found for date {}. Ending iteration.'.format(snapshot_date))
+                break
+                raise
+                
             df = df.rename(columns=self._fieldname_map)
             snapshot_date_as_datetime = datetime.datetime.combine(snapshot_date, datetime.datetime.min.time())
             df = df.assign(**{self.DATE_FIELD: snapshot_date_as_datetime})
