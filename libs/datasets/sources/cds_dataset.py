@@ -78,10 +78,6 @@ class CDSDataset(data_source.DataSource):
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
 
-        data[cls.Fields.COUNTY] = dataset_utils.standardize_county(
-            data[cls.Fields.COUNTY]
-        )
-
         # Don't want to return city data because it's duplicated in county
         # City data before 3-23 was not duplicated.
         # data = data[data[cls.Fields.CITY].isnull()]

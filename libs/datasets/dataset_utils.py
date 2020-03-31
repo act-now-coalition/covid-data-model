@@ -3,7 +3,6 @@ import pathlib
 import pandas as pd
 from libs import build_params
 from libs.datasets import AggregationLevel
-from collections import namedtuple
 
 LOCAL_PUBLIC_DATA_PATH = (
     pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
@@ -12,7 +11,11 @@ LOCAL_PUBLIC_DATA_PATH = (
 
 _logger = logging.getLogger(__name__)
 
-County = namedtuple("County", ["state", "county", "fips"])
+
+class AggregationLevel(enum.Enum):
+    COUNTRY = "country"
+    STATE = "state"
+    COUNTY = "county"
 
 
 def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
@@ -27,10 +30,6 @@ def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
     """
     # Remove all whitespace
     return data.applymap(lambda x: x.strip() if type(x) == str else x)
-
-
-def standardize_county(series: pd.Series):
-    return series.apply(lambda x: x if pd.isnull(x) else x)
 
 
 def parse_county_from_state(state):
