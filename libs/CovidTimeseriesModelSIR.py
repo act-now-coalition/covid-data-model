@@ -51,12 +51,7 @@ class CovidTimeseriesModelSIR:
 
         # Get the last day of the model based on the number of iterations and
         # length of the iterations
-        duration = datetime.timedelta(
-            days=(
-                model_parameters["model_interval"]
-                * model_parameters["projection_iterations"]
-            )
-        )
+        duration = datetime.timedelta(days=(model_parameters["days_to_model"]))
         model_parameters["last_date"] = model_parameters["init_date"] + duration
 
         return model_parameters
@@ -218,9 +213,6 @@ class CovidTimeseriesModelSIR:
 
         r0 = generate_r0(init_params, model_parameters["population"])
 
-        # print(json.dumps(init_params))
-        # print(r0)
-
         (data, steps, ret) = seir(
             pop_dict,
             model_parameters,
@@ -243,93 +235,93 @@ class CovidTimeseriesModelSIR:
                 sir_df["infected_a"] + sir_df["infected_b"] + sir_df["infected_c"]
             )
 
-        if model_parameters["use_harvard_init"]:
-            combined_df = sir_df
-            sir_df["total"] = 1000
+        sir_df["total"] = pop_dict["total"]
 
-            sir_df["susceptible"] = sir_df.total - (
-                sir_df.exposed + sir_df.infected + sir_df.recovered + sir_df.dead
-            )
-        else:
-            sir_df["total"] = pop_dict["total"]
+        timeseries["susceptible"] = model_parameters["population"] - (
+            timeseries.active + timeseries.recovered + timeseries.deaths
+        )
 
-            timeseries["susceptible"] = model_parameters["population"] - (
-                timeseries.active + timeseries.recovered + timeseries.deaths
-            )
+        actual_cols = ["active", "recovered", "deaths"]
 
-            actual_cols = ["active", "recovered", "deaths"]
+        # kill last row that is initial conditions on SEIR
+        actuals = timeseries.loc[:, actual_cols].head(-1)
 
-            # kill last row that is initial conditions on SEIR
-            actuals = timeseries.loc[:, actual_cols].head(-1)
+        actuals["population"] = model_parameters["population"]
 
-            actuals["population"] = model_parameters["population"]
+        # it wasn't a df thing, you can rip all this out
+        actuals.rename(
+            columns={"population": "total", "deaths": "dead", "active": "infected"},
+            inplace=True,
+        )
 
-            # it wasn't a df thing, you can rip all this out
-            actuals.rename(
-                columns={"population": "total", "deaths": "dead", "active": "infected"},
-                inplace=True,
-            )
+        actuals.index = pd.to_datetime(actuals.index, format="%Y-%m-%d")
 
-            actuals.index = pd.to_datetime(actuals.index, format="%Y-%m-%d")
+        actuals["infected_a"] = 0
+        actuals["infected_b"] = 0
+        actuals["infected_c"] = 0
 
-            actuals["infected_a"] = 0
-            actuals["infected_b"] = 0
-            actuals["infected_c"] = 0
+        actuals["exposed"] = 0
 
-            actuals["exposed"] = 0
+        all_cols = [
+            "total",
+            "susceptible",
+            "exposed",
+            "infected",
+            "infected_a",
+            "infected_b",
+            "infected_c",
+            "recovered",
+            "dead",
+        ]
 
-            all_cols = [
-                "total",
-                "susceptible",
-                "exposed",
-                "infected",
-                "infected_a",
-                "infected_b",
-                "infected_c",
-                "recovered",
-                "dead",
-            ]
+        actuals["susceptible"] = 0
+        sir_df["susceptible"] = 0
 
-            actuals["susceptible"] = 0
-            sir_df["susceptible"] = 0
+        actuals = actuals.loc[:, all_cols]
+        sir_df = sir_df.loc[:, all_cols]
 
-            actuals = actuals.loc[:, all_cols]
-            sir_df = sir_df.loc[:, all_cols]
+        combined_df = pd.concat([actuals, sir_df])
 
-            combined_df = pd.concat([actuals, sir_df])
-
-            if model_parameters["interventions"] is not None:
-                (combined_df, counterfactuals) = self.run_interventions(
-                    model_parameters, combined_df, init_params, r0
-                )
-
-            # this should be done, but belt and suspenders for the diffs()
-            combined_df.sort_index(inplace=True)
-            combined_df.index.name = "date"
-            combined_df.reset_index(inplace=True)
-
-            combined_df["total"] = pop_dict["total"]
-
-            # move the actual infected numbers into infected_a where its NA
-            combined_df["infected_a"] = combined_df["infected_a"].fillna(
-                combined_df["infected"]
+        if model_parameters["interventions"] is not None:
+            (combined_df, counterfactuals) = self.run_interventions(
+                model_parameters, combined_df, init_params, r0
             )
 
-            if model_parameters["model"] == "seir":
+        # this should be done, but belt and suspenders for the diffs()
+        combined_df.sort_index(inplace=True)
+        combined_df.index.name = "date"
+        combined_df.reset_index(inplace=True)
 
-                # make infected total represent the sum of the infected stocks
-                combined_df.loc[:, "infected"] = (
-                    combined_df.loc[:, "infected_a"]
-                    + combined_df.loc[:, "infected_b"]
-                    + combined_df.loc[:, "infected_c"]
-                )
+        combined_df["total"] = pop_dict["total"]
 
-            combined_df["susceptible"] = combined_df.total - (
-                combined_df.exposed
-                + combined_df.infected
-                + combined_df.recovered
-                + combined_df.dead
+        # move the actual infected numbers into infected_a where its NA
+        combined_df["infected_a"] = combined_df["infected_a"].fillna(
+            combined_df["infected"]
+        )
+
+        if model_parameters["model"] == "seir":
+
+            # make infected total represent the sum of the infected stocks
+            # but don't overwrite the historical
+            combined_df.loc[:, "infected_tmp"] = (
+                combined_df.loc[:, "infected_a"]
+                + combined_df.loc[:, "infected_b"]
+                + combined_df.loc[:, "infected_c"]
             )
+
+            combined_df.loc[:, "infected"].fillna(combined_df["infected_tmp"])
+
+            combined_df.drop("infected_tmp", axis=1, inplace=True)
+
+        combined_df["susceptible"] = combined_df.total - (
+            combined_df.exposed
+            + combined_df.infected
+            + combined_df.recovered
+            + combined_df.dead
+        )
+
+        combined_df["pct_change"] = combined_df.loc[:, "infected_b"].pct_change()
+        combined_df["doubling_time"] = math.log(2) / combined_df["pct_change"]
 
         combined_df["beds"] = model_parameters["beds"]
 

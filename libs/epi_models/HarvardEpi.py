@@ -117,12 +117,14 @@ def seir(
         mild = hospitalized / model_parameters["hospitalization_rate"]
         icu = hospitalized * model_parameters["hospitalized_cases_requiring_icu_care"]
 
+    exposed = model_parameters["exposed_infected_ratio"] * mild
+
     susceptible = pop_dict["total"] - (
         pop_dict["infected"] + pop_dict["recovered"] + pop_dict["deaths"]
     )
 
     y0 = [
-        int(pop_dict.get("exposed", 0)),
+        int(exposed),
         int(mild),
         int(hospitalized),
         int(icu),
@@ -170,6 +172,8 @@ def generate_epi_params(model_parameters):
         * model_parameters["hospitalized_cases_requiring_icu_care"]
     )
 
+    fraction_severe = model_parameters["hospitalization_rate"] - fraction_critical
+
     alpha = 1 / model_parameters["presymptomatic_period"]
 
     # assume hospitalized don't infect
@@ -189,7 +193,7 @@ def generate_epi_params(model_parameters):
     rho_0 = 0
     rho_1 = (1 / model_parameters["duration_mild_infections"]) - gamma_1
     rho_2 = (1 / model_parameters["hospital_time_recovery"]) * (
-        fraction_critical / model_parameters["hospitalization_rate"]
+        (fraction_severe + fraction_critical)
     )
 
     gamma_2 = (1 / model_parameters["hospital_time_recovery"]) - rho_2
