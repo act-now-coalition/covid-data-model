@@ -111,21 +111,23 @@ def seir(
     if "infected_b" in pop_dict:
         mild = pop_dict["infected_a"]
         hospitalized = pop_dict["infected_b"]
+        icu = pop_dict["infected_c"]
     else:
         hospitalized = pop_dict["infected"] / 4
         mild = hospitalized / model_parameters["hospitalization_rate"]
+        icu = hospitalized * model_parameters["hospitalized_cases_requiring_icu_care"]
 
     susceptible = pop_dict["total"] - (
         pop_dict["infected"] + pop_dict["recovered"] + pop_dict["deaths"]
     )
 
     y0 = [
-        pop_dict.get("exposed", 0),
-        float(mild),
-        float(hospitalized),
-        float(pop_dict.get("infected_c", 0)),
-        float(pop_dict.get("recovered", 0)),
-        float(pop_dict.get("deaths", 0)),
+        int(pop_dict.get("exposed", 0)),
+        int(mild),
+        int(hospitalized),
+        int(icu),
+        int(pop_dict.get("recovered", 0)),
+        int(pop_dict.get("deaths", 0)),
     ]
 
     steps = 365

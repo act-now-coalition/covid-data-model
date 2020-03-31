@@ -160,7 +160,7 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "beta": 0.5,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
-        "presymptomatic_period": 1,
+        "presymptomatic_period": 3,
         "exposed_from_infected": True,
         #'model': 'sir',
         "model": "seir",
