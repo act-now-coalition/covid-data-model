@@ -48,6 +48,18 @@ or:
 pip install -r requirements.txt -r requirements_test.txt
 ```
 
+## Configuration
+
+If you've cloned the covid-data-public repo to a local, set and environment variable to enable caching
+```bash
+export COVID_DATA_PUBLIC=../covid-data-public
+```
+
+In addition, some models may require a results/test directory ahead of time, so initialize
+```bash
+mkdir -p results/test/
+```
+
 
 ## Run Tests
 
