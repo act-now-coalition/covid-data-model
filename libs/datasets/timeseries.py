@@ -59,11 +59,25 @@ class TimeseriesDataset(object):
         values = set(data.index.to_list())
         return sorted(values)
 
+    def latest_values(self, aggregation_level):
+        """Gets the most recent values for index in array."""
+        if aggregation_level == AggregationLevel.COUNTY:
+            group = [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS]
+        if aggregation_level == AggregationLevel.STATE:
+            group = [self.Fields.COUNTRY, self.Fields.STATE]
+        if aggregation_level == AggregationLevel.COUNTRY:
+            group = [self.Fields.COUNTRY]
+
+        data = self.data[self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value].reset_index()
+        return data.iloc[data.groupby(group).date.idxmax(),:]
+
+
     def get_subset(
         self,
         aggregation_level,
         on=None,
         after=None,
+        before=None,
         country=None,
         state=None,
         county=None,
@@ -86,6 +100,8 @@ class TimeseriesDataset(object):
             data = data[data.date == on]
         if after:
             data = data[data.date > after]
+        if before:
+            data = data[data.date < before]
 
         return self.__class__(data)
 

@@ -281,7 +281,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
                 )
                 results = model_state(cases, beds, population, intervention)
                 website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-                write_results(website_data, output_dir, '{state}.{fips}.{i}.json')
+                write_results(website_data, output_dir, f'{state}.{fips}.{i}.json')
 
 
 def run_state_level_forecast(min_date, max_date, country='USA', state=None):
