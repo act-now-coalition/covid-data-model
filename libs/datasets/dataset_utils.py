@@ -163,8 +163,12 @@ def add_county_using_fips(data, fips_data):
     data = data.set_index("fips")
     fips_data = fips_data.set_index("fips")
     data = data.join(fips_data[["county"]], on="fips", rsuffix="_r").reset_index()
+    is_missing_county = data.county.isnull() & data.fips.notnull()
 
-    non_matching = data[data.county.isnull() & data.fips.notnull()]
+    data.loc[is_missing_county, 'county'] = (
+        data.loc[is_missing_county, 'county'].fillna('')
+    )
+    non_matching = data[is_missing_county]
 
     # Not all datasources have country.  If the dataset doesn't have country,
     # assuming that data is from the us.
@@ -172,14 +176,18 @@ def add_county_using_fips(data, fips_data):
         non_matching = non_matching[non_matching.country == "USA"]
 
     if len(non_matching):
-        unique_counties = sorted(non_matching.county.unique())
-        _logger.warning(f"Did not match {len(unique_counties)} counties to fips data.")
-        _logger.warning(f"{unique_counties}")
-        # TODO: Make this an error?
+        unique_fips = sorted(non_matching.fips.unique())
+        _logger.warning(f"Did not match {len(unique_fips)} codes to county data.")
+        _logger.warning(f"{unique_fips}")
 
     if "county_r" in data.columns:
         return data.drop("county").rename({"count_r": "county"}, axis=1)
     return data
+
+
+def assert_counties_have_fips(data, county_key='county', fips_key='fips'):
+    is_county = data['aggregate_level'] == AggregationLevel.COUNTY.value
+    print(data[is_county & data[fips_key].isnull()])
 
 
 def add_fips_using_county(data, fips_data) -> pd.Series:

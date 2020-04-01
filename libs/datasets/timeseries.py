@@ -71,7 +71,6 @@ class TimeseriesDataset(object):
         data = self.data[self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value].reset_index()
         return data.iloc[data.groupby(group).date.idxmax(),:]
 
-
     def get_subset(
         self,
         aggregation_level,

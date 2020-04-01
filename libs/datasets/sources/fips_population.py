@@ -40,13 +40,27 @@ class FIPSPopulation(data_source.DataSource):
 
     def __init__(self, path=FILE_PATH):
         data = pd.read_csv(path, dtype={"fips": str})
-        super().__init__(self.standardize_data(data))
+        data = self.standardize_data(data)
+        super().__init__(data)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+        # Add Missing
+        unknown_fips = []
+        for state in data.state.unique():
+            row = {
+                cls.Fields.STATE: state,
+                # TODO(chris): Possibly separate fips out by state prefix
+                cls.Fields.FIPS: '99999',
+                cls.Fields.POPULATION: None,
+                cls.Fields.COUNTY: 'Unknown'
+            }
+            unknown_fips.append(row)
+        data = data.append(unknown_fips)
         # All DH data is aggregated at the county level
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
         data[cls.Fields.COUNTRY] = "USA"
+
         return data
 
 

@@ -65,7 +65,8 @@ class JHUDataset(data_source.DataSource):
             loaded_data.append(data)
 
         data = pd.concat(loaded_data)
-        super().__init__(self.standardize_data(data))
+        data = self.standardize_data(data)
+        super().__init__(data)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
@@ -94,6 +95,7 @@ class JHUDataset(data_source.DataSource):
             county_from_state
         )
         data[cls.Fields.STATE] = states
+        data = cls._fill_incomplete_county_data(data)
         state_only = data[cls.Fields.FIPS].isnull() & data[cls.Fields.COUNTY].isnull()
 
         # Pad fips values to 5 spots
@@ -101,25 +103,33 @@ class JHUDataset(data_source.DataSource):
             lambda x: f"{x.zfill(5)}" if type(x) == str else x
         )
         data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(state_only, "state", "county")
-        data = cls._drop_incomplete_county_data(data)
+
+        dataset_utils.assert_counties_have_fips(
+            data, county_key=cls.Fields.COUNTY, fips_key=cls.Fields.FIPS
+        )
         return data
 
     @classmethod
-    def _drop_incomplete_county_data(cls, data):
-        """Returns a data frame with incomplete county level data dropped.
+    def _fill_incomplete_county_data(cls, data):
+        """Fills incomplete county data.
 
         Most of this data is "unassigned" (at least in more recent days.
         We probably need to either give each state its own fake FIP, or spread this
         out over the existing counties for the state.
         """
-        data = data.reset_index()
-        is_county = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        dropped_data = data[is_county & data.FIPS.isnull()]
+        unknown_fips = '99999'
+        overrides = {
+            # Assigning nantucket county to dukes and nantucket
+            ('MA', 'Dukes and Nantucket'): '25019'
+        }
+        for (state, county), fips in overrides.items():
+            matches_state = data[cls.Fields.STATE] == state
+            matches_county = data[cls.Fields.COUNTY] == county
+            data.loc[matches_state & matches_county, cls.Fields.FIPS] = fips
 
-        _logger.warning(
-            f"Dropping {len(dropped_data)}/{len(data)} rows of county data without FIPS"
-        )
-        return pd.concat([data[~is_county], data[is_county & (~data.FIPS.isnull())]])
+        has_county = data[cls.Fields.COUNTY].notnull()
+        data.loc[has_county & data.FIPS.isnull(), cls.Fields.FIPS] = unknown_fips
+        return data
 
     @classmethod
     def local(cls) -> "JHUTimeseriesData":
