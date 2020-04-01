@@ -239,9 +239,11 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
 
     output_dir = pathlib.Path(OUTPUT_DIR) / "county"
     _logger.info(f"Outputting to {output_dir}")
-    if not output_dir.exists():
-        _logger.info(f"{output_dir} does not exist, creating")
-        output_dir.mkdir(parents=True)
+    if output_dir.exists():
+        backup = output_dir.name + '.' + str(int(time.time()))
+        output_dir.rename(output_dir.parent / backup)
+
+    output_dir.mkdir(parents=True)
 
     counties_by_state = defaultdict(list)
     county_keys = timeseries.county_keys()
