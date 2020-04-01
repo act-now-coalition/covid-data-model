@@ -1,6 +1,6 @@
 from libs.CovidDatasets import CDSDataset, JHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
-from libs.build_params import  OUTPUT_DIR, interventions
+from libs.build_params import OUTPUT_DIR, interventions
 import os.path
 import simplejson
 import datetime
@@ -10,7 +10,9 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
-def prepare_data_for_website(data, population, min_begin_date, max_end_date, interval: int = 4):
+def prepare_data_for_website(
+    data, population, min_begin_date, max_end_date, interval: int = 4
+):
     """Prepares data for website output."""
     # Indexes used by website JSON:
     # date: 0,
@@ -24,7 +26,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     # date, total, susceptible, exposed, infected, infected_a, infected_b, infected_c, recovered, dead
     # infected_b == Hospitalized
     # infected_c == Hospitalized in ICU
-    data['all_hospitalized'] = data['infected_b'] + data['infected_c']
+    data["all_hospitalized"] = data["infected_b"] + data["infected_c"]
 
     cols = [
         "date",
@@ -52,7 +54,9 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
 
     # @TODO: Find a better way of restricting to every fourth day.
     #        Alternatively, change the website's expectations.
-    website_ordering = website_ordering[website_ordering.index % interval == 0].reset_index()
+    website_ordering = website_ordering[
+        website_ordering.index % interval == 0
+    ].reset_index()
 
     if min_begin_date:
         website_ordering = pd.DataFrame(
@@ -133,9 +137,9 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         # icu = hospitalized * hospitalized_cases_requiring_icu_care
         # expoosed = exposed_infected_ratio * mild
         "presymptomatic_period": 3,  # Time before exposed are infectious, In days
-        "duration_mild_infections": 6,  # Time mildly infected poeple stay sick, In days
-        "hospital_time_recovery": 11,  # Duration of hospitalization, In days
-        "icu_time_death": 7,  # Time from ICU admission to death, In days
+        "duration_mild_infections": 6,  # Time mildly infected people stay sick before hospitalization or recovery, In days
+        "hospital_time_recovery": 6,  # Duration of hospitalization before icu or recovery, In days
+        "icu_time_death": 8,  # Time from ICU admission to death, In days
         "beta": 0.6,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
@@ -148,10 +152,12 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "max_hospital_capacity_factor": 2.07,
         "initial_hospital_bed_utilization": 0.66,
         "interventions": interventions,
-        "observed_daily_growth_rate": 1.21
+        "observed_daily_growth_rate": 1.21,
     }
 
-    MODEL_PARAMETERS['beta'] = (0.3 + ( (MODEL_PARAMETERS["observed_daily_growth_rate"] - 1.09) / 0.02) * 0.05)
+    MODEL_PARAMETERS["beta"] = (
+        0.3 + ((MODEL_PARAMETERS["observed_daily_growth_rate"] - 1.09) / 0.02) * 0.05
+    )
 
     MODEL_PARAMETERS["case_fatality_rate_hospitals_overwhelmed"] = (
         MODEL_PARAMETERS["hospitalization_rate"]
@@ -196,5 +202,7 @@ if __name__ == "__main__":
             intervention = interventions()[i]
             results = model_state(dataset, country, state, starting_beds, intervention)
             population = dataset.get_population_by_country_state(country, state)
-            website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-            write_results(website_data, OUTPUT_DIR, '{state}.{i}.json')
+            website_data = prepare_data_for_website(
+                results, population, min_date, max_date, interval=4
+            )
+            write_results(website_data, OUTPUT_DIR, "{state}.{i}.json")

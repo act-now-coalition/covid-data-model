@@ -82,14 +82,13 @@ def dataframe_ify(data, start, end, steps):
 # In the future could include recovery or infection from the exposed class (asymptomatics)
 def deriv(y0, t, beta, alpha, gamma, rho, mu, N):
     dy = [0, 0, 0, 0, 0, 0]
-    # S = N - sum(y0)
     S = np.max([N - sum(y0), 0])
 
-    dy[0] = np.min([(np.dot(beta[1:3], y0[1:3]) * S), S]) - (alpha * y0[0])  # Exposed
+    dy[0] = np.min([(np.dot(beta[1:4], y0[1:4]) * S), S]) - (alpha * y0[0])  # Exposed
     dy[1] = (alpha * y0[0]) - (gamma[1] + rho[1]) * y0[1]  # Ia - Mildly ill
     dy[2] = (rho[1] * y0[1]) - (gamma[2] + rho[2]) * y0[2]  # Ib - Hospitalized
     dy[3] = (rho[2] * y0[2]) - ((gamma[3] + mu) * y0[3])  # Ic - ICU
-    dy[4] = np.min([np.dot(gamma[1:3], y0[1:3]), sum(y0[1:3])])  # Recovered
+    dy[4] = np.min([np.dot(gamma[1:4], y0[1:4]), sum(y0[1:4])])  # Recovered
     dy[5] = mu * y0[3]  # Deaths
 
     return dy
