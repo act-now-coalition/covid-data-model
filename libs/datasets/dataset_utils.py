@@ -61,12 +61,12 @@ def plot_grouped_data(data, group, series="source", values="cases"):
 
 def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
     """Combines JHU and CDS county data."""
-    data = jhu_data_source.to_generic_timeseries()
+    data = jhu_data_source.timeseries()
     jhu_usa_data = data.get_subset(
         AggregationLevel.COUNTY, country="USA", after="2020-03-01"
     ).data
 
-    data = cds_data_source.to_generic_timeseries()
+    data = cds_data_source.timeseries()
     cds_usa_data = data.get_subset(
         AggregationLevel.COUNTY, country="USA", after="2020-03-01"
     ).data

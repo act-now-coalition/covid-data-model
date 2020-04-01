@@ -25,7 +25,7 @@ def test_missing_state_in_generic_dataset(legacy_cls, new_cls, test_matching, te
 
     print(f"Running on {legacy_cls} checking that {test_type}")
     legacy_jhu = legacy_cls()
-    jhu = new_cls.local().to_generic_timeseries().get_subset(None, after="2020-03-02", before="2020-03-31")
+    jhu = new_cls.local().timeseries().get_subset(None, after="2020-03-02")
     new = jhu.get_subset(AggregationLevel.STATE, country="USA")
 
     new.latest_values(AggregationLevel.STATE)

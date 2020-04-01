@@ -38,14 +38,14 @@ class DataSource(object):
         """
         raise NotImplementedError("Subclass must implement")
 
-    def to_generic_beds(self) -> "BedsDataset":
+    def beds(self) -> "BedsDataset":
         """Builds generic beds dataset"""
         return BedsDataset.from_source(self)
 
-    def to_generic_population(self) -> "PopulationDataset":
+    def population(self) -> "PopulationDataset":
         """Builds generic beds dataset"""
         return PopulationDataset.from_source(self)
 
-    def to_generic_timeseries(self) -> "TimeseriesDataset":
+    def timeseries(self) -> "TimeseriesDataset":
         """Builds generic beds dataset"""
         return TimeseriesDataset.from_source(self)
