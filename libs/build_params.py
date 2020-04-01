@@ -29,7 +29,6 @@ def get_interventions(start_date=datetime.now().date()):
         },
     ]
 
-
 OUTPUT_DIR = 'results/test'
 
 # Dict to transform longhand state names to abbreviations

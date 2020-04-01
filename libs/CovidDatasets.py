@@ -4,7 +4,6 @@ import logging
 import math
 from copy import copy
 import pandas as pd
-
 import os.path
 import os
 import urllib
@@ -191,6 +190,10 @@ class Dataset:
         state_data = state_data.fillna({'deaths': 0})
         county_data = county_data.fillna({'deaths': 0})
 
+        # Fill holes.
+        state_data = state_data.fillna({'deaths': 0})
+        county_data = county_data.fillna({'deaths': 0})
+
         if len(state_data.index) == 0 and len(county_data.index) == 0:
             self.get_all_timeseries()[(self.get_all_timeseries()["state"] == state)].head()
             raise Exception('No county or state-level date for {}, {}'.format(state, country))
@@ -199,20 +202,21 @@ class Dataset:
         curr_date = max(state_data[self.DATE_FIELD].max(), county_data[self.DATE_FIELD].max()) # Start on the last date of state data we have
         county_data_to_insert = []
         while curr_date > self._START_DATE:
-            curr_date -= datetime.timedelta(days=1)
             # If there is no state data for a day, we need to get some country data for the day
             if len(state_data[state_data[self.DATE_FIELD] == curr_date]) == 0:
                 county_data_for_date = copy(county_data[county_data[self.DATE_FIELD] == curr_date])
-                if len(county_data_for_date) == 0:  # If there's no county data, we're SOL.
+                if len(county_data_for_date) > 0:
+                    county_data_for_date = county_data_for_date.iloc[0]
+                    new_state_row = copy(state_data.iloc[0])  # Copy the first row of the state data to get the right format
+                    new_state_row[self.DATE_FIELD] = county_data_for_date[self.DATE_FIELD]
+                    new_state_row[self.CASE_FIELD] = county_data_for_date[self.CASE_FIELD]
+                    new_state_row[self.DEATH_FIELD] = county_data_for_date[self.DEATH_FIELD]
+                    new_state_row[self.RECOVERED_FIELD] = county_data_for_date[self.RECOVERED_FIELD]
+                    county_data_to_insert.append(copy(new_state_row))
+                else:
+                    # If there's no county data, we're SOL.
                     _logger.info("NO COUNTY DATA: {}".format(curr_date))
-                    continue  # TODO: Revisit. This should be more intelligent
-                county_data_for_date = county_data_for_date.iloc[0]
-                new_state_row = copy(state_data.iloc[0])  # Copy the first row of the state data to get the right format
-                new_state_row[self.DATE_FIELD] = county_data_for_date[self.DATE_FIELD]
-                new_state_row[self.CASE_FIELD] = county_data_for_date[self.CASE_FIELD]
-                new_state_row[self.DEATH_FIELD] = county_data_for_date[self.DEATH_FIELD]
-                new_state_row[self.RECOVERED_FIELD] = county_data_for_date[self.RECOVERED_FIELD]
-                county_data_to_insert.append(copy(new_state_row))
+            curr_date -= datetime.timedelta(days=1)
         return state_data.append(pd.DataFrame(county_data_to_insert)).sort_values(self.DATE_FIELD)
 
     def get_timeseries_by_country_state(self, country, state, model_interval):

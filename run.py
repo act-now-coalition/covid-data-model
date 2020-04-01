@@ -6,12 +6,11 @@ import json
 import os.path
 from collections import defaultdict
 
-import pandas as pd
-import simplejson
-
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
-from libs.build_params import OUTPUT_DIR, get_interventions
+import simplejson
+import pandas as pd
 
+from libs.build_params import OUTPUT_DIR, get_interventions
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
@@ -35,6 +34,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     # infected_b == Hospitalized
     # infected_c == Hospitalized in ICU
     data['all_hospitalized'] = data['infected_b'] + data['infected_c']
+    data['all_infected'] = data['infected_a'] + data['infected_b'] + data['infected_c']
 
     cols = [
         "date",
@@ -46,7 +46,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
         "f",
         "g",
         "all_hospitalized",
-        "infected",
+        "all_infected",
         "dead",
         "beds",
         "i",
@@ -78,7 +78,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     website_ordering = website_ordering.astype(
         {
             "all_hospitalized": int,
-            "infected": int,
+            "all_infected": int,
             "dead": int,
             "beds": int,
             "population": int,
@@ -87,7 +87,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     website_ordering = website_ordering.astype(
         {
             "all_hospitalized": str,
-            "infected": str,
+            "all_infected": str,
             "dead": str,
             "beds": str,
             "population": str,
@@ -144,7 +144,7 @@ def model_state(timeseries, population, starting_beds, interventions=None):
         "duration_mild_infections": 6,  # Time mildly infected poeple stay sick, In days
         "hospital_time_recovery": 11,  # Duration of hospitalization, In days
         "icu_time_death": 7,  # Time from ICU admission to death, In days
-        "beta": 0.5,
+        "beta": 0.6,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
         "hospitalization_rate": 0.0727,
@@ -159,7 +159,7 @@ def model_state(timeseries, population, starting_beds, interventions=None):
         "observed_daily_growth_rate": 1.21
     }
 
-    MODEL_PARAMETERS['beta'] = (0.3 + ((MODEL_PARAMETERS["observed_daily_growth_rate"] - 1.09) / 0.02) * 0.05)
+    MODEL_PARAMETERS['beta'] = (0.3 + ( (MODEL_PARAMETERS["observed_daily_growth_rate"] - 1.09) / 0.02) * 0.05)
 
     MODEL_PARAMETERS["case_fatality_rate_hospitals_overwhelmed"] = (
         MODEL_PARAMETERS["hospitalization_rate"]
