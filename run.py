@@ -11,7 +11,6 @@ from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 import os.path
 import pandas as pd
 
-# from libs.CovidDatasets import CDSDataset, JHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
