@@ -224,6 +224,8 @@ class CovidTimeseriesModelSIR:
 
         r0 = generate_r0(init_params, model_parameters["population"])
 
+        print(r0)
+
         (data, steps, ret) = seir(
             pop_dict,
             model_parameters,
