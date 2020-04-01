@@ -10,7 +10,7 @@ import pandas as pd
 import simplejson
 
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
-from libs.build_params import r0, OUTPUT_DIR, get_interventions
+from libs.build_params import OUTPUT_DIR, get_interventions
 
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
@@ -313,6 +313,6 @@ if __name__ == "__main__":
     # @TODO: Remove interventions override once support is in the Harvard model.
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
-    build_county_summary()
-    # run_county_level_forecast(min_date, max_date)
+    # build_county_summary()
+    run_county_level_forecast(min_date, max_date)
     # run_state_level_forecast(min_date, max_date)
