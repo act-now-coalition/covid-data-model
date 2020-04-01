@@ -70,7 +70,7 @@ class CDSDataset(data_source.DataSource):
         super().__init__(data)
 
     @classmethod
-    def build_from_local_github(cls) -> "CDSTimeseriesData":
+    def local(cls) -> "CDSTimeseriesData":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.DATA_PATH)
 

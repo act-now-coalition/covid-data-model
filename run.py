@@ -197,9 +197,9 @@ def model_state(timeseries, population, starting_beds, interventions=None):
 
 def build_county_summary(country='USA', state=None):
     """Builds county summary json files."""
-    beds_data = DHBeds.build_from_local_github().to_generic_beds()
+    beds_data = DHBeds.local().to_generic_beds()
     population_data = FIPSPopulation().to_generic_population()
-    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
+    timeseries = JHUDataset.local().to_generic_timeseries()
     timeseries = timeseries.get_subset(
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
@@ -230,9 +230,9 @@ def build_county_summary(country='USA', state=None):
 
 
 def run_county_level_forecast(min_date, max_date, country='USA', state=None):
-    beds_data = DHBeds.build_from_local_github().to_generic_beds()
+    beds_data = DHBeds.local().to_generic_beds()
     population_data = FIPSPopulation().to_generic_population()
-    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
+    timeseries = JHUDataset.local().to_generic_timeseries()
     timeseries = timeseries.get_subset(
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
@@ -285,9 +285,9 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
 
 
 def run_state_level_forecast(min_date, max_date, country='USA', state=None):
-    beds_data = DHBeds.build_from_local_github().to_generic_beds()
+    beds_data = DHBeds.local().to_generic_beds()
     population_data = FIPSPopulation().to_generic_population()
-    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
+    timeseries = JHUDataset.local().to_generic_timeseries()
     timeseries = timeseries.get_subset(
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )

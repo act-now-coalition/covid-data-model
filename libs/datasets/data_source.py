@@ -31,7 +31,7 @@ class DataSource(object):
         self.data = data
 
     @classmethod
-    def build_from_local_github(cls) -> "cls":
+    def local(cls) -> "cls":
         """Builds data from local covid-public-data github repo.
 
         Returns: Instantiated class with data loaded.
