@@ -7,6 +7,7 @@ from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CDSDataset
 from libs.CovidUtil import CovidUtil
 
+
 class CovidTimeseriesModelTest(unittest.TestCase):
     r0 = 2.4
     interventions = [

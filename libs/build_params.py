@@ -5,7 +5,8 @@ auto-importing a dataset when we don't necessarily need to.
 
 from datetime import datetime, timedelta, date
 
-def interventions(start_date=datetime.now().date()):
+
+def get_interventions(start_date=datetime.now().date()):
     return [
         None,  # No Intervention
         {  # Flatten the Curve
