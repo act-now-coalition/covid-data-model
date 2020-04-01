@@ -208,3 +208,18 @@ def add_fips_using_county(data, fips_data) -> pd.Series:
         return data.drop("fips").rename({"fips_r": "fips"}, axis=1)
 
     return data
+
+
+def summarize(data, aggregate_level, groupby):
+    # Standardizes the length metrics line up
+    key_fmt = "{:20} {}"
+
+    data = data[data['aggregate_level'] == aggregate_level.value]
+    missing_fips = sum(data.fips.isna())
+    index_size = data.groupby(groupby).size()
+    non_unique = index_size > 1
+    num_non_unique = sum(non_unique)
+    print(key_fmt.format("Aggregate Level:", aggregate_level.value))
+    print(key_fmt.format("Missing Fips Code:", missing_fips))
+    print(key_fmt.format("Num non unique rows:", num_non_unique))
+    print(index_size[index_size > 1])

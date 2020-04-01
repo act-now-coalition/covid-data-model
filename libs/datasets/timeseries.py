@@ -139,3 +139,17 @@ class TimeseriesDataset(object):
         # Choosing to sort by date
         data = data.sort_values(cls.Fields.DATE)
         return cls(data)
+
+    def summarize(self):
+        dataset_utils.summarize(
+            self.data,
+            AggregationLevel.COUNTY,
+            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS]
+        )
+
+        print()
+        dataset_utils.summarize(
+            self.data,
+            AggregationLevel.STATE,
+            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE]
+        )
