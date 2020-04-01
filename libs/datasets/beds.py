@@ -60,9 +60,9 @@ class BedsDataset(object):
     def get_state_level(self, state):
         aggregation_filter = self.data.aggregate_level == AggregationLevel.STATE.value
 
-        icu_beds = self.data[(self.data.state == state) & aggregation_filter].icu_beds
-        if len(icu_beds):
-            return icu_beds.iloc[0]
+        licensed_beds = self.data[(self.data.state == state) & aggregation_filter].licensed_beds
+        if len(licensed_beds):
+            return licensed_beds.iloc[0]
 
         return None
 
@@ -75,16 +75,16 @@ class BedsDataset(object):
 
         if fips:
             fips_filter = self.data.fips == fips
-            icu_beds = self.data[
+            licensed_beds = self.data[
                 state_filter & aggregation_filter & fips_filter
-            ].icu_beds
+            ].licensed_beds
         else:
             county_filter = self.data.county == county
-            icu_beds = self.data[
+            licensed_beds = self.data[
                 state_filter & aggregation_filter & county_filter
-            ].icu_beds
+            ].licensed_beds
 
-        if len(icu_beds):
-            return icu_beds.iloc[0]
+        if len(licensed_beds):
+            return licensed_beds.iloc[0]
 
         return None
