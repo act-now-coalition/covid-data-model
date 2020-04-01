@@ -1,6 +1,6 @@
 from libs.CovidDatasets import CDSDataset, JHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
-from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
+from libs.build_params import  OUTPUT_DIR, interventions
 import simplejson
 import time
 import datetime
@@ -27,6 +27,7 @@ def record_results(
     # date, total, susceptible, exposed, infected, infected_a, infected_b, infected_c, recovered, dead
     # infected_b == Hospitalized
     # infected_c == Hospitalized in ICU
+    res['all_hospitalized'] = res['infected_b'] + res['infected_c']
 
     cols = [
         "date",
@@ -37,7 +38,7 @@ def record_results(
         "e",
         "f",
         "g",
-        "infected_b",
+        "all_hospitalized",
         "infected",
         "dead",
         "beds",
@@ -69,7 +70,7 @@ def record_results(
     website_ordering["population"] = pop
     website_ordering = website_ordering.astype(
         {
-            "infected_b": int,
+            "all_hospitalized": int,
             "infected": int,
             "dead": int,
             "beds": int,
@@ -78,7 +79,7 @@ def record_results(
     )
     website_ordering = website_ordering.astype(
         {
-            "infected_b": str,
+            "all_hospitalized": str,
             "infected": str,
             "dead": str,
             "beds": str,
@@ -86,18 +87,33 @@ def record_results(
         }
     )
 
-    with open(
-        os.path.join(directory, name.upper() + "." + str(num) + ".json").format(name),
-        "w",
-    ) as out:
-        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+    lowercaseStates = [
+        'AK',
+        'CA',
+        'CO',
+        'FL',
+        'MO',
+        'NM',
+        'NV',
+        'NY',
+        'OR',
+        'TX',
+        'WA',
+    ]
 
-    # @TODO: Remove once the frontend no longer expects some states to be lowercase.
-    with open(
-        os.path.join(directory, name.lower() + "." + str(num) + ".json").format(name),
-        "w",
-    ) as out:
-        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+    if name in lowercaseStates:
+        # @TODO: Remove once the frontend no longer expects some states to be lowercase.
+        with open(
+            os.path.join(directory, name.lower() + "." + str(num) + ".json").format(name),
+            "w",
+        ) as out:
+            simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+    else:
+        with open(
+            os.path.join(directory, name.upper() + "." + str(num) + ".json").format(name),
+            "w",
+        ) as out:
+            simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
 
 
 def model_state(dataset, country, state, starting_beds, interventions=None):
@@ -144,12 +160,15 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "hospitalized_cases_requiring_icu_care": 0.1397,
         "case_fatality_rate": 0.0109341104294479,
         "exposed_from_infected": True,
-        "exposed_infected_ratio": 1,
+        "exposed_infected_ratio": 1.2,
         "hospital_capacity_change_daily_rate": 1.05,
         "max_hospital_capacity_factor": 2.07,
-        "initial_hospital_bed_utilization": 0.6,
+        "initial_hospital_bed_utilization": 0.66,
         "interventions": interventions,
+        "observed_daily_growth_rate": 1.21
     }
+
+    MODEL_PARAMETERS['beta'] = (0.3 + ( (MODEL_PARAMETERS["observed_daily_growth_rate"] - 1.09) / 0.02) * 0.05)
 
     MODEL_PARAMETERS["case_fatality_rate_hospitals_overwhelmed"] = (
         MODEL_PARAMETERS["hospitalization_rate"]
@@ -189,9 +208,9 @@ if __name__ == "__main__":
     for state in dataset.get_all_states_by_country(country):
         logging.info("Generating data for state: {}".format(state))
         starting_beds = dataset.get_beds_by_country_state(country, state)
-        for i in range(0, len(INTERVENTIONS)):
+        for i in range(0, len(interventions())):
             _logger.info(f"Running intervention {i} for {state}")
-            intervention = INTERVENTIONS[i]
+            intervention = interventions()[i]
             results = model_state(dataset, country, state, starting_beds, intervention)
             record_results(
                 results,
