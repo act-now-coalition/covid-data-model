@@ -97,7 +97,9 @@ class JHUDataset(data_source.DataSource):
         state_only = data[cls.Fields.FIPS].isnull() & data[cls.Fields.COUNTY].isnull()
 
         # Pad fips values to 5 spots
-        data[cls.Fields.FIPS] = data[cls.Fields.FIPS].apply(lambda x: f"{x.zfill(5)}" if type(x) == str else x)
+        data[cls.Fields.FIPS] = data[cls.Fields.FIPS].apply(
+            lambda x: f"{x.zfill(5)}" if type(x) == str else x
+        )
         data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(state_only, "state", "county")
         data = cls._drop_incomplete_county_data(data)
         return data

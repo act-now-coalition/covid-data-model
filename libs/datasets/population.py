@@ -41,7 +41,11 @@ class PopulationDataset(object):
         data[cls.Fields.GENERATED] = False
 
         if fill_missing_state:
-            state_groupby_fields = [cls.Fields.SOURCE, cls.Fields.COUNTRY, cls.Fields.STATE]
+            state_groupby_fields = [
+                cls.Fields.SOURCE,
+                cls.Fields.COUNTRY,
+                cls.Fields.STATE,
+            ]
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data,
                 state_groupby_fields,

@@ -13,6 +13,7 @@ class TimeseriesDataset(object):
     fields in the Fields class below + metrics. The other fields are generated
     in the `from_source` method.
     """
+
     class Fields(object):
         # Required Fields
         DATE = "date"
@@ -48,7 +49,12 @@ class TimeseriesDataset(object):
         county_data = self.data[county_values]
 
         data = county_data.set_index(
-            [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.COUNTY, self.Fields.FIPS]
+            [
+                self.Fields.COUNTRY,
+                self.Fields.STATE,
+                self.Fields.COUNTY,
+                self.Fields.FIPS,
+            ]
         )
         values = set(data.index.to_list())
         return sorted(values)
