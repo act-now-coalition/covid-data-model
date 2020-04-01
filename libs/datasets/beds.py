@@ -66,11 +66,20 @@ class BedsDataset(object):
 
         return None
 
-    def get_county_level(self, state, county):
+    def get_county_level(self, state, county=None, fips=None):
+        if not (county or fips) or (county and fips):
+            raise ValueError("Must only pass fips or county")
+
         aggregation_filter = self.data.aggregate_level == AggregationLevel.COUNTY.value
         state_filter = self.data.state == state
-        county_filter = self.data.county == county
-        icu_beds = self.data[state_filter & aggregation_filter & county_filter].icu_beds
+
+        if fips:
+            fips_filter = self.data.fips == fips
+            icu_beds = self.data[state_filter & aggregation_filter & fips_filter].icu_beds
+        else:
+            county_filter = self.data.county == county
+            icu_beds = self.data[state_filter & aggregation_filter & county_filter].icu_beds
+
         if len(icu_beds):
             return icu_beds.iloc[0]
 

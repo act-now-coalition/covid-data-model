@@ -140,13 +140,17 @@ def get_state_level_data(data, country, state):
     return data[country_filter & state_filter & aggregation_filter]
 
 
-def get_county_level_data(data, country, state, county):
+def get_county_level_data(data, country, state, county=None, fips=None):
     country_filter = data.country == country
-    county_filter = data.county == county
     state_filter = data.state == state
     aggregation_filter = data.aggregate_level == AggregationLevel.COUNTY.value
 
-    return data[country_filter & state_filter & aggregation_filter & county_filter]
+    if county:
+        county_filter = data.county == county
+        return data[country_filter & state_filter & aggregation_filter & county_filter]
+    else:
+        fips_filter = data.fips == fips
+        return data[country_filter & state_filter & aggregation_filter & fips_filter]
 
 
 def build_fips_data_frame():
@@ -165,7 +169,7 @@ def add_county_using_fips(data, fips_data):
     # Not all datasources have country.  If the dataset doesn't have country,
     # assuming that data is from the us.
     if "country" in non_matching.columns:
-        non_matching = non_matching[data.country == "USA"]
+        non_matching = non_matching[non_matching.country == "USA"]
 
     if len(non_matching):
         unique_counties = sorted(non_matching.county.unique())

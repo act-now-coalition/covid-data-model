@@ -48,10 +48,10 @@ class TimeseriesDataset(object):
         county_data = self.data[county_values]
 
         data = county_data.set_index(
-            [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.COUNTY]
+            [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.COUNTY, self.Fields.FIPS]
         )
-
-        return set(data.index.to_list())
+        values = set(data.index.to_list())
+        return sorted(values)
 
     def get_subset(
         self,

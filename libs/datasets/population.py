@@ -41,14 +41,13 @@ class PopulationDataset(object):
         data[cls.Fields.GENERATED] = False
 
         if fill_missing_state:
-            state_groupby_fields = [cls.Fields.SOURCE, cls.Fields.STATE]
+            state_groupby_fields = [cls.Fields.SOURCE, cls.Fields.COUNTRY, cls.Fields.STATE]
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data,
                 state_groupby_fields,
                 AggregationLevel.COUNTY,
                 AggregationLevel.STATE,
             ).reset_index()
-
             non_matching[cls.Fields.GENERATED] = True
             data = pd.concat([data, non_matching])
 
@@ -57,13 +56,16 @@ class PopulationDataset(object):
 
     def get_state_level(self, country, state):
         data = dataset_utils.get_state_level_data(self.data, country, state).population
+
         if len(data):
             return data.iloc[0]
         return None
 
-    def get_county_level(self, country, state, county):
+    def get_county_level(self, country, state, county=None, fips=None):
+        if not (county or fips) or (county and fips):
+            raise ValueError("Must only pass fips or county")
         data = dataset_utils.get_county_level_data(
-            self.data, country, state, county
+            self.data, country, state, county=county, fips=fips
         ).population
         if len(data):
             return data.iloc[0]
