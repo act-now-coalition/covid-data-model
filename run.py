@@ -1,8 +1,10 @@
 import logging
 import time
 import datetime
+import pathlib
 import simplejson
-
+import json
+from collections import defaultdict
 from libs.CovidDatasets import CDSDataset, JHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
@@ -95,7 +97,6 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
         }
     )
     return website_ordering
-
 
 
 def write_results(data, directory, name):
@@ -195,6 +196,40 @@ def model_state(timeseries, population, starting_beds, interventions=None):
     return results
 
 
+def build_county_summary(country='USA', state=None):
+    """Builds county summary json files."""
+    beds_data = DHBeds.build_from_local_github().to_generic_beds()
+    population_data = FIPSPopulation().to_generic_population()
+    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
+    timeseries = timeseries.get_subset(
+        AggregationLevel.COUNTY, after=min_date, country=country, state=state
+    )
+
+    output_dir = pathlib.Path(OUTPUT_DIR) / "county_summaries"
+    _logger.info(f"Outputting to {output_dir}")
+    if not output_dir.exists():
+        _logger.info(f"{output_dir} does not exist, creating")
+        output_dir.mkdir(parents=True)
+
+    counties_by_state = defaultdict(list)
+    for country, state, county, fips in timeseries.county_keys():
+        counties_by_state[state].append((county, fips))
+
+    for state, counties in counties_by_state.items():
+        data = {
+            'counties_with_data': []
+        }
+        for county, fips in counties:
+            cases = timeseries.get_data(state=state, country=country, fips=fips)
+            beds = beds_data.get_county_level(state, fips=fips)
+            population = population_data.get_county_level(country, state, fips=fips)
+            if population and beds and sum(cases.cases):
+                data['counties_with_data'].append(fips)
+
+        output_path = output_dir / f"{state}.summary.json"
+        output_path.write_text(json.dumps(data, indent=2))
+
+
 def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     beds_data = DHBeds.build_from_local_github().to_generic_beds()
     population_data = FIPSPopulation().to_generic_population()
@@ -203,55 +238,87 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    for country, state, county in timeseries.county_keys():
-        _logger.info(f'Generating data for county: {county}, {state}')
-        cases = timeseries.get_data(state=state, country=country, county=county)
-        beds = beds_data.get_county_level(state, county)
-        population = population_data.get_county_level(country, state, county)
+    output_dir = pathlib.Path(OUTPUT_DIR) / "county"
+    _logger.info(f"Outputting to {output_dir}")
+    if not output_dir.exists():
+        _logger.info(f"{output_dir} does not exist, creating")
+        output_dir.mkdir(parents=True)
+
+    counties_by_state = defaultdict(list)
+    county_keys = timeseries.county_keys()
+    for country, state, county, fips in county_keys:
+        counties_by_state[state].append((county, fips))
+
+    processed = 0
+    skipped = 0
+    total = len(county_keys)
+    for state, counties in counties_by_state.items():
+        _logger.info(f'Running county models for {state}')
+        data = []
+        for county, fips in counties:
+            if (processed + skipped) % 200 == 0:
+                _logger.info(f"Processed {processed + skipped} / {total} - "
+                             f"Skipped {skipped} due to missing data")
+
+            _logger.debug(f'Running model for county: {county}, {state} - {fips}')
+            cases = timeseries.get_data(state=state, country=country, fips=fips)
+            beds = beds_data.get_county_level(state, fips=fips)
+            population = population_data.get_county_level(country, state, fips=fips)
+
+            total_cases = sum(cases.cases)
+            if not population or not beds or not total_cases:
+                _logger.debug(
+                    f"Missing data, skipping: Beds: {beds} Pop: {population} Total Cases: {total_cases}"
+                )
+                skipped += 1
+                continue
+            else:
+                processed += 1
+
+            for i, intervention in enumerate(INTERVENTIONS):
+                _logger.debug(
+                    f"Running intervention {i} for {state} - "
+                    f"total cases: {total_cases} beds: {beds} pop: {population}"
+                )
+                results = model_state(cases, beds, population, intervention)
+                website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
+                write_results(website_data, output_dir, '{state}.{fips}.{i}.json')
+
+
+def run_state_level_forcast(min_date, max_date, country='USA', state=None):
+    beds_data = DHBeds.build_from_local_github().to_generic_beds()
+    population_data = FIPSPopulation().to_generic_population()
+    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
+    timeseries = timeseries.get_subset(
+        AggregationLevel.STATE, after=min_date, country=country, state=state
+    )
+    output_dir = pathlib.Path(OUTPUT_DIR) / "state"
+    _logger.info(f"Outputting to {output_dir}")
+    if not output_dir.exists():
+        _logger.info(f"{output_dir} does not exist, creating")
+        output_dir.mkdir(parents=True)
+
+    for state in timeseries.states:
+        _logger.info(f'Generating data for state: {state}')
+        cases = timeseries.get_data(state=state)
+        beds = beds_data.get_state_level(state)
+        population = population_data.get_state_level(country, state)
         if not population:
-            _logger.warning(f"Missing population for {county}, {state}")
+            _logger.warning(f"Missing population for {state}")
             continue
 
         for i, intervention in enumerate(INTERVENTIONS):
             _logger.info(f"Running intervention {i} for {state}")
-            results = model_state(cases, population, beds, intervention)
-            record_results(
-                results,
-                OUTPUT_DIR,
-                state,
-                i,
-                population,
-                min_date,
-                max_date,
-            )
+            results = model_state(cases, beds, population, intervention)
+            population = dataset.get_population_by_country_state(country, state)
+            website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
+            write_results(website_data, OUTPUT_DIR, '{state}.{i}.json')
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     # @TODO: Remove interventions override once support is in the Harvard model.
-    country = "USA"
-
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
-    beds_data = DHBeds.build_from_local_github().to_generic_beds()
-    population_data = FIPSPopulation().to_generic_population()
-    timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
-    timeseries = timeseries.get_subset(
-        AggregationLevel.COUNTY, after='2020-03-07', country=country, state='MA'
-    )
-    for country, state, county in timeseries.county_keys():
-        _logger.info(f'Generating data for county: {county}, {state}')
-        cases = timeseries.get_data(state=state, country=country, county=county)
-        beds = beds_data.get_county_level(state, county)
-        population = population_data.get_county_level(country, state, county)
-        if not population:
-            _logger.warning(f"Missing population for {county}, {state}")
-            continue
-
-        for i, intervention in enumerate(INTERVENTIONS):
-            _logger.info(f"Running intervention {i} for {state}")
-            intervention = INTERVENTIONS[i]
-            results = model_state(dataset, country, state, starting_beds, intervention)
-            population = dataset.get_population_by_country_state(country, state)
-            website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-            write_results(website_data, OUTPUT_DIR, '{state}.{i}.json')
+    # build_counties_with_data()
+    run_county_level_forecast(min_date, max_date)
