@@ -3,7 +3,7 @@ import logging
 import datetime
 import time
 import simplejson
-from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
+from libs.build_params import OUTPUT_DIR, get_interventions
 from libs.CovidTimeseriesModel import CovidTimeseriesModel
 from libs.CovidDatasets import CDSDataset
 
@@ -79,10 +79,10 @@ def model_state(dataset, country, state, interventions=None):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     dataset = CDSDataset()
+    interventions = get_interventions()
     for state in dataset.get_all_states_by_country('USA'):
-        for i in range(0, len(INTERVENTIONS)):
+        for i, intervention in enumerate(interventions):
             _logger.info(f"Running intervention {i} for {state}")
-            intervention = INTERVENTIONS[i]
             record_results(
                 model_state(dataset, 'USA', state, intervention),
                 OUTPUT_DIR,
