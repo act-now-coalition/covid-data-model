@@ -95,25 +95,30 @@ def compare_datasets(
 ):
     other = other.groupby(group).sum().reset_index().set_index(group)
     base = base.groupby(group).sum().reset_index().set_index(group)
+    base[values].fillna(0, inplace=True)
     base["info"] = first_name
     other["info"] = other_name
     common = pd.concat([base, other])
     all_combined = common.pivot_table(
-        index=["date", "state"], columns="info", values=values
+        index=group, columns="info", values=values
     ).rename_axis(None, axis=1)
-    first_null = all_combined[first_name].isnull()
     first_notnull = all_combined[first_name].notnull()
-    other_null = all_combined[other_name].isnull()
     other_notnull = all_combined[other_name].notnull()
 
+    has_both = first_notnull & other_notnull
     contains_both = all_combined[first_notnull & other_notnull]
-    matching = contains_both[contains_both[first_name] == contains_both[other_name]]
-    not_matching = contains_both[contains_both[first_name] != contains_both[other_name]]
-    not_matching["delta"] = contains_both[first_name] - contains_both[other_name]
+    contains_both = contains_both.reset_index()
+    values_matching = contains_both[first_name] == contains_both[other_name]
+    not_matching = contains_both[~values_matching].reset_index()
+    not_matching["delta"] = (
+        contains_both[first_name] - contains_both[other_name]
+    )
     not_matching["delta_ratio"] = (
         contains_both[first_name] - contains_both[other_name]
     ) / contains_both[first_name]
-    return all_combined, matching, not_matching
+    matching = contains_both.loc[values_matching, :]
+    missing = all_combined.loc[~has_both, :]
+    return all_combined, matching, not_matching, missing
 
 
 def aggregate_and_get_nonmatching(
