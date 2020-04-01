@@ -95,7 +95,10 @@ def compare_datasets(
 ):
     other = other.groupby(group).sum().reset_index().set_index(group)
     base = base.groupby(group).sum().reset_index().set_index(group)
-    base[values].fillna(0, inplace=True)
+    # Filling missing values
+    base.loc[:, values] = base[values].fillna(0)
+    other.loc[:, values] = other[values].fillna(0)
+
     base["info"] = first_name
     other["info"] = other_name
     common = pd.concat([base, other])
@@ -109,7 +112,7 @@ def compare_datasets(
     contains_both = all_combined[first_notnull & other_notnull]
     contains_both = contains_both.reset_index()
     values_matching = contains_both[first_name] == contains_both[other_name]
-    not_matching = contains_both[~values_matching].reset_index()
+    not_matching = contains_both[~values_matching]
     not_matching["delta"] = (
         contains_both[first_name] - contains_both[other_name]
     )
@@ -117,8 +120,8 @@ def compare_datasets(
         contains_both[first_name] - contains_both[other_name]
     ) / contains_both[first_name]
     matching = contains_both.loc[values_matching, :]
-    missing = all_combined.loc[~has_both, :]
-    return all_combined, matching, not_matching, missing
+    missing = all_combined[~has_both & (first_notnull | other_notnull)]
+    return all_combined, matching, not_matching.dropna(), missing
 
 
 def aggregate_and_get_nonmatching(
@@ -192,7 +195,9 @@ def add_county_using_fips(data, fips_data):
 
 def assert_counties_have_fips(data, county_key='county', fips_key='fips'):
     is_county = data['aggregate_level'] == AggregationLevel.COUNTY.value
-    print(data[is_county & data[fips_key].isnull()])
+    is_fips_null = is_county & data[fips_key].isnull()
+    if sum(is_fips_null):
+        print(data[is_fips_null])
 
 
 def add_fips_using_county(data, fips_data) -> pd.Series:
