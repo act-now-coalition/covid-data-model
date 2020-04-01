@@ -54,6 +54,11 @@ output_cols = ["Province/State",
     "Shape"
 ]
 
+new_cols = ['16-day_Hospitalization_Prediction',
+    '32-day_Hospitalization_Prediction',
+    '16-day_Beds_Shortfall',
+    '32-day_Beds_Shortfall']
+
 county_replace_with_null = {
     "Unassigned": NULL_VALUE
 }
@@ -61,7 +66,6 @@ county_replace_with_null = {
 def get_usa_by_county_df():
     url = '../covid-data-public/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
         latest.strftime("%m-%d-%Y"))
-    print(url)
     raw_df = pd.read_csv(url)
 
     column_mapping = {"Province_State": "Province/State",
@@ -145,6 +149,8 @@ def get_usa_by_states_df():
 
     # TODO: filter out county-specific columns
     state_cols = output_cols + ['Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction']
+    state_cols += new_cols
+
     states_final = pd.DataFrame(states_remapped, columns=state_cols)
     states_final['Shape'] = 'Point'
     states_final = states_final.fillna(NULL_VALUE)
@@ -163,7 +169,7 @@ def get_usa_by_states_df():
 
 # note it's unclear to me if 'Incident Rate' is a number, float, etc
 def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
-    fields = ['Confirmed', 'Recovered', 'Deaths', 'Active', 'Incident Rate', 'People Tested', 'Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction']
+    fields = ['Confirmed', 'Recovered', 'Deaths', 'Active', 'Incident Rate', 'People Tested', 'Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction'] + new_cols
     fields = [field for field in fields if field in df.columns]
 
     shp_writer.fields = shp_reader.fields # Preserve fields that come from the census
