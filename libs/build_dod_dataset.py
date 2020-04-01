@@ -31,8 +31,11 @@ def get_abbrev_df():
         columns=['state', 'abbreviation']
     )
 
-def get_projections_df():
+def get_projections_3_26_df():
     return pd.read_csv('projections_03-26-2020.csv')
+
+def get_projections_df():
+    return pd.read_csv('projections_3_31_2020.csv')
 
 output_cols = ["Province/State",
     "Country/Region",
@@ -51,13 +54,18 @@ output_cols = ["Province/State",
     "Shape"
 ]
 
+new_cols = ['16-day_Hospitalization_Prediction',
+    '32-day_Hospitalization_Prediction',
+    '16-day_Beds_Shortfall',
+    '32-day_Beds_Shortfall']
+
 county_replace_with_null = {
     "Unassigned": NULL_VALUE
 }
 
 def get_usa_by_county_df():
-    url = 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_daily_reports/{}.csv'.format(
-        latest.strftime("%m-%d-%Y"))
+    url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
+        get_public_data_base_url(), latest.strftime("%m-%d-%Y"))
     raw_df = pd.read_csv(url)
 
     column_mapping = {"Province_State": "Province/State",
@@ -99,6 +107,7 @@ def get_usa_by_states_df():
     abbrev_df = get_abbrev_df()
     interventions_df = get_interventions_df()
     projections_df = get_projections_df()
+    print(projections_df)
 
     states_group = us_only.groupby(['Province/State'])
     states_agg = states_group.aggregate({
@@ -130,15 +139,27 @@ def get_usa_by_states_df():
         'intervention': 'Intervention'
     }
 
+    # 'Projection1': '16-day_Hopitalization_Prediction',
+    # 'Projection2': '32-day_Hospitalization_Prediction',
+    # 'Projection1': '16-day_Beds_Shortfall',
+    # 'Projection2': '32-day_Beds_Shortwall',
+
+
     states_remapped = states_abbrev.rename(columns=state_col_remap)
 
     # TODO: filter out county-specific columns
     state_cols = output_cols + ['Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction']
+    state_cols += new_cols
+
     states_final = pd.DataFrame(states_remapped, columns=state_cols)
     states_final['Shape'] = 'Point'
     states_final = states_final.fillna(NULL_VALUE)
     states_final['Combined Key'] = states_final['Province/State']
     states_final['State/County FIPS Code'] = states_final['Province/State'].map(us_fips)
+
+    # temporarily nullify predictions
+    states_final['8-day Hospitalizations Prediction'] = NULL_VALUE
+    states_final['4-day Hospitalizations Prediction'] = NULL_VALUE
 
     states_final.index.name = 'OBJECTID'
     # assert unique key test
@@ -148,7 +169,7 @@ def get_usa_by_states_df():
 
 # note it's unclear to me if 'Incident Rate' is a number, float, etc
 def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
-    fields = ['Confirmed', 'Recovered', 'Deaths', 'Active', 'Incident Rate', 'People Tested', 'Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction']
+    fields = ['Confirmed', 'Recovered', 'Deaths', 'Active', 'Incident Rate', 'People Tested', 'Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction'] + new_cols
     fields = [field for field in fields if field in df.columns]
 
     shp_writer.fields = shp_reader.fields # Preserve fields that come from the census
