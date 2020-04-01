@@ -25,6 +25,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     # infected_b == Hospitalized
     # infected_c == Hospitalized in ICU
     data['all_hospitalized'] = data['infected_b'] + data['infected_c']
+    data['all_infected'] = data['infected_a'] + data['infected_b'] + data['infected_c']
 
     cols = [
         "date",
@@ -36,7 +37,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
         "f",
         "g",
         "all_hospitalized",
-        "infected",
+        "all_infected",
         "dead",
         "beds",
         "i",
@@ -68,7 +69,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     website_ordering = website_ordering.astype(
         {
             "all_hospitalized": int,
-            "infected": int,
+            "all_infected": int,
             "dead": int,
             "beds": int,
             "population": int,
@@ -77,7 +78,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     website_ordering = website_ordering.astype(
         {
             "all_hospitalized": str,
-            "infected": str,
+            "all_infected": str,
             "dead": str,
             "beds": str,
             "population": str,
@@ -197,4 +198,4 @@ if __name__ == "__main__":
             results = model_state(dataset, country, state, starting_beds, intervention)
             population = dataset.get_population_by_country_state(country, state)
             website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-            write_results(website_data, OUTPUT_DIR, '{state}.{i}.json')
+            write_results(website_data, OUTPUT_DIR, f'{state}.{i}.json')
