@@ -7,6 +7,7 @@ import os.path
 from collections import defaultdict
 import multiprocessing as mp
 
+from libs.CovidDatasets import JHUDataset as LegacyJHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 import simplejson
 import pandas as pd
@@ -227,7 +228,13 @@ def build_county_summary(country='USA', state=None):
 def forecast_each_state(country, state, timeseries, beds_data, population_data,min_date, max_date,  OUTPUT_DIR):
     _logger.info(f'Generating data for state: {state}')
     cases = timeseries.get_data(state=state)
-    beds = beds_data.get_state_level(state)
+    try:
+        beds = beds_data.get_beds_by_country_state(country, state)
+    except IndexError:
+        # Old timeseries data throws an exception if the state does not exist in
+        # the dataset.
+        _logger.error(f"Failed to get beds data for {state}")
+        return
     population = population_data.get_state_level(country, state)
     if not population:
         _logger.warning(f"Missing population for {state}")
@@ -264,6 +271,7 @@ def forecast_each_county(country, state, county, fips, timeseries, beds_data, po
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
         write_results(website_data, output_dir, f'{state}.{fips}.{i}.json')
+
 
 def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     beds_data = DHBeds.local().beds()
@@ -302,22 +310,30 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
 
 
 def run_state_level_forecast(min_date, max_date, country='USA', state=None):
-    beds_data = DHBeds.local().beds()
+    # DH Beds dataset does not have all counties, so using the legacy state
+    # level bed data.
+    legacy_dataset = LegacyJHUDataset(min_date)
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
     timeseries = timeseries.get_subset(
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )
     output_dir = pathlib.Path(OUTPUT_DIR) / "state"
+    if output_dir.exists():
+        backup = output_dir.name + '.' + str(int(time.time()))
+        output_dir.rename(output_dir.parent / backup)
+
+    output_dir.mkdir(parents=True)
     _logger.info(f"Outputting to {output_dir}")
     if not output_dir.exists():
         _logger.info(f"{output_dir} does not exist, creating")
         output_dir.mkdir(parents=True)
 
     for state in timeseries.states:
-        args = (country, state, timeseries, beds_data, population_data,min_date, max_date,  OUTPUT_DIR,)
+        args = (country, state, timeseries, legacy_dataset, population_data,min_date, max_date,  output_dir,)
         p = pool.Process(target=forecast_each_state,args=args)
         p.start()
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
