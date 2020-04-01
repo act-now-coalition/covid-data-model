@@ -8,7 +8,7 @@ from libs.datasets import dataset_utils
 
 
 class NYTimesDataset(data_source.DataSource):
-    DATA_URL = "https://github.com/nytimes/covid-19-data/raw/6cb66d9a821ce8225f6f9ffcb77ce6db9889c14c/us-counties.csv"
+    DATA_URL = "https://github.com/nytimes/covid-19-data/raw/master/us-counties.csv"
     SOURCE_NAME = "NYTimes"
 
     class Fields(object):
@@ -28,23 +28,26 @@ class NYTimesDataset(data_source.DataSource):
         TimeseriesDataset.Fields.STATE: Fields.STATE,
         TimeseriesDataset.Fields.FIPS: Fields.FIPS,
         TimeseriesDataset.Fields.CASES: Fields.CASES,
+        TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     def __init__(self, input_path):
-        data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE])
+        data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE], dtype={"fips": str})
         data = self.standardize_data(data)
         super().__init__(data)
 
     @classmethod
-    def build_from_url(cls) -> "CDSTimeseriesData":
+    def load(cls) -> "CDSTimeseriesData":
         return cls(cls.DATA_URL)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data[cls.Fields.COUNTRY] = "USA"
         data = dataset_utils.strip_whitespace(data)
-        states = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
+        data[cls.Fields.STATE] = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
+        # Super hacky way of filling in new york.
+        data.loc[data[cls.Fields.COUNTY] == 'New York City', 'county'] = 'New York County'
+        data.loc[data[cls.Fields.COUNTY] == 'New York County', 'fips'] = '36061'
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
-
         return data
