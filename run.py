@@ -305,7 +305,7 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
             _logger.info(f"Running intervention {i} for {state}")
             results = model_state(cases, beds, population, intervention)
             website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-            write_results(website_data, OUTPUT_DIR, '{state}.{i}.json')
+            write_results(website_data, OUTPUT_DIR, f'{state}.{i}.json')
 
 
 if __name__ == "__main__":
