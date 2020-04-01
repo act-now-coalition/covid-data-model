@@ -10,7 +10,7 @@ import pandas as pd
 import simplejson
 
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
-from libs.build_params import r0, OUTPUT_DIR, ACTIVE_INTERVENTIONS
+from libs.build_params import r0, OUTPUT_DIR, get_interventions
 
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
@@ -34,6 +34,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     # date, total, susceptible, exposed, infected, infected_a, infected_b, infected_c, recovered, dead
     # infected_b == Hospitalized
     # infected_c == Hospitalized in ICU
+    data['all_hospitalized'] = data['infected_b'] + data['infected_c']
 
     cols = [
         "date",
@@ -44,7 +45,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
         "e",
         "f",
         "g",
-        "infected_b",
+        "all_hospitalized",
         "infected",
         "dead",
         "beds",
@@ -76,7 +77,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     website_ordering["population"] = population
     website_ordering = website_ordering.astype(
         {
-            "infected_b": int,
+            "all_hospitalized": int,
             "infected": int,
             "dead": int,
             "beds": int,
@@ -85,7 +86,7 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     )
     website_ordering = website_ordering.astype(
         {
-            "infected_b": str,
+            "all_hospitalized": str,
             "infected": str,
             "dead": str,
             "beds": str,
@@ -110,67 +111,62 @@ def write_results(data, directory, name):
 
 def model_state(timeseries, population, starting_beds, interventions=None):
 
-    # Constants
-    start_time = time.time()
-    HOSPITALIZATION_RATE = 0.0727
-    HOSPITALIZED_CASES_REQUIRING_ICU_CARE = 0.1397
-    TOTAL_INFECTED_PERIOD = 12
+    # we should cut this, only used by the get_timeseries function, but probably not needed
     MODEL_INTERVAL = 4
+
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
-    MODEL_PARAMETERS = {
-        # Pack the changeable model parameters
+    DATA_PARAMETERS = {
         "timeseries": timeseries,
         "beds": starting_beds,
         "population": population,
-        # 'projection_iterations': 25, # Number of iterations into the future to project
-        "projection_iterations": 80,  # Number of iterations into the future to project
-        "r0": r0,
-        "interventions": interventions,
-        "hospitalization_rate": HOSPITALIZATION_RATE,
-        "case_fatality_rate": 0.0109341104294479,
-        "hospitalized_cases_requiring_icu_care": HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
-        # Assumes that anyone who needs ICU care and doesn't get it dies
-        "case_fatality_rate_hospitals_overwhelmed": HOSPITALIZATION_RATE
-        * HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
-        "hospital_capacity_change_daily_rate": 1.01227,  # Equivalent to 1.05 per four days
-        "max_hospital_capacity_factor": 2.07,
-        "initial_hospital_bed_utilization": 0.6,
-        "model_interval": 4,  # In days
-        "total_infected_period": 12,  # In days
-        "rolling_intervals_for_current_infected": int(
-            round(TOTAL_INFECTED_PERIOD / MODEL_INTERVAL, 0)
-        ),
-        "estimated_new_cases_per_death": 32,
-        "estimated_new_cases_per_confirmed": 20,
-        # added for seird model
-        "incubation_period": 5,  # In days
-        "duration_mild_infections": 10,  # In days
-        "icu_time_death": 7,  # Time from ICU admission to death, In days
-        "hospital_time_recovery": 11,  # Duration of hospitalization, In days
-        # If True use the harvard parameters directly, if not calculate off the above
-        "use_harvard_params": True,
-        # If True use the parameters that make R0 2.4, if not calculate off the above
-        "fix_r0": False,
-        # If True use the harvard model inputs for inital conditions and N (recreate their graph)
-        "use_harvard_init": False,
+    }
+
+    MODEL_PARAMETERS = {
+        "model": "seir",
         "use_harvard_params": False,  # If True use the harvard parameters directly, if not calculate off the above
         "fix_r0": False,  # If True use the parameters that make R0 2.4, if not calculate off the above
-        "hospitalization_rate": HOSPITALIZATION_RATE,
-        "hospitalized_cases_requiring_icu_care": HOSPITALIZED_CASES_REQUIRING_ICU_CARE,
-        "total_infected_period": 12,  # In days
-        "duration_mild_infections": 6,  # In days
+        "days_to_model": 270,
+        ## Variables for calculating model parameters Hill -> our names/calcs
+        # IncubPeriod: Average incubation period, days - presymptomatic_period
+        # DurMildInf: Average duration of mild infections, days - duration_mild_infections
+        # FracMild: Average fraction of (symptomatic) infections that are mild - (1 - hospitalization_rate)
+        # FracSevere: Average fraction of (symptomatic) infections that are severe - hospitalization_rate * hospitalized_cases_requiring_icu_care
+        # FracCritical: Average fraction of (symptomatic) infections that are critical - hospitalization_rate * hospitalized_cases_requiring_icu_care
+        # CFR: Case fatality rate (fraction of infections that eventually result in death) - case_fatality_rate
+        # DurHosp: Average duration of hospitalization (time to recovery) for individuals with severe infection, days - hospital_time_recovery
+        # TimeICUDeath: Average duration of ICU admission (until death or recovery), days - icu_time_death
+        # LOGIC ON INITIAL CONDITIONS:
+        # hospitalized = case load from timeseries on last day of data / 4
+        # mild = hospitalized / hospitalization_rate
+        # icu = hospitalized * hospitalized_cases_requiring_icu_care
+        # expoosed = exposed_infected_ratio * mild
+        "presymptomatic_period": 3,  # Time before exposed are infectious, In days
+        "duration_mild_infections": 6,  # Time mildly infected poeple stay sick, In days
         "hospital_time_recovery": 11,  # Duration of hospitalization, In days
         "icu_time_death": 7,  # Time from ICU admission to death, In days
-        "case_fatality_rate": 0.0109341104294479,
         "beta": 0.5,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
-        "presymptomatic_period": 3,
+        "hospitalization_rate": 0.0727,
+        "hospitalized_cases_requiring_icu_care": 0.1397,
+        "case_fatality_rate": 0.0109341104294479,
         "exposed_from_infected": True,
-        #'model': 'sir',
-        "model": "seir",
+        "exposed_infected_ratio": 1.2,
+        "hospital_capacity_change_daily_rate": 1.05,
+        "max_hospital_capacity_factor": 2.07,
+        "initial_hospital_bed_utilization": 0.66,
+        "interventions": interventions,
+        "observed_daily_growth_rate": 1.21
     }
-    MODEL_PARAMETERS["exposed_infected_ratio"] = 1 / MODEL_PARAMETERS["beta"]
+
+    MODEL_PARAMETERS['beta'] = (0.3 + ((MODEL_PARAMETERS["observed_daily_growth_rate"] - 1.09) / 0.02) * 0.05)
+
+    MODEL_PARAMETERS["case_fatality_rate_hospitals_overwhelmed"] = (
+        MODEL_PARAMETERS["hospitalization_rate"]
+        * MODEL_PARAMETERS["hospitalized_cases_requiring_icu_care"]
+    )
+
+    MODEL_PARAMETERS.update(DATA_PARAMETERS)
 
     [results, soln] = CovidTimeseriesModelSIR().forecast_region(
         model_parameters=MODEL_PARAMETERS
@@ -252,7 +248,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     total = len(county_keys)
     for state, counties in counties_by_state.items():
         _logger.info(f'Running county models for {state}')
-        data = []
+
         for county, fips in counties:
             if (processed + skipped) % 200 == 0:
                 _logger.info(f"Processed {processed + skipped} / {total} - "
@@ -273,7 +269,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
             else:
                 processed += 1
 
-            for i, intervention in enumerate(ACTIVE_INTERVENTIONS):
+            for i, intervention in enumerate(get_interventions()):
                 _logger.debug(
                     f"Running intervention {i} for {state} - "
                     f"total cases: {total_cases} beds: {beds} pop: {population}"
@@ -305,7 +301,7 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
             _logger.warning(f"Missing population for {state}")
             continue
 
-        for i, intervention in enumerate(ACTIVE_INTERVENTIONS):
+        for i, intervention in enumerate(get_interventions()):
             _logger.info(f"Running intervention {i} for {state}")
             results = model_state(cases, beds, population, intervention)
             website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)

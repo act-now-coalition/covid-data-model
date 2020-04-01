@@ -20,3 +20,24 @@ Check It Out in Jupyter
 
 ### Data Sources
 See [covid-data-public](https://github.com/covid-projections/covid-data-public) for data sources being used or considered.
+
+
+## [Setup](./SETUP.md)
+
+## Running
+
+### Create JSON for UI
+```bash
+python run.py
+```
+
+### Create JSON for API
+Creating the files for local inspection.
+```bash
+python deploy_dod_dataset.py
+```
+
+Creating and uploading the files, where the `BUCKET_NAME` is name of the s3 bucket hosting these files.
+```bash
+BUCKET_NAME=<bucket name> python deploy_sir_dataset.py
+```

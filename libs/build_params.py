@@ -3,66 +3,32 @@ Constants to use for a build. In a separate file to avoid
 auto-importing a dataset when we don't necessarily need to.
 '''
 
-import datetime
+from datetime import datetime, timedelta, date
 
-r0 = 2.4
 
-INTERVENTIONS = [
-    None,  # No Intervention
-    {  # Flatten the Curve
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # Full Containment
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # @TODO: Model w/ FlatteningTheCurve (2 wk delay)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # @TODO: Model w/ FlatteningTheCurve (1 mo delay)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 4, 20): 1.1,
-        datetime.date(2020, 5, 22): 0.8,
-        datetime.date(2020, 6, 23): r0
-    },
-    {  # @TODO: Full Containment (1 wk dly)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # @TODO: Full Containment (2 wk dly)
-        datetime.date(2020, 3, 23): 1.3,
-        datetime.date(2020, 3, 31): 0.3,
-        datetime.date(2020, 4, 28): 0.2,
-        datetime.date(2020, 5,  6): 0.1,
-        datetime.date(2020, 5, 10): 0.35,
-        datetime.date(2020, 5, 18): r0
-    },
-    {  # Social Distancing
-        datetime.date(2020, 3, 23): 1.7,
-        datetime.date(2020, 6, 23): r0
-    },
-]
+def get_interventions(start_date=datetime.now().date()):
+    return [
+        None,  # No Intervention
+        {  # Flatten the Curve
+            start_date: 1.3,
+            start_date + timedelta(days=30) : 1.1,
+            start_date + timedelta(days=60) : 0.8,
+            start_date + timedelta(days=90) : None
+        },
+        {  # Full Containment
+            start_date : 1.3,
+            start_date + timedelta(days=7) : 0.3,
+            start_date + timedelta(days=30 + 7) : 0.2,
+            start_date + timedelta(days=30 + 2*7) : 0.1,
+            start_date + timedelta(days=30 + 3*7) : 0.035,
+            start_date + timedelta(days=30 + 4*7) : 0
+        },
+        {  # Social Distancing
+            start_date: 1.7,
+            start_date + timedelta(days=90) : None
+        },
+    ]
 
-ACTIVE_INTERVENTIONS = [
-    INTERVENTIONS[0],
-    INTERVENTIONS[1],
-    INTERVENTIONS[2],
-    INTERVENTIONS[-1],
-]
 
 OUTPUT_DIR = 'results/test'
 
