@@ -57,6 +57,13 @@ INTERVENTIONS = [
     },
 ]
 
+ACTIVE_INTERVENTIONS = [
+    INTERVENTIONS[0],
+    INTERVENTIONS[1],
+    INTERVENTIONS[2],
+    INTERVENTIONS[-1],
+]
+
 OUTPUT_DIR = 'results/test'
 
 # Dict to transform longhand state names to abbreviations

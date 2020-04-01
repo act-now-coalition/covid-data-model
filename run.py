@@ -2,23 +2,20 @@ import logging
 import time
 import datetime
 import pathlib
-import simplejson
 import json
-from collections import defaultdict
-from libs.CovidDatasets import CDSDataset, JHUDataset
-from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
-from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 import os.path
+from collections import defaultdict
+
 import pandas as pd
+import simplejson
 
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
+from libs.build_params import r0, OUTPUT_DIR, ACTIVE_INTERVENTIONS
+
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
-from libs.datasets import CDSDataset
 from libs.datasets import DHBeds
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 
 _logger = logging.getLogger(__name__)
 
@@ -276,7 +273,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
             else:
                 processed += 1
 
-            for i, intervention in enumerate(INTERVENTIONS):
+            for i, intervention in enumerate(ACTIVE_INTERVENTIONS):
                 _logger.debug(
                     f"Running intervention {i} for {state} - "
                     f"total cases: {total_cases} beds: {beds} pop: {population}"
@@ -308,7 +305,7 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
             _logger.warning(f"Missing population for {state}")
             continue
 
-        for i, intervention in enumerate(INTERVENTIONS):
+        for i, intervention in enumerate(ACTIVE_INTERVENTIONS):
             _logger.info(f"Running intervention {i} for {state}")
             results = model_state(cases, beds, population, intervention)
             website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
@@ -320,6 +317,6 @@ if __name__ == "__main__":
     # @TODO: Remove interventions override once support is in the Harvard model.
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
-    # build_counties_with_data()
-    run_county_level_forecast(min_date, max_date)
+    build_county_summary()
+    # run_county_level_forecast(min_date, max_date)
     # run_state_level_forecast(min_date, max_date)
