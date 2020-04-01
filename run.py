@@ -6,6 +6,7 @@ import json
 import os.path
 from collections import defaultdict
 
+from libs.CovidDatasets import JHUDataset as LegacyJHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 import simplejson
 import pandas as pd
@@ -280,7 +281,9 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
 
 
 def run_state_level_forecast(min_date, max_date, country='USA', state=None):
-    beds_data = DHBeds.local().beds()
+    # DH Beds dataset does not have all counties, so using the legacy state
+    # level bed data.
+    legacy_dataset = LegacyJHUDataset(min_date)
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
     timeseries = timeseries.get_subset(
@@ -295,7 +298,15 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
     for state in timeseries.states:
         _logger.info(f'Generating data for state: {state}')
         cases = timeseries.get_data(state=state)
-        beds = beds_data.get_state_level(state)
+
+        try:
+            beds = legacy_dataset.get_beds_by_country_state(country, state)
+        except IndexError:
+            # Old timeseries data throws an exception if the state does not exist in
+            # the dataset.
+            _logger.error(f"Failed to get beds data for {state}")
+            continue
+
         population = population_data.get_state_level(country, state)
         if not population:
             _logger.warning(f"Missing population for {state}")
@@ -305,7 +316,7 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
             _logger.info(f"Running intervention {i} for {state}")
             results = model_state(cases, beds, population, intervention)
             website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-            write_results(website_data, OUTPUT_DIR, f'{state}.{i}.json')
+            write_results(website_data, output_dir, f'{state}.{i}.json')
 
 
 if __name__ == "__main__":
