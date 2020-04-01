@@ -285,7 +285,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
                 write_results(website_data, output_dir, '{state}.{fips}.{i}.json')
 
 
-def run_state_level_forcast(min_date, max_date, country='USA', state=None):
+def run_state_level_forecast(min_date, max_date, country='USA', state=None):
     beds_data = DHBeds.build_from_local_github().to_generic_beds()
     population_data = FIPSPopulation().to_generic_population()
     timeseries = JHUDataset.build_from_local_github().to_generic_timeseries()
@@ -310,7 +310,6 @@ def run_state_level_forcast(min_date, max_date, country='USA', state=None):
         for i, intervention in enumerate(INTERVENTIONS):
             _logger.info(f"Running intervention {i} for {state}")
             results = model_state(cases, beds, population, intervention)
-            population = dataset.get_population_by_country_state(country, state)
             website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
             write_results(website_data, OUTPUT_DIR, '{state}.{i}.json')
 
@@ -322,3 +321,4 @@ if __name__ == "__main__":
     max_date = datetime.datetime(2020, 7, 6)
     # build_counties_with_data()
     run_county_level_forecast(min_date, max_date)
+    # run_state_level_forecast(min_date, max_date)
