@@ -164,7 +164,7 @@ def get_county_level_data(data, country, state, county=None, fips=None):
 def build_fips_data_frame():
     from libs.datasets import FIPSPopulation
 
-    return FIPSPopulation().data
+    return FIPSPopulation.local().data
 
 
 def add_county_using_fips(data, fips_data):

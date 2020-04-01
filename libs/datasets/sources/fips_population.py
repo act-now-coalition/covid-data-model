@@ -38,10 +38,14 @@ class FIPSPopulation(data_source.DataSource):
         PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
-    def __init__(self, path=FILE_PATH):
+    def __init__(self, path):
         data = pd.read_csv(path, dtype={"fips": str})
         data = self.standardize_data(data)
         super().__init__(data)
+
+    @classmethod
+    def local(cls):
+        return cls(cls.FILE_PATH)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
