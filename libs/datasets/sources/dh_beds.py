@@ -140,6 +140,6 @@ class DHBeds(data_source.DataSource):
         return data
 
     @classmethod
-    def local(cls) -> "JHUTimeseriesData":
+    def local(cls) -> "DHBeds":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.DATA_PATH)
