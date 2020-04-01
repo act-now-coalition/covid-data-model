@@ -42,7 +42,7 @@ def validate_results(result_dir: str) -> None:
     For each state, check that we have a file for each intervention,
     and that the file is non-empty
     """
-    per_state_expected = len(build_params.INTERVENTIONS)
+    per_state_expected = len(build_params.get_interventions())
     missing_or_empty = []
     for state in build_params.US_STATE_ABBREV.values():
         if state in UNSUPPORTED_REGIONS:
