@@ -64,8 +64,8 @@ county_replace_with_null = {
 }
 
 def get_usa_by_county_df():
-    url = '../covid-data-public/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
-        latest.strftime("%m-%d-%Y"))
+    url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
+        get_public_data_base_url(), latest.strftime("%m-%d-%Y"))
     raw_df = pd.read_csv(url)
 
     column_mapping = {"Province_State": "Province/State",
