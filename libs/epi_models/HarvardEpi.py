@@ -173,6 +173,9 @@ def generate_epi_params(model_parameters):
 
     fraction_severe = model_parameters["hospitalization_rate"] - fraction_critical
 
+    print(fraction_severe)
+    print(fraction_critical)
+
     alpha = 1 / model_parameters["presymptomatic_period"]
 
     # assume hospitalized don't infect
@@ -191,8 +194,9 @@ def generate_epi_params(model_parameters):
 
     rho_0 = 0
     rho_1 = (1 / model_parameters["duration_mild_infections"]) - gamma_1
+
     rho_2 = (1 / model_parameters["hospital_time_recovery"]) * (
-        (fraction_severe + fraction_critical)
+        (fraction_critical / (fraction_severe + fraction_critical))
     )
 
     gamma_2 = (1 / model_parameters["hospital_time_recovery"]) - rho_2

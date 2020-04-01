@@ -143,14 +143,14 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "beta": 0.6,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
-        "hospitalization_rate": 0.0727,
-        "hospitalized_cases_requiring_icu_care": 0.1397,
-        "case_fatality_rate": 0.0109341104294479,
-        "exposed_from_infected": True,
+        "hospitalization_rate": 0.20,  # AH 80% proportion mild - becomed 15% fraction_severe when critical taken out
+        "hospitalized_cases_requiring_icu_care": 0.25,  # AH 5% critical, adjusted to be % of hospitalized that become critical - becomes 5% faction_critical
+        "case_fatality_rate": 0.02,  # AH
+        "exposed_from_infected": True,  # calculate the initial exposed based on infected?
         "exposed_infected_ratio": 1.2,
         "hospital_capacity_change_daily_rate": 1.05,
         "max_hospital_capacity_factor": 2.07,
-        "initial_hospital_bed_utilization": 0.66,
+        "initial_hospital_bed_utilization": 0.6,
         "interventions": interventions,
         "observed_daily_growth_rate": 1.21,
     }
