@@ -1,8 +1,12 @@
 import logging
 import time
 import datetime
-
 import simplejson
+
+from libs.CovidDatasets import CDSDataset, JHUDataset
+from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
+from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
+import os.path
 import pandas as pd
 
 # from libs.CovidDatasets import CDSDataset, JHUDataset
@@ -18,11 +22,8 @@ from libs.build_params import r0, OUTPUT_DIR, INTERVENTIONS
 _logger = logging.getLogger(__name__)
 
 
-def record_results(
-    res, directory, name, num, pop, min_begin_date=None, max_end_date=None
-):
-    import os.path
-
+def prepare_data_for_website(data, population, min_begin_date, max_end_date, interval: int = 4):
+    """Prepares data for website output."""
     # Indexes used by website JSON:
     # date: 0,
     # hospitalizations: 8,
@@ -58,23 +59,23 @@ def record_results(
         "n",
     ]
 
-    website_ordering = pd.DataFrame(res, columns=cols).fillna(0)
+    website_ordering = pd.DataFrame(data, columns=cols).fillna(0)
 
     # @TODO: Find a better way of restricting to every fourth day.
     #        Alternatively, change the website's expectations.
-    website_ordering = pd.DataFrame(website_ordering[website_ordering.index % 4 == 0])
+    website_ordering = website_ordering[website_ordering.index % interval == 0].reset_index()
 
-    if min_begin_date is not None:
+    if min_begin_date:
         website_ordering = pd.DataFrame(
             website_ordering[website_ordering["date"] >= min_begin_date]
         )
-    if max_end_date is not None:
+    if max_end_date:
         website_ordering = pd.DataFrame(
             website_ordering[website_ordering["date"] <= max_end_date]
         )
 
     website_ordering["date"] = website_ordering["date"].dt.strftime("%-m/%-d/%y")
-    website_ordering["population"] = pop
+    website_ordering["population"] = population
     website_ordering = website_ordering.astype(
         {
             "infected_b": int,
@@ -93,19 +94,21 @@ def record_results(
             "population": str,
         }
     )
+    return website_ordering
 
-    with open(
-        os.path.join(directory, name.upper() + "." + str(num) + ".json").format(name),
-        "w",
-    ) as out:
-        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
 
-    # @TODO: Remove once the frontend no longer expects some states to be lowercase.
-    with open(
-        os.path.join(directory, name.lower() + "." + str(num) + ".json").format(name),
-        "w",
-    ) as out:
-        simplejson.dump(website_ordering.values.tolist(), out, ignore_nan=True)
+
+def write_results(data, directory, name):
+    """Write dataset results.
+
+    Args:
+        data: Dataframe to write.
+        directory: base output directory.
+        path: Name of file.
+    """
+    path = os.path.join(directory, name)
+    with open(path, "w") as out:
+        simplejson.dump(data.values.tolist(), out, ignore_nan=True)
 
 
 def model_state(timeseries, population, starting_beds, interventions=None):
@@ -247,13 +250,8 @@ if __name__ == "__main__":
 
         for i, intervention in enumerate(INTERVENTIONS):
             _logger.info(f"Running intervention {i} for {state}")
-            results = model_state(cases, population, beds, intervention)
-            record_results(
-                results,
-                OUTPUT_DIR,
-                state,
-                i,
-                population,
-                min_date,
-                max_date,
-            )
+            intervention = INTERVENTIONS[i]
+            results = model_state(dataset, country, state, starting_beds, intervention)
+            population = dataset.get_population_by_country_state(country, state)
+            website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
+            write_results(website_data, OUTPUT_DIR, '{state}.{i}.json')
