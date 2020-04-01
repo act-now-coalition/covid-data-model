@@ -5,7 +5,7 @@ import pathlib
 import json
 import os.path
 from collections import defaultdict
-from multiprocessing import Process
+import multiprocessing as mp
 
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 import simplejson
@@ -19,6 +19,8 @@ from libs.datasets.dataset_utils import AggregationLevel
 
 _logger = logging.getLogger(__name__)
 
+
+pool = mp.Pool(max(mp.cpu_count()-1, 1))
 
 def prepare_data_for_website(data, population, min_begin_date, max_end_date, interval: int = 4):
     """Prepares data for website output."""
@@ -222,6 +224,21 @@ def build_county_summary(country='USA', state=None):
         output_path = output_dir / f"{state}.summary.json"
         output_path.write_text(json.dumps(data, indent=2))
 
+def forecast_each_state(country, state, timeseries, beds_data, population_data,min_date, max_date,  OUTPUT_DIR):
+    _logger.info(f'Generating data for state: {state}')
+    cases = timeseries.get_data(state=state)
+    beds = beds_data.get_state_level(state)
+    population = population_data.get_state_level(country, state)
+    if not population:
+        _logger.warning(f"Missing population for {state}")
+        return
+
+    for i, intervention in enumerate(get_interventions()):
+        _logger.info(f"Running intervention {i} for {state}")
+        results = model_state(cases, beds, population, intervention)
+        website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
+        write_results(website_data, OUTPUT_DIR, f'{state}.{i}.json')
+
 
 def forecast_each_county(country, state, county, fips, timeseries, beds_data, population_data, skipped, processed, output_dir):
     _logger.debug(f'Running model for county: {county}, {state} - {fips}')
@@ -280,7 +297,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
                 _logger.info(f"Processed {processed + skipped} / {total} - "
                              f"Skipped {skipped} due to missing data")
                 args = (country, state, county, fips, timeseries, beds_data, population_data, skipped, processed, output_dir,)
-                p = Process(target=forecast_each_county,args=args)
+                p = pool.Process(target=forecast_each_county,args=args)
                 p.start()
 
 
@@ -298,20 +315,9 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
         output_dir.mkdir(parents=True)
 
     for state in timeseries.states:
-        _logger.info(f'Generating data for state: {state}')
-        cases = timeseries.get_data(state=state)
-        beds = beds_data.get_state_level(state)
-        population = population_data.get_state_level(country, state)
-        if not population:
-            _logger.warning(f"Missing population for {state}")
-            continue
-
-        for i, intervention in enumerate(get_interventions()):
-            _logger.info(f"Running intervention {i} for {state}")
-            results = model_state(cases, beds, population, intervention)
-            website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-            write_results(website_data, OUTPUT_DIR, f'{state}.{i}.json')
-
+        args = (country, state, timeseries, beds_data, population_data,min_date, max_date,  OUTPUT_DIR,)
+        p = pool.Process(target=forecast_each_state,args=args)
+        p.start()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
