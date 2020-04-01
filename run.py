@@ -136,7 +136,7 @@ def model_state(dataset, country, state, starting_beds, interventions=None):
         "duration_mild_infections": 6,  # Time mildly infected poeple stay sick, In days
         "hospital_time_recovery": 11,  # Duration of hospitalization, In days
         "icu_time_death": 7,  # Time from ICU admission to death, In days
-        "beta": 0.5,
+        "beta": 0.6,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
         "hospitalization_rate": 0.0727,
