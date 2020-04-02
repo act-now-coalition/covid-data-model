@@ -16,7 +16,7 @@ from libs.build_params import OUTPUT_DIR, get_interventions
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel, public_data_hash
 
 _logger = logging.getLogger(__name__)
 
@@ -384,9 +384,11 @@ def run_state_level_forecast(min_date, max_date, country="USA", state=None):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    # @TODO: Remove interventions override once support is in the Harvard model.
-    min_date = datetime.datetime(2020, 3, 7)
-    max_date = datetime.datetime(2020, 7, 6)
-    # build_county_summary()
-    run_county_level_forecast(min_date, max_date)
-    run_state_level_forecast(min_date, max_date)
+    with public_data_hash(os.getenv('COVID_DATA_PUBLIC_HASH', None)) as git_hash:
+        # @TODO: Record git hash in output data for reproducibility
+        # @TODO: Remove interventions override once support is in the Harvard model.
+        min_date = datetime.datetime(2020, 3, 7)
+        max_date = datetime.datetime(2020, 7, 6)
+        # build_county_summary()
+        run_county_level_forecast(min_date, max_date)
+        run_state_level_forecast(min_date, max_date)
