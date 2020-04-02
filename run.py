@@ -230,7 +230,7 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    output_dir = pathlib.Path(OUTPUT_DIR) / "county_summaries"
+    output_dir = pathlib.Path(output_dir) / "county_summaries"
     _logger.info(f"Outputting to {output_dir}")
     if not output_dir.exists():
         _logger.info(f"{output_dir} does not exist, creating")
@@ -302,7 +302,6 @@ def forecast_each_county(
     cases = timeseries.get_data(state=state, country=country, fips=fips)
     beds = beds_data.get_county_level(state, fips=fips)
     population = population_data.get_county_level(country, state, fips=fips)
-
     total_cases = sum(cases.cases)
     if not population or not beds or not total_cases:
         _logger.debug(
@@ -324,7 +323,9 @@ def forecast_each_county(
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
 
-def run_county_level_forecast(min_date, max_date, country="USA", state=None):
+def run_county_level_forecast(
+    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR
+):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
@@ -332,7 +333,7 @@ def run_county_level_forecast(min_date, max_date, country="USA", state=None):
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    output_dir = pathlib.Path(OUTPUT_DIR) / "county"
+    output_dir = pathlib.Path(output_dir) / "county"
     _logger.info(f"Outputting to {output_dir}")
     # Dont want to replace when just running the states
     if output_dir.exists() and not state:
@@ -369,7 +370,9 @@ def run_county_level_forecast(min_date, max_date, country="USA", state=None):
     pool.join()
 
 
-def run_state_level_forecast(min_date, max_date, country="USA", state=None):
+def run_state_level_forecast(
+    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR
+):
     # DH Beds dataset does not have all counties, so using the legacy state
     # level bed data.
     legacy_dataset = LegacyJHUDataset(min_date)
@@ -378,7 +381,7 @@ def run_state_level_forecast(min_date, max_date, country="USA", state=None):
     timeseries = timeseries.get_subset(
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )
-    output_dir = pathlib.Path(OUTPUT_DIR) / "state"
+    output_dir = pathlib.Path(OUTPUT_DIR)
     if output_dir.exists() and not state:
         backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)
