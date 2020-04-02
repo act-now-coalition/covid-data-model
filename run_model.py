@@ -5,7 +5,7 @@ import logging
 import click
 from libs import build_params
 import run
-
+print(run)
 WEB_DEPLOY_PATH = "../covid-projections/public/data"
 
 
@@ -33,7 +33,7 @@ def run_county(state=None, deploy=False):
     run.run_county_level_forecast(
         min_date, max_date, country="USA", state=state, output_dir=output_dir
     )
-    run.build_county_summary()
+    run.build_county_summary(min_date, state=state, output_dir=output_dir)
 
 
 @main.command("state")
