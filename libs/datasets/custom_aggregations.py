@@ -5,7 +5,7 @@ NEW_YORK_COUNTY = "New York County"
 NEW_YORK_COUNTY_FIPS = "36061"
 
 NYC_BOROUGH_FIPS = [
-    "360467",  # Kings County
+    "36047",  # Kings County
     "36081",  # Queens
     "36005",  # Bronx
     "36085",  # Richmond
