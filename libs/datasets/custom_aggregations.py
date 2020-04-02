@@ -29,7 +29,6 @@ def calculate_combined_new_york_counties(
 
     Returns: Update numbers.
     """
-    # county = county.set_index('fips')
     all_fips_to_combine = [NEW_YORK_COUNTY_FIPS] + NYC_BOROUGH_FIPS
 
     is_nyc_fips = data.fips.isin(all_fips_to_combine)
@@ -48,7 +47,6 @@ def calculate_combined_new_york_counties(
 
     aggregated = new_york_county.groupby(group).sum().reset_index()
     aggregated["fips"] = NEW_YORK_COUNTY_FIPS
-    # aggregated['county'] = NEW_YORK_COUNTY
     aggregated["generated"] = True
 
     without_nyc = data[~is_nyc_fips]

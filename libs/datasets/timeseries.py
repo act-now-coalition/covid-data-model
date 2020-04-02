@@ -69,7 +69,9 @@ class TimeseriesDataset(object):
         if aggregation_level == AggregationLevel.COUNTRY:
             group = [self.Fields.COUNTRY]
 
-        data = self.data[self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value].reset_index()
+        data = self.data[
+            self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value
+        ].reset_index()
         return data.iloc[data.groupby(group).date.idxmax(), :]
 
     def get_subset(
@@ -135,7 +137,12 @@ class TimeseriesDataset(object):
         data[cls.Fields.GENERATED] = False
 
         group = [
-            cls.Fields.DATE, cls.Fields.SOURCE, cls.Fields.COUNTRY, cls.Fields.AGGREGATE_LEVEL, cls.Fields.STATE
+            cls.Fields.DATE,
+            cls.Fields.SOURCE,
+            cls.Fields.COUNTRY,
+            cls.Fields.AGGREGATE_LEVEL,
+            cls.Fields.STATE,
+            cls.Fields.GENERATED,
         ]
         data = custom_aggregations.update_with_combined_new_york_counties(
             data, group, are_boroughs_zero=True
@@ -168,12 +175,17 @@ class TimeseriesDataset(object):
         dataset_utils.summarize(
             self.data,
             AggregationLevel.COUNTY,
-            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS]
+            [
+                self.Fields.DATE,
+                self.Fields.COUNTRY,
+                self.Fields.STATE,
+                self.Fields.FIPS,
+            ],
         )
 
         print()
         dataset_utils.summarize(
             self.data,
             AggregationLevel.STATE,
-            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE]
+            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE],
         )
