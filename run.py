@@ -24,12 +24,13 @@ _logger = logging.getLogger(__name__)
 def get_pool(num_cores=None) -> multiprocessing.Pool:
     if not num_cores:
         num_cores = max(multiprocessing.cpu_count() - 1, 1)
-        num_cores = min(num_cores, 6)
 
     return multiprocessing.Pool(num_cores)
 
 
-def prepare_data_for_website(data, population, min_begin_date, max_end_date, interval: int = 4):
+def prepare_data_for_website(
+    data, population, min_begin_date, max_end_date, interval: int = 4
+):
     """Prepares data for website output."""
     # Indexes used by website JSON:
     # date: 0,
@@ -43,8 +44,9 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     # date, total, susceptible, exposed, infected, infected_a, infected_b, infected_c, recovered, dead
     # infected_b == Hospitalized
     # infected_c == Hospitalized in ICU
-    data['all_hospitalized'] = data['infected_b'] + data['infected_c']
-    data['all_infected'] = data['infected_a'] + data['infected_b'] + data['infected_c']
+
+    data["all_hospitalized"] = data["infected_b"] + data["infected_c"]
+    data["all_infected"] = data["infected_a"] + data["infected_b"] + data["infected_c"]
 
     cols = [
         "date",
@@ -72,7 +74,9 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
 
     # @TODO: Find a better way of restricting to every fourth day.
     #        Alternatively, change the website's expectations.
-    website_ordering = website_ordering[website_ordering.index % interval == 0].reset_index()
+    website_ordering = website_ordering[
+        website_ordering.index % interval == 0
+    ].reset_index()
 
     if min_begin_date:
         website_ordering = pd.DataFrame(
@@ -151,25 +155,27 @@ def model_state(timeseries, population, starting_beds, interventions=None):
         # icu = hospitalized * hospitalized_cases_requiring_icu_care
         # expoosed = exposed_infected_ratio * mild
         "presymptomatic_period": 3,  # Time before exposed are infectious, In days
-        "duration_mild_infections": 6,  # Time mildly infected poeple stay sick, In days
-        "hospital_time_recovery": 11,  # Duration of hospitalization, In days
-        "icu_time_death": 7,  # Time from ICU admission to death, In days
+        "duration_mild_infections": 6,  # Time mildly infected people stay sick before hospitalization or recovery, In days
+        "hospital_time_recovery": 6,  # Duration of hospitalization before icu or recovery, In days
+        "icu_time_death": 8,  # Time from ICU admission to death, In days
         "beta": 0.6,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
         "hospitalization_rate": 0.0727,
         "hospitalized_cases_requiring_icu_care": 0.1397,
         "case_fatality_rate": 0.0109341104294479,
-        "exposed_from_infected": True,
+        "exposed_from_infected": True,  # calculate the initial exposed based on infected?
         "exposed_infected_ratio": 1.2,
         "hospital_capacity_change_daily_rate": 1.05,
         "max_hospital_capacity_factor": 2.07,
-        "initial_hospital_bed_utilization": 0.66,
+        "initial_hospital_bed_utilization": 0.6,
         "interventions": interventions,
-        "observed_daily_growth_rate": 1.21
+        "observed_daily_growth_rate": 1.21,
     }
 
-    MODEL_PARAMETERS['beta'] = (0.3 + ( (MODEL_PARAMETERS["observed_daily_growth_rate"] - 1.09) / 0.02) * 0.05)
+    MODEL_PARAMETERS["beta"] = (
+        0.3 + ((MODEL_PARAMETERS["observed_daily_growth_rate"] - 1.09) / 0.02) * 0.05
+    )
 
     MODEL_PARAMETERS["case_fatality_rate_hospitals_overwhelmed"] = (
         MODEL_PARAMETERS["hospitalization_rate"]
@@ -198,7 +204,7 @@ def model_state(timeseries, population, starting_beds, interventions=None):
     return results
 
 
-def build_county_summary(country='USA', state=None):
+def build_county_summary(country="USA", state=None):
     """Builds county summary json files."""
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -218,21 +224,29 @@ def build_county_summary(country='USA', state=None):
         counties_by_state[state].append((county, fips))
 
     for state, counties in counties_by_state.items():
-        data = {
-            'counties_with_data': []
-        }
+        data = {"counties_with_data": []}
         for county, fips in counties:
             cases = timeseries.get_data(state=state, country=country, fips=fips)
             beds = beds_data.get_county_level(state, fips=fips)
             population = population_data.get_county_level(country, state, fips=fips)
             if population and beds and sum(cases.cases):
-                data['counties_with_data'].append(fips)
+                data["counties_with_data"].append(fips)
 
         output_path = output_dir / f"{state}.summary.json"
         output_path.write_text(json.dumps(data, indent=2))
 
-def forecast_each_state(country, state, timeseries, beds_data, population_data, min_date, max_date, output_dir):
-    _logger.info(f'Generating data for state: {state}')
+
+def forecast_each_state(
+    country,
+    state,
+    timeseries,
+    beds_data,
+    population_data,
+    min_date,
+    max_date,
+    output_dir,
+):
+    _logger.info(f"Generating data for state: {state}")
     cases = timeseries.get_data(state=state)
     try:
         beds = beds_data.get_beds_by_country_state(country, state)
@@ -253,8 +267,19 @@ def forecast_each_state(country, state, timeseries, beds_data, population_data, 
         write_results(website_data, output_dir, f'{state}.{i}.json')
 
 
-def forecast_each_county(country, state, county, fips, timeseries, beds_data, population_data, output_dir):
-    _logger.debug(f'Running model for county: {county}, {state} - {fips}')
+def forecast_each_county(
+    country,
+    state,
+    county,
+    fips,
+    timeseries,
+    beds_data,
+    population_data,
+    skipped,
+    processed,
+    output_dir,
+):
+    _logger.debug(f"Running model for county: {county}, {state} - {fips}")
     cases = timeseries.get_data(state=state, country=country, fips=fips)
     beds = beds_data.get_county_level(state, fips=fips)
     population = population_data.get_county_level(country, state, fips=fips)
@@ -272,8 +297,12 @@ def forecast_each_county(country, state, county, fips, timeseries, beds_data, po
             f"total cases: {total_cases} beds: {beds} pop: {population}"
         )
         results = model_state(cases, beds, population, intervention)
-        website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-        write_results(website_data, output_dir, f'{state}.{fips}.{i}.json')
+        website_data = prepare_data_for_website(
+            results, population, min_date, max_date, interval=4
+        )
+        write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
+
+
 
 
 def run_county_level_forecast(min_date, max_date, country='USA', state=None):
@@ -287,7 +316,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     output_dir = pathlib.Path(OUTPUT_DIR) / "county"
     _logger.info(f"Outputting to {output_dir}")
     if output_dir.exists():
-        backup = output_dir.name + '.' + str(int(time.time()))
+        backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)
 
     output_dir.mkdir(parents=True)
@@ -299,11 +328,11 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
 
     pool = get_pool()
     for state, counties in counties_by_state.items():
-        _logger.info(f'Running county models for {state}')
+        _logger.info(f"Running county models for {state}")
 
         for county, fips in counties:
-                args = (country, state, county, fips, timeseries, beds_data, population_data, output_dir,)
-                pool.apply_async(forecast_each_county, args=args)
+            args = (country, state, county, fips, timeseries, beds_data, population_data, output_dir,)
+            pool.apply_async(forecast_each_county, args=args)
 
     pool.close()
     pool.join()

@@ -82,14 +82,13 @@ def dataframe_ify(data, start, end, steps):
 # In the future could include recovery or infection from the exposed class (asymptomatics)
 def deriv(y0, t, beta, alpha, gamma, rho, mu, N):
     dy = [0, 0, 0, 0, 0, 0]
-    # S = N - sum(y0)
     S = np.max([N - sum(y0), 0])
 
-    dy[0] = np.min([(np.dot(beta[1:3], y0[1:3]) * S), S]) - (alpha * y0[0])  # Exposed
+    dy[0] = np.min([(np.dot(beta[1:4], y0[1:4]) * S), S]) - (alpha * y0[0])  # Exposed
     dy[1] = (alpha * y0[0]) - (gamma[1] + rho[1]) * y0[1]  # Ia - Mildly ill
     dy[2] = (rho[1] * y0[1]) - (gamma[2] + rho[2]) * y0[2]  # Ib - Hospitalized
     dy[3] = (rho[2] * y0[2]) - ((gamma[3] + mu) * y0[3])  # Ic - ICU
-    dy[4] = np.min([np.dot(gamma[1:3], y0[1:3]), sum(y0[1:3])])  # Recovered
+    dy[4] = np.min([np.dot(gamma[1:4], y0[1:4]), sum(y0[1:4])])  # Recovered
     dy[5] = mu * y0[3]  # Deaths
 
     return dy
@@ -192,8 +191,9 @@ def generate_epi_params(model_parameters):
 
     rho_0 = 0
     rho_1 = (1 / model_parameters["duration_mild_infections"]) - gamma_1
+
     rho_2 = (1 / model_parameters["hospital_time_recovery"]) * (
-        (fraction_severe + fraction_critical)
+        (fraction_critical / (fraction_severe + fraction_critical))
     )
 
     gamma_2 = (1 / model_parameters["hospital_time_recovery"]) - rho_2
@@ -201,6 +201,7 @@ def generate_epi_params(model_parameters):
     mu = (1 / model_parameters["icu_time_death"]) * (
         model_parameters["case_fatality_rate"] / fraction_critical
     )
+
     gamma_3 = (1 / model_parameters["icu_time_death"]) - mu
 
     seir_params = {
