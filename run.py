@@ -124,7 +124,6 @@ def prepare_data_for_website(
 
     website_ordering.loc[relevant_date_index, 'all_infected'] = historicals_df[extract_real_date_index]['estimated_infected'].values
     website_ordering.loc[relevant_date_index, 'all_hospitalized'] = historicals_df[extract_real_date_index]['estimated_hospitalized'].values
-    website_ordering.to_csv('deleteme.csv')
 
     return website_ordering
 
