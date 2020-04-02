@@ -101,7 +101,6 @@ def get_usa_by_states_df():
     abbrev_df = get_abbrev_df()
     interventions_df = get_interventions_df()
     projections_df = get_projections_df()
-    print(projections_df)
 
     states_group = us_only.groupby(['Province/State'])
     states_agg = states_group.aggregate({
@@ -137,8 +136,8 @@ def get_usa_by_states_df():
 
     states_remapped = states_abbrev.rename(columns=state_col_remap)
 
-    new_cols = list(set(list(state_col_remap.values())))
-    states_final = pd.DataFrame(states_remapped, columns=(output_cols + new_cols))
+    new_cols = list(set(output_cols + list(state_col_remap.values())))
+    states_final = pd.DataFrame(states_remapped, columns=new_cols)
     states_final = states_final.fillna(NULL_VALUE)
     states_final['Combined Key'] = states_final['Province/State']
     states_final['State/County FIPS Code'] = states_final['Province/State'].map(us_fips)
