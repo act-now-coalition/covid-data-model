@@ -44,7 +44,7 @@ def get_hospitals_and_shortfalls(projection, days_out):
         if row_time >= days_out:
             hospitalizations = int(row[9])
             beds = int(row[12])
-            short_fall = abs(hospitalizations - beds) if hospitalizations > beds else 0
+            short_fall = abs(beds - hospitalizations) if hospitalizations > beds else 0
             return hospitalizations, short_fall
     return 0, 0
 
@@ -54,7 +54,7 @@ def get_projections_df():
     intervention_type = 0 # None, as requested
 
     # get 16 and 32 days out from now
-    today = datetime.datetime.now() - datetime.timedelta(days=1)
+    today = datetime.datetime.now()
     sixteen_days = today + datetime.timedelta(days=16)
     thirty_two_days = today + datetime.timedelta(days=32)
 
