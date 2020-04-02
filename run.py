@@ -23,7 +23,7 @@ _logger = logging.getLogger(__name__)
 
 def get_pool(num_cores=None) -> multiprocessing.Pool:
     if not num_cores:
-        num_cores = max(multiprocessing.cpu_count() - 1, 1)
+        num_cores = max(multiprocessing.cpu_count() - 2, 1)
 
     return multiprocessing.Pool(num_cores)
 
