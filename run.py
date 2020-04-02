@@ -5,7 +5,7 @@ import pathlib
 import json
 import os.path
 from collections import defaultdict
-import multiprocessing as mp
+import multiprocessing
 
 from libs.CovidDatasets import JHUDataset as LegacyJHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
@@ -21,7 +21,13 @@ from libs.datasets.dataset_utils import AggregationLevel
 _logger = logging.getLogger(__name__)
 
 
-pool = mp.Pool(max(mp.cpu_count()-1, 1))
+def get_pool(num_cores=None) -> multiprocessing.Pool:
+    if not num_cores:
+        num_cores = max(multiprocessing.cpu_count() - 1, 1)
+        num_cores = min(num_cores, 6)
+
+    return multiprocessing.Pool(num_cores)
+
 
 def prepare_data_for_website(data, population, min_begin_date, max_end_date, interval: int = 4):
     """Prepares data for website output."""
@@ -297,6 +303,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     processed = 0
     skipped = 0
     total = len(county_keys)
+    pool = get_pool()
     for state, counties in counties_by_state.items():
         _logger.info(f'Running county models for {state}')
 
@@ -329,6 +336,7 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
         _logger.info(f"{output_dir} does not exist, creating")
         output_dir.mkdir(parents=True)
 
+    pool = get_pool()
     for state in timeseries.states:
         args = (country, state, timeseries, legacy_dataset, population_data,min_date, max_date,  output_dir,)
         p = pool.Process(target=forecast_each_state,args=args)
