@@ -167,14 +167,26 @@ def get_usa_by_states_df():
 
     return states_final
 
-# note it's unclear to me if 'Incident Rate' is a number, float, etc
 def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
-    fields = ['Confirmed', 'Recovered', 'Deaths', 'Active', 'Incident Rate', 'People Tested', 'Intervention', '4-day Hospitalizations Prediction', '8-day Hospitalizations Prediction'] + new_cols
-    fields = [field for field in fields if field in df.columns]
+    blacklisted_fields = ['OBJECTID', 'Province/State', 'Country/Region', 'Last Update',
+        'Latitude', 'Longitude', 'County', 'State/County FIPS Code', 'Combined Key', 'Shape']
+
+    fields = [field for field in df.columns if field not in blacklisted_fields]
+
+    field_name_mappings = {field: field for field in fields}
+    # HACK: shapefiles can only have fieldnames 10 chars long, so we manually
+    # shorten some of the unusual field names we get from the dataset
+    field_name_mappings['4-day Hospitalizations Prediction'] = '4d Hospitalizations'
+    field_name_mappings['8-day Hospitalizations Prediction'] = '8d Hospitalizations'
+    field_name_mappings['16-day_Hospitalization_Prediction'] = '16d Hospitalizations'
+    field_name_mappings['32-day_Hospitalization_Prediction'] = '32d Hospitalizations'
+    field_name_mappings['16-day_Beds_Shortfall'] = '16d Bed Shortfall'
+    field_name_mappings['32-day_Beds_Shortfall'] = '32d Bed Shortfall'
 
     shp_writer.fields = shp_reader.fields # Preserve fields that come from the census
 
     for field_name in fields:
+        field_name = field_name_mappings[field_name]
         if field_name == 'Intervention': # Intervention is currently our only non-integer field
             shp_writer.field(field_name, 'C', size=32)
         else:
@@ -188,8 +200,9 @@ def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, 
 
         new_record = shapeRecord.record.as_dict()
         for field_name in fields:
+            truncated_field_name = field_name_mappings[field_name]
             # random bad data seems to come back as this weird string, not too sure about this
-            new_record[field_name] = None if row[field_name] == '<Null>' else row[field_name]
+            new_record[truncated_field_name] = None if row[field_name] == '<Null>' else row[field_name]
         shp_writer.shape(shapeRecord.shape)
         shp_writer.record(**new_record)
 
