@@ -381,7 +381,7 @@ def run_state_level_forecast(
     timeseries = timeseries.get_subset(
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )
-    output_dir = pathlib.Path(OUTPUT_DIR) / "state"
+    output_dir = pathlib.Path(OUTPUT_DIR)
     if output_dir.exists() and not state:
         backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)

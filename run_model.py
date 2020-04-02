@@ -52,7 +52,7 @@ def run_state(state=None, deploy=False):
     if deploy:
         output_dir = WEB_DEPLOY_PATH
 
-    run.run_county_level_forecast(
+    run.run_state_level_forecast(
         min_date, max_date, country="USA", state=state, output_dir=output_dir
     )
 
