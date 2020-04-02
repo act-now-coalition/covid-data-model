@@ -263,8 +263,10 @@ def forecast_each_state(
     for i, intervention in enumerate(get_interventions()):
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
-        website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-        write_results(website_data, output_dir, f'{state}.{i}.json')
+        website_data = prepare_data_for_website(
+            results, population, min_date, max_date, interval=4
+        )
+        write_results(website_data, output_dir, f"{state}.{i}.json")
 
 
 def forecast_each_county(
@@ -275,11 +277,9 @@ def forecast_each_county(
     timeseries,
     beds_data,
     population_data,
-    skipped,
-    processed,
     output_dir,
 ):
-    _logger.debug(f"Running model for county: {county}, {state} - {fips}")
+    _logger.info(f"Running model for county: {county}, {state} - {fips}")
     cases = timeseries.get_data(state=state, country=country, fips=fips)
     beds = beds_data.get_county_level(state, fips=fips)
     population = population_data.get_county_level(country, state, fips=fips)
@@ -303,9 +303,7 @@ def forecast_each_county(
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
 
-
-
-def run_county_level_forecast(min_date, max_date, country='USA', state=None):
+def run_county_level_forecast(min_date, max_date, country="USA", state=None):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
@@ -329,16 +327,24 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     pool = get_pool()
     for state, counties in counties_by_state.items():
         _logger.info(f"Running county models for {state}")
-
         for county, fips in counties:
-            args = (country, state, county, fips, timeseries, beds_data, population_data, output_dir,)
+            args = (
+                country,
+                state,
+                county,
+                fips,
+                timeseries,
+                beds_data,
+                population_data,
+                output_dir,
+            )
             pool.apply_async(forecast_each_county, args=args)
 
     pool.close()
     pool.join()
 
 
-def run_state_level_forecast(min_date, max_date, country='USA', state=None):
+def run_state_level_forecast(min_date, max_date, country="USA", state=None):
     # DH Beds dataset does not have all counties, so using the legacy state
     # level bed data.
     legacy_dataset = LegacyJHUDataset(min_date)
@@ -349,7 +355,7 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
     )
     output_dir = pathlib.Path(OUTPUT_DIR) / "state"
     if output_dir.exists():
-        backup = output_dir.name + '.' + str(int(time.time()))
+        backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)
 
     output_dir.mkdir(parents=True)
@@ -360,7 +366,16 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
 
     pool = get_pool()
     for state in timeseries.states:
-        args = (country, state, timeseries, legacy_dataset, population_data, min_date, max_date, output_dir)
+        args = (
+            country,
+            state,
+            timeseries,
+            legacy_dataset,
+            population_data,
+            min_date,
+            max_date,
+            output_dir,
+        )
         pool.apply_async(forecast_each_state, args=args)
 
     pool.close()
@@ -374,4 +389,4 @@ if __name__ == "__main__":
     max_date = datetime.datetime(2020, 7, 6)
     # build_county_summary()
     run_county_level_forecast(min_date, max_date)
-    # run_state_level_forecast(min_date, max_date)
+    run_state_level_forecast(min_date, max_date)
