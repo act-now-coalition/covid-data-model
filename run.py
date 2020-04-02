@@ -19,9 +19,12 @@ from libs.datasets.dataset_utils import AggregationLevel
 
 _logger = logging.getLogger(__name__)
 
-pool = mp.Pool(max(mp.cpu_count()-1, 1))
+pool = mp.Pool(max(mp.cpu_count() - 1, 1))
 
-def prepare_data_for_website(data, population, min_begin_date, max_end_date, interval: int = 4):
+
+def prepare_data_for_website(
+    data, population, min_begin_date, max_end_date, interval: int = 4
+):
     """Prepares data for website output."""
     # Indexes used by website JSON:
     # date: 0,
@@ -36,8 +39,8 @@ def prepare_data_for_website(data, population, min_begin_date, max_end_date, int
     # infected_b == Hospitalized
     # infected_c == Hospitalized in ICU
 
-    data['all_hospitalized'] = data['infected_b'] + data['infected_c']
-    data['all_infected'] = data['infected_a'] + data['infected_b'] + data['infected_c']
+    data["all_hospitalized"] = data["infected_b"] + data["infected_c"]
+    data["all_infected"] = data["infected_a"] + data["infected_b"] + data["infected_c"]
 
     cols = [
         "date",
@@ -152,9 +155,9 @@ def model_state(timeseries, population, starting_beds, interventions=None):
         "beta": 0.6,
         "beta_hospitalized": 0.1,
         "beta_icu": 0.1,
-        "hospitalization_rate": 0.20,  # AH 80% proportion mild - becomed 15% fraction_severe when critical taken out
-        "hospitalized_cases_requiring_icu_care": 0.25,  # AH 5% critical, adjusted to be % of hospitalized that become critical - becomes 5% faction_critical
-        "case_fatality_rate": 0.02,  # AH
+        "hospitalization_rate": 0.0727,
+        "hospitalized_cases_requiring_icu_care": 0.1397,
+        "case_fatality_rate": 0.0109341104294479,
         "exposed_from_infected": True,  # calculate the initial exposed based on infected?
         "exposed_infected_ratio": 1.2,
         "hospital_capacity_change_daily_rate": 1.05,
@@ -195,7 +198,7 @@ def model_state(timeseries, population, starting_beds, interventions=None):
     return results
 
 
-def build_county_summary(country='USA', state=None):
+def build_county_summary(country="USA", state=None):
     """Builds county summary json files."""
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -215,21 +218,29 @@ def build_county_summary(country='USA', state=None):
         counties_by_state[state].append((county, fips))
 
     for state, counties in counties_by_state.items():
-        data = {
-            'counties_with_data': []
-        }
+        data = {"counties_with_data": []}
         for county, fips in counties:
             cases = timeseries.get_data(state=state, country=country, fips=fips)
             beds = beds_data.get_county_level(state, fips=fips)
             population = population_data.get_county_level(country, state, fips=fips)
             if population and beds and sum(cases.cases):
-                data['counties_with_data'].append(fips)
+                data["counties_with_data"].append(fips)
 
         output_path = output_dir / f"{state}.summary.json"
         output_path.write_text(json.dumps(data, indent=2))
 
-def forecast_each_state(country, state, timeseries, beds_data, population_data,min_date, max_date,  OUTPUT_DIR):
-    _logger.info(f'Generating data for state: {state}')
+
+def forecast_each_state(
+    country,
+    state,
+    timeseries,
+    beds_data,
+    population_data,
+    min_date,
+    max_date,
+    OUTPUT_DIR,
+):
+    _logger.info(f"Generating data for state: {state}")
     cases = timeseries.get_data(state=state)
     beds = beds_data.get_state_level(state)
     population = population_data.get_state_level(country, state)
@@ -240,12 +251,25 @@ def forecast_each_state(country, state, timeseries, beds_data, population_data,m
     for i, intervention in enumerate(get_interventions()):
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
-        website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-        write_results(website_data, OUTPUT_DIR, f'{state}.{i}.json')
+        website_data = prepare_data_for_website(
+            results, population, min_date, max_date, interval=4
+        )
+        write_results(website_data, OUTPUT_DIR, f"{state}.{i}.json")
 
 
-def forecast_each_county(country, state, county, fips, timeseries, beds_data, population_data, skipped, processed, output_dir):
-    _logger.debug(f'Running model for county: {county}, {state} - {fips}')
+def forecast_each_county(
+    country,
+    state,
+    county,
+    fips,
+    timeseries,
+    beds_data,
+    population_data,
+    skipped,
+    processed,
+    output_dir,
+):
+    _logger.debug(f"Running model for county: {county}, {state} - {fips}")
     cases = timeseries.get_data(state=state, country=country, fips=fips)
     beds = beds_data.get_county_level(state, fips=fips)
     population = population_data.get_county_level(country, state, fips=fips)
@@ -266,10 +290,13 @@ def forecast_each_county(country, state, county, fips, timeseries, beds_data, po
             f"total cases: {total_cases} beds: {beds} pop: {population}"
         )
         results = model_state(cases, beds, population, intervention)
-        website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-        write_results(website_data, output_dir, f'{state}.{fips}.{i}.json')
+        website_data = prepare_data_for_website(
+            results, population, min_date, max_date, interval=4
+        )
+        write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
-def run_county_level_forecast(min_date, max_date, country='USA', state=None):
+
+def run_county_level_forecast(min_date, max_date, country="USA", state=None):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
@@ -280,7 +307,7 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     output_dir = pathlib.Path(OUTPUT_DIR) / "county"
     _logger.info(f"Outputting to {output_dir}")
     if output_dir.exists():
-        backup = output_dir.name + '.' + str(int(time.time()))
+        backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)
 
     output_dir.mkdir(parents=True)
@@ -294,18 +321,31 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     skipped = 0
     total = len(county_keys)
     for state, counties in counties_by_state.items():
-        _logger.info(f'Running county models for {state}')
+        _logger.info(f"Running county models for {state}")
 
         for county, fips in counties:
             if (processed + skipped) % 200 == 0:
-                _logger.info(f"Processed {processed + skipped} / {total} - "
-                             f"Skipped {skipped} due to missing data")
-                args = (country, state, county, fips, timeseries, beds_data, population_data, skipped, processed, output_dir,)
-                p = pool.Process(target=forecast_each_county,args=args)
+                _logger.info(
+                    f"Processed {processed + skipped} / {total} - "
+                    f"Skipped {skipped} due to missing data"
+                )
+                args = (
+                    country,
+                    state,
+                    county,
+                    fips,
+                    timeseries,
+                    beds_data,
+                    population_data,
+                    skipped,
+                    processed,
+                    output_dir,
+                )
+                p = pool.Process(target=forecast_each_county, args=args)
                 p.start()
 
 
-def run_state_level_forecast(min_date, max_date, country='USA', state=None):
+def run_state_level_forecast(min_date, max_date, country="USA", state=None):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
@@ -319,9 +359,19 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
         output_dir.mkdir(parents=True)
 
     for state in timeseries.states:
-        args = (country, state, timeseries, beds_data, population_data,min_date, max_date,  OUTPUT_DIR,)
-        p = pool.Process(target=forecast_each_state,args=args)
+        args = (
+            country,
+            state,
+            timeseries,
+            beds_data,
+            population_data,
+            min_date,
+            max_date,
+            OUTPUT_DIR,
+        )
+        p = pool.Process(target=forecast_each_state, args=args)
         p.start()
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

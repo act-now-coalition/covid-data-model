@@ -173,9 +173,6 @@ def generate_epi_params(model_parameters):
 
     fraction_severe = model_parameters["hospitalization_rate"] - fraction_critical
 
-    print(fraction_severe)
-    print(fraction_critical)
-
     alpha = 1 / model_parameters["presymptomatic_period"]
 
     # assume hospitalized don't infect
@@ -204,6 +201,7 @@ def generate_epi_params(model_parameters):
     mu = (1 / model_parameters["icu_time_death"]) * (
         model_parameters["case_fatality_rate"] / fraction_critical
     )
+
     gamma_3 = (1 / model_parameters["icu_time_death"]) - mu
 
     seir_params = {
