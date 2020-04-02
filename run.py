@@ -27,10 +27,20 @@ def get_pool(num_cores=None) -> multiprocessing.Pool:
 
     return multiprocessing.Pool(num_cores)
 
+def get_backfill_historical_estimates(df):
+
+    CONFIRMED_HOSPITALIZED_RATIO = 4
+    RECOVERY_SHIFT = 13
+    HOSPITALIZATION_RATIO = 0.073
+
+    df['estimated_recovered'] = df.cases.shift(RECOVERY_SHIFT).fillna(0)
+    df['active'] = df.cases - (df.deaths + df.estimated_recovered)
+    df['estimated_hospitalized'] = df['active']/CONFIRMED_HOSPITALIZED_RATIO
+    df['estimated_infected'] = df['estimated_hospitalized']/HOSPITALIZATION_RATIO
+    return df
 
 def prepare_data_for_website(
-    data, population, min_begin_date, max_end_date, interval: int = 4
-):
+    data, historicals, population, min_begin_date, max_end_date, interval: int = 4):
     """Prepares data for website output."""
     # Indexes used by website JSON:
     # date: 0,
@@ -107,6 +117,14 @@ def prepare_data_for_website(
             "population": str,
         }
     )
+    historicals_df = get_backfill_historical_estimates(historicals)
+
+    relevant_date_index = pd.to_datetime(website_ordering.date).isin(historicals_df.date)
+    extract_real_date_index = historicals_df.date.isin(pd.to_datetime(website_ordering.date))
+
+    website_ordering.loc[relevant_date_index, 'all_infected'] = historicals_df[extract_real_date_index]['estimated_infected'].values
+    website_ordering.loc[relevant_date_index, 'all_hospitalized'] = historicals_df[extract_real_date_index]['estimated_hospitalized'].values
+
     return website_ordering
 
 
@@ -123,7 +141,7 @@ def write_results(data, directory, name):
         simplejson.dump(data.values.tolist(), out, ignore_nan=True)
 
 
-def model_state(timeseries, population, starting_beds, interventions=None):
+def model_state(timeseries, starting_beds, population, interventions=None):
 
     # we should cut this, only used by the get_timeseries function, but probably not needed
     MODEL_INTERVAL = 4
@@ -134,7 +152,6 @@ def model_state(timeseries, population, starting_beds, interventions=None):
         "beds": starting_beds,
         "population": population,
     }
-
     MODEL_PARAMETERS = {
         "model": "seir",
         "use_harvard_params": False,  # If True use the harvard parameters directly, if not calculate off the above
@@ -204,7 +221,7 @@ def model_state(timeseries, population, starting_beds, interventions=None):
     return results
 
 
-def build_county_summary(country="USA", state=None, output_dir=OUTPUT_DIR):
+def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_DIR):
     """Builds county summary json files."""
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -264,12 +281,14 @@ def forecast_each_state(
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
-            results, population, min_date, max_date, interval=4
+            results, cases, population, min_date, max_date, interval=4
         )
         write_results(website_data, output_dir, f"{state}.{i}.json")
 
 
 def forecast_each_county(
+    min_date,
+    max_date,
     country,
     state,
     county,
@@ -290,15 +309,17 @@ def forecast_each_county(
         )
         return
 
+    _logger.info(
+        f"Running interventions for {county}, {state}: {fips} - "
+        f"total cases: {total_cases} beds: {beds} pop: {population}"
+    )
+
     for i, intervention in enumerate(get_interventions()):
-        _logger.debug(
-            f"Running intervention {i} for {state} - "
-            f"total cases: {total_cases} beds: {beds} pop: {population}"
-        )
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
-            results, population, min_date, max_date, interval=4
+            results, cases, population, min_date, max_date, interval=4
         )
+
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
 
@@ -314,11 +335,12 @@ def run_county_level_forecast(
 
     output_dir = pathlib.Path(output_dir) / "county"
     _logger.info(f"Outputting to {output_dir}")
-    if output_dir.exists():
+    # Dont want to replace when just running the states
+    if output_dir.exists() and not state:
         backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)
 
-    output_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     counties_by_state = defaultdict(list)
     county_keys = timeseries.county_keys()
@@ -330,6 +352,8 @@ def run_county_level_forecast(
         _logger.info(f"Running county models for {state}")
         for county, fips in counties:
             args = (
+                min_date,
+                max_date,
                 country,
                 state,
                 county,
@@ -339,6 +363,7 @@ def run_county_level_forecast(
                 population_data,
                 output_dir,
             )
+            # forecast_each_county(*args)
             pool.apply_async(forecast_each_county, args=args)
 
     pool.close()
@@ -357,15 +382,11 @@ def run_state_level_forecast(
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )
     output_dir = pathlib.Path(OUTPUT_DIR) / "state"
-    if output_dir.exists():
+    if output_dir.exists() and not state:
         backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)
 
-    output_dir.mkdir(parents=True)
-    _logger.info(f"Outputting to {output_dir}")
-    if not output_dir.exists():
-        _logger.info(f"{output_dir} does not exist, creating")
-        output_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     pool = get_pool()
     for state in timeseries.states:
