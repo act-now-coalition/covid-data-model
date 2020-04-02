@@ -27,10 +27,20 @@ def get_pool(num_cores=None) -> multiprocessing.Pool:
 
     return multiprocessing.Pool(num_cores)
 
+def get_backfill_historical_estimates(df):
+
+    CONFIRMED_HOSPITALIZED_RATIO = 4
+    RECOVERY_SHIFT = 13
+    HOSPITALIZATION_RATIO = 0.073
+
+    df['estimated_recovered'] = df.cases.shift(RECOVERY_SHIFT).fillna(0)
+    df['active'] = df.cases - (df.deaths + df.estimated_recovered)
+    df['estimated_hospitalized'] = df['active']/CONFIRMED_HOSPITALIZED_RATIO
+    df['estimated_infected'] = df['estimated_hospitalized']/HOSPITALIZATION_RATIO
+    return df
 
 def prepare_data_for_website(
-    data, population, min_begin_date, max_end_date, interval: int = 4
-):
+    data, historicals, population, min_begin_date, max_end_date, interval: int = 4):
     """Prepares data for website output."""
     # Indexes used by website JSON:
     # date: 0,
@@ -107,6 +117,14 @@ def prepare_data_for_website(
             "population": str,
         }
     )
+    historicals_df = get_backfill_historical_estimates(historicals)
+
+    relevant_date_index = pd.to_datetime(website_ordering.date).isin(historicals_df.date)
+    extract_real_date_index = historicals_df.date.isin(pd.to_datetime(website_ordering.date))
+
+    website_ordering.loc[relevant_date_index, 'all_infected'] = historicals_df[extract_real_date_index]['estimated_infected'].values
+    website_ordering.loc[relevant_date_index, 'all_hospitalized'] = historicals_df[extract_real_date_index]['estimated_hospitalized'].values
+
     return website_ordering
 
 
@@ -264,7 +282,7 @@ def forecast_each_state(
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
-            results, population, min_date, max_date, interval=4
+            results, cases, population, min_date, max_date, interval=4
         )
         write_results(website_data, output_dir, f"{state}.{i}.json")
 
@@ -298,7 +316,7 @@ def forecast_each_county(
         )
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
-            results, population, min_date, max_date, interval=4
+            results, cases, population, min_date, max_date, interval=4
         )
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
