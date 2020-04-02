@@ -231,7 +231,7 @@ def build_county_summary(country='USA', state=None):
         output_path = output_dir / f"{state}.summary.json"
         output_path.write_text(json.dumps(data, indent=2))
 
-def forecast_each_state(country, state, timeseries, beds_data, population_data,min_date, max_date,  OUTPUT_DIR):
+def forecast_each_state(country, state, timeseries, beds_data, population_data, min_date, max_date, output_dir):
     _logger.info(f'Generating data for state: {state}')
     cases = timeseries.get_data(state=state)
     try:
@@ -250,10 +250,10 @@ def forecast_each_state(country, state, timeseries, beds_data, population_data,m
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(results, population, min_date, max_date, interval=4)
-        write_results(website_data, OUTPUT_DIR, f'{state}.{i}.json')
+        write_results(website_data, output_dir, f'{state}.{i}.json')
 
 
-def forecast_each_county(country, state, county, fips, timeseries, beds_data, population_data, skipped, processed, output_dir):
+def forecast_each_county(country, state, county, fips, timeseries, beds_data, population_data, output_dir):
     _logger.debug(f'Running model for county: {county}, {state} - {fips}')
     cases = timeseries.get_data(state=state, country=country, fips=fips)
     beds = beds_data.get_county_level(state, fips=fips)
@@ -264,10 +264,7 @@ def forecast_each_county(country, state, county, fips, timeseries, beds_data, po
         _logger.debug(
             f"Missing data, skipping: Beds: {beds} Pop: {population} Total Cases: {total_cases}"
         )
-        skipped += 1
         return
-    else:
-        processed += 1
 
     for i, intervention in enumerate(get_interventions()):
         _logger.debug(
@@ -300,20 +297,16 @@ def run_county_level_forecast(min_date, max_date, country='USA', state=None):
     for country, state, county, fips in county_keys:
         counties_by_state[state].append((county, fips))
 
-    processed = 0
-    skipped = 0
-    total = len(county_keys)
     pool = get_pool()
     for state, counties in counties_by_state.items():
         _logger.info(f'Running county models for {state}')
 
         for county, fips in counties:
-            if (processed + skipped) % 200 == 0:
-                _logger.info(f"Processed {processed + skipped} / {total} - "
-                             f"Skipped {skipped} due to missing data")
-                args = (country, state, county, fips, timeseries, beds_data, population_data, skipped, processed, output_dir,)
-                p = pool.Process(target=forecast_each_county,args=args)
-                p.start()
+                args = (country, state, county, fips, timeseries, beds_data, population_data, output_dir,)
+                pool.apply_async(forecast_each_county, args=args)
+
+    pool.close()
+    pool.join()
 
 
 def run_state_level_forecast(min_date, max_date, country='USA', state=None):
@@ -338,9 +331,11 @@ def run_state_level_forecast(min_date, max_date, country='USA', state=None):
 
     pool = get_pool()
     for state in timeseries.states:
-        args = (country, state, timeseries, legacy_dataset, population_data,min_date, max_date,  output_dir,)
-        p = pool.Process(target=forecast_each_state,args=args)
-        p.start()
+        args = (country, state, timeseries, legacy_dataset, population_data, min_date, max_date, output_dir)
+        pool.apply_async(forecast_each_state, args=args)
+
+    pool.close()
+    pool.join()
 
 
 if __name__ == "__main__":
