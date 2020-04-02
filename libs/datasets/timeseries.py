@@ -3,6 +3,7 @@ import enum
 import pandas as pd
 import datetime
 from libs.datasets import dataset_utils
+from libs.datasets import custom_aggregations
 from libs.datasets.dataset_utils import AggregationLevel
 
 
@@ -132,6 +133,14 @@ class TimeseriesDataset(object):
         data = data.rename(columns=to_common_fields)[final_columns]
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
         data[cls.Fields.GENERATED] = False
+
+        group = [
+            cls.Fields.DATE, cls.Fields.SOURCE, cls.Fields.COUNTRY, cls.Fields.AGGREGATE_LEVEL, cls.Fields.STATE
+        ]
+        data = custom_aggregations.update_with_combined_new_york_counties(
+            data, group, are_boroughs_zero=True
+        )
+
         if fill_missing_state:
             state_groupby_fields = [
                 cls.Fields.DATE,
