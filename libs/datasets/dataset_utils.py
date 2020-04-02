@@ -1,15 +1,40 @@
+from contextlib import contextmanager
 import enum
+import git
 import logging
 import pathlib
 import pandas as pd
+from typing import Optional
 from libs import build_params
 
 LOCAL_PUBLIC_DATA_PATH = (
     pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
 )
 
-
 _logger = logging.getLogger(__name__)
+
+@contextmanager
+def public_data_hash(git_hash: Optional[str]):
+    '''
+    If given a git hash, attempts to set the local covid-data-public
+    repository to the given hash. Yields the git hash so that it can
+    be recorded along with the data generated.
+    '''
+    if git_hash is not None:
+        repo = git.Repo(LOCAL_PUBLIC_DATA_PATH)
+        if repo.is_dirty():
+            raise RuntimeError('Cannot set covid-data-public repo hash, working tree is dirty')
+        _logger.info(f'Using git hash {git_hash}')
+        # HEAD is a symbolic reference, grab what it points to
+        previous_head = repo.head.ref
+        # Jump to a detached head referencing the commit passed in
+        repo.head.set_reference(git_hash)
+        repo.head.reset(index=True, working_tree=True)
+        yield git_hash
+        # Reset to whatever was previously checked out
+        previous_head.checkout()
+    else:
+        yield git_hash
 
 
 class AggregationLevel(enum.Enum):
