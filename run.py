@@ -240,6 +240,7 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
     for country, state, county, fips in timeseries.county_keys():
         counties_by_state[state].append((county, fips))
 
+    all_data = {"counties_with_data": []}
     for state, counties in counties_by_state.items():
         data = {"counties_with_data": []}
         for county, fips in counties:
@@ -248,9 +249,13 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
             population = population_data.get_county_level(country, state, fips=fips)
             if population and beds and sum(cases.cases):
                 data["counties_with_data"].append(fips)
+                all_data["counties_with_data"].append(fips)
 
         output_path = output_dir / f"{state}.summary.json"
         output_path.write_text(json.dumps(data, indent=2))
+
+    output_path = output_dir / "fips_summary.json"
+    output_path.write_text(json.dumps(all_data, indent=2))
 
 
 def forecast_each_state(
