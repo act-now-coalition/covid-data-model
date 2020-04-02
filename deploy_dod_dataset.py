@@ -3,7 +3,7 @@ import boto3
 import os
 
 from libs.build_dod_dataset import get_usa_by_county_df, get_usa_by_states_df, get_usa_county_shapefile, get_usa_state_shapefile
-
+from libs.build_dod_dataset import get_usa_by_county_with_projection_df
 
 class DatasetDeployer():
 
@@ -62,7 +62,7 @@ def deploy():
 
     counties_blob = {
         'key': 'counties.csv',
-        'body': get_usa_by_county_df().to_csv()
+        'body': get_usa_by_county_with_projection_df().to_csv()
         }
     countiesObj = DatasetDeployer(**counties_blob)
     countiesObj.persist()
@@ -95,4 +95,5 @@ if __name__ == "__main__":
     # triggering persistance to local
     python deploy_dod_dataset.py
     """
+
     deploy()

@@ -6,6 +6,9 @@ import os.path
 import pprint
 import shapefile
 import simplejson
+import statistics
+import math
+
 from urllib.parse import urlparse
 from collections import defaultdict
 
@@ -41,7 +44,7 @@ def get_abbrev_df():
 def get_projections_3_26_df():
     return pd.read_csv('projections_03-26-2020.csv')
 
-def get_hospitals_and_shortfalls(projection, days_out): 
+def get_hospitals_and_shortfalls(projection, days_out):
     for row in projection:
         row_time = datetime.datetime.strptime(row[1], '%m/%d/%y')
 
@@ -53,7 +56,7 @@ def get_hospitals_and_shortfalls(projection, days_out):
     return 0, 0
 
 def get_projections_df():
-    # for each state in our data look at the results we generated via run.py 
+    # for each state in our data look at the results we generated via run.py
     # to create the projections
     intervention_type = NO_INTERVENTION # None, as requested
 
@@ -79,14 +82,14 @@ def get_projections_df():
                 hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(projection, thirty_two_days)
 
                 results.append([state, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days])
-   
+
     headers = [
         'State',
         '16-day_Hospitalization_Prediction',
         '32-day_Hospitalization_Prediction',
         '16-day_Beds_Shortfall','32-day_Beds_Shortfall'
     ] # used for pandas
-    return pd.DataFrame(results, columns=headers)   
+    return pd.DataFrame(results, columns=headers)
 
 output_cols = ["Province/State",
     "Country/Region",
@@ -109,12 +112,12 @@ county_replace_with_null = {
     "Unassigned": NULL_VALUE
 }
 
-def get_state_and_counties(): 
+def get_state_and_counties():
     # go to the JHUDataset to get this, for w/e reason
     timeseries = JHUDataset.local().timeseries()
     timeseries = timeseries.get_subset(
-        AggregationLevel.COUNTY, 
-        after=datetime.datetime(2020, 3, 7), 
+        AggregationLevel.COUNTY,
+        after=datetime.datetime(2020, 3, 7),
         country="USA", state=None
     )
 
@@ -122,12 +125,19 @@ def get_state_and_counties():
 
     county_keys = timeseries.county_keys()
     for country, state, county, fips in county_keys:
-        counties_by_state[state].append((county, fips)) 
+        counties_by_state[state].append((county, fips))
 
     return counties_by_state
 
-def get_county_projections(n=10):
-    # for each state in our data look at the results we generated via run.py 
+def find_peak(projection, col):
+    peak_row = []
+    for row in projection:
+        if not peak_row or (float(row[col]) > float(peak_row[col])):
+            peak_row = row
+    return peak_row
+
+def get_county_projections():
+    # for each state in our data look at the results we generated via run.py
     # to create the projections
     intervention_type = NO_INTERVENTION # None, as requested
 
@@ -140,19 +150,11 @@ def get_county_projections(n=10):
     results = []
 
     # get the state and fips so we can get the files (TODO: this is trash)
-    for state, counties in get_state_and_counties().items(): 
-        if n < 0: 
-            break
-        else: 
-            n -= 1
-        for county, fips in counties: 
+    missing = 0
+    for state, counties in get_state_and_counties().items():
+        for county, fips in counties:
             file_name = f"{state}.{fips}.{intervention_type}.json"
             path = os.path.join(OUTPUT_DIR, "county", file_name)
-            if n < 0: 
-                break
-            else: 
-                n -= 1
-            print(path)
             # if the file exists in that directory then process
             if os.path.exists(path):
                 with open(path, "r") as projections:
@@ -160,11 +162,22 @@ def get_county_projections(n=10):
                     projection =  simplejson.load(projections)
                     hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(projection, sixteen_days)
                     hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(projection, thirty_two_days)
+                    hospitalizations = [int(row[9]) for row in projection]
+                    deaths = [int(row[11]) for row in projection]
+                    new_deaths = list(range(len(deaths)))
+                    new_deaths[0] = 0
+                    for i in range(1, len(deaths)):
+                        new_deaths[i] = int(deaths[i]) - int(deaths[i-1])
+                    mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
+                    mean_deaths = math.floor(statistics.mean(new_deaths))
+                    peak_hospitalizations_date = find_peak(projection, 9)[1]
+                    peak_deaths_date =  find_peak(projection, 11)[1]
+                    results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
+                            mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
+            else:
+                missing = missing + 1
+    print(f'Models missing for {missing} states')
 
-                    results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days])
-            else: 
-                print("does not exist")
-    
     headers = [
         'State',
         'FIPS',
@@ -172,20 +185,52 @@ def get_county_projections(n=10):
         '32-day_Hospitalization_Prediction',
         '16-day_Beds_Shortfall',
         '32-day_Beds_Shortfall',
+        "Mean Hospitalizations",
+        "Mean Deaths",
+        "Peak Hospitalizations On",
+        "Mean Deaths On",
     ] # used for pandas
-    return pd.DataFrame(results, columns=headers)   
+    return pd.DataFrame(results, columns=headers)
 
 
 def get_usa_by_county_with_projection_df():
-    # # headers = [
-    #     'State',
-    #     'County',
-    #     '16-day_Hospitalization_Prediction',
-    #     '32-day_Hospitalization_Prediction',
-    #     '16-day_Beds_Shortfall',
-    #     '32-day_Beds_Shortfall',
-    # ] # used for pandas
-    print(get_county_projections())
+
+    us_only = get_usa_by_county_df()
+#    abbrev_df = get_abbrev_df()
+#    interventions_df = get_interventions_df()
+    projections_df = get_county_projections()
+
+    # basically the states_agg has full state names, the interventions have abbreviation so we need these to be merged
+    counties_decorated = us_only.merge(
+        projections_df, left_on='State/County FIPS Code', right_on='FIPS', how='inner'
+    )
+
+    state_col_remap = {
+        'state_x': 'Province/State',
+        'intervention': 'Intervention',
+        '16-day_Hospitalization_Prediction': '16d-HSPTLZD',
+        '32-day_Hospitalization_Prediction': '32d-HSPTLZD',
+        '16-day_Beds_Shortfall': '16d-LACKBEDS',
+        '32-day_Beds_Shortfall': '32d-LACKBEDS',
+        "Mean Hospitalizations": 'MEAN-HOSP',
+        "Mean Deaths": 'MEAN-DEATHS',
+        "Peak Hospitalizations On": 'PEAK-HOSP',
+        "Mean Deaths On": 'PEAK-DEATHS',
+    }
+
+    counties_remapped = counties_decorated.rename(columns=state_col_remap)
+
+    new_cols = list(set(output_cols + list(state_col_remap.values())))
+    counties = pd.DataFrame(counties_remapped, columns=new_cols)
+    counties = counties.fillna(NULL_VALUE)
+    #counties['Combined Key'] = counties['Province/State']
+    counties['State/County FIPS Code'] = counties['Province/State'].map(us_fips)
+
+    counties.index.name = 'OBJECTID'
+    # assert unique key test
+    #assert counties['Combined Key'].value_counts().max() == 1
+
+    return counties
 
 def get_usa_by_county_df():
     url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
@@ -297,13 +342,15 @@ def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, 
             shp_writer.field(field_name, 'N', size=14)
 
     shapeRecords = shp_reader.shapeRecords()
-    # if you are using a local copy of the data, LFS truncates the records  
+    # if you are using a local copy of the data, LFS truncates the records
     assert len(shapeRecords) >= 50
 
     for shapeRecord in shapeRecords:
+        failed = 0
         try:
             row = df[df[pivot_df_column] == shapeRecord.record[pivot_shp_field]].iloc[0]
         except:
+            failed = failed + 1
             continue
 
         new_record = shapeRecord.record.as_dict()
@@ -324,10 +371,11 @@ def get_usa_state_shapefile(shp, shx, dbf):
         'STATEFP', 'State/County FIPS Code', shp_writer)
 
 def get_usa_county_shapefile(shp, shx, dbf):
-    df = get_usa_by_county_df()
+    df = get_usa_by_county_with_projection_df()
     shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
     # ironically we have to re-pad the dataframe column to easily match GEOID in the shapefile
     df['State/County FIPS Code'] = df['State/County FIPS Code'].astype(str).str.rjust(5, '0')
+    print (df[:10])
 
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
