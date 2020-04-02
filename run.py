@@ -141,7 +141,7 @@ def write_results(data, directory, name):
         simplejson.dump(data.values.tolist(), out, ignore_nan=True)
 
 
-def model_state(timeseries, population, starting_beds, interventions=None):
+def model_state(timeseries, starting_beds, population, interventions=None):
 
     # we should cut this, only used by the get_timeseries function, but probably not needed
     MODEL_INTERVAL = 4
@@ -152,7 +152,6 @@ def model_state(timeseries, population, starting_beds, interventions=None):
         "beds": starting_beds,
         "population": population,
     }
-
     MODEL_PARAMETERS = {
         "model": "seir",
         "use_harvard_params": False,  # If True use the harvard parameters directly, if not calculate off the above
@@ -222,7 +221,7 @@ def model_state(timeseries, population, starting_beds, interventions=None):
     return results
 
 
-def build_county_summary(country="USA", state=None):
+def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_DIR):
     """Builds county summary json files."""
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -288,6 +287,8 @@ def forecast_each_state(
 
 
 def forecast_each_county(
+    min_date,
+    max_date,
     country,
     state,
     county,
@@ -309,15 +310,17 @@ def forecast_each_county(
         )
         return
 
+    _logger.info(
+        f"Running interventions for {county}, {state}: {fips} - "
+        f"total cases: {total_cases} beds: {beds} pop: {population}"
+    )
+
     for i, intervention in enumerate(get_interventions()):
-        _logger.debug(
-            f"Running intervention {i} for {state} - "
-            f"total cases: {total_cases} beds: {beds} pop: {population}"
-        )
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
             results, cases, population, min_date, max_date, interval=4
         )
+
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
 
@@ -331,11 +334,12 @@ def run_county_level_forecast(min_date, max_date, country="USA", state=None):
 
     output_dir = pathlib.Path(OUTPUT_DIR) / "county"
     _logger.info(f"Outputting to {output_dir}")
-    if output_dir.exists():
+    # Dont want to replace when just running the states
+    if output_dir.exists() and not state:
         backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)
 
-    output_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     counties_by_state = defaultdict(list)
     county_keys = timeseries.county_keys()
@@ -347,6 +351,8 @@ def run_county_level_forecast(min_date, max_date, country="USA", state=None):
         _logger.info(f"Running county models for {state}")
         for county, fips in counties:
             args = (
+                min_date,
+                max_date,
                 country,
                 state,
                 county,
@@ -356,6 +362,7 @@ def run_county_level_forecast(min_date, max_date, country="USA", state=None):
                 population_data,
                 output_dir,
             )
+            # forecast_each_county(*args)
             pool.apply_async(forecast_each_county, args=args)
 
     pool.close()
@@ -372,15 +379,11 @@ def run_state_level_forecast(min_date, max_date, country="USA", state=None):
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )
     output_dir = pathlib.Path(OUTPUT_DIR) / "state"
-    if output_dir.exists():
+    if output_dir.exists() and not state:
         backup = output_dir.name + "." + str(int(time.time()))
         output_dir.rename(output_dir.parent / backup)
 
-    output_dir.mkdir(parents=True)
-    _logger.info(f"Outputting to {output_dir}")
-    if not output_dir.exists():
-        _logger.info(f"{output_dir} does not exist, creating")
-        output_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     pool = get_pool()
     for state in timeseries.states:
