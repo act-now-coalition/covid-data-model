@@ -56,7 +56,7 @@
 54,AL,Pike County,01109,33114.0
 55,AL,Randolph County,01111,22722.0
 56,AL,Russell County,01113,57961.0
-57,AL,St. Clair County,01115,
+57,AL,St. Clair County,01115,89512.0
 58,AL,Shelby County,01117,217702.0
 59,AL,Sumter County,01119,12427.0
 60,AL,Talladega County,01121,79978.0
@@ -171,7 +171,7 @@
 169,AR,Prairie County,05117,8062.0
 170,AR,Pulaski County,05119,391911.0
 171,AR,Randolph County,05121,17958.0
-172,AR,St. Francis County,05123,
+172,AR,St. Francis County,05123,24994.0
 173,AR,Saline County,05125,122437.0
 174,AR,Scott County,05127,10281.0
 175,AR,Searcy County,05129,7881.0
@@ -373,8 +373,8 @@
 371,FL,Pinellas County,12103,974996.0
 372,FL,Polk County,12105,724777.0
 373,FL,Putnam County,12107,74521.0
-374,FL,St. Johns County,12109,
-375,FL,St. Lucie County,12111,
+374,FL,St. Johns County,12109,264672.0
+375,FL,St. Lucie County,12111,328297.0
 376,FL,Santa Rosa County,12113,184313.0
 377,FL,Sarasota County,12115,433742.0
 378,FL,Seminole County,12117,471826.0
@@ -675,7 +675,7 @@
 673,IL,Randolph County,17157,31782.0
 674,IL,Richland County,17159,15513.0
 675,IL,Rock Island County,17161,141879.0
-676,IL,St. Clair County,17163,
+676,IL,St. Clair County,17163,259686.0
 677,IL,Saline County,17165,23491.0
 678,IL,Sangamon County,17167,194672.0
 679,IL,Schuyler County,17169,6768.0
@@ -766,7 +766,7 @@
 764,IN,Randolph County,18135,24665.0
 765,IN,Ripley County,18137,28324.0
 766,IN,Rush County,18139,16581.0
-767,IN,St. Joseph County,18141,
+767,IN,St. Joseph County,18141,271826.0
 768,IN,Scott County,18143,23873.0
 769,IN,Shelby County,18145,44729.0
 770,IN,Spencer County,18147,20277.0
@@ -1155,15 +1155,15 @@
 1153,LA,Red River Parish,22081,8442.0
 1154,LA,Richland Parish,22083,20122.0
 1155,LA,Sabine Parish,22085,23884.0
-1156,LA,St. Bernard Parish,22087,
-1157,LA,St. Charles Parish,22089,
-1158,LA,St. Helena Parish,22091,
-1159,LA,St. James Parish,22093,
-1160,LA,St. John the Baptist Parish,22095,
-1161,LA,St. Landry Parish,22097,
-1162,LA,St. Martin Parish,22099,
-1163,LA,St. Mary Parish,22101,
-1164,LA,St. Tammany Parish,22103,
+1156,LA,St. Bernard Parish,22087,47244.0
+1157,LA,St. Charles Parish,22089,53100.0
+1158,LA,St. Helena Parish,22091,10132.0
+1159,LA,St. James Parish,22093,21096.0
+1160,LA,St. John the Baptist Parish,22095,42837.0
+1161,LA,St. Landry Parish,22097,82124.0
+1162,LA,St. Martin Parish,22099,53431.0
+1163,LA,St. Mary Parish,22101,49348.0
+1164,LA,St. Tammany Parish,22103,260419.0
 1165,LA,Tangipahoa Parish,22105,134758.0
 1166,LA,Tensas Parish,22107,4334.0
 1167,LA,Terrebonne Parish,22109,110461.0
@@ -1209,7 +1209,7 @@
 1207,MD,Montgomery County,24031,1050688.0
 1208,MD,Prince George's County,24033,909327.0
 1209,MD,Queen Anne's County,24035,50381.0
-1210,MD,St. Mary's County,24037,
+1210,MD,St. Mary's County,24037,113510.0
 1211,MD,Somerset County,24039,25616.0
 1212,MD,Talbot County,24041,37181.0
 1213,MD,Washington County,24043,151049.0
@@ -1303,8 +1303,8 @@
 1301,MI,Presque Isle County,26141,12592.0
 1302,MI,Roscommon County,26143,24019.0
 1303,MI,Saginaw County,26145,190539.0
-1304,MI,St. Clair County,26147,
-1305,MI,St. Joseph County,26149,
+1304,MI,St. Clair County,26147,159128.0
+1305,MI,St. Joseph County,26149,60964.0
 1306,MI,Sanilac County,26151,41170.0
 1307,MI,Schoolcraft County,26153,8094.0
 1308,MI,Shiawassee County,26155,68122.0
@@ -1381,7 +1381,7 @@
 1379,MN,Rice County,27131,66972.0
 1380,MN,Rock County,27133,9315.0
 1381,MN,Roseau County,27135,15165.0
-1382,MN,St. Louis County,27137,
+1382,MN,St. Louis County,27137,199070.0
 1383,MN,Scott County,27139,149013.0
 1384,MN,Sherburne County,27141,97238.0
 1385,MN,Sibley County,27143,14865.0
@@ -1573,11 +1573,11 @@
 1571,MO,Ray County,29177,23018.0
 1572,MO,Reynolds County,29179,6270.0
 1573,MO,Ripley County,29181,13288.0
-1574,MO,St. Charles County,29183,
-1575,MO,St. Clair County,29185,
-1576,MO,Ste. Genevieve County,29186,
-1577,MO,St. Francois County,29187,
-1578,MO,St. Louis County,29189,
+1574,MO,St. Charles County,29183,402022.0
+1575,MO,St. Clair County,29185,9397.0
+1576,MO,Ste. Genevieve County,29186,17894.0
+1577,MO,St. Francois County,29187,67215.0
+1578,MO,St. Louis County,29189,994205.0
 1579,MO,Saline County,29195,22761.0
 1580,MO,Schuyler County,29197,4660.0
 1581,MO,Scotland County,29199,4902.0
@@ -1596,7 +1596,7 @@
 1594,MO,Webster County,29225,39592.0
 1595,MO,Worth County,29227,2013.0
 1596,MO,Wright County,29229,18289.0
-1597,MO,St. Louis city,29510,
+1597,MO,St. Louis city,29510,300576.0
 1598,MT,Beaverhead County,30001,9453.0
 1599,MT,Big Horn County,30003,13319.0
 1600,MT,Blaine County,30005,6681.0
@@ -1871,7 +1871,7 @@
 1869,NY,Rensselaer County,36083,158714.0
 1870,NY,Richmond County,36085,476143.0
 1871,NY,Rockland County,36087,325789.0
-1872,NY,St. Lawrence County,36089,
+1872,NY,St. Lawrence County,36089,107740.0
 1873,NY,Saratoga County,36091,229863.0
 1874,NY,Schenectady County,36093,155299.0
 1875,NY,Schoharie County,36095,30999.0
@@ -3101,7 +3101,7 @@
 3099,WI,Richland County,55103,17252.0
 3100,WI,Rock County,55105,163354.0
 3101,WI,Rusk County,55107,14178.0
-3102,WI,St. Croix County,55109,
+3102,WI,St. Croix County,55109,90687.0
 3103,WI,Sauk County,55111,64442.0
 3104,WI,Sawyer County,55113,16558.0
 3105,WI,Shawano County,55115,40899.0

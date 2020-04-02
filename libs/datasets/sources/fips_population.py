@@ -118,8 +118,10 @@ def build_fips_data_frame(census_csv, counties_csv):
         lambda x: US_STATE_ABBREV[x.split(",")[1].strip()]
     )
     county_pop["county"] = county_pop.county_state.apply(
-        lambda x: x.split(",")[0].strip().replace(".", "")
+        lambda x: x.split(",")[0].strip().lstrip('.')
     )
+    county_pop = county_pop.replace('Sainte', 'Ste.')
+    county_pop = county_pop.replace('Saint', 'St.')
 
     left = state_data.set_index(["state", "county"])
     right = county_pop.set_index(["state", "county"])
