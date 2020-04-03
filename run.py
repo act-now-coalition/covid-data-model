@@ -12,7 +12,7 @@ from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 import simplejson
 import pandas as pd
 
-from libs.build_params import OUTPUT_DIR, get_interventions
+from libs.build_params import OUTPUT_DIR, get_interventions, OUTPUT_DIR_COUNTIES
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
@@ -329,7 +329,7 @@ def forecast_each_county(
 
 
 def run_county_level_forecast(
-    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR
+    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR_COUNTIES
 ):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -338,7 +338,7 @@ def run_county_level_forecast(
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    output_dir = pathlib.Path(output_dir) / "county"
+    output_dir = pathlib.Path(output_dir)
     _logger.info(f"Outputting to {output_dir}")
     # Dont want to replace when just running the states
     if output_dir.exists() and not state:

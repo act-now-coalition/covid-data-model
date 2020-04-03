@@ -9,7 +9,7 @@ import os.path
 import simplejson
 from libs.us_state_abbrev import us_state_abbrev, us_fips
 from libs.build_dod_dataset import get_usa_by_county_df, get_usa_by_states_df, get_usa_county_shapefile, get_usa_state_shapefile
-from libs.build_dod_dataset import get_projections_df
+from libs.build_dod_dataset import get_usa_by_county_with_projection_df
 """
 1) 15 day hosp, 30 day hosp, 15 day bed gap, 30 day bed gap 
 2)  # Indexes used by website JSON:
@@ -66,4 +66,4 @@ from libs.build_dod_dataset import get_projections_df
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    print(get_projections_df())
+    print(get_usa_by_county_with_projection_df())

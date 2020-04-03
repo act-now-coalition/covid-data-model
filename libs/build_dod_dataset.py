@@ -7,11 +7,14 @@ import pprint
 import shapefile
 import simplejson
 from urllib.parse import urlparse
+from collections import defaultdict
 
 from .enums import NO_INTERVENTION
 from .build_params import OUTPUT_DIR
 from .CovidDatasets import get_public_data_base_url
 from .us_state_abbrev import us_state_abbrev, us_fips
+from .datasets import JHUDataset
+from .datasets.dataset_utils import AggregationLevel
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
 latest = datetime.date.today() - datetime.timedelta(days=1)
@@ -106,7 +109,24 @@ county_replace_with_null = {
     "Unassigned": NULL_VALUE
 }
 
-def get_county_projections():
+def get_state_and_counties(): 
+    # go to the JHUDataset to get this, for w/e reason
+    timeseries = JHUDataset.local().timeseries()
+    timeseries = timeseries.get_subset(
+        AggregationLevel.COUNTY, 
+        after=datetime.datetime(2020, 3, 7), 
+        country="USA", state=None
+    )
+
+    counties_by_state = defaultdict(list) # why tho
+
+    county_keys = timeseries.county_keys()
+    for country, state, county, fips in county_keys:
+        counties_by_state[state].append((county, fips)) 
+
+    return counties_by_state
+
+def get_county_projections(n=10):
     # for each state in our data look at the results we generated via run.py 
     # to create the projections
     intervention_type = NO_INTERVENTION # None, as requested
@@ -119,21 +139,32 @@ def get_county_projections():
     #save results in a list of lists, converted to df later
     results = []
 
-    for state in list(us_state_abbrev.values()):
-        file_name = f"{state}.{intervention_type}.json"
-        path = os.path.join(OUTPUT_DIR, file_name)
+    # get the state and fips so we can get the files (TODO: this is trash)
+    for state, counties in get_state_and_counties().items(): 
+        if n < 0: 
+            break
+        else: 
+            n -= 1
+        for county, fips in counties: 
+            file_name = f"{state}.{fips}.{intervention_type}.json"
+            path = os.path.join(OUTPUT_DIR, "county", file_name)
+            if n < 0: 
+                break
+            else: 
+                n -= 1
+            print(path)
+            # if the file exists in that directory then process
+            if os.path.exists(path):
+                with open(path, "r") as projections:
+                    # note that the projections have an extra column vs the web data
+                    projection =  simplejson.load(projections)
+                    hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(projection, sixteen_days)
+                    hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(projection, thirty_two_days)
 
-        # if the file exists in that directory then process
-        if os.path.exists(path):
-            with open(path, "r") as projections:
-                # note that the projections have an extra column vs the web data
-                projection =  simplejson.load(projections)
-
-                hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(projection, sixteen_days)
-                hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(projection, thirty_two_days)
-
-                results.append([state, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days])
-   
+                    results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days])
+            else: 
+                print("does not exist")
+    
     headers = [
         'State',
         'FIPS',
@@ -143,7 +174,7 @@ def get_county_projections():
         '32-day_Beds_Shortfall',
     ] # used for pandas
     return pd.DataFrame(results, columns=headers)   
-    pass
+
 
 def get_usa_by_county_with_projection_df():
     # # headers = [
@@ -154,7 +185,7 @@ def get_usa_by_county_with_projection_df():
     #     '16-day_Beds_Shortfall',
     #     '32-day_Beds_Shortfall',
     # ] # used for pandas
-    pass
+    print(get_county_projections())
 
 def get_usa_by_county_df():
     url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(

@@ -30,6 +30,7 @@ def get_interventions(start_date=datetime.now().date()):
     ]
 
 OUTPUT_DIR = 'results/test'
+OUTPUT_DIR_COUNTIES = 'results/test/county'
 
 # Dict to transform longhand state names to abbreviations
 US_STATE_ABBREV =  {
