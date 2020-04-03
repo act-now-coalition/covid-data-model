@@ -21,13 +21,12 @@ def main():
 
 
 @main.command("latest")
-@click.option("--state", "-s")
 @click.option(
     "--deploy",
     is_flag=True,
     help="Output data files to public data directory in local covid-projections.",
 )
-def run_latest(state=None, deploy=False):
+def run_latest(deploy=False):
     """Get latest case values from JHU dataset."""
     output_dir = pathlib.Path(build_params.OUTPUT_DIR)
     if deploy:
