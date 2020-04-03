@@ -214,7 +214,11 @@ def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, 
         else:
             shp_writer.field(field_name, 'N', size=14)
 
-    for shapeRecord in shp_reader.shapeRecords():
+    shapeRecords = shp_reader.shapeRecords()
+    # if you are using a local copy of the data, LFS truncates the records  
+    assert len(shapeRecords) >= 50
+
+    for shapeRecord in shapeRecords:
         try:
             row = df[df[pivot_df_column] == shapeRecord.record[pivot_shp_field]].iloc[0]
         except:
