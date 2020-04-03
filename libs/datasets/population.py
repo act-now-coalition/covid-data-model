@@ -5,6 +5,7 @@ import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import custom_aggregations
 
 
 class PopulationDataset(object):
@@ -38,7 +39,12 @@ class PopulationDataset(object):
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
+
         data[cls.Fields.GENERATED] = False
+        group = [cls.Fields.SOURCE, cls.Fields.AGGREGATE_LEVEL, cls.Fields.STATE, cls.Fields.COUNTRY, cls.Fields.GENERATED]
+        data = custom_aggregations.update_with_combined_new_york_counties(
+            data, group, are_boroughs_zero=False
+        )
 
         if fill_missing_state:
             state_groupby_fields = [
