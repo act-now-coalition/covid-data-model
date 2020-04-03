@@ -21,7 +21,12 @@ def main():
     is_flag=True,
     help="Output data files to public data directory in local covid-projections.",
 )
-def run_county(state=None, deploy=False):
+@click.option(
+    "--summary-only",
+    is_flag=True,
+    help="Only runs the county summary if true.",
+)
+def run_county(state=None, deploy=False, summary_only=False):
     """Run county level model."""
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
@@ -30,9 +35,10 @@ def run_county(state=None, deploy=False):
     if deploy:
         output_dir = WEB_DEPLOY_PATH
 
-    run.run_county_level_forecast(
-        min_date, max_date, country="USA", state=state, output_dir=output_dir
-    )
+    if not summary_only:
+        run.run_county_level_forecast(
+            min_date, max_date, country="USA", state=state, output_dir=output_dir
+        )
     run.build_county_summary(min_date, state=state, output_dir=output_dir)
 
 
