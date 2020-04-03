@@ -105,6 +105,16 @@ county_replace_with_null = {
     "Unassigned": NULL_VALUE
 }
 
+def get_usa_by_county_df_with_projection():
+    # headers = [
+        'State',
+        'County',
+        '16-day_Hospitalization_Prediction',
+        '32-day_Hospitalization_Prediction',
+        '16-day_Beds_Shortfall',
+        '32-day_Beds_Shortfall',
+    ] # used for pandas
+
 def get_usa_by_county_df():
     url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
         get_public_data_base_url(), latest.strftime("%m-%d-%Y"))

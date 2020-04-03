@@ -1,0 +1,51 @@
+OBJECTID,Country/Region,Combined Key,Recovered,32d-HSPTLZD,County,16d-LACKBEDS,Deaths,Active,16d-HSPTLZD,Province/State,Longitude,32d-LACKBEDS,Last Update,Latitude,Intervention,State/County FIPS Code,Confirmed,4d-HSPTLZD,8d-HSPTLZD
+0,US,Alabama,0,76424,<Null>,0,27,0,10126,Alabama,-86.64408227,63839,4/1/2020 21:58,32.53952745,social_distancing,01,1060,<Null>,<Null>
+1,US,Alaska,0,9499,<Null>,0,3,0,842,Alaska,-149.14269860000005,8167,4/1/2020 21:58,61.14998174,shelter_in_place,02,132,<Null>,<Null>
+2,US,Arizona,0,104504,<Null>,0,29,0,11106,Arizona,-109.3783,93053,4/1/2020 21:58,35.5313,shelter_in_place,04,1530,<Null>,<Null>
+3,US,Arkansas,0,37215,<Null>,0,10,0,3069,Arkansas,-91.37277296,29220,4/1/2020 21:58,34.29145151,social_distancing,05,584,<Null>,<Null>
+4,US,California,0,592266,<Null>,10888,199,0,69777,California,-121.8929271,533377,4/1/2020 21:58,37.64629437,shelter_in_place,06,9399,<Null>,<Null>
+5,US,Colorado,0,97779,<Null>,13537,69,0,22596,Colorado,-104.3362578,88720,4/1/2020 21:58,39.87432092,shelter_in_place,08,2982,<Null>,<Null>
+6,US,Connecticut,0,59754,<Null>,15397,85,0,21301,Connecticut,-73.3881171,53850,4/1/2020 21:58,41.26809896,shelter_in_place,09,3557,<Null>,<Null>
+7,US,Delaware,0,14727,<Null>,2,11,0,1775,Delaware,-75.56884914,12954,4/1/2020 21:58,39.08646628,shelter_in_place,10,368,<Null>,<Null>
+8,US,Florida,0,349825,<Null>,9316,87,0,55553,Florida,-82.35928158,303588,4/1/2020 21:58,29.67866525,shelter_in_place,12,6956,<Null>,<Null>
+9,US,Georgia,0,176185,<Null>,10202,139,0,31301,Georgia,-82.28909114,155086,4/1/2020 21:58,31.74847232,shelter_in_place,13,4638,<Null>,<Null>
+10,US,Hawaii,0,19136,<Null>,0,1,0,1810,Hawaii,-155.5210167,16909,4/1/2020 21:58,19.60121157,shelter_in_place,15,224,<Null>,<Null>
+11,US,Idaho,0,26255,<Null>,127,9,0,2938,Idaho,-116.24155159999998,23444,4/1/2020 21:58,43.4526575,shelter_in_place,16,566,<Null>,<Null>
+12,US,Illinois,0,214501,<Null>,20347,141,0,46578,Illinois,-91.18786813,188270,4/1/2020 21:58,39.98815591,shelter_in_place,17,6980,<Null>,<Null>
+13,US,Indiana,0,109819,<Null>,2529,65,0,17579,Indiana,-84.93671406,94769,4/1/2020 21:58,40.7457653,shelter_in_place,18,2564,<Null>,<Null>
+14,US,Iowa,0,46496,<Null>,0,9,0,5248,Iowa,-94.47105874,38659,4/1/2020 21:58,41.33075609,social_distancing,19,547,<Null>,<Null>
+15,US,Kansas,0,39549,<Null>,0,10,0,3770,Kansas,-95.30870026,31589,4/1/2020 21:58,39.53185661,shelter_in_place,20,485,<Null>,<Null>
+16,US,Kentucky,0,59498,<Null>,0,18,0,5491,Kentucky,-86.19457544,47661,4/1/2020 21:58,36.75197631,shelter_in_place,21,632,<Null>,<Null>
+17,US,Louisiana,0,74142,<Null>,24676,273,0,37378,Louisiana,-92.41419698,61440,4/1/2020 21:58,30.2950649,shelter_in_place,22,6424,<Null>,<Null>
+18,US,Maine,0,18300,<Null>,0,5,0,1753,Maine,-70.20380627,15518,4/1/2020 21:58,44.1664747,shelter_in_place,23,303,<Null>,<Null>
+19,US,Maryland,0,96412,<Null>,4385,31,0,13896,Maryland,-76.60329337,86901,4/1/2020 21:58,39.00670238,shelter_in_place,24,1986,<Null>,<Null>
+20,US,Massachusetts,0,114546,<Null>,31047,122,0,44281,Massachusetts,-70.28854339,101312,4/1/2020 21:58,41.72980578,shelter_in_place,25,7738,<Null>,<Null>
+21,US,Michigan,0,169610,<Null>,17699,335,0,38371,Michigan,-85.89102866,148938,4/1/2020 21:58,42.59147037,shelter_in_place,26,9315,<Null>,<Null>
+22,US,Minnesota,0,68567,<Null>,0,17,0,5552,Minnesota,-93.24604565,56894,4/1/2020 21:58,45.27476015,shelter_in_place,27,689,<Null>,<Null>
+23,US,Mississippi,0,44688,<Null>,0,22,0,5283,Mississippi,-91.35326037,34831,4/1/2020 21:58,31.47669768,shelter_in_place,28,1073,<Null>,<Null>
+24,US,Missouri,0,93622,<Null>,0,18,0,11582,Missouri,-92.60078167,77869,4/1/2020 21:58,40.19058551,social_distancing,29,1613,<Null>,<Null>
+25,US,Montana,0,13484,<Null>,0,6,0,1146,Montana,-111.4955813,10564,4/1/2020 21:58,46.33277565,shelter_in_place,30,208,<Null>,<Null>
+26,US,Nebraska,0,21230,<Null>,0,4,0,1533,Nebraska,-98.50117804,15464,4/1/2020 21:58,40.52449420000001,social_distancing,31,210,<Null>,<Null>
+27,US,Nevada,0,51011,<Null>,3584,31,0,8939,Nevada,-119.7480219,45656,4/1/2020 21:58,39.15509045,shelter_in_place,32,1279,<Null>,<Null>
+28,US,New Hampshire,0,21515,<Null>,644,3,0,3007,New Hampshire,-71.41684235,19152,4/1/2020 21:58,43.51637314,shelter_in_place,33,367,<Null>,<Null>
+29,US,New Jersey,0,130443,<Null>,76083,355,0,93733,New Jersey,-74.65848483,112793,4/1/2020 21:58,39.47538693,shelter_in_place,34,22255,<Null>,<Null>
+30,US,New Mexico,0,24329,<Null>,0,5,0,1864,New Mexico,-106.6703554,21205,4/1/2020 21:58,35.05163625,shelter_in_place,35,340,<Null>,<Null>
+31,US,New York,0,244527,<Null>,227614,1941,0,271104,New York,-73.97723916,201037,4/1/2020 21:58,42.60060306,shelter_in_place,36,83948,<Null>,<Null>
+32,US,North Carolina,0,142172,<Null>,0,14,0,13519,North Carolina,-79.39976137,123936,4/1/2020 21:58,36.0434701,shelter_in_place,37,1675,<Null>,<Null>
+33,US,North Dakota,0,9047,<Null>,0,3,0,711,North Dakota,-98.06605978,6334,4/1/2020 21:58,46.93579637,social_distancing,38,142,<Null>,<Null>
+34,US,Ohio,0,148441,<Null>,0,65,0,12742,Ohio,-84.10802343,121342,4/1/2020 21:58,40.77285242,shelter_in_place,39,2547,<Null>,<Null>
+35,US,Oklahoma,0,52646,<Null>,0,30,0,4851,Oklahoma,-94.65859267,43472,4/1/2020 21:58,35.88494195,social_distancing,40,721,<Null>,<Null>
+36,US,Oregon,0,58957,<Null>,344,19,0,5931,Oregon,-123.4316987,53370,4/1/2020 21:58,44.49167306,shelter_in_place,41,736,<Null>,<Null>
+37,US,Pennsylvania,0,213767,<Null>,9105,74,0,39845,Pennsylvania,-77.21610347,183027,4/1/2020 21:58,39.87140411,shelter_in_place,42,6009,<Null>,<Null>
+38,US,Rhode Island,0,17907,<Null>,1965,10,0,3807,Rhode Island,-71.28652315,16065,4/1/2020 21:58,41.71018079,shelter_in_place,44,566,<Null>,<Null>
+39,US,South Carolina,0,77426,<Null>,0,26,0,9201,South Carolina,-82.46170658,67195,4/1/2020 21:58,34.22333378,social_distancing,45,1293,<Null>,<Null>
+40,US,South Dakota,0,9295,<Null>,0,2,0,644,South Dakota,-98.56050467,5780,4/1/2020 21:58,43.71757685,limited_action,46,129,<Null>,<Null>
+41,US,Tennessee,0,112865,<Null>,3096,24,0,19503,Tennessee,-84.19965764,96458,4/1/2020 21:58,36.12684348,shelter_in_place,47,2933,<Null>,<Null>
+42,US,Texas,0,377165,<Null>,0,66,0,33537,Texas,-95.65354823,321945,4/1/2020 21:58,31.81534745,social_distancing,48,4355,<Null>,<Null>
+43,US,Utah,0,51250,<Null>,2683,5,0,7461,Utah,-113.0832816,46472,4/1/2020 21:58,41.52106798,social_distancing,49,888,<Null>,<Null>
+44,US,Vermont,0,10542,<Null>,1139,16,0,2223,Vermont,-73.14130877,9458,4/1/2020 21:58,44.03217337,shelter_in_place,50,321,<Null>,<Null>
+45,US,Virginia,0,115134,<Null>,0,34,0,10855,Virginia,-75.63234615,100293,4/1/2020 21:58,37.76707161,shelter_in_place,51,1483,<Null>,<Null>
+46,US,Washington,0,129224,<Null>,27553,234,0,38271,Washington,-118.5601734,118506,4/1/2020 21:58,46.98299757,shelter_in_place,53,5608,<Null>,<Null>
+47,US,West Virginia,0,16005,<Null>,0,1,0,979,West Virginia,-80.00350858,10367,4/1/2020 21:58,39.1307219,shelter_in_place,54,191,<Null>,<Null>
+48,US,Wisconsin,0,90523,<Null>,1761,27,0,11884,Wisconsin,-90.67837132,80400,4/1/2020 21:58,46.31956891,shelter_in_place,55,1556,<Null>,<Null>
+49,US,Wyoming,0,7419,<Null>,0,0,0,645,Wyoming,-105.7235415,5742,4/1/2020 21:58,41.65498705,social_distancing,56,130,<Null>,<Null>
