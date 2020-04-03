@@ -10,7 +10,7 @@ import logging
 import click
 from libs import build_params
 from libs.datasets import JHUDataset
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import dataset_export
 
 WEB_DEPLOY_PATH = pathlib.Path("../covid-projections/public/data")
 
@@ -37,36 +37,14 @@ def run_latest(deploy=False):
 
     output_folder = output_dir / "case_summary"
     output_folder.mkdir(exist_ok=True)
-    timeseries = JHUDataset.local().timeseries().get_subset(None, country="USA")
+    timeseries = JHUDataset.local().timeseries()
+    state_summaries = dataset_export.latest_case_summaries_by_state(timeseries)
 
-    timeseries.data.cases = timeseries.data.cases.fillna(0)
-    timeseries.data.deaths = timeseries.data.deaths.fillna(0)
-
-    latest_state = timeseries.latest_values(AggregationLevel.STATE)
-    latest_county = timeseries.latest_values(AggregationLevel.COUNTY)
-
-    latest_state["date"] = latest_state["date"].dt.strftime("%Y-%m-%d")
-    latest_county["date"] = latest_county["date"].dt.strftime("%Y-%m-%d")
-
-    states = latest_state[["state", "cases", "deaths", "source", "date"]].to_dict(
-        orient="records"
-    )
-    for state_data in states:
-        state = state_data["state"]
-        if len(state) != 2:
-            _logger.info(f"Skipping state {state}")
-            continue
-        county_data = latest_county[latest_county.state == state]
-        counties = county_data[["fips", "cases", "deaths", "source", "date"]].to_dict(
-            orient="records"
-        )
-
-        state_data.update({"counties": counties})
-
+    for state, state_summary in state_summaries:
         output_file = output_folder / f"{state}.summary.json"
         with output_file.open("w") as f:
             _logger.info(f"Writing latest data for {state}")
-            json.dump(state_data, f)
+            json.dump(state_summary, f)
 
 
 if __name__ == "__main__":
