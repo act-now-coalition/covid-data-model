@@ -1,5 +1,9 @@
 #!/usr/bin/env python
+"""
+CLI Functionality to generate reports and summaries of data sources.
 
+To generate model output, see ./run_model.py
+"""
 import pathlib
 import json
 import logging
