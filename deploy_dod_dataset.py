@@ -90,7 +90,7 @@ if __name__ == "__main__":
     """Used for manual trigger
 
     # triggering persistance to s3
-    AWS_PROFILE=covidactnow BUCKET_NAME=covidactnow-models-staging python deploy_dod_dataset.py
+    AWS_PROFILE=covidactnow BUCKET_NAME=covidactnow-deleteme python deploy_dod_dataset.py
 
     # triggering persistance to local
     python deploy_dod_dataset.py

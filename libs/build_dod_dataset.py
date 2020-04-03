@@ -13,14 +13,14 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 from .enums import NO_INTERVENTION
-from .build_params import OUTPUT_DIR
+from .build_params import OUTPUT_DIR, OUTPUT_DIR_COUNTIES
 from .CovidDatasets import get_public_data_base_url
 from .us_state_abbrev import us_state_abbrev, us_fips
 from .datasets import JHUDataset
 from .datasets.dataset_utils import AggregationLevel
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
-latest = datetime.date.today() - datetime.timedelta(days=1)
+latest = datetime.date.today() - datetime.timedelta(days=2)
 
 NULL_VALUE = "<Null>"
 
@@ -154,7 +154,7 @@ def get_county_projections():
     for state, counties in get_state_and_counties().items():
         for county, fips in counties:
             file_name = f"{state}.{fips}.{intervention_type}.json"
-            path = os.path.join(OUTPUT_DIR, "county", file_name)
+            path = os.path.join(OUTPUT_DIR_COUNTIES, file_name)
             # if the file exists in that directory then process
             if os.path.exists(path):
                 with open(path, "r") as projections:
@@ -196,11 +196,8 @@ def get_county_projections():
 def get_usa_by_county_with_projection_df():
 
     us_only = get_usa_by_county_df()
-#    abbrev_df = get_abbrev_df()
-#    interventions_df = get_interventions_df()
     projections_df = get_county_projections()
-
-    # basically the states_agg has full state names, the interventions have abbreviation so we need these to be merged
+    
     counties_decorated = us_only.merge(
         projections_df, left_on='State/County FIPS Code', right_on='FIPS', how='inner'
     )
@@ -223,13 +220,10 @@ def get_usa_by_county_with_projection_df():
     new_cols = list(set(output_cols + list(state_col_remap.values())))
     counties = pd.DataFrame(counties_remapped, columns=new_cols)
     counties = counties.fillna(NULL_VALUE)
-    #counties['Combined Key'] = counties['Province/State']
-    counties['State/County FIPS Code'] = counties['Province/State'].map(us_fips)
-
     counties.index.name = 'OBJECTID'
+    counties['State/County FIPS Code'] = counties['State/County FIPS Code'].astype(str).str.rjust(5, '0')
     # assert unique key test
-    #assert counties['Combined Key'].value_counts().max() == 1
-
+    assert counties['Combined Key'].value_counts().max() == 1
     return counties
 
 def get_usa_by_county_df():
@@ -261,6 +255,9 @@ def get_usa_by_county_df():
     final_df = final_df.fillna(NULL_VALUE)
     # handle serializing FIPS without trailing 0
     final_df['State/County FIPS Code'] = final_df['State/County FIPS Code'].astype(str).str.replace('\.0','')
+
+    # There should be a leading zero (FIPS codes are of length 5). Ideally this would be a char
+    final_df['State/County FIPS Code'] = final_df['State/County FIPS Code'].astype(str).str.rjust(5, '0')
 
     final_df.index.name = 'OBJECTID'
     # assert unique key test
@@ -330,13 +327,14 @@ def get_usa_by_states_df():
 def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
     blacklisted_fields = ['OBJECTID', 'Province/State', 'Country/Region', 'Last Update',
         'Latitude', 'Longitude', 'County', 'State/County FIPS Code', 'Combined Key']
+    non_integer_fields = ['Intervention', 'PEAK-HOSP', 'PEAK-DEATHS']
 
     fields = [field for field in df.columns if field not in blacklisted_fields]
 
     shp_writer.fields = shp_reader.fields # Preserve fields that come from the census
 
     for field_name in fields:
-        if field_name == 'Intervention': # Intervention is currently our only non-integer field
+        if field_name in non_integer_fields: # Intervention is currently our only non-integer field
             shp_writer.field(field_name, 'C', size=32)
         else:
             shp_writer.field(field_name, 'N', size=14)
@@ -345,20 +343,27 @@ def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, 
     # if you are using a local copy of the data, LFS truncates the records
     assert len(shapeRecords) >= 50
 
+    # Just adding some understanding of errors
+    failed_dictionary = {}
+
     for shapeRecord in shapeRecords:
-        failed = 0
         try:
+            # Gets the row of the dataframe that matches the FIPS codes for a state/county
             row = df[df[pivot_df_column] == shapeRecord.record[pivot_shp_field]].iloc[0]
-        except:
-            failed = failed + 1
+        except Exception as e:
+            state_fips = shapeRecord.record[pivot_shp_field][:2] # state fips is the first two chars of the state/county fips
+            failed_dictionary.setdefault(state_fips, []).append(shapeRecord.record[pivot_shp_field])
             continue
 
+        # create record data for all the fields create a shape record
         new_record = shapeRecord.record.as_dict()
         for field_name in fields:
             new_record[field_name] = None if row[field_name] == NULL_VALUE else row[field_name]
         shp_writer.shape(shapeRecord.shape)
         shp_writer.record(**new_record)
 
+    # Different errors in each state, note this includes the territories as well
+    print([(state, len(failed_dictionary[state])) for state in failed_dictionary])
     shp_writer.close()
 
 
@@ -371,15 +376,11 @@ def get_usa_state_shapefile(shp, shx, dbf):
         'STATEFP', 'State/County FIPS Code', shp_writer)
 
 def get_usa_county_shapefile(shp, shx, dbf):
-    df = get_usa_by_county_with_projection_df()
     shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
-    # ironically we have to re-pad the dataframe column to easily match GEOID in the shapefile
-    df['State/County FIPS Code'] = df['State/County FIPS Code'].astype(str).str.rjust(5, '0')
-    print (df[:10])
-
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
-    join_and_output_shapefile(df,
+    
+    join_and_output_shapefile(get_usa_by_county_with_projection_df(),
         shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_county'),
         'GEOID', 'State/County FIPS Code', shp_writer)
 
