@@ -50,7 +50,9 @@ def run_latest(deploy=False):
     )
     for state_data in states:
         state = state_data["state"]
-
+        if len(state) != 2:
+            _logger.info(f"Skipping state {state}")
+            continue
         county_data = latest_county[latest_county.state == state]
         counties = county_data[["fips", "cases", "deaths", "source", "date"]].to_dict(
             orient="records"
