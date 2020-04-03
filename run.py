@@ -16,7 +16,7 @@ from libs.build_params import OUTPUT_DIR, get_interventions
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel, public_data_hash
 
 _logger = logging.getLogger(__name__)
 
@@ -240,6 +240,7 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
     for country, state, county, fips in timeseries.county_keys():
         counties_by_state[state].append((county, fips))
 
+    all_data = {"counties_with_data": []}
     for state, counties in counties_by_state.items():
         data = {"counties_with_data": []}
         for county, fips in counties:
@@ -248,9 +249,13 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
             population = population_data.get_county_level(country, state, fips=fips)
             if population and beds and sum(cases.cases):
                 data["counties_with_data"].append(fips)
+                all_data["counties_with_data"].append(fips)
 
         output_path = output_dir / f"{state}.summary.json"
         output_path.write_text(json.dumps(data, indent=2))
+
+    output_path = output_dir / "fips_summary.json"
+    output_path.write_text(json.dumps(all_data, indent=2))
 
 
 def forecast_each_state(
@@ -408,9 +413,11 @@ def run_state_level_forecast(
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    # @TODO: Remove interventions override once support is in the Harvard model.
-    min_date = datetime.datetime(2020, 3, 7)
-    max_date = datetime.datetime(2020, 7, 6)
-    # build_county_summary()
-    run_county_level_forecast(min_date, max_date)
-    run_state_level_forecast(min_date, max_date)
+    with public_data_hash(os.getenv('COVID_DATA_PUBLIC_HASH', None)) as git_hash:
+        # @TODO: Record git hash in output data for reproducibility
+        # @TODO: Remove interventions override once support is in the Harvard model.
+        min_date = datetime.datetime(2020, 3, 7)
+        max_date = datetime.datetime(2020, 7, 6)
+        # build_county_summary()
+        run_county_level_forecast(min_date, max_date)
+        run_state_level_forecast(min_date, max_date)
