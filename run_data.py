@@ -6,7 +6,6 @@ import logging
 import click
 from libs import build_params
 from libs.datasets import JHUDataset
-from libs.datasets import FIPSPopulation
 from libs.datasets.dataset_utils import AggregationLevel
 
 WEB_DEPLOY_PATH = pathlib.Path("../covid-projections/public/data")
@@ -67,5 +66,5 @@ def run_latest(deploy=False):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARN)
+    logging.basicConfig(level=logging.INFO)
     main()
