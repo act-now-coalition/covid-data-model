@@ -8,6 +8,7 @@ import shapefile
 import simplejson
 from urllib.parse import urlparse
 
+from .enums import NO_INTERVENTION
 from .build_params import OUTPUT_DIR
 from .CovidDatasets import get_public_data_base_url
 from .us_state_abbrev import us_state_abbrev, us_fips
@@ -51,7 +52,7 @@ def get_hospitals_and_shortfalls(projection, days_out):
 def get_projections_df():
     # for each state in our data look at the results we generated via run.py 
     # to create the projections
-    intervention_type = 0 # None, as requested
+    intervention_type = NO_INTERVENTION # None, as requested
 
     # get 16 and 32 days out from now
     today = datetime.datetime.now()
@@ -105,15 +106,55 @@ county_replace_with_null = {
     "Unassigned": NULL_VALUE
 }
 
-def get_usa_by_county_df_with_projection():
-    # headers = [
+def get_county_projections():
+    # for each state in our data look at the results we generated via run.py 
+    # to create the projections
+    intervention_type = NO_INTERVENTION # None, as requested
+
+    # get 16 and 32 days out from now
+    today = datetime.datetime.now()
+    sixteen_days = today + datetime.timedelta(days=16)
+    thirty_two_days = today + datetime.timedelta(days=32)
+
+    #save results in a list of lists, converted to df later
+    results = []
+
+    for state in list(us_state_abbrev.values()):
+        file_name = f"{state}.{intervention_type}.json"
+        path = os.path.join(OUTPUT_DIR, file_name)
+
+        # if the file exists in that directory then process
+        if os.path.exists(path):
+            with open(path, "r") as projections:
+                # note that the projections have an extra column vs the web data
+                projection =  simplejson.load(projections)
+
+                hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(projection, sixteen_days)
+                hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(projection, thirty_two_days)
+
+                results.append([state, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days])
+   
+    headers = [
         'State',
-        'County',
+        'FIPS',
         '16-day_Hospitalization_Prediction',
         '32-day_Hospitalization_Prediction',
         '16-day_Beds_Shortfall',
         '32-day_Beds_Shortfall',
     ] # used for pandas
+    return pd.DataFrame(results, columns=headers)   
+    pass
+
+def get_usa_by_county_with_projection_df():
+    # # headers = [
+    #     'State',
+    #     'County',
+    #     '16-day_Hospitalization_Prediction',
+    #     '32-day_Hospitalization_Prediction',
+    #     '16-day_Beds_Shortfall',
+    #     '32-day_Beds_Shortfall',
+    # ] # used for pandas
+    pass
 
 def get_usa_by_county_df():
     url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
