@@ -68,14 +68,17 @@ all_cols = [
     "n",
 ]
 
+exclude_cols = ["a","b","c","d","e","f","g","i","j","k","l","m","n"]
+
 def read_json_as_df(path):
-    with open(path,'r') as f:
-        df = pd.DataFrame.from_records(simplejson.load(f))
-        df.columns = all_cols
-        df['date'] = pd.to_datetime(df.date)
-        df['all_hospitalized'] = df['all_hospitalized'].astype('int8')
-        df['beds'] = df['beds'].astype('int8')
-        return df
+    df = pd.DataFrame.from_records(simplejson.load(open(path,'r')),
+    columns=all_cols, exclude=exclude_cols)
+
+    df['date'] = pd.to_datetime(df.date)
+    df['all_hospitalized'] = df['all_hospitalized'].astype('int8')
+    df['beds'] = df['beds'].astype('int8')
+    df['dead'] = df['dead'].astype('int8')
+    return df
 
 def calc_short_fall(x):
     return abs(x.beds - x.all_hospitalized) if x.all_hospitalized > x.beds else 0
@@ -158,13 +161,6 @@ def get_state_and_counties():
 
     return counties_by_state
 
-def find_peak(projection, col):
-    peak_row = []
-    for row in projection:
-        if not peak_row or (float(row[col]) > float(peak_row[col])):
-            peak_row = row
-    return peak_row
-
 def get_county_projections():
     # for each state in our data look at the results we generated via run.py
     # to create the projections
@@ -187,6 +183,7 @@ def get_county_projections():
             # if the file exists in that directory then process
             if os.path.exists(path):
                 df = read_json_as_df(path)
+                df['short_fall'] = df.apply(calc_short_fall, axis=1)
 
                 hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
                 hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(df, thirty_two_days)
@@ -199,8 +196,8 @@ def get_county_projections():
                 # mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
                 mean_deaths = df.new_deaths.mean()
 
-                peak_hospitalizations_date =  df.all_hospitalized.idxmax().date
-                peak_deaths_date =  df.dead.idxmax().date
+                peak_hospitalizations_date =  2#df.iloc[df.all_hospitalized.idxmax()].date
+                peak_deaths_date =  1#df.iloc[df.dead.idxmax()].date
 
                 results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
                         mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
