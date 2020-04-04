@@ -68,11 +68,14 @@ all_cols = [
     "n",
 ]
 
-def read_results_as_df(path):
-    df = pd.read_json(path, orient='records', dtype='int8')#, lines=True)
-    df.columns=all_cols
-    df['date'] = pd.to_datetime(df.date)
-    return df
+def read_json_as_df(path):
+    with open(path,'r') as f:
+        df = pd.DataFrame.from_records(simplejson.load(f))
+        df.columns = all_cols
+        df['date'] = pd.to_datetime(df.date)
+        df['all_hospitalized'] = df['all_hospitalized'].astype('int8')
+        df['beds'] = df['beds'].astype('int8')
+        return df
 
 def calc_short_fall(x):
     return abs(x.beds - x.all_hospitalized) if x.all_hospitalized > x.beds else 0
@@ -101,7 +104,7 @@ def get_projections_df():
 
         # if the file exists in that directory then process
         if os.path.exists(path):
-            df = read_results_as_df(path)
+            df = read_json_as_df(path)
             df['short_fall'] = df.apply(calc_short_fall, axis=1)
 
             hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
