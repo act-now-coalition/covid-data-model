@@ -16,7 +16,8 @@ from libs.build_params import OUTPUT_DIR, get_interventions
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
-from libs.datasets.dataset_utils import AggregationLevel, public_data_hash
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.data_version import public_data_hash
 
 _logger = logging.getLogger(__name__)
 

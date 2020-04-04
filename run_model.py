@@ -4,7 +4,7 @@ import datetime
 import logging
 import click
 from libs import build_params
-from libs.datasets.dataset_utils import data_version
+from libs.datasets import data_version
 from libs.datasets import dataset_utils
 import run
 
@@ -28,7 +28,7 @@ def main():
     is_flag=True,
     help="Only runs the county summary if true.",
 )
-@dataset_utils.with_git_version_click_option
+@data_version.with_git_version_click_option
 def run_county(state=None, deploy=False, summary_only=False, version=None):
     """Run county level model."""
     min_date = datetime.datetime(2020, 3, 7)
@@ -57,7 +57,7 @@ def run_county(state=None, deploy=False, summary_only=False, version=None):
     is_flag=True,
     help="Output data files to public data directory in local covid-projections.",
 )
-@dataset_utils.with_git_version_click_option
+@data_version.with_git_version_click_option
 def run_state(state=None, deploy=False, version=None):
     """Run State level model."""
     min_date = datetime.datetime(2020, 3, 7)
