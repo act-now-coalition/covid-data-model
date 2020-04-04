@@ -75,7 +75,7 @@ class PyseirOutputToWebUI:
             output_model[int_columns] = output_model[int_columns].fillna(0).astype(int).astype(str)
 
             # Convert the records format to just list(list(values))
-            output_model = [val for timestep in output_model.to_dict(orient='records') for val in timestep.values()]
+            output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
 
             with open(os.path.join(self.county_output_dir, f'{self.state_abbreviation}.{fips}.{i_policy}.json'), 'w') as f:
                 json.dump(output_model, f)
