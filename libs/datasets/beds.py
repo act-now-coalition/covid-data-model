@@ -81,6 +81,10 @@ class BedsDataset(object):
         columns_to_consider = [cls.Fields.STAFFED_BEDS, cls.Fields.LICENSED_BEDS]
         data[cls.Fields.MAX_BED_COUNT] = data[columns_to_consider].max(axis=1)
 
+        data = custom_aggregations.update_with_combined_new_york_counties(
+            data, cls.STATE_GROUP_KEY, are_boroughs_zero=False
+        )
+
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data,
