@@ -10,6 +10,7 @@ import run
 
 WEB_DEPLOY_PATH = "../covid-projections/public/data"
 
+_logger = logging.getLogger(__name__)
 
 @click.group()
 def main():
@@ -47,7 +48,7 @@ def run_county(version: data_version.DataVersion, state=None, deploy=False, summ
     if state is None and not summary_only:
         version.write_file('counties', output_dir)
     else:
-        logging.info('Skip version file because this is not a full run')
+        _logger.info('Skip version file because this is not a full run')
 
 
 @main.command("state")
@@ -70,12 +71,12 @@ def run_state(version: data_version.DataVersion, state=None, deploy=False):
     run.run_state_level_forecast(
         min_date, max_date, country="USA", state=state, output_dir=output_dir
     )
-    logging.info(f'Wrote output to {output_dir}')
+    _logger.info(f'Wrote output to {output_dir}')
     # only write the version if we saved everything
     if state is None :
         version.write_file('states', output_dir)
     else:
-        logging.info('Skip version file because this is not a full run')
+        _logger.info('Skip version file because this is not a full run')
 
 
 if __name__ == "__main__":
