@@ -60,15 +60,15 @@ def prepare_data_for_website(
 
     cols = [
         "date",
-        "a",
-        "b",
-        "c",
-        "d",
-        "e",
-        "f",
-        "g",
-        "all_hospitalized",
-        "all_infected",
+        "a", # total
+        "b", # susceptible
+        "c", # exposed
+        "d", # infected
+        "e", # infected_a (not hospitalized, but infected)
+        "f", # infected_b (hospitalized not in icu)
+        "g", # infected_c (in icu)
+        "all_hospitalized", # infected_b + infected_c
+        "all_infected", # infected_a + infected_b + infected_c
         "dead",
         "beds",
         "i",
@@ -324,7 +324,6 @@ def forecast_each_county(
         website_data = prepare_data_for_website(
             results, cases, population, min_date, max_date, interval=4
         )
-
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
 
