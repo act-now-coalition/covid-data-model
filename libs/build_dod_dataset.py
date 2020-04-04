@@ -180,31 +180,34 @@ def get_county_projections():
     for index, fips_row in fips_pd.iterrows():
         state = fips_row['state']
         fips = fips_row['fips']
-        file_name = f"{state}.{fips}.{intervention_type}.json"
-        path = os.path.join(OUTPUT_DIR_COUNTIES, file_name)
-        # if the file exists in that directory then process
-        if os.path.exists(path):
-            df = read_json_as_df(path)
-            df['short_fall'] = df.apply(calc_short_fall, axis=1)
+        if state == 'CA':
+            file_name = f"{state}.{fips}.{intervention_type}.json"
+            path = os.path.join(OUTPUT_DIR_COUNTIES, file_name)
+            print(path)
+            # if the file exists in that directory then process
+            if os.path.exists(path) and state=='CA':
+                df = read_json_as_df(path)
+                df['short_fall'] = df.apply(calc_short_fall, axis=1)
 
-            hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
-            hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(df, thirty_two_days)
+                hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
+                hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(df, thirty_two_days)
 
-            #hospitalizations = [int(row[9]) for row in projection]
-            #deaths = [int(row[11]) for row in projection]
-            df['new_deaths'] = df.dead - df.dead.shift(1)
+                #hospitalizations = [int(row[9]) for row in projection]
+                #deaths = [int(row[11]) for row in projection]
+                df['new_deaths'] = df.dead - df.dead.shift(1)
 
-            mean_hospitalizations = df.all_hospitalized.mean().round(0)
-            # mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
-            mean_deaths = df.new_deaths.mean()
+                mean_hospitalizations = df.all_hospitalized.mean().round(0)
+                # mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
+                mean_deaths = df.new_deaths.mean()
 
-            peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
-            peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
+                peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
+                peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
 
-            results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
-                    mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
-        else:
-            missing = missing + 1
+                print(fips)
+                results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
+                        mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
+            else:
+                missing = missing + 1
     print(f'Models missing for {missing} county')
 
     headers = [
@@ -228,7 +231,10 @@ def get_usa_by_county_with_projection_df():
     fips_df = FIPSPopulation.local().data # used to get interventions
     interventions_df = get_interventions_df() # used to say what state has what interventions
     projections_df = get_county_projections()
+    projections_df['FIPS'] = projections_df.FIPS.astype(str).str.zfill(5)
+    fips_df['fips'] = fips_df.fips.astype(str).str.zfill(5)
 
+    fips_df.to_csv('my_fips.csv', index=False)
     counties_decorated = us_only.merge(
         projections_df, left_on='State/County FIPS Code', right_on='FIPS', how='inner'
     ).merge(
@@ -236,6 +242,7 @@ def get_usa_by_county_with_projection_df():
     ).merge(
         interventions_df, left_on='state', right_on='state', how = 'inner'
     )
+    projections_df.to_csv('my_projections.csv', index=False)
 
     state_col_remap = {
         'state_x': 'Province/State',
@@ -269,6 +276,7 @@ def get_usa_by_county_df():
     url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
         get_public_data_base_url(), latest.strftime("%m-%d-%Y"))
     raw_df = pd.read_csv(url, dtype={"FIPS": str})
+    raw_df['FIPS'] = raw_df['FIPS'].astype(str).str.zfill(5)
 
     column_mapping = {"Province_State": "Province/State",
                     "Country_Region": "Country/Region",
@@ -347,6 +355,7 @@ def get_usa_by_states_df():
     states_final = states_final.fillna(NULL_VALUE)
     states_final['Combined Key'] = states_final['Province/State']
     states_final['State/County FIPS Code'] = states_final['Province/State'].map(us_fips)
+    states_final['State/County FIPS Code'] = states_final['State/County FIPS Code'].astype(str).str.zfill(5)
 
     # Missing 4d/8d numberse from model?
     states_final['4d-HSPTLZD'] = NULL_VALUE
@@ -358,9 +367,10 @@ def get_usa_by_states_df():
 
     return states_final
 
+
 def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
     blacklisted_fields = ['OBJECTID', 'Province/State', 'Country/Region', 'Last Update',
-        'Latitude', 'Longitude', 'County', 'State/County FIPS Code',
+        'Latitude', 'Longitude', 'County',
         'Combined Key', 'Current Recovered', 'Current Active', "Recovered", "Active"]
     non_integer_fields = ['Intervention', 'State Intervention', 'PEAK-HOSP', 'PEAK-DEATHS']
 
