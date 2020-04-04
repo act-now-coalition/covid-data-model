@@ -44,16 +44,43 @@ def get_abbrev_df():
 def get_projections_3_26_df():
     return pd.read_csv('projections_03-26-2020.csv')
 
-def get_hospitals_and_shortfalls(projection, days_out):
-    for row in projection:
-        row_time = datetime.datetime.strptime(row[1], '%m/%d/%y')
+all_cols = [
+    "day_num",
+    # ^ for index column
+    "date",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "all_hospitalized",
+    "all_infected",
+    "dead",
+    "beds",
+    "i",
+    "j",
+    "k",
+    "l",
+    "population",
+    "m",
+    "n",
+]
 
-        if row_time >= days_out:
-            hospitalizations = int(row[9])
-            beds = int(row[12])
-            short_fall = abs(beds - hospitalizations) if hospitalizations > beds else 0
-            return hospitalizations, short_fall
-    return 0, 0
+def read_results_as_df(path):
+    df = pd.read_json(path, orient='records', dtype='int8')#, lines=True)
+    df.columns=all_cols
+    df['date'] = pd.to_datetime(df.date)
+    return df
+
+def calc_short_fall(x):
+    return abs(x.beds - x.all_hospitalized) if x.all_hospitalized > x.beds else 0
+
+def get_hospitals_and_shortfalls(df, date_out):
+    first_record_after_date = df[(df.date > date_out)].iloc[0]
+    output_cols = ['all_hospitalized', 'short_fall']
+    return tuple(first_record_after_date[output_cols].values)
 
 def get_projections_df():
     # for each state in our data look at the results we generated via run.py
@@ -69,19 +96,18 @@ def get_projections_df():
     results = []
 
     for state in list(us_state_abbrev.values()):
-        file_name = f"{state}.{intervention_type}.json"
+        file_name = f'{state}.{intervention_type}.json'
         path = os.path.join(OUTPUT_DIR, file_name)
 
         # if the file exists in that directory then process
         if os.path.exists(path):
-            with open(path, "r") as projections:
-                # note that the projections have an extra column vs the web data
-                projection =  simplejson.load(projections)
+            df = read_results_as_df(path)
+            df['short_fall'] = df.apply(calc_short_fall, axis=1)
 
-                hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(projection, sixteen_days)
-                hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(projection, thirty_two_days)
+            hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
+            hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(df, thirty_two_days)
 
-                results.append([state, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days])
+            results.append([state, hosp_16_days, short_fall_16_days, short_fall_16_days, short_fall_32_days])
 
     headers = [
         'State',
@@ -170,8 +196,10 @@ def get_county_projections():
                         new_deaths[i] = int(deaths[i]) - int(deaths[i-1])
                     mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
                     mean_deaths = math.floor(statistics.mean(new_deaths))
+
                     peak_hospitalizations_date = find_peak(projection, 9)[1]
                     peak_deaths_date =  find_peak(projection, 11)[1]
+
                     results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
                             mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
             else:
@@ -197,7 +225,7 @@ def get_usa_by_county_with_projection_df():
 
     us_only = get_usa_by_county_df()
     projections_df = get_county_projections()
-    
+
     counties_decorated = us_only.merge(
         projections_df, left_on='State/County FIPS Code', right_on='FIPS', how='inner'
     )
@@ -379,7 +407,7 @@ def get_usa_county_shapefile(shp, shx, dbf):
     shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
-    
+
     join_and_output_shapefile(get_usa_by_county_with_projection_df(),
         shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_county'),
         'GEOID', 'State/County FIPS Code', shp_writer)
