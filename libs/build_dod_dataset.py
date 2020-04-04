@@ -145,8 +145,8 @@ county_output_cols = ["Province/State",
     "Latitude",
     "Longitude",
     "Current Confirmed",
-    "Current Recovered",
-    "Current Deaths",
+    # "Current Recovered",
+    # "Current Deaths",
     "Current Active",
     "County",
     "State/County FIPS Code",
@@ -293,6 +293,7 @@ def get_usa_by_county_df():
     final_df['County'] = final_df['County'].replace(county_replace_with_null)
     final_df['Combined Key'] = final_df['Combined Key'].str.replace('Unassigned, ','')
     final_df = final_df.fillna(NULL_VALUE)
+
     final_df.index.name = 'OBJECTID'
     # assert unique key test
     assert final_df['Combined Key'].value_counts().max() == 1
@@ -360,7 +361,8 @@ def get_usa_by_states_df():
 
 def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
     blacklisted_fields = ['OBJECTID', 'Province/State', 'Country/Region', 'Last Update',
-        'Latitude', 'Longitude', 'County', 'State/County FIPS Code', 'Combined Key']
+        'Latitude', 'Longitude', 'County', 'State/County FIPS Code',
+        'Combined Key', 'Current Recovered', 'Current Active', "Recovered", "Active"]
     non_integer_fields = ['Intervention', 'State Intervention', 'PEAK-HOSP', 'PEAK-DEATHS']
 
     fields = [field for field in df.columns if field not in blacklisted_fields]
