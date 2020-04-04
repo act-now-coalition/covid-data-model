@@ -141,3 +141,5 @@ dmypy.json
 # VScode
 *.vscode*.idea/
 .idea/
+pyseir_data/
+pyseir_output/
