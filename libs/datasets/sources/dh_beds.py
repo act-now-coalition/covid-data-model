@@ -114,8 +114,10 @@ class DHBeds(data_source.DataSource):
         # Added in standardize data.
         AGGREGATE_LEVEL = "aggregate_level"
         FIPS = "fips"
+        COUNTRY = "country"
 
     BEDS_FIELD_MAP = {
+        BedsDataset.Fields.COUNTRY: Fields.COUNTRY,
         BedsDataset.Fields.STATE: Fields.STATE,
         BedsDataset.Fields.FIPS: Fields.FIPS,
         BedsDataset.Fields.STAFFED_BEDS: Fields.STAFFED_BEDS,
@@ -132,6 +134,8 @@ class DHBeds(data_source.DataSource):
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         # All DH data is aggregated at the county level
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
+
+        data[cls.Fields.COUNTRY] = "USA"
 
         # Backfilling FIPS data based on county names.
         # TODO: Fix all missing cases
