@@ -19,7 +19,7 @@ from libs.us_state_abbrev import us_state_abbrev, us_fips
 from libs.datasets import FIPSPopulation
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
-latest = datetime.date.today() - datetime.timedelta(days=2)
+latest = datetime.date.today() - datetime.timedelta(days=1)
 
 NULL_VALUE = "<Null>"
 
@@ -199,7 +199,7 @@ def get_county_projections():
             mean_deaths = df.new_deaths.mean()
 
             peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
-            peak_deaths_date = df.iloc[df.dead.idxmax()].date
+            peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
 
             results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
                     mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
@@ -269,6 +269,7 @@ def get_usa_by_county_df():
     url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
         get_public_data_base_url(), latest.strftime("%m-%d-%Y"))
     raw_df = pd.read_csv(url, dtype={"FIPS": str})
+    raw_df.to_csv('deleteme.csv', index=False)
 
     column_mapping = {"Province_State": "Province/State",
                     "Country_Region": "Country/Region",
