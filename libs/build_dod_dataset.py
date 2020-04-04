@@ -195,7 +195,6 @@ def get_county_projections():
 
     # get the state and fips so we can get the files
     missing = 0
-    fips_pd.to_csv('fips_pd.csv', index=False)
     for index, fips_row in fips_pd.iterrows():
         state = fips_row['state']
         fips = fips_row['fips']
@@ -239,7 +238,6 @@ def get_county_projections():
         "Mean Deaths On",
     ]
     ndf = pd.DataFrame(results, columns=headers)
-    ndf.to_csv('deleteme.csv', index=False)
     return ndf
 
 
