@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime
+import click
 import enum
 import git
 import json
@@ -16,6 +17,7 @@ LOCAL_PUBLIC_DATA_PATH = (
 )
 
 _logger = logging.getLogger(__name__)
+
 
 class DataVersion(object):
     '''
@@ -86,6 +88,25 @@ def data_version(git_hash: Optional[str]):
         git_hash = repo.head.ref.commit.hexsha
         logging.info(f'Using covid-data-public at version {"*" if is_dirty else ""}{git_hash}')
         yield DataVersion(git_hash, is_dirty)
+
+
+def with_git_version_click_option(func):
+    """Adds an additional git-hash option and loads the repo at the specified hash."""
+
+    @click.option(
+        '--git-hash',
+        type=str,
+        help='''
+        | Git hash of the commit in covid-data-public to use.
+        | If provided, covid-data-public must have no pending changes.
+        | If omitted, the repository will be used as-is'''
+    )
+    def run_in_context(git_hash, **kwargs):
+        with data_version(git_hash) as version:
+            return func(version=version, **kwargs)
+
+    return run_in_context
+
 
 class AggregationLevel(enum.Enum):
     COUNTRY = "country"
