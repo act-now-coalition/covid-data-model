@@ -162,22 +162,6 @@ county_replace_with_null = {
     "Unassigned": NULL_VALUE
 }
 
-def get_state_and_counties():
-    # go to the JHUDataset to get this, for w/e reason
-    timeseries = JHUDataset.local().timeseries()
-    timeseries = timeseries.get_subset(
-        AggregationLevel.COUNTY,
-        after=datetime.datetime(2020, 3, 7),
-        country="USA", state=None
-    )
-
-    counties_by_state = defaultdict(list) # why tho
-
-    county_keys = timeseries.county_keys()
-    for country, state, county, fips in county_keys:
-        counties_by_state[state].append((county, fips))
-
-    return counties_by_state
 
 def get_county_projections():
     # for each state in our data look at the results we generated via run.py
