@@ -111,6 +111,7 @@ class EnsembleRunner:
             model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
             logging.info(f'Generating Report for suppression policy {suppression_policy}')
+            self.all_outputs['county_metadata'] = self.county_metadata
             self.all_outputs[f'suppression_policy__{suppression_policy}'] = \
                 self._generate_output_for_suppression_policy(model_ensemble, suppression_policy)
 
@@ -141,8 +142,7 @@ class EnsembleRunner:
         value_stack: array[n_samples, time steps]
             Array with the stacked model output results.
         """
-        compartments = {key: [] for key in model_ensemble[0].results.keys() if key not in ('t_list')}
-
+        compartments = {key: [] for key in model_ensemble[0].results.keys() if key not in ('t_list', 'county_metadata')}
         for model in model_ensemble:
             for key in compartments:
                 compartments[key].append(model.results[key])
