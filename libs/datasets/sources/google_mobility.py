@@ -48,7 +48,7 @@ def parse_state_mobility_json(data) -> pd.DataFrame:
 
 
 class GoogleMobilityReport(data_source.DataSource):
-    DATA_PATH = "data/mobility_scrape.json"
+    DATA_PATH = "data/google-mobility/mobility_scrape.json"
 
     class Fields(object):
         STATE = "state"
@@ -77,7 +77,7 @@ class GoogleMobilityReport(data_source.DataSource):
             # this fixes that.
             if pd.isna(county):
                 return county
-            replace = False
+
             missing_l_combos = ["l e", "l a", "l i", "l o", "l s", "l m"]
             for missing_l in missing_l_combos:
                 if missing_l in county:
