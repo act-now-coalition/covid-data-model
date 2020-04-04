@@ -16,9 +16,7 @@ from libs.constants import NO_INTERVENTION, DATE, ALL_HOSPITALIZED, ALL_INFECTED
 from libs.build_params import OUTPUT_DIR, OUTPUT_DIR_COUNTIES
 from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import us_state_abbrev, us_fips
-from libs.datasets import FIPSPopulation, JHUDataset
-from libs.datasets.dataset_utils import AggregationLevel
-
+from libs.datasets import FIPSPopulation
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
 latest = datetime.date.today() - datetime.timedelta(days=2)
@@ -114,7 +112,7 @@ def get_projections_df():
             hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
             hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(df, thirty_two_days)
 
-            results.append([state, hosp_16_days, short_fall_16_days, short_fall_16_days, short_fall_32_days])
+            results.append([state, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days])
 
     headers = [
         'State',
@@ -207,7 +205,7 @@ def get_county_projections():
                     mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
         else:
             missing = missing + 1
-    print(f'Models missing for {missing} states')
+    print(f'Models missing for {missing} county')
 
     headers = [
         'State',
