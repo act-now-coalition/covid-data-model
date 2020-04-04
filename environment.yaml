@@ -1,0 +1,24 @@
+name: pyseir
+
+channels:
+- defaults
+- conda-forge
+
+dependencies:
+- numpy
+- pandas
+- scipy
+- python=3.7.3
+- jupyterlab
+- seaborn
+- scikit-learn
+- matplotlib
+- pip
+- iminuit
+- fastparquet
+- pip:
+  - boto3
+  - click
+  - us
+  - xlsxwriter
+  - pymc3
