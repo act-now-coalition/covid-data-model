@@ -12,8 +12,9 @@ def generate_state_bed_row(**updates):
         "aggregate_level": "state",
         "source": "DH",
         "generated": True,
-        "model_input_beds": 21480,
+        "max_bed_count": 21480,
         "county": None,
+        "country": "USA",
     }
     record.update(**updates)
     return record
@@ -29,8 +30,9 @@ def generate_county_bed_row(**updates):
         "aggregate_level": "county",
         "source": "DH",
         "generated": False,
-        "model_input_beds": 4474,
+        "max_bed_count": 4474,
         "county": "Middlesex County",
+        "country": "USA",
     }
     record.update(**updates)
     return record
@@ -45,8 +47,8 @@ def test_get_county_level_beds():
     fips = "25015"
     county = "County in Mass"
     rows = [
-        generate_county_bed_row(fips="25016", county=county, model_input_beds=3000),
-        generate_county_bed_row(fips=fips, model_input_beds=1000),
+        generate_county_bed_row(fips="25016", county=county, max_bed_count=3000),
+        generate_county_bed_row(fips=fips, max_bed_count=1000),
         generate_state_bed_row(),
     ]
     beds_dataset = build_beds_dataset(rows)
@@ -63,9 +65,9 @@ def test_get_county_level_beds():
 
 def test_get_state_level_beds():
     rows = [
-        generate_county_bed_row(model_input_beds=2000),
-        generate_state_bed_row(model_input_beds=1000),
-        generate_state_bed_row(state="CA", model_input_beds=2000),
+        generate_county_bed_row(max_bed_count=2000),
+        generate_state_bed_row(max_bed_count=1000),
+        generate_state_bed_row(state="CA", max_bed_count=2000),
     ]
     beds_dataset = build_beds_dataset(rows)
 
