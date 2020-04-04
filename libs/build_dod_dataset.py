@@ -16,12 +16,10 @@ from libs.constants import NO_INTERVENTION, DATE, ALL_HOSPITALIZED, ALL_INFECTED
 from libs.build_params import OUTPUT_DIR, OUTPUT_DIR_COUNTIES
 from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import us_state_abbrev, us_fips
-from libs.datasets import JHUDataset
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import FIPSPopulation
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
-latest = datetime.date.today() - datetime.timedelta(days=3)
+latest = datetime.date.today() - datetime.timedelta(days=2)
 
 NULL_VALUE = "<Null>"
 
@@ -151,7 +149,7 @@ def get_county_projections():
     #save results in a list of lists, converted to df later
     results = []
 
-    # get the state and fips so we can get the files (TODO: this is trash, use the fips dataset)
+    # get the state and fips so we can get the files
     missing = 0
     for index, fips_row in fips_pd.iterrows():
         state = fips_row['state']
