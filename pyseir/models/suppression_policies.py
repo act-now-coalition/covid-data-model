@@ -69,6 +69,92 @@ def generate_triggered_suppression_model(t_list, lockdown_days, open_days, reduc
     return interp1d(t_list, rho, fill_value='extrapolate')
 
 
+def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
+    """
+    Generate a suppression policy for CovidActNow which generates an Reff on a
+    given date according to the policies in place.
+
+    Implements CovidActNow's version, which sets Reff
+        ```
+        def get_interventions(start_date=datetime.now().date()):
+            return [
+                None,  # No Intervention
+                {  # Flatten the Curve
+                    start_date: 1.3,
+                    start_date + timedelta(days=30) : 1.1,
+                    start_date + timedelta(days=60) : 0.8,
+                    start_date + timedelta(days=90) : None
+                },
+                {  # Full Containment
+                    start_date : 1.3,
+                    start_date + timedelta(days=7) : 0.3,
+                    start_date + timedelta(days=30 + 7) : 0.2,
+                    start_date + timedelta(days=30 + 2*7) : 0.1,
+                    start_date + timedelta(days=30 + 3*7) : 0.035,
+                    start_date + timedelta(days=30 + 4*7) : 0
+                },
+                {  # Social Distancing
+                    start_date: 1.7,
+                    start_date + timedelta(days=90) : None
+                },
+            ]
+        ```
+
+    Returns
+    -------
+    suppression_model: callable
+        suppression_model(t) returns the current suppression model at time t.
+    """
+    # Rho is the multiplier on the contact rate. i.e. 1 = no change, 0 = no transmission
+    rho = []
+    for t in t_list:
+        actual_date = t0 + timedelta(days=t)
+        today = datetime.utcnow()
+
+        if scenario == 'no_intervention':
+            rho.append(1)
+
+        elif scenario == 'flatten_the_curve':
+            if actual_date < today:
+                rho.append(1)
+            elif (actual_date - today).days < 30:
+                rho.append(1.3 / R0)
+            elif (actual_date - today).days < 60:
+                rho.append(1.1 / R0)
+            elif (actual_date - today).days < 90:
+                rho.append(0.8/ R0)
+            else: # Open back up...
+                rho.append(1)
+
+        elif scenario == 'full_containment':
+            if actual_date < today:
+                rho.append(1)
+            elif (actual_date - today).days < 7:
+                rho.append(1.3 / R0)
+            elif (actual_date - today).days < 30 + 7 * 1:
+                rho.append(.3 / R0)
+            elif (actual_date - today).days < 30 + 7 * 2:
+                rho.append(.2 / R0)
+            elif (actual_date - today).days < 30 + 7 * 3:
+                rho.append(.1 / R0)
+            elif (actual_date - today).days < 30 + 7 * 4:
+                rho.append(.035 / R0)
+            else:
+                rho.append(0)
+
+        elif scenario == 'social_distancing':
+            if actual_date < today:
+                rho.append(1)
+            elif (actual_date - today).days < 90:
+                rho.append(1.7 / R0)
+            else:
+                rho.append(1)
+        else:
+            raise ValueError(f'Invalid scenario {scenario}')
+
+    return interp1d(t_list, rho)
+
+
 def generate_empirical_distancing_policy(t_list, fips, future_suppression):
     """
     Produce a suppression policy based on Imperial College estimates of social
