@@ -269,7 +269,6 @@ def get_usa_by_county_df():
     url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
         get_public_data_base_url(), latest.strftime("%m-%d-%Y"))
     raw_df = pd.read_csv(url, dtype={"FIPS": str})
-    raw_df.to_csv('deleteme.csv', index=False)
 
     column_mapping = {"Province_State": "Province/State",
                     "Country_Region": "Country/Region",
