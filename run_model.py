@@ -29,7 +29,7 @@ def main():
     help="Only runs the county summary if true.",
 )
 @data_version.with_git_version_click_option
-def run_county(state=None, deploy=False, summary_only=False, version=None):
+def run_county(version: data_version.DataVersion, state=None, deploy=False, summary_only=False):
     """Run county level model."""
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
@@ -58,7 +58,7 @@ def run_county(state=None, deploy=False, summary_only=False, version=None):
     help="Output data files to public data directory in local covid-projections.",
 )
 @data_version.with_git_version_click_option
-def run_state(state=None, deploy=False, version=None):
+def run_state(version: data_version.DataVersion, state=None, deploy=False):
     """Run State level model."""
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
