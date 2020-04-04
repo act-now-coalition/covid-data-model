@@ -180,34 +180,31 @@ def get_county_projections():
     for index, fips_row in fips_pd.iterrows():
         state = fips_row['state']
         fips = fips_row['fips']
-        if state == 'CA':
-            file_name = f"{state}.{fips}.{intervention_type}.json"
-            path = os.path.join(OUTPUT_DIR_COUNTIES, file_name)
-            print(path)
-            # if the file exists in that directory then process
-            if os.path.exists(path) and state=='CA':
-                df = read_json_as_df(path)
-                df['short_fall'] = df.apply(calc_short_fall, axis=1)
+        file_name = f"{state}.{fips}.{intervention_type}.json"
+        path = os.path.join(OUTPUT_DIR_COUNTIES, file_name)
+        # if the file exists in that directory then process
+        if os.path.exists(path):
+            df = read_json_as_df(path)
+            df['short_fall'] = df.apply(calc_short_fall, axis=1)
 
-                hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
-                hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(df, thirty_two_days)
+            hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
+            hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(df, thirty_two_days)
 
-                #hospitalizations = [int(row[9]) for row in projection]
-                #deaths = [int(row[11]) for row in projection]
-                df['new_deaths'] = df.dead - df.dead.shift(1)
+            #hospitalizations = [int(row[9]) for row in projection]
+            #deaths = [int(row[11]) for row in projection]
+            df['new_deaths'] = df.dead - df.dead.shift(1)
 
-                mean_hospitalizations = df.all_hospitalized.mean().round(0)
-                # mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
-                mean_deaths = df.new_deaths.mean()
+            mean_hospitalizations = df.all_hospitalized.mean().round(0)
+            # mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
+            mean_deaths = df.new_deaths.mean()
 
-                peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
-                peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
+            peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
+            peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
 
-                print(fips)
-                results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
-                        mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
-            else:
-                missing = missing + 1
+            results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
+                    mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
+        else:
+            missing = missing + 1
     print(f'Models missing for {missing} county')
 
     headers = [
