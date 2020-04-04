@@ -186,25 +186,24 @@ def get_county_projections():
             path = os.path.join(OUTPUT_DIR_COUNTIES, file_name)
             # if the file exists in that directory then process
             if os.path.exists(path):
-                with open(path, "r") as projections:
-                    # note that the projections have an extra column vs the web data
-                    projection =  simplejson.load(projections)
-                    hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(projection, sixteen_days)
-                    hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(projection, thirty_two_days)
-                    hospitalizations = [int(row[9]) for row in projection]
-                    deaths = [int(row[11]) for row in projection]
-                    new_deaths = list(range(len(deaths)))
-                    new_deaths[0] = 0
-                    for i in range(1, len(deaths)):
-                        new_deaths[i] = int(deaths[i]) - int(deaths[i-1])
-                    mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
-                    mean_deaths = math.floor(statistics.mean(new_deaths))
+                df = read_json_as_df(path)
 
-                    peak_hospitalizations_date = find_peak(projection, 9)[1]
-                    peak_deaths_date =  find_peak(projection, 11)[1]
+                hosp_16_days, short_fall_16_days = get_hospitals_and_shortfalls(df, sixteen_days)
+                hosp_32_days, short_fall_32_days = get_hospitals_and_shortfalls(df, thirty_two_days)
 
-                    results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
-                            mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
+                    #hospitalizations = [int(row[9]) for row in projection]
+                    #deaths = [int(row[11]) for row in projection]
+                df['new_deaths'] = df.dead - df.dead.shift(1)
+
+                mean_hospitalizations = df.all_hospitalized.mean().round(0)
+                # mean_hospitalizations = math.floor(statistics.mean(hospitalizations))
+                mean_deaths = df.new_deaths.mean()
+
+                peak_hospitalizations_date =  df.all_hospitalized.idxmax().date
+                peak_deaths_date =  df.dead.idxmax().date
+
+                results.append([state, fips, hosp_16_days, hosp_32_days, short_fall_16_days, short_fall_32_days,
+                        mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
             else:
                 missing = missing + 1
     print(f'Models missing for {missing} states')
