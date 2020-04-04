@@ -9,6 +9,7 @@ from libs.datasets import custom_aggregations
 
 class BedsDataset(object):
     class Fields(object):
+        COUNTRY = "country"
         STATE = "state"
         FIPS = "fips"
         STAFFED_BEDS = "staffed_beds"
