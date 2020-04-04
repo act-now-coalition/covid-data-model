@@ -11,7 +11,7 @@ import json
 from pyseir import OUTPUT_DIR
 
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data')
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
 
 
 def load_zip_get_file(url, file, decoder='utf-8'):
