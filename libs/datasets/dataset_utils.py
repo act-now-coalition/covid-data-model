@@ -205,10 +205,14 @@ def assert_counties_have_fips(data, county_key='county', fips_key='fips'):
 def add_fips_using_county(data, fips_data) -> pd.Series:
     """Gets FIPS code from a data frame with a county."""
     data = data.set_index(["county", "state"])
+    original_rows = len(data)
     fips_data = fips_data.set_index(["county", "state"])
     data = data.join(
         fips_data[["fips"]], how="left", on=["county", "state"], rsuffix="_r"
     ).reset_index()
+
+    if len(data) != original_rows:
+        raise Exception("Non-unique join, check for duplicate fips data.")
 
     non_matching = data[data.county.notnull() & data.fips.isnull()]
 

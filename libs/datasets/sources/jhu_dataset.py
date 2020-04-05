@@ -121,8 +121,6 @@ class JHUDataset(data_source.DataSource):
         We probably need to either give each state its own fake FIP, or spread this
         out over the existing counties for the state.
         """
-        has_county = data[cls.Fields.COUNTY].notnull()
-        rows_to_replace = has_county & data[cls.Fields.FIPS].isnull()
         overrides = {
             # Assigning nantucket county to dukes and nantucket
             ('MA', 'Dukes and Nantucket'): '25019'
@@ -132,6 +130,8 @@ class JHUDataset(data_source.DataSource):
             matches_county = data[cls.Fields.COUNTY] == county
             data.loc[matches_state & matches_county, cls.Fields.FIPS] = fips
 
+        has_county = data[cls.Fields.COUNTY].notnull()
+        rows_to_replace = has_county & data[cls.Fields.FIPS].isnull()
         data.loc[rows_to_replace, cls.Fields.FIPS] = enums.UNKNOWN_FIPS
         return data
 
