@@ -89,6 +89,8 @@ class BedsDataset(object):
         columns_to_consider = [cls.Fields.STAFFED_BEDS, cls.Fields.LICENSED_BEDS]
         data[cls.Fields.MAX_BED_COUNT] = data[columns_to_consider].max(axis=1)
 
+        # When grouping nyc data, we don't want to count the generated field
+        # as a value to sum.
         group = cls.STATE_GROUP_KEY + [cls.Fields.GENERATED]
         data = custom_aggregations.update_with_combined_new_york_counties(
             data, group, are_boroughs_zero=False
