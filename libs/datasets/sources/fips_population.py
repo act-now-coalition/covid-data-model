@@ -40,6 +40,7 @@ class FIPSPopulation(data_source.DataSource):
 
     def __init__(self, path):
         data = pd.read_csv(path, dtype={"fips": str})
+        data['fips'] = data.fips.str.zfill(5)
         data = self.standardize_data(data)
         super().__init__(data)
 

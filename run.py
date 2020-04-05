@@ -13,7 +13,7 @@ from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 import simplejson
 import pandas as pd
 
-from libs.build_params import OUTPUT_DIR, get_interventions
+from libs.build_params import OUTPUT_DIR, get_interventions, OUTPUT_DIR_COUNTIES
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
@@ -65,15 +65,15 @@ def prepare_data_for_website(
 
     cols = [
         "date",
-        "a",
-        "b",
-        "c",
-        "d",
-        "e",
-        "f",
-        "g",
-        "all_hospitalized",
-        "all_infected",
+        "a", # total
+        "b", # susceptible
+        "c", # exposed
+        "d", # infected
+        "e", # infected_a (not hospitalized, but infected)
+        "f", # infected_b (hospitalized not in icu)
+        "g", # infected_c (in icu)
+        "all_hospitalized", # infected_b + infected_c
+        "all_infected", # infected_a + infected_b + infected_c
         "dead",
         "beds",
         "i",
@@ -378,7 +378,7 @@ def forecast_each_county(
 
 
 def run_county_level_forecast(
-    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR
+    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR_COUNTIES
 ):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -387,7 +387,7 @@ def run_county_level_forecast(
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    output_dir = pathlib.Path(output_dir) / "county"
+    output_dir = pathlib.Path(output_dir)
     _logger.info(f"Outputting to {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
