@@ -17,6 +17,14 @@ class AggregationLevel(enum.Enum):
     COUNTY = "county"
 
 
+class DuplicateValuesForIndex(Exception):
+
+    def __init__(self, index, duplicate_data):
+        self.index = index
+        self.data = duplicate_data
+        super().__init__()
+
+
 def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
     """Removes all whitespace from string values.
 
@@ -82,13 +90,26 @@ def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
     )
 
 
-def check_index_values_are_unique(data):
-    duplicates_results = data.index.duplicated()
-    duplicates = duplicates_results[duplicates_results == True]
-    if len(duplicates):
-        _logger.warning(f"Found {len(duplicates)} results.")
-        return data[duplicates_results]
+def check_index_values_are_unique(data, index=None, duplicates_as_error=True):
+    """Checks index for duplicate rows.
 
+    Args:
+        data: DataFrame to check
+        index: optional index to use. If not specified, uses index from `data`.
+        duplicates_as_error: If True, raises an error if duplicates are found:
+            otherwise logs an error.
+
+    """
+    if index:
+        data = data.set_index(index)
+
+    duplicates = data.index.duplicated()
+    duplicated_data = data[duplicates]
+    if sum(duplicates) and duplicates_as_error:
+        raise DuplicateValuesForIndex(data.index.names, duplicated_data)
+    elif sum(duplicates):
+        _logger.warning(f"Found {len(duplicates)} results.")
+        return duplicated_data
     return None
 
 
