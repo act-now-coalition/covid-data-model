@@ -228,10 +228,7 @@ def get_usa_by_county_with_projection_df():
     fips_df = FIPSPopulation.local().data # used to get interventions
     interventions_df = get_interventions_df() # used to say what state has what interventions
     projections_df = get_county_projections()
-    projections_df['FIPS'] = projections_df.FIPS.astype(str).str.zfill(5)
-    fips_df['fips'] = fips_df.fips.astype(str).str.zfill(5)
 
-    fips_df.to_csv('my_fips.csv', index=False)
     counties_decorated = us_only.merge(
         projections_df, left_on='State/County FIPS Code', right_on='FIPS', how='inner'
     ).merge(
@@ -239,7 +236,6 @@ def get_usa_by_county_with_projection_df():
     ).merge(
         interventions_df, left_on='state', right_on='state', how = 'inner'
     )
-    projections_df.to_csv('my_projections.csv', index=False)
 
     state_col_remap = {
         'state_x': 'Province/State',
@@ -264,7 +260,6 @@ def get_usa_by_county_with_projection_df():
     counties = pd.DataFrame(counties_remapped, columns=new_cols)
     counties = counties.fillna(NULL_VALUE)
     counties.index.name = 'OBJECTID'
-    counties['State/County FIPS Code'] = counties['State/County FIPS Code'].astype(str).str.rjust(5, '0')
     # assert unique key test
     assert counties['Combined Key'].value_counts().max() == 1
     return counties
@@ -352,7 +347,6 @@ def get_usa_by_states_df():
     states_final = states_final.fillna(NULL_VALUE)
     states_final['Combined Key'] = states_final['Province/State']
     states_final['State/County FIPS Code'] = states_final['Province/State'].map(us_fips)
-    states_final['State/County FIPS Code'] = states_final['State/County FIPS Code'].astype(str).str.zfill(5)
 
     # Missing 4d/8d numberse from model?
     states_final['4d-HSPTLZD'] = NULL_VALUE
@@ -367,7 +361,7 @@ def get_usa_by_states_df():
 
 def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
     blacklisted_fields = ['OBJECTID', 'Province/State', 'Country/Region', 'Last Update',
-        'Latitude', 'Longitude', 'County',
+        'Latitude', 'Longitude', 'County',  'State/County FIPS Code',
         'Combined Key', 'Current Recovered', 'Current Active', "Recovered", "Active"]
     non_integer_fields = ['Intervention', 'State Intervention', 'PEAK-HOSP', 'PEAK-DEATHS']
 
