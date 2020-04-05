@@ -1,5 +1,7 @@
+import pytest
 import pandas as pd
 from libs.datasets import beds
+from libs.datasets import dataset_utils
 
 
 def generate_state_bed_row(**updates):
@@ -75,3 +77,20 @@ def test_get_state_level_beds():
     assert state_beds == 1000
 
     assert not beds_dataset.get_state_level("DC")
+
+
+@pytest.mark.parametrize("is_county", [True, False])
+def test_duplicate_index_fails(is_county):
+    if is_county:
+        rows = [
+            generate_county_bed_row(),
+            generate_county_bed_row(),
+        ]
+    else:
+        rows = [
+            generate_state_bed_row(),
+            generate_state_bed_row(),
+        ]
+
+    with pytest.raises(dataset_utils.DuplicateValuesForIndex):
+        build_beds_dataset(rows)

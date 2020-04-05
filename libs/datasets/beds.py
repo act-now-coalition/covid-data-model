@@ -30,13 +30,21 @@ class BedsDataset(object):
     STATE_GROUP_KEY = [
         Fields.SOURCE,
         Fields.AGGREGATE_LEVEL,
-        Fields.GENERATED,
         Fields.COUNTRY,
         Fields.STATE,
     ]
 
+    COUNTY_GROUP_KEY = [
+        Fields.SOURCE,
+        Fields.AGGREGATE_LEVEL,
+        Fields.COUNTRY,
+        Fields.STATE,
+        Fields.FIPS,
+    ]
+
     def __init__(self, data):
         self.data = data
+        self.validate()
 
     @property
     def state_data(self) -> pd.DataFrame:
@@ -81,10 +89,12 @@ class BedsDataset(object):
         columns_to_consider = [cls.Fields.STAFFED_BEDS, cls.Fields.LICENSED_BEDS]
         data[cls.Fields.MAX_BED_COUNT] = data[columns_to_consider].max(axis=1)
 
+        # When grouping nyc data, we don't want to count the generated field
+        # as a value to sum.
+        group = cls.STATE_GROUP_KEY + [cls.Fields.GENERATED]
         data = custom_aggregations.update_with_combined_new_york_counties(
-            data, cls.STATE_GROUP_KEY, are_boroughs_zero=False
+            data, group, are_boroughs_zero=False
         )
-
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data,
@@ -100,6 +110,14 @@ class BedsDataset(object):
         data = dataset_utils.add_county_using_fips(data, fips_data)
 
         return cls(data)
+
+    def validate(self):
+        dataset_utils.check_index_values_are_unique(
+            self.state_data, index=self.STATE_GROUP_KEY
+        )
+        dataset_utils.check_index_values_are_unique(
+            self.county_data, index=self.COUNTY_GROUP_KEY
+        )
 
     def get_state_level(self, state) -> Optional[int]:
         """Get beds for a specific state.
