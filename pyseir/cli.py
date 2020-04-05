@@ -46,12 +46,12 @@ def _run_mle_fits(state=None):
             run_mle_fits(state)
 
 
-def _run_ensembles(state=None):
+def _run_ensembles(state=None, ensemble_kwargs=dict()):
     if state:
-        run_state(state, ensemble_kwargs={})
+        run_state(state, ensemble_kwargs=ensemble_kwargs)
     else:
         for state in us.states.STATES:
-            run_state(state, ensemble_kwargs={})
+            run_state(state, ensemble_kwargs=ensemble_kwargs)
 
 
 def _generate_state_reports(state=None):
@@ -96,8 +96,9 @@ def run_mle_fits(state):
 
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
-def run_ensembles(state):
-    _run_ensembles(state)
+@click.option('--run-mode', default='default', help='State to generate files for. If no state is given, all states are computed.')
+def run_ensembles(state, run_mode):
+    _run_ensembles(state, run_mode)
 
 
 @entry_point.command()

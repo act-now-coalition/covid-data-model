@@ -3,17 +3,23 @@ import logging
 import os
 import numpy as np
 import json
+from enum import Enum
 import copy
 from collections import defaultdict
 from functools import partial
 from multiprocessing.pool import Pool
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-from pyseir.models.suppression_policies import generate_empirical_distancing_policy
+from pyseir.models.suppression_policies import generate_empirical_distancing_policy, generate_covidactnow_scenarios
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from pyseir.inference import fit_results
 from pyseir.reports.county_report import CountyReport
+
+
+class RunModes(Enum):
+    DEFAULT = 'default'  # 4 basic scenarios.
+    CAN_BEFORE = 'can_before' # 4 basic scenarios.
 
 
 compartment_to_capacity_attr_map = {
@@ -41,12 +47,15 @@ class EnsembleRunner:
     output_percentiles: list
         List of output percentiles desired. These will be computed for each
         compartment.
+    run_mode: str
+        Individual parameters can be overridden here.
     """
-    def __init__(self, fips, n_years=2, n_samples=250,
+    def __init__(self, fips, n_years=2, n_samples=100,
                  suppression_policy=(0.35, 0.5, 0.75, 1),
                  skip_plots=False,
                  output_percentiles=(5, 25, 32, 50, 75, 68, 95),
-                 generate_report=True):
+                 generate_report=True,
+                 run_mode=RunModes.DEFAULT):
 
         self.fips = fips
         self.t_list = np.linspace(0, 365 * n_years, 365 * n_years)
@@ -58,17 +67,43 @@ class EnsembleRunner:
         self.n_years = n_years
         self.t0 = fit_results.load_t0(fips)
         self.date_generated = datetime.datetime.utcnow().isoformat()
-        self.suppression_policy = suppression_policy
+        self.run_mode = RunModes(run_mode)
 
+        self.suppression_policy = suppression_policy
         self.summary = copy.deepcopy(self.__dict__)
         self.summary.pop('t_list')
         self.generate_report = generate_report
 
+        self.suppression_policies = None
+        self.override_params = None
+        self.init_run_mode()
+
         self.all_outputs = {}
         self.output_file_report = os.path.join(OUTPUT_DIR, self.county_metadata['state'], 'reports',
-            f"{self.county_metadata['state']}__{self.county_metadata['county']}__{self.fips}__ensemble_projections.pdf")
+            f"{self.county_metadata['state']}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf")
         self.output_file_data = os.path.join( OUTPUT_DIR, self.county_metadata['state'], 'data',
-            f"{self.county_metadata['state']}__{self.county_metadata['county']}__{self.fips}__ensemble_projections.json")
+            f"{self.county_metadata['state']}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+
+    def init_run_mode(self):
+        """
+        Based on the run mode, generate suppression policies and ensemble
+        parameters.
+        """
+        if self.run_mode is RunModes.CAN_BEFORE:
+            self.suppression_policies = []
+            for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
+                self.suppression_policies.append(generate_covidactnow_scenarios(
+                    t_list=self.t_list, R0=2.4, t0=self.t0, scenario=scenario))
+            self.override_params = dict(R0=2.4)
+
+        elif self.run_mode is RunModes.DEFAULT:
+            self.suppression_policies = []
+            for suppression_policy in self.suppression_policy:
+                self.suppression_policies.append(generate_empirical_distancing_policy(
+                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy))
+            self.override_params = dict()
+        else:
+            raise ValueError('Invalid run mode.')
 
     @staticmethod
     def _run_single_simulation(parameter_set):
@@ -94,20 +129,15 @@ class EnsembleRunner:
         Run an ensemble of models for each suppression policy nad generate the
         output report / results dataset.
         """
-
-        for suppression_policy in self.suppression_policy:
+        for suppression_policy in self.suppression_policies:
             logging.info(f'Generating For Policy {suppression_policy}')
 
-            parameter_ensemble = ParameterEnsembleGenerator(
+            parameter_sampler = ParameterEnsembleGenerator(
                 fips=self.fips,
                 N_samples=self.n_samples,
                 t_list=self.t_list,
-                suppression_policy=generate_empirical_distancing_policy(
-                    t_list=self.t_list,
-                    fips=self.fips,
-                    future_suppression=suppression_policy
-                )).sample_seir_parameters()
-
+                suppression_policy=suppression_policy)
+            parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
             model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
             logging.info(f'Generating Report for suppression policy {suppression_policy}')
