@@ -10,6 +10,7 @@ LOCAL_PUBLIC_DATA_PATH = (
 
 _logger = logging.getLogger(__name__)
 
+
 class AggregationLevel(enum.Enum):
     COUNTRY = "country"
     STATE = "state"
@@ -86,6 +87,9 @@ def check_index_values_are_unique(data):
     duplicates = duplicates_results[duplicates_results == True]
     if len(duplicates):
         _logger.warning(f"Found {len(duplicates)} results.")
+        return data[duplicates_results]
+
+    return None
 
 
 def compare_datasets(
@@ -166,9 +170,9 @@ def build_fips_data_frame():
 
 
 def add_county_using_fips(data, fips_data):
-    data = data.set_index("fips")
-    fips_data = fips_data.set_index("fips")
-    data = data.join(fips_data[["county"]], on="fips", rsuffix="_r").reset_index()
+    data = data.set_index(["fips", "state"])
+    fips_data = fips_data.set_index(["fips", "state"])
+    data = data.join(fips_data[["county"]], on=["fips", "state"], rsuffix="_r").reset_index()
     is_missing_county = data.county.isnull() & data.fips.notnull()
 
     data.loc[is_missing_county, 'county'] = (
