@@ -1,6 +1,5 @@
 from typing import Tuple, Optional, Any
 import logging
-import time
 import traceback
 import functools
 import datetime
@@ -10,7 +9,6 @@ import os.path
 from collections import defaultdict
 import multiprocessing
 
-from libs.CovidDatasets import JHUDataset as LegacyJHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 import simplejson
 import pandas as pd
@@ -318,11 +316,8 @@ def forecast_each_state(
 ):
     _logger.info(f"Generating data for state: {state}")
     cases = timeseries.get_data(state=state)
-    try:
-        beds = beds_data.get_beds_by_country_state(country, state)
-    except IndexError:
-        # Old timeseries data throws an exception if the state does not exist in
-        # the dataset.
+    beds = beds_data.get_state_level(state)
+    if not beds:
         _logger.error(f"Failed to get beds data for {state}")
         return
     population = population_data.get_state_level(country, state)
@@ -429,7 +424,7 @@ def run_state_level_forecast(
 ):
     # DH Beds dataset does not have all counties, so using the legacy state
     # level bed data.
-    legacy_dataset = LegacyJHUDataset(min_date)
+    beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
     timeseries = timeseries.get_subset(
@@ -444,7 +439,7 @@ def run_state_level_forecast(
             country,
             state,
             timeseries,
-            legacy_dataset,
+            beds_data,
             population_data,
             min_date,
             max_date,
