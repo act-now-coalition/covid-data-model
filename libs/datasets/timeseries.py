@@ -46,6 +46,14 @@ class TimeseriesDataset(object):
     def states(self) -> List:
         return self.data[self.Fields.STATE].dropna().unique().tolist()
 
+    @property
+    def state_data(self) -> pd.DataFrame:
+        return self.get_subset(AggregationLevel.STATE).data
+
+    @property
+    def county_data(self) -> pd.DataFrame:
+        return self.get_subset(AggregationLevel.COUNTY).data
+
     def county_keys(self) -> List:
         """Returns a list of all (country, state, county) combinations."""
         # Check to make sure all values are county values
