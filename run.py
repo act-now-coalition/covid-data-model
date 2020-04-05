@@ -127,8 +127,12 @@ def prepare_data_for_website(
     relevant_date_index = pd.to_datetime(website_ordering.date).isin(historicals_df.date)
     extract_real_date_index = historicals_df.date.isin(pd.to_datetime(website_ordering.date))
 
-    website_ordering.loc[relevant_date_index, 'all_infected'] = historicals_df[extract_real_date_index]['estimated_infected'].values
-    website_ordering.loc[relevant_date_index, 'all_hospitalized'] = historicals_df[extract_real_date_index]['estimated_hospitalized'].values
+    website_ordering.loc[relevant_date_index, 'all_infected'] = (
+        historicals_df[extract_real_date_index]['estimated_infected'].values
+    )
+    website_ordering.loc[relevant_date_index, 'all_hospitalized'] = (
+        historicals_df[extract_real_date_index]['estimated_hospitalized'].values
+    )
 
     return website_ordering
 

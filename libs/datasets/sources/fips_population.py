@@ -5,7 +5,7 @@ from libs.datasets.population import PopulationDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.build_params import US_STATE_ABBREV
-
+from libs import enums
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 
 
@@ -55,7 +55,7 @@ class FIPSPopulation(data_source.DataSource):
             row = {
                 cls.Fields.STATE: state,
                 # TODO(chris): Possibly separate fips out by state prefix
-                cls.Fields.FIPS: '99999',
+                cls.Fields.FIPS: enums.UNKNOWN_FIPS,
                 cls.Fields.POPULATION: None,
                 cls.Fields.COUNTY: 'Unknown'
             }
