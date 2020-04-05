@@ -5,12 +5,12 @@ import logging
 import click
 from libs import build_params
 from libs.datasets import data_version
-from libs.datasets import dataset_utils
 import run
 
 WEB_DEPLOY_PATH = "../covid-projections/public/data"
 
 _logger = logging.getLogger(__name__)
+
 
 @click.group()
 def main():
@@ -45,7 +45,7 @@ def run_county(version: data_version.DataVersion, state=None, deploy=False, summ
         )
     run.build_county_summary(min_date, state=state, output_dir=output_dir)
     # only write the version if we saved everything
-    if state is None and not summary_only:
+    if not state and not summary_only:
         version.write_file('counties', output_dir)
     else:
         _logger.info('Skip version file because this is not a full run')
@@ -73,7 +73,7 @@ def run_state(version: data_version.DataVersion, state=None, deploy=False):
     )
     _logger.info(f'Wrote output to {output_dir}')
     # only write the version if we saved everything
-    if state is None :
+    if not state:
         version.write_file('states', output_dir)
     else:
         _logger.info('Skip version file because this is not a full run')
