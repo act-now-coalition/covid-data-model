@@ -330,7 +330,6 @@ def forecast_each_state(
         _logger.warning(f"Missing population for {state}")
         return
 
-    all_website_data = []
     for i, intervention in enumerate(get_interventions()):
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
@@ -338,10 +337,7 @@ def forecast_each_state(
             results, cases, population, min_date, max_date, interval=4
         )
 
-        all_website_data.append(website_data)
         write_results(website_data, output_dir, f"{state}.{i}.json")
-
-    return all_website_data
 
 
 @catch_and_return_errors
@@ -373,17 +369,13 @@ def forecast_each_county(
         f"total cases: {total_cases} beds: {beds} pop: {population}"
     )
 
-    all_website_data = []
     interventions = get_interventions()
     for i, intervention in enumerate(interventions):
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
             results, cases, population, min_date, max_date, interval=4
         )
-        all_website_data.append(website_data)
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
-
-    return all_website_data
 
 
 def run_county_level_forecast(
@@ -466,3 +458,15 @@ def run_state_level_forecast(
 
     pool.close()
     pool.join()
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    with public_data_hash(os.getenv('COVID_DATA_PUBLIC_HASH', None)) as git_hash:
+        # @TODO: Record git hash in output data for reproducibility
+        # @TODO: Remove interventions override once support is in the Harvard model.
+        min_date = datetime.datetime(2020, 3, 7)
+        max_date = datetime.datetime(2020, 7, 6)
+        # build_county_summary()
+        run_county_level_forecast(min_date, max_date)
+        run_state_level_forecast(min_date, max_date)
