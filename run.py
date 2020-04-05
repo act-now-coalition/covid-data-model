@@ -16,7 +16,8 @@ from libs.build_params import OUTPUT_DIR, get_interventions, OUTPUT_DIR_COUNTIES
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
-from libs.datasets.dataset_utils import AggregationLevel, public_data_hash
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.data_version import public_data_hash
 
 _logger = logging.getLogger(__name__)
 
@@ -339,11 +340,6 @@ def run_county_level_forecast(
 
     output_dir = pathlib.Path(output_dir)
     _logger.info(f"Outputting to {output_dir}")
-    # Dont want to replace when just running the states
-    if output_dir.exists() and not state:
-        backup = output_dir.name + "." + str(int(time.time()))
-        output_dir.rename(output_dir.parent / backup)
-
     output_dir.mkdir(parents=True, exist_ok=True)
 
     counties_by_state = defaultdict(list)
@@ -385,11 +381,7 @@ def run_state_level_forecast(
     timeseries = timeseries.get_subset(
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )
-    output_dir = pathlib.Path(OUTPUT_DIR)
-    if output_dir.exists() and not state:
-        backup = output_dir.name + "." + str(int(time.time()))
-        output_dir.rename(output_dir.parent / backup)
-
+    output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pool = get_pool()

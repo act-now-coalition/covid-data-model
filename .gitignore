@@ -3,7 +3,9 @@ results/*.csv
 results/*.json
 results/test/*.csv
 results/test/*.json
+
 results/county/*
+results/test.*
 
 # don't upload csvs/files
 counties.csv

@@ -3,6 +3,7 @@ import enum
 import pandas as pd
 import datetime
 from libs.datasets import dataset_utils
+from libs.datasets import custom_aggregations
 from libs.datasets.dataset_utils import AggregationLevel
 
 
@@ -68,7 +69,9 @@ class TimeseriesDataset(object):
         if aggregation_level == AggregationLevel.COUNTRY:
             group = [self.Fields.COUNTRY]
 
-        data = self.data[self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value].reset_index()
+        data = self.data[
+            self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value
+        ].reset_index()
         return data.iloc[data.groupby(group).date.idxmax(), :]
 
     def get_subset(
@@ -132,6 +135,19 @@ class TimeseriesDataset(object):
         data = data.rename(columns=to_common_fields)[final_columns]
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
         data[cls.Fields.GENERATED] = False
+
+        group = [
+            cls.Fields.DATE,
+            cls.Fields.SOURCE,
+            cls.Fields.COUNTRY,
+            cls.Fields.AGGREGATE_LEVEL,
+            cls.Fields.STATE,
+            cls.Fields.GENERATED,
+        ]
+        data = custom_aggregations.update_with_combined_new_york_counties(
+            data, group, are_boroughs_zero=True
+        )
+
         if fill_missing_state:
             state_groupby_fields = [
                 cls.Fields.DATE,
@@ -159,12 +175,17 @@ class TimeseriesDataset(object):
         dataset_utils.summarize(
             self.data,
             AggregationLevel.COUNTY,
-            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS]
+            [
+                self.Fields.DATE,
+                self.Fields.COUNTRY,
+                self.Fields.STATE,
+                self.Fields.FIPS,
+            ],
         )
 
         print()
         dataset_utils.summarize(
             self.data,
             AggregationLevel.STATE,
-            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE]
+            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE],
         )
