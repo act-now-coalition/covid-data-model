@@ -1,5 +1,8 @@
+from typing import Tuple, Optional, Any
 import logging
 import time
+import traceback
+import functools
 import datetime
 import pathlib
 import json
@@ -28,6 +31,7 @@ def get_pool(num_cores=None) -> multiprocessing.Pool:
 
     return multiprocessing.Pool(num_cores)
 
+
 def get_backfill_historical_estimates(df):
 
     CONFIRMED_HOSPITALIZED_RATIO = 4
@@ -40,8 +44,10 @@ def get_backfill_historical_estimates(df):
     df['estimated_infected'] = df['estimated_hospitalized']/HOSPITALIZATION_RATIO
     return df
 
+
 def prepare_data_for_website(
-    data, historicals, population, min_begin_date, max_end_date, interval: int = 4):
+    data, historicals, population, min_begin_date, max_end_date, interval: int = 4
+):
     """Prepares data for website output."""
     # Indexes used by website JSON:
     # date: 0,
@@ -259,6 +265,47 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
     output_path.write_text(json.dumps(all_data, indent=2))
 
 
+def catch_and_return_errors(func) -> Tuple[Optional[Exception], Optional[Any]]:
+    """Catch and report errors, wrapping response in a tuple with error and result.
+
+    Args:
+        func: Function to wrap.
+
+    Returns: Tuple of optional error and optional result.
+    """
+    @functools.wraps(func)
+    def run(*args, **kwargs):
+
+        try:
+            result = func(*args, **kwargs)
+            return (None, result)
+        except Exception as err:
+            error_msg = traceback.format_exc()
+            return ((err, error_msg), None)
+
+    return run
+
+
+def _result_callback_wrapper(key):
+    """Creates a callback function to log errors on parallel task completion.
+
+    Args:
+        key: Key used to help identify inputs that caused error.
+
+    Returns: Callback function.
+    """
+    def callback(result):
+        error, _ = result
+
+        if error:
+            exc, error_traceback = error
+            _logger.error(f"Failed to process: {key}")
+            _logger.error(error_traceback)
+
+    return callback
+
+
+@catch_and_return_errors
 def forecast_each_state(
     country,
     state,
@@ -289,9 +336,11 @@ def forecast_each_state(
         website_data = prepare_data_for_website(
             results, cases, population, min_date, max_date, interval=4
         )
+
         write_results(website_data, output_dir, f"{state}.{i}.json")
 
 
+@catch_and_return_errors
 def forecast_each_county(
     min_date,
     max_date,
@@ -320,12 +369,12 @@ def forecast_each_county(
         f"total cases: {total_cases} beds: {beds} pop: {population}"
     )
 
-    for i, intervention in enumerate(get_interventions()):
+    interventions = get_interventions()
+    for i, intervention in enumerate(interventions):
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
             results, cases, population, min_date, max_date, interval=4
         )
-
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
 
@@ -364,8 +413,12 @@ def run_county_level_forecast(
                 population_data,
                 output_dir,
             )
-            # forecast_each_county(*args)
-            pool.apply_async(forecast_each_county, args=args)
+
+            pool.apply_async(
+                forecast_each_county,
+                args,
+                callback=_result_callback_wrapper(f"{county}, {state}: {fips}")
+            )
 
     pool.close()
     pool.join()
@@ -397,7 +450,11 @@ def run_state_level_forecast(
             max_date,
             output_dir,
         )
-        pool.apply_async(forecast_each_state, args=args)
+        pool.apply_async(
+            forecast_each_state,
+            args,
+            callback=_result_callback_wrapper(f"{state}, {country}")
+        )
 
     pool.close()
     pool.join()
