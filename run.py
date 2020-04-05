@@ -341,11 +341,6 @@ def run_county_level_forecast(
 
     output_dir = pathlib.Path(output_dir) / "county"
     _logger.info(f"Outputting to {output_dir}")
-    # Dont want to replace when just running the states
-    if output_dir.exists() and not state:
-        backup = output_dir.name + "." + str(int(time.time()))
-        output_dir.rename(output_dir.parent / backup)
-
     output_dir.mkdir(parents=True, exist_ok=True)
 
     counties_by_state = defaultdict(list)
@@ -387,11 +382,7 @@ def run_state_level_forecast(
     timeseries = timeseries.get_subset(
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )
-    output_dir = pathlib.Path(OUTPUT_DIR)
-    if output_dir.exists() and not state:
-        backup = output_dir.name + "." + str(int(time.time()))
-        output_dir.rename(output_dir.parent / backup)
-
+    output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pool = get_pool()
