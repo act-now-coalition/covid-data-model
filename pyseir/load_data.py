@@ -183,11 +183,10 @@ def load_county_metadata():
     : pd.DataFrame
 
     """
-    # return pd.read_pickle(os.path.join(DATA_DIR, 'covid_county_metadata.pkl'))
     return pd.read_json(os.path.join(DATA_DIR, 'county_metadata.json'), dtype={'fips': 'str'})
 
 
-def load_ensemble_results(fips):
+def load_ensemble_results(fips, run_mode='default'):
     """
     Retrieve
 
@@ -195,6 +194,8 @@ def load_ensemble_results(fips):
     ----------
     fips: str
         County FIPS to load.
+    run_mode: str
+        Which run mode to pull results from.
 
     Returns
     -------
@@ -202,7 +203,7 @@ def load_ensemble_results(fips):
     """
     county_metadata = load_county_metadata().set_index('fips')
     state, county = county_metadata.loc[fips]['state'], county_metadata.loc[fips]['county']
-    path = os.path.join(OUTPUT_DIR, state, 'data', f"{state}__{county}__{fips}__ensemble_projections.json")
+    path = os.path.join(OUTPUT_DIR, state, 'data', f"{state}__{county}__{fips}__{run_mode}__ensemble_projections.json")
     with open(path) as f:
         fit_results = json.load(f)
     return fit_results
@@ -240,6 +241,9 @@ def load_county_metadata_by_fips(fips):
          'potential_increase_in_bed_capac']].groupby('fips').sum()
 
     county_metadata_merged = county_metadata.merge(hospital_bed_data, on='fips', how='left').set_index('fips').loc[fips].to_dict()
+    for key, value in county_metadata_merged.items():
+        if np.isscalar(value) and not isinstance(value, str):
+            county_metadata_merged[key] = float(value)
     return county_metadata_merged
 
 

@@ -115,23 +115,23 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
             rho.append(1)
 
         elif scenario == 'flatten_the_curve':
-            if actual_date < today:
+            if actual_date <= today:
                 rho.append(1)
             elif (actual_date - today).days < 30:
                 rho.append(1.3 / R0)
             elif (actual_date - today).days < 60:
                 rho.append(1.1 / R0)
             elif (actual_date - today).days < 90:
-                rho.append(0.8/ R0)
+                rho.append(0.8 / R0)
             else: # Open back up...
                 rho.append(1)
 
         elif scenario == 'full_containment':
-            if actual_date < today:
+            if actual_date <= today:
                 rho.append(1)
             elif (actual_date - today).days < 7:
                 rho.append(1.3 / R0)
-            elif (actual_date - today).days < 30 + 7 * 1:
+            elif (actual_date - today).days < 7 * 1:
                 rho.append(.3 / R0)
             elif (actual_date - today).days < 30 + 7 * 2:
                 rho.append(.2 / R0)
@@ -143,7 +143,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
                 rho.append(0)
 
         elif scenario == 'social_distancing':
-            if actual_date < today:
+            if actual_date <= today:
                 rho.append(1)
             elif (actual_date - today).days < 90:
                 rho.append(1.7 / R0)
@@ -152,7 +152,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
         else:
             raise ValueError(f'Invalid scenario {scenario}')
 
-    return interp1d(t_list, rho)
+    return interp1d(t_list, rho, fill_value='extrapolate')
 
 
 def generate_empirical_distancing_policy(t_list, fips, future_suppression):

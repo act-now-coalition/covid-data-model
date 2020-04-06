@@ -139,8 +139,8 @@ class SEIRModel:
                  HICUVent_initial=0,
                  D_initial=0,
                  R0=3.75,
-                 sigma=1 / 5.2,
-                 delta=1 / 5.2, # Infectious period
+                 sigma=1 / 3, # -2 days because this is when contagious.
+                 delta=1 / 6, # Infectious period
                  kappa=1,
                  gamma=0.5,
                  hospitalization_rate_general=0.025,
@@ -183,7 +183,7 @@ class SEIRModel:
         self.kappa = kappa        # Reduce contact due to isolation of symptomatic cases.
 
         # These need to be made age dependent R0 =  beta = Contact rate * infectious period.
-        self.beta = self.R0 * self.sigma
+        self.beta = self.R0 * self.delta
 
         self.mortality_rate = mortality_rate
         self.symptoms_to_hospital_days = symptoms_to_hospital_days

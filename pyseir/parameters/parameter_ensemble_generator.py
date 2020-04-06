@@ -84,8 +84,8 @@ class ParameterEnsembleGenerator:
                 hospitalization_rate_icu=max(np.random.normal(loc=.29, scale=0.03) * hospitalization_rate_general, 0),
                 # http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
                 fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.54, scale=0.2), 0),
-                sigma=1 / np.random.normal(loc=5.1, scale=0.86),  # Imperial college
-                delta=1 / np.random.gamma(5.0, scale=1),  # Kind of based on imperial college + CDC digest.
+                sigma=1 / np.random.normal(loc=3.1, scale=0.86),  # Imperial college - 2 days since that is expected infectious period.
+                delta=1 / np.random.gamma(6.0, scale=1),  # Kind of based on imperial college + CDC digest.
                 kappa=1,
                 gamma=fraction_asymptomatic,
                 # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html

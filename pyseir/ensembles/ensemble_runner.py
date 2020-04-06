@@ -17,9 +17,9 @@ from pyseir.inference import fit_results
 from pyseir.reports.county_report import CountyReport
 
 
-class RunModes(Enum):
+class RunMode(Enum):
     DEFAULT = 'default'  # 4 basic scenarios.
-    CAN_BEFORE = 'can_before' # 4 basic scenarios.
+    CAN_BEFORE = 'can-before' # 4 basic scenarios.
 
 
 compartment_to_capacity_attr_map = {
@@ -50,12 +50,12 @@ class EnsembleRunner:
     run_mode: str
         Individual parameters can be overridden here.
     """
-    def __init__(self, fips, n_years=2, n_samples=100,
+    def __init__(self, fips, n_years=2, n_samples=250,
                  suppression_policy=(0.35, 0.5, 0.75, 1),
                  skip_plots=False,
                  output_percentiles=(5, 25, 32, 50, 75, 68, 95),
                  generate_report=True,
-                 run_mode=RunModes.DEFAULT):
+                 run_mode=RunMode.DEFAULT):
 
         self.fips = fips
         self.t_list = np.linspace(0, 365 * n_years, 365 * n_years)
@@ -67,7 +67,7 @@ class EnsembleRunner:
         self.n_years = n_years
         self.t0 = fit_results.load_t0(fips)
         self.date_generated = datetime.datetime.utcnow().isoformat()
-        self.run_mode = RunModes(run_mode)
+        self.run_mode = RunMode(run_mode)
 
         self.suppression_policy = suppression_policy
         self.summary = copy.deepcopy(self.__dict__)
@@ -89,18 +89,44 @@ class EnsembleRunner:
         Based on the run mode, generate suppression policies and ensemble
         parameters.
         """
-        if self.run_mode is RunModes.CAN_BEFORE:
-            self.suppression_policies = []
-            for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
-                self.suppression_policies.append(generate_covidactnow_scenarios(
-                    t_list=self.t_list, R0=2.4, t0=self.t0, scenario=scenario))
-            self.override_params = dict(R0=2.4)
+        self.suppression_policies = dict()
 
-        elif self.run_mode is RunModes.DEFAULT:
-            self.suppression_policies = []
+        if self.run_mode is RunMode.CAN_BEFORE:
+            self.n_samples = 1
+
+            for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
+                R0 = 3.6
+                policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
+                self.suppression_policies[f'suppression_policy__{scenario}'] = policy
+                self.override_params = ParameterEnsembleGenerator(
+                    self.fips, N_samples=1000, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
+            self.override_params['R0'] = R0
+            self.override_params['delta'] = 1 / 6.
+            self.override_params['sigma'] = 1 / 3.
+
+            times_new, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(self.fips, self.t0)
+            total_cases = np.cumsum(observed_new_cases)
+            total_deaths = np.cumsum(observed_new_deaths)
+
+            if len(total_cases) > 0 and total_cases.max() > 0:
+                self.t0 = times_new.max()
+                self.override_params['I_initial'] = total_cases.max()
+                self.override_params['A_initial'] = total_cases.max()
+                self.override_params['E_initial'] = 2.4 * total_cases.max()
+                self.override_params['D_initial'] = total_deaths.max()
+                self.override_params['HGen_initial'] = total_cases.max() * self.override_params['hospitalization_rate_general']
+                self.override_params['HICU_initial'] = total_cases.max() * self.override_params['hospitalization_rate_icu']
+                self.override_params['HICUVent_initial'] = total_cases.max() * self.override_params['hospitalization_rate_icu'] \
+                                                           * self.override_params['fraction_icu_requiring_ventilator']
+            else:
+                self.t0 = datetime.datetime.today()
+                self.override_params['I_initial'] = 1
+                self.override_params['A_initial'] = 1
+
+        elif self.run_mode is RunMode.DEFAULT:
             for suppression_policy in self.suppression_policy:
-                self.suppression_policies.append(generate_empirical_distancing_policy(
-                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy))
+                self.suppression_policies[f'suppression_policy__{suppression_policy}']= generate_empirical_distancing_policy(
+                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy)
             self.override_params = dict()
         else:
             raise ValueError('Invalid run mode.')
@@ -129,8 +155,8 @@ class EnsembleRunner:
         Run an ensemble of models for each suppression policy nad generate the
         output report / results dataset.
         """
-        for suppression_policy in self.suppression_policies:
-            logging.info(f'Generating For Policy {suppression_policy}')
+        for suppression_policy_name, suppression_policy in self.suppression_policies.items():
+            logging.info(f'Running simulation ensemble for {self.county_metadata["county"]}, {self.county_metadata["state"]} {suppression_policy_name}')
 
             parameter_sampler = ParameterEnsembleGenerator(
                 fips=self.fips,
@@ -140,12 +166,16 @@ class EnsembleRunner:
             parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
             model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
-            logging.info(f'Generating Report for suppression policy {suppression_policy}')
+            logging.info(f'Generating outputs for {suppression_policy_name}')
             self.all_outputs['county_metadata'] = self.county_metadata
-            self.all_outputs[f'suppression_policy__{suppression_policy}'] = \
-                self._generate_output_for_suppression_policy(model_ensemble, suppression_policy)
+            self.all_outputs['county_metadata']['age_distribution'] = list(self.all_outputs['county_metadata']['age_distribution'])
+            self.all_outputs['county_metadata']['age_bins'] = list(self.all_outputs['county_metadata']['age_distribution'])
+
+            self.all_outputs[f'{suppression_policy_name}'] = \
+                self._generate_output_for_suppression_policy(model_ensemble)
 
         if self.generate_report:
+            logging.info(f'Generating report for {self.county_metadata["county"]}, {self.county_metadata["state"]}')
             report = CountyReport(self.fips,
                                   model_ensemble=model_ensemble,
                                   county_outputs=self.all_outputs,
@@ -245,7 +275,7 @@ class EnsembleRunner:
         peak_data['peak_value_mean'] = np.mean(values_at_peak_index).tolist()
         return peak_data
 
-    def _generate_output_for_suppression_policy(self, model_ensemble, suppression_policy):
+    def _generate_output_for_suppression_policy(self, model_ensemble):
         """
         Generate output data for a given suppression policy.
 
@@ -254,11 +284,10 @@ class EnsembleRunner:
         model_ensemble: list(SEIRModel)
             List of models to compute the surge windows for.
 
-        suppression_policy: float()
-
         Returns
         -------
-
+        outputs: dict
+            Output data for this suppression policc ensemble.
         """
         outputs = defaultdict(dict)
         outputs['t_list'] = model_ensemble[0].t_list.tolist()
