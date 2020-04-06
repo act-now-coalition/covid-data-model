@@ -1,13 +1,11 @@
 #!/usr/bin/env python
-
+import os
 import datetime
 import logging
 import click
 from libs import build_params
 from libs.datasets import data_version
 import run
-
-WEB_DEPLOY_PATH = "../covid-projections/public/data"
 
 _logger = logging.getLogger(__name__)
 
@@ -35,14 +33,17 @@ def run_county(version: data_version.DataVersion, state=None, deploy=False, summ
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
 
-    output_dir = build_params.OUTPUT_DIR
+    output_base = build_params.OUTPUT_PATH
     if deploy:
-        output_dir = WEB_DEPLOY_PATH
+        output_base = build_params.WEB_DEPLOY_PATH
+    output_dir = output_base / build_params.COUNTY_SUBDIR
 
     if not summary_only:
         run.run_county_level_forecast(
             min_date, max_date, country="USA", state=state, output_dir=output_dir
         )
+
+    output_dir = output_base / build_params.COUNTY_SUMMARY_SUBDIR
     run.build_county_summary(min_date, state=state, output_dir=output_dir)
     # only write the version if we saved everything
     if not state and not summary_only:
@@ -66,7 +67,7 @@ def run_state(version: data_version.DataVersion, state=None, deploy=False):
 
     output_dir = build_params.OUTPUT_DIR
     if deploy:
-        output_dir = WEB_DEPLOY_PATH
+        output_dir = build_params.WEB_DEPLOY_PATH
 
     run.run_state_level_forecast(
         min_date, max_date, country="USA", state=state, output_dir=output_dir

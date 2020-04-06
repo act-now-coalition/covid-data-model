@@ -181,7 +181,7 @@ def get_county_projections():
         state = fips_row['state']
         fips = fips_row['fips']
         file_name = f"{state}.{fips}.{intervention_type}.json"
-        path = os.path.join(OUTPUT_DIR_COUNTIES, file_name)
+        path = os.path.join(str(OUTPUT_DIR_COUNTIES), file_name)
         # if the file exists in that directory then process
         if os.path.exists(path):
             df = read_json_as_df(path)

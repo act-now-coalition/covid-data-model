@@ -13,12 +13,11 @@ from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 import simplejson
 import pandas as pd
 
-from libs.build_params import OUTPUT_DIR, get_interventions, OUTPUT_DIR_COUNTIES
+from libs import build_params
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.data_version import public_data_hash
 
 _logger = logging.getLogger(__name__)
 
@@ -230,7 +229,12 @@ def model_state(timeseries, starting_beds, population, interventions=None):
     return results
 
 
-def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_DIR):
+def build_county_summary(
+    min_date: datetime.datetime,
+    country: str = "USA",
+    state: str = None,
+    output_dir: pathlib.Path = build_params.OUTPUT_DIR_COUNTY_SUMMARY
+):
     """Builds county summary json files."""
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -239,7 +243,6 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    output_dir = pathlib.Path(output_dir) / "county_summaries"
     _logger.info(f"Outputting to {output_dir}")
     if not output_dir.exists():
         _logger.info(f"{output_dir} does not exist, creating")
@@ -329,7 +332,7 @@ def forecast_each_state(
         _logger.warning(f"Missing population for {state}")
         return
 
-    for i, intervention in enumerate(get_interventions()):
+    for i, intervention in enumerate(build_params.get_interventions()):
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
@@ -368,7 +371,7 @@ def forecast_each_county(
         f"total cases: {total_cases} beds: {beds} pop: {population}"
     )
 
-    interventions = get_interventions()
+    interventions = build_params.get_interventions()
     for i, intervention in enumerate(interventions):
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
@@ -378,7 +381,11 @@ def forecast_each_county(
 
 
 def run_county_level_forecast(
-    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR_COUNTIES
+    min_date: datetime.datetime,
+    max_date: datetime.datetime,
+    country: str = "USA",
+    state: str = None,
+    output_dir: pathlib.Path = build_params.OUTPUT_DIR_COUNTIES
 ):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -387,7 +394,6 @@ def run_county_level_forecast(
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    output_dir = pathlib.Path(output_dir)
     _logger.info(f"Outputting to {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -424,7 +430,7 @@ def run_county_level_forecast(
 
 
 def run_state_level_forecast(
-    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR
+    min_date, max_date, country="USA", state=None, output_dir=build_params.OUTPUT_DIR
 ):
     # DH Beds dataset does not have all counties, so using the legacy state
     # level bed data.
@@ -457,15 +463,3 @@ def run_state_level_forecast(
 
     pool.close()
     pool.join()
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    with public_data_hash(os.getenv('COVID_DATA_PUBLIC_HASH', None)) as git_hash:
-        # @TODO: Record git hash in output data for reproducibility
-        # @TODO: Remove interventions override once support is in the Harvard model.
-        min_date = datetime.datetime(2020, 3, 7)
-        max_date = datetime.datetime(2020, 7, 6)
-        # build_county_summary()
-        run_county_level_forecast(min_date, max_date)
-        run_state_level_forecast(min_date, max_date)
