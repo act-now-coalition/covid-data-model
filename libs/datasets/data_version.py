@@ -13,6 +13,7 @@ from .dataset_utils import LOCAL_PUBLIC_DATA_PATH
 
 _logger = logging.getLogger(__name__)
 
+
 class DataVersion(object):
     '''
     Encapsulates some state about the source data with the
