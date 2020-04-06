@@ -52,6 +52,7 @@ class FIPSPopulation(data_source.DataSource):
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         # Add Missing
         unknown_fips = []
+
         for state in data.state.unique():
             row = {
                 cls.Fields.STATE: state,
@@ -61,6 +62,7 @@ class FIPSPopulation(data_source.DataSource):
                 cls.Fields.COUNTY: 'Unknown'
             }
             unknown_fips.append(row)
+
         data = data.append(unknown_fips)
         # All DH data is aggregated at the county level
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
