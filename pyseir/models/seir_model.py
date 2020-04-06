@@ -71,6 +71,8 @@ class SEIRModel:
         Number of days to simulate.
     R0: float
         Basic Reproduction number
+    R0_hospital: float
+        Basic Reproduction number in the hospital.
     kappa: float
         Fractional contact rate for those with symptoms since they should be
         isolated vs asymptomatic who are less isolated. A value 1 implies
@@ -84,6 +86,9 @@ class SEIRModel:
         Infectious period
         See ICL report 13 for serial interval. We model infectious period as
         a bit longer with a Gamma(5, 1) which has a mean of 5
+    delta_hospital: float
+        Infectious period for patients in the hospital which is usually a bit
+        longer.
     gamma: float
         Clinical outbreak rate (fraction of infected that show symptoms)
     hospitalization_rate_general: float
@@ -125,6 +130,12 @@ class SEIRModel:
     mortality_rate_no_general_beds: float
         The percentage of those requiring general hospital beds that die if
         they are not available.
+    initial_hospital_bed_utilization: float
+        Starting utilization fraction for hospital beds and ICU beds.
+    hospital_capacity_change_daily_rate: float
+        Rate of change (geometric increase in hospital bed capacity.
+    max_hospital_capacity_factor: float
+        Cap the hospital capacity.
     """
     def __init__(self,
                  N,
@@ -138,9 +149,11 @@ class SEIRModel:
                  HICU_initial=0,
                  HICUVent_initial=0,
                  D_initial=0,
-                 R0=3.75,
-                 sigma=1 / 3, # -2 days because this is when contagious.
-                 delta=1 / 6, # Infectious period
+                 R0=3.6,
+                 R0_hospital=0.6,
+                 sigma=1 / 3,           # -2 days because this is when contagious.
+                 delta=1 / 6,           # Infectious period
+                 delta_hospital=1 / 8,  # Infectious period
                  kappa=1,
                  gamma=0.5,
                  hospitalization_rate_general=0.025,
@@ -157,7 +170,10 @@ class SEIRModel:
                  mortality_rate=0.0052,
                  mortality_rate_no_ICU_beds=0.85,
                  mortality_rate_no_ventilator=1.0,
-                 mortality_rate_no_general_beds=0.6):
+                 mortality_rate_no_general_beds=0.6,
+                 hospital_capacity_change_daily_rate=1.05,
+                 max_hospital_capacity_factor=2.07,
+                 initial_hospital_bed_utilization=0.6):
 
         self.N = N
         self.suppression_policy = suppression_policy
@@ -177,13 +193,16 @@ class SEIRModel:
 
         # Epidemiological Parameters
         self.R0 = R0              # Reproduction Number
+        self.R0_hospital = R0_hospital  # Reproduction Number
         self.sigma = sigma        # 1 / Incubation period
         self.delta = delta        # 1 / Infectious period
+        self.delta_hospital = delta_hospital # 1 / Infectious period
         self.gamma = gamma        # Clinical outbreak rate for those infected.
         self.kappa = kappa        # Reduce contact due to isolation of symptomatic cases.
 
         # These need to be made age dependent R0 =  beta = Contact rate * infectious period.
         self.beta = self.R0 * self.delta
+        self.beta_hospital = self.R0_hospital * self.delta_hospital
 
         self.mortality_rate = mortality_rate
         self.symptoms_to_hospital_days = symptoms_to_hospital_days
@@ -211,6 +230,10 @@ class SEIRModel:
         self.mortality_rate_no_ICU_beds = mortality_rate_no_ICU_beds
         self.mortality_rate_no_ventilator = mortality_rate_no_ventilator
 
+        self.hospital_capacity_change_daily_rate = hospital_capacity_change_daily_rate
+        self.max_hospital_capacity_factor = max_hospital_capacity_factor
+        self.initial_hospital_bed_utilization = initial_hospital_bed_utilization
+
         # List of times to integrate.
         self.t_list = t_list
         self.results = None
@@ -225,7 +248,8 @@ class SEIRModel:
         S, E, A, I, R, HNonICU, HICU, HICUVent, D, dHAdmissions_general, dHAdmissions_icu, dTotalInfections = y
 
         # Effective contact rate * those that get exposed * those susceptible.
-        number_exposed = self.beta * self.suppression_policy(t) * S * (self.kappa * I + A) / self.N
+        number_exposed = self.beta * self.suppression_policy(t) * S * (self.kappa * I + A) / self.N \
+                         + self.beta_hospital * S * (HICU + HNonICU) / self.N
         dSdt = - number_exposed
 
         exposed_and_symptomatic = self.gamma * self.sigma * E           # latent period moving to infection = 1 / incubation
