@@ -12,7 +12,6 @@ import math, sys
 from urllib.parse import urlparse
 from collections import defaultdict
 
-from libs.constants import NO_INTERVENTION, DATE, ALL_HOSPITALIZED, ALL_INFECTED, DEAD, BEDS
 from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import us_state_abbrev, us_fips
 from libs.datasets import FIPSPopulation
@@ -21,6 +20,23 @@ from libs.datasets import FIPSPopulation
 latest = datetime.date.today() - datetime.timedelta(days=1)
 
 NULL_VALUE = "<Null>"
+
+OUTPUT_COLUMN_REMAP = {
+    'state_x': 'Province/State',
+    'intervention': 'State Intervention',
+    '16-day_Hospitalization_Prediction': '16d-HSPTLZD',
+    '32-day_Hospitalization_Prediction': '32d-HSPTLZD',
+    '16-day_Beds_Shortfall': '16d-LACKBEDS',
+    '32-day_Beds_Shortfall': '32d-LACKBEDS',
+    "Mean Hospitalizations": 'MEAN-HOSP',
+    "Mean Deaths": 'MEAN-DEATHS',
+    "Peak Hospitalizations On": 'PEAK-HOSP',
+    "Mean Deaths On": 'PEAK-DEATHS',
+    "Deaths": "Current Deaths",
+    "Confirmed": "Current Confirmed",
+    "Recovered": "Current Recovered",
+    "Active": "Current Active",
+}
 
 def _file_uri_to_path(uri: str) -> str:
     return urlparse(uri).path
@@ -83,8 +99,8 @@ def calc_short_fall(x):
 
 def get_hospitals_and_shortfalls(df, date_out):
     first_record_after_date = df[(df.date > date_out)].iloc[0]
-    output_cols = ['all_hospitalized', 'short_fall']
-    return tuple(first_record_after_date[output_cols].values)
+    hospital_short_fall_columns = ['all_hospitalized', 'short_fall']
+    return tuple(first_record_after_date[hospital_short_fall_columns].values)
 
 def calculate_projection_data(file_path):
     """
@@ -142,7 +158,7 @@ def get_projections_df(input_dir, intervention_type):
     ]
     return pd.DataFrame(results, columns=headers)
 
-output_cols = ["Province/State",
+jhu_column_names = ["Province/State",
     "Country/Region",
     "Last Update",
     "Latitude",
@@ -159,7 +175,7 @@ output_cols = ["Province/State",
     # "People Tested",
 ]
 
-county_output_cols = ["Province/State",
+our_output_cols = ["Province/State",
     "Country/Region",
     "Last Update",
     "Latitude",
@@ -235,26 +251,9 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
         interventions_df, left_on='state', right_on='state', how = 'inner'
     )
 
-    state_col_remap = {
-        'state_x': 'Province/State',
-        'intervention': 'State Intervention',
-        '16-day_Hospitalization_Prediction': '16d-HSPTLZD',
-        '32-day_Hospitalization_Prediction': '32d-HSPTLZD',
-        '16-day_Beds_Shortfall': '16d-LACKBEDS',
-        '32-day_Beds_Shortfall': '32d-LACKBEDS',
-        "Mean Hospitalizations": 'MEAN-HOSP',
-        "Mean Deaths": 'MEAN-DEATHS',
-        "Peak Hospitalizations On": 'PEAK-HOSP',
-        "Mean Deaths On": 'PEAK-DEATHS',
-        "Deaths": "Current Deaths",
-        "Confirmed": "Current Confirmed",
-        "Recovered": "Current Recovered",
-        "Active": "Current Active",
-    }
+    counties_remapped = counties_decorated.rename(columns=OUTPUT_COLUMN_REMAP)
 
-    counties_remapped = counties_decorated.rename(columns=state_col_remap)
-
-    new_cols = list(set(county_output_cols + list(state_col_remap.values())))
+    new_cols = list(set(our_output_cols + list(OUTPUT_COLUMN_REMAP.values())))
     counties = pd.DataFrame(counties_remapped, columns=new_cols)
     counties = counties.fillna(NULL_VALUE)
     counties.index.name = 'OBJECTID'
@@ -282,7 +281,7 @@ def get_usa_by_county_df():
     # USA only
     us_df = remapped_df[(remapped_df["Country/Region"] == "US")]
 
-    final_df = pd.DataFrame(us_df, columns=output_cols)
+    final_df = pd.DataFrame(us_df, columns=jhu_column_names)
     final_df['Last Update'] = pd.to_datetime(final_df['Last Update'])
     final_df['Last Update'] = final_df['Last Update'].dt.strftime(
         '%-m/%-d/%Y %H:%M')
@@ -329,22 +328,9 @@ def get_usa_by_states_df(input_dir, intervention_type):
         projections_df, left_on='state_y', right_on='State', how='left'
     ).drop(['abbreviation', 'state_y', 'State'], axis=1)
 
-    state_col_remap = {
-        'state_x': 'Province/State',
-        'intervention': 'Intervention',
-        '16-day_Hospitalization_Prediction': '16d-HSPTLZD',
-        '32-day_Hospitalization_Prediction': '32d-HSPTLZD',
-        '16-day_Beds_Shortfall': '16d-LACKBEDS',
-        '32-day_Beds_Shortfall': '32d-LACKBEDS',
-        "Mean Hospitalizations": 'MEAN-HOSP',
-        "Mean Deaths": 'MEAN-DEATHS',
-        "Peak Hospitalizations On": 'PEAK-HOSP',
-        "Mean Deaths On": 'PEAK-DEATHS',
-    }
+    states_remapped = states_abbrev.rename(columns=OUTPUT_COLUMN_REMAP)
 
-    states_remapped = states_abbrev.rename(columns=state_col_remap)
-
-    new_cols = list(set(output_cols + list(state_col_remap.values())))
+    new_cols = list(set(our_output_cols + list(OUTPUT_COLUMN_REMAP.values())))
     states_final = pd.DataFrame(states_remapped, columns=new_cols)
     states_final = states_final.fillna(NULL_VALUE)
     states_final['Combined Key'] = states_final['Province/State']

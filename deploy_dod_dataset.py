@@ -7,10 +7,12 @@ import logging
 
 from libs.build_params import OUTPUT_DIR_DOD
 from libs.constants import INTERVENTIONS
+from libs.validate_results import validate_states_df, validate_counties_df, validate_states_shapefile, validate_counties_shapefile
 from libs.build_dod_dataset import get_usa_by_county_df, get_usa_by_states_df, get_usa_county_shapefile, get_usa_state_shapefile
 from libs.build_dod_dataset import get_usa_by_county_with_projection_df
 
 logger = logging.getLogger()
+PROD_BUCKET = "data.covidactnow.org"
 
 class DatasetDeployer():
 
@@ -56,48 +58,53 @@ class DatasetDeployer():
             self._persist_to_local()
         return
 
+def upload_csv(key_name, csv): 
+    blob = {
+        'key': f'{key_name}.csv',
+        'body': csv
+        }
+    obj = DatasetDeployer(**blob)
+    obj.persist()
+    logger.info(f"Generated csv for {key_name}")
+
+
 @click.command()
 @click.option('--input', '-i', default='results', help='Input directory of state/county projections')
 @click.option('--output', '-o', default='', help='Output directory for artifacts')
-def deploy(input, output):
-def deploy():
-    """The entry function for invocation
-
-    """
+def deploy(input, output, should_run_validation):
+    """The entry function for invocation"""
     for intervention in INTERVENTIONS: 
         logger.info(f"Starting to generate files for {intervention['intervention_name']}.")
 
         states_key_name = f'states.{intervention["intervention_name"]}'
-        states_blob = {
-            'key': f'{states_key_name}.csv',
-            'body': get_usa_by_states_df(input, intervention["intervention_enum"]).to_csv()
-            }
-        statesObj = DatasetDeployer(**states_blob)
-        statesObj.persist()
-        logger.info(f"Generated state csv for {intervention['intervention_name']}")
+        states_df = get_usa_by_states_df(input, intervention["intervention_enum"])
+        if should_run_validation: 
+            validate_states_df(states_key_name, states_df)
+        upload_csv(states_key_name, states_df.to_csv())
 
         states_shp = BytesIO()
         states_shx = BytesIO()
         states_dbf = BytesIO()
         get_usa_state_shapefile(input,  intervention["intervention_enum"], states_shp, states_shx, states_dbf)
+        if should_run_validation: 
+            validate_states_shapefile(states_key_name, states_shp, states_shx, states_dbf)
         DatasetDeployer(key=f'{states_key_name}.shp', body=states_shp.getvalue()).persist()
         DatasetDeployer(key=f'{states_key_name}.shx', body=states_shx.getvalue()).persist()
         DatasetDeployer(key=f'{states_key_name}.dbf', body=states_dbf.getvalue()).persist()
         logger.info(f"Generated state shape files for {intervention['intervention_name']}")
 
         counties_key_name = f'counties.{intervention["intervention_name"]}'
-        counties_blob = {
-            'key': f'{counties_key_name}.csv',
-            'body': get_usa_by_county_with_projection_df(input, intervention["intervention_enum"]).to_csv()
-            }
-        countiesObj = DatasetDeployer(**counties_blob)
-        countiesObj.persist()
-        logger.info(f"Generated counties csv for {intervention['intervention_name']}")
+        counties_df = get_usa_by_county_with_projection_df(input, intervention["intervention_enum"])
+        if should_run_validation: 
+            validate_counties_df(counties_key_name, counties_df)
+        upload_csv(counties_key_name, counties_df.to_csv())
 
         counties_shp = BytesIO()
         counties_shx = BytesIO()
         counties_dbf = BytesIO()
         get_usa_county_shapefile(input, intervention["intervention_enum"], counties_shp, counties_shx, counties_dbf)
+        if should_run_validation: 
+            validate_counties_shapefile(counties_key_name, counties_shp, counties_shx, counties_dbf)
         DatasetDeployer(key=f'{counties_key_name}.shp', body=counties_shp.getvalue()).persist()
         DatasetDeployer(key=f'{counties_key_name}.shp', body=counties_shx.getvalue()).persist()
         DatasetDeployer(key=f'{counties_key_name}.shp', body=counties_dbf.getvalue()).persist()
@@ -118,6 +125,6 @@ if __name__ == "__main__":
     # triggering persistance to local
     python deploy_dod_dataset.py
     """
-
+    should_run_validation = os.environ.get('BUCKET_NAME') == PROD_BUCKET
     # pylint: disable=no-value-for-parameter
-    deploy()
+    deploy(should_run_validation)
