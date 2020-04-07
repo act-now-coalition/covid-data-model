@@ -23,12 +23,9 @@ def main():
     type=pathlib.Path,
     default=pathlib.Path("results/county"),
 )
-@click.option(
-    "--summary-only", is_flag=True, help="Only runs the county summary if true.",
-)
 @data_version.with_git_version_click_option
 def run_county(
-    version: data_version.DataVersion, output, state=None, summary_only=False
+    version: data_version.DataVersion, output, state=None
 ):
     """Run county level model."""
     min_date = datetime.datetime(2020, 3, 7)
@@ -72,7 +69,7 @@ def run_county_summary(version: data_version.DataVersion, output, state=None):
     "-o",
     help="Output directory",
     type=pathlib.Path,
-    default=pathlib.Path("results/county_summaries"),
+    default=pathlib.Path("results/state"),
 )
 @data_version.with_git_version_click_option
 def run_state(version: data_version.DataVersion, output, state=None):

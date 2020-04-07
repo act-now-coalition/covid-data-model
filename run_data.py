@@ -41,10 +41,7 @@ def run_latest(version: data_version.DataVersion, output: pathlib.Path):
             _logger.info(f"Writing latest data for {state}")
             json.dump(state_summary, f)
 
-    if not state:
-        version.write_file("case_summary", output)
-    else:
-        _logger.info("Skip version file because this is not a full run")
+    version.write_file("case_summary", output)
 
 
 if __name__ == "__main__":
