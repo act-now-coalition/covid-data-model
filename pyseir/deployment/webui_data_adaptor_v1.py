@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from datetime import timedelta
 from pyseir import load_data
-import json
+import ujson as json
 import logging
 import us
 from multiprocessing import Pool

@@ -296,6 +296,13 @@ class SEIRModel:
         # TODO Age dep mortality. Recent estimate fo relative distribution Fig 3 here:
         #      http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
         dDdt = infected_and_dead  # Fraction that die.
+
+        # Don't let infections come back if they get suppressed.
+        if I < 1.0:
+            dIdt = 0
+        if A < 1.0:
+            dAdt = 0
+
         return dSdt, dEdt, dAdt, dIdt, dRdt, dHNonICU_dt, dHICU_dt, dHICUVent_dt, dDdt, dHAdmissions_general, dHAdmissions_ICU, dTotalInfections
 
     def run(self):

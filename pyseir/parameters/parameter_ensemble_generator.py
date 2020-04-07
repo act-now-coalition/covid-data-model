@@ -1,6 +1,13 @@
 import numpy as np
 import pandas as pd
 from pyseir import load_data
+from libs.datasets import FIPSPopulation
+from libs.datasets import DHBeds
+import us
+
+
+beds_data = DHBeds.local().beds()
+population_data = FIPSPopulation.local().population()
 
 
 class ParameterEnsembleGenerator:
@@ -28,19 +35,12 @@ class ParameterEnsembleGenerator:
         self.I_initial = I_initial
         self.suppression_policy = suppression_policy
         self.t_list = t_list
-        county_metadata = load_data.load_county_metadata()
-        hospital_bed_data = load_data.load_hospital_data()
+        self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+        self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
 
         # TODO: Some counties do not have hospitals. Likely need to go to HRR level..
-        hospital_bed_data = hospital_bed_data[
-            ['fips',
-             'num_licensed_beds',
-             'num_staffed_beds',
-             'num_icu_beds',
-             'bed_utilization',
-             'potential_increase_in_bed_capac']].groupby('fips').sum()
-        self.county_metadata_merged = county_metadata.merge(
-            hospital_bed_data,  on='fips', how='left').set_index('fips').loc[fips].to_dict()
+        self.beds = beds_data.get_county_level(self.state_abbr, fips=self.fips) or 0
+        self.population = population_data.get_county_level('USA', state=self.state_abbr, fips=self.fips)
 
     def sample_seir_parameters(self, override_params=None):
         """
@@ -69,7 +69,7 @@ class ParameterEnsembleGenerator:
 
             parameter_sets.append(dict(
                 t_list=self.t_list,
-                N=self.county_metadata_merged['total_population'],
+                N=self.population,
                 A_initial=fraction_asymptomatic * self.I_initial / (1 - fraction_asymptomatic), # assume no asymptomatic cases are tested.
                 I_initial=self.I_initial,
                 R_initial=0,
@@ -114,13 +114,15 @@ class ParameterEnsembleGenerator:
                 # very fatal.
                 mortality_rate_no_ICU_beds=np.random.uniform(low=0.8, high=1),
                 mortality_rate_no_ventilator=1,
-                beds_general=  self.county_metadata_merged.get('num_staffed_beds', 0)
-                             - self.county_metadata_merged.get('bed_utilization', 0),
-                             # + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
-                beds_ICU=self.county_metadata_merged.get('num_icu_beds', 0),
-                hospital_capacity_change_daily_rate=1.05,
-                max_hospital_capacity_factor=2.07,
-                initial_hospital_bed_utilization=0.6,
+                # beds_general=  self.county_metadata_merged.get('num_staffed_beds', 0)
+                #              - self.county_metadata_merged.get('bed_utilization', 0),
+                #              # + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
+                beds_general=self.beds * 0.4 * 2.07,
+                # TODO.. Patch this After Issue 132
+                beds_ICU=0, # self.county_metadata_merged.get('num_icu_beds', 0),
+                # hospital_capacity_change_daily_rate=1.05,
+                # max_hospital_capacity_factor=2.07,
+                # initial_hospital_bed_utilization=0.6,
                 # Rubinson L, Vaughn F, Nelson S, et al. Mechanical ventilators
                 # in US acute care hospitals. Disaster Med Public Health Prep.
                 # 2010;4(3):199-206. http://dx.doi.org/10.1001/dmp.2010.18.
@@ -130,7 +132,8 @@ class ParameterEnsembleGenerator:
                 # TODO: Update this if possible by county or state. The ref above has state estimates
                 # Staff expertise may be a limiting factor:
                 # https://sccm.org/getattachment/About-SCCM/Media-Relations/Final-Covid19-Press-Release.pdf?lang=en-US
-                ventilators=self.county_metadata_merged.get('num_icu_beds', 0) * np.random.uniform(low=1.0, high=1.2)
+                # TODO: Patch after #133
+                ventilators=0 #self.county_metadata_merged.get('num_icu_beds', 0) * np.random.uniform(low=1.0, high=1.2)
             ))
 
         for parameter_set in parameter_sets:

@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import numpy as np
+import us
 import json
 from enum import Enum
 import copy
@@ -15,6 +16,11 @@ from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from pyseir.inference import fit_results
 from pyseir.reports.county_report import CountyReport
+
+from libs.datasets import JHUDataset
+from libs.datasets import FIPSPopulation
+from libs.datasets.dataset_utils import AggregationLevel
+timeseries = JHUDataset.local().timeseries()
 
 
 class RunMode(Enum):
@@ -68,6 +74,7 @@ class EnsembleRunner:
         self.t0 = fit_results.load_t0(fips)
         self.date_generated = datetime.datetime.utcnow().isoformat()
         self.run_mode = RunMode(run_mode)
+        self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
 
         self.suppression_policy = suppression_policy
         self.summary = copy.deepcopy(self.__dict__)
@@ -87,9 +94,14 @@ class EnsembleRunner:
     def init_run_mode(self):
         """
         Based on the run mode, generate suppression policies and ensemble
-        parameters.
+        parameters.  This enables different model combinations and project
+        phases.
         """
         self.suppression_policies = dict()
+
+        min_date_data = datetime.datetime.today() - datetime.timedelta(days=30)
+        covid_data = timeseries.get_subset(AggregationLevel.COUNTY, after=min_date_data, country='USA', state=self.state_abbr)\
+                  .get_data(state=self.state_abbr, country='USA', fips=self.fips)
 
         if self.run_mode is RunMode.CAN_BEFORE:
             self.n_samples = 1
@@ -99,30 +111,51 @@ class EnsembleRunner:
                 policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
                 self.suppression_policies[f'suppression_policy__{scenario}'] = policy
                 self.override_params = ParameterEnsembleGenerator(
-                    self.fips, N_samples=1000, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
+                    self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
+
             self.override_params['R0'] = R0
             self.override_params['delta'] = 1 / 6.
             self.override_params['sigma'] = 1 / 3.
 
-            times_new, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(self.fips, self.t0)
-            total_cases = np.cumsum(observed_new_cases)
-            total_deaths = np.cumsum(observed_new_deaths)
+            self.override_params['mortality_rate'] = 0.0109
+            self.override_params['mortality_rate_no_general_beds'] = 0.10
+            # TODO: This is not modeled in CAN. Plan to increase.
+            self.override_params['mortality_rate_no_ICU_beds'] = 0.00
 
-            if len(total_cases) > 0 and total_cases.max() > 0:
-                self.t0 = times_new.max()
-                self.override_params['I_initial'] = total_cases.max() / 0.0727 / 10
-                self.override_params['A_initial'] = total_cases.max() / 0.0727 / 10 # total_cases.max() # Asymptomatic
-                self.override_params['E_initial'] = 2.4 * total_cases.max()
-                self.override_params['D_initial'] = total_deaths.max()
-                self.override_params['HGen_initial'] = total_cases.max() * (self.override_params['hospitalization_rate_general']
-                                                                            - self.override_params['hospitalization_rate_icu'])
+            self.override_params['hospitalization_length_of_stay_general'] = 6
+            self.override_params['hospitalization_length_of_stay_icu'] = 14
+            self.override_params['hospitalization_length_of_stay_icu_and_ventilator'] = 14
 
-                self.override_params['hospitalization_rate_general'] = 0.0727
-                self.override_params['mortality_rate'] = 0.0109
-                self.override_params['hospitalization_rate_icu'] = 0.1397 * self.override_params['hospitalization_rate_general']
 
-                self.override_params['HICU_initial'] = total_cases.max() * self.override_params['hospitalization_rate_icu']
+            # hospitalization_rate_general is hospitalization rate for symptomatic cases going to the hospital
+            # We ensure later that this adds up to a total overall 0.0727 rate.
+            # self.override_params['hospitalization_rate_general'] = 0.25
+            self.override_params['hospitalization_rate_general'] = 0.0727
+            self.override_params['hospitalization_rate_icu'] = 0.1397 * self.override_params['hospitalization_rate_general']
+            self.override_params['beds_ICU'] = 0 #.11 * self.override_params['beds_general'] # National average per hospital bed.
+            self.override_params['symptoms_to_hospital_days'] = 6
+
+            if len(covid_data) > 0 and covid_data.cases.max() > 0:
+                self.t0 = covid_data.date.max()
+                hospitalization_to_confirmed_case_ratio = 1 / 4
+                #all_infection_hospitalization_rate = 0.0727
+
+                # Initial hospitalizations = Confirmed Cases / 4.
+                # I_initial = Initial hospitalizations / 0.25 assuming 25% of symptomatic infections go to the hospital and all symptomatic
+                #                                             infections are tested. This makes our "symptomatic" bucket more reflective of "confirmed cases"
+                # 0.0727 * (A + I) = 0.2 * I    =>   A_initial = I * (0.24 / 0.0727 - 1)
+                # A_initial = Initial hospitalizations / 0.8 assuming 24% of symptomatic cases go to the hospital, implies
+
+                self.override_params['HGen_initial'] = covid_data.cases.max() * hospitalization_to_confirmed_case_ratio * (1 - self.override_params['hospitalization_rate_icu'])
+                self.override_params['HICU_initial'] = covid_data.cases.max() * hospitalization_to_confirmed_case_ratio * self.override_params['hospitalization_rate_icu']
                 self.override_params['HICUVent_initial'] = self.override_params['HICU_initial'] * self.override_params['fraction_icu_requiring_ventilator']
+
+                self.override_params['I_initial'] = 1.1 * 3.43 * covid_data.cases.max() # * self.override_params['HGen_initial'] / self.override_params['hospitalization_rate_general']
+                self.override_params['A_initial'] = 0 #(self.override_params['hospitalization_rate_general'] / all_infection_hospitalization_rate - 1) * self.override_params['I_initial']
+                self.override_params['gamma'] = 1#self.override_params['I_initial'] / self.override_params['A_initial']
+
+                self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
+                self.override_params['D_initial'] = covid_data.deaths.max()
 
             else:
                 self.t0 = datetime.datetime.today()

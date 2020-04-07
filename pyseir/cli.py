@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import click
 import us
 import logging
@@ -8,7 +8,7 @@ from pyseir.ensembles.ensemble_runner import run_state
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter_mle
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
-
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 root = logging.getLogger()
 root.setLevel(logging.INFO)
