@@ -48,13 +48,13 @@ class DataExportException(Exception):
         self.key = key
         self.message = message
 
-def __raise_error_if_incorrect_headers(key, headers_list, df): 
+def _raise_error_if_incorrect_headers(key, headers_list, df): 
     extra_df_columns = set(df.columns) - set(headers_list)
     missing_df_columns = set(headers_list) - set(df.columns)
     if extra_df_columns or missing_df_columns: 
         raise DataExportException(key, f"Exported headers don't match expected headers. Didn't have headers {missing_df_columns}, had extra columns {extra_df_columns}")
 
-def __raise_error_if_not_data_from_all_states(key, df, expected_missing): 
+def _raise_error_if_not_data_from_all_states(key, df, expected_missing): 
     states = set(us_state_abbrev.keys())
     states_in_df = set(df['Province/State'].unique())
 
@@ -65,10 +65,10 @@ def __raise_error_if_not_data_from_all_states(key, df, expected_missing):
 
 def validate_states_df(key, states_df):
     # assert the headers are what we expect
-    __raise_error_if_incorrect_headers(key, OUTPUT_HEADERS_STATES, states_df)
+    _raise_error_if_incorrect_headers(key, OUTPUT_HEADERS_STATES, states_df)
   
     # assert there is data from each of the states
-    __raise_error_if_not_data_from_all_states(key, states_df, EXPECTED_MISSING_STATES)
+    _raise_error_if_not_data_from_all_states(key, states_df, EXPECTED_MISSING_STATES)
     
     # assert no duplicated states
     if len(states_df['Province/State'].unique()) != len(states_df['Province/State']): 
@@ -76,10 +76,10 @@ def validate_states_df(key, states_df):
 
 def validate_counties_df(key, counties_df):
     # assert the headers are what we expect
-    __raise_error_if_incorrect_headers(key, OUTPUT_HEADERS_COUNTIES, counties_df)
+    _raise_error_if_incorrect_headers(key, OUTPUT_HEADERS_COUNTIES, counties_df)
 
     # assert data from each of the states
-    __raise_error_if_not_data_from_all_states(key, counties_df, EXPECTED_MISSING_STATES.union(EXPECTED_MISSING_STATES_FROM_COUNTES))
+    _raise_error_if_not_data_from_all_states(key, counties_df, EXPECTED_MISSING_STATES.union(EXPECTED_MISSING_STATES_FROM_COUNTES))
 
     # assert no duplicated counties
     if len(counties_df['State/County FIPS Code'].unique()) != len(counties_df['State/County FIPS Code']): 
