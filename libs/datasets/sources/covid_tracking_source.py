@@ -1,26 +1,11 @@
-from typing import List
 import logging
-import numpy
 import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.population import PopulationDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 
 _logger = logging.getLogger(__name__)
-
-
-def fill_missing_county_with_city(row):
-    """Fills in missing county data with city if available.
-
-    """
-    if pd.isnull(row.county) and not pd.isnull(row.city):
-        if row.city == "New York City":
-            return "New York"
-        return row.city
-
-    return row.county
 
 
 class CovidTrackingDataSource(data_source.DataSource):
