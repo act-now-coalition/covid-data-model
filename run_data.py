@@ -29,7 +29,7 @@ def main():
     default=pathlib.Path("results/case_summaries"),
 )
 @data_version.with_git_version_click_option
-def run_latest(version: data_version.Version, output: pathlib.Path):
+def run_latest(version: data_version.DataVersion, output: pathlib.Path):
     """Get latest case values from JHU dataset."""
     output.mkdir(exist_ok=True)
     timeseries = JHUDataset.local().timeseries()

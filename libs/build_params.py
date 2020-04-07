@@ -32,6 +32,7 @@ def get_interventions(start_date=datetime.now().date()):
 
 
 OUTPUT_DIR = 'results/test'
+OUTPUT_DIR_COUNTIES = 'results/county'
 
 # Relative directory to where all output data is deployed to for the website
 WEB_DEPLOY_PATH = pathlib.Path("../covid-projections/public/data")
