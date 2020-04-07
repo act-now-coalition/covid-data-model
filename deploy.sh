@@ -9,4 +9,5 @@ PUBLIC_DATA_PATH=../covid-projections/public/data
 # Generate the latest state case summary data.
 ./run_data.py latest -o ${PUBLIC_DATA_PATH}/case_summary
 
-./deploy_dod_dataset.py -i ${PUBLIC_DATA_PATH} -o ${PUBLIC_DATA_PATH}
+mkdir dod_results
+./deploy_dod_dataset.py -i ${PUBLIC_DATA_PATH} -o dod_results
