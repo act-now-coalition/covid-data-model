@@ -1,9 +1,8 @@
 #!/usr/bin/env python
-import os
+import pathlib
 import datetime
 import logging
 import click
-from libs import build_params
 from libs.datasets import data_version
 import run
 
@@ -18,66 +17,76 @@ def main():
 @main.command("county")
 @click.option("--state", "-s")
 @click.option(
-    "--deploy",
-    is_flag=True,
-    help="Output data files to public data directory in local covid-projections.",
+    "--output",
+    "-o",
+    help="Output directory",
+    type=pathlib.Path,
+    default=pathlib.Path("results/county"),
 )
 @click.option(
-    "--summary-only",
-    is_flag=True,
-    help="Only runs the county summary if true.",
+    "--summary-only", is_flag=True, help="Only runs the county summary if true.",
 )
 @data_version.with_git_version_click_option
-def run_county(version: data_version.DataVersion, state=None, deploy=False, summary_only=False):
+def run_county(
+    version: data_version.DataVersion, output, state=None, summary_only=False
+):
     """Run county level model."""
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
 
-    output_base = build_params.OUTPUT_PATH
-    if deploy:
-        output_base = build_params.WEB_DEPLOY_PATH
-    output_dir = output_base / build_params.COUNTY_SUBDIR
-
-    if not summary_only:
-        run.run_county_level_forecast(
-            min_date, max_date, country="USA", state=state, output_dir=output_dir
-        )
-
-    output_dir = output_base / build_params.COUNTY_SUMMARY_SUBDIR
-    run.build_county_summary(min_date, state=state, output_dir=output_dir)
-    # only write the version if we saved everything
-    if not state and not summary_only:
-        version.write_file('counties', output_dir)
+    run.run_county_level_forecast(
+        min_date, max_date, output, country="USA", state=state
+    )
+    if not state:
+        version.write_file("county", output)
     else:
-        _logger.info('Skip version file because this is not a full run')
+        _logger.info("Skip version file because this is not a full run")
+
+
+@main.command("county-summary")
+@click.option("--state", "-s")
+@click.option(
+    "--output",
+    "-o",
+    help="Output directory",
+    type=pathlib.Path,
+    default=pathlib.Path("results/county_summaries"),
+)
+@data_version.with_git_version_click_option
+def run_county_summary(version: data_version.DataVersion, output, state=None):
+    """Run county level model."""
+    min_date = datetime.datetime(2020, 3, 7)
+    run.build_county_summary(min_date, output, state=state)
+
+    # only write the version if we saved everything
+    if not state:
+        version.write_file("county_summary", output)
+    else:
+        _logger.info("Skip version file because this is not a full run")
 
 
 @main.command("state")
 @click.option("--state", "-s")
 @click.option(
-    "--deploy",
-    is_flag=True,
-    help="Output data files to public data directory in local covid-projections.",
+    "--output",
+    "-o",
+    help="Output directory",
+    type=pathlib.Path,
+    default=pathlib.Path("results/county_summaries"),
 )
 @data_version.with_git_version_click_option
-def run_state(version: data_version.DataVersion, state=None, deploy=False):
+def run_state(version: data_version.DataVersion, output, state=None):
     """Run State level model."""
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
 
-    output_dir = build_params.OUTPUT_DIR
-    if deploy:
-        output_dir = build_params.WEB_DEPLOY_PATH
-
-    run.run_state_level_forecast(
-        min_date, max_date, country="USA", state=state, output_dir=output_dir
-    )
-    _logger.info(f'Wrote output to {output_dir}')
+    run.run_state_level_forecast(min_date, max_date, output, country="USA", state=state)
+    _logger.info(f"Wrote output to {output}")
     # only write the version if we saved everything
     if not state:
-        version.write_file('states', output_dir)
+        version.write_file("states", output)
     else:
-        _logger.info('Skip version file because this is not a full run')
+        _logger.info("Skip version file because this is not a full run")
 
 
 if __name__ == "__main__":

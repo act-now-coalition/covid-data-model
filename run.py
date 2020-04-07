@@ -231,9 +231,9 @@ def model_state(timeseries, starting_beds, population, interventions=None):
 
 def build_county_summary(
     min_date: datetime.datetime,
+    output_dir: pathlib.Path,
     country: str = "USA",
     state: str = None,
-    output_dir: pathlib.Path = build_params.OUTPUT_DIR_COUNTY_SUMMARY
 ):
     """Builds county summary json files."""
     beds_data = DHBeds.local().beds()
@@ -383,9 +383,9 @@ def forecast_each_county(
 def run_county_level_forecast(
     min_date: datetime.datetime,
     max_date: datetime.datetime,
+    output_dir: pathlib.Path,
     country: str = "USA",
     state: str = None,
-    output_dir: pathlib.Path = build_params.OUTPUT_DIR_COUNTIES
 ):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -430,7 +430,7 @@ def run_county_level_forecast(
 
 
 def run_state_level_forecast(
-    min_date, max_date, country="USA", state=None, output_dir=build_params.OUTPUT_DIR
+    min_date, max_date, output_dir, country="USA", state=None,
 ):
     # DH Beds dataset does not have all counties, so using the legacy state
     # level bed data.

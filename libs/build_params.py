@@ -32,18 +32,6 @@ def get_interventions(start_date=datetime.now().date()):
 
 
 OUTPUT_DIR = 'results/test'
-COUNTY_SUBDIR = 'county'
-COUNTY_SUMMARY_SUBDIR = 'county_summaries'
-# Output directory for latest case data by state
-STATE_SUMMARY_SUBDIR = "case_summary"
-
-# pathlib version of output_dir.
-OUTPUT_PATH = pathlib.Path(OUTPUT_DIR)
-
-# For now state output directory is just the root of the folder
-OUTPUT_DIR_STATES = OUTPUT_PATH
-OUTPUT_DIR_COUNTIES = OUTPUT_PATH / COUNTY_SUBDIR
-OUTPUT_DIR_COUNTY_SUMMARY = OUTPUT_PATH / COUNTY_SUMMARY_SUBDIR
 
 # Relative directory to where all output data is deployed to for the website
 WEB_DEPLOY_PATH = pathlib.Path("../covid-projections/public/data")

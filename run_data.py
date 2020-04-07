@@ -4,12 +4,13 @@ CLI Functionality to generate reports and summaries of data sources.
 
 To generate model output, see ./run_model.py
 """
+import pathlib
 import json
 import logging
 import click
-from libs import build_params
 from libs.datasets import JHUDataset
 from libs.datasets import dataset_export
+from libs.datasets import data_version
 
 _logger = logging.getLogger(__name__)
 
@@ -21,26 +22,29 @@ def main():
 
 @main.command("latest")
 @click.option(
-    "--deploy",
-    is_flag=True,
-    help="Output data files to public data directory in local covid-projections.",
+    "--output",
+    "-o",
+    help="Output directory",
+    type=pathlib.Path,
+    default=pathlib.Path("results/case_summaries"),
 )
-def run_latest(deploy=False):
+@data_version.with_git_version_click_option
+def run_latest(version: data_version.Version, output: pathlib.Path):
     """Get latest case values from JHU dataset."""
-    output_base = build_params.OUTPUT_PATH
-    if deploy:
-        output_base = build_params.WEB_DEPLOY_PATH
-
-    output_folder = output_base / build_params.STATE_SUMMARY_SUBDIR
-    output_folder.mkdir(exist_ok=True)
+    output.mkdir(exist_ok=True)
     timeseries = JHUDataset.local().timeseries()
     state_summaries = dataset_export.latest_case_summaries_by_state(timeseries)
 
     for state, state_summary in state_summaries:
-        output_file = output_folder / f"{state}.summary.json"
+        output_file = output / f"{state}.summary.json"
         with output_file.open("w") as f:
             _logger.info(f"Writing latest data for {state}")
             json.dump(state_summary, f)
+
+    if not state:
+        version.write_file("case_summary", output)
+    else:
+        _logger.info("Skip version file because this is not a full run")
 
 
 if __name__ == "__main__":
