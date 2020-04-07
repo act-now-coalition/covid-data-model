@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 from libs.constants import NO_INTERVENTION, DATE, ALL_HOSPITALIZED, ALL_INFECTED, DEAD, BEDS
-from libs.build_params import OUTPUT_DIR, OUTPUT_DIR_COUNTIES
 from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import us_state_abbrev, us_fips
 from libs.datasets import FIPSPopulation
@@ -87,7 +86,7 @@ def get_hospitals_and_shortfalls(df, date_out):
     output_cols = ['all_hospitalized', 'short_fall']
     return tuple(first_record_after_date[output_cols].values)
 
-def get_projections_df():
+def get_projections_df(input_dir):
     # for each state in our data look at the results we generated via run.py
     # to create the projections
     intervention_type = NO_INTERVENTION # None, as requested
@@ -102,7 +101,7 @@ def get_projections_df():
 
     for state in list(us_state_abbrev.values()):
         file_name = f'{state}.{intervention_type}.json'
-        path = os.path.join(OUTPUT_DIR, file_name)
+        path = os.path.join(input_dir, file_name)
 
         # if the file exists in that directory then process
         if os.path.exists(path):
@@ -161,7 +160,7 @@ county_replace_with_null = {
 }
 
 
-def get_county_projections():
+def get_county_projections(input_dir):
     # for each state in our data look at the results we generated via run.py
     # to create the projections
     fips_pd = FIPSPopulation.local().data # to get the state, county & fips
@@ -181,8 +180,9 @@ def get_county_projections():
         state = fips_row['state']
         fips = fips_row['fips']
         file_name = f"{state}.{fips}.{intervention_type}.json"
-        path = os.path.join(str(OUTPUT_DIR_COUNTIES), file_name)
+        path = os.path.join(input_dir, 'county', file_name)
         # if the file exists in that directory then process
+
         if os.path.exists(path):
             df = read_json_as_df(path)
             df['short_fall'] = df.apply(calc_short_fall, axis=1)
@@ -205,7 +205,7 @@ def get_county_projections():
                     mean_hospitalizations, mean_deaths, peak_hospitalizations_date, peak_deaths_date])
         else:
             missing = missing + 1
-    print(f'Models missing for {missing} county')
+    print(f'Models missing for {missing} counties')
 
     headers = [
         'State',
@@ -223,11 +223,11 @@ def get_county_projections():
     return ndf
 
 
-def get_usa_by_county_with_projection_df():
+def get_usa_by_county_with_projection_df(input_dir):
     us_only = get_usa_by_county_df()
     fips_df = FIPSPopulation.local().data # used to get interventions
     interventions_df = get_interventions_df() # used to say what state has what interventions
-    projections_df = get_county_projections()
+    projections_df = get_county_projections(input_dir)
 
     counties_decorated = us_only.merge(
         projections_df, left_on='State/County FIPS Code', right_on='FIPS', how='inner'
@@ -300,12 +300,12 @@ def get_usa_by_county_df():
     return final_df
 
 
-def get_usa_by_states_df():
+def get_usa_by_states_df(input_dir):
 
     us_only = get_usa_by_county_df()
     abbrev_df = get_abbrev_df()
     interventions_df = get_interventions_df()
-    projections_df = get_projections_df()
+    projections_df = get_projections_df(input_dir)
 
     states_group = us_only.groupby(['Province/State'])
     states_agg = states_group.aggregate({
@@ -403,20 +403,20 @@ def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, 
     shp_writer.close()
 
 
-def get_usa_state_shapefile(shp, shx, dbf):
+def get_usa_state_shapefile(input_dir, shp, shx, dbf):
     shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
-    join_and_output_shapefile(get_usa_by_states_df(),
+    join_and_output_shapefile(get_usa_by_states_df(input_dir),
         shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_state'),
         'STATEFP', 'State/County FIPS Code', shp_writer)
 
-def get_usa_county_shapefile(shp, shx, dbf):
+def get_usa_county_shapefile(input_dir, shp, shx, dbf):
     shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
 
-    join_and_output_shapefile(get_usa_by_county_with_projection_df(),
+    join_and_output_shapefile(get_usa_by_county_with_projection_df(input_dir),
         shapefile.Reader(f'{public_data_path}/data/shapefiles-uscensus/tl_2019_us_county'),
         'GEOID', 'State/County FIPS Code', shp_writer)
 
