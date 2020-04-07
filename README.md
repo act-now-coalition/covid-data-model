@@ -28,18 +28,26 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 ### Run website data deploy
 
-This will run all model and data needed for the webiste, outputting to ``../covid-projections/public/data``.
+This will run all models and generate data needed for the website, outputting to ``../covid-projections/public/data``.
 ```bash
-./deploy.sh
+./deploy_website.sh
 ```
 
-### Create JSON for API
-Creating the files for local inspection.
+### Run DoD dataset deploy
+Run all models, generate DoD datasets, output to `./dod_results/` folder:
 ```bash
+./deploy_dod.sh
+```
+
+Run all models, generate DoD datasets, upload the files to S3 bucket specified by `BUCKET_NAME`.
+```bash
+BUCKET_NAME=<bucket name> ./deploy_dod.sh
+```
+
+If you've previously ran the full model, you can just re-run the DoD dataset part via:
+```
+# Output artifacts locally to dod_results/:
 python deploy_dod_dataset.py
-```
-
-Creating and uploading the files, where the `BUCKET_NAME` is name of the s3 bucket hosting these files.
-```bash
-BUCKET_NAME=<bucket name> python deploy_sir_dataset.py
+# Upload artifacts to S3 bucket:
+BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
 ```
