@@ -5,7 +5,6 @@ import click
 import os
 import logging
 
-from libs.build_params import OUTPUT_DIR_DOD
 from libs.enums import Intervention
 from libs.validate_results import validate_states_df, validate_counties_df, validate_states_shapefile, validate_counties_shapefile
 from libs.build_dod_dataset import get_usa_by_county_df, get_usa_by_states_df, get_usa_county_shapefile, get_usa_state_shapefile
@@ -69,16 +68,18 @@ def upload_csv(key_name, csv):
 
 
 @click.command()
+@click.option('--run_validation', '-r', default=True, help='Run the validation on the deploy command')
 @click.option('--input', '-i', default='results', help='Input directory of state/county projections')
-@click.option('--output', '-o', default='', help='Output directory for artifacts')
-def deploy(input, output, should_run_validation=True):
+@click.option('--output', '-o', default='results/dod', help='Output directory for artifacts')
+def deploy(run_validation, input, output):
     """The entry function for invocation"""
 
     for intervention_enum in list(Intervention): 
         logger.info(f"Starting to generate files for {intervention_enum.name}.")
 
+        states_key_name = f'states.{intervention_enum.name}'
         states_df = get_usa_by_states_df(input, intervention_enum.value)
-        if should_run_validation: 
+        if run_validation: 
             validate_states_df(states_key_name, states_df)
         upload_csv(states_key_name, states_df.to_csv())
 
@@ -86,7 +87,7 @@ def deploy(input, output, should_run_validation=True):
         states_shx = BytesIO()
         states_dbf = BytesIO()
         get_usa_state_shapefile(input, intervention_enum.value, states_shp, states_shx, states_dbf)
-        if should_run_validation: 
+        if run_validation: 
             validate_states_shapefile(states_key_name, states_shp, states_shx, states_dbf)
         DatasetDeployer(key=f'{states_key_name}.shp', body=states_shp.getvalue()).persist()
         DatasetDeployer(key=f'{states_key_name}.shx', body=states_shx.getvalue()).persist()
@@ -95,7 +96,7 @@ def deploy(input, output, should_run_validation=True):
 
         counties_key_name = f'counties.{intervention_enum.name}'
         counties_df = get_usa_by_county_with_projection_df(input, intervention_enum.value)
-        if should_run_validation: 
+        if run_validation: 
             validate_counties_df(counties_key_name, counties_df)
         upload_csv(counties_key_name, counties_df.to_csv())
 
@@ -103,7 +104,7 @@ def deploy(input, output, should_run_validation=True):
         counties_shx = BytesIO()
         counties_dbf = BytesIO()
         get_usa_county_shapefile(input, intervention_enum.value, counties_shp, counties_shx, counties_dbf)
-        if should_run_validation: 
+        if run_validation: 
             validate_counties_shapefile(counties_key_name, counties_shp, counties_shx, counties_dbf)
         DatasetDeployer(key=f'{counties_key_name}.shp', body=counties_shp.getvalue()).persist()
         DatasetDeployer(key=f'{counties_key_name}.shx', body=counties_shx.getvalue()).persist()
@@ -125,6 +126,5 @@ if __name__ == "__main__":
     # triggering persistance to local
     python deploy_dod_dataset.py
     """
-    should_run_validation = os.environ.get('BUCKET_NAME') == PROD_BUCKET
     # pylint: disable=no-value-for-parameter
-    deploy(should_run_validation)
+    deploy()

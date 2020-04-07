@@ -139,7 +139,7 @@ def get_projections_df(input_dir, intervention_type):
 
     for state in list(us_state_abbrev.values()):
         file_name = f'{state}.{intervention_type}.json'
-        path = os.path.join(input_dir, file_name)
+        path = os.path.join(input_dir, 'state', file_name)
 
         # if the file exists in that directory then process
         projection_data = calculate_projection_data(path)
@@ -258,6 +258,7 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     counties = counties.fillna(NULL_VALUE)
     counties.index.name = 'OBJECTID'
     # assert unique key test
+
     assert counties['Combined Key'].value_counts().max() == 1
     return counties
 
@@ -289,10 +290,11 @@ def get_usa_by_county_df():
     final_df['County'] = final_df['County'].replace(county_replace_with_null)
     final_df['Combined Key'] = final_df['Combined Key'].str.replace('Unassigned, ','')
     final_df = final_df.fillna(NULL_VALUE)
-
+    final_df = final_df.drop_duplicates("State/County FIPS Code") # note this is a hack, 49053 is dupped in JHU data :(
     final_df.index.name = 'OBJECTID'
     # assert unique key test
     assert final_df['Combined Key'].value_counts().max() == 1
+    assert final_df["State/County FIPS Code"].value_counts().max() == 1
 
     return final_df
 
