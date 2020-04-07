@@ -12,11 +12,12 @@ cd "$(dirname "$0")"
 
 # Directory for intermediate model files used by deploy_dod_dataset.py.
 MODELS_DIR="results"
+RESULTS_DIR="results/dod_results"
 mkdir -p "${MODELS_DIR}"
 
 # Run State and County level models
-./run_model.py state -o "${MODELS_DIR}"
+./run_model.py state -o "${MODELS_DIR}/state"
 ./run_model.py county -o "${MODELS_DIR}/county"
 
 mkdir -p dod_results
-./deploy_dod_dataset.py -i "${MODELS_DIR}" -o dod_results
+./deploy_dod_dataset.py -i "${MODELS_DIR}" -o "${RESULTS_DIR}"

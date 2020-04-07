@@ -1,21 +1,5 @@
 .~lock.*
-results/*.csv
-results/*.json
-results/test/*.csv
-results/test/*.json
-
-results/county/*
-results/test.*
-
-# don't upload csvs/files
-counties.csv
-counties.dbf
-counties.shp
-counties.shx
-states.csv
-states.dbf
-states.shp
-states.shx
+results/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
