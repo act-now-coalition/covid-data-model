@@ -110,14 +110,20 @@ class EnsembleRunner:
 
             if len(total_cases) > 0 and total_cases.max() > 0:
                 self.t0 = times_new.max()
-                self.override_params['I_initial'] = total_cases.max()
-                self.override_params['A_initial'] = total_cases.max()
+                self.override_params['I_initial'] = total_cases.max() / 0.0727 / 10
+                self.override_params['A_initial'] = total_cases.max() / 0.0727 / 10 # total_cases.max() # Asymptomatic
                 self.override_params['E_initial'] = 2.4 * total_cases.max()
                 self.override_params['D_initial'] = total_deaths.max()
-                self.override_params['HGen_initial'] = total_cases.max() * self.override_params['hospitalization_rate_general']
+                self.override_params['HGen_initial'] = total_cases.max() * (self.override_params['hospitalization_rate_general']
+                                                                            - self.override_params['hospitalization_rate_icu'])
+
+                self.override_params['hospitalization_rate_general'] = 0.0727
+                self.override_params['mortality_rate'] = 0.0109
+                self.override_params['hospitalization_rate_icu'] = 0.1397 * self.override_params['hospitalization_rate_general']
+
                 self.override_params['HICU_initial'] = total_cases.max() * self.override_params['hospitalization_rate_icu']
-                self.override_params['HICUVent_initial'] = total_cases.max() * self.override_params['hospitalization_rate_icu'] \
-                                                           * self.override_params['fraction_icu_requiring_ventilator']
+                self.override_params['HICUVent_initial'] = self.override_params['HICU_initial'] * self.override_params['fraction_icu_requiring_ventilator']
+
             else:
                 self.t0 = datetime.datetime.today()
                 self.override_params['I_initial'] = 1

@@ -74,9 +74,11 @@ def _map_outputs(state=None, output_interval_days=4):
             _map_outputs(state.title(), output_interval_days)
 
 
-def _run_all(state=None, run_mode='default', generate_reports=True, output_interval_days=4):
+def _run_all(state=None, run_mode='default', generate_reports=True, output_interval_days=4, skip_download=False):
     exceptions = []
-    cache_all_data()
+
+    if not skip_download:
+        cache_all_data()
 
     if state:
         _impute_start_dates(state.title())
@@ -92,7 +94,7 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
     else:
         for state in us.states.STATES:
             try:
-                _generate_state_reports(state.name)
+                _run_all(state.name, run_mode, generate_reports, output_interval_days, skip_download=True)
             except ValueError as e:
                 exceptions.append(e)
     for exception in exceptions:

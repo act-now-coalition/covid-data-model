@@ -337,7 +337,7 @@ def cache_all_data():
     cache_county_case_data()
     cache_hospital_beds()
     cache_mobility_data()
-    cache_public_implementations_data()
+    # cache_public_implementations_data()
 
 
 if __name__ == '__main__':

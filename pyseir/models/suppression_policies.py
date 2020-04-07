@@ -117,11 +117,11 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
         elif scenario == 'flatten_the_curve':
             if actual_date <= today:
                 rho.append(1)
-            elif (actual_date - today).days < 30:
+            elif (actual_date - today).days <= 30:
                 rho.append(1.3 / R0)
-            elif (actual_date - today).days < 60:
+            elif (actual_date - today).days <= 60:
                 rho.append(1.1 / R0)
-            elif (actual_date - today).days < 90:
+            elif (actual_date - today).days <= 90:
                 rho.append(0.8 / R0)
             else: # Open back up...
                 rho.append(1)
@@ -129,15 +129,15 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
         elif scenario == 'full_containment':
             if actual_date <= today:
                 rho.append(1)
-            elif (actual_date - today).days < 7:
+            elif (actual_date - today).days <= 7:
                 rho.append(1.3 / R0)
-            elif (actual_date - today).days < 7 * 1:
+            elif (actual_date - today).days <= 30 + 7 * 1:
                 rho.append(.3 / R0)
-            elif (actual_date - today).days < 30 + 7 * 2:
+            elif (actual_date - today).days <= 30 + 7 * 2:
                 rho.append(.2 / R0)
-            elif (actual_date - today).days < 30 + 7 * 3:
+            elif (actual_date - today).days <= 30 + 7 * 3:
                 rho.append(.1 / R0)
-            elif (actual_date - today).days < 30 + 7 * 4:
+            elif (actual_date - today).days <= 30 + 7 * 4:
                 rho.append(.035 / R0)
             else:
                 rho.append(0)
@@ -145,7 +145,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
         elif scenario == 'social_distancing':
             if actual_date <= today:
                 rho.append(1)
-            elif (actual_date - today).days < 90:
+            elif (actual_date - today).days <= 90:
                 rho.append(1.7 / R0)
             else:
                 rho.append(1)

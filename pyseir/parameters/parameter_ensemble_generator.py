@@ -61,9 +61,10 @@ class ParameterEnsembleGenerator:
         for _ in range(self.N_samples):
 
             # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
-            # TODO: 10% is being used by CA group.  CDC suggests 20%, but this seems high.
+            # TODO: 10% is being used by CA group.  CDC suggests 20% case hospitalization rate
             # Note that this is 10% of symptomatic cases, making overall hospitalization around 5%.
-            hospitalization_rate_general = np.random.normal(loc=.10, scale=0.03)
+            # https: // www.statista.com / statistics / 1105402 / covid - hospitalization - rates - us - by - age - group /
+            hospitalization_rate_general = np.random.normal(loc=0.125, scale=0.03)
             fraction_asymptomatic = np.random.uniform(0.4, 0.6)
 
             parameter_sets.append(dict(
@@ -84,7 +85,8 @@ class ParameterEnsembleGenerator:
                 # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                 hospitalization_rate_icu=max(np.random.normal(loc=.29, scale=0.03) * hospitalization_rate_general, 0),
                 # http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
-                fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.54, scale=0.2), 0),
+                # Coronatracking.com/data
+                fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.44, scale=0.1), 0),
                 sigma=1 / np.random.normal(loc=3.1, scale=0.86),  # Imperial college - 2 days since that is expected infectious period.
                 delta=1 / np.random.gamma(6.0, scale=1),  # Kind of based on imperial college + CDC digest.
                 delta_hospital=1 / np.random.gamma(8.0, scale=1),  # Kind of based on imperial college + CDC digest.
@@ -93,9 +95,9 @@ class ParameterEnsembleGenerator:
                 # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                 symptoms_to_hospital_days=np.random.normal(loc=6.5, scale=1.5),
                 symptoms_to_mortality_days=np.random.normal(loc=18.8, scale=.45), # Imperial College
-                hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=2),
-                hospitalization_length_of_stay_icu=np.random.normal(loc=16, scale=3),
-                hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=17, scale=3),
+                    hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=2),
+                    hospitalization_length_of_stay_icu=np.random.normal(loc=16, scale=3),
+                    hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=17, scale=3),
                 mortality_rate=np.random.normal(loc=0.0109, scale=0.0025),
                 # if you assume the ARDS population is the group that would die
                 # w/o ventilation, this would suggest a 20-42% mortality rate
@@ -107,14 +109,14 @@ class ParameterEnsembleGenerator:
                 # 10% Of the population should die at saturation levels. CFR
                 # from Italy is 11.9% right now, Spain 8.9%.  System has to
                 # produce,
-                mortality_rate_no_general_beds=np.random.uniform(low=0.2, high=0.3),
+                mortality_rate_no_general_beds=np.random.uniform(low=0.1, high=0.2),
                 # Bumped these up a bit. Dyspnea -> ARDS -> Septic Shock all
                 # very fatal.
                 mortality_rate_no_ICU_beds=np.random.uniform(low=0.8, high=1),
                 mortality_rate_no_ventilator=1,
-                beds_general=  self.county_metadata_merged.get('num_licensed_beds', 0)
-                             - self.county_metadata_merged.get('bed_utilization', 0)
-                             + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
+                beds_general=  self.county_metadata_merged.get('num_staffed_beds', 0)
+                             - self.county_metadata_merged.get('bed_utilization', 0),
+                             # + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
                 beds_ICU=self.county_metadata_merged.get('num_icu_beds', 0),
                 hospital_capacity_change_daily_rate=1.05,
                 max_hospital_capacity_factor=2.07,
@@ -129,8 +131,6 @@ class ParameterEnsembleGenerator:
                 # Staff expertise may be a limiting factor:
                 # https://sccm.org/getattachment/About-SCCM/Media-Relations/Final-Covid19-Press-Release.pdf?lang=en-US
                 ventilators=self.county_metadata_merged.get('num_icu_beds', 0) * np.random.uniform(low=1.0, high=1.2)
-
-
             ))
 
         for parameter_set in parameter_sets:

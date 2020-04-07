@@ -261,7 +261,7 @@ class SEIRModel:
 
         # Fraction that didn't die or go to hospital
         infected_and_recovered_no_hospital = self.delta * I
-        infected_and_in_hospital_general = I * self.hospitalization_rate_general / self.symptoms_to_hospital_days
+        infected_and_in_hospital_general = I * (self.hospitalization_rate_general - self.hospitalization_rate_icu) / self.symptoms_to_hospital_days
         infected_and_in_hospital_icu = I * self.hospitalization_rate_icu / self.symptoms_to_hospital_days
         infected_and_dead = I * self.mortality_rate / self.symptoms_to_mortality_days
 
@@ -371,7 +371,6 @@ class SEIRModel:
         self.results['total_deaths_per_day'] = np.append([0], self.results['total_deaths'][1:] - self.results['total_deaths'][:-1])
         self.results['general_admissions_per_day'] = np.append([0], HAdmissions_general[1:] - HAdmissions_general[:-1])
         self.results['icu_admissions_per_day'] = np.append([0], HAdmissions_ICU[1:] - HAdmissions_ICU[:-1])  # Derivative of the cumulative.
-
 
 
     def plot_results(self, y_scale='log', xlim=None):
