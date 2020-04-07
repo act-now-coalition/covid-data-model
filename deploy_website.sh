@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 
 PUBLIC_DATA_PATH="../covid-projections/public/data"
 if [ ! -d "${PUBLIC_DATA_PATH}" ] ; then
-  echo "Directory ${PUBLIC_DATA_PATH} does not exist. Make sure you've cloned covid-porjections next to covid-data-model."
+  echo "Directory ${PUBLIC_DATA_PATH} does not exist. Make sure you've cloned covid-projections next to covid-data-model."
   exit 1
 fi
 
