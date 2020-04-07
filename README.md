@@ -27,6 +27,8 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 ## Running
 
 ### Run website data deploy
+
+This will run all model and data needed for the webiste, outputting to ``../covid-projections/public/data``.
 ```bash
 ./deploy.sh
 ```
