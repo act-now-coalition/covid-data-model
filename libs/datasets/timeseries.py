@@ -27,6 +27,7 @@ class TimeseriesDataset(object):
         CASES = "cases"
         DEATHS = "deaths"
         RECOVERED = "recovered"
+        CURRENT_HOSPITALIZED = "current_hospitalized"
 
         # Generated in from_source
         COUNTY = "county"
@@ -37,7 +38,7 @@ class TimeseriesDataset(object):
         @classmethod
         def metrics(cls) -> List[str]:
             """Fields that contain metrics and can be aggregated."""
-            return [cls.CASES, cls.DEATHS, cls.RECOVERED]
+            return [cls.CASES, cls.DEATHS, cls.RECOVERED, cls.CURRENT_HOSPITALIZED]
 
     def __init__(self, data: pd.DataFrame, source_data=None):
         self.data = data
@@ -135,7 +136,9 @@ class TimeseriesDataset(object):
         return data
 
     @classmethod
-    def from_source(cls, source: "DataSource", fill_missing_state: bool = True, fill_na: bool = True) -> "Timeseries":
+    def from_source(
+        cls, source: "DataSource", fill_missing_state: bool = True, fill_na: bool = True
+    ) -> "Timeseries":
         """Loads data from a specific datasource.
 
         Args:
@@ -187,7 +190,13 @@ class TimeseriesDataset(object):
             data = pd.concat([data, non_matching])
 
         if fill_na:
-            data[cls.Fields.metrics()] = data[cls.Fields.metrics()].fillna(0.0)
+            # Filtering out metric columns that don't exist in the dataset.
+            # It might be that we all timeseries datasets to have all of the metric
+            # columns. If so, initialization of the missing columns should come earlier.
+            metric_columns = [
+                field for field in cls.Fields.metrics() if field in data.columns
+            ]
+            data[metric_columns] = data[metric_columns].fillna(0.0)
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)

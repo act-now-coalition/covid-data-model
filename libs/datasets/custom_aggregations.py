@@ -59,6 +59,9 @@ def update_with_combined_new_york_counties(
     """Updates data replacing all new york county data with one number.
 
     """
+    if not sum(data.aggregate_level == AggregationLevel.COUNTY.value):
+        # No county level data, skipping county aggregation.
+        return data
     data = data.set_index(["aggregate_level"])
     county = data.loc[AggregationLevel.COUNTY.value].reset_index()
     county = calculate_combined_new_york_counties(
