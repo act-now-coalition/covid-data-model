@@ -3,7 +3,6 @@ Constants to use for a build. In a separate file to avoid
 auto-importing a dataset when we don't necessarily need to.
 '''
 
-import pathlib
 from datetime import datetime, timedelta, date
 
 
@@ -33,9 +32,6 @@ def get_interventions(start_date=datetime.now().date()):
 
 OUTPUT_DIR = 'results/test'
 OUTPUT_DIR_COUNTIES = 'results/county'
-
-# Relative directory to where all output data is deployed to for the website
-WEB_DEPLOY_PATH = pathlib.Path("../covid-projections/public/data")
 
 
 # Dict to transform longhand state names to abbreviations
