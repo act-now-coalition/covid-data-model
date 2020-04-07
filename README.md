@@ -26,9 +26,11 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 ## Running
 
-### Create JSON for UI
+### Run website data deploy
+
+This will run all model and data needed for the webiste, outputting to ``../covid-projections/public/data``.
 ```bash
-python run.py
+./deploy.sh
 ```
 
 ### Create JSON for API
