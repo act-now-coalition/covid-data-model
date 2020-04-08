@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-import numpy
+from libs import enums
 import pandas as pd
 from libs.datasets.beds import BedsDataset
 from libs.datasets import dataset_utils
@@ -21,6 +21,9 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
             .replace("'", "")
             .replace("-", " ")
             .replace("ó", "o")
+            .replace("í", "i")
+            .replace("é", "e")
+            .replace("á", "a")
             .replace(".", "")
             .replace("ñ", ""),
         ): fips
@@ -34,6 +37,9 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
             .replace("'", "")
             .replace("-", " ")
             .replace("ó", "o")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("á", "a")
             .replace(".", "")
             .replace("ñ", "")
         )
@@ -59,8 +65,6 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
         "de kalb": "dekalb",
     }
     for state, county in county_combos:
-        if state == "PR":
-            continue
         key = state, county
         county = county.lower()
         county = replacements.get(county, county)
@@ -85,7 +89,9 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
                 match = True
                 break
 
-        if not match:
+        if not match and state == 'VI':
+            matched[key] = enums.UNKNOWN_FIPS
+        elif not match:
             _logger.warning(f"Could not match {key}")
             if not counties_by_state[state]:
                 continue
@@ -114,8 +120,10 @@ class DHBeds(data_source.DataSource):
         # Added in standardize data.
         AGGREGATE_LEVEL = "aggregate_level"
         FIPS = "fips"
+        COUNTRY = "country"
 
     BEDS_FIELD_MAP = {
+        BedsDataset.Fields.COUNTRY: Fields.COUNTRY,
         BedsDataset.Fields.STATE: Fields.STATE,
         BedsDataset.Fields.FIPS: Fields.FIPS,
         BedsDataset.Fields.STAFFED_BEDS: Fields.STAFFED_BEDS,
@@ -133,11 +141,16 @@ class DHBeds(data_source.DataSource):
         # All DH data is aggregated at the county level
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
 
+        data[cls.Fields.COUNTRY] = "USA"
+
         # Backfilling FIPS data based on county names.
-        # TODO: Fix all missing cases
         fips_data = dataset_utils.build_fips_data_frame()
         data = match_county_to_fips(data, fips_data)
-        return data
+
+        # The virgin islands do not currently have associated fips codes.
+        # if VI is supported in the future, this should be removed.
+        is_virgin_islands = data[cls.Fields.STATE] == 'VI'
+        return data[~is_virgin_islands]
 
     @classmethod
     def local(cls) -> "DHBeds":

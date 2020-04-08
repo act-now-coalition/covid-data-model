@@ -5,7 +5,7 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets.dataset_utils import AggregationLevel
-
+from libs import enums
 _logger = logging.getLogger(__name__)
 
 
@@ -32,6 +32,7 @@ class JHUDataset(data_source.DataSource):
         RECOVERED = "Recovered"
         ACTIVE = "Active"
         COMBINED_KEY = "Combined_Key"
+
         # Added manually in init.
         DATE = "date"
         AGGREGATE_LEVEL = "aggregate_level"
@@ -96,17 +97,20 @@ class JHUDataset(data_source.DataSource):
         )
         data[cls.Fields.STATE] = states
         data = cls._fill_incomplete_county_data(data)
-        state_only = data[cls.Fields.FIPS].isnull() & data[cls.Fields.COUNTY].isnull()
 
+        state_only = data[cls.Fields.FIPS].isnull() & data[cls.Fields.COUNTY].isnull()
         # Pad fips values to 5 spots
         data[cls.Fields.FIPS] = data[cls.Fields.FIPS].apply(
             lambda x: f"{x.zfill(5)}" if type(x) == str else x
         )
+
         data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(state_only, "state", "county")
+        data = cls._aggregate_fips_data(data)
 
         dataset_utils.assert_counties_have_fips(
             data, county_key=cls.Fields.COUNTY, fips_key=cls.Fields.FIPS
         )
+
         return data
 
     @classmethod
@@ -117,7 +121,6 @@ class JHUDataset(data_source.DataSource):
         We probably need to either give each state its own fake FIP, or spread this
         out over the existing counties for the state.
         """
-        unknown_fips = '99999'
         overrides = {
             # Assigning nantucket county to dukes and nantucket
             ('MA', 'Dukes and Nantucket'): '25019'
@@ -128,8 +131,33 @@ class JHUDataset(data_source.DataSource):
             data.loc[matches_state & matches_county, cls.Fields.FIPS] = fips
 
         has_county = data[cls.Fields.COUNTY].notnull()
-        data.loc[has_county & data.FIPS.isnull(), cls.Fields.FIPS] = unknown_fips
+        rows_to_replace = has_county & data[cls.Fields.FIPS].isnull()
+        data.loc[rows_to_replace, cls.Fields.FIPS] = enums.UNKNOWN_FIPS
         return data
+
+    @classmethod
+    def _aggregate_fips_data(cls, data):
+        is_county_level = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        has_fips = data[cls.Fields.FIPS].notnull()
+        county_data = data[is_county_level & has_fips]
+
+        # This key aggregates county level data based on the fips code.
+        # note that we are not using county name to aggregate. There are some rows in the
+        # JHU data that have multiple different county names per fips code.
+        # Right now, we are just combining that data, it may be more appropriate to take the max.
+        group_key = [
+            cls.Fields.DATE,
+            cls.Fields.AGGREGATE_LEVEL,
+            cls.Fields.FIPS,
+            cls.Fields.STATE,
+            cls.Fields.COUNTRY,
+        ]
+        result = county_data.groupby(group_key).sum().reset_index()
+
+        return pd.concat([
+            data[~(is_county_level & has_fips)],
+            result
+        ])
 
     @classmethod
     def local(cls) -> "JHUTimeseriesData":

@@ -1,46 +1,32 @@
-from contextlib import contextmanager
+import os
 import enum
-import git
 import logging
 import pathlib
 import pandas as pd
-from typing import Optional
 from libs import build_params
 
-LOCAL_PUBLIC_DATA_PATH = (
-    pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
-)
+if os.getenv("COVID_DATA_PUBLIC"):
+    LOCAL_PUBLIC_DATA_PATH = pathlib.Path(os.getenv("COVID_DATA_PUBLIC"))
+else:
+    LOCAL_PUBLIC_DATA_PATH = (
+        pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
+    )
 
 _logger = logging.getLogger(__name__)
-
-@contextmanager
-def public_data_hash(git_hash: Optional[str]):
-    '''
-    If given a git hash, attempts to set the local covid-data-public
-    repository to the given hash. Yields the git hash so that it can
-    be recorded along with the data generated.
-    '''
-    if git_hash is not None:
-        repo = git.Repo(LOCAL_PUBLIC_DATA_PATH)
-        if repo.is_dirty():
-            raise RuntimeError('Cannot set covid-data-public repo hash, working tree is dirty')
-        _logger.info(f'Using git hash {git_hash}')
-        # HEAD is a symbolic reference, grab what it points to
-        previous_head = repo.head.ref
-        # Jump to a detached head referencing the commit passed in
-        repo.head.set_reference(git_hash)
-        repo.head.reset(index=True, working_tree=True)
-        yield git_hash
-        # Reset to whatever was previously checked out
-        previous_head.checkout()
-    else:
-        yield git_hash
 
 
 class AggregationLevel(enum.Enum):
     COUNTRY = "country"
     STATE = "state"
     COUNTY = "county"
+
+
+class DuplicateValuesForIndex(Exception):
+
+    def __init__(self, index, duplicate_data):
+        self.index = index
+        self.data = duplicate_data
+        super().__init__()
 
 
 def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
@@ -108,11 +94,27 @@ def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
     )
 
 
-def check_index_values_are_unique(data):
-    duplicates_results = data.index.duplicated()
-    duplicates = duplicates_results[duplicates_results == True]
-    if len(duplicates):
+def check_index_values_are_unique(data, index=None, duplicates_as_error=True):
+    """Checks index for duplicate rows.
+
+    Args:
+        data: DataFrame to check
+        index: optional index to use. If not specified, uses index from `data`.
+        duplicates_as_error: If True, raises an error if duplicates are found:
+            otherwise logs an error.
+
+    """
+    if index:
+        data = data.set_index(index)
+
+    duplicates = data.index.duplicated()
+    duplicated_data = data[duplicates]
+    if sum(duplicates) and duplicates_as_error:
+        raise DuplicateValuesForIndex(data.index.names, duplicated_data)
+    elif sum(duplicates):
         _logger.warning(f"Found {len(duplicates)} results.")
+        return duplicated_data
+    return None
 
 
 def compare_datasets(
@@ -193,9 +195,9 @@ def build_fips_data_frame():
 
 
 def add_county_using_fips(data, fips_data):
-    data = data.set_index("fips")
-    fips_data = fips_data.set_index("fips")
-    data = data.join(fips_data[["county"]], on="fips", rsuffix="_r").reset_index()
+    data = data.set_index(["fips", "state"])
+    fips_data = fips_data.set_index(["fips", "state"])
+    data = data.join(fips_data[["county"]], on=["fips", "state"], rsuffix="_r").reset_index()
     is_missing_county = data.county.isnull() & data.fips.notnull()
 
     data.loc[is_missing_county, 'county'] = (
@@ -228,10 +230,14 @@ def assert_counties_have_fips(data, county_key='county', fips_key='fips'):
 def add_fips_using_county(data, fips_data) -> pd.Series:
     """Gets FIPS code from a data frame with a county."""
     data = data.set_index(["county", "state"])
+    original_rows = len(data)
     fips_data = fips_data.set_index(["county", "state"])
     data = data.join(
         fips_data[["fips"]], how="left", on=["county", "state"], rsuffix="_r"
     ).reset_index()
+
+    if len(data) != original_rows:
+        raise Exception("Non-unique join, check for duplicate fips data.")
 
     non_matching = data[data.county.notnull() & data.fips.isnull()]
 

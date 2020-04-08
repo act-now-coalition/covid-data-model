@@ -40,9 +40,14 @@ class CovidTimeseriesModelSIR:
             0, actual_values.columns.get_loc("date")
         ]
 
-        model_parameters["actual_end_date"] = actual_values.iloc[
-            -1, actual_values.columns.get_loc("date")
-        ]
+        if "override_end_date" in model_parameters:
+            model_parameters["actual_end_date"] = pd.to_datetime(
+                model_parameters["override_end_date"]
+            )
+        else:
+            model_parameters["actual_end_date"] = actual_values.iloc[
+                -1, actual_values.columns.get_loc("date")
+            ]
 
         # TODO: add check for earlier initial date parameter and adjust so that
         # we can start the run earlier than the last data point
@@ -304,11 +309,6 @@ class CovidTimeseriesModelSIR:
         combined_df.reset_index(inplace=True)
 
         combined_df["total"] = pop_dict["total"]
-
-        # move the actual infected numbers into infected_a where its NA
-        combined_df["infected_a"] = combined_df["infected_a"].fillna(
-            combined_df["infected"]
-        )
 
         if model_parameters["model"] == "seir":
 

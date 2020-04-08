@@ -1,5 +1,7 @@
+from typing import Tuple, Optional, Any
 import logging
-import time
+import traceback
+import functools
 import datetime
 import pathlib
 import json
@@ -7,16 +9,15 @@ import os.path
 from collections import defaultdict
 import multiprocessing
 
-from libs.CovidDatasets import JHUDataset as LegacyJHUDataset
 from libs.CovidTimeseriesModelSIR import CovidTimeseriesModelSIR
 import simplejson
 import pandas as pd
 
-from libs.build_params import OUTPUT_DIR, get_interventions
+from libs import build_params
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
-from libs.datasets.dataset_utils import AggregationLevel, public_data_hash
+from libs.datasets.dataset_utils import AggregationLevel
 
 _logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ def get_pool(num_cores=None) -> multiprocessing.Pool:
         num_cores = max(multiprocessing.cpu_count() - 2, 1)
 
     return multiprocessing.Pool(num_cores)
+
 
 def get_backfill_historical_estimates(df):
 
@@ -39,8 +41,10 @@ def get_backfill_historical_estimates(df):
     df['estimated_infected'] = df['estimated_hospitalized']/HOSPITALIZATION_RATIO
     return df
 
+
 def prepare_data_for_website(
-    data, historicals, population, min_begin_date, max_end_date, interval: int = 4):
+    data, historicals, population, min_begin_date, max_end_date, interval: int = 4
+):
     """Prepares data for website output."""
     # Indexes used by website JSON:
     # date: 0,
@@ -60,15 +64,15 @@ def prepare_data_for_website(
 
     cols = [
         "date",
-        "a",
-        "b",
-        "c",
-        "d",
-        "e",
-        "f",
-        "g",
-        "all_hospitalized",
-        "all_infected",
+        "a", # total
+        "b", # susceptible
+        "c", # exposed
+        "d", # infected
+        "e", # infected_a (not hospitalized, but infected)
+        "f", # infected_b (hospitalized not in icu)
+        "g", # infected_c (in icu)
+        "all_hospitalized", # infected_b + infected_c
+        "all_infected", # infected_a + infected_b + infected_c
         "dead",
         "beds",
         "i",
@@ -122,8 +126,12 @@ def prepare_data_for_website(
     relevant_date_index = pd.to_datetime(website_ordering.date).isin(historicals_df.date)
     extract_real_date_index = historicals_df.date.isin(pd.to_datetime(website_ordering.date))
 
-    website_ordering.loc[relevant_date_index, 'all_infected'] = historicals_df[extract_real_date_index]['estimated_infected'].values
-    website_ordering.loc[relevant_date_index, 'all_hospitalized'] = historicals_df[extract_real_date_index]['estimated_hospitalized'].values
+    website_ordering.loc[relevant_date_index, 'all_infected'] = (
+        historicals_df[extract_real_date_index]['estimated_infected'].values
+    )
+    website_ordering.loc[relevant_date_index, 'all_hospitalized'] = (
+        historicals_df[extract_real_date_index]['estimated_hospitalized'].values
+    )
 
     return website_ordering
 
@@ -221,7 +229,12 @@ def model_state(timeseries, starting_beds, population, interventions=None):
     return results
 
 
-def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_DIR):
+def build_county_summary(
+    min_date: datetime.datetime,
+    output_dir: pathlib.Path,
+    country: str = "USA",
+    state: str = None,
+):
     """Builds county summary json files."""
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -230,7 +243,6 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    output_dir = pathlib.Path(output_dir) / "county_summaries"
     _logger.info(f"Outputting to {output_dir}")
     if not output_dir.exists():
         _logger.info(f"{output_dir} does not exist, creating")
@@ -258,6 +270,47 @@ def build_county_summary(min_date, country="USA", state=None, output_dir=OUTPUT_
     output_path.write_text(json.dumps(all_data, indent=2))
 
 
+def catch_and_return_errors(func) -> Tuple[Optional[Exception], Optional[Any]]:
+    """Catch and report errors, wrapping response in a tuple with error and result.
+
+    Args:
+        func: Function to wrap.
+
+    Returns: Tuple of optional error and optional result.
+    """
+    @functools.wraps(func)
+    def run(*args, **kwargs):
+
+        try:
+            result = func(*args, **kwargs)
+            return (None, result)
+        except Exception as err:
+            error_msg = traceback.format_exc()
+            return ((err, error_msg), None)
+
+    return run
+
+
+def _result_callback_wrapper(key):
+    """Creates a callback function to log errors on parallel task completion.
+
+    Args:
+        key: Key used to help identify inputs that caused error.
+
+    Returns: Callback function.
+    """
+    def callback(result):
+        error, _ = result
+
+        if error:
+            exc, error_traceback = error
+            _logger.error(f"Failed to process: {key}")
+            _logger.error(error_traceback)
+
+    return callback
+
+
+@catch_and_return_errors
 def forecast_each_state(
     country,
     state,
@@ -270,11 +323,8 @@ def forecast_each_state(
 ):
     _logger.info(f"Generating data for state: {state}")
     cases = timeseries.get_data(state=state)
-    try:
-        beds = beds_data.get_beds_by_country_state(country, state)
-    except IndexError:
-        # Old timeseries data throws an exception if the state does not exist in
-        # the dataset.
+    beds = beds_data.get_state_level(state)
+    if not beds:
         _logger.error(f"Failed to get beds data for {state}")
         return
     population = population_data.get_state_level(country, state)
@@ -282,15 +332,17 @@ def forecast_each_state(
         _logger.warning(f"Missing population for {state}")
         return
 
-    for i, intervention in enumerate(get_interventions()):
+    for i, intervention in enumerate(build_params.get_interventions()):
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
             results, cases, population, min_date, max_date, interval=4
         )
+
         write_results(website_data, output_dir, f"{state}.{i}.json")
 
 
+@catch_and_return_errors
 def forecast_each_county(
     min_date,
     max_date,
@@ -319,17 +371,21 @@ def forecast_each_county(
         f"total cases: {total_cases} beds: {beds} pop: {population}"
     )
 
-    for i, intervention in enumerate(get_interventions()):
+    interventions = build_params.get_interventions()
+    for i, intervention in enumerate(interventions):
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
             results, cases, population, min_date, max_date, interval=4
         )
-
         write_results(website_data, output_dir, f"{state}.{fips}.{i}.json")
 
 
 def run_county_level_forecast(
-    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR
+    min_date: datetime.datetime,
+    max_date: datetime.datetime,
+    output_dir: pathlib.Path,
+    country: str = "USA",
+    state: str = None,
 ):
     beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
@@ -338,13 +394,7 @@ def run_county_level_forecast(
         AggregationLevel.COUNTY, after=min_date, country=country, state=state
     )
 
-    output_dir = pathlib.Path(output_dir) / "county"
     _logger.info(f"Outputting to {output_dir}")
-    # Dont want to replace when just running the states
-    if output_dir.exists() and not state:
-        backup = output_dir.name + "." + str(int(time.time()))
-        output_dir.rename(output_dir.parent / backup)
-
     output_dir.mkdir(parents=True, exist_ok=True)
 
     counties_by_state = defaultdict(list)
@@ -368,29 +418,29 @@ def run_county_level_forecast(
                 population_data,
                 output_dir,
             )
-            # forecast_each_county(*args)
-            pool.apply_async(forecast_each_county, args=args)
+
+            pool.apply_async(
+                forecast_each_county,
+                args,
+                callback=_result_callback_wrapper(f"{county}, {state}: {fips}")
+            )
 
     pool.close()
     pool.join()
 
 
 def run_state_level_forecast(
-    min_date, max_date, country="USA", state=None, output_dir=OUTPUT_DIR
+    min_date, max_date, output_dir, country="USA", state=None,
 ):
     # DH Beds dataset does not have all counties, so using the legacy state
     # level bed data.
-    legacy_dataset = LegacyJHUDataset(min_date)
+    beds_data = DHBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
     timeseries = timeseries.get_subset(
         AggregationLevel.STATE, after=min_date, country=country, state=state
     )
-    output_dir = pathlib.Path(OUTPUT_DIR)
-    if output_dir.exists() and not state:
-        backup = output_dir.name + "." + str(int(time.time()))
-        output_dir.rename(output_dir.parent / backup)
-
+    output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pool = get_pool()
@@ -399,25 +449,24 @@ def run_state_level_forecast(
             country,
             state,
             timeseries,
-            legacy_dataset,
+            beds_data,
             population_data,
             min_date,
             max_date,
             output_dir,
         )
-        pool.apply_async(forecast_each_state, args=args)
+        pool.apply_async(
+            forecast_each_state,
+            args,
+            callback=_result_callback_wrapper(f"{state}, {country}")
+        )
 
     pool.close()
     pool.join()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    with public_data_hash(os.getenv('COVID_DATA_PUBLIC_HASH', None)) as git_hash:
-        # @TODO: Record git hash in output data for reproducibility
-        # @TODO: Remove interventions override once support is in the Harvard model.
-        min_date = datetime.datetime(2020, 3, 7)
-        max_date = datetime.datetime(2020, 7, 6)
-        # build_county_summary()
-        run_county_level_forecast(min_date, max_date)
-        run_state_level_forecast(min_date, max_date)
+    _logger.warning(
+        "Models are no longer ran from run.py. Please see README.md for the most up to date "
+        "way to run models."
+    )
