@@ -2,46 +2,10 @@ import csv
 import sys
 
 from libs.us_state_abbrev import us_state_abbrev
-
+from libs.datasets.results_schema import RESULT_DATA_COLUMNS_STATES, RESULT_DATA_COLUMNS_COUNTIES, EXPECTED_MISSING_STATES, EXPECTED_MISSING_STATES_FROM_COUNTES 
 """
 A set of functions to validate the datasets we prepare
 """
-
-OUTPUT_HEADERS_SHARE = [
-    'Province/State',
-    "Country/Region",
-    "Last Update",
-    "Latitude",
-    "Longitude",
-    "State/County FIPS Code",
-    'State Intervention',
-    '16d-HSPTLZD',
-    '32d-HSPTLZD',
-    '16d-LACKBEDS',
-    '32d-LACKBEDS',
-    'MEAN-HOSP',
-    'MEAN-DEATHS',
-    'PEAK-HOSP',
-    'PEAK-DEATHS',
-    "Current Deaths",
-    "Current Confirmed",
-    "Current Recovered",
-    "Current Active",
-    "Combined Key",
-    "County"
-]
-
-
-OUTPUT_HEADERS_STATES = OUTPUT_HEADERS_SHARE + []
-OUTPUT_HEADERS_COUNTIES = OUTPUT_HEADERS_SHARE + []
-
-EXPECTED_MISSING_STATES = set([
-    'Northern Mariana Islands', 'American Samoa', 'Virgin Islands', 'Puerto Rico', 'Guam'
-])
-
-EXPECTED_MISSING_STATES_FROM_COUNTES = set([
-    'District of Columbia'
-])
 
 class DataExportException(Exception): 
     def __init__(self, key, message):
@@ -65,7 +29,7 @@ def _raise_error_if_not_data_from_all_states(key, df, expected_missing):
 
 def validate_states_df(key, states_df):
     # assert the headers are what we expect
-    _raise_error_if_incorrect_headers(key, OUTPUT_HEADERS_STATES, states_df)
+    _raise_error_if_incorrect_headers(key, RESULT_DATA_COLUMNS_STATES, states_df)
   
     # assert there is data from each of the states
     _raise_error_if_not_data_from_all_states(key, states_df, EXPECTED_MISSING_STATES)
@@ -76,7 +40,7 @@ def validate_states_df(key, states_df):
 
 def validate_counties_df(key, counties_df):
     # assert the headers are what we expect
-    _raise_error_if_incorrect_headers(key, OUTPUT_HEADERS_COUNTIES, counties_df)
+    _raise_error_if_incorrect_headers(key, RESULT_DATA_COLUMNS_COUNTIES, counties_df)
 
     # assert data from each of the states
     _raise_error_if_not_data_from_all_states(key, counties_df, EXPECTED_MISSING_STATES.union(EXPECTED_MISSING_STATES_FROM_COUNTES))
