@@ -1,11 +1,17 @@
 default:
   # Initial conditions
-  R_initial: 0
-  E_initial: 0
-  D_initial: 0
-  HGen_initial: 0
-  HICU_initial: 0
-  HICUVent_initial: 0
+  R_initial:
+    value: 0
+  E_initial:
+    value: 0
+  D_initial:
+    value: 0
+  HGen_initial:
+    value: 0
+  HICU_initial:
+    value: 0
+  HICUVent_initial:
+    value: 0
   gamma:
     func: ~
     clip: ~
@@ -14,7 +20,11 @@ default:
       low: 0.4
       high: 0.6
   A_initial:
-    func: "lambda x: parameter_set['gamma'] * parameter_set['I_initial'] / (1 - parameter_set['gamma'])"
+    func:
+      value: 'lambda x, gamma, I_initial: gamma * I_initial / (1 - gamma)'
+      params:
+        - 'gamma'
+        - 'I_initial'
     clip: ~
 
   # Epidemiological parameters
@@ -35,7 +45,8 @@ default:
         low: 0.5
         high: 0.75
   sigma:        #  Imperial college - 2 days since that is expected infectious period.
-    func: 'lambda x: 1/x'
+    func:
+      value: 'lambda x: 1/x'
     clip:
       - 0
       - ~
@@ -44,7 +55,8 @@ default:
       loc: 3.1
       scale: 0.86
   delta:
-    func: 'lambda x: 1/x'
+    func:
+      value: 'lambda x: 1/x'
     clip:
       - 0
       - ~
@@ -53,7 +65,8 @@ default:
       shape: 6
       scale: 1
   delta_hospital:
-    func: 'lambda x: 1/x'
+    func:
+      value: 'lambda x: 1/x'
     clip:
       - 0
       - ~
@@ -61,7 +74,8 @@ default:
     dist_params:
       shape: 8
       scale: 1
-  kappa: 1
+  kappa:
+    value: 1
 
   # Hospitalization relevant parameters
   hospitalization_rate_general:
@@ -74,7 +88,9 @@ default:
         loc: 0.125
         scale: 0.03
   hospitalization_rate_icu:
-    func: "lambda x: x * parameter_sets['hospitalization_rate_general']"
+    func:
+      value: "lambda x, hospitalization_rate_general: x * hospitalization_rate_general"
+      params: 'hospitalization_rate_general'
     clip:
       - 0
       - ~
@@ -155,6 +171,7 @@ default:
       loc: 0.12
       scale: 0.04
   mortality_rate_no_ICU_beds:
+    value: ~
     func: ~
     clip:
       - 0
@@ -163,13 +180,14 @@ default:
     dist_params:
       low: 0.8
       high: 1
-  mortality_rate_no_ventilator: 1
+  mortality_rate_no_ventilator:
+     value: 1
   beds_general:
-    func: ~
+    func:
+      value: 'lambda x, beds: beds * 0.828'   # scale factor = 0.4 * 2.07
+      params: 'beds'
     clip: ~
-    parameter:
-      name: beds
-      func: product
-    scale: 0.828  # 0.4 * 2.07
-  beds_ICU: 0
-  ventilators: 0
+  beds_ICU:
+    value: 0
+  ventilators:
+    value: 0
