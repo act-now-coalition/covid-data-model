@@ -6,28 +6,26 @@
 set -o nounset
 set -o errexit
 
-DEFAULT_DATA_SOURCES_DIR="../covid-data-public"
-DEFAULT_API_RESULTS_DIR="api_results"
-
 main () {
+  prepare "$@"
+  execute
+}
+
+# Checks command-line arguments, sets variables, etc.
+prepare () {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
   # Parse args if specified.
-  if [ $# -eq 0 ]; then
-    DATA_SOURCES_DIR="$(absPath "${DEFAULT_DATA_SOURCES_DIR}")"
-    API_OUTPUT_DIR="$(absPath "${DEFAULT_API_RESULTS_DIR}")"
-  elif [ $# -ne 2 ]; then
+  if [ $# -ne 2 ]; then
     echo "Usage: $0 [covid-data-public directory] [output-directory]"
+    echo
+    echo "Example: $0 ../covid-data-public/ ./api_results/"
     exit 1
   else
     DATA_SOURCES_DIR="$(absPath $1)"
     API_OUTPUT_DIR="$(absPath $2)"
   fi
-
-  echo "Generating all API artifacts."
-  echo "Data sources directory: ${DATA_SOURCES_DIR}"
-  echo "API output directory: ${API_OUTPUT_DIR}"
 
   if [ ! -d "${DATA_SOURCES_DIR}" ] ; then
     echo "Directory ${DATA_SOURCES_DIR} does not exist."
@@ -54,7 +52,9 @@ main () {
 
   # TODO: Move DoD onto a more general-purpose schema rather than treat them custom.
   DOD_DIR="${API_OUTPUT_DIR}/custom1"
+}
 
+execute() {
   echo ">>> Generating state models to ${STATES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
   ./run_model.py state -o "${API_OUTPUT_DIR}" > /dev/null
