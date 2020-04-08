@@ -1,4 +1,23 @@
 default:
+  # Initial conditions
+  R_initial: 0
+  E_initial: 0
+  D_initial: 0
+  HGen_initial: 0
+  HICU_initial: 0
+  HICUVent_initial: 0
+  gamma:
+    func: ~
+    clip: ~
+    dist: uniform
+    dist_params:
+      low: 0.4
+      high: 0.6
+  A_initial:
+    func: "lambda x: parameter_sets['gamma'] * parameter_sets['I_initial'] / (1 - parameter_sets['gamma'])"
+    clip: ~
+
+  # Epidemiological parameters
   R0:   # Imperial College
     func: ~
     clip: ~
@@ -15,42 +34,29 @@ default:
     dist_params:
         low: 0.5
         high: 0.75
-  gamma:
-    func: ~
-    clip:
-      - 0
-      - ~
-    parameter: ~
-    dist: uniform
-    dist_params:
-      low: 0.6
-      high: 0.6
   sigma:        #  Imperial college - 2 days since that is expected infectious period.
-    func: inverse
+    func: 'lambda x: 1/x'
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 3.1
       scale: 0.86
   delta:
-    func: inverse
+    func: 'lambda x: 1/x'
     clip:
       - 0
       - ~
-    parameter: ~
     dist: gamma
     dist_params:
       shape: 6
       scale: 1
   delta_hospital:
-    func: inverse
+    func: 'lambda x: 1/x'
     clip:
       - 0
       - ~
-    parameter: ~
     dist: gamma
     dist_params:
       shape: 8
@@ -63,20 +69,15 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
         loc: 0.125
         scale: 0.03
   hospitalization_rate_icu:
-    func: ~
+    func: "lambda x: x * parameter_sets['hospitalization_rate_general']"
     clip:
       - 0
       - ~
-    parameter:
-      name: hospitalization_rate_general
-      func: product
-    scale: 1
     dist: normal
     dist_params:
       loc: 0.29
@@ -86,7 +87,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 0.44
@@ -96,7 +96,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 6.5
@@ -106,7 +105,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 18.8
@@ -116,7 +114,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 7
@@ -126,7 +123,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 16
@@ -136,7 +132,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 17
@@ -146,7 +141,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 0.0109
@@ -156,7 +150,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: normal
     dist_params:
       loc: 0.12
@@ -166,7 +159,6 @@ default:
     clip:
       - 0
       - ~
-    parameter: ~
     dist: uniform
     dist_params:
       low: 0.8
