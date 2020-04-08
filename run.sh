@@ -6,11 +6,6 @@
 set -o nounset
 set -o errexit
 
-main () {
-  prepare "$@"
-  execute
-}
-
 # Checks command-line arguments, sets variables, etc.
 prepare () {
   # Go to repo root (where run.sh lives).
@@ -86,4 +81,5 @@ function absPath() {
   )
 }
 
-main "$@"
+prepare "$@"
+execute
