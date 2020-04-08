@@ -1,5 +1,6 @@
 import logging
 import iminuit
+import yaml
 import numpy as np
 import os
 import pandas as pd
@@ -14,6 +15,8 @@ from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGene
 t_list = np.linspace(0, 1000, 1001)
 ref_date = datetime(year=2020, month=1, day=1)
 
+THIS_FILE_PATH = os.path.dirname(os.path.realpath('__file__'))
+PARAM_CONFIG = yaml.safe_load(open(os.path.join(THIS_FILE_PATH, '../parameters/config.yaml')).read())
 
 def get_average_SEIR_parameters(fips):
     """
@@ -27,7 +30,9 @@ def get_average_SEIR_parameters(fips):
     """
     SEIR_kwargs = ParameterEnsembleGenerator(fips, N_samples=10000,
                                              t_list=t_list,
-                                             suppression_policy=None).get_average_seir_parameters()
+                                             suppression_policy=None,
+                                             parameter_defaults_config=PARAM_CONFIG[
+                                                 'default']).get_average_seir_parameters()
     SEIR_kwargs.pop('R0')
     SEIR_kwargs.pop('suppression_policy')
     return SEIR_kwargs
