@@ -14,7 +14,7 @@ default:
       low: 0.4
       high: 0.6
   A_initial:
-    func: "lambda x: parameter_sets['gamma'] * parameter_sets['I_initial'] / (1 - parameter_sets['gamma'])"
+    func: "lambda x: parameter_set['gamma'] * parameter_set['I_initial'] / (1 - parameter_set['gamma'])"
     clip: ~
 
   # Epidemiological parameters
