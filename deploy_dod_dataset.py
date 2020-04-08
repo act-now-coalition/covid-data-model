@@ -8,7 +8,7 @@ import logging
 from libs.enums import Intervention
 from libs.validate_results import validate_states_df, validate_counties_df, validate_states_shapefile, validate_counties_shapefile
 from libs.build_dod_dataset import get_usa_by_county_with_projection_df, get_usa_by_states_df
-from libs.functions.generate_shapefiles import get_usa_county_shapefile, get_usa_state_shapefile
+from libs.functions import generate_shapefiles
 from libs import dataset_deployer
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
@@ -30,10 +30,9 @@ def deploy(run_validation, input, output):
             validate_states_df(states_key_name, states_df)
         dataset_deployer.upload_csv(states_key_name, states_df.to_csv(), output)
 
-        states_shp = BytesIO()
-        states_shx = BytesIO()
-        states_dbf = BytesIO()
-        get_usa_state_shapefile(states_df, states_shp, states_shx, states_dbf)
+        states_shp, states_shx, states_dbf = generate_shapefiles.get_usa_state_shapefile(
+            states_df
+        )
         if run_validation:
             validate_states_shapefile(states_key_name, states_shp, states_shx, states_dbf)
         dataset_deployer.deploy_shape_files(output, states_key_name, states_shp, states_shx, states_dbf)
@@ -45,10 +44,9 @@ def deploy(run_validation, input, output):
             validate_counties_df(counties_key_name, counties_df)
         dataset_deployer.upload_csv(counties_key_name, counties_df.to_csv(), output)
 
-        counties_shp = BytesIO()
-        counties_shx = BytesIO()
-        counties_dbf = BytesIO()
-        get_usa_county_shapefile(counties_df, counties_shp, counties_shx, counties_dbf)
+        counties_shp, counties_shx, counties_dbf = generate_shapefiles.get_usa_county_shapefile(
+            counties_df
+        )
         if run_validation:
             validate_counties_shapefile(counties_key_name, counties_shp, counties_shx, counties_dbf)
         dataset_deployer.deploy_shape_files(output, counties_key_name, counties_shp, counties_shx, counties_dbf)
@@ -70,4 +68,5 @@ if __name__ == "__main__":
     python deploy_dod_dataset.py
     """
     # pylint: disable=no-value-for-parameter
+    logging.basicConfig(level=logging.INFO)
     deploy()

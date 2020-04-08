@@ -1,5 +1,6 @@
+from typing import Tuple
+import io
 import shapefile
-
 from urllib.parse import urlparse
 
 from libs.CovidDatasets import get_public_data_base_url
@@ -79,7 +80,11 @@ def join_and_output_shapefile(
     shp_writer.close()
 
 
-def get_usa_state_shapefile(use_state_df, shp, shx, dbf):
+def get_usa_state_shapefile(use_state_df) -> Tuple[io.BytesIO, io.BytesIO, io.BytesIO]:
+    shp = io.BytesIO()
+    shx = io.BytesIO()
+    dbf = io.BytesIO()
+
     shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
@@ -92,9 +97,14 @@ def get_usa_state_shapefile(use_state_df, shp, shx, dbf):
         "State/County FIPS Code",
         shp_writer,
     )
+    return shp, shx, dbf
 
 
-def get_usa_county_shapefile(county_df, shp, shx, dbf):
+def get_usa_county_shapefile(county_df) -> Tuple[io.BytesIO, io.BytesIO, io.BytesIO]:
+    shp = io.BytesIO()
+    shx = io.BytesIO()
+    dbf = io.BytesIO()
+
     shp_writer = shapefile.Writer(shp=shp, shx=shx, dbf=dbf)
     public_data_url = get_public_data_base_url()
     public_data_path = _file_uri_to_path(public_data_url)
@@ -108,3 +118,4 @@ def get_usa_county_shapefile(county_df, shp, shx, dbf):
         "State/County FIPS Code",
         shp_writer,
     )
+    return shp, shx, dbf
