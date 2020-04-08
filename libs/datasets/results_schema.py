@@ -1,20 +1,3 @@
-NON_TYPED_FIELDS = [
-    'Province/State', 
-    'Country/Region', 
-    'Last Update',
-    'Latitude', 
-    'Longitude',
-    'State/County FIPS Code',
-    'County', 
-    'Combined Key', 
-    'Current Recovered', 
-    'Current Active', 
-    "Recovered", 
-    "Active"
-]
-
-NON_INTEGER_FIELDS = ['Intervention', 'State Intervention', 'PEAK-HOSP', 'PEAK-DEATHS']
-
 RESULT_DATA_COLUMNS_SHARED = [
     'Province/State',
     "Country/Region",

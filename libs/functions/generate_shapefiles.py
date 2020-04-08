@@ -10,11 +10,17 @@ def _file_uri_to_path(uri: str) -> str:
     return urlparse(uri).path
 
 def join_and_output_shapefile(df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer):
-    fields = [field for field in df.columns if field not in NON_TYPED_FIELDS]
+    blacklisted_fields = ['OBJECTID', 'Province/State', 'Country/Region', 'Last Update',
+        'Latitude', 'Longitude', 'County',  'State/County FIPS Code',
+        'Combined Key', 'Current Recovered', 'Current Active', "Recovered", "Active"]
+    non_integer_fields = ['Intervention', 'State Intervention', 'PEAK-HOSP', 'PEAK-DEATHS']
+    
+    fields = [field for field in df.columns if field not in blacklisted_fields]
+
     shp_writer.fields = shp_reader.fields # Preserve fields that come from the census
 
     for field_name in fields:
-        if field_name in NON_INTEGER_FIELDS:
+        if field_name in non_integer_fields:
             shp_writer.field(field_name, 'C', size=32)
         else:
             shp_writer.field(field_name, 'N', size=14)
