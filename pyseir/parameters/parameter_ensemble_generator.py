@@ -132,7 +132,7 @@ class ParameterEnsembleGenerator:
             elif dist == distribution.UNIFORM:
                 value = np.random.uniform(**param_config['dist_params'])
             elif dist == distribution.EXPONENTIAL:
-                value = np.random.uniform(**param_config['dist_params'])
+                value = np.random.exponential(**param_config['dist_params'])
 
         if 'func' in param_config:
             if param_config['func']:
