@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from pyseir import load_data
+from pyseir.parameters.distribution import distribution
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
 import us
@@ -28,7 +29,7 @@ class ParameterEnsembleGenerator:
         Suppression policy to apply.
     """
     def __init__(self, fips, N_samples, t_list,
-                 I_initial=1, suppression_policy=None):
+                 I_initial=1, suppression_policy=None, parameter_defaults_config=None, scenario='new'):
 
         # Caching globally to avoid relatively significant performance overhead
         # of loading for each county.
@@ -55,6 +56,43 @@ class ParameterEnsembleGenerator:
             self.population = population_data.get_state_level('USA', state=self.state_abbr)
             self.beds = beds_data.get_state_level(self.state_abbr) or 0
 
+        self.parameter_defaults_config = parameter_defaults_config
+        self.scenario = scenario
+
+    def sample_parameter(self, param_config, parameters=None):
+        """
+        Sample parameter from
+        """
+        value = None
+        if 'value' in param_config:
+            value = param_config['value']
+
+        if 'dist' in param_config:
+            dist = distribution(param_config['dist'])
+            if dist == distribution.NORMAL:
+                value = np.random.normal(**param_config['dist_params'])
+            elif dist == distribution.GAMMA:
+                value = np.random.gamma(**param_config['dist_params'])
+            elif dist == distribution.UNIFORM:
+                value = np.random.uniform(**param_config['dist_params'])
+            elif dist == distribution.EXPONENTIAL:
+                value = np.random.uniform(**param_config['dist_params'])
+
+        if 'func' in param_config:
+            if param_config['func']:
+                func = eval(param_config['func']['value'])
+                if 'params' in param_config['func']:
+                    d = {k: v for k, v in parameters.items() if k in param_config['func']['params']}
+                    value = func(value, **d)
+                else:
+                    value = func(value)
+
+        if 'clip' in param_config:
+            if param_config['clip']:
+                value = np.clip(value, a_min=param_config['clip'][0], a_max=param_config['clip'][1])
+
+        return value
+
     def sample_seir_parameters(self, override_params=None):
         """
         Generate N_samples of parameter values from the priors listed below.
@@ -77,77 +115,89 @@ class ParameterEnsembleGenerator:
             # TODO: 10% is being used by CA group.  CDC suggests 20% case hospitalization rate
             # Note that this is 10% of symptomatic cases, making overall hospitalization around 5%.
             # https: // www.statista.com / statistics / 1105402 / covid - hospitalization - rates - us - by - age - group /
-            hospitalization_rate_general = np.random.normal(loc=0.125, scale=0.03)
-            fraction_asymptomatic = np.random.uniform(0.4, 0.6)
+            if self.scenario == 'new':
+                parameter_set = dict(I_initial = self.I_initial,
+                                        t_list=self.t_list,
+                                        N=self.population,
+                                        suppression_policy=self.suppression_policy)
+                for param in self.parameter_defaults_config:
+                    parameter_set[param] = self.sample_parameter(self.parameter_defaults_config[param],
+                                                                 {**parameter_set, **self.__dict__})
+                parameter_sets.append(parameter_set)
+            else:
+                hospitalization_rate_general = np.random.normal(loc=0.125, scale=0.03)
+                fraction_asymptomatic = np.random.uniform(0.4, 0.6)
 
-            parameter_sets.append(dict(
-                t_list=self.t_list,
-                N=self.population,
-                A_initial=fraction_asymptomatic * self.I_initial / (1 - fraction_asymptomatic), # assume no asymptomatic cases are tested.
-                I_initial=self.I_initial,
-                R_initial=0,
-                E_initial=0,
-                D_initial=0,
-                HGen_initial=0,
-                HICU_initial=0,
-                HICUVent_initial=0,
-                suppression_policy=self.suppression_policy,
-                R0=np.random.uniform(low=3, high=4.5),            # Imperial College
-                R0_hospital=np.random.uniform(low=.5, high=4.5 / 6),  # Imperial College
-                hospitalization_rate_general=hospitalization_rate_general,
-                # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
-                hospitalization_rate_icu=max(np.random.normal(loc=.29, scale=0.03) * hospitalization_rate_general, 0),
-                # http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
-                # Coronatracking.com/data
-                fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.44, scale=0.1), 0),
-                sigma=1 / np.random.normal(loc=3.1, scale=0.86),  # Imperial college - 2 days since that is expected infectious period.
-                delta=1 / np.random.gamma(6.0, scale=1),  # Kind of based on imperial college + CDC digest.
-                delta_hospital=1 / np.random.gamma(8.0, scale=1),  # Kind of based on imperial college + CDC digest.
-                kappa=1,
-                gamma=fraction_asymptomatic,
-                # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
-                symptoms_to_hospital_days=np.random.normal(loc=6.5, scale=1.5),
-                symptoms_to_mortality_days=np.random.normal(loc=18.8, scale=.45), # Imperial College
+                parameter_sets.append(dict(
+                    t_list=self.t_list,
+                    N=self.population,
+                    A_initial=fraction_asymptomatic * self.I_initial / (1 - fraction_asymptomatic), # assume no asymptomatic cases are tested.
+                    I_initial=self.I_initial,
+                    R_initial=0,
+                    E_initial=0,
+                    D_initial=0,
+                    HGen_initial=0,
+                    HICU_initial=0,
+                    HICUVent_initial=0,
+                    suppression_policy=self.suppression_policy,
+                    R0=np.random.uniform(low=3, high=4.5),            # Imperial College
+                    R0_hospital=np.random.uniform(low=.5, high=4.5 / 6),  # Imperial College
+                    hospitalization_rate_general=hospitalization_rate_general,
+                    # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
+                    hospitalization_rate_icu=max(np.random.normal(loc=.29, scale=0.03) * hospitalization_rate_general, 0),
+                    # http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
+                    # Coronatracking.com/data
+                    fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.44, scale=0.1), 0),
+                    sigma=1 / np.random.normal(loc=3.1, scale=0.86),  # Imperial college - 2 days since that is expected infectious period.
+                    delta=1 / np.random.gamma(6.0, scale=1),  # Kind of based on imperial college + CDC digest.
+                    delta_hospital=1 / np.random.gamma(8.0, scale=1),  # Kind of based on imperial college + CDC digest.
+                    kappa=1,
+                    gamma=fraction_asymptomatic,
+                    # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
+                    symptoms_to_hospital_days=np.random.normal(loc=6.5, scale=1.5),
+                    symptoms_to_mortality_days=np.random.normal(loc=18.8, scale=.45), # Imperial College
                     hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=2),
                     hospitalization_length_of_stay_icu=np.random.normal(loc=16, scale=3),
                     hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=17, scale=3),
-                mortality_rate=np.random.normal(loc=0.0109, scale=0.0025),
-                # if you assume the ARDS population is the group that would die
-                # w/o ventilation, this would suggest a 20-42% mortality rate
-                # among general hospitalized patients w/o access to ventilators:
-                # “Among all patients, a range of 3% to 17% developed ARDS
-                # compared to a range of 20% to 42% for hospitalized patients
-                # and 67% to 85% for patients admitted to the ICU.1,4-6,8,11”
+                    mortality_rate=np.random.normal(loc=0.0109, scale=0.0025),
+                    # if you assume the ARDS population is the group that would die
+                    # w/o ventilation, this would suggest a 20-42% mortality rate
+                    # among general hospitalized patients w/o access to ventilators:
+                    # “Among all patients, a range of 3% to 17% developed ARDS
+                    # compared to a range of 20% to 42% for hospitalized patients
+                    # and 67% to 85% for patients admitted to the ICU.1,4-6,8,11”
 
-                # 10% Of the population should die at saturation levels. CFR
-                # from Italy is 11.9% right now, Spain 8.9%.  System has to
-                # produce,
-                mortality_rate_no_general_beds=np.random.normal(loc=.12, scale=0.04),
-                # Bumped these up a bit. Dyspnea -> ARDS -> Septic Shock all
-                # very fatal.
-                mortality_rate_no_ICU_beds=np.random.uniform(low=0.8, high=1),
-                mortality_rate_no_ventilator=1,
-                # beds_general=  self.county_metadata_merged.get('num_staffed_beds', 0)
-                #              - self.county_metadata_merged.get('bed_utilization', 0),
-                #              # + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
-                beds_general=self.beds * 0.4 * 2.07,
-                # TODO.. Patch this After Issue 132
-                beds_ICU=0, # self.county_metadata_merged.get('num_icu_beds', 0),
-                # hospital_capacity_change_daily_rate=1.05,
-                # max_hospital_capacity_factor=2.07,
-                # initial_hospital_bed_utilization=0.6,
-                # Rubinson L, Vaughn F, Nelson S, et al. Mechanical ventilators
-                # in US acute care hospitals. Disaster Med Public Health Prep.
-                # 2010;4(3):199-206. http://dx.doi.org/10.1001/dmp.2010.18.
-                # 0.7 ventilators per ICU bed on average in US ~80k Assume
-                # another 20-40% of 100k old ventilators can be used. = 100-120
-                # for 100k ICU beds
-                # TODO: Update this if possible by county or state. The ref above has state estimates
-                # Staff expertise may be a limiting factor:
-                # https://sccm.org/getattachment/About-SCCM/Media-Relations/Final-Covid19-Press-Release.pdf?lang=en-US
-                # TODO: Patch after #133
-                ventilators=0 #self.county_metadata_merged.get('num_icu_beds', 0) * np.random.uniform(low=1.0, high=1.2)
-            ))
+                    # 10% Of the population should die at saturation levels. CFR
+                    # from Italy is 11.9% right now, Spain 8.9%.  System has to
+                    # produce,
+                    mortality_rate_no_general_beds=np.random.normal(loc=.12, scale=0.04),
+                    # Bumped these up a bit. Dyspnea -> ARDS -> Septic Shock all
+                    # very fatal.
+                    mortality_rate_no_ICU_beds=np.random.uniform(low=0.8, high=1),
+                    mortality_rate_no_ventilator=1,
+                    # beds_general=  self.county_metadata_merged.get('num_staffed_beds', 0)
+                    #              - self.county_metadata_merged.get('bed_utilization', 0),
+                    #              # + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
+                    beds_general=self.beds * 0.4 * 2.07,
+                    # TODO.. Patch this After Issue 132
+                    beds_ICU=0, # self.county_metadata_merged.get('num_icu_beds', 0),
+                    # hospital_capacity_change_daily_rate=1.05,
+                    # max_hospital_capacity_factor=2.07,
+                    # initial_hospital_bed_utilization=0.6,
+                    # Rubinson L, Vaughn F, Nelson S, et al. Mechanical ventilators
+                    # in US acute care hospitals. Disaster Med Public Health Prep.
+                    # 2010;4(3):199-206. http://dx.doi.org/10.1001/dmp.2010.18.
+                    # 0.7 ventilators per ICU bed on average in US ~80k Assume
+                    # another 20-40% of 100k old ventilators can be used. = 100-120
+                    # for 100k ICU beds
+                    # TODO: Update this if possible by county or state. The ref above has state estimates
+                    # Staff expertise may be a limiting factor:
+                    # https://sccm.org/getattachment/About-SCCM/Media-Relations/Final-Covid19-Press-Release.pdf?lang=en-US
+                    # TODO: Patch after #133
+                    ventilators=0 #self.county_metadata_merged.get('num_icu_beds', 0) * np.random.uniform(low=1.0, high=1.2)
+                ))
+
+
 
         for parameter_set in parameter_sets:
             parameter_set.update(override_params)
