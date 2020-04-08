@@ -1,15 +1,18 @@
 import os
 from pyseir import OUTPUT_DIR
 import numpy as np
+import math
 import pandas as pd
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 from pyseir import load_data
 import json
 import logging
 import us
 from multiprocessing import Pool
-from libs.datasets import FIPSPopulation
+from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
+from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 
+from pprint import pprint
 
 class WebUIDataAdaptorV1:
     """
@@ -32,6 +35,32 @@ class WebUIDataAdaptorV1:
         os.makedirs(self.county_output_dir, exist_ok=True)
         os.makedirs(self.state_output_dir, exist_ok=True)
         self.population_data = FIPSPopulation.local().population()
+
+        self.hybrid_timeseries = build_aggregate_county_data_frame(JHUDataset.local(), CDSDataset.local())
+        self.hybrid_timeseries['date'] = self.hybrid_timeseries['date'].dt.normalize()
+
+    def backfill_output_model_fips(self, fips, t0, final_beds):
+        backfill_to_date = date(2020, 3, 3)  # @TODO: Parameterize
+        confirmed_to_infected = 1 / 0.073    # @TODO: Parameterize
+        infected_to_hospitalizations = 0.25  # @TODO: Parameterize
+        intervals_to_backfill = math.ceil((t0.date() - backfill_to_date).days / self.output_interval_days)
+        backfill_offsets = range(-intervals_to_backfill * self.output_interval_days, 0, self.output_interval_days)
+
+        backfill = pd.DataFrame()
+        backfill['days'] = backfill_offsets
+        backfill['date'] = [(t0 + timedelta(days=t)) for t in backfill_offsets]
+        backfill['date'] = backfill['date'].dt.normalize()
+        backfill['beds'] = final_beds
+
+        county_timeseries = self.hybrid_timeseries[(self.hybrid_timeseries['fips'] == fips)]
+
+        backfill = pd.merge(backfill, county_timeseries[['date', 'cases', 'deaths']], on='date', how='left')
+        backfill['all_infected'] = np.multiply(backfill['cases'], confirmed_to_infected).fillna(0)
+        backfill['all_hospitalized'] = np.multiply(backfill['all_infected'], infected_to_hospitalizations).fillna(0)
+        backfill['dead'] = backfill['deaths'].fillna(0)
+        backfill['date'] = backfill['date'].dt.strftime('%m/%d/%y')
+
+        return backfill
 
     def map_fips(self, fips):
         """
@@ -86,7 +115,11 @@ class WebUIDataAdaptorV1:
             # Col 11
             output_model['dead'] = np.interp(t_list_downsampled, t_list, output_for_policy['total_deaths']['ci_50'])
             # Col 12
-            output_model['beds'] = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
+            final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
+            output_model['beds'] = final_beds
+
+            backfill = self.backfill_output_model_fips(fips, t0, final_beds)
+            output_model = pd.concat([backfill, output_model])[output_model.columns].reset_index(drop = True)
 
             for col in ['i', 'j', 'k', 'l']:
                 output_model[col] = 0
