@@ -143,3 +143,4 @@ dmypy.json
 pyseir_data/
 pyseir_output/
 
+output/
