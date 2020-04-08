@@ -90,12 +90,17 @@ def fit_county_model(fips):
         return chi2_deaths + chi2_cases
 
     # Note that error def is not right here. We need a realistic error model...
-    m = iminuit.Minuit(_fit_seir, R0=4, t0=50, eps=.5, error_eps=.2, limit_R0=[1, 8],
+    t0_guess = 50
+    m = iminuit.Minuit(_fit_seir, R0=4, t0=t0_guess, eps=.5, error_eps=.2, limit_R0=[1, 8],
                        limit_eps=[0, 2], limit_t0=[-90, 90], error_t0=1, error_R0=1.,
                        errordef=1)
     m.migrad()
     values = dict(fips=fips, **dict(m.values))
-    values['t0_date'] = ref_date + timedelta(days=values['t0'])
+    if np.isnan(values['t0']):
+        logging.error(f'Could not compute MLE values for county {county_metadata["county"]}, {county_metadata["state"]}')
+        values['t0_date'] = ref_date + timedelta(days=t0_guess)
+    else:
+        values['t0_date'] = ref_date + timedelta(days=values['t0'])
     values['Reff_current'] = values['R0'] * values['eps']
     values['observed_total_deaths'] = np.sum(observed_new_deaths)
     values['county'] = county_metadata['county']

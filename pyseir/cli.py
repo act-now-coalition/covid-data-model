@@ -139,5 +139,6 @@ def map_outputs(state, output_interval_days):
 @click.option('--run-mode', default='default',type=str, help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--generate-reports', default=True, type=bool, help='If False, skip pdf report generation.')
 @click.option('--output-interval-days', default='4', type=int, help='Number of days between outputs for the WebUI payload.')
-def run_all(state, run_mode, generate_reports, output_interval_days):
-    _run_all(state, run_mode, generate_reports, output_interval_days)
+@click.option('--skip-download', default=False, type=bool, help='Skip the download phase.')
+def run_all(state, run_mode, generate_reports, output_interval_days, skip_download):
+    _run_all(state, run_mode, generate_reports, output_interval_days, skip_download=skip_download)

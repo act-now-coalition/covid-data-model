@@ -8,9 +8,6 @@ set -o errexit
 
 # Checks command-line arguments, sets variables, etc.
 prepare () {
-  # Go to repo root (where run.sh lives).
-  cd "$(dirname "$0")"
-
   # Parse args if specified.
   if [ $# -ne 2 ]; then
     echo "Usage: $0 [covid-data-public directory] [output-directory]"
@@ -50,6 +47,9 @@ prepare () {
 }
 
 execute() {
+  # Go to repo root (where run.sh lives).
+  cd "$(dirname "$0")"
+
   echo ">>> Generating state models to ${STATES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
   ./run_model.py state -o "${API_OUTPUT_DIR}" > /dev/null
