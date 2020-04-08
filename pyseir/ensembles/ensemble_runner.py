@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import numpy as np
+from multiprocessing import Pool
 import us
 import json
 from enum import Enum
@@ -390,8 +391,8 @@ def run_state(state, ensemble_kwargs):
 
     # Run county level
     df = load_data.load_county_metadata()
-    # all_fips = df[df['state'].str.lower() == state.lower()].fips
-    # p = Pool()
-    # f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
-    # p.map(f, all_fips)
-    # p.close()
+    all_fips = df[df['state'].str.lower() == state.lower()].fips
+    p = Pool()
+    f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
+    p.map(f, all_fips)
+    p.close()

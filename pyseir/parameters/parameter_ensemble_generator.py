@@ -114,7 +114,7 @@ class ParameterEnsembleGenerator:
                 # 10% Of the population should die at saturation levels. CFR
                 # from Italy is 11.9% right now, Spain 8.9%.  System has to
                 # produce,
-                mortality_rate_no_general_beds=np.random.uniform(low=0.1, high=0.2),
+                mortality_rate_no_general_beds=np.random.normal(loc=.12, scale=0.04),
                 # Bumped these up a bit. Dyspnea -> ARDS -> Septic Shock all
                 # very fatal.
                 mortality_rate_no_ICU_beds=np.random.uniform(low=0.8, high=1),
