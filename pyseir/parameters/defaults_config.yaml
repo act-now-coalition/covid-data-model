@@ -169,7 +169,6 @@ mortality_rate_no_general_beds:
     loc: 0.12
     scale: 0.04
 mortality_rate_no_ICU_beds:
-  value: ~
   func: ~
   clip:
     - 0
