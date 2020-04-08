@@ -231,8 +231,4 @@ class StateReport:
                 records.append(county_record)
 
         df = pd.DataFrame(records)
-        writer = pd.ExcelWriter(self.surge_filename, engine='xlsxwriter')
-        for policy in df['mitigation_policy'].unique()[::-1]:
-            df[df['mitigation_policy'] == policy].drop(['mitigation_policy', 'county_fips'], axis=1)
-            df[df['mitigation_policy'] == policy].drop(['mitigation_policy', 'county_fips'], axis=1).to_excel(writer, sheet_name=policy)
-        writer.save()
+        df.write_json(self.surge_filename)
