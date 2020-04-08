@@ -3,6 +3,7 @@ import logging
 import os
 import numpy as np
 from multiprocessing import Pool
+from functools import partial
 import us
 import json
 from enum import Enum
