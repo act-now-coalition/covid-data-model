@@ -1,12 +1,16 @@
+import os
 import enum
 import logging
 import pathlib
 import pandas as pd
 from libs import build_params
 
-LOCAL_PUBLIC_DATA_PATH = (
-    pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
-)
+if os.getenv("COVID_DATA_PUBLIC"):
+    LOCAL_PUBLIC_DATA_PATH = pathlib.Path(os.getenv("COVID_DATA_PUBLIC"))
+else:
+    LOCAL_PUBLIC_DATA_PATH = (
+        pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
+    )
 
 _logger = logging.getLogger(__name__)
 
