@@ -41,3 +41,28 @@ Creating and uploading the files, where the `BUCKET_NAME` is name of the s3 buck
 ```bash
 BUCKET_NAME=<bucket name> python deploy_sir_dataset.py
 ```
+
+
+
+# [NEW 4/7] PySEIR Setup
+
+## Installation
+
+Install miniconda python 3.7 from here [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
+
+Execute
+`conda env create -f environment.yaml`
+
+Activate the environment here..
+`conda activate pyseir`
+
+### Installing pyseir
+Change to into the county_covid_seir_models directory
+`pip install -e .`
+
+
+### Running Models
+`pyseir run-all --state=California`
+
+This will take a few minutes to download today's data, run inference and model
+ensembles, and generate the output. Then check the `output/` folder for results.

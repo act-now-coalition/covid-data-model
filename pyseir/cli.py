@@ -36,7 +36,7 @@ def _impute_start_dates(state=None):
         generate_start_times_for_state(state=state.title())
     else:
         for state in us.states.STATES:
-            _impute_start_dates(state)
+            _impute_start_dates(state.name)
 
 
 def _run_mle_fits(state=None):
@@ -44,7 +44,7 @@ def _run_mle_fits(state=None):
         model_fitter_mle.run_state(state.title())
     else:
         for state in us.states.STATES:
-            run_mle_fits(state)
+            run_mle_fits(state.name)
 
 
 def _run_ensembles(state=None, ensemble_kwargs=dict()):
@@ -52,7 +52,7 @@ def _run_ensembles(state=None, ensemble_kwargs=dict()):
         run_state(state, ensemble_kwargs=ensemble_kwargs)
     else:
         for state in us.states.STATES:
-            run_state(state, ensemble_kwargs=ensemble_kwargs)
+            run_state(state.name, ensemble_kwargs=ensemble_kwargs)
 
 
 def _generate_state_reports(state=None):
@@ -61,7 +61,7 @@ def _generate_state_reports(state=None):
         report.generate_report()
     else:
         for state in us.states.STATES:
-            _generate_state_reports(state.title())
+            _generate_state_reports(state.name.title())
 
 
 def _map_outputs(state=None, output_interval_days=4):
@@ -71,7 +71,7 @@ def _map_outputs(state=None, output_interval_days=4):
         web_ui_mapper.generate_state()
     else:
         for state in us.states.STATES:
-            _map_outputs(state.title(), output_interval_days)
+            _map_outputs(state.name.title(), output_interval_days)
 
 
 def _run_all(state=None, run_mode='default', generate_reports=True, output_interval_days=4, skip_download=False):
