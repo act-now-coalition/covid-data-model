@@ -51,17 +51,7 @@ If you've previously ran the full model, you can just re-run the DoD dataset par
 python deploy_dod_dataset.py
 # Upload artifacts to S3 bucket:
 BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
->>>>>>> cf953b16d20c59df5b05d91dbd8396d96522fb5c
 ```
-
-If you've previously ran the full model, you can just re-run the DoD dataset part via:
-```
-# Output artifacts locally to dod_results/:
-python deploy_dod_dataset.py
-# Upload artifacts to S3 bucket:
-BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
-```
-
 
 
 # [NEW 4/7] PySEIR Setup
