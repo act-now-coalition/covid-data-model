@@ -101,7 +101,12 @@ class WebUIDataAdaptorV1:
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
 
-            with open(os.path.join(output_dir, f'{self.state_abbreviation}.{fips}.{i_policy}.json'), 'w') as f:
+            if len(fips) == 5:
+                output_path = os.path.join(output_dir, f'{self.state_abbreviation}.{fips}.{i_policy}.json')
+            else:
+                output_path = os.path.join(output_dir, f'{self.state_abbreviation}.{i_policy}.json')
+
+            with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 
     def generate_state(self):

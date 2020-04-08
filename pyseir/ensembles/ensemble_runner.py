@@ -85,7 +85,7 @@ class EnsembleRunner:
             self.state_name = us.states.lookup(self.fips).name
             self.covid_data = timeseries.get_subset(AggregationLevel.STATE, country='USA', state=self.state_abbr)\
                                         .get_data(country='USA', state=self.state_abbr)
-
+            self.output_file_report = None
             self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',
                 f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
@@ -220,7 +220,7 @@ class EnsembleRunner:
 
             self.all_outputs[f'{suppression_policy_name}'] = self._generate_output_for_suppression_policy(model_ensemble)
 
-        if self.generate_report:
+        if self.generate_report and self.output_file_report:
             logging.info(f'Generating report for {self.state_name} {self.fips}')
             report = CountyReport(self.fips,
                                   model_ensemble=model_ensemble,
