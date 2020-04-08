@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
+import us
 from pyseir import load_data
 from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
-import us
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 beds_data = None
@@ -38,13 +39,13 @@ class ParameterEnsembleGenerator:
             population_data = FIPSPopulation.local().population()
 
         self.fips = fips
-        self.geographic_unit = 'county' if len(self.fips) == 5 else 'state'
+        self.agg_level = AggregationLevel.COUNTY if len(self.fips) == 5 else AggregationLevel.STATE
         self.N_samples = N_samples
         self.I_initial = I_initial
         self.suppression_policy = suppression_policy
         self.t_list = t_list
 
-        if self.geographic_unit == 'county':
+        if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
             self.population = population_data.get_county_level('USA', state=self.state_abbr, fips=self.fips)

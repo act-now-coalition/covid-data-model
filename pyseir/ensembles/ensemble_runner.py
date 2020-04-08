@@ -17,6 +17,8 @@ from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
 from libs.datasets import JHUDataset
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import CovidTrackingDataSource
+
 
 _logger = logging.getLogger(__name__)
 jhu_timeseries = None
@@ -58,13 +60,21 @@ class EnsembleRunner:
         compartment.
     run_mode: str
         Individual parameters can be overridden here.
+    min_hospitalization_threshold: int
+        Require this number of hospitalizations before initializing based on
+        observations. Fallback to cases otherwise.
+    hospitalization_to_confirmed_case_ratio: float
+        When hospitalization data is not available directly, this fraction of
+        confirmed cases defines the initial number of hospitalizations.
     """
     def __init__(self, fips, n_years=2, n_samples=250,
                  suppression_policy=(0.35, 0.5, 0.75, 1),
                  skip_plots=False,
                  output_percentiles=(5, 25, 32, 50, 75, 68, 95),
                  generate_report=True,
-                 run_mode=RunMode.DEFAULT):
+                 run_mode=RunMode.DEFAULT,
+                 min_hospitalization_threshold=10,
+                 hospitalization_to_confirmed_case_ratio=1 / 4):
 
         # Caching globally to avoid relatively significant performance overhead
         # of loading for each county.
@@ -73,13 +83,16 @@ class EnsembleRunner:
             jhu_timeseries = JHUDataset.local().timeseries()
 
         self.fips = fips
-        self.geographic_unit = 'county' if len(self.fips) == 5 else 'state'
+        self.agg_level = AggregationLevel.COUNTY if len(self.fips) == 5 else AggregationLevel.STATE
 
         self.t_list = np.linspace(0, 365 * n_years, 365 * n_years)
         self.skip_plots = skip_plots
         self.run_mode = RunMode(run_mode)
+        self.hospitalizations_for_state = None
+        self.min_hospitalization_threshold = min_hospitalization_threshold
+        self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
-        if self.geographic_unit == 'county':
+        if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata_by_fips(fips)
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
             self.state_name = us.states.lookup(self.county_metadata['state']).name
@@ -89,16 +102,18 @@ class EnsembleRunner:
             self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',
                 f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
-            self.covid_data = jhu_timeseries.get_subset(AggregationLevel.COUNTY, country='USA', state=self.state_abbr)\
-                                        .get_data(state=self.state_abbr, country='USA', fips=self.fips)
         else:
             self.state_abbr = us.states.lookup(self.fips).abbr
             self.state_name = us.states.lookup(self.fips).name
-            self.covid_data = jhu_timeseries.get_subset(AggregationLevel.STATE, country='USA', state=self.state_abbr)\
-                                        .get_data(country='USA', state=self.state_abbr)
+
             self.output_file_report = None
             self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',
                 f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+
+        self.covid_data = jhu_timeseries\
+            .get_subset(self.agg_level, country='USA', state=self.state_abbr) \
+            .get_data(country='USA', state=self.state_abbr, fips=fips) \
+            .sort_values('date')
 
         self.output_percentiles = output_percentiles
         self.n_samples = n_samples
@@ -116,6 +131,40 @@ class EnsembleRunner:
         self.init_run_mode()
 
         self.all_outputs = {}
+
+    def get_initial_hospitalizations(self):
+        """
+        Attempt a two level hierarchy of lookups for hospitalizations.
+
+        1. Direct hospitalizations if available
+        2. Inferred from covid case data.
+
+        Returns
+        -------
+        latest_date: date
+            Last date of data available.
+        hospitalizations_total: int
+            Estimated number of current hospitalizations total.
+        """
+        fips = None if self.agg_level is AggregationLevel.STATE else self.fips
+
+        hospitalization_data = CovidTrackingDataSource.local()\
+            .timeseries()\
+            .get_subset(self.agg_level, country='USA', state=self.state_abbr)\
+            .get_data(state=self.state_abbr, country='USA', fips=fips)\
+            .sort_values('date')\
+
+        # If there are enough hospitalizations, use those to define initial conditions.
+        if len(hospitalization_data) > 0 \
+                and hospitalization_data.iloc[-1]['current_hospitalized'] > self.min_hospitalization_threshold:
+            latest_date = hospitalization_data.iloc[-1]['date'].date()
+            hospitalizations_total = hospitalization_data.iloc[-1]['current_hospitalized']
+
+        # Fallback to case data if not.
+        else:
+            latest_date = self.covid_data.date.max()
+            hospitalizations_total = self.covid_data.cases.max() * self.hospitalization_to_confirmed_case_ratio
+        return latest_date, hospitalizations_total
 
     def init_run_mode(self):
         """
@@ -158,19 +207,18 @@ class EnsembleRunner:
 
             if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
                 self.t0 = self.covid_data.date.max()
+                self.t0, hospitalizations_total = self.get_initial_hospitalizations()
 
-                # Initial hospitalizations = Confirmed Cases / 4.
-                # TODO Integrate actual hospital data here.
-                hospitalization_to_confirmed_case_ratio = 1 / 4
-
-                self.override_params['HGen_initial'] = self.covid_data.cases.max() * hospitalization_to_confirmed_case_ratio * (1 - self.override_params['hospitalization_rate_icu'])
-                self.override_params['HICU_initial'] = self.covid_data.cases.max() * hospitalization_to_confirmed_case_ratio * self.override_params['hospitalization_rate_icu']
+                self.override_params['HGen_initial'] = hospitalizations_total * (1 - self.override_params['hospitalization_rate_icu'])
+                self.override_params['HICU_initial'] = hospitalizations_total * self.override_params['hospitalization_rate_icu']
                 self.override_params['HICUVent_initial'] = self.override_params['HICU_initial'] * self.override_params['fraction_icu_requiring_ventilator']
+                self.override_params['I_initial'] = hospitalizations_total / self.override_params['hospitalization_rate_general']
 
-                self.override_params['I_initial'] = 1.0 * 3.43 * self.covid_data.cases.max()
+                # The following two params disable the asymptomatic compartment.
                 self.override_params['A_initial'] = 0
-                self.override_params['gamma'] = 1
+                self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
 
+                # 1.2 is a ~ steady state for the exposed bucket initialization.
                 self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
                 self.override_params['D_initial'] = self.covid_data.deaths.max()
 
@@ -224,7 +272,7 @@ class EnsembleRunner:
             model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
             logging.info(f'Generating outputs for {suppression_policy_name}')
-            if self.geographic_unit == 'county':
+            if self.agg_level is AggregationLevel.COUNTY:
                 self.all_outputs['county_metadata'] = self.county_metadata
                 self.all_outputs['county_metadata']['age_distribution'] = list(self.all_outputs['county_metadata']['age_distribution'])
                 self.all_outputs['county_metadata']['age_bins'] = list(self.all_outputs['county_metadata']['age_distribution'])
