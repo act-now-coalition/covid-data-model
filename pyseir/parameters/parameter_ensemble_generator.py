@@ -5,8 +5,10 @@ from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
 import us
 
-beds_data = DHBeds.local().beds()
-population_data = FIPSPopulation.local().population()
+
+
+beds_data = None
+population_data = None
 
 
 class ParameterEnsembleGenerator:
@@ -28,6 +30,13 @@ class ParameterEnsembleGenerator:
     """
     def __init__(self, fips, N_samples, t_list,
                  I_initial=1, suppression_policy=None):
+
+        # Caching globally to avoid relatively significant performance overhead
+        # of loading for each county.
+        global beds_data, population_data
+        if not beds_data or not population_data:
+            beds_data = DHBeds.local().beds()
+            population_data = FIPSPopulation.local().population()
 
         self.fips = fips
         self.geographic_unit = 'county' if len(self.fips) == 5 else 'state'

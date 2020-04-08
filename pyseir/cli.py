@@ -35,24 +35,24 @@ def _impute_start_dates(state=None):
     if state:
         generate_start_times_for_state(state=state.title())
     else:
-        for state in us.states.STATES:
-            _impute_start_dates(state.name)
+        for state_obj in us.states.STATES:
+            _impute_start_dates(state_obj.name)
 
 
 def _run_mle_fits(state=None):
     if state:
         model_fitter_mle.run_state(state.title())
     else:
-        for state in us.states.STATES:
-            run_mle_fits(state.name)
+        for state_obj in us.states.STATES:
+            run_mle_fits(state_obj.name)
 
 
 def _run_ensembles(state=None, ensemble_kwargs=dict()):
     if state:
         run_state(state, ensemble_kwargs=ensemble_kwargs)
     else:
-        for state in us.states.STATES:
-            run_state(state.name, ensemble_kwargs=ensemble_kwargs)
+        for state_obj in us.states.STATES:
+            run_state(state_obj.name, ensemble_kwargs=ensemble_kwargs)
 
 
 def _generate_state_reports(state=None):
@@ -60,8 +60,8 @@ def _generate_state_reports(state=None):
         report = StateReport(state.title())
         report.generate_report()
     else:
-        for state in us.states.STATES:
-            _generate_state_reports(state.name.title())
+        for state_obj in us.states.STATES:
+            _generate_state_reports(state_obj.name)
 
 
 def _map_outputs(state=None, output_interval_days=4):
@@ -70,8 +70,8 @@ def _map_outputs(state=None, output_interval_days=4):
         web_ui_mapper = WebUIDataAdaptorV1(state, output_interval_days=output_interval_days)
         web_ui_mapper.generate_state()
     else:
-        for state in us.states.STATES:
-            _map_outputs(state.name.title(), output_interval_days)
+        for state_obj in us.states.STATES:
+            _map_outputs(state_obj.name, output_interval_days)
 
 
 def _run_all(state=None, run_mode='default', generate_reports=True, output_interval_days=4, skip_download=False):
@@ -92,9 +92,9 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
             _generate_state_reports(state.title())
         _map_outputs(state, output_interval_days)
     else:
-        for state in us.states.STATES:
+        for state_obj in us.states.STATES:
             try:
-                _run_all(state.name, run_mode, generate_reports, output_interval_days, skip_download=True)
+                _run_all(state_obj.name, run_mode, generate_reports, output_interval_days, skip_download=True)
             except ValueError as e:
                 exceptions.append(e)
     for exception in exceptions:

@@ -15,15 +15,20 @@ from pyseir.models.suppression_policies import generate_empirical_distancing_pol
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
-
 from libs.datasets import JHUDataset
 from libs.datasets.dataset_utils import AggregationLevel
-timeseries = JHUDataset.local().timeseries()
+
+_logger = logging.getLogger(__name__)
+jhu_timeseries = None
 
 
 class RunMode(Enum):
+    # Read params from the parameter sampler default and use empirical
+    # suppression policies.
     DEFAULT = 'default'
-    CAN_BEFORE = 'can-before'  # 4 basic scenarios.
+    # 4 basic suppression scenarios and specialized parameters to match
+    # covidactnow before scenarios.
+    CAN_BEFORE = 'can-before'
 
 
 compartment_to_capacity_attr_map = {
@@ -60,6 +65,12 @@ class EnsembleRunner:
                  output_percentiles=(5, 25, 32, 50, 75, 68, 95),
                  generate_report=True,
                  run_mode=RunMode.DEFAULT):
+
+        # Caching globally to avoid relatively significant performance overhead
+        # of loading for each county.
+        global jhu_timeseries
+        if not jhu_timeseries:
+            jhu_timeseries = JHUDataset.local().timeseries()
 
         self.fips = fips
         self.geographic_unit = 'county' if len(self.fips) == 5 else 'state'
