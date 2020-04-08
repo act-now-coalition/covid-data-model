@@ -5,7 +5,7 @@ from libs.datasets.population import PopulationDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.build_params import US_STATE_ABBREV
-
+from libs import enums
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 
 
@@ -40,6 +40,7 @@ class FIPSPopulation(data_source.DataSource):
 
     def __init__(self, path):
         data = pd.read_csv(path, dtype={"fips": str})
+        data['fips'] = data.fips.str.zfill(5)
         data = self.standardize_data(data)
         super().__init__(data)
 
@@ -51,15 +52,17 @@ class FIPSPopulation(data_source.DataSource):
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         # Add Missing
         unknown_fips = []
+
         for state in data.state.unique():
             row = {
                 cls.Fields.STATE: state,
                 # TODO(chris): Possibly separate fips out by state prefix
-                cls.Fields.FIPS: '99999',
+                cls.Fields.FIPS: enums.UNKNOWN_FIPS,
                 cls.Fields.POPULATION: None,
                 cls.Fields.COUNTY: 'Unknown'
             }
             unknown_fips.append(row)
+
         data = data.append(unknown_fips)
         # All DH data is aggregated at the county level
         data[cls.Fields.AGGREGATE_LEVEL] = "county"

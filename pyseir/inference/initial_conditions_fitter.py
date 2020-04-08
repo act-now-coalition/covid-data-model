@@ -8,6 +8,8 @@ import iminuit
 from sklearn.linear_model import LinearRegression, BayesianRidge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_validate
+from multiprocessing import Pool
+from functools import partial
 import seaborn as sns
 from pyseir import load_data
 from pyseir import OUTPUT_DIR
@@ -156,7 +158,43 @@ class InitialConditionsFitter:
         plt.legend()
 
 
-def generate_start_times_for_state(state):
+def _fit_fips(fips, generate_report=False):
+    """
+    Fit an exponential growth to county fips.
+
+    Parameters
+    ----------
+    fips: str
+        County fips code.
+    generate_report: bool
+
+    Returns
+    -------
+    fits_values: dict
+        Ex. {'model_params': None, 't0_date': None, 'reduced_chi2': None}
+    """
+    try:
+        fitter = InitialConditionsFitter(
+            fips=fips,
+            t0_case_count=1,
+            start_days_before_t0=0,
+            start_days_after_t0=1000)
+
+        fitter.fit()
+        if generate_report:
+            fitter.plot_fit()
+            state_dir = os.path.join(OUTPUT_DIR, fitter.state)
+            plt.savefig(os.path.join(state_dir, 'reports', f'{fitter.state}__{fitter.county}__{fitter.fips}__t0_fit.pdf'),
+                        bbox_inches='tight')
+            plt.close()
+        return fitter.fit_summary
+
+    except ValueError as e:
+        logging.warning(str(e))
+        return {'model_params': None, 't0_date': None, 'reduced_chi2': None}
+
+
+def generate_start_times_for_state(state, generate_report=False):
     """
     Generate imputed start dates for each county.
 
@@ -164,6 +202,8 @@ def generate_start_times_for_state(state):
     ----------
     state: str
         State to model counties of.
+    generate_report: bool
+        If True, generate summary plots.
     """
     metadata = load_data.load_county_metadata()
     state_dir = os.path.join(OUTPUT_DIR, state)
@@ -177,29 +217,14 @@ def generate_start_times_for_state(state):
         raise ValueError(f'No entries for state {state}.')
 
     # Fit exponential model to extract T0.
-    fips_to_fit_map = {}
-    for fips in counties.values:
-        try:
-            fitter = InitialConditionsFitter(
-                fips=fips,
-                t0_case_count=1,
-                start_days_before_t0=0,
-                start_days_after_t0=1000)
-
-            fitter.fit()
-            fitter.plot_fit()
-            plt.savefig(os.path.join(state_dir, 'reports', f'{fitter.state}__{fitter.county}__{fitter.fips}__t0_fit.pdf'), bbox_inches='tight')
-            plt.close()
-            fips_to_fit_map[fips] = fitter.fit_summary
-
-        except ValueError as e:
-            logging.warning(str(e))
-            fips_to_fit_map[fips] = {'model_params': None, 't0_date': None, 'reduced_chi2': None}
+    f = partial(_fit_fips, generate_report=generate_report)
+    p = Pool()
+    fips_to_fit_map = {fips: val for fips, val in zip(counties.values, p.map(f, counties.values))}
+    p.close()
 
     # --------------------------------
     # ML to Impute start time for counties with no data based on pop. density
     # -------------------------------
-
     # Merge in county level metadata.
     county_fits = pd.DataFrame.from_dict(fips_to_fit_map, orient='index').reset_index().rename({'index': 'fips'}, axis=1)
     merged = county_fits.merge(metadata, on='fips')
@@ -229,7 +254,7 @@ def generate_start_times_for_state(state):
     merged.loc[samples_with_no_data, 'imputed_start_time'] = True
     merged.loc[samples_with_data, 'imputed_start_time'] = False
     merged.loc[samples_with_data, 'doubling_rate_days'] = np.log(2) * merged['model_params'][samples_with_data].apply(lambda x: x['scale'])
-    merged.to_pickle(os.path.join(state_dir, 'data', f'summary__{fitter.state}_imputed_start_times.pkl'))
+    merged.to_pickle(os.path.join(state_dir, 'data', f'summary__{state}_imputed_start_times.pkl'))
 
     # Plot population density
     plt.figure(figsize=(14, 4))
@@ -238,7 +263,7 @@ def generate_start_times_for_state(state):
         plt.title(state)
         sns.jointplot(x=np.log10(merged[x]), y='days_from_2020_01_01', data=merged, kind='reg', height=5)
         plt.xlabel('log10 Population Density')
-    plt.savefig(os.path.join(state_dir, 'reports', f'summary__{fitter.state}__population_density.pdf'), bbox_inches='tight')
+    plt.savefig(os.path.join(state_dir, 'reports', f'summary__{state}__population_density.pdf'), bbox_inches='tight')
     plt.close()
 
     # Plot Doubling Rates by distance
@@ -247,7 +272,7 @@ def generate_start_times_for_state(state):
     plt.xlabel('Log10 Population Density', fontsize=16)
     plt.ylabel('Doubling Time [Days]', fontsize=16)
     plt.grid()
-    plt.savefig(os.path.join(state_dir, 'reports', f'summary__{fitter.state}__doubling_time.pdf'), bbox_inches='tight')
+    plt.savefig(os.path.join(state_dir, 'reports', f'summary__{state}__doubling_time.pdf'), bbox_inches='tight')
     plt.close()
 
 

@@ -1,9 +1,5 @@
 .~lock.*
-results/*.csv
-results/*.json
-results/test/*.csv
-results/test/*.json
-results/test.*/county
+results/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

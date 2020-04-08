@@ -14,9 +14,15 @@ numpy==1.18.2
 pandas==1.0.3
 plotly==4.5.4
 pyshp==2.1.0
+pymc3
 requests==2.23.0
 jupyter==1.0.0
 simplejson==3.17.0
 boto3==1.12.28
 seaborn==0.10.0
 click==7.1.1
+scikit-learn
+pip
+iminuit
+fastparquet
+us

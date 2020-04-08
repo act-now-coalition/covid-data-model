@@ -85,7 +85,10 @@ class CountyReport:
         fig.suptitle(f'PySEIR COVID19 Estimates: {self.county_metadata["county"]} County, {self.county_metadata["state"]}. 'f'SAMPLE OF MODEL ENSEMBLE', fontsize=16)
         self.report.add_figure(fig)
 
-        for suppression_policy, output in self.county_outputs.items():
+        suppression_policies = [key for key in self.county_outputs.keys() if key.startswith('suppression_policy')]
+
+        for suppression_policy in suppression_policies:
+            output = self.county_outputs[suppression_policy]
             compartments = list(output.keys())
             compartments.remove('t_list')
 
