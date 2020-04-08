@@ -5,7 +5,7 @@ import simplejson
 
 from libs.us_state_abbrev import us_state_abbrev
 from libs.datasets import FIPSPopulation
-from libs.datasets.model_output_schema import MODEL_OUTPUT_SCHEMA, MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS
+from libs.datasets.can_model_output_schema import CAN_MODEL_OUTPUT_SCHEMA, CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS
 from libs.datasets.projections_schema import CALCULATED_PROJECTION_HEADERS_STATES, CALCULATED_PROJECTION_HEADERS_COUNTIES
 
 def _calc_short_fall(x):
@@ -19,7 +19,7 @@ def _get_hospitals_and_shortfalls(df, date_out):
 def _read_json_as_df(path):
     # TODO: read this from a dataset class
     df = pd.DataFrame.from_records(simplejson.load(open(path,'r')),
-    columns=MODEL_OUTPUT_SCHEMA, exclude=MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS)
+    columns=CAN_MODEL_OUTPUT_SCHEMA, exclude=CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS)
 
     df['date'] = pd.to_datetime(df.date)
     df['all_hospitalized'] = df['all_hospitalized'].astype('int')
@@ -56,8 +56,10 @@ def _calculate_projection_data(file_path):
     return None
 
 def get_state_projections_df(input_dir, intervention_type):
-    # for each state in our data look at the results we generated via run.py
-    # to create the projections
+    """
+    for each state in our data look at the results we generated via run.py
+    to create the projections
+    """
 
     #save results in a list of lists, converted to df later
     results = []
@@ -73,8 +75,10 @@ def get_state_projections_df(input_dir, intervention_type):
     return pd.DataFrame(results, columns=CALCULATED_PROJECTION_HEADERS_STATES)
     
 def get_county_projections_df(input_dir, intervention_type):
-    # for each state in our data look at the results we generated via run.py
-    # to create the projections
+    """
+    for each state in our data look at the results we generated via run.py
+    to create the projections
+    """
     fips_pd = FIPSPopulation.local().data # to get the state, county & fips
 
     #save results in a list of lists, converted to df later

@@ -1,4 +1,4 @@
-OUTPUT_COLUMN_REMAP = {
+OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
     'state_x': 'Province/State',
     'intervention': 'State Intervention',
     '16-day_Hospitalization_Prediction': '16d-HSPTLZD',

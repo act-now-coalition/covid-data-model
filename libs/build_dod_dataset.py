@@ -16,7 +16,7 @@ from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import us_state_abbrev, us_fips
 from libs.datasets import FIPSPopulation
 from libs.functions.calculate_projections import get_state_projections_df, get_county_projections_df
-from libs.datasets.projections_schema import OUTPUT_COLUMN_REMAP
+from libs.datasets.projections_schema import OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
 from libs.datasets.results_schema import RESULT_DATA_COLUMNS_STATES, RESULT_DATA_COLUMNS_COUNTIES 
 from libs.constants import NULL_VALUE
 
@@ -111,7 +111,7 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
         interventions_df, left_on='state', right_on='state', how = 'inner'
     )
 
-    counties_remapped = counties_decorated.rename(columns=OUTPUT_COLUMN_REMAP)
+    counties_remapped = counties_decorated.rename(columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA)
     counties = pd.DataFrame(counties_remapped, columns=RESULT_DATA_COLUMNS_COUNTIES)
     counties = counties.fillna(NULL_VALUE)
     counties.index.name = 'OBJECTID'
@@ -151,7 +151,7 @@ def get_usa_by_states_df(input_dir, intervention_type):
         projections_df, left_on='state_y', right_on='State', how='left'
     ).drop(['abbreviation', 'state_y', 'State'], axis=1)
 
-    states_remapped = states_abbrev.rename(columns=OUTPUT_COLUMN_REMAP)
+    states_remapped = states_abbrev.rename(columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA)
 
     states_final = pd.DataFrame(states_remapped, columns=RESULT_DATA_COLUMNS_STATES)
     states_final = states_final.fillna(NULL_VALUE)

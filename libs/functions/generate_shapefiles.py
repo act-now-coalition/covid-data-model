@@ -4,7 +4,6 @@ from urllib.parse import urlparse
 
 from libs.CovidDatasets import get_public_data_base_url
 from libs.constants import NULL_VALUE
-from libs.datasets.results_schema import NON_TYPED_FIELDS, NON_INTEGER_FIELDS
 
 def _file_uri_to_path(uri: str) -> str:
     return urlparse(uri).path
