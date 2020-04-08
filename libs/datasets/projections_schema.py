@@ -25,8 +25,8 @@ CALCULATED_PROJECTION_HEADERS_SHARED = [
     "Mean Deaths",
     "Peak Hospitalizations On",
     "Mean Deaths On",
-    "Hospital Over Capacity On",
-    "Peak Hospitlizations Short Fall",
+    "Hospital Shortfall Date",
+    "Peak Hospitlizations Shortfall",
     "Beds at Peak Hospitilization Date",
 ]
 

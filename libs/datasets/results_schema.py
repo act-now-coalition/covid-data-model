@@ -20,8 +20,8 @@ RESULT_DATA_COLUMNS_SHARED = [
     # "Current Active", # these are always zero
     "Combined Key",
     "County",
-    "Hospital Over Capacity On",
-    "Peak Hospitlizations Short Fall",
+    "Hospital Shortfall Date",
+    "Peak Hospitlizations Shortfall",
     "Beds at Peak Hospitilization Date",
 ]
 

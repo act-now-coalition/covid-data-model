@@ -33,7 +33,7 @@ def join_and_output_shapefile(
         "State Intervention",
         "PEAK-HOSP",
         "PEAK-DEATHS",
-        "Hospital Over Capacity On",
+        "Hospital Shortfall Date",
     ]
 
     fields = [field for field in df.columns if field not in blacklisted_fields]

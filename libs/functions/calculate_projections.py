@@ -68,9 +68,9 @@ def _calculate_projection_data(file_path):
         )
 
         df["new_deaths"] = df.dead - df.dead.shift(1)
-        hospitals_overcapacity_date = NULL_VALUE
+        hospitals_shortfall_date = NULL_VALUE
         if not df[(df['short_fall']>0)].empty: 
-            hospitals_overcapacity_date =  df[(df['short_fall']>0)].iloc[0].date
+            hospitals_shortfall_date =  df[(df['short_fall']>0)].iloc[0].date
         mean_hospitalizations = df.all_hospitalized.mean().round(0)
         mean_deaths = df.new_deaths.mean()
 
@@ -87,7 +87,7 @@ def _calculate_projection_data(file_path):
             mean_deaths,
             peak_hospitalizations_date,
             peak_deaths_date,
-            hospitals_overcapacity_date,
+            hospitals_shortfall_date,
             peak_hospitalizations_short_falls,
             beds_at_peak_hospitalization_date,
         ]

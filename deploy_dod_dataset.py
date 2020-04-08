@@ -75,7 +75,7 @@ def upload_csv(key_name, csv, output_dir):
 def deploy(run_validation, input, output):
     """The entry function for invocation"""
 
-    for intervention_enum in list(Intervention)[4:]: 
+    for intervention_enum in list(Intervention): 
         logger.info(f"Starting to generate files for {intervention_enum.name}.")
 
         states_key_name = f'states.{intervention_enum.name}'

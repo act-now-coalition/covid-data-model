@@ -22,7 +22,7 @@ from libs.datasets.results_schema import RESULT_DATA_COLUMNS_STATES, RESULT_DATA
 from libs.constants import NULL_VALUE
 
 # @TODO: Attempt today. If that fails, attempt yesterday.
-latest = datetime.date.today() - datetime.timedelta(days=2)
+latest = datetime.date.today() - datetime.timedelta(days=1)
 
 def _get_interventions_df():
     # TODO: read this from a dataset class
