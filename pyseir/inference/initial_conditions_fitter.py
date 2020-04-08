@@ -2,6 +2,7 @@ from datetime import timedelta, datetime
 import matplotlib.pyplot as plt
 import os
 import logging
+import us
 import numpy as np
 import pandas as pd
 import iminuit
@@ -212,7 +213,10 @@ def generate_start_times_for_state(state, generate_report=False):
     os.makedirs(os.path.join(state_dir, 'data'), exist_ok=True)
 
     logging.info(f'Imputing start times for {state.capitalize()}')
-    counties = metadata[metadata['state'].str.lower() == state.lower()].fips
+
+    state_fips = us.states.lookup(state).fips
+    metadata['state_fips'] = metadata['fips'].apply(lambda x: x[:2])
+    counties = metadata[metadata['state_fips'] == state_fips].fips
     if len(counties) == 0:
         raise ValueError(f'No entries for state {state}.')
 
@@ -232,20 +236,18 @@ def generate_start_times_for_state(state, generate_report=False):
 
     samples_with_data = merged['days_from_2020_01_01'].notnull()
     samples_with_no_data = merged['days_from_2020_01_01'].isnull()
+    if samples_with_no_data.any():
+        X = np.log(merged[['population_density', 'housing_density', 'total_population']][samples_with_data]).fillna(0)
+        X_predict = np.log(merged[['population_density', 'housing_density', 'total_population']][samples_with_no_data]).fillna(0)
+        # Test a few regressions
+        for estimator in [LinearRegression(), RandomForestRegressor(), BayesianRidge()]:
+            cv_result = cross_validate(estimator, X=X, y=merged['days_from_2020_01_01'][samples_with_data], scoring='r2', cv=2)
+            logging.info(f'{estimator.__class__.__name__} CV r2: {cv_result["test_score"].mean()}')
 
-    X = np.log(merged[['population_density', 'housing_density', 'total_population']][samples_with_data])
-    X_predict = np.log(merged[['population_density', 'housing_density', 'total_population']][samples_with_no_data])
+        # Train best model and impute the missing times.
+        best_model = BayesianRidge()
+        best_model.fit(X=X, y=merged['days_from_2020_01_01'][samples_with_data])
 
-    # Test a few regressions
-    for estimator in [LinearRegression(), RandomForestRegressor(), BayesianRidge()]:
-        cv_result = cross_validate(estimator, X=X, y=merged['days_from_2020_01_01'][samples_with_data], scoring='r2', cv=4)
-        logging.info(f'{estimator.__class__.__name__} CV r2: {cv_result["test_score"].mean()}')
-
-    # Train best model and impute the missing times.
-    best_model = BayesianRidge()
-    best_model.fit(X=X, y=merged['days_from_2020_01_01'][samples_with_data])
-
-    if samples_with_no_data.values.any():
         merged.loc[samples_with_no_data, 'days_from_2020_01_01'] = best_model.predict(X_predict)
         merged.loc[samples_with_no_data, 't0_date'] = datetime.fromisoformat('2020-01-01') \
                                                       + np.array([timedelta(days=t) for t in best_model.predict(X_predict)])
@@ -256,24 +258,25 @@ def generate_start_times_for_state(state, generate_report=False):
     merged.loc[samples_with_data, 'doubling_rate_days'] = np.log(2) * merged['model_params'][samples_with_data].apply(lambda x: x['scale'])
     merged.to_pickle(os.path.join(state_dir, 'data', f'summary__{state}_imputed_start_times.pkl'))
 
-    # Plot population density
-    plt.figure(figsize=(14, 4))
-    for i, x in enumerate(('population_density', 'housing_density', 'total_population')):
-        plt.subplot(1, 3, i + 1)
-        plt.title(state)
-        sns.jointplot(x=np.log10(merged[x]), y='days_from_2020_01_01', data=merged, kind='reg', height=5)
-        plt.xlabel('log10 Population Density')
-    plt.savefig(os.path.join(state_dir, 'reports', f'summary__{state}__population_density.pdf'), bbox_inches='tight')
-    plt.close()
+    if generate_report:
+        # Plot population density
+        plt.figure(figsize=(14, 4))
+        for i, x in enumerate(('population_density', 'housing_density', 'total_population')):
+            plt.subplot(1, 3, i + 1)
+            plt.title(state)
+            sns.jointplot(x=np.log10(merged[x]), y='days_from_2020_01_01', data=merged, kind='reg', height=5)
+            plt.xlabel('log10 Population Density')
+        plt.savefig(os.path.join(state_dir, 'reports', f'summary__{state}__population_density.pdf'), bbox_inches='tight')
+        plt.close()
 
-    # Plot Doubling Rates by distance
-    # TODO: Impute doubling time.
-    sns.jointplot(np.log10(merged.population_density), merged.doubling_rate_days, kind='reg', height=10)
-    plt.xlabel('Log10 Population Density', fontsize=16)
-    plt.ylabel('Doubling Time [Days]', fontsize=16)
-    plt.grid()
-    plt.savefig(os.path.join(state_dir, 'reports', f'summary__{state}__doubling_time.pdf'), bbox_inches='tight')
-    plt.close()
+        # Plot Doubling Rates by distance
+        # TODO: Impute doubling time.
+        sns.jointplot(np.log10(merged.population_density), merged.doubling_rate_days, kind='reg', height=10)
+        plt.xlabel('Log10 Population Density', fontsize=16)
+        plt.ylabel('Doubling Time [Days]', fontsize=16)
+        plt.grid()
+        plt.savefig(os.path.join(state_dir, 'reports', f'summary__{state}__doubling_time.pdf'), bbox_inches='tight')
+        plt.close()
 
 
 if __name__ == '__main__':

@@ -12,7 +12,6 @@ from multiprocessing import Pool
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 
-from pprint import pprint
 
 class WebUIDataAdaptorV1:
     """
@@ -40,6 +39,21 @@ class WebUIDataAdaptorV1:
         self.hybrid_timeseries['date'] = self.hybrid_timeseries['date'].dt.normalize()
 
     def backfill_output_model_fips(self, fips, t0, final_beds):
+        """
+        Add backfilled hospitalization, case, amd deaths data.
+
+        Parameters
+        ----------
+        fips: str
+            State of  count
+        t0: datetime
+        final_beds: total number of beds.
+
+        Returns
+        -------
+        backfill: str
+            Backfill dataframe.
+        """
         backfill_to_date = date(2020, 3, 3)   # @TODO: Parameterize
         hospitalization_rate = 0.073          # @TODO: Parameterize
         confirmed_to_hospitalizations = 0.25  # @TODO: Parameterize
