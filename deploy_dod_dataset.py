@@ -10,16 +10,16 @@ PROD_BUCKET = "data.covidactnow.org"
 
 @click.command()
 @click.option('--run_validation', '-r', default=True, help='Run the validation on the deploy command')
-@click.option('--input-file', '-i', default='results', help='Input directory of state/county projections')
+@click.option('--input-dir', '-i', default='results', help='Input directory of state/county projections')
 @click.option('--output', '-o', default='results/dod', help='Output directory for artifacts')
-def deploy(run_validation, input_file, output):
+def deploy(run_validation, input_dir, output):
     """The entry function for invocation"""
 
     for intervention in list(Intervention):
         logger.info(f"Starting to generate files for {intervention.name}.")
 
         state_result, county_result = dod_pipeline.run_projections(
-            input_file, intervention, run_validation=run_validation
+            input_dir, intervention, run_validation=run_validation
         )
         dod_pipeline.deploy_results(state_result, output)
         dod_pipeline.deploy_results(county_result, output)
