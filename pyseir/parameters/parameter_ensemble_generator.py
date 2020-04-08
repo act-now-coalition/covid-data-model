@@ -1,3 +1,5 @@
+import yaml
+import os
 import numpy as np
 import pandas as pd
 from pyseir import load_data
@@ -10,6 +12,8 @@ import us
 beds_data = None
 population_data = None
 
+THIS_FILE_PATH = os.path.dirname(os.path.abspath('__file__'))
+DEFAULT_CONFIG = yaml.safe_load(open(os.path.join(THIS_FILE_PATH, 'defaults_config.yaml')).read())
 
 class ParameterEnsembleGenerator:
     """
@@ -49,7 +53,7 @@ class ParameterEnsembleGenerator:
 
     def __init__(self, fips, N_samples, t_list,
                  I_initial=1, suppression_policy=None,
-                 parameter_defaults_config=None):
+                 parameter_defaults_config=DEFAULT_CONFIG):
 
         # Caching globally to avoid relatively significant performance overhead
         # of loading for each county.

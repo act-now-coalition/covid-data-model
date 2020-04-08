@@ -1,0 +1,191 @@
+# Initial conditions
+R_initial:
+  value: 0
+E_initial:
+  value: 0
+D_initial:
+  value: 0
+HGen_initial:
+  value: 0
+HICU_initial:
+  value: 0
+HICUVent_initial:
+  value: 0
+gamma:
+  func: ~
+  clip: ~
+  dist: uniform
+  dist_params:
+    low: 0.4
+    high: 0.6
+A_initial:
+  func:
+    value: 'lambda x, gamma, I_initial: gamma * I_initial / (1 - gamma)'
+    params:
+      - 'gamma'
+      - 'I_initial'
+  clip: ~
+
+# Epidemiological parameters
+R0:   # Imperial College
+  func: ~
+  clip: ~
+  dist: uniform
+  dist_params:
+      low: 3
+      high: 4.5
+R0_hospital:   # Imperial College
+  func: ~
+  clip: ~
+  parameter: ~
+  dist: uniform
+  dist_params:
+      low: 0.5
+      high: 0.75
+sigma:        #  Imperial college - 2 days since that is expected infectious period.
+  func:
+    value: 'lambda x: 1/x'
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 3.1
+    scale: 0.86
+delta:
+  func:
+    value: 'lambda x: 1/x'
+  clip:
+    - 0
+    - ~
+  dist: gamma
+  dist_params:
+    shape: 6
+    scale: 1
+delta_hospital:
+  func:
+    value: 'lambda x: 1/x'
+  clip:
+    - 0
+    - ~
+  dist: gamma
+  dist_params:
+    shape: 8
+    scale: 1
+kappa:
+  value: 1
+
+# Hospitalization relevant parameters
+hospitalization_rate_general:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+      loc: 0.125
+      scale: 0.03
+hospitalization_rate_icu:
+  func:
+    value: "lambda x, hospitalization_rate_general: x * hospitalization_rate_general"
+    params: 'hospitalization_rate_general'
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 0.29
+    scale: 0.03
+fraction_icu_requiring_ventilator:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 0.44
+    scale: 0.1
+symptoms_to_hospital_days:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 6.5
+    scale: 1.5
+symptoms_to_mortality_days:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 18.8
+    scale: 0.45
+hospitalization_length_of_stay_general:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 7
+    scale: 2
+hospitalization_length_of_stay_icu:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 16
+    scale: 3
+hospitalization_length_of_stay_icu_and_ventilator:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 17
+    scale: 3
+mortality_rate:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 0.0109
+    scale: 0.0025
+mortality_rate_no_general_beds:
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: normal
+  dist_params:
+    loc: 0.12
+    scale: 0.04
+mortality_rate_no_ICU_beds:
+  value: ~
+  func: ~
+  clip:
+    - 0
+    - ~
+  dist: uniform
+  dist_params:
+    low: 0.8
+    high: 1
+mortality_rate_no_ventilator:
+   value: 1
+beds_general:
+  func:
+    value: 'lambda x, beds: beds * 0.828'   # scale factor = 0.4 * 2.07
+    params: 'beds'
+  clip: ~
+beds_ICU:
+  value: 0.
+ventilators:
+  value: 0.

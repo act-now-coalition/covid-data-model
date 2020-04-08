@@ -5,4 +5,4 @@ class distribution(Enum):
     GAMMA = 'gamma'
     UNIFORM = 'uniform'
     EXPONENTIAL = 'exponential'
-    LOGNORMAL = 'lognormal'
+    LOGNORMAL = 'lognormalre'
