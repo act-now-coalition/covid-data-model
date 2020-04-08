@@ -131,7 +131,7 @@ def generate_state_report(state):
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--output-interval-days', default='', type=int, help='Number of days between outputs for the WebUI payload.')
 def map_outputs(state, output_interval_days):
-    _map_outputs(state, output_interval_days=output_interval_days)
+    _map_outputs(state, output_interval_days=int(output_interval_days))
 
 
 @entry_point.command()
