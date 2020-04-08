@@ -11,7 +11,7 @@ import click
 from libs.datasets import JHUDataset
 from libs.datasets import dataset_export
 from libs.datasets import data_version
-
+from libs.pipelines import latest_case_data_pipeline
 _logger = logging.getLogger(__name__)
 
 
@@ -33,15 +33,9 @@ def run_latest(version: data_version.DataVersion, output: pathlib.Path):
     """Get latest case values from JHU dataset."""
     output.mkdir(exist_ok=True)
     timeseries = JHUDataset.local().timeseries()
-    state_summaries = dataset_export.latest_case_summaries_by_state(timeseries)
-
-    for state, state_summary in state_summaries:
-        output_file = output / f"{state}.summary.json"
-        with output_file.open("w") as f:
-            _logger.info(f"Writing latest data for {state}")
-            json.dump(state_summary, f)
-
-    version.write_file("case_summary", output)
+    case_summary = latest_case_data_pipeline.build_summary(timeseries)
+    state_summaries = latest_case_data_pipeline.build_output_for_api(case_summary)
+    latest_case_data_pipeline.write_output(output, state_summaries, version)
 
 
 if __name__ == "__main__":
