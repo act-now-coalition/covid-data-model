@@ -25,6 +25,8 @@ CALCULATED_PROJECTION_HEADERS_SHARED = [
     "Mean Deaths",
     "Peak Hospitalizations On",
     "Mean Deaths On",
+    "Hospital Over Capacity On",
+    "Peak Hospitlizations Short Fall",
 ]
 
 CALCULATED_PROJECTION_HEADERS_STATES = ['State'] + CALCULATED_PROJECTION_HEADERS_SHARED
