@@ -31,7 +31,6 @@ default:
   R0:   # Imperial College
     func: ~
     clip: ~
-    parameter: ~ # whether its prior is function of another model parameter
     dist: uniform
     dist_params:
         low: 3
