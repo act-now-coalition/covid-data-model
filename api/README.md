@@ -118,7 +118,20 @@ states.<intervention>.dbf
 counties.<intervention>.shx
 states.<intervention>.shx
 
-TODO:
+Attributes Added:
+```
+    State_Inter	shelter_in_place
+    16d-HSPTLZD	10
+    32d-HSPTLZD	28
+    16d-LACKBED	0
+    32d-LACKBED	0
+    MEAN-HOSP	74
+    MEAN-DEATHS	4
+    PEAK-HOSP	2020-07-03 00:00:00
+    PEAK-DEATHS	2020-07-03 00:00:00
+    Current_Dea	0
+    Current_Con	10
+```
 
 ### Case Summary
 
