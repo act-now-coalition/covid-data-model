@@ -1,5 +1,6 @@
 .~lock.*
 results/*
+api_results/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -136,6 +137,9 @@ dmypy.json
 
 # VScode
 *.vscode*.idea/
+*.vscode
 .idea/
+
 pyseir_data/
 pyseir_output/
+

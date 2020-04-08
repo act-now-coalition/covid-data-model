@@ -42,6 +42,16 @@ Run all models, generate DoD datasets, output to `./dod_results/` folder:
 Run all models, generate DoD datasets, upload the files to S3 bucket specified by `BUCKET_NAME`.
 ```bash
 BUCKET_NAME=<bucket name> ./deploy_dod.sh
+
+```
+
+If you've previously ran the full model, you can just re-run the DoD dataset part via:
+```
+# Output artifacts locally to dod_results/:
+python deploy_dod_dataset.py
+# Upload artifacts to S3 bucket:
+BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
+>>>>>>> cf953b16d20c59df5b05d91dbd8396d96522fb5c
 ```
 
 If you've previously ran the full model, you can just re-run the DoD dataset part via:
