@@ -22,6 +22,7 @@ RESULT_DATA_COLUMNS_SHARED = [
     "County",
     "Hospital Over Capacity On",
     "Peak Hospitlizations Short Fall",
+    "Beds at Peak Hospitilization Date",
 ]
 
 RESULT_DATA_COLUMNS_STATES = RESULT_DATA_COLUMNS_SHARED + []

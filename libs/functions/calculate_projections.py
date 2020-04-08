@@ -25,6 +25,12 @@ def _get_hospitals_and_shortfalls(df, date_out):
     hospital_short_fall_columns = ["all_hospitalized", "short_fall"]
     return tuple(first_record_after_date[hospital_short_fall_columns].values)
 
+def _beds_after_given_date(df, date_out):
+    if df[(df.date > date_out)].empty:
+        return df["beds"].max() 
+    first_record_after_date = df[(df.date > date_out)].iloc[0]
+    bed_columns = ["beds"]
+    return first_record_after_date[bed_columns].values[0]
 
 def _read_json_as_df(path):
     # TODO: read this from a dataset class
@@ -69,9 +75,9 @@ def _calculate_projection_data(file_path):
         mean_deaths = df.new_deaths.mean()
 
         peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
+        beds_at_peak_hospitalization_date = _beds_after_given_date(df, peak_hospitalizations_date)
         peak_hospitalizations_short_falls = df.iloc[df.all_hospitalized.idxmax()].short_fall
         peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
-
         return [
             hosp_16_days,
             hosp_32_days,
@@ -83,6 +89,7 @@ def _calculate_projection_data(file_path):
             peak_deaths_date,
             hospitals_overcapacity_date,
             peak_hospitalizations_short_falls,
+            beds_at_peak_hospitalization_date,
         ]
     return None
 
