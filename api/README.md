@@ -48,20 +48,20 @@ For a county <state abreviation>.<fips>.<intervention number>.json
 
 [items... ]
 
-Where each item is
+Where each item is as such:
 ```json
    [
         "day_index",
         "date",
-        "a", # total
-        "b", # susceptible
-        "c", # exposed
-        "d", # infected
-        "e", # infected_a (not hospitalized, but infected)
-        "f", # infected_b (hospitalized not in icu)
-        "g", # infected_c (in icu)
-        "all_hospitalized", # infected_b + infected_c
-        "all_infected", # infected_a + infected_b + infected_c
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "all_hospitalized",
+        "all_infected",
         "dead",
         "beds",
         "i",
@@ -76,9 +76,10 @@ Where each item is
 
 ### CSVs
 
-counties.<intervention>.csv
-states.<intervention>.csv
+`counties.<intervention>.csv`
+`states.<intervention>.csv`
 
+Each csv has
 ```
     OBJECTID
     Province/State
@@ -102,7 +103,7 @@ states.<intervention>.csv
     County
 ```
 
-Example CSV
+Here's an example CSV
 ```csv
 OBJECTID,Province/State,Country/Region,Last Update,Latitude,Longitude,State/County FIPS Code,State Intervention,16d-HSPTLZD,32d-HSPTLZD,16d-LACKBEDS,32d-LACKBEDS,MEAN-HOSP,MEAN-DEATHS,PEAK-HOSP,PEAK-DEATHS,Current Deaths,Current Confirmed,Combined Key,County
 0,South Carolina,US,4/7/2020 23:04,34.22333378,-82.46170658,45001,shelter_in_place,3,5,0,0,6.0,0.3333333333333333,2020-06-19,2020-05-08,0,5,"Abbeville, South Carolina, US",Abbeville
@@ -111,14 +112,19 @@ OBJECTID,Province/State,Country/Region,Last Update,Latitude,Longitude,State/Coun
 
 ### Shapefiles
 
-counties.<intervention>.shp
-states.<intervention>.shp
-counties.<intervention>.dbf
-states.<intervention>.dbf
-counties.<intervention>.shx
-states.<intervention>.shx
+Each set of shapefiles, namely for counties
+`counties.<intervention>.shp`
+`counties.<intervention>.dbf`
+`counties.<intervention>.shx`
 
-Attributes Added:
+and for states
+`states.<intervention>.shp`
+`states.<intervention>.dbf`
+`states.<intervention>.shx`
+
+contains the original shapefile and additional attributes:
+
+Here's an example
 ```
     State_Inter	shelter_in_place
     16d-HSPTLZD	10
@@ -137,13 +143,13 @@ Attributes Added:
 
 case_summary/<state abreviation>.summary.json
 
-See the [JSON Schema](api/schemas/case_summary.json)
+See the [JSON Schema](schemas/case_summary.json)
 
 ### County Summaries
 
 county_summaries/<state abreviation>.summary.json
 
-See the [JSON Schema](api/schemas/county_summaries.json)
+See the [JSON Schema](schemas/county_summaries.json)
 
 
 ### Versions
