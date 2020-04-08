@@ -35,8 +35,13 @@ class WebUIDataAdaptorV1:
         os.makedirs(self.state_output_dir, exist_ok=True)
         self.population_data = FIPSPopulation.local().population()
 
-        self.hybrid_timeseries = build_aggregate_county_data_frame(JHUDataset.local(), CDSDataset.local())
-        self.hybrid_timeseries['date'] = self.hybrid_timeseries['date'].dt.normalize()
+        jhu_local = JHUDataset.local()
+
+        self.county_timeseries = build_aggregate_county_data_frame(jhu_local, CDSDataset.local())
+        self.county_timeseries['date'] = self.county_timeseries['date'].dt.normalize()
+
+        self.state_timeseries = jhu_local.timeseries().state_data
+        self.state_timeseries['date'] = self.state_timeseries['date'].dt.normalize()
 
     def backfill_output_model_fips(self, fips, t0, final_beds):
         """
@@ -66,9 +71,12 @@ class WebUIDataAdaptorV1:
         backfill['date'] = backfill['date'].dt.normalize()
         backfill['beds'] = final_beds
 
-        county_timeseries = self.hybrid_timeseries[(self.hybrid_timeseries['fips'] == fips)]
+        if len(fips) == 5:
+            actual_timeseries = self.county_timeseries[(self.county_timeseries['fips'] == fips)]
+        else:
+            actual_timeseries = self.state_timeseries[(self.state_timeseries['state'] == self.state_abbreviation)]
 
-        backfill = pd.merge(backfill, county_timeseries[['date', 'cases', 'deaths']], on='date', how='left')
+        backfill = pd.merge(backfill, actual_timeseries[['date', 'cases', 'deaths']], on='date', how='left')
         backfill['all_hospitalized'] = np.multiply(backfill['cases'], confirmed_to_hospitalizations).fillna(0)
         backfill['all_infected'] = np.divide(backfill['all_hospitalized'], hospitalization_rate).fillna(0)
         backfill['dead'] = backfill['deaths'].fillna(0)
