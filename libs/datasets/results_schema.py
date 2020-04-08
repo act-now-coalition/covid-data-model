@@ -19,7 +19,10 @@ RESULT_DATA_COLUMNS_SHARED = [
     # "Current Recovered", # these are always zero
     # "Current Active", # these are always zero
     "Combined Key",
-    "County"
+    "County",
+    "Hospital Shortfall Date",
+    "Peak Hospitlizations Shortfall",
+    "Beds at Peak Hospitilization Date",
 ]
 
 RESULT_DATA_COLUMNS_STATES = RESULT_DATA_COLUMNS_SHARED + []
