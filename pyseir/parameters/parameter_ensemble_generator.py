@@ -5,7 +5,6 @@ from libs.datasets import FIPSPopulation
 from libs.datasets import DHBeds
 import us
 
-
 beds_data = DHBeds.local().beds()
 population_data = FIPSPopulation.local().population()
 
@@ -17,7 +16,7 @@ class ParameterEnsembleGenerator:
     Parameters
     ----------
     fips: str
-        County fips code.
+        County or state fips code.
     N_samples: int
         Integer number of samples to generate.
     t_list: array-like
@@ -31,16 +30,22 @@ class ParameterEnsembleGenerator:
                  I_initial=1, suppression_policy=None):
 
         self.fips = fips
+        self.geographic_unit = 'county' if len(self.fips) == 5 else 'state'
         self.N_samples = N_samples
         self.I_initial = I_initial
         self.suppression_policy = suppression_policy
         self.t_list = t_list
-        self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
-        self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
 
-        # TODO: Some counties do not have hospitals. Likely need to go to HRR level..
-        self.beds = beds_data.get_county_level(self.state_abbr, fips=self.fips) or 0
-        self.population = population_data.get_county_level('USA', state=self.state_abbr, fips=self.fips)
+        if self.geographic_unit == 'county':
+            self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+            self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
+            self.population = population_data.get_county_level('USA', state=self.state_abbr, fips=self.fips)
+            # TODO: Some counties do not have hospitals. Likely need to go to HRR level..
+            self.beds = beds_data.get_county_level(self.state_abbr, fips=self.fips) or 0
+        else:
+            self.state_abbr = us.states.lookup(fips).abbr
+            self.population = population_data.get_state_level('USA', state=self.state_abbr)
+            self.beds = beds_data.get_state_level(self.state_abbr) or 0
 
     def sample_seir_parameters(self, override_params=None):
         """

@@ -7,25 +7,21 @@ import json
 from enum import Enum
 import copy
 from collections import defaultdict
-from functools import partial
-from multiprocessing.pool import Pool
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.models.suppression_policies import generate_empirical_distancing_policy, generate_covidactnow_scenarios
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
-from pyseir.inference import fit_results
 from pyseir.reports.county_report import CountyReport
 
 from libs.datasets import JHUDataset
-from libs.datasets import FIPSPopulation
 from libs.datasets.dataset_utils import AggregationLevel
 timeseries = JHUDataset.local().timeseries()
 
 
 class RunMode(Enum):
-    DEFAULT = 'default'  # 4 basic scenarios.
-    CAN_BEFORE = 'can-before' # 4 basic scenarios.
+    DEFAULT = 'default'
+    CAN_BEFORE = 'can-before'  # 4 basic scenarios.
 
 
 compartment_to_capacity_attr_map = {
@@ -43,7 +39,7 @@ class EnsembleRunner:
     Parameters
     ----------
     fips: str
-        County fips code
+        County or state fips code
     n_years: int
         Number of years to simulate
     n_samples: int
@@ -64,18 +60,39 @@ class EnsembleRunner:
                  run_mode=RunMode.DEFAULT):
 
         self.fips = fips
+        self.geographic_unit = 'county' if len(self.fips) == 5 else 'state'
+
         self.t_list = np.linspace(0, 365 * n_years, 365 * n_years)
         self.skip_plots = skip_plots
+        self.run_mode = RunMode(run_mode)
 
-        self.county_metadata = load_data.load_county_metadata_by_fips(fips)
+        if self.geographic_unit == 'county':
+            self.county_metadata = load_data.load_county_metadata_by_fips(fips)
+            self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
+            self.state_name = us.states.lookup(self.county_metadata['state']).name
+
+            self.output_file_report = os.path.join(OUTPUT_DIR, self.state_name, 'reports',
+                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf")
+            self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',
+                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+
+            self.covid_data = timeseries.get_subset(AggregationLevel.COUNTY, country='USA', state=self.state_abbr)\
+                                        .get_data(state=self.state_abbr, country='USA', fips=self.fips)
+        else:
+            self.state_abbr = us.states.lookup(self.fips).abbr
+            self.state_name = us.states.lookup(self.fips).name
+            self.covid_data = timeseries.get_subset(AggregationLevel.STATE, country='USA', state=self.state_abbr)\
+                                        .get_data(country='USA', state=self.state_abbr)
+
+            self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',
+                f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+
         self.output_percentiles = output_percentiles
         self.n_samples = n_samples
         self.n_years = n_years
-        self.t0 = fit_results.load_t0(fips)
+        # TODO: Will be soon replaced with loaders for all the inferred params.
+        # self.t0 = fit_results.load_t0(fips)
         self.date_generated = datetime.datetime.utcnow().isoformat()
-        self.run_mode = RunMode(run_mode)
-        self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
-
         self.suppression_policy = suppression_policy
         self.summary = copy.deepcopy(self.__dict__)
         self.summary.pop('t_list')
@@ -86,10 +103,6 @@ class EnsembleRunner:
         self.init_run_mode()
 
         self.all_outputs = {}
-        self.output_file_report = os.path.join(OUTPUT_DIR, self.county_metadata['state'], 'reports',
-            f"{self.county_metadata['state']}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf")
-        self.output_file_data = os.path.join( OUTPUT_DIR, self.county_metadata['state'], 'data',
-            f"{self.county_metadata['state']}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
     def init_run_mode(self):
         """
@@ -98,10 +111,6 @@ class EnsembleRunner:
         phases.
         """
         self.suppression_policies = dict()
-
-        min_date_data = datetime.datetime.today() - datetime.timedelta(days=30)
-        covid_data = timeseries.get_subset(AggregationLevel.COUNTY, after=min_date_data, country='USA', state=self.state_abbr)\
-                  .get_data(state=self.state_abbr, country='USA', fips=self.fips)
 
         if self.run_mode is RunMode.CAN_BEFORE:
             self.n_samples = 1
@@ -126,7 +135,6 @@ class EnsembleRunner:
             self.override_params['hospitalization_length_of_stay_icu'] = 14
             self.override_params['hospitalization_length_of_stay_icu_and_ventilator'] = 14
 
-
             # hospitalization_rate_general is hospitalization rate for symptomatic cases going to the hospital
             # We ensure later that this adds up to a total overall 0.0727 rate.
             # self.override_params['hospitalization_rate_general'] = 0.25
@@ -135,27 +143,23 @@ class EnsembleRunner:
             self.override_params['beds_ICU'] = 0 #.11 * self.override_params['beds_general'] # National average per hospital bed.
             self.override_params['symptoms_to_hospital_days'] = 6
 
-            if len(covid_data) > 0 and covid_data.cases.max() > 0:
-                self.t0 = covid_data.date.max()
-                hospitalization_to_confirmed_case_ratio = 1 / 4
-                #all_infection_hospitalization_rate = 0.0727
+            if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
+                self.t0 = self.covid_data.date.max()
 
                 # Initial hospitalizations = Confirmed Cases / 4.
-                # I_initial = Initial hospitalizations / 0.25 assuming 25% of symptomatic infections go to the hospital and all symptomatic
-                #                                             infections are tested. This makes our "symptomatic" bucket more reflective of "confirmed cases"
-                # 0.0727 * (A + I) = 0.2 * I    =>   A_initial = I * (0.24 / 0.0727 - 1)
-                # A_initial = Initial hospitalizations / 0.8 assuming 24% of symptomatic cases go to the hospital, implies
+                # TODO Integrate actual hospital data here.
+                hospitalization_to_confirmed_case_ratio = 1 / 4
 
-                self.override_params['HGen_initial'] = covid_data.cases.max() * hospitalization_to_confirmed_case_ratio * (1 - self.override_params['hospitalization_rate_icu'])
-                self.override_params['HICU_initial'] = covid_data.cases.max() * hospitalization_to_confirmed_case_ratio * self.override_params['hospitalization_rate_icu']
+                self.override_params['HGen_initial'] = self.covid_data.cases.max() * hospitalization_to_confirmed_case_ratio * (1 - self.override_params['hospitalization_rate_icu'])
+                self.override_params['HICU_initial'] = self.covid_data.cases.max() * hospitalization_to_confirmed_case_ratio * self.override_params['hospitalization_rate_icu']
                 self.override_params['HICUVent_initial'] = self.override_params['HICU_initial'] * self.override_params['fraction_icu_requiring_ventilator']
 
-                self.override_params['I_initial'] = 1.1 * 3.43 * covid_data.cases.max() # * self.override_params['HGen_initial'] / self.override_params['hospitalization_rate_general']
-                self.override_params['A_initial'] = 0 #(self.override_params['hospitalization_rate_general'] / all_infection_hospitalization_rate - 1) * self.override_params['I_initial']
-                self.override_params['gamma'] = 1#self.override_params['I_initial'] / self.override_params['A_initial']
+                self.override_params['I_initial'] = 1.0 * 3.43 * self.covid_data.cases.max()
+                self.override_params['A_initial'] = 0
+                self.override_params['gamma'] = 1
 
                 self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
-                self.override_params['D_initial'] = covid_data.deaths.max()
+                self.override_params['D_initial'] = self.covid_data.deaths.max()
 
             else:
                 self.t0 = datetime.datetime.today()
@@ -195,7 +199,8 @@ class EnsembleRunner:
         output report / results dataset.
         """
         for suppression_policy_name, suppression_policy in self.suppression_policies.items():
-            logging.info(f'Running simulation ensemble for {self.county_metadata["county"]}, {self.county_metadata["state"]} {suppression_policy_name}')
+
+            logging.info(f'Running simulation ensemble for {self.state_name} {self.fips} {suppression_policy_name}')
 
             parameter_sampler = ParameterEnsembleGenerator(
                 fips=self.fips,
@@ -206,15 +211,15 @@ class EnsembleRunner:
             model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
             logging.info(f'Generating outputs for {suppression_policy_name}')
-            self.all_outputs['county_metadata'] = self.county_metadata
-            self.all_outputs['county_metadata']['age_distribution'] = list(self.all_outputs['county_metadata']['age_distribution'])
-            self.all_outputs['county_metadata']['age_bins'] = list(self.all_outputs['county_metadata']['age_distribution'])
+            if self.geographic_unit == 'county':
+                self.all_outputs['county_metadata'] = self.county_metadata
+                self.all_outputs['county_metadata']['age_distribution'] = list(self.all_outputs['county_metadata']['age_distribution'])
+                self.all_outputs['county_metadata']['age_bins'] = list(self.all_outputs['county_metadata']['age_distribution'])
 
-            self.all_outputs[f'{suppression_policy_name}'] = \
-                self._generate_output_for_suppression_policy(model_ensemble)
+            self.all_outputs[f'{suppression_policy_name}'] = self._generate_output_for_suppression_policy(model_ensemble)
 
         if self.generate_report:
-            logging.info(f'Generating report for {self.county_metadata["county"]}, {self.county_metadata["state"]}')
+            logging.info(f'Generating report for {self.state_name} {self.fips}')
             report = CountyReport(self.fips,
                                   model_ensemble=model_ensemble,
                                   county_outputs=self.all_outputs,
@@ -379,9 +384,14 @@ def run_state(state, ensemble_kwargs):
     ensemble_kwargs: dict
         Kwargs passed to the EnsembleRunner object.
     """
+    # Run the state level
+    runner = EnsembleRunner(fips=us.states.lookup(state).fips, **ensemble_kwargs)
+    runner.run_ensemble()
+
+    # Run county level
     df = load_data.load_county_metadata()
-    all_fips = df[df['state'].str.lower() == state.lower()].fips
-    p = Pool()
-    f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
-    p.map(f, all_fips)
-    p.close()
+    # all_fips = df[df['state'].str.lower() == state.lower()].fips
+    # p = Pool()
+    # f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
+    # p.map(f, all_fips)
+    # p.close()
