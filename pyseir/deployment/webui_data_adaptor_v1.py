@@ -40,9 +40,9 @@ class WebUIDataAdaptorV1:
         self.hybrid_timeseries['date'] = self.hybrid_timeseries['date'].dt.normalize()
 
     def backfill_output_model_fips(self, fips, t0, final_beds):
-        backfill_to_date = date(2020, 3, 3)  # @TODO: Parameterize
-        confirmed_to_infected = 1 / 0.073    # @TODO: Parameterize
-        infected_to_hospitalizations = 0.25  # @TODO: Parameterize
+        backfill_to_date = date(2020, 3, 3)   # @TODO: Parameterize
+        hospitalization_rate = 0.073          # @TODO: Parameterize
+        confirmed_to_hospitalizations = 0.25  # @TODO: Parameterize
         intervals_to_backfill = math.ceil((t0.date() - backfill_to_date).days / self.output_interval_days)
         backfill_offsets = range(-intervals_to_backfill * self.output_interval_days, 0, self.output_interval_days)
 
@@ -55,8 +55,8 @@ class WebUIDataAdaptorV1:
         county_timeseries = self.hybrid_timeseries[(self.hybrid_timeseries['fips'] == fips)]
 
         backfill = pd.merge(backfill, county_timeseries[['date', 'cases', 'deaths']], on='date', how='left')
-        backfill['all_infected'] = np.multiply(backfill['cases'], confirmed_to_infected).fillna(0)
-        backfill['all_hospitalized'] = np.multiply(backfill['all_infected'], infected_to_hospitalizations).fillna(0)
+        backfill['all_hospitalized'] = np.multiply(backfill['cases'], confirmed_to_hospitalizations).fillna(0)
+        backfill['all_infected'] = np.divide(backfill['all_hospitalized'], hospitalization_rate).fillna(0)
         backfill['dead'] = backfill['deaths'].fillna(0)
         backfill['date'] = backfill['date'].dt.strftime('%m/%d/%y')
 
