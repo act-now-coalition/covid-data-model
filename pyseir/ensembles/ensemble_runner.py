@@ -89,12 +89,12 @@ class EnsembleRunner:
             self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',
                 f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
-            self.covid_data = timeseries.get_subset(AggregationLevel.COUNTY, country='USA', state=self.state_abbr)\
+            self.covid_data = jhu_timeseries.get_subset(AggregationLevel.COUNTY, country='USA', state=self.state_abbr)\
                                         .get_data(state=self.state_abbr, country='USA', fips=self.fips)
         else:
             self.state_abbr = us.states.lookup(self.fips).abbr
             self.state_name = us.states.lookup(self.fips).name
-            self.covid_data = timeseries.get_subset(AggregationLevel.STATE, country='USA', state=self.state_abbr)\
+            self.covid_data = jhu_timeseries.get_subset(AggregationLevel.STATE, country='USA', state=self.state_abbr)\
                                         .get_data(country='USA', state=self.state_abbr)
             self.output_file_report = None
             self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',

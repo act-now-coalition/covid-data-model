@@ -6,7 +6,6 @@ from libs.datasets import DHBeds
 import us
 
 
-
 beds_data = None
 population_data = None
 
