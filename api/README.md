@@ -41,14 +41,13 @@ We currently provide 6 file types:
 
 ## Specific Files Schemas
 
-For a state <state abreviation>.<intervention number>.json
-For a county <state abreviation>.<fips>.<intervention number>.json
-
 ### Arrays
 
-[items... ]
+For state `<state abreviation>.<intervention number>.json` files
+and for county `<state abreviation>.<fips>.<intervention number>.json` files
 
-Where each item is as such:
+we have an array of arrays as such `[items... ]` where each item represents:
+
 ```json
    [
         "day_index",
@@ -141,15 +140,11 @@ Here's an example
 
 ### Case Summary
 
-case_summary/<state abreviation>.summary.json
-
-See the [JSON Schema](schemas/case_summary.json)
+For `case_summary/<state abreviation>.summary.json` files see the [JSON Schema](schemas/case_summary.json)
 
 ### County Summaries
 
-county_summaries/<state abreviation>.summary.json
-
-See the [JSON Schema](schemas/county_summaries.json)
+For `county_summaries/<state abreviation>.summary.json` files see the [JSON Schema](schemas/county_summaries.json)
 
 
 ### Versions
