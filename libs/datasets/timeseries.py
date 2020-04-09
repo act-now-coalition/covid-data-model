@@ -28,6 +28,7 @@ class TimeseriesDataset(object):
         DEATHS = "deaths"
         RECOVERED = "recovered"
         CURRENT_HOSPITALIZED = "current_hospitalized"
+        CUMULATIVE_HOSPITALIZED = "cumulative_hospitalized"
 
         # Generated in from_source
         COUNTY = "county"
