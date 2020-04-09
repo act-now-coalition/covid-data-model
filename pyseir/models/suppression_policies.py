@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
-from pyseir.load_data import load_public_implementations_data
+from pyseir.load_data import (load_public_implementations_data,
+                              load_county_metadata,
+                              load_county_case_data)
 from pyseir.inference import fit_results
 
 
@@ -155,7 +157,36 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     return interp1d(t_list, rho, fill_value='extrapolate')
 
 
-def generate_empirical_distancing_policy(t_list, fips, future_suppression):
+def infer_t0(fips, method='first_case', default=pd.Timestamp('2020-01-15')):
+    """
+    Infer t0 for a given fips under given methods:
+       - first_case: t0 is set as time of first observed case.
+       - impute: t0 is imputed.
+    Returns default value if neither method works.
+
+    Parameters
+    ----------
+    fips : str
+        County fips
+    method : str
+        The method to determine t0.
+    default : pd.Timestamp
+        Default t0 if neither method works.
+    """
+
+    if method == 'impute':
+        t0 = fit_results.load_t0(fips)
+    elif method == 'first_case':
+        case_data = load_county_case_data()
+        if fips in case_data.fips:
+            t0 = case_data[case_data.fips == fips].date.min()
+        else:
+            t0 = default
+    return t0
+
+
+def generate_empirical_distancing_policy(t_list, fips, future_suppression,
+                                         reference_start_date=None):
     """
     Produce a suppression policy based on Imperial College estimates of social
     distancing programs combined with County level datasets about their
@@ -170,6 +201,8 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression):
     future_suppression: float
         The suppression level to apply in an ongoing basis after today, and
         going backward as the lockdown / stay-at-home efficacy.
+    reference_start_date: pd.Timestamp
+        Start date as reference to shift t_list.
 
     Returns
     -------
@@ -177,7 +210,9 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression):
         suppression_model(t) returns the current suppression model at time t.
     """
 
-    t0 = fit_results.load_t0(fips)
+    t0 = infer_t0(fips)
+    reference_start_date = reference_start_date or t0
+
     rho = []
 
     # Check for fips that don't match.
@@ -228,7 +263,66 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression):
                 rho_this_t = future_suppression
             rho.append(rho_this_t)
 
-    return interp1d(t_list, rho, fill_value='extrapolate')
+    t_list_since_reference_date = t_list + (pd.to_datetime(t0) - pd.to_datetime(reference_start_date)).days
+
+    return interp1d(t_list_since_reference_date, rho, fill_value='extrapolate')
+
+def generate_empirical_distancing_policy_by_state(t_list, state, future_suppression, reference_start_date=None):
+    """
+    Produce a suppression policy at state level based on Imperial College
+    estimates of social distancing programs combined with County level
+    datasets about their implementation.
+
+    Parameters
+    ----------
+    t_list: array-like
+        List of times to interpolate over.
+    state: str
+        State full name to lookup interventions against.
+    future_suppression: float
+        The suppression level to apply in an ongoing basis after today, and
+        going backward as the lockdown / stay-at-home efficacy.
+    reference_start_date: pd.Timestamp
+        Start date as reference to shift t_list.
+
+    Returns
+    -------
+    suppression_model: callable
+        suppression_model(t) returns the current suppression model at time t
+    """
+    
+    county_metadata = load_county_metadata()
+    counties_fips = county_metadata[county_metadata.state == state].fips.unique()
+    
+    if reference_start_date is None:
+        t0s = list()
+        for fips in counties_fips:
+            t0s.append(infer_t0(fips))
+        reference_start_date = min(t0s)
+        
+    suppression_policy_fips_args = dict(t_list=t_list, 
+                                        future_suppression=future_suppression,
+                                        reference_start_date=reference_start_date)
+
+    weight = county_metadata[county_metadata.state == state][['fips', 'total_population']] \
+                                .set_index('fips').rename(columns={'total_population': 'weight'})
+    
+    results = dict()
+    for fips in counties_fips:
+        suppression_policy = generate_empirical_distancing_policy(fips=fips, **suppression_policy_fips_args)
+        results[fips] = suppression_policy(suppression_policy_fips_args['t_list'])
+        results[fips] = np.clip(results[fips], a_max=1, a_min=0)
+    results = pd.DataFrame(results).T.join(weight)
+
+    results_for_state = list()
+    cols = [col for col in results.columns if col != 'weight']
+    for col in cols:
+        results_for_state.append((results[col] * results['weight']).sum())
+    results_for_state = np.array(results_for_state) / results['weight'].sum()
+    results = results[cols].T
+    results['state'] = results_for_state
+
+    return interp1d(t_list, results_for_state, fill_value='extrapolate')
 
 
 def piecewise_parametric_policy(x, t_list):
