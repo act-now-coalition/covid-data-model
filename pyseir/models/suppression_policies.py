@@ -319,8 +319,6 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     for col in cols:
         results_for_state.append((results[col] * results['weight']).sum())
     results_for_state = np.array(results_for_state) / results['weight'].sum()
-    results = results[cols].T
-    results['state'] = results_for_state
 
     return interp1d(t_list, results_for_state, fill_value='extrapolate')
 
