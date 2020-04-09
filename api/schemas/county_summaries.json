@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/schema#", 
+  "required": [
+    "counties_with_data"
+  ], 
+  "type": "object", 
+  "properties": {
+    "counties_with_data": {
+      "items": {
+        "type": "string"
+      }, 
+      "type": "array"
+    }
+  }
+}
