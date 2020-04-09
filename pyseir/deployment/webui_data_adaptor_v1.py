@@ -11,6 +11,7 @@ import us
 from multiprocessing import Pool
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
+from pyseir.ensembles.ensemble_runner import EnsembleRunner
 
 
 class WebUIDataAdaptorV1:
@@ -93,6 +94,7 @@ class WebUIDataAdaptorV1:
         # We can just read the initial conditions infected and hospitalized to rescale the case data to match.
         backfill['all_infected'] =( output_model['all_infected'][0] * backfill['cases'] / backfill['cases'].max()).fillna(0)
         backfill['all_hospitalized'] = np.multiply(backfill['all_infected'], hospitalization_rate).fillna(0)
+
         backfill['dead'] = backfill['deaths'].fillna(0)
         backfill['date'] = backfill['date'].dt.strftime('%m/%d/%y')
 

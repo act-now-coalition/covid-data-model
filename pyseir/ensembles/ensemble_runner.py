@@ -41,8 +41,7 @@ compartment_to_capacity_attr_map = {
 }
 
 
-FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN', 'PR', 'VI', 'AS', 'MP', 'GU')
-
+FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
 
 class EnsembleRunner:
     """

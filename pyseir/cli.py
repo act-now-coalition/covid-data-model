@@ -22,10 +22,8 @@ formatter = logging.Formatter('%(asctime)s - %(filename)s - %(lineno)d - %(level
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
-
 jhu_dataset = None
 cds_dataset = None
-
 
 def _cache_global_datasets():
     global jhu_dataset, cds_dataset
@@ -33,7 +31,6 @@ def _cache_global_datasets():
         cds_dataset = CDSDataset.local()
     if jhu_dataset is None:
         jhu_dataset = JHUDataset.local()
-
 
 @click.group()
 def entry_point():
@@ -93,7 +90,6 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
             _map_outputs(state_obj.name, output_interval_days, states_only=states_only,
                          run_mode='default', output_dir=output_dir)
 
-
 def _run_all(state=None, run_mode='default', generate_reports=True, output_interval_days=4,
              skip_download=False, states_only=False, output_dir=None):
 
@@ -150,7 +146,6 @@ def run_mle_fits(state):
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def run_ensembles(state, run_mode, generate_reports, states_only):
     _run_ensembles(state, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports), states_only=states_only)
-
 
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
