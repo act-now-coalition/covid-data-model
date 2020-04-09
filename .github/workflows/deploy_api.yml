@@ -60,8 +60,7 @@ jobs:
     - name: Build API Artifacts (run.sh)
       env:
         COVID_MODEL_CORES: 2
-#      run: ./covid-data-model/run.sh ./covid-data-public ./api_results
-      run: mkdir -p ./api_results && echo hello > ./api_results/hello.txt
+      run: ./covid-data-model/run.sh ./covid-data-public ./api_results
 
     - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
       uses: jakejarvis/s3-sync-action@master
