@@ -55,6 +55,7 @@ class ParameterEnsembleGenerator:
             self.state_abbr = us.states.lookup(fips).abbr
             self.population = population_data.get_state_level('USA', state=self.state_abbr)
             self.beds = beds_data.get_state_level(self.state_abbr) or 0
+            self.icu_beds = beds_data.get_state_level(self.state_abbr, column='icu_bed') or 0
 
     def sample_seir_parameters(self, override_params=None):
         """
@@ -100,7 +101,7 @@ class ParameterEnsembleGenerator:
                 hospitalization_rate_icu=max(np.random.normal(loc=.29, scale=0.03) * hospitalization_rate_general, 0),
                 # http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
                 # Coronatracking.com/data
-                fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.44, scale=0.1), 0),
+                fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.6, scale=0.1), 0),
                 sigma=1 / np.random.normal(loc=3.1, scale=0.86),  # Imperial college - 2 days since that is expected infectious period.
                 delta=1 / np.random.gamma(6.0, scale=1),  # Kind of based on imperial college + CDC digest.
                 delta_hospital=1 / np.random.gamma(8.0, scale=1),  # Kind of based on imperial college + CDC digest.
@@ -133,7 +134,7 @@ class ParameterEnsembleGenerator:
                 #              # + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
                 beds_general=self.beds * 0.4 * 2.07,
                 # TODO.. Patch this After Issue 132
-                beds_ICU=0, # self.county_metadata_merged.get('num_icu_beds', 0),
+                beds_ICU= (1 - 0.85) * self.icu_beds,  # No scaling, 85% utilization...
                 # hospital_capacity_change_daily_rate=1.05,
                 # max_hospital_capacity_factor=2.07,
                 # initial_hospital_bed_utilization=0.6,
@@ -147,7 +148,7 @@ class ParameterEnsembleGenerator:
                 # Staff expertise may be a limiting factor:
                 # https://sccm.org/getattachment/About-SCCM/Media-Relations/Final-Covid19-Press-Release.pdf?lang=en-US
                 # TODO: Patch after #133
-                ventilators=0 #self.county_metadata_merged.get('num_icu_beds', 0) * np.random.uniform(low=1.0, high=1.2)
+                ventilators=self.icu_beds * np.random.uniform(low=1.0, high=1.2),
             ))
 
         for parameter_set in parameter_sets:

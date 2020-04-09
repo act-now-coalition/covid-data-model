@@ -11,6 +11,7 @@ import us
 from multiprocessing import Pool
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
+from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.ensembles.ensemble_runner import EnsembleRunner
 
 
@@ -39,13 +40,13 @@ class WebUIDataAdaptorV1:
         os.makedirs(self.state_output_dir, exist_ok=True)
         self.population_data = FIPSPopulation.local().population()
 
-        jhu_local = jhu_dataset or JHUDataset.local()
-        cds_dataset = cds_dataset or CDSDataset.local()
+        self.jhu_local = jhu_dataset or JHUDataset.local()
+        self.cds_dataset = cds_dataset or CDSDataset.local()
 
-        self.county_timeseries = build_aggregate_county_data_frame(jhu_local, cds_dataset)
+        self.county_timeseries = build_aggregate_county_data_frame(self.jhu_local, self.cds_dataset)
         self.county_timeseries['date'] = self.county_timeseries['date'].dt.normalize()
 
-        self.state_timeseries = jhu_local.timeseries().state_data
+        self.state_timeseries = self.jhu_local.timeseries().state_data
         self.state_timeseries['date'] = self.state_timeseries['date'].dt.normalize()
 
     def backfill_output_model_fips(self, fips, t0, final_beds, output_model):
@@ -200,7 +201,17 @@ class WebUIDataAdaptorV1:
 
         if not states_only:
             df = load_data.load_county_metadata()
+
             all_fips = df[df['state'].str.lower() == self.state.lower()].fips
+
+            # Don't output inputed fips...
+            fips_with_data = self.jhu_local.timeseries() \
+                .get_subset(AggregationLevel.COUNTY, country='USA') \
+                .get_data(country='USA', state=self.state_abbreviation).fips.unique().tolist()
+
+            all_fips = [fips for fips in all_fips if fips in fips_with_data]
+
+            print(all_fips)
             p = Pool()
             p.map(self.map_fips, all_fips)
             p.close()
