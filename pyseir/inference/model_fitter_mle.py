@@ -162,7 +162,7 @@ def plot_inferred_result(fit_results):
     plt.savefig(output_file)
 
 
-def run_state(state):
+def run_state(state, states_only=False):
     """
     Run the fitter for each county in a state.
 
@@ -170,18 +170,21 @@ def run_state(state):
     ----------
     state: str
         State to run against.
+    states_only: bool
+        If True only run the state level.
     """
-    df = load_data.load_county_metadata()
-    all_fips = df[df['state'].str.lower() == state.lower()].fips
+    if not states_only:
+        df = load_data.load_county_metadata()
+        all_fips = df[df['state'].str.lower() == state.lower()].fips
 
-    p = Pool()
-    fit_results = p.map(fit_county_model, all_fips)
+        p = Pool()
+        fit_results = p.map(fit_county_model, all_fips)
 
-    output_file = os.path.join(OUTPUT_DIR, state.title(), 'data', f'summary_{state}__mle_fit_results.json')
-    pd.DataFrame(fit_results).to_json(output_file)
+        output_file = os.path.join(OUTPUT_DIR, state.title(), 'data', f'summary_{state}__mle_fit_results.json')
+        pd.DataFrame(fit_results).to_json(output_file)
 
-    p.map(plot_inferred_result, fit_results)
-    p.close()
+        p.map(plot_inferred_result, fit_results)
+        p.close()
 
 
 if __name__ == '__main__':

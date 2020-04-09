@@ -15,13 +15,12 @@ from pyseir.models.suppression_policies import generate_empirical_distancing_pol
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
-from libs.datasets import JHUDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
+from libs.datasets import JHUDataset
 
 
 _logger = logging.getLogger(__name__)
-jhu_timeseries = None
 
 
 class RunMode(Enum):
@@ -29,8 +28,10 @@ class RunMode(Enum):
     # suppression policies.
     DEFAULT = 'default'
     # 4 basic suppression scenarios and specialized parameters to match
-    # covidactnow before scenarios.
-    CAN_BEFORE = 'can-before'
+    # covidactnow before scenarios.  Uses hospitalization data to fix.
+    CAN_BEFORE_HOSPITALIZATION = 'can-before-hospitalization'
+    # Same as CAN Before but with updated ICU, hosp rates increased.
+    CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = 'can-before-hospitalization-new-params'
 
 
 compartment_to_capacity_attr_map = {
@@ -38,6 +39,9 @@ compartment_to_capacity_attr_map = {
     'HICU': 'beds_ICU',
     'HVent': 'ventilators'
 }
+
+
+FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')
 
 
 class EnsembleRunner:
@@ -66,6 +70,8 @@ class EnsembleRunner:
     hospitalization_to_confirmed_case_ratio: float
         When hospitalization data is not available directly, this fraction of
         confirmed cases defines the initial number of hospitalizations.
+    covid_timeseries: NoneType or DataSet
+        Can be optionally passed in to prevent reloading.
     """
     def __init__(self, fips, n_years=2, n_samples=250,
                  suppression_policy=(0.35, 0.5, 0.75, 1),
@@ -73,17 +79,13 @@ class EnsembleRunner:
                  output_percentiles=(5, 25, 32, 50, 75, 68, 95),
                  generate_report=True,
                  run_mode=RunMode.DEFAULT,
-                 min_hospitalization_threshold=10,
-                 hospitalization_to_confirmed_case_ratio=1 / 4):
-
-        # Caching globally to avoid relatively significant performance overhead
-        # of loading for each county.
-        global jhu_timeseries
-        if not jhu_timeseries:
-            jhu_timeseries = JHUDataset.local().timeseries()
+                 min_hospitalization_threshold=5,
+                 hospitalization_to_confirmed_case_ratio=1 / 4,
+                 output_dir=None,
+                 covid_timeseries=None):
 
         self.fips = fips
-        self.agg_level = AggregationLevel.COUNTY if len(self.fips) == 5 else AggregationLevel.STATE
+        self.agg_level = AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
 
         self.t_list = np.linspace(0, 365 * n_years, 365 * n_years)
         self.skip_plots = skip_plots
@@ -92,14 +94,17 @@ class EnsembleRunner:
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
+        self.output_dir = output_dir or os.path.join(OUTPUT_DIR, 'pyseir')
+        os.makedirs(self.output_dir, exist_ok=True)
+
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata_by_fips(fips)
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
             self.state_name = us.states.lookup(self.county_metadata['state']).name
 
-            self.output_file_report = os.path.join(OUTPUT_DIR, self.state_name, 'reports',
+            self.output_file_report = os.path.join(self.output_dir, self.state_name, 'reports',
                 f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf")
-            self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',
+            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
                 f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
         else:
@@ -107,13 +112,22 @@ class EnsembleRunner:
             self.state_name = us.states.lookup(self.fips).name
 
             self.output_file_report = None
-            self.output_file_data = os.path.join(OUTPUT_DIR, self.state_name, 'data',
+            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
                 f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
-        self.covid_data = jhu_timeseries\
+        county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
+        
+        if not covid_timeseries:
+            covid_timeseries = JHUDataset.local().timeseries()
+            
+        self.covid_data = covid_timeseries\
             .get_subset(self.agg_level, country='USA', state=self.state_abbr) \
-            .get_data(country='USA', state=self.state_abbr, fips=fips) \
+            .get_data(country='USA', state=self.state_abbr, fips=county_fips) \
             .sort_values('date')
+
+        os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
+        if self.output_file_report:
+            os.makedirs(os.path.dirname(self.output_file_report), exist_ok=True)
 
         self.output_percentiles = output_percentiles
         self.n_samples = n_samples
@@ -132,7 +146,7 @@ class EnsembleRunner:
 
         self.all_outputs = {}
 
-    def get_initial_hospitalizations(self):
+    def get_initial_hospitalizations(self, use_cases=False):
         """
         Attempt a two level hierarchy of lookups for hospitalizations.
 
@@ -152,13 +166,20 @@ class EnsembleRunner:
             .timeseries()\
             .get_subset(self.agg_level, country='USA', state=self.state_abbr)\
             .get_data(state=self.state_abbr, country='USA', fips=fips)\
-            .sort_values('date')\
+            .sort_values('date')
 
         # If there are enough hospitalizations, use those to define initial conditions.
-        if len(hospitalization_data) > 0 \
-                and hospitalization_data.iloc[-1]['current_hospitalized'] > self.min_hospitalization_threshold:
+        if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in FAULTY_HOSPITAL_DATA_STATES:
             latest_date = hospitalization_data.iloc[-1]['date'].date()
-            hospitalizations_total = hospitalization_data.iloc[-1]['current_hospitalized']
+            n_current = hospitalization_data.iloc[-1]['current_hospitalized']
+            if n_current > self.min_hospitalization_threshold and not np.isnan(n_current):
+                hospitalizations_total = n_current
+
+            # TODO: We will need a better estimator for current hospitalizations
+            # in cases where cumulative is not available. Punting on this until
+            # post-release.
+            else:
+                hospitalizations_total = hospitalization_data.iloc[-1]['cumulative_hospitalized']
 
         # Fallback to case data if not.
         else:
@@ -174,7 +195,7 @@ class EnsembleRunner:
         """
         self.suppression_policies = dict()
 
-        if self.run_mode is RunMode.CAN_BEFORE:
+        if self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION:
             self.n_samples = 1
 
             for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
@@ -190,19 +211,65 @@ class EnsembleRunner:
 
             self.override_params['mortality_rate'] = 0.0109
             self.override_params['mortality_rate_no_general_beds'] = 0.10
-            # TODO: This is not modeled in CAN. Plan to increase.
-            self.override_params['mortality_rate_no_ICU_beds'] = 0.00
+            self.override_params['mortality_rate_no_ICU_beds'] = 0.8
 
             self.override_params['hospitalization_length_of_stay_general'] = 6
-            self.override_params['hospitalization_length_of_stay_icu'] = 14
+            self.override_params['hospitalization_length_of_stay_icu'] = 13
             self.override_params['hospitalization_length_of_stay_icu_and_ventilator'] = 14
 
-            # hospitalization_rate_general is hospitalization rate for symptomatic cases going to the hospital
-            # We ensure later that this adds up to a total overall 0.0727 rate.
-            # self.override_params['hospitalization_rate_general'] = 0.25
             self.override_params['hospitalization_rate_general'] = 0.0727
-            self.override_params['hospitalization_rate_icu'] = 0.1397 * self.override_params['hospitalization_rate_general']
-            self.override_params['beds_ICU'] = 0 #.11 * self.override_params['beds_general'] # National average per hospital bed.
+            self.override_params['hospitalization_rate_icu'] = 0.13 * self.override_params['hospitalization_rate_general']
+            self.override_params['beds_ICU'] = 0
+            self.override_params['symptoms_to_hospital_days'] = 6
+
+            if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
+                self.t0 = self.covid_data.date.max()
+                self.t0, hospitalizations_total = self.get_initial_hospitalizations()
+
+                self.override_params['HGen_initial'] = hospitalizations_total * (1 - self.override_params['hospitalization_rate_icu'] / self.override_params['hospitalization_rate_general'])
+                self.override_params['HICU_initial'] = hospitalizations_total * self.override_params['hospitalization_rate_icu']/ self.override_params['hospitalization_rate_general']
+                self.override_params['HICUVent_initial'] = self.override_params['HICU_initial'] * self.override_params['fraction_icu_requiring_ventilator']
+                self.override_params['I_initial'] = hospitalizations_total / self.override_params['hospitalization_rate_general']
+
+                # The following two params disable the asymptomatic compartment.
+                self.override_params['A_initial'] = 0
+                self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
+
+                # 1.2 is a ~ steady state for the exposed bucket initialization.
+                self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
+                self.override_params['D_initial'] = self.covid_data.deaths.max()
+
+            else:
+                self.t0 = datetime.datetime.today()
+                self.override_params['I_initial'] = 1
+                self.override_params['A_initial'] = 0
+                self.override_params['gamma'] = 1  # 100% of Exposed go to the infected bucket.
+
+        elif self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS:
+            self.n_samples = 1
+
+            for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
+                R0 = 3.6
+                policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
+                self.suppression_policies[f'suppression_policy__{scenario}'] = policy
+                self.override_params = ParameterEnsembleGenerator(
+                    self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
+
+            self.override_params['R0'] = R0
+            self.override_params['delta'] = 1 / 6.
+            self.override_params['sigma'] = 1 / 3.
+
+            self.override_params['mortality_rate'] = 0.0109
+            self.override_params['mortality_rate_no_general_beds'] = 0.10
+            self.override_params['mortality_rate_no_ICU_beds'] = 0.8
+
+            self.override_params['hospitalization_length_of_stay_general'] = 6
+            self.override_params['hospitalization_length_of_stay_icu'] = 13
+            self.override_params['hospitalization_length_of_stay_icu_and_ventilator'] = 14
+
+            self.override_params['hospitalization_rate_general'] = 0.0727
+            self.override_params['hospitalization_rate_icu'] = 0.29 * self.override_params['hospitalization_rate_general']
+            self.override_params['beds_ICU'] = .11 * self.override_params['beds_general'] # National average per hospital bed.
             self.override_params['symptoms_to_hospital_days'] = 6
 
             if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
@@ -221,11 +288,6 @@ class EnsembleRunner:
                 # 1.2 is a ~ steady state for the exposed bucket initialization.
                 self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
                 self.override_params['D_initial'] = self.covid_data.deaths.max()
-
-            else:
-                self.t0 = datetime.datetime.today()
-                self.override_params['I_initial'] = 1
-                self.override_params['A_initial'] = 1
 
         elif self.run_mode is RunMode.DEFAULT:
             for suppression_policy in self.suppression_policy:
@@ -434,7 +496,7 @@ def _run_county(fips, ensemble_kwargs):
     runner.run_ensemble()
 
 
-def run_state(state, ensemble_kwargs):
+def run_state(state, ensemble_kwargs, states_only=False):
     """
     Run the EnsembleRunner for each county in a state.
 
@@ -444,15 +506,18 @@ def run_state(state, ensemble_kwargs):
         State to run against.
     ensemble_kwargs: dict
         Kwargs passed to the EnsembleRunner object.
+    states_only: bool
+        If True only run the state level.
     """
     # Run the state level
     runner = EnsembleRunner(fips=us.states.lookup(state).fips, **ensemble_kwargs)
     runner.run_ensemble()
 
-    # Run county level
-    df = load_data.load_county_metadata()
-    all_fips = df[df['state'].str.lower() == state.lower()].fips
-    p = Pool()
-    f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
-    p.map(f, all_fips)
-    p.close()
+    if not states_only:
+        # Run county level
+        df = load_data.load_county_metadata()
+        all_fips = df[df['state'].str.lower() == state.lower()].fips
+        p = Pool()
+        f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
+        p.map(f, all_fips)
+        p.close()

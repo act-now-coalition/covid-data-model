@@ -11,6 +11,7 @@ import us
 from multiprocessing import Pool
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
+from pyseir.ensembles.ensemble_runner import EnsembleRunner
 
 
 class WebUIDataAdaptorV1:
@@ -22,13 +23,15 @@ class WebUIDataAdaptorV1:
     state: str
         State to map outputs for.
     """
-    def __init__(self, state, output_interval_days=4, run_mode='can-before'):
+    def __init__(self, state, output_interval_days=4, run_mode='can-before', output_dir=None):
 
         self.output_interval_days = output_interval_days
         self.state = state
         self.run_mode = run_mode
-        self.county_output_dir = os.path.join(OUTPUT_DIR, 'web_ui', 'county')
-        self.state_output_dir = os.path.join(OUTPUT_DIR, 'web_ui', 'state')
+
+        output_dir = output_dir or OUTPUT_DIR
+        self.county_output_dir = os.path.join(output_dir, 'web_ui', 'county')
+        self.state_output_dir = os.path.join(output_dir, 'web_ui', 'state')
         self.state_abbreviation = us.states.lookup(state).abbr
 
         os.makedirs(self.county_output_dir, exist_ok=True)
@@ -43,16 +46,20 @@ class WebUIDataAdaptorV1:
         self.state_timeseries = jhu_local.timeseries().state_data
         self.state_timeseries['date'] = self.state_timeseries['date'].dt.normalize()
 
-    def backfill_output_model_fips(self, fips, t0, final_beds):
+    def backfill_output_model_fips(self, fips, t0, final_beds, output_model):
         """
         Add backfilled hospitalization, case, amd deaths data.
 
         Parameters
         ----------
         fips: str
-            State of  count
+            State or county fips code.
         t0: datetime
+            Start time for the simulation.
         final_beds: total number of beds.
+            Number of beds after scaling.
+        output_model: dict
+            Output model to impute.
 
         Returns
         -------
@@ -61,7 +68,6 @@ class WebUIDataAdaptorV1:
         """
         backfill_to_date = date(2020, 3, 3)   # @TODO: Parameterize
         hospitalization_rate = 0.073          # @TODO: Parameterize
-        confirmed_to_hospitalizations = 0.25  # @TODO: Parameterize
         intervals_to_backfill = math.ceil((t0.date() - backfill_to_date).days / self.output_interval_days)
         backfill_offsets = range(-intervals_to_backfill * self.output_interval_days, 0, self.output_interval_days)
 
@@ -77,8 +83,16 @@ class WebUIDataAdaptorV1:
             actual_timeseries = self.state_timeseries[(self.state_timeseries['state'] == self.state_abbreviation)]
 
         backfill = pd.merge(backfill, actual_timeseries[['date', 'cases', 'deaths']], on='date', how='left')
-        backfill['all_hospitalized'] = np.multiply(backfill['cases'], confirmed_to_hospitalizations).fillna(0)
-        backfill['all_infected'] = np.divide(backfill['all_hospitalized'], hospitalization_rate).fillna(0)
+
+        # TODO this is fragile because of the backfill hospitalization date
+        #      alignment and/or 4 day discontinuity. Luckily it is also invisible on non-log-scales.
+        # Account for two cases
+        #   (i) hospital admissions available.
+        #   (ii) Not available, so cases are imputed...
+        # We can just read the initial conditions infected and hospitalized to rescale the case data to match.
+        backfill['all_infected'] = output_model['all_infected'][0] * backfill['cases'] / backfill['cases'].max()
+        backfill['all_hospitalized'] = np.multiply(backfill['all_infected'], hospitalization_rate).fillna(0)
+
         backfill['dead'] = backfill['deaths'].fillna(0)
         backfill['date'] = backfill['date'].dt.strftime('%m/%d/%y')
 
@@ -140,8 +154,14 @@ class WebUIDataAdaptorV1:
             final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
             output_model['beds'] = final_beds
 
-            backfill = self.backfill_output_model_fips(fips, t0, final_beds)
-            output_model = pd.concat([backfill, output_model])[output_model.columns].reset_index(drop = True)
+            backfill = self.backfill_output_model_fips(fips, t0, final_beds, output_model)
+            output_model = pd.concat([backfill, output_model])[output_model.columns].reset_index(drop=True)
+
+            # Truncate date range of output.
+            output_dates = pd.to_datetime(output_model['date'])
+            output_model = output_model[ (output_dates > datetime(month=3, day=3, year=2020))
+                                        & (output_dates < datetime.today() + timedelta(days=90))]
+            output_model = output_model.fillna(0)
 
             for col in ['i', 'j', 'k', 'l']:
                 output_model[col] = 0
@@ -164,18 +184,24 @@ class WebUIDataAdaptorV1:
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 
-    def generate_state(self):
+    def generate_state(self, states_only=False):
         """
         Generate for each county in a state, the output for the webUI.
+
+        Parameters
+        ----------
+        states_only: bool
+            If True only run the state level.
         """
         state_fips = us.states.lookup(self.state).fips
         self.map_fips(state_fips)
 
-        df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == self.state.lower()].fips
-        p = Pool()
-        p.map(self.map_fips, all_fips)
-        p.close()
+        if not states_only:
+            df = load_data.load_county_metadata()
+            all_fips = df[df['state'].str.lower() == self.state.lower()].fips
+            p = Pool()
+            p.map(self.map_fips, all_fips)
+            p.close()
 
 
 if __name__ == '__main__':

@@ -171,10 +171,10 @@ def load_ensemble_results(fips, run_mode='default'):
     if len(fips) == 5:  # County
         county_metadata = load_county_metadata().set_index('fips')
         state, county = county_metadata.loc[fips]['state'], county_metadata.loc[fips]['county']
-        path = os.path.join(OUTPUT_DIR, state, 'data', f"{state}__{county}__{fips}__{run_mode}__ensemble_projections.json")
+        path = os.path.join(OUTPUT_DIR, 'pyseir', state, 'data', f"{state}__{county}__{fips}__{run_mode}__ensemble_projections.json")
     elif len(fips) == 2:
         state = us.states.lookup(fips).name
-        path = os.path.join(OUTPUT_DIR, state, 'data', f"{state}__{fips}__{run_mode}__ensemble_projections.json")
+        path = os.path.join(OUTPUT_DIR, 'pyseir', state, 'data', f"{state}__{fips}__{run_mode}__ensemble_projections.json")
 
     with open(path) as f:
         fit_results = json.load(f)
