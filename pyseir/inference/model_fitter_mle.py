@@ -157,7 +157,7 @@ def plot_inferred_result(fit_results):
                      transform=plt.gca().transAxes, fontsize=12)
 
     output_file = os.path.join(
-        OUTPUT_DIR, fit_results['state'].title(), 'reports',
+        OUTPUT_DIR, 'pyseir', fit_results['state'].title(), 'reports',
         f'{fit_results["state"]}__{fit_results["county"]}__{fit_results["fips"]}__mle_fit_results.pdf')
     plt.savefig(output_file)
 
@@ -180,7 +180,7 @@ def run_state(state, states_only=False):
         p = Pool()
         fit_results = p.map(fit_county_model, all_fips)
 
-        output_file = os.path.join(OUTPUT_DIR, state.title(), 'data', f'summary_{state}__mle_fit_results.json')
+        output_file = os.path.join(OUTPUT_DIR, 'pyseir', state.title(), 'data', f'summary_{state}__mle_fit_results.json')
         pd.DataFrame(fit_results).to_json(output_file)
 
         p.map(plot_inferred_result, fit_results)

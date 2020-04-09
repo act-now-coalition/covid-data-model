@@ -10,7 +10,7 @@ from pyseir.ensembles.ensemble_runner import run_state
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter_mle
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
-from libs.datasets import JHUDataset
+from libs.datasets import JHUDataset, CDSDataset
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 root = logging.getLogger()
@@ -22,9 +22,15 @@ formatter = logging.Formatter('%(asctime)s - %(filename)s - %(lineno)d - %(level
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
+jhu_dataset = None
+cds_dataset = None
 
-covid_dataset = None
-
+def _cache_global_datasets():
+    global jhu_dataset, cds_dataset
+    if cds_dataset is None:
+        cds_dataset = CDSDataset.local()
+    if jhu_dataset is None:
+        jhu_dataset = JHUDataset.local()
 
 @click.group()
 def entry_point():
@@ -41,7 +47,7 @@ def _impute_start_dates(state=None):
     if state:
         generate_start_times_for_state(state=state.title())
     else:
-        for state_obj in us.states.STATES:
+        for state_obj in us.STATES + us.TERRITORIES:
             _impute_start_dates(state_obj.name)
 
 
@@ -49,7 +55,7 @@ def _run_mle_fits(state=None, states_only=False):
     if state:
         model_fitter_mle.run_state(state.title(), states_only=states_only)
     else:
-        for state_obj in us.states.STATES:
+        for state_obj in us.STATES + us.TERRITORIES:
             run_mle_fits(state_obj.name, states_only=states_only)
 
 
@@ -57,7 +63,7 @@ def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
     if state:
         run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
     else:
-        for state_obj in us.states.STATES:
+        for state_obj in us.STATES + us.TERRITORIES:
             run_state(state_obj.name, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
 
 
@@ -66,27 +72,28 @@ def _generate_state_reports(state=None):
         report = StateReport(state.title())
         report.generate_report()
     else:
-        for state_obj in us.states.STATES:
+        for state_obj in us.STATES + us.TERRITORIES:
             _generate_state_reports(state_obj.name)
 
 
 def _map_outputs(state=None, output_interval_days=4, states_only=False,
                  output_dir=None, run_mode='default'):
     output_interval_days = int(output_interval_days)
+    _cache_global_datasets()
     if state:
-        web_ui_mapper = WebUIDataAdaptorV1(state, output_interval_days=output_interval_days, run_mode=run_mode)
+        web_ui_mapper = WebUIDataAdaptorV1(state, output_interval_days=output_interval_days,
+                                           run_mode=run_mode, jhu_dataset=jhu_dataset,
+                                           cds_dataset=cds_dataset, output_dir=output_dir)
         web_ui_mapper.generate_state(states_only=states_only)
     else:
-        for state_obj in us.states.STATES:
-            _map_outputs(state_obj.name, output_interval_days, states_only=states_only, run_mode='default')
-
+        for state_obj in us.STATES + us.TERRITORIES:
+            _map_outputs(state_obj.name, output_interval_days, states_only=states_only,
+                         run_mode='default', output_dir=output_dir)
 
 def _run_all(state=None, run_mode='default', generate_reports=True, output_interval_days=4,
              skip_download=False, states_only=False, output_dir=None):
 
-    global covid_dataset
-    if not covid_dataset:
-        covid_timeseries = JHUDataset.local().timeseries()
+    _cache_global_datasets()
 
     if not skip_download:
         cache_all_data()
@@ -99,21 +106,22 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
                        ensemble_kwargs=dict(
                            run_mode=run_mode,
                            generate_report=generate_reports,
-                           covid_timeseries=covid_timeseries),
+                           covid_timeseries=jhu_dataset),
                        states_only=states_only)
         if generate_reports:
             _generate_state_reports(state.title())
-        _map_outputs(state, output_interval_days, states_only=states_only, output_dir=output_dir, run_mode=run_mode)
+        _map_outputs(state, output_interval_days, states_only=states_only,
+                     output_dir=output_dir, run_mode=run_mode)
     else:
-        # TODO Add Territories to these two places.
         if states_only:
             f = partial(_run_all, run_mode=run_mode, generate_reports=generate_reports,
                         output_interval_days=output_interval_days, skip_download=True, states_only=states_only)
             p = Pool()
-            p.map(f, [state_obj.name for state_obj in us.STATES])
+            p.map(f, [state_obj.name for state_obj in us.STATES + us.TERRITORIES])
             p.close()
+
         else:
-            for state_obj in us.STATES:
+            for state_obj in us.STATES + us.TERRITORIES:
                 _run_all(state_obj.name, run_mode, generate_reports, output_interval_days, skip_download=True, states_only=states_only)
 
 
@@ -136,9 +144,8 @@ def run_mle_fits(state):
 @click.option('--generate-reports', default=False, is_flag=True, type=bool, help='If False, skip pdf report generation.')
 @click.option('--run-mode', default='default', help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
-def run_ensembles(state, run_mode, generate_reports):
-    _run_ensembles(state, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
-
+def run_ensembles(state, run_mode, generate_reports, states_only):
+    _run_ensembles(state, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports), states_only=states_only)
 
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
@@ -149,9 +156,10 @@ def generate_state_report(state):
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--output-interval-days', default='', type=int, help='Number of days between outputs for the WebUI payload.')
+@click.option('--run-mode', default='default', type=str, help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
-def map_outputs(state, output_interval_days):
-    _map_outputs(state, output_interval_days=int(output_interval_days))
+def map_outputs(state, output_interval_days, run_mode, states_only):
+    _map_outputs(state, output_interval_days=int(output_interval_days), run_mode=run_mode, states_only=states_only)
 
 
 @entry_point.command()
