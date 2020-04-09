@@ -168,12 +168,14 @@ class SEIRModel:
                  beds_ICU=100,
                  ventilators=60,
                  mortality_rate=0.0052,
-                 mortality_rate_no_ICU_beds=0.85,
+                 mortality_rate_from_ICU=0.4,
+                 mortality_rate_from_hospital=0.0,
+                 mortality_rate_no_ICU_beds=1.,
                  mortality_rate_no_ventilator=1.0,
-                 mortality_rate_no_general_beds=0.6,
-                 hospital_capacity_change_daily_rate=1.05,
-                 max_hospital_capacity_factor=2.07,
-                 initial_hospital_bed_utilization=0.6):
+                 mortality_rate_no_general_beds=0.0,
+                 initial_hospital_bed_utilization=0.6,
+
+    ):
 
         self.N = N
         self.suppression_policy = suppression_policy
@@ -204,7 +206,6 @@ class SEIRModel:
         self.beta = self.R0 * self.delta
         self.beta_hospital = self.R0_hospital * self.delta_hospital
 
-        self.mortality_rate = mortality_rate
         self.symptoms_to_hospital_days = symptoms_to_hospital_days
         self.symptoms_to_mortality_days = symptoms_to_mortality_days
 
@@ -229,10 +230,10 @@ class SEIRModel:
         self.mortality_rate_no_general_beds = mortality_rate_no_general_beds
         self.mortality_rate_no_ICU_beds = mortality_rate_no_ICU_beds
         self.mortality_rate_no_ventilator = mortality_rate_no_ventilator
-
-        self.hospital_capacity_change_daily_rate = hospital_capacity_change_daily_rate
-        self.max_hospital_capacity_factor = max_hospital_capacity_factor
         self.initial_hospital_bed_utilization = initial_hospital_bed_utilization
+
+        self.mortality_rate_from_ICU = mortality_rate_from_ICU
+        self.mortality_rate_from_hospital = mortality_rate_from_hospital
 
         # List of times to integrate.
         self.t_list = t_list
@@ -263,25 +264,34 @@ class SEIRModel:
         infected_and_recovered_no_hospital = self.delta * I
         infected_and_in_hospital_general = I * (self.hospitalization_rate_general - self.hospitalization_rate_icu) / self.symptoms_to_hospital_days
         infected_and_in_hospital_icu = I * self.hospitalization_rate_icu / self.symptoms_to_hospital_days
-        infected_and_dead = I * self.mortality_rate / self.symptoms_to_mortality_days
+        # infected_and_dead = # I * self.mortality_rate / self.symptoms_to_mortality_days
 
         dIdt = exposed_and_symptomatic \
                - infected_and_recovered_no_hospital \
                - infected_and_in_hospital_general \
-               - infected_and_in_hospital_icu - infected_and_dead
+               - infected_and_in_hospital_icu # - infected_and_dead
 
         recovered_after_hospital_general = HNonICU / self.hospitalization_length_of_stay_general
         recovered_after_hospital_icu = HICU * ((1 - self.fraction_icu_requiring_ventilator)/ self.hospitalization_length_of_stay_icu
                                                + self.fraction_icu_requiring_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator)
 
-        dHNonICU_dt = infected_and_in_hospital_general - recovered_after_hospital_general
-        dHICU_dt = infected_and_in_hospital_icu - recovered_after_hospital_icu
+        if HICU <= self.beds_ICU:
+            died_from_icu = HICU * self.mortality_rate_from_ICU / self.hospitalization_length_of_stay_icu
+        else:
+            died_from_icu = HICU * self.mortality_rate_no_ICU_beds / self.hospitalization_length_of_stay_icu
+
+        if HNonICU <= self.beds_general:
+            died_from_hosp = HNonICU * self.mortality_rate_from_hospital / self.hospitalization_length_of_stay_general
+        else:
+            died_from_hosp = HNonICU * self.mortality_rate_no_general_beds / self.hospitalization_length_of_stay_general
+
+        dHNonICU_dt = infected_and_in_hospital_general - recovered_after_hospital_general - died_from_hosp
+        dHICU_dt = infected_and_in_hospital_icu - recovered_after_hospital_icu - died_from_icu
 
         # Tracking categories...
         dTotalInfections = exposed_and_symptomatic + exposed_and_asymptomatic
         dHAdmissions_general = infected_and_in_hospital_general
         dHAdmissions_ICU = infected_and_in_hospital_icu  # Ventilators also count as ICU beds.
-
 
         # This compartment is for tracking ventillator count. The beds are accounted for in the ICU cases.
         dHICUVent_dt = infected_and_in_hospital_icu * self.fraction_icu_requiring_ventilator \
@@ -295,13 +305,7 @@ class SEIRModel:
 
         # TODO Age dep mortality. Recent estimate fo relative distribution Fig 3 here:
         #      http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
-        dDdt = infected_and_dead  # Fraction that die.
-
-        # Don't let infections come back if they get suppressed.
-        if I < 1.0:
-            dIdt = 0
-        if A < 1.0:
-            dAdt = 0
+        dDdt = died_from_icu + died_from_hosp  # Fraction that die.
 
         return dSdt, dEdt, dAdt, dIdt, dRdt, dHNonICU_dt, dHICU_dt, dHICUVent_dt, dDdt, dHAdmissions_general, dHAdmissions_ICU, dTotalInfections
 
@@ -338,9 +342,6 @@ class SEIRModel:
         result_time_series = odeint(self._time_step, y0, self.t_list, atol=1e-3, rtol=1e-3)
         S, E, A, I, R, HGen, HICU, HICUVent, D, HAdmissions_general, HAdmissions_ICU, TotalAllInfections = result_time_series.T
 
-        # derivatives to get e.g. deaths per day or admissions per day.
-        total_hosp = np.array(HGen + HICU + HICUVent)
-
         self.results = {
             't_list': self.t_list,
             'S': S,
@@ -369,16 +370,13 @@ class SEIRModel:
             'HVent_cumulative': np.cumsum(HICUVent) / self.hospitalization_length_of_stay_icu_and_ventilator
         }
 
-        self.results['total_deaths'] = D + self.results['deaths_from_hospital_bed_limits'] \
-                         + self.results['deaths_from_icu_bed_limits'] \
-                         + self.results['deaths_from_ventilator_limits']
+        self.results['total_deaths'] = D
 
         # Derivatives of the cumulative give the "new" infections per day.
         self.results['total_new_infections'] = np.append([0], TotalAllInfections[1:] - TotalAllInfections[:-1])
         self.results['total_deaths_per_day'] = np.append([0], self.results['total_deaths'][1:] - self.results['total_deaths'][:-1])
         self.results['general_admissions_per_day'] = np.append([0], HAdmissions_general[1:] - HAdmissions_general[:-1])
         self.results['icu_admissions_per_day'] = np.append([0], HAdmissions_ICU[1:] - HAdmissions_ICU[:-1])  # Derivative of the cumulative.
-
 
     def plot_results(self, y_scale='log', xlim=None):
         """

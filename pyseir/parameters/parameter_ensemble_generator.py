@@ -51,11 +51,12 @@ class ParameterEnsembleGenerator:
             self.population = population_data.get_county_level('USA', state=self.state_abbr, fips=self.fips)
             # TODO: Some counties do not have hospitals. Likely need to go to HRR level..
             self.beds = beds_data.get_county_level(self.state_abbr, fips=self.fips) or 0
+            self.icu_beds = beds_data.get_county_level(self.state_abbr, fips=self.fips, column='icu_beds') or 0
         else:
             self.state_abbr = us.states.lookup(fips).abbr
             self.population = population_data.get_state_level('USA', state=self.state_abbr)
             self.beds = beds_data.get_state_level(self.state_abbr) or 0
-            self.icu_beds = beds_data.get_state_level(self.state_abbr, column='icu_bed') or 0
+            self.icu_beds = beds_data.get_state_level(self.state_abbr, column='icu_beds') or 0
 
     def sample_seir_parameters(self, override_params=None):
         """
