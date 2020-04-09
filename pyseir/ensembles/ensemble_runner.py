@@ -261,9 +261,10 @@ class EnsembleRunner:
             self.override_params['delta'] = 1 / 6.
             self.override_params['sigma'] = 1 / 3.
 
-            self.override_params['mortality_rate'] = 0.0109
-            self.override_params['mortality_rate_no_general_beds'] = 0.00
-            self.override_params['mortality_rate_no_ICU_beds'] = 1
+            self.override_params['mortality_rate_no_general_beds'] = 0.05
+            self.override_params['mortality_rate_from_hospital'] = 0.05
+            self.override_params['mortality_rate_from_ICU'] = 0.40
+            self.override_params['mortality_rate_no_ICU_beds'] = 1.0
 
             self.override_params['hospitalization_length_of_stay_general'] = 6
             self.override_params['hospitalization_length_of_stay_icu'] = 14

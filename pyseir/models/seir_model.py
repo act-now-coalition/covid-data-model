@@ -271,19 +271,15 @@ class SEIRModel:
                - infected_and_in_hospital_general \
                - infected_and_in_hospital_icu # - infected_and_dead
 
-        recovered_after_hospital_general = HNonICU / self.hospitalization_length_of_stay_general
-        recovered_after_hospital_icu = HICU * ((1 - self.fraction_icu_requiring_ventilator)/ self.hospitalization_length_of_stay_icu
+        mortality_rate_ICU = self.mortality_rate_from_ICU if HICU <= self.beds_ICU else self.mortality_rate_no_ICU_beds
+        mortality_rate_NonICU = self.mortality_rate_from_hospital if HNonICU <= self.beds_general else self.mortality_rate_no_general_beds
+
+        recovered_after_hospital_general = HNonICU * (1 - mortality_rate_NonICU) / self.hospitalization_length_of_stay_general
+        recovered_after_hospital_icu = HICU * (1 - mortality_rate_ICU) / ((1 - self.fraction_icu_requiring_ventilator)/ self.hospitalization_length_of_stay_icu
                                                + self.fraction_icu_requiring_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator)
 
-        if HICU <= self.beds_ICU:
-            died_from_icu = HICU * self.mortality_rate_from_ICU / self.hospitalization_length_of_stay_icu
-        else:
-            died_from_icu = HICU * self.mortality_rate_no_ICU_beds / self.hospitalization_length_of_stay_icu
-
-        if HNonICU <= self.beds_general:
-            died_from_hosp = HNonICU * self.mortality_rate_from_hospital / self.hospitalization_length_of_stay_general
-        else:
-            died_from_hosp = HNonICU * self.mortality_rate_no_general_beds / self.hospitalization_length_of_stay_general
+        died_from_icu = HICU * mortality_rate_ICU / self.hospitalization_length_of_stay_icu
+        died_from_hosp = HNonICU * self.mortality_rate_no_general_beds / self.hospitalization_length_of_stay_general
 
         dHNonICU_dt = infected_and_in_hospital_general - recovered_after_hospital_general - died_from_hosp
         dHICU_dt = infected_and_in_hospital_icu - recovered_after_hospital_icu - died_from_icu
