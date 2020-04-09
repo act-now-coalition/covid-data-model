@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "required": [
+    "cases",
+    "counties",
+    "date",
+    "deaths",
+    "source",
+    "state"
+  ],
+  "type": "object",
+  "properties": {
+    "deaths": {
+      "type": "number"
+    },
+    "source": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "number"
+    },
+    "counties": {
+      "items": {
+        "required": [
+          "cases",
+          "date",
+          "deaths",
+          "fips",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "cases": {
+            "type": "number"
+          },
+          "fips": {
+            "type": "string"
+          },
+          "deaths": {
+            "type": "number"
+          }
+        }
+      },
+      "type": "array"
+    }
+  }
+}

@@ -15,6 +15,7 @@ from collections import defaultdict
 from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import us_state_abbrev, us_fips
 from libs.datasets import FIPSPopulation
+from libs.enums import Intervention
 from libs.functions.calculate_projections import get_state_projections_df, get_county_projections_df
 from libs.datasets.projections_schema import OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
 from libs.datasets.results_schema import RESULT_DATA_COLUMNS_STATES, RESULT_DATA_COLUMNS_COUNTIES 
@@ -23,7 +24,7 @@ from libs.constants import NULL_VALUE
 # @TODO: Attempt today. If that fails, attempt yesterday.
 latest = datetime.date.today() - datetime.timedelta(days=1)
 
-def get_interventions_df():
+def _get_interventions_df():
     # TODO: read this from a dataset class
     interventions_url = 'https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json'
     interventions = requests.get(interventions_url).json()
@@ -32,7 +33,7 @@ def get_interventions_df():
         columns=['state', 'intervention']
     )
 
-def get_abbrev_df():
+def _get_abbrev_df():
     # TODO: read this from a dataset class
     return pd.DataFrame(
         list(us_state_abbrev.items()),
@@ -44,7 +45,7 @@ county_replace_with_null = {
     "Unassigned": NULL_VALUE
 }
 
-def get_usa_by_county_df():
+def _get_usa_by_county_df():
     # TODO: read this from a dataset class
     url = '{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv'.format(
         get_public_data_base_url(), latest.strftime("%m-%d-%Y"))
@@ -96,12 +97,11 @@ def get_usa_by_county_df():
 
     return final_df
 
-
 def get_usa_by_county_with_projection_df(input_dir, intervention_type):
-    us_only = get_usa_by_county_df()
+    us_only = _get_usa_by_county_df()
     fips_df = FIPSPopulation.local().data # used to get interventions
-    interventions_df = get_interventions_df() # used to say what state has what interventions
-    projections_df = get_county_projections_df(input_dir, intervention_type)
+    interventions_df = _get_interventions_df() # used to say what state has what interventions
+    projections_df = get_county_projections_df(input_dir, intervention_type, interventions_df)
 
     counties_decorated = us_only.merge(
         projections_df, left_on='State/County FIPS Code', right_on='FIPS', how='inner'
@@ -122,10 +122,10 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
 
 def get_usa_by_states_df(input_dir, intervention_type):
 
-    us_only = get_usa_by_county_df()
-    abbrev_df = get_abbrev_df()
-    interventions_df = get_interventions_df()
-    projections_df = get_state_projections_df(input_dir, intervention_type)
+    us_only = _get_usa_by_county_df()
+    abbrev_df = _get_abbrev_df()
+    interventions_df = _get_interventions_df()
+    projections_df = get_state_projections_df(input_dir, intervention_type, interventions_df)
 
     states_group = us_only.groupby(['Province/State'])
     states_agg = states_group.aggregate({
@@ -164,7 +164,7 @@ def get_usa_by_states_df(input_dir, intervention_type):
 
     return states_final
 
-# us_only = get_usa_by_county_df()
+# us_only = _get_usa_by_county_df()
 # us_only.to_csv("results/counties.csv")
 
 # states_final = get_usa_by_states_df()

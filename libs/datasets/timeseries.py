@@ -28,6 +28,7 @@ class TimeseriesDataset(object):
         DEATHS = "deaths"
         RECOVERED = "recovered"
         CURRENT_HOSPITALIZED = "current_hospitalized"
+        CUMULATIVE_HOSPITALIZED = "cumulative_hospitalized"
 
         # Generated in from_source
         COUNTY = "county"
@@ -38,7 +39,13 @@ class TimeseriesDataset(object):
         @classmethod
         def metrics(cls) -> List[str]:
             """Fields that contain metrics and can be aggregated."""
-            return [cls.CASES, cls.DEATHS, cls.RECOVERED, cls.CURRENT_HOSPITALIZED]
+            return [
+                cls.CASES,
+                cls.DEATHS,
+                cls.RECOVERED,
+                cls.CURRENT_HOSPITALIZED,
+                cls.CUMULATIVE_HOSPITALIZED
+            ]
 
     def __init__(self, data: pd.DataFrame, source_data=None):
         self.data = data

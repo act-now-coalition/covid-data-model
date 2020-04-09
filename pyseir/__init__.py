@@ -1,3 +1,3 @@
-import os
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data')
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_output')
+import pathlib
+DATA_DIR = pathlib.Path(__file__).parent.parent / 'data'
+OUTPUT_DIR = pathlib.Path(__file__).parent.parent / 'output'
