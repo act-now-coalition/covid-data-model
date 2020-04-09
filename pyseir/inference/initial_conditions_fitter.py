@@ -184,7 +184,7 @@ def _fit_fips(fips, generate_report=False):
         fitter.fit()
         if generate_report:
             fitter.plot_fit()
-            state_dir = os.path.join(OUTPUT_DIR, fitter.state)
+            state_dir = os.path.join(OUTPUT_DIR, 'pyseir', fitter.state)
             plt.savefig(os.path.join(state_dir, 'reports', f'{fitter.state}__{fitter.county}__{fitter.fips}__t0_fit.pdf'),
                         bbox_inches='tight')
             plt.close()
@@ -207,7 +207,7 @@ def generate_start_times_for_state(state, generate_report=False):
         If True, generate summary plots.
     """
     metadata = load_data.load_county_metadata()
-    state_dir = os.path.join(OUTPUT_DIR, state)
+    state_dir = os.path.join(OUTPUT_DIR, 'pyseir', state)
     os.makedirs(state_dir, exist_ok=True)
     os.makedirs(os.path.join(state_dir, 'reports'), exist_ok=True)
     os.makedirs(os.path.join(state_dir, 'data'), exist_ok=True)

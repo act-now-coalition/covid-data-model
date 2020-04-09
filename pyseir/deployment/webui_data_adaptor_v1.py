@@ -5,13 +5,12 @@ import math
 import pandas as pd
 from datetime import timedelta, datetime, date
 from pyseir import load_data
-import json
+import simplejson as json
 import logging
 import us
 from multiprocessing import Pool
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
-from pyseir.ensembles.ensemble_runner import EnsembleRunner
 
 
 class WebUIDataAdaptorV1:
@@ -23,7 +22,8 @@ class WebUIDataAdaptorV1:
     state: str
         State to map outputs for.
     """
-    def __init__(self, state, output_interval_days=4, run_mode='can-before', output_dir=None):
+    def __init__(self, state, output_interval_days=4, run_mode='can-before',
+                 output_dir=None, jhu_dataset=None, cds_dataset=None):
 
         self.output_interval_days = output_interval_days
         self.state = state
@@ -38,9 +38,10 @@ class WebUIDataAdaptorV1:
         os.makedirs(self.state_output_dir, exist_ok=True)
         self.population_data = FIPSPopulation.local().population()
 
-        jhu_local = JHUDataset.local()
+        jhu_local = jhu_dataset or JHUDataset.local()
+        cds_dataset = cds_dataset or CDSDataset.local()
 
-        self.county_timeseries = build_aggregate_county_data_frame(jhu_local, CDSDataset.local())
+        self.county_timeseries = build_aggregate_county_data_frame(jhu_local, cds_dataset)
         self.county_timeseries['date'] = self.county_timeseries['date'].dt.normalize()
 
         self.state_timeseries = jhu_local.timeseries().state_data
@@ -90,9 +91,8 @@ class WebUIDataAdaptorV1:
         #   (i) hospital admissions available.
         #   (ii) Not available, so cases are imputed...
         # We can just read the initial conditions infected and hospitalized to rescale the case data to match.
-        backfill['all_infected'] = output_model['all_infected'][0] * backfill['cases'] / backfill['cases'].max()
+        backfill['all_infected'] =( output_model['all_infected'][0] * backfill['cases'] / backfill['cases'].max()).fillna(0)
         backfill['all_hospitalized'] = np.multiply(backfill['all_infected'], hospitalization_rate).fillna(0)
-
         backfill['dead'] = backfill['deaths'].fillna(0)
         backfill['date'] = backfill['date'].dt.strftime('%m/%d/%y')
 

@@ -5,7 +5,7 @@ import numpy as np
 from multiprocessing import Pool
 from functools import partial
 import us
-import json
+import simplejson as json
 from enum import Enum
 import copy
 from collections import defaultdict
@@ -41,7 +41,7 @@ compartment_to_capacity_attr_map = {
 }
 
 
-FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')
+FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN', 'PR', 'VI', 'AS', 'MP', 'GU')
 
 
 class EnsembleRunner:
@@ -73,7 +73,7 @@ class EnsembleRunner:
     covid_timeseries: NoneType or DataSet
         Can be optionally passed in to prevent reloading.
     """
-    def __init__(self, fips, n_years=2, n_samples=250,
+    def __init__(self, fips, n_years=.5, n_samples=250,
                  suppression_policy=(0.35, 0.5, 0.75, 1),
                  skip_plots=False,
                  output_percentiles=(5, 25, 32, 50, 75, 68, 95),
@@ -87,7 +87,7 @@ class EnsembleRunner:
         self.fips = fips
         self.agg_level = AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
 
-        self.t_list = np.linspace(0, 365 * n_years, 365 * n_years)
+        self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years))
         self.skip_plots = skip_plots
         self.run_mode = RunMode(run_mode)
         self.hospitalizations_for_state = None
@@ -119,6 +119,8 @@ class EnsembleRunner:
         
         if not covid_timeseries:
             covid_timeseries = JHUDataset.local().timeseries()
+        else:
+            covid_timeseries = covid_timeseries.timeseries()
             
         self.covid_data = covid_timeseries\
             .get_subset(self.agg_level, country='USA', state=self.state_abbr) \
@@ -211,7 +213,7 @@ class EnsembleRunner:
 
             self.override_params['mortality_rate'] = 0.0109
             self.override_params['mortality_rate_no_general_beds'] = 0.10
-            self.override_params['mortality_rate_no_ICU_beds'] = 0.8
+            self.override_params['mortality_rate_no_ICU_beds'] = 0.0
 
             self.override_params['hospitalization_length_of_stay_general'] = 6
             self.override_params['hospitalization_length_of_stay_icu'] = 13

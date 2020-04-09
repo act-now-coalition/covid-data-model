@@ -21,5 +21,5 @@ def load_t0(fips):
     """
     county_metadata = load_county_metadata().set_index('fips')
     state = county_metadata.loc[fips]['state']
-    fit_results = os.path.join(OUTPUT_DIR, state, 'data', f'summary__{state}_imputed_start_times.pkl')
+    fit_results = os.path.join(OUTPUT_DIR, 'pyseir', state, 'data', f'summary__{state}_imputed_start_times.pkl')
     return datetime.fromtimestamp(pd.read_pickle(fit_results).set_index('fips').loc[fips]['t0_date'].timestamp())
