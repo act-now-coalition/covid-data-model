@@ -172,6 +172,11 @@ def infer_t0(fips, method='first_case', default=pd.Timestamp('2020-01-15')):
         The method to determine t0.
     default : pd.Timestamp
         Default t0 if neither method works.
+
+    Returns
+    -------
+    t0 : pd.Timestamp
+        Inferred t0 for given fips.
     """
 
     if method == 'impute':
