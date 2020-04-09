@@ -119,11 +119,12 @@ class BedsDataset(object):
             self.county_data, index=self.COUNTY_GROUP_KEY
         )
 
-    def get_state_level(self, state) -> Optional[int]:
+    def get_state_level(self, state, column=Fields.MAX_BED_COUNT) -> Optional[int]:
         """Get beds for a specific state.
 
         Args:
             state: State to query.
+            column: Beds count column to return.
 
         Returns: Beds for a state.
         """
@@ -131,16 +132,19 @@ class BedsDataset(object):
         beds = self.state_data[state_filter]
 
         if len(beds):
-            return beds.iloc[0][self.Fields.MAX_BED_COUNT]
+            return beds.iloc[0][column]
         return None
 
-    def get_county_level(self, state, county=None, fips=None) -> Optional[int]:
+    def get_county_level(
+            self, state, county=None, fips=None, column=Fields.MAX_BED_COUNT
+    ) -> Optional[int]:
         """Get beds for a specific county (from fips code or county).
 
         Args:
             state: State to query
             county: Optional name of county.
             fips: Optional fips code.
+            column: Beds count column to return.
 
         Returns: Beds for a county.
         """
@@ -156,6 +160,6 @@ class BedsDataset(object):
 
         beds = data[state_filter & location_filter]
         if len(beds):
-            return beds.iloc[0][self.Fields.MAX_BED_COUNT]
+            return beds.iloc[0][column]
 
         return None
