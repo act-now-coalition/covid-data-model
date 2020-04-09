@@ -1,7 +1,7 @@
 # To debug, it's recommended you modify / use the version in the test-actions repo:
 # https://github.com/covid-projections/test-actions/blob/master/.github/workflows/deploy_api.yml
 
-name: Build / Publish API artifacts to data.covidactnow.org
+name: Build & Publish API artifacts to data.covidactnow.org
 
 on:
   # JHU posts new data at 11:30 (UTC).
