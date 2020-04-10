@@ -5,7 +5,8 @@ from libs.enums import Intervention
 from libs import validate_results
 from libs import build_dod_dataset
 from libs import dataset_deployer
-from api.can_predictions import CANPredictionAPI, _Projections, _HospitalBeds
+from api.can_predictions import CANPredictionAPIRow, CANPredictionAPI, _Projections, _HospitalBeds
+from libs.datasets import results_schema as rc
 
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
@@ -40,12 +41,23 @@ def run_projections(
         counties_key_name, counties_df
     )
 
-    _hospital_beds = _HospitalBeds(hospitalizationPeakDate='today', hospitalOverloadDate='yesterday')
-    _projections = _Projections(intervention='trash',aggregateDeaths=1,hospitalBeds=_hospital_beds)
-    api = CANPredictionAPI(stateName='test', countyName='c', fips='12345', lastUpdatedDate='today', projections=_projections)
-    print(api.json())
     return county_results
 
+def generate_api(intervention_result: TopCountiesPipelineResult): 
+    projection = intervention_result.projection_df
+
+    api_results = []
+    # TODO: I think pandas doesn't really vibe with iterating, but it's 3000 and the other option is applying 
+    # things in a weird way so idk this is anti pandas but w/e 
+    for index, county_row in projection.sort_values(by=[rc.MEAN_DEATHS], ascending=False).head(100).iterrows(): 
+        _hospital_beds = _HospitalBeds(
+            peakDate=county_row[rc.PEAK_HOSPITALIZATIONS].to_pydatetime(), 
+            shortageStartDate=county_row[rc.HOSPITAL_SHORTFALL_DATE].to_pydatetime(), 
+            peakShortfall=county_row[rc.PEAK_HOSPITALIZATION_SHORTFALL])
+        _projections = _Projections(hospitalBeds=_hospital_beds, aggregateDeaths=county_row[rc.MEAN_DEATHS])
+        county_result = CANPredictionAPIRow(stateName=county_row[rc.STATE], countyName=county_row[rc.COUNTY], fips=county_row[rc.FIPS], lastUpdatedDate=county_row[rc.LAST_UPDATED], projections=_projections)
+        api_results.append(county_result)
+    return CANPredictionAPI(data=api_results)
 
 def deploy_results(intervention_result: TopCountiesPipelineResult, output: str):
     """Deploys results from an intervention to specified output directory.
