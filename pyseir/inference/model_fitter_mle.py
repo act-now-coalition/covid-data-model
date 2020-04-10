@@ -53,6 +53,9 @@ def fit_seir(R0, t0, eps, times,
         policy projected into future.
     times: np.array
         Time since t0 of observed new cases or new deaths.
+    by: str
+        Level of district to fit the seir model for, should be either 'fips'
+        or 'state'.
     observed_new_cases: np.array
         Observed new cases.
     observed_new_deaths: np.array
