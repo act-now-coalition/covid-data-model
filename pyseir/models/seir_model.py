@@ -167,11 +167,10 @@ class SEIRModel:
                  beds_general=300,
                  beds_ICU=100,
                  ventilators=60,
-                 mortality_rate=0.0052,
                  mortality_rate_from_ICU=0.4,
                  mortality_rate_from_hospital=0.0,
                  mortality_rate_no_ICU_beds=1.,
-                 mortality_rate_no_ventilator=1.0,
+                 mortality_rate_from_ICUVent=1.0,
                  mortality_rate_no_general_beds=0.0,
                  initial_hospital_bed_utilization=0.6,
 
@@ -229,7 +228,7 @@ class SEIRModel:
 
         self.mortality_rate_no_general_beds = mortality_rate_no_general_beds
         self.mortality_rate_no_ICU_beds = mortality_rate_no_ICU_beds
-        self.mortality_rate_no_ventilator = mortality_rate_no_ventilator
+        self.mortality_rate_from_ICUVent = mortality_rate_from_ICUVent
         self.initial_hospital_bed_utilization = initial_hospital_bed_utilization
 
         self.mortality_rate_from_ICU = mortality_rate_from_ICU
@@ -269,39 +268,51 @@ class SEIRModel:
         dIdt = exposed_and_symptomatic \
                - infected_and_recovered_no_hospital \
                - infected_and_in_hospital_general \
-               - infected_and_in_hospital_icu # - infected_and_dead
+               - infected_and_in_hospital_icu
 
         mortality_rate_ICU = self.mortality_rate_from_ICU if HICU <= self.beds_ICU else self.mortality_rate_no_ICU_beds
         mortality_rate_NonICU = self.mortality_rate_from_hospital if HNonICU <= self.beds_general else self.mortality_rate_no_general_beds
 
-        recovered_after_hospital_general = HNonICU * (1 - mortality_rate_NonICU) / self.hospitalization_length_of_stay_general
-        recovered_after_hospital_icu = HICU * (1 - mortality_rate_ICU) / ((1 - self.fraction_icu_requiring_ventilator)/ self.hospitalization_length_of_stay_icu
-                                               + self.fraction_icu_requiring_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator)
+        died_from_hosp = HNonICU * mortality_rate_NonICU / self.hospitalization_length_of_stay_general
+        died_from_icu = HICU * (1 - self.fraction_icu_requiring_ventilator) * mortality_rate_ICU / self.hospitalization_length_of_stay_icu
+        died_from_icu_vent = HICUVent * self.mortality_rate_from_ICUVent / self.hospitalization_length_of_stay_icu_and_ventilator
 
-        died_from_icu = HICU * mortality_rate_ICU / self.hospitalization_length_of_stay_icu
-        died_from_hosp = HNonICU * self.mortality_rate_no_general_beds / self.hospitalization_length_of_stay_general
+        recovered_after_hospital_general = HNonICU * (1 - mortality_rate_NonICU) / self.hospitalization_length_of_stay_general
+
+
+        recovered_from_icu_no_vent = HICU * (1 - mortality_rate_ICU) * (1 - self.fraction_icu_requiring_ventilator) / self.hospitalization_length_of_stay_icu
+        recovered_from_icu_vent = HICU * (1 - max(mortality_rate_ICU, self.mortality_rate_from_ICUVent)) \
+                                  * self.fraction_icu_requiring_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator
+
+        # recovered_after_hospital_icu = HICU * (1 - mortality_rate_ICU) * (1 - self.fraction_icu_requiring_ventilator) / self.hospitalization_length_of_stay_icu \
+        #                                + HICUVent * self.fraction_icu_requiring_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator
+
+
 
         dHNonICU_dt = infected_and_in_hospital_general - recovered_after_hospital_general - died_from_hosp
-        dHICU_dt = infected_and_in_hospital_icu - recovered_after_hospital_icu - died_from_icu
+        dHICU_dt = infected_and_in_hospital_icu - recovered_from_icu_no_vent - recovered_from_icu_vent - died_from_icu - died_from_icu_vent
+
+        # This compartment is for tracking ventillator count. The beds are accounted for in the ICU cases.
+        dHICUVent_dt = infected_and_in_hospital_icu * self.fraction_icu_requiring_ventilator \
+                       - HICUVent / self.hospitalization_length_of_stay_icu_and_ventilator
 
         # Tracking categories...
         dTotalInfections = exposed_and_symptomatic + exposed_and_asymptomatic
         dHAdmissions_general = infected_and_in_hospital_general
         dHAdmissions_ICU = infected_and_in_hospital_icu  # Ventilators also count as ICU beds.
 
-        # This compartment is for tracking ventillator count. The beds are accounted for in the ICU cases.
-        dHICUVent_dt = infected_and_in_hospital_icu * self.fraction_icu_requiring_ventilator \
-                       - HICUVent / self.hospitalization_length_of_stay_icu_and_ventilator
+
 
         # Fraction that recover
         dRdt = (asymptomatic_and_recovered
                 + infected_and_recovered_no_hospital
                 + recovered_after_hospital_general
-                + recovered_after_hospital_icu)
+                + recovered_from_icu_vent
+                + recovered_from_icu_no_vent)
 
         # TODO Age dep mortality. Recent estimate fo relative distribution Fig 3 here:
         #      http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
-        dDdt = died_from_icu + died_from_hosp  # Fraction that die.
+        dDdt = died_from_icu + died_from_icu_vent + died_from_hosp   # Fraction that die.
 
         return dSdt, dEdt, dAdt, dIdt, dRdt, dHNonICU_dt, dHICU_dt, dHICUVent_dt, dDdt, dHAdmissions_general, dHAdmissions_ICU, dTotalInfections
 
@@ -359,8 +370,6 @@ class SEIRModel:
             # fraction and account for that below.
             'deaths_from_icu_bed_limits': np.cumsum((HICU - self.beds_ICU).clip(min=0))
                                           * self.mortality_rate_no_ICU_beds / self.hospitalization_length_of_stay_icu,
-            'deaths_from_ventilator_limits': np.cumsum((HICUVent - self.ventilators).clip(min=0))
-                                             * self.mortality_rate_no_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator,
             'HGen_cumulative': np.cumsum(HGen) / self.hospitalization_length_of_stay_general,
             'HICU_cumulative': np.cumsum(HICU) / self.hospitalization_length_of_stay_icu,
             'HVent_cumulative': np.cumsum(HICUVent) / self.hospitalization_length_of_stay_icu_and_ventilator
