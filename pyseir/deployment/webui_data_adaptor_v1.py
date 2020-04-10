@@ -187,7 +187,7 @@ class WebUIDataAdaptorV1:
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 
-    def generate_state(self, states_only=False):
+    def generate_state(self, states_only=False, include_imputed=False):
         """
         Generate for each county in a state, the output for the webUI.
 
@@ -195,23 +195,24 @@ class WebUIDataAdaptorV1:
         ----------
         states_only: bool
             If True only run the state level.
+        include_imputed:
+            If True, map the outputs for imputed counties as well as those with
+            no data.
         """
         state_fips = us.states.lookup(self.state).fips
         self.map_fips(state_fips)
 
         if not states_only:
             df = load_data.load_county_metadata()
-
             all_fips = df[df['state'].str.lower() == self.state.lower()].fips
 
-            # Don't output inputed fips...
-            fips_with_data = self.jhu_local.timeseries() \
-                .get_subset(AggregationLevel.COUNTY, country='USA') \
-                .get_data(country='USA', state=self.state_abbreviation).fips.unique().tolist()
+            if not include_imputed:
+                # Filter...
+                fips_with_data = self.jhu_local.timeseries() \
+                    .get_subset(AggregationLevel.COUNTY, country='USA') \
+                    .get_data(country='USA', state=self.state_abbreviation).fips.unique().tolist()
 
-            all_fips = [fips for fips in all_fips if fips in fips_with_data]
-
-            print(all_fips)
+                all_fips = [fips for fips in all_fips if fips in fips_with_data]
             p = Pool()
             p.map(self.map_fips, all_fips)
             p.close()
