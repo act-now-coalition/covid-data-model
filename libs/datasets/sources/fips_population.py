@@ -5,7 +5,9 @@ from libs.datasets.population import PopulationDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.build_params import US_STATE_ABBREV
+from libs import us_state_abbrev
 from libs import enums
+from libs.datasets.dataset_utils import AggregationLevel
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 
 
@@ -65,10 +67,19 @@ class FIPSPopulation(data_source.DataSource):
 
         data = data.append(unknown_fips)
         # All DH data is aggregated at the county level
-        data[cls.Fields.AGGREGATE_LEVEL] = "county"
+        data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.COUNTY.value
         data[cls.Fields.COUNTRY] = "USA"
 
-        return data
+        states_aggregated = dataset_utils.aggregate_and_get_nonmatching(
+            data,
+            [cls.Fields.COUNTRY, cls.Fields.STATE, cls.Fields.AGGREGATE_LEVEL],
+            AggregationLevel.COUNTY,
+            AggregationLevel.STATE,
+        ).reset_index()
+        states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(us_state_abbrev.abbrev_us_fips)
+        states_aggregated[cls.Fields.COUNTY] = None
+
+        return pd.concat([data, states_aggregated])
 
 
 def build_fips_data_frame(census_csv, counties_csv):
