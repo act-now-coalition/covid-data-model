@@ -277,8 +277,7 @@ class SEIRModel:
         recovered_after_hospital_general = HNonICU * (1 - mortality_rate_NonICU) / self.hospitalization_length_of_stay_general
 
         recovered_from_icu_no_vent = HICU * (1 - mortality_rate_ICU) * (1 - self.fraction_icu_requiring_ventilator) / self.hospitalization_length_of_stay_icu
-        recovered_from_icu_vent = HICU * (1 - max(mortality_rate_ICU, self.mortality_rate_from_ICUVent)) \
-                                  * self.fraction_icu_requiring_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator
+        recovered_from_icu_vent = HICUVent * (1 - max(mortality_rate_ICU, self.mortality_rate_from_ICUVent)) / self.hospitalization_length_of_stay_icu_and_ventilator
 
         dHNonICU_dt = infected_and_in_hospital_general - recovered_after_hospital_general - died_from_hosp
         dHICU_dt = infected_and_in_hospital_icu - recovered_from_icu_no_vent - recovered_from_icu_vent - died_from_icu - died_from_icu_vent
