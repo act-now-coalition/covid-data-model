@@ -206,10 +206,6 @@ class EnsembleRunner:
                 self.override_params = ParameterEnsembleGenerator(
                     self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
 
-            #self.override_params['R0'] = R0
-            # self.override_params['delta'] = 1 / 6.
-            # self.override_params['sigma'] = 1 / 3.
-
             self.override_params['mortality_rate_no_general_beds'] = 0.0
             self.override_params['mortality_rate_from_hospital'] = 0.0
             self.override_params['mortality_rate_from_ICU'] = 0.40
