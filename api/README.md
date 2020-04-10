@@ -38,6 +38,23 @@ We currently provide 6 file types:
 │   └── states.version.json
 ```
 
+
+## Generating a new API schema
+
+To generate a new tracked API schema, create a new python file in the `api/` folder containing
+a `pydantic.BaseModel` class definition. Read [these docs](https://pydantic-docs.helpmanual.io/usage/schema/)
+to learn more about how pydantic generates json-schema from python objects.
+
+To update the public API, run:
+```
+./run.py api update-schemas
+```
+
+This will generate all schemas from files.  If you do not want to expose a schema,
+prepend the schema with a `_` (i.e. `_MyPrivateSchema`); these will not be
+uploaded.
+
+
 ## Specific Files Schemas
 
 ### Arrays
@@ -139,7 +156,7 @@ Here's an example
 
 ### Case Summary
 
-For `case_summary/<state abreviation>.summary.json` files see the [JSON Schema](schemas/case_summary.json)
+For `case_summary/<state abreviation>.summary.json` files see the [JSON Schema](schemas/StateCaseSummary.json)
 
 ### County Summaries
 
