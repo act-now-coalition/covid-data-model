@@ -5,13 +5,13 @@ import math
 import pandas as pd
 from datetime import timedelta, datetime, date
 from pyseir import load_data
-import json
+import simplejson as json
 import logging
 import us
 from multiprocessing import Pool
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
-from pyseir.ensembles.ensemble_runner import EnsembleRunner
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 class WebUIDataAdaptorV1:
@@ -22,12 +22,17 @@ class WebUIDataAdaptorV1:
     ----------
     state: str
         State to map outputs for.
+    include_imputed:
+        If True, map the outputs for imputed counties as well as those with
+        no data.
     """
-    def __init__(self, state, output_interval_days=4, run_mode='can-before', output_dir=None):
+    def __init__(self, state, output_interval_days=4, run_mode='can-before',
+                 output_dir=None, jhu_dataset=None, cds_dataset=None, include_imputed=False):
 
         self.output_interval_days = output_interval_days
         self.state = state
         self.run_mode = run_mode
+        self.include_imputed = include_imputed
 
         output_dir = output_dir or OUTPUT_DIR
         self.county_output_dir = os.path.join(output_dir, 'web_ui', 'county')
@@ -38,12 +43,13 @@ class WebUIDataAdaptorV1:
         os.makedirs(self.state_output_dir, exist_ok=True)
         self.population_data = FIPSPopulation.local().population()
 
-        jhu_local = JHUDataset.local()
+        self.jhu_local = jhu_dataset or JHUDataset.local()
+        self.cds_dataset = cds_dataset or CDSDataset.local()
 
-        self.county_timeseries = build_aggregate_county_data_frame(jhu_local, CDSDataset.local())
+        self.county_timeseries = build_aggregate_county_data_frame(self.jhu_local, self.cds_dataset)
         self.county_timeseries['date'] = self.county_timeseries['date'].dt.normalize()
 
-        self.state_timeseries = jhu_local.timeseries().state_data
+        self.state_timeseries = self.jhu_local.timeseries().state_data
         self.state_timeseries['date'] = self.state_timeseries['date'].dt.normalize()
 
     def backfill_output_model_fips(self, fips, t0, final_beds, output_model):
@@ -67,7 +73,7 @@ class WebUIDataAdaptorV1:
             Backfill dataframe.
         """
         backfill_to_date = date(2020, 3, 3)   # @TODO: Parameterize
-        hospitalization_rate = 0.073          # @TODO: Parameterize
+        hospitalization_rate = 0.04          # @TODO: Parameterize
         intervals_to_backfill = math.ceil((t0.date() - backfill_to_date).days / self.output_interval_days)
         backfill_offsets = range(-intervals_to_backfill * self.output_interval_days, 0, self.output_interval_days)
 
@@ -90,7 +96,7 @@ class WebUIDataAdaptorV1:
         #   (i) hospital admissions available.
         #   (ii) Not available, so cases are imputed...
         # We can just read the initial conditions infected and hospitalized to rescale the case data to match.
-        backfill['all_infected'] = output_model['all_infected'][0] * backfill['cases'] / backfill['cases'].max()
+        backfill['all_infected'] =( output_model['all_infected'][0] * backfill['cases'] / backfill['cases'].max()).fillna(0)
         backfill['all_hospitalized'] = np.multiply(backfill['all_infected'], hospitalization_rate).fillna(0)
 
         backfill['dead'] = backfill['deaths'].fillna(0)
@@ -121,6 +127,8 @@ class WebUIDataAdaptorV1:
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
         for i_policy, suppression_policy in enumerate(policies):
+            if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
+                continue
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
@@ -199,6 +207,15 @@ class WebUIDataAdaptorV1:
         if not states_only:
             df = load_data.load_county_metadata()
             all_fips = df[df['state'].str.lower() == self.state.lower()].fips
+
+            if not self.include_imputed:
+                # Filter...
+                fips_with_cases = self.jhu_local.timeseries() \
+                    .get_subset(AggregationLevel.COUNTY, country='USA') \
+                    .get_data(country='USA', state=self.state_abbreviation)
+                fips_with_cases = fips_with_cases[fips_with_cases.cases > 0].fips.unique().tolist()
+                all_fips = [fips for fips in all_fips if fips in fips_with_cases]
+
             p = Pool()
             p.map(self.map_fips, all_fips)
             p.close()

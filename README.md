@@ -24,7 +24,25 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 ## [Setup](./SETUP.md)
 
-## Running
+# Running
+
+To run a formalized job, kick it off with github actions.  Set your local token.
+
+```bash
+export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
+```
+
+Then simply trigger the publish job with:
+```bash
+curl -H "Accept: application/vnd.github.everest-preview+json" \
+    -H "Authorization: token $GITHUB_TOKEN" \
+    --request POST \
+    --data '{"event_type": "publish-api"}' \
+    https://api.github.com/repos/covid-projections/covid-data-model/dispatches
+```
+
+
+# Development
 
 ### Run website data deploy
 
@@ -71,7 +89,9 @@ Change to into the county_covid_seir_models directory
 
 
 ### Running Models
-`pyseir run-all --state=California`
+Example here. You can remove the `--state` flag to run everything. To run only states, add `--states-only`.
+`pyseir run-all --run-mode='can-before-hospitalization-new-params' --output-interval-days=4 --state="California"`
 
-This will take a few minutes to download today's data, run inference and model
-ensembles, and generate the output. Then check the `output/` folder for results.
+`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags. 
+
+Check the `output/` folder for results.
