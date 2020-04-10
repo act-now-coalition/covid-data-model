@@ -38,7 +38,6 @@ We currently provide 6 file types:
 │   └── states.version.json
 ```
 
-
 ## Specific Files Schemas
 
 ### Arrays
