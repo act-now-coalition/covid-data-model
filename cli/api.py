@@ -6,15 +6,18 @@ import click
 _logger = logging.getLogger(__name__)
 
 
-@click.group('api')
+@click.group("api")
 def main():
     pass
 
 
-
 @main.command()
 @click.option(
-    '--output-dir', '-o', type=pathlib.Path, help="Output directory to save schemas in.", default="api/schemas"
+    "--output-dir",
+    "-o",
+    type=pathlib.Path,
+    help="Output directory to save schemas in.",
+    default="api/schemas",
 )
 def update_schemas(output_dir):
     """Updates all public facing API schemas."""
