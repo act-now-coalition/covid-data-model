@@ -356,8 +356,6 @@ def plot_inferred_result_state(fit_results):
     )
     model.run()
 
-    cases, deaths = predict_cases_deaths(model, t0, times)
-
     plot_fitting_results(by='state',
                          metadata=metadata,
                          times=times,
