@@ -7,8 +7,7 @@ from libs.pipelines import top_counties_pipeline
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 
-
-@click.command()
+@click.command('deploy-top-counties')
 @click.option(
     "--run_validation",
     "-r",
@@ -27,7 +26,7 @@ PROD_BUCKET = "data.covidactnow.org"
     default="results/top_counties",
     help="Output directory for artifacts",
 )
-def deploy(run_validation, input_dir, output):
+def deploy_top_counties(run_validation, input_dir, output):
     """The entry function for invocation"""
 
     county_result = top_counties_pipeline.run_projections(
@@ -37,20 +36,3 @@ def deploy(run_validation, input_dir, output):
     top_counties_pipeline.deploy_results(county_results_api, output)
 
     logger.info("finished top counties job")
-
-
-if __name__ == "__main__":
-    """Used for manual trigger
-
-    # triggering persistance to s3
-    AWS_PROFILE=covidactnow BUCKET_NAME=covidactnow-deleteme python deploy_top_counties_dataset.py
-
-    # deploy to the data bucket
-    AWS_PROFILE=covidactnow BUCKET_NAME=data.covidactnow.org python deploy_top_counties_dataset.py
-
-    # triggering persistance to local
-    python deploy_top_counties_dataset.py
-    """
-    logging.basicConfig(level=logging.INFO)
-    # pylint: disable=no-value-for-parameter
-    deploy()

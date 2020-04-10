@@ -9,14 +9,11 @@ Documented https://www.dropbox.com/scl/fi/o4bec2kz8dkcxdtabtqda/CAN-V1-API-Draft
 
 
 class _HospitalBeds(pydantic.BaseModel):
-    peakShortfall: int = pydantic.Field(
-        default=0, description="Shortfall of beds needed at the peek hospitalizaitons"
+    peakShortfall: int = pydantic.Field(..., description="Shortfall of beds needed at the peek hospitalizaitons"
     )
-    peakDate: Optional[datetime.datetime] = pydantic.Field(
-        default="", description="Date of peak hospitalizations"
+    peakDate: Optional[datetime.datetime] = pydantic.Field(..., description="Date of peak hospitalizations"
     )
-    shortageStartDate: Optional[datetime.datetime] = pydantic.Field(
-        default="", description="Date when hospitals overload"
+    shortageStartDate: Optional[datetime.datetime] = pydantic.Field(..., description="Date when hospitals overload"
     )
 
 
