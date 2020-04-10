@@ -21,4 +21,4 @@ pyseir run-all --run-mode=can-before-hospitalization --output-dir="${MODELS_DIR}
 #./run.py model county -o "${MODELS_DIR}/county"
 
 mkdir -p dod_results
-./run.py deploy-dod -i "${MODELS_DIR}" -o "${RESULTS_DIR}"
+./run.py deploy-dod -i "${MODELS_DIR}/web_ui" -o "${RESULTS_DIR}"
