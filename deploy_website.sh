@@ -14,8 +14,8 @@ if [ ! -d "${PUBLIC_DATA_PATH}" ] ; then
 fi
 
 # Run State and County level models
-./run_model.py state -o "${PUBLIC_DATA_PATH}"
-./run_model.py county -o "${PUBLIC_DATA_PATH}/county"
-./run_model.py county-summary -o "${PUBLIC_DATA_PATH}/county_summaries"
+./run.py model state -o "${PUBLIC_DATA_PATH}"
+./run.py model county -o "${PUBLIC_DATA_PATH}/county"
+./run.py model county-summary -o "${PUBLIC_DATA_PATH}/county_summaries"
 # Generate the latest state case summary data.
-./run_data.py latest -o "${PUBLIC_DATA_PATH}/case_summary"
+./run.py data latest -o "${PUBLIC_DATA_PATH}/case_summary"
