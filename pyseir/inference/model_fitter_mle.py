@@ -387,7 +387,7 @@ def run_state(state, states_only=False):
 
     else:
         fit_results = fit_state_model(state)
-        output_file = os.path.join(OUTPUT_DIR, state.title(), 'data',
+        output_file = os.path.join(OUTPUT_DIR, 'pyseir', state.title(), 'data',
                                    f'summary_{state}_state_only__mle_fit_results.json')
         pd.DataFrame(fit_results, index=[state]).to_json(output_file)
 
