@@ -15,7 +15,7 @@ from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGene
 t_list = np.linspace(0, 1000, 1001)
 ref_date = datetime(year=2020, month=1, day=1)
 frac_counties_with_seed_infection = 0.5
-
+min_deaths = 5   # minimum number of deaths for chi2 calculation and plot.
 
 def get_average_SEIR_parameters(fips):
     """
@@ -54,6 +54,10 @@ def fit_seir(R0, t0, eps, times,
     by: str
         Level of district to fit the seir model for, should be either 'fips'
         or 'state'.
+    fips: str
+        County fips code.
+    state: str
+        Full state name.
     observed_new_cases: np.array
         Observed new cases.
     observed_new_deaths: np.array
@@ -62,6 +66,7 @@ def fit_seir(R0, t0, eps, times,
         Parameters to pass to SEIR model.
     suppression_policy_params: dict
         Parameters to pass to suppression policy model.
+
     Returns
     -------
       : float
@@ -85,7 +90,7 @@ def fit_seir(R0, t0, eps, times,
     predicted_cases = model.gamma * np.interp(times, t_list + t0, model.results[
         'total_new_infections'])
     predicted_deaths = np.interp(times, t_list + t0, model.results[
-        'direct_deaths_per_day'])
+        'total_deaths_per_day'])
 
     # Assume the error on the case count could be off by a massive factor 50.
     # Basically we don't want to use it if there appreciable mortality data available.
@@ -99,7 +104,7 @@ def fit_seir(R0, t0, eps, times,
 
     # Compute Chi2
     chi2_cases = np.sum((observed_new_cases - predicted_cases) ** 2 / cases_variance)
-    if observed_new_deaths.sum() > 5:
+    if observed_new_deaths.sum() > min_deaths:
         chi2_deaths = np.sum(
             (observed_new_deaths - predicted_deaths) ** 2 / deaths_variance)
     else:
@@ -146,6 +151,9 @@ def fit_county_model(fips):
                        limit_R0=[1, 8],
                        limit_eps=[0, 2], limit_t0=[-90, 90], error_t0=1, error_R0=1.,
                        errordef=1)
+
+    # run MIGRAD algorithm for optimization.
+    # for details refer: https://root.cern/root/html528/TMinuit.html
     m.migrad()
     values = dict(fips=fips, **dict(m.values))
     if np.isnan(values['t0']):
@@ -211,7 +219,10 @@ def fit_state_model(state):
                        error_eps=.2, error_t0=1, error_R0=1., errordef=1,
                        limit_R0=[1, 8], limit_eps=[0, 2], limit_t0=[-90, 90])
 
+    # run MIGRAD algorithm for optimization.
+    # for details refer: https://root.cern/root/html528/TMinuit.html
     m.migrad()
+
     values = dict(**dict(m.values))
     if np.isnan(values['t0']):
         logging.error(f'Could not compute MLE values for state {state_metadata["county"]}')
@@ -295,7 +306,7 @@ def plot_inferred_result_county(fit_results):
     times, observed_new_cases, observed_new_deaths = \
             load_data.load_new_case_data_by_fips(fips, t0=ref_date)
 
-    if observed_new_cases.sum() < 5:
+    if observed_new_cases.sum() < min_deaths:
         logging.warning(f"{metadata['county']} has fewer than 5 cases. "
                         f"Aborting plot.")
     else:
