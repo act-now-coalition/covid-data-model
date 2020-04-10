@@ -11,7 +11,6 @@ _logger = logging.getLogger(__name__)
 SCHEMAS_PATH = pathlib.Path(__file__).parent / "schemas"
 
 
-
 def load_public_schemas() -> List[Type[pydantic.BaseModel]]:
     """Loads all pydantic Schemas for export.
 
@@ -41,11 +40,11 @@ def load_public_schemas() -> List[Type[pydantic.BaseModel]]:
     schemas = []
     for subclass in pydantic.BaseModel.__subclasses__():
 
-        if subclass.__module__.startswith('pydantic'):
+        if subclass.__module__.startswith("pydantic"):
             # Skip any pydantic models.
             continue
 
-        if subclass.__name__.startswith('_'):
+        if subclass.__name__.startswith("_"):
             _logger.debug(f"Skipping private model: {subclass}")
             continue
         schemas.append(subclass)
