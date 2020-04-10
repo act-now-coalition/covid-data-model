@@ -64,6 +64,7 @@ def _get_usa_by_states_df():
 
 
 def get_usa_by_county_with_projection_df(input_dir, intervention_type):
+    print(input_dir, intervention_type)
     us_only = _get_usa_by_county_df()
     fips_df = FIPSPopulation.local().data
     # used to get interventions
@@ -71,6 +72,10 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     projections_df = get_county_projections_df(
         input_dir, intervention_type, interventions_df
     )
+    print(interventions_df.head())
+    print(projections_df.head())
+    print(us_only.head())
+    print("HIIIII")
 
     counties_decorated = (
         us_only.merge(
