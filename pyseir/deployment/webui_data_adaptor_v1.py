@@ -127,6 +127,8 @@ class WebUIDataAdaptorV1:
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
         for i_policy, suppression_policy in enumerate(policies):
+            if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
+                continue
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
@@ -211,8 +213,8 @@ class WebUIDataAdaptorV1:
                 fips_with_data = self.jhu_local.timeseries() \
                     .get_subset(AggregationLevel.COUNTY, country='USA') \
                     .get_data(country='USA', state=self.state_abbreviation).fips.unique().tolist()
-
                 all_fips = [fips for fips in all_fips if fips in fips_with_data]
+
             p = Pool()
             p.map(self.map_fips, all_fips)
             p.close()
