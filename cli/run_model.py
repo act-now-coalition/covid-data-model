@@ -9,8 +9,9 @@ from libs.pipelines import can_model_pipeline
 _logger = logging.getLogger(__name__)
 
 
-@click.group()
+@click.group('model')
 def main():
+    """Run models"""
     pass
 
 
