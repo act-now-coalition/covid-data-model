@@ -52,23 +52,23 @@ execute() {
 
   echo ">>> Generating state models to ${STATES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-  ./run_model.py state -o "${API_OUTPUT_DIR}" > /dev/null
+  ./run.py model state -o "${API_OUTPUT_DIR}" > /dev/null
 
   echo ">>> Generating county models to ${COUNTIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-  ./run_model.py county -o "${COUNTIES_DIR}" > /dev/null
+  ./run.py model county -o "${COUNTIES_DIR}" > /dev/null
 
   echo ">>> Generating county summaries to ${COUNTY_SUMMARIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-  ./run_model.py county-summary -o "${COUNTY_SUMMARIES_DIR}" > /dev/null
+  ./run.py model county-summary -o "${COUNTY_SUMMARIES_DIR}" > /dev/null
 
   echo ">>> Generating case summaries to ${CASE_SUMMARIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-  ./run_data.py latest -o "${CASE_SUMMARIES_DIR}" > /dev/null
+  ./run.py data latest -o "${CASE_SUMMARIES_DIR}" > /dev/null
 
   echo ">>> Generating DoD artifacts to ${DOD_DIR}"
   mkdir -p "${DOD_DIR}"
-  ./deploy_dod_dataset.py -i "${STATES_DIR}" -o "${DOD_DIR}"
+  ./run.py deploy-dod -i "${STATES_DIR}" -o "${DOD_DIR}"
 
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json
