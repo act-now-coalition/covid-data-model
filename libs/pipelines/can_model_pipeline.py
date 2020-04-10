@@ -470,10 +470,3 @@ def run_state_level_forecast(
 
     pool.close()
     pool.join()
-
-
-if __name__ == "__main__":
-    _logger.warning(
-        "Models are no longer ran from run.py. Please see README.md for the most up to date "
-        "way to run models."
-    )
