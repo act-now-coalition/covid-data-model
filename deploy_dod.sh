@@ -16,7 +16,7 @@ RESULTS_DIR="results/dod_results"
 mkdir -p "${MODELS_DIR}"
 
 # Run State and County level models
-pyseir run-all --state=California --run-mode=can-before-hospitalization --output-dir="${MODELS_DIR}"
+pyseir run-all --run-mode=can-before-hospitalization --output-dir="${MODELS_DIR}"
 #./run.py model state -o "${MODELS_DIR}/state"
 #./run.py model county -o "${MODELS_DIR}/county"
 
