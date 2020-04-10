@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 from pyseir.load_data import (load_public_implementations_data,
                               load_county_metadata,
                               load_county_case_data)
-from pyseir.inference import fit_results
+from pyseir.inference.infer_t0 import infer_t0
 
 
 # Fig 4 of Imperial college.
@@ -155,39 +155,6 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
             raise ValueError(f'Invalid scenario {scenario}')
 
     return interp1d(t_list, rho, fill_value='extrapolate')
-
-
-def infer_t0(fips, method='first_case', default=pd.Timestamp('2020-01-15')):
-    """
-    Infer t0 for a given fips under given methods:
-       - first_case: t0 is set as time of first observed case.
-       - impute: t0 is imputed.
-    Returns default value if neither method works.
-
-    Parameters
-    ----------
-    fips : str
-        County fips
-    method : str
-        The method to determine t0.
-    default : pd.Timestamp
-        Default t0 if neither method works.
-
-    Returns
-    -------
-    t0 : pd.Timestamp
-        Inferred t0 for given fips.
-    """
-
-    if method == 'impute':
-        t0 = fit_results.load_t0(fips)
-    elif method == 'first_case':
-        case_data = load_county_case_data()
-        if fips in case_data.fips:
-            t0 = case_data[case_data.fips == fips].date.min()
-        else:
-            t0 = default
-    return t0
 
 
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
