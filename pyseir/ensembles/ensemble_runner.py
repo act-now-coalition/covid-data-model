@@ -261,11 +261,13 @@ class EnsembleRunner:
             self.override_params['delta'] = 1 / 6.
             self.override_params['sigma'] = 1 / 3.
 
+            # These parameters produce an IFR ~0.0065 if we had infinite
+            # capacity, and about ~0.0125 with capacity constraints imposed
             self.override_params['mortality_rate_no_general_beds'] = 0.05
             self.override_params['mortality_rate_from_hospital'] = 0.02
             self.override_params['mortality_rate_from_ICU'] = 0.40
             self.override_params['mortality_rate_from_ICUVent'] = 0.60
-            self.override_params['mortality_rate_no_ICU_beds'] = 1 # .40 * .4 + 0.6 * 0.6
+            self.override_params['mortality_rate_no_ICU_beds'] = 1.0
 
             self.override_params['hospitalization_length_of_stay_general'] = 6
             self.override_params['hospitalization_length_of_stay_icu'] = 14
@@ -273,7 +275,6 @@ class EnsembleRunner:
 
             self.override_params['hospitalization_rate_general'] = 0.04
             self.override_params['hospitalization_rate_icu'] = 0.30 * self.override_params['hospitalization_rate_general']
-            # self.override_params['beds_ICU'] = .11 * self.override_params['beds_general'] # National average per hospital bed.
             self.override_params['symptoms_to_hospital_days'] = 6
 
             if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
