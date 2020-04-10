@@ -16,9 +16,7 @@ TopCountiesPipelineProjectionResult = namedtuple(
     "TopCountiesPipelineProjectionResult", ["key", "projection_df",]
 )
 
-TopCountiesPipelineResult = namedtuple(
-    "TopCountiesPipelineResult", ["key", "api"]
-)
+TopCountiesPipelineResult = namedtuple("TopCountiesPipelineResult", ["key", "api"])
 
 
 def run_projections(
@@ -38,23 +36,30 @@ def run_projections(
     intervention = Intervention.CURRENT
 
     counties_key_name = f"counties.{intervention.name}"
-    # note i think build_processed_dataset should porbably be renamed? 
+    # note i think build_processed_dataset should porbably be renamed?
     counties_df = build_processed_dataset.get_usa_by_county_with_projection_df(
         input_file, intervention.value
     )
     if run_validation:
         validate_results.validate_counties_df(counties_key_name, counties_df)
 
-    county_results = TopCountiesPipelineProjectionResult(
-        counties_key_name, counties_df
-    )
+    county_results = TopCountiesPipelineProjectionResult(counties_key_name, counties_df)
 
     return county_results
 
-def generate_api(projection_result: TopCountiesPipelineProjectionResult, sort_fields = [rc.PEAK_HOSPITALIZATION_SHORTFALL],length = 100) -> TopCountiesPipelineResult: 
+
+def generate_api(
+    projection_result: TopCountiesPipelineProjectionResult,
+    sort_fields=[rc.PEAK_HOSPITALIZATION_SHORTFALL],
+    length=100,
+) -> TopCountiesPipelineResult:
     projection = projection_result.projection_df
-    sorted_limited = projection.sort_values(by=sort_fields, ascending=False).head(length)
-    return TopCountiesPipelineResult(projection_result.key, generate_api_for_projection(sorted_limited))
+    sorted_limited = projection.sort_values(by=sort_fields, ascending=False).head(
+        length
+    )
+    return TopCountiesPipelineResult(
+        projection_result.key, generate_api_for_projection(sorted_limited)
+    )
 
 
 def deploy_results(result: TopCountiesPipelineResult, output: str):
@@ -64,4 +69,4 @@ def deploy_results(result: TopCountiesPipelineResult, output: str):
         result: Top Counties Pipeline result.
         output: output folder to save results in.
     """
-    dataset_deployer.upload_json(result.key, result.api.json() , output)
+    dataset_deployer.upload_json(result.key, result.api.json(), output)
