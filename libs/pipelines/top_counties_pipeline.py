@@ -5,6 +5,7 @@ from libs.enums import Intervention
 from libs import validate_results
 from libs import build_dod_dataset
 from libs import dataset_deployer
+from api.can_predictions import CANPredictionAPI, _Projections, _HospitalBeds
 
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
@@ -38,6 +39,11 @@ def run_projections(
     county_results = TopCountiesPipelineResult(
         counties_key_name, counties_df
     )
+
+    _hospital_beds = _HospitalBeds(hospitalizationPeakDate='today', hospitalOverloadDate='yesterday')
+    _projections = _Projections(intervention='trash',aggregateDeaths=1,hospitalBeds=_hospital_beds)
+    api = CANPredictionAPI(stateName='test', countyName='c', fips='12345', lastUpdatedDate='today', projections=_projections)
+    print(api.json())
     return county_results
 
 

@@ -4,7 +4,7 @@ import click
 import logging
 
 from libs.enums import Intervention
-from libs.pipelines import dod_pipeline
+from libs.pipelines import dod_pipeline, top_counties_pipeline
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -29,6 +29,8 @@ def deploy_dod_projections(disable_validation, input_dir, output):
     python run.py deploy-dod-projections
     """
 
+    top_counties_pipeline.run_projections(input_dir, list(Intervention)[0])
+    assert False
     for intervention in list(Intervention):
         logger.info(f"Starting to generate files for {intervention.name}.")
 
