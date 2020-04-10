@@ -410,7 +410,6 @@ class SEIRModel:
         plt.plot(self.t_list, self.results['D'], alpha=.4, c='k', lw=1, label='Direct Deaths', linestyle='-')
         plt.plot(self.t_list, self.results['deaths_from_hospital_bed_limits'], alpha=1, c='k', lw=1, label='Deaths From Bed Limits', linestyle=':')
         plt.plot(self.t_list, self.results['deaths_from_icu_bed_limits'], alpha=1, c='k', lw=2, label='Deaths From ICU Bed Limits', linestyle='-.')
-        plt.plot(self.t_list, self.results['deaths_from_ventilator_limits'], alpha=1, c='k', lw=2, label='Deaths From No Ventillator', linestyle='--')
         plt.plot(self.t_list, self.results['total_deaths'], alpha=1, c='k', lw=4, label='Total Deaths', linestyle='-')
 
         plt.plot(self.t_list, self.results['HGen'], alpha=1, lw=2, c='steelblue', label='General Beds Required', linestyle='-')
