@@ -21,10 +21,17 @@ from libs.datasets.dataset_utils import AggregationLevel
 
 _logger = logging.getLogger(__name__)
 
+# By default we use all of your cores except 2, but this can be overridden by
+# setting COVID_MODEL_CORES (which is used in our Github Actions workflow).
+if os.getenv("COVID_MODEL_CORES"):
+    DEFAULT_CORES = int(os.getenv("COVID_MODEL_CORES"))
+else:
+    DEFAULT_CORES = max(multiprocessing.cpu_count() - 2, 1)
+
 
 def get_pool(num_cores=None) -> multiprocessing.Pool:
     if not num_cores:
-        num_cores = max(multiprocessing.cpu_count() - 2, 1)
+        num_cores = DEFAULT_CORES
 
     return multiprocessing.Pool(num_cores)
 

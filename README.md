@@ -24,7 +24,25 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 ## [Setup](./SETUP.md)
 
-## Running
+# Running
+
+To run a formalized job, kick it off with github actions.  Set your local token.
+
+```bash
+export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
+```
+
+Then simply trigger the publish job with:
+```bash
+curl -H "Accept: application/vnd.github.everest-preview+json" \
+    -H "Authorization: token $GITHUB_TOKEN" \
+    --request POST \
+    --data '{"event_type": "publish-api"}' \
+    https://api.github.com/repos/covid-projections/covid-data-model/dispatches
+```
+
+
+# Development
 
 ### Run website data deploy
 
