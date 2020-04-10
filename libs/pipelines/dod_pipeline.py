@@ -4,7 +4,7 @@ import logging
 
 from libs.enums import Intervention
 from libs import validate_results
-from libs import build_dod_dataset
+from libs import build_processed_dataset
 from libs import dataset_deployer
 from libs.functions import generate_shapefiles
 
@@ -30,7 +30,7 @@ def run_projections(
     Returns: Tuple of DodInterventionResult objects for state and county data.
     """
     states_key_name = f"states.{intervention.name}"
-    states_df = build_dod_dataset.get_usa_by_states_df(input_file, intervention.value)
+    states_df = build_processed_dataset.get_usa_by_states_df(input_file, intervention.value)
     if run_validation:
         validate_results.validate_states_df(states_key_name, states_df)
 
@@ -45,7 +45,7 @@ def run_projections(
 
     # Run County level projections
     counties_key_name = f"counties.{intervention.name}"
-    counties_df = build_dod_dataset.get_usa_by_county_with_projection_df(
+    counties_df = build_processed_dataset.get_usa_by_county_with_projection_df(
         input_file, intervention.value
     )
     if run_validation:

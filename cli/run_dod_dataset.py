@@ -29,10 +29,6 @@ def deploy_dod_projections(disable_validation, input_dir, output):
     python run.py deploy-dod-projections
     """
 
-    county_result = top_counties_pipeline.run_projections(input_dir, list(Intervention)[0], run_validation=False)
-    print(top_counties_pipeline.generate_api(county_result).json())
-
-    assert False
     for intervention in list(Intervention):
         logger.info(f"Starting to generate files for {intervention.name}.")
 

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import pydantic
 import datetime
 
@@ -9,8 +9,8 @@ Documented https://www.dropbox.com/scl/fi/o4bec2kz8dkcxdtabtqda/CAN-V1-API-Draft
 
 class _HospitalBeds(pydantic.BaseModel):
     peakShortfall: int = pydantic.Field(default=0, description="Shortfall of beds needed at the peek hospitalizaitons")
-    peakDate: datetime.datetime = pydantic.Field(default='', description="Date of peak hospitalizations")
-    shortageStartDate: datetime.datetime = pydantic.Field(default='', description="Date when hospitals overload")
+    peakDate: Optional[datetime.datetime] = pydantic.Field(default='', description="Date of peak hospitalizations")
+    shortageStartDate: Optional[datetime.datetime] = pydantic.Field(default='', description="Date when hospitals overload")
 
 
 class _Projections(pydantic.BaseModel):

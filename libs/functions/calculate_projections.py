@@ -132,7 +132,7 @@ def get_county_projections_df(input_dir, initial_intervention_type, state_interv
 
     # get the state and fips so we can get the files
     missing = 0
-    for index, fips_row in fips_pd.head(5).iterrows():
+    for index, fips_row in fips_pd.iterrows():
         state = fips_row["state"]
         fips = fips_row["fips"]
         intervention_type = _get_intervention_type(initial_intervention_type, state, state_interventions_df)
