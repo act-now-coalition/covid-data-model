@@ -88,7 +88,8 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
     else:
         for state_obj in us.STATES + us.TERRITORIES:
             _map_outputs(state_obj.name, output_interval_days, states_only=states_only,
-                         run_mode='default', output_dir=output_dir)
+                         run_mode=run_mode, output_dir=output_dir)
+
 
 def _run_all(state=None, run_mode='default', generate_reports=True, output_interval_days=4,
              skip_download=False, states_only=False, output_dir=None):
