@@ -114,7 +114,6 @@ class ParameterEnsembleGenerator:
                     hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=2),
                     hospitalization_length_of_stay_icu=np.random.normal(loc=16, scale=3),
                     hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=17, scale=3),
-                mortality_rate=np.random.normal(loc=0.0109, scale=0.0025),
                 # if you assume the ARDS population is the group that would die
                 # w/o ventilation, this would suggest a 20-42% mortality rate
                 # among general hospitalized patients w/o access to ventilators:
@@ -129,11 +128,7 @@ class ParameterEnsembleGenerator:
                 # Bumped these up a bit. Dyspnea -> ARDS -> Septic Shock all
                 # very fatal.
                 mortality_rate_no_ICU_beds=np.random.uniform(low=0.8, high=1),
-                mortality_rate_no_ventilator=1,
-                # beds_general=  self.county_metadata_merged.get('num_staffed_beds', 0)
-                #              - self.county_metadata_merged.get('bed_utilization', 0),
-                #              # + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
-                beds_general=self.beds * 0.4 * 2.07,
+                beds_general=self.beds * 0.4 * 1.00, # 60% utliization, no scaling...
                 # TODO.. Patch this After Issue 132
                 beds_ICU= (1 - 0.85) * self.icu_beds,  # No scaling, 85% utilization...
                 # hospital_capacity_change_daily_rate=1.05,
