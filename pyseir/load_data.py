@@ -150,9 +150,10 @@ def load_county_metadata():
     : pd.DataFrame
 
     """
+
     county_metadata = pd.read_json(os.path.join(DATA_DIR, 'county_metadata.json'), dtype={'fips': 'str'})
-    # Fix Alaska state name.
-    county_metadata.loc[county_metadata.fips.str[:2] == '02', 'state'] = 'Alaska'
+    # Fix state names
+    county_metadata['state'] = county_metadata['fips'].apply(lambda x: us.states.lookup(x[:2]).name)
     return county_metadata
 
 

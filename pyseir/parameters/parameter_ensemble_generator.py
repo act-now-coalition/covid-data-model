@@ -51,10 +51,12 @@ class ParameterEnsembleGenerator:
             self.population = population_data.get_county_level('USA', state=self.state_abbr, fips=self.fips)
             # TODO: Some counties do not have hospitals. Likely need to go to HRR level..
             self.beds = beds_data.get_county_level(self.state_abbr, fips=self.fips) or 0
+            self.icu_beds = beds_data.get_county_level(self.state_abbr, fips=self.fips, column='icu_beds') or 0
         else:
             self.state_abbr = us.states.lookup(fips).abbr
             self.population = population_data.get_state_level('USA', state=self.state_abbr)
             self.beds = beds_data.get_state_level(self.state_abbr) or 0
+            self.icu_beds = beds_data.get_state_level(self.state_abbr, column='icu_beds') or 0
 
     def sample_seir_parameters(self, override_params=None):
         """
@@ -100,7 +102,7 @@ class ParameterEnsembleGenerator:
                 hospitalization_rate_icu=max(np.random.normal(loc=.29, scale=0.03) * hospitalization_rate_general, 0),
                 # http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
                 # Coronatracking.com/data
-                fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.44, scale=0.1), 0),
+                fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.6, scale=0.1), 0),
                 sigma=1 / np.random.normal(loc=3.1, scale=0.86),  # Imperial college - 2 days since that is expected infectious period.
                 delta=1 / np.random.gamma(6.0, scale=1),  # Kind of based on imperial college + CDC digest.
                 delta_hospital=1 / np.random.gamma(8.0, scale=1),  # Kind of based on imperial college + CDC digest.
@@ -112,7 +114,6 @@ class ParameterEnsembleGenerator:
                     hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=2),
                     hospitalization_length_of_stay_icu=np.random.normal(loc=16, scale=3),
                     hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=17, scale=3),
-                mortality_rate=np.random.normal(loc=0.0109, scale=0.0025),
                 # if you assume the ARDS population is the group that would die
                 # w/o ventilation, this would suggest a 20-42% mortality rate
                 # among general hospitalized patients w/o access to ventilators:
@@ -127,13 +128,9 @@ class ParameterEnsembleGenerator:
                 # Bumped these up a bit. Dyspnea -> ARDS -> Septic Shock all
                 # very fatal.
                 mortality_rate_no_ICU_beds=np.random.uniform(low=0.8, high=1),
-                mortality_rate_no_ventilator=1,
-                # beds_general=  self.county_metadata_merged.get('num_staffed_beds', 0)
-                #              - self.county_metadata_merged.get('bed_utilization', 0),
-                #              # + self.county_metadata_merged.get('potential_increase_in_bed_capac', 0),
-                beds_general=self.beds * 0.4 * 2.07,
+                beds_general=self.beds * 0.4 * 2.07, # 60% utliization, no scaling...
                 # TODO.. Patch this After Issue 132
-                beds_ICU=0, # self.county_metadata_merged.get('num_icu_beds', 0),
+                beds_ICU= (1 - 0.85) * self.icu_beds,  # No scaling, 85% utilization...
                 # hospital_capacity_change_daily_rate=1.05,
                 # max_hospital_capacity_factor=2.07,
                 # initial_hospital_bed_utilization=0.6,
@@ -147,7 +144,7 @@ class ParameterEnsembleGenerator:
                 # Staff expertise may be a limiting factor:
                 # https://sccm.org/getattachment/About-SCCM/Media-Relations/Final-Covid19-Press-Release.pdf?lang=en-US
                 # TODO: Patch after #133
-                ventilators=0 #self.county_metadata_merged.get('num_icu_beds', 0) * np.random.uniform(low=1.0, high=1.2)
+                ventilators=self.icu_beds * np.random.uniform(low=1.0, high=1.2),
             ))
 
         for parameter_set in parameter_sets:

@@ -89,7 +89,9 @@ Change to into the county_covid_seir_models directory
 
 
 ### Running Models
-`pyseir run-all --state=California`
+Example here. You can remove the `--state` flag to run everything. To run only states, add `--states-only`.
+`pyseir run-all --run-mode='can-before-hospitalization-new-params' --output-interval-days=4 --state="California"`
 
-This will take a few minutes to download today's data, run inference and model
-ensembles, and generate the output. Then check the `output/` folder for results.
+`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags. 
+
+Check the `output/` folder for results.
