@@ -172,9 +172,7 @@ class SEIRModel:
                  mortality_rate_no_ICU_beds=1.,
                  mortality_rate_from_ICUVent=1.0,
                  mortality_rate_no_general_beds=0.0,
-                 initial_hospital_bed_utilization=0.6,
-
-    ):
+                 initial_hospital_bed_utilization=0.6):
 
         self.N = N
         self.suppression_policy = suppression_policy
@@ -263,7 +261,6 @@ class SEIRModel:
         infected_and_recovered_no_hospital = self.delta * I
         infected_and_in_hospital_general = I * (self.hospitalization_rate_general - self.hospitalization_rate_icu) / self.symptoms_to_hospital_days
         infected_and_in_hospital_icu = I * self.hospitalization_rate_icu / self.symptoms_to_hospital_days
-        # infected_and_dead = # I * self.mortality_rate / self.symptoms_to_mortality_days
 
         dIdt = exposed_and_symptomatic \
                - infected_and_recovered_no_hospital \
@@ -279,20 +276,15 @@ class SEIRModel:
 
         recovered_after_hospital_general = HNonICU * (1 - mortality_rate_NonICU) / self.hospitalization_length_of_stay_general
 
-
         recovered_from_icu_no_vent = HICU * (1 - mortality_rate_ICU) * (1 - self.fraction_icu_requiring_ventilator) / self.hospitalization_length_of_stay_icu
         recovered_from_icu_vent = HICU * (1 - max(mortality_rate_ICU, self.mortality_rate_from_ICUVent)) \
                                   * self.fraction_icu_requiring_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator
 
-        # recovered_after_hospital_icu = HICU * (1 - mortality_rate_ICU) * (1 - self.fraction_icu_requiring_ventilator) / self.hospitalization_length_of_stay_icu \
-        #                                + HICUVent * self.fraction_icu_requiring_ventilator / self.hospitalization_length_of_stay_icu_and_ventilator
-
-
-
         dHNonICU_dt = infected_and_in_hospital_general - recovered_after_hospital_general - died_from_hosp
         dHICU_dt = infected_and_in_hospital_icu - recovered_from_icu_no_vent - recovered_from_icu_vent - died_from_icu - died_from_icu_vent
 
-        # This compartment is for tracking ventillator count. The beds are accounted for in the ICU cases.
+        # This compartment is for tracking ventillator count. The beds are
+        # accounted for in the ICU cases.
         dHICUVent_dt = infected_and_in_hospital_icu * self.fraction_icu_requiring_ventilator \
                        - HICUVent / self.hospitalization_length_of_stay_icu_and_ventilator
 
@@ -300,8 +292,6 @@ class SEIRModel:
         dTotalInfections = exposed_and_symptomatic + exposed_and_asymptomatic
         dHAdmissions_general = infected_and_in_hospital_general
         dHAdmissions_ICU = infected_and_in_hospital_icu  # Ventilators also count as ICU beds.
-
-
 
         # Fraction that recover
         dRdt = (asymptomatic_and_recovered

@@ -12,7 +12,6 @@ from multiprocessing import Pool
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
-from pyseir.ensembles.ensemble_runner import EnsembleRunner
 
 
 class WebUIDataAdaptorV1:
@@ -23,13 +22,17 @@ class WebUIDataAdaptorV1:
     ----------
     state: str
         State to map outputs for.
+    include_imputed:
+        If True, map the outputs for imputed counties as well as those with
+        no data.
     """
     def __init__(self, state, output_interval_days=4, run_mode='can-before',
-                 output_dir=None, jhu_dataset=None, cds_dataset=None):
+                 output_dir=None, jhu_dataset=None, cds_dataset=None, include_imputed=False):
 
         self.output_interval_days = output_interval_days
         self.state = state
         self.run_mode = run_mode
+        self.include_imputed = include_imputed
 
         output_dir = output_dir or OUTPUT_DIR
         self.county_output_dir = os.path.join(output_dir, 'web_ui', 'county')
@@ -187,7 +190,7 @@ class WebUIDataAdaptorV1:
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 
-    def generate_state(self, states_only=False, include_imputed=False):
+    def generate_state(self, states_only=False):
         """
         Generate for each county in a state, the output for the webUI.
 
@@ -195,9 +198,6 @@ class WebUIDataAdaptorV1:
         ----------
         states_only: bool
             If True only run the state level.
-        include_imputed:
-            If True, map the outputs for imputed counties as well as those with
-            no data.
         """
         state_fips = us.states.lookup(self.state).fips
         self.map_fips(state_fips)
@@ -206,7 +206,7 @@ class WebUIDataAdaptorV1:
             df = load_data.load_county_metadata()
             all_fips = df[df['state'].str.lower() == self.state.lower()].fips
 
-            if not include_imputed:
+            if not self.include_imputed:
                 # Filter...
                 fips_with_data = self.jhu_local.timeseries() \
                     .get_subset(AggregationLevel.COUNTY, country='USA') \
