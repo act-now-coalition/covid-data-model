@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from libs.CovidDatasets import get_public_data_base_url
 from libs.constants import NULL_VALUE
-
+from libs.datasets.results_schema import NON_INTEGER_FIELDS, SHAPEFILE_FIELDS
 
 def _file_uri_to_path(uri: str) -> str:
     return urlparse(uri).path
@@ -14,35 +14,10 @@ def _file_uri_to_path(uri: str) -> str:
 def join_and_output_shapefile(
     df, shp_reader, pivot_shp_field, pivot_df_column, shp_writer
 ):
-    blacklisted_fields = [
-        "OBJECTID",
-        "Province/State",
-        "Country/Region",
-        "Last Update",
-        "Latitude",
-        "Longitude",
-        "County",
-        "State/County FIPS Code",
-        "Combined Key",
-        "Current Recovered",
-        "Current Active",
-        "Recovered",
-        "Active",
-    ]
-    non_integer_fields = [
-        "Intervention",
-        "State Intervention",
-        "PEAK-HOSP",
-        "PEAK-DEATHS",
-        "Hospital Shortfall Date",
-    ]
-
-    fields = [field for field in df.columns if field not in blacklisted_fields]
-
     shp_writer.fields = shp_reader.fields  # Preserve fields that come from the census
 
-    for field_name in fields:
-        if field_name in non_integer_fields:
+    for field_name in SHAPEFILE_FIELDS:
+        if field_name in NON_INTEGER_FIELDS:
             shp_writer.field(field_name, "C", size=32)
         else:
             shp_writer.field(field_name, "N", size=14)
@@ -69,7 +44,7 @@ def join_and_output_shapefile(
 
         # create record data for all the fields create a shape record
         new_record = shapeRecord.record.as_dict()
-        for field_name in fields:
+        for field_name in SHAPEFILE_FIELDS:
             new_record[field_name] = (
                 None if row[field_name] == NULL_VALUE else row[field_name]
             )
