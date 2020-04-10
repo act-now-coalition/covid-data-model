@@ -1,5 +1,9 @@
 OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
-    'state_x': 'Province/State',
+    'fips': "State/County FIPS Code",
+    'state': 'Province/State',
+    'country': 'Country/Region',
+    'county': 'County',
+    'date': 'Last Update',
     'intervention': 'State Intervention',
     '16-day_Hospitalization_Prediction': '16d-HSPTLZD',
     '32-day_Hospitalization_Prediction': '32d-HSPTLZD',
@@ -9,10 +13,9 @@ OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
     "Mean Deaths": 'MEAN-DEATHS',
     "Peak Hospitalizations On": 'PEAK-HOSP',
     "Mean Deaths On": 'PEAK-DEATHS',
-    "Deaths": "Current Deaths",
-    "Confirmed": "Current Confirmed",
-    "Recovered": "Current Recovered",
-    "Active": "Current Active",
+    "deaths": "Current Deaths",
+    "cases": "Current Confirmed",
+    "recovered": "Current Recovered",
 }
 
 

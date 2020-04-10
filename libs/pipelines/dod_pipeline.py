@@ -16,7 +16,7 @@ DodInterventionResult = namedtuple(
 )
 
 
-def run_projections(
+def run_state_projections(
     input_file, intervention: Intervention, run_validation=True
 ) -> Tuple[DodInterventionResult, DodInterventionResult]:
     """Run county and state level projections for a specific intervention.
@@ -44,7 +44,15 @@ def run_projections(
             states_key_name, states_shp, states_shx, states_dbf
         )
     logger.info(f"Generated state shape files for {intervention.name}")
+    state_results = DodInterventionResult(
+        states_key_name, states_df, (states_shp, states_shx, states_dbf)
+    )
+    return state_results
 
+
+def run_county_projections(
+    input_file, intervention: Intervention, run_validation=True
+) -> DodInterventionResult:
     # Run County level projections
     counties_key_name = f"counties.{intervention.name}"
     counties_df = build_processed_dataset.get_usa_by_county_with_projection_df(
@@ -63,14 +71,10 @@ def run_projections(
             counties_key_name, counties_shp, counties_shx, counties_dbf
         )
 
-    state_results = DodInterventionResult(
-        states_key_name, states_df, (states_shp, states_shx, states_dbf)
-    )
-
     county_results = DodInterventionResult(
         counties_key_name, counties_df, (counties_shp, counties_shx, counties_dbf)
     )
-    return state_results, county_results
+    return county_results
 
 
 def deploy_results(intervention_result: DodInterventionResult, output: str):
