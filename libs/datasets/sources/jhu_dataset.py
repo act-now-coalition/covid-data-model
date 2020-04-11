@@ -4,6 +4,7 @@ import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
+from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import enums
 _logger = logging.getLogger(__name__)
@@ -45,32 +46,16 @@ class JHUDataset(data_source.DataSource):
         "Last Update": Fields.LAST_UPDATE,
     }
 
-    TIMESERIES_FIELD_MAP = {
-        TimeseriesDataset.Fields.DATE: Fields.DATE,
-        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
-        TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
-        TimeseriesDataset.Fields.CASES: Fields.CONFIRMED,
-        TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
-        TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    COMMON_FIELD_MAP = {
+        Fields.AGGREGATE_LEVEL: CommonFields.AGGREGATE_LEVEL,
+        Fields.COUNTRY: CommonFields.COUNTRY,
+        Fields.COUNTY: CommonFields.COUNTY,
+        Fields.STATE: CommonFields.STATE,
+        Fields.FIPS: CommonFields.FIPS,
     }
 
-    def __init__(self, input_dir):
-        loaded_data = []
-        for path in sorted(input_dir.glob("*.csv")):
-            date = path.stem
-            data = pd.read_csv(path, dtype={"FIPS": str})
-            data = data.rename(columns=self.RENAMED_COLUMNS)
-            data[self.Fields.DATE] = pd.to_datetime(date)
-            loaded_data.append(data)
-
-        data = pd.concat(loaded_data)
-        data = self.standardize_data(data)
-        super().__init__(data)
-
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+    def apply_source_specific_cleaning(cls, data: pd.DataFrame) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
         # TODO Figure out how to rename to some ISO standard.
         country_remap = {
@@ -86,31 +71,23 @@ class JHUDataset(data_source.DataSource):
             "UK": "United Kingdom",
             "US": "USA",
         }
-        data = data.replace({cls.Fields.COUNTRY: country_remap})
-        states = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
-
-        county_from_state = data[cls.Fields.STATE].apply(
+        data = data.replace({CommonFields.COUNTRY: country_remap})
+        states = data[CommonFields.STATE].apply(dataset_utils.parse_state)
+        county_from_state = data[CommonFields.STATE].apply(
             dataset_utils.parse_county_from_state
         )
-        data[cls.Fields.COUNTY] = data[cls.Fields.COUNTY].combine_first(
+        data[CommonFields.COUNTY] = data[CommonFields.COUNTY].combine_first(
             county_from_state
         )
-        data[cls.Fields.STATE] = states
+        data[CommonFields.STATE] = states
         data = cls._fill_incomplete_county_data(data)
 
         state_only = data[cls.Fields.FIPS].isnull() & data[cls.Fields.COUNTY].isnull()
         # Pad fips values to 5 spots
-        data[cls.Fields.FIPS] = data[cls.Fields.FIPS].apply(
+        data[CommonFields.FIPS] = data[CommonFields.FIPS].apply(
             lambda x: f"{x.zfill(5)}" if type(x) == str else x
         )
-
         data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(state_only, "state", "county")
-        data = cls._aggregate_fips_data(data)
-
-        dataset_utils.assert_counties_have_fips(
-            data, county_key=cls.Fields.COUNTY, fips_key=cls.Fields.FIPS
-        )
-
         return data
 
     @classmethod
@@ -136,7 +113,7 @@ class JHUDataset(data_source.DataSource):
         return data
 
     @classmethod
-    def _aggregate_fips_data(cls, data):
+    def filter_and_aggregate_duplicates(cls, data):
         is_county_level = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         has_fips = data[cls.Fields.FIPS].notnull()
         county_data = data[is_county_level & has_fips]
@@ -147,10 +124,10 @@ class JHUDataset(data_source.DataSource):
         # Right now, we are just combining that data, it may be more appropriate to take the max.
         group_key = [
             cls.Fields.DATE,
-            cls.Fields.AGGREGATE_LEVEL,
-            cls.Fields.FIPS,
-            cls.Fields.STATE,
-            cls.Fields.COUNTRY,
+            CommonFields.AGGREGATE_LEVEL,
+            CommonFields.FIPS,
+            CommonFields.STATE,
+            CommonFields.COUNTRY,
         ]
         result = county_data.groupby(group_key).sum().reset_index()
 
@@ -162,4 +139,14 @@ class JHUDataset(data_source.DataSource):
     @classmethod
     def local(cls) -> "JHUTimeseriesData":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        return cls(data_root / cls.DATA_FOLDER)
+        input_dir = data_root / cls.DATA_FOLDER
+        loaded_data = []
+        for path in sorted(input_dir.glob("*.csv")):
+            date = path.stem
+            data = pd.read_csv(path, dtype={"FIPS": str})
+            data = data.rename(columns=self.RENAMED_COLUMNS)
+            data[self.Fields.DATE] = pd.to_datetime(date)
+            loaded_data.append(data)
+
+        data = pd.concat(loaded_data)
+        return cls(data)
