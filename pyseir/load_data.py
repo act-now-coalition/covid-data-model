@@ -12,6 +12,7 @@ import json
 from pyseir import OUTPUT_DIR
 from libs.datasets import NYTimesDataset
 from libs.datasets.dataset_utils import AggregationLevel
+from functools import lru_cache
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
@@ -132,6 +133,7 @@ def cache_public_implementations_data():
     df.to_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl'))
 
 
+@lru_cache(maxsize=32)
 def load_county_case_data():
     """
     Return county level case data.
@@ -145,6 +147,8 @@ def load_county_case_data():
                          .get_data(country='USA')
     return county_case_data
 
+
+@lru_cache(maxsize=1)
 def load_state_case_data():
     """
     Return county level case data.
@@ -160,6 +164,7 @@ def load_state_case_data():
     return state_case_data
 
 
+@lru_cache(maxsize=32)
 def load_county_metadata():
     """
     Return county level metadata such as age distributions, populations etc..
@@ -172,9 +177,11 @@ def load_county_metadata():
 
     county_metadata = pd.read_json(os.path.join(DATA_DIR, 'county_metadata.json'), dtype={'fips': 'str'})
     # Fix state names
-    county_metadata['state'] = county_metadata['fips'].apply(lambda x: us.states.lookup(x[:2]).name)
+    county_metadata.loc[:, 'state'] = county_metadata['fips'].apply(lambda x: us.states.lookup(x[:2]).name).str.title()
     return county_metadata
 
+
+@lru_cache(maxsize=32)
 def load_county_metadata_by_state(state):
     """
     Generate a dataframe that contains county metadata aggregated at state
@@ -199,7 +206,7 @@ def load_county_metadata_by_state(state):
 
     density_measures = ['housing_density', 'population_density']
     for col in density_measures:
-        state_metadata[col] = state_metadata[col] * state_metadata['total_population']
+        state_metadata.loc[:, col] = state_metadata[col] * state_metadata['total_population']
 
     age_dist = state_metadata.groupby('state')['age_distribution'] \
                              .apply(lambda l: np.stack(np.array(l)).sum(axis=0))
@@ -217,6 +224,7 @@ def load_county_metadata_by_state(state):
     return state_metadata
 
 
+@lru_cache(maxsize=32)
 def load_ensemble_results(fips, run_mode='default'):
     """
     Retrieve ensemble results for a given state or county fips code.
@@ -245,6 +253,7 @@ def load_ensemble_results(fips, run_mode='default'):
     return fit_results
 
 
+@lru_cache(maxsize=32)
 def load_county_metadata_by_fips(fips):
     """
     Generate a dictionary for a county which includes county metadata merged
@@ -283,6 +292,7 @@ def load_county_metadata_by_fips(fips):
     return county_metadata_merged
 
 
+@lru_cache(maxsize=32)
 def load_new_case_data_by_fips(fips, t0):
     """
     Get data for new cases.
@@ -312,6 +322,8 @@ def load_new_case_data_by_fips(fips, t0):
 
     return times_new, observed_new_cases, observed_new_deaths
 
+
+@lru_cache(maxsize=32)
 def load_new_case_data_by_state(state, t0):
     """
     Get data for new cases at state level.
@@ -340,6 +352,7 @@ def load_new_case_data_by_state(state, t0):
 
     return times_new, observed_new_cases, observed_new_deaths
 
+
 def load_hospital_data():
     """
     Return hospital level data. Note that this must be aggregated by stcountyfp
@@ -352,6 +365,7 @@ def load_hospital_data():
     return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
+@lru_cache(maxsize=1)
 def load_mobility_data_m50():
     """
     Return mobility data without normalization
@@ -363,8 +377,7 @@ def load_mobility_data_m50():
     return pd.read_pickle(os.path.join(DATA_DIR, 'mobility_data__m50.pkl'))
 
 
-# Ensembles need to access this 1e6 times and it makes 10ms simulations -> 100 ms otherwise.
-in_memory_cache = None
+@lru_cache(maxsize=1)
 def load_mobility_data_m50_index():
     """
     Return mobility data with normalization: per
@@ -375,15 +388,10 @@ def load_mobility_data_m50_index():
     -------
     : pd.DataFrame
     """
-    global in_memory_cache
-    if in_memory_cache is not None:
-        return in_memory_cache
-    else:
-        in_memory_cache = pd.read_pickle(os.path.join(DATA_DIR, 'mobility_data__m50_index.pkl')).set_index('fips')
-
-    return in_memory_cache.copy()
+    return pd.read_pickle(os.path.join(DATA_DIR, 'mobility_data__m50_index.pkl')).set_index('fips')
 
 
+@lru_cache(maxsize=1)
 def load_public_implementations_data():
     """
     Return public implementations data
@@ -392,7 +400,7 @@ def load_public_implementations_data():
     -------
     : pd.DataFrame
     """
-    return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl'))
+    return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl')).set_index('fips')
 
 
 def cache_all_data():

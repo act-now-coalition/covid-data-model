@@ -2,7 +2,8 @@ import pandas as pd
 from pyseir.load_data import load_county_case_data
 from pyseir.inference import fit_results
 
-def infer_t0(fips, method='first_case', default=pd.Timestamp('2020-01-15')):
+
+def infer_t0(fips, method='first_case', default=pd.Timestamp('2020-02-01')):
     """
     Infer t0 for a given fips under given methods:
        - first_case: t0 is set as time of first observed case.
@@ -32,4 +33,8 @@ def infer_t0(fips, method='first_case', default=pd.Timestamp('2020-01-15')):
             t0 = case_data[case_data.fips == fips].date.min()
         else:
             t0 = default
+    elif method == 'reference_date':
+        t0 = default
+    else:
+        raise ValueError(f'Invalid method {method} for t0 inference')
     return t0

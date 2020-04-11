@@ -12,10 +12,11 @@ from pyseir import load_data, OUTPUT_DIR
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
-t_list = np.linspace(0, 1000, 1001)
+t_list = np.linspace(0, 360, 361)
 ref_date = datetime(year=2020, month=1, day=1)
 frac_counties_with_seed_infection = 0.5
 min_deaths = 5   # minimum number of deaths for chi2 calculation and plot.
+
 
 def get_average_SEIR_parameters(fips):
     """
@@ -38,6 +39,7 @@ def get_average_SEIR_parameters(fips):
     SEIR_kwargs.pop('R0')
     SEIR_kwargs.pop('suppression_policy')
     return SEIR_kwargs
+
 
 def fit_seir(R0, t0, eps, times,
              by='fips', fips=None, state=None,
@@ -79,25 +81,24 @@ def fit_seir(R0, t0, eps, times,
       : float
         Chi square of fitting model to observed cases and deaths.
     """
-
     if by == 'fips':
         suppression_policy = \
         suppression_policies.generate_empirical_distancing_policy(
             fips=fips, future_suppression=eps, **suppression_policy_params)
     elif by == 'state':
+        # TODO: This takes > 200ms. Can be optimized.
         suppression_policy = \
         suppression_policies.generate_empirical_distancing_policy_by_state(
             state=state, future_suppression=eps, **suppression_policy_params)
 
+    # Note the model is about 25 ms per execution
     model = SEIRModel(
         R0=R0, suppression_policy=suppression_policy,
         **SEIR_params)
     model.run()
 
-    predicted_cases = model.gamma * np.interp(times, t_list + t0, model.results[
-        'total_new_infections'])
-    predicted_deaths = np.interp(times, t_list + t0, model.results[
-        'total_deaths_per_day'])
+    predicted_cases = model.gamma * np.interp(times, t_list + t0, model.results['total_new_infections'])
+    predicted_deaths = np.interp(times, t_list + t0, model.results['total_deaths_per_day'])
 
     # Assume the error on the case count could be off by a massive factor 50.
     # Basically we don't want to use it if there appreciable mortality data available.
@@ -112,10 +113,10 @@ def fit_seir(R0, t0, eps, times,
     # Compute Chi2
     chi2_cases = np.sum((observed_new_cases - predicted_cases) ** 2 / cases_variance)
     if observed_new_deaths.sum() > min_deaths:
-        chi2_deaths = np.sum(
-            (observed_new_deaths - predicted_deaths) ** 2 / deaths_variance)
+        chi2_deaths = np.sum((observed_new_deaths - predicted_deaths) ** 2 / deaths_variance)
     else:
         chi2_deaths = 0
+    print(chi2_cases, chi2_deaths)
     return chi2_deaths + chi2_cases
 
 
@@ -152,13 +153,12 @@ def fit_county_model(fips):
                                              observed_new_cases=observed_new_cases,
                                              observed_new_deaths=observed_new_deaths,
                                              suppression_policy_params=suppression_policy_params,
-                                             SEIR_params=SEIR_params
-                                              )
+                                             SEIR_params=SEIR_params)
 
     m = iminuit.Minuit(_fit_seir,
-                       R0=4, t0=t0_guess, eps=.5, error_eps=.2,
-                       limit_R0=[1, 8],
-                       limit_eps=[0, 2], limit_t0=[-90, 90], error_t0=1, error_R0=1.,
+                       R0=3.0, limit_R0=[1, 8], error_R0=1.,
+                       t0=t0_guess, limit_t0=[-90, 90], error_t0=1,
+                       eps=.5, limit_eps=[0, 2], error_eps=.2,
                        errordef=1)
 
     # run MIGRAD algorithm for optimization.
@@ -182,7 +182,7 @@ def fit_county_model(fips):
     values['A_initial'] = SEIR_params['A_initial']
 
     # # TODO @ Xinyu: test this after the slow inference is resolved
-    # plot_optimization_results(m, by='fips', fit_results=values)
+    plot_optimization_results(m, by='fips', fit_results=values)
 
     return values
 
@@ -205,7 +205,6 @@ def fit_state_model(state):
     fit_values: dict
         Optimal values from the fitter.
     """
-
     state_metadata = load_data.load_county_metadata_by_state(state) \
                               .loc[state] \
                               .to_dict()
@@ -215,10 +214,8 @@ def fit_state_model(state):
 
     logging.info(f'Fitting MLE model to {state}')
     SEIR_params = get_average_SEIR_parameters(us.states.lookup(state).fips)
-    SEIR_params['I_initial'] = \
-        SEIR_params['I_initial'] * len(state_metadata['fips']) * frac_counties_with_seed_infection
-    SEIR_params['A_initial'] = \
-        SEIR_params['A_initial'] * len(state_metadata['fips']) * frac_counties_with_seed_infection
+    SEIR_params['I_initial'] = SEIR_params['I_initial'] * len(state_metadata['fips']) * frac_counties_with_seed_infection
+    SEIR_params['A_initial'] = SEIR_params['A_initial'] * len(state_metadata['fips']) * frac_counties_with_seed_infection
     suppression_policy_params = dict(t_list=t_list,
                                      reference_start_date=ref_date)
 
@@ -229,8 +226,7 @@ def fit_state_model(state):
                                              observed_new_cases=observed_new_cases,
                                              observed_new_deaths=observed_new_deaths,
                                              suppression_policy_params=suppression_policy_params,
-                                             SEIR_params=SEIR_params
-                                             )
+                                             SEIR_params=SEIR_params)
     m = iminuit.Minuit(_fit_seir,
                        R0=4, t0=t0_guess, eps=0.5,
                        error_eps=.2, error_t0=1, error_R0=1., errordef=1,
@@ -260,6 +256,7 @@ def fit_state_model(state):
 
     return values
 
+
 def plot_optimization_results(m, by, fit_results):
     """
     Plot parameter profile likelihood and contours.
@@ -277,13 +274,15 @@ def plot_optimization_results(m, by, fit_results):
 
     if by == 'fips':
         output_file = os.path.join(
-            OUTPUT_DIR, fit_results['state'].title(), 'reports',
+            OUTPUT_DIR, 'pyseir', fit_results['state'].title(), 'reports',
             f'{fit_results["state"]}__{fit_results["county"]}__{fit_results["fips"]}__mle_fit_contours.pdf')
     elif by == 'state':
         output_file = os.path.join(
-            OUTPUT_DIR, fit_results['state'].title(), 'reports', f'{fit_results["state"]}__mle_fit_contours.pdf')
+            OUTPUT_DIR, 'pyseir', 'state_summaries', f'{fit_results["state"]}__mle_fit_contours.pdf')
 
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     plt.savefig(output_file)
+
 
 def plot_fitting_results(by,
                          metadata,
@@ -295,7 +294,6 @@ def plot_fitting_results(by,
     """
     Plotting model fitting results.
     """
-
     data_dates = [ref_date + timedelta(days=t) for t in times]
     model_dates = [ref_date + timedelta(days=t + fit_results['t0']) for t in
                    t_list]
@@ -304,7 +302,7 @@ def plot_fitting_results(by,
                  label='Observed Cases Per Day')
     plt.errorbar(data_dates, observed_new_deaths,
                  yerr=np.sqrt(observed_new_deaths), marker='o', linestyle='',
-                 label='Observed Deaths')
+                 label='Observed Deaths Per Day')
     plt.plot(model_dates, model.results['total_new_infections'],
              label='Estimated Total New Infections Per Day')
     if model.gamma < 1:
@@ -335,12 +333,14 @@ def plot_fitting_results(by,
 
     if by == 'fips':
         output_file = os.path.join(
-            OUTPUT_DIR, fit_results['state'].title(), 'reports',
+            OUTPUT_DIR, 'pyseir', fit_results['state'].title(), 'reports',
             f'{fit_results["state"]}__{fit_results["county"]}__{fit_results["fips"]}__mle_fit_results.pdf')
     elif by == 'state':
         output_file = os.path.join(
-            OUTPUT_DIR, fit_results['state'].title(), 'reports',
+            OUTPUT_DIR, 'pyseir', 'state_summaries',
             f'{fit_results["state"]}__mle_fit_results.pdf')
+
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     plt.savefig(output_file)
 
 
@@ -359,8 +359,7 @@ def plot_inferred_result_county(fit_results):
     else:
         logging.info(f"Plotting MLE Fits for {metadata['county']}")
 
-    R0, t0, eps, optimizer = \
-        fit_results['R0'], fit_results['t0'], fit_results['eps'], fit_results['optimizer']
+    R0, t0, eps = fit_results['R0'], fit_results['t0'], fit_results['eps']
 
     model = SEIRModel(
         R0=R0,
@@ -387,8 +386,7 @@ def plot_inferred_result_state(fit_results):
     metadata = load_data.load_county_metadata_by_state(state) \
                         .loc[state] \
                         .to_dict()
-    times, observed_new_cases, observed_new_deaths = \
-            load_data.load_new_case_data_by_state(state, ref_date)
+    times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_state(state, ref_date)
 
     if observed_new_cases.sum() < min_deaths:
         logging.warning(f"{state} has fewer than {min_deaths} cases. Aborting plot.")
@@ -396,9 +394,9 @@ def plot_inferred_result_state(fit_results):
     else:
         logging.info(f"Plotting MLE Fits for {state}")
 
-    R0, t0, eps, I_initial, A_initial, optimizer = \
+    R0, t0, eps, I_initial, A_initial = \
         fit_results['R0'], fit_results['t0'], fit_results['eps'], \
-        fit_results['I_initial'], fit_results['A_initial'], fit_results['optimizer']
+        fit_results['I_initial'], fit_results['A_initial']
 
     SEIR_params = get_average_SEIR_parameters(us.states.lookup(state).fips)
     SEIR_params['I_initial'] = I_initial
@@ -420,7 +418,7 @@ def plot_inferred_result_state(fit_results):
                          model=model)
 
 
-def run_state(state, states_only=False):
+def run_state(state, states_only=False, timeseries=None):
     """
     Run the fitter for each county in a state.
 
@@ -428,7 +426,6 @@ def run_state(state, states_only=False):
     ----------
     state: str
         State to run against.
-
     states_only: bool
         If True only run the state level.
     """
@@ -440,7 +437,9 @@ def run_state(state, states_only=False):
         p = Pool()
         fit_results = p.map(fit_county_model, all_fips)
 
-        output_file = os.path.join(OUTPUT_DIR, state.title(), 'data', f'summary_{state}__mle_fit_results.json')
+        output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary', f'summary_{state}__mle_fit_results.json')
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
         pd.DataFrame(fit_results).to_json(output_file)
 
         p.map(plot_inferred_result_county, fit_results)
@@ -448,11 +447,13 @@ def run_state(state, states_only=False):
 
     else:
         fit_results = fit_state_model(state)
-        output_file = os.path.join(OUTPUT_DIR, 'pyseir', state.title(), 'data',
+        output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
                                    f'summary_{state}_state_only__mle_fit_results.json')
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
         pd.DataFrame(fit_results, index=[state]).to_json(output_file)
 
         plot_inferred_result_state(fit_results)
+
 
 if __name__ == '__main__':
     fips = '06075'

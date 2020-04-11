@@ -120,9 +120,9 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
             if actual_date <= today:
                 rho.append(1)
             elif (actual_date - today).days <= 30:
-                rho.append(1.3 / R0)
-            elif (actual_date - today).days <= 60:
                 rho.append(1.1 / R0)
+            elif (actual_date - today).days <= 60:
+                rho.append(1.0 / R0)
             elif (actual_date - today).days <= 90:
                 rho.append(0.8 / R0)
             else: # Open back up...
@@ -188,7 +188,7 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression,
     rho = []
 
     # Check for fips that don't match.
-    public_implementations = load_public_implementations_data().set_index('fips')
+    public_implementations = load_public_implementations_data()
 
     # Not all counties present in this dataset.
     if fips not in public_implementations.index:
@@ -239,11 +239,18 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression,
 
     return interp1d(t_list_since_reference_date, rho, fill_value='extrapolate')
 
+
 def generate_empirical_distancing_policy_by_state(t_list, state, future_suppression, reference_start_date=None):
     """
     Produce a suppression policy at state level based on Imperial College
     estimates of social distancing programs combined with County level
     datasets about their implementation.
+
+    Note: This is about 250ms per state, which adds up when running e.g. MLE
+    optimization. Bottleneck is computing the suppression policy to date which
+    is done by summing counties. This should be done once per state and lru
+    cached, not done for each county every call. Also just using numpy instead
+    of pandas.
 
     Parameters
     ----------
@@ -262,32 +269,23 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t
     """
-    
+
     county_metadata = load_county_metadata()
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
     
     if reference_start_date is None:
         reference_start_date = min([infer_t0(fips) for fips in counties_fips])
-        
-    suppression_policy_fips_args = dict(t_list=t_list, 
-                                        future_suppression=future_suppression,
-                                        reference_start_date=reference_start_date)
 
-    weight = county_metadata[county_metadata.state == state][['fips', 'total_population']] \
-                                .set_index('fips').rename(columns={'total_population': 'weight'})
-    
-    results = dict()
+    # Aggregate the counties to the state level, weighted by population.
+    weight = county_metadata.loc[county_metadata.state == state, 'total_population'].values
+    weight = weight / weight.sum()
+    results = []
     for fips in counties_fips:
-        suppression_policy = generate_empirical_distancing_policy(fips=fips, **suppression_policy_fips_args)
-        results[fips] = suppression_policy(suppression_policy_fips_args['t_list'])
-        results[fips] = np.clip(results[fips], a_max=1, a_min=0)
-    results = pd.DataFrame(results).T.join(weight)
-
-    results_for_state = list()
-    cols = [col for col in results.columns if col != 'weight']
-    for col in cols:
-        results_for_state.append((results[col] * results['weight']).sum())
-    results_for_state = np.array(results_for_state) / results['weight'].sum()
+        suppression_policy = generate_empirical_distancing_policy(
+            fips=fips, t_list=t_list, future_suppression=future_suppression,
+            reference_start_date=reference_start_date)
+        results.append(suppression_policy(t_list).clip(max=1, min=0))
+    results_for_state = (np.vstack(results).T * weight).sum(axis=1)
 
     return interp1d(t_list, results_for_state, fill_value='extrapolate')
 
