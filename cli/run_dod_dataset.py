@@ -32,7 +32,7 @@ def deploy_dod_projections(run_validation, input_dir, output):
         logger.info(f"Starting to generate files for {intervention.name}.")
 
         state_result, county_result = dod_pipeline.run_projections(
-            input_dir, intervention, run_validation=run_validation
+            input_dir, intervention, run_validation=not disable_validation
         )
         dod_pipeline.deploy_results(state_result, output)
         dod_pipeline.deploy_results(county_result, output)

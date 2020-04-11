@@ -4,11 +4,10 @@
 name: Build & Publish API artifacts to data.covidactnow.org
 
 on:
-  # JHU posts new data at 11:30 (UTC).
-  # covid-data-public fetches it at 12:00 (UTC).
-  # So we rebuild / publish the API at 12:30 (UTC).
+  # covid-data-public fetches data at 00:00 and 12:00 UTC.
+  # So we rebuild / publish the API at 00:30 and 12:30 UTC.
   schedule:
-   - cron: '30 12 * * *'
+   - cron: '30 0,12 * * *'
 
   # Hook to trigger a manual run.
   # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
