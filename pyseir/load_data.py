@@ -10,6 +10,8 @@ import us
 import zipfile
 import json
 from pyseir import OUTPUT_DIR
+from libs.datasets import NYTimesDataset
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
@@ -132,13 +134,30 @@ def cache_public_implementations_data():
 
 def load_county_case_data():
     """
-    Return county level case data. The following columns:
+    Return county level case data.
 
     Returns
     -------
     : pd.DataFrame
     """
-    return pd.read_pickle(os.path.join(DATA_DIR, 'covid_case_timeseries.pkl'))
+    county_case_data = NYTimesDataset.load().timeseries() \
+                         .get_subset(AggregationLevel.COUNTY, country='USA') \
+                         .get_data(country='USA')
+    return county_case_data
+
+def load_state_case_data():
+    """
+    Return county level case data.
+
+    Returns
+    -------
+    : pd.DataFrame
+    """
+
+    state_case_data = NYTimesDataset.load().timeseries() \
+                         .get_subset(AggregationLevel.STATE, country='USA') \
+                         .get_data(country='USA')
+    return state_case_data
 
 
 def load_county_metadata():
@@ -284,11 +303,13 @@ def load_new_case_data_by_fips(fips, t0):
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
+
     _county_case_data = load_county_case_data()
     county_case_data = _county_case_data[_county_case_data['fips'] == fips]
     times_new = (county_case_data['date'] - t0).dt.days.iloc[1:]
     observed_new_cases = county_case_data['cases'].values[1:] - county_case_data['cases'].values[:-1]
     observed_new_deaths = county_case_data['deaths'].values[1:] - county_case_data['deaths'].values[:-1]
+
     return times_new, observed_new_cases, observed_new_deaths
 
 def load_new_case_data_by_state(state, t0):
@@ -311,24 +332,13 @@ def load_new_case_data_by_state(state, t0):
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-    _state_fips = load_county_metadata()[['state', 'fips']]
-    _state_fips = _state_fips[_state_fips.state == state].drop_duplicates()
+    _state_case_data = load_state_case_data()
+    state_case_data = _state_case_data[_state_case_data['state'] == us.states.lookup(state).abbr]
+    times_new = (state_case_data['date'] - t0).dt.days.iloc[1:]
+    observed_new_cases = state_case_data['cases'].values[1:] - state_case_data['cases'].values[:-1]
+    observed_new_deaths = state_case_data['deaths'].values[1:] - state_case_data['deaths'].values[:-1]
 
-    # set long enough lists to record new cases and deaths count
-    observed_new_cases_state = np.zeros(360)
-    observed_new_deaths_state = np.zeros(360)
-    times_new_state = np.zeros(360)
-    for fips in _state_fips['fips']:
-        times, observed_new_cases, observed_new_deaths = \
-            load_new_case_data_by_fips(fips, t0)
-        observed_new_cases_state[times.values] += observed_new_cases
-        observed_new_deaths_state[times.values] += observed_new_deaths
-        times_new_state[times.values] = times.values
-    observed_new_cases_state = observed_new_cases_state[times_new_state > 0]
-    observed_new_deaths_state = observed_new_deaths_state[times_new_state > 0]
-    times_new_state = times_new_state[times_new_state > 0]
-
-    return times_new_state, observed_new_cases_state, observed_new_deaths_state
+    return times_new, observed_new_cases, observed_new_deaths
 
 def load_hospital_data():
     """
