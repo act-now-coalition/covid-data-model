@@ -267,10 +267,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
     
     if reference_start_date is None:
-        t0s = list()
-        for fips in counties_fips:
-            t0s.append(infer_t0(fips))
-        reference_start_date = min(t0s)
+        reference_start_date = min([infer_t0(fips) for fips in counties_fips])
         
     suppression_policy_fips_args = dict(t_list=t_list, 
                                         future_suppression=future_suppression,
