@@ -21,6 +21,12 @@ def get_average_SEIR_parameters(fips):
     """
     Generate the additional fitter candidates from the ensemble generator. This
     has the suppresssion policy and R0 keys removed.
+
+    Parameters
+    ----------
+    fips: str
+        FIPS code.
+
     Returns
     -------
     params: dict
@@ -40,6 +46,7 @@ def fit_seir(R0, t0, eps, times,
              suppression_policy_params=None):
     """
     Fit SEIR model by MLE.
+
     Parameters
     ----------
     R0: float
@@ -119,10 +126,12 @@ def fit_county_model(fips):
     We assume a poisson process generates mortalities at a rate defined by the
     underlying dynamical model.
     TODO @ EC: Add hospitalization data when available.
+
     Parameters
     ----------
     fips: str
         County fips.
+
     Returns
     -------
     fit_values: dict
@@ -185,10 +194,12 @@ def fit_state_model(state):
     We assume a poisson process generates mortalities at a rate defined by the
     underlying dynamical model.
     TODO @ EC: Add hospitalization data when available.
+
     Parameters
     ----------
     state: str
         State full name.
+
     Returns
     -------
     fit_values: dict
@@ -412,10 +423,12 @@ def plot_inferred_result_state(fit_results):
 def run_state(state, states_only=False):
     """
     Run the fitter for each county in a state.
+
     Parameters
     ----------
     state: str
         State to run against.
+
     states_only: bool
         If True only run the state level.
     """
