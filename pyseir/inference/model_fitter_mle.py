@@ -154,7 +154,9 @@ def fit_county_model(fips):
 
     # run MIGRAD algorithm for optimization.
     # for details refer: https://root.cern/root/html528/TMinuit.html
+    # TODO @ Xinyu: add lines to check if minuit optimization result is valid.
     m.migrad()
+
     values = dict(fips=fips, **dict(m.values))
     if np.isnan(values['t0']):
         logging.error(f'Could not compute MLE values for county {county_metadata["county"]}, {county_metadata["state"]}')
@@ -169,6 +171,9 @@ def fit_county_model(fips):
     values['population_density'] = county_metadata['population_density']
     values['I_initial'] = SEIR_params['I_initial']
     values['A_initial'] = SEIR_params['A_initial']
+
+    plot_optimization_results(m, by='fips', fit_results=values)
+
     return values
 
 
@@ -221,6 +226,7 @@ def fit_state_model(state):
 
     # run MIGRAD algorithm for optimization.
     # for details refer: https://root.cern/root/html528/TMinuit.html
+    # TODO @ Xinyu: add lines to check if minuit optimization result is valid.
     m.migrad()
 
     values = dict(**dict(m.values))
@@ -236,8 +242,35 @@ def fit_state_model(state):
     values['population_density'] = state_metadata['population_density']
     values['I_initial'] = SEIR_params['I_initial']
     values['A_initial'] = SEIR_params['A_initial']
+
+    plot_optimization_results(m, by='state', fit_results=values)
+
     return values
 
+def plot_optimization_results(m, by, fit_results):
+    """
+    Plot parameter profile likelihood and contours.
+    """
+
+    plt.figure(figsize=(8, 8))
+    plt.subplot(2, 2, 1)
+    m.draw_profile("R0")
+    plt.subplot(2, 2, 2)
+    m.draw_profile("t0")
+    plt.subplot(2, 2, 3)
+    m.draw_profile("eps")
+    plt.subplot(2, 2, 4)
+    m.draw_mncontour('R0', 't0', nsigma=4)
+
+    if by == 'fips':
+        output_file = os.path.join(
+            OUTPUT_DIR, fit_results['state'].title(), 'reports',
+            f'{fit_results["state"]}__{fit_results["county"]}__{fit_results["fips"]}__mle_fit_contours.pdf')
+    elif by == 'state':
+        output_file = os.path.join(
+            OUTPUT_DIR, fit_results['state'].title(), 'reports', f'{fit_results["state"]}__mle_fit_contours.pdf')
+
+    plt.savefig(output_file)
 
 def plot_fitting_results(by,
                          metadata,
@@ -261,9 +294,10 @@ def plot_fitting_results(by,
                  label='Observed Deaths')
     plt.plot(model_dates, model.results['total_new_infections'],
              label='Estimated Total New Infections Per Day')
-    plt.plot(model_dates, model.gamma * model.results['total_new_infections'],
-             label='Symptomatic Model Cases Per Day')
-    plt.plot(model_dates, model.results['direct_deaths_per_day'],
+    if model.gamma < 1:
+        plt.plot(model_dates, model.gamma * model.results['total_new_infections'],
+                 label='Symptomatic Model Cases Per Day')
+    plt.plot(model_dates, model.results['total_deaths_per_day'],
              label='Model Deaths Per Day')
     plt.yscale('log')
     plt.ylim(.9e0)
@@ -307,12 +341,13 @@ def plot_inferred_result_county(fit_results):
             load_data.load_new_case_data_by_fips(fips, t0=ref_date)
 
     if observed_new_cases.sum() < min_deaths:
-        logging.warning(f"{metadata['county']} has fewer than 5 cases. "
+        logging.warning(f"{metadata['county']} has fewer than {min_deaths} cases. "
                         f"Aborting plot.")
     else:
         logging.info(f"Plotting MLE Fits for {metadata['county']}")
 
-    R0, t0, eps = fit_results['R0'], fit_results['t0'], fit_results['eps']
+    R0, t0, eps, optimizer = \
+        fit_results['R0'], fit_results['t0'], fit_results['eps'], fit_results['optimizer']
 
     model = SEIRModel(
         R0=R0,
@@ -342,15 +377,15 @@ def plot_inferred_result_state(fit_results):
     times, observed_new_cases, observed_new_deaths = \
             load_data.load_new_case_data_by_state(state, ref_date)
 
-    if observed_new_cases.sum() < 5:
-        logging.warning(f"{state} has fewer than 5 cases. Aborting plot.")
+    if observed_new_cases.sum() < min_deaths:
+        logging.warning(f"{state} has fewer than {min_deaths} cases. Aborting plot.")
         return
     else:
         logging.info(f"Plotting MLE Fits for {state}")
 
-    R0, t0, eps, I_initial, A_initial = \
+    R0, t0, eps, I_initial, A_initial, optimizer = \
         fit_results['R0'], fit_results['t0'], fit_results['eps'], \
-        fit_results['I_initial'], fit_results['A_initial']
+        fit_results['I_initial'], fit_results['A_initial'], fit_results['optimizer']
 
     SEIR_params = get_average_SEIR_parameters(us.states.lookup(state).fips)
     SEIR_params['I_initial'] = I_initial
