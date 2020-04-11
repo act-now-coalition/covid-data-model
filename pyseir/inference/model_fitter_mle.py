@@ -26,7 +26,7 @@ def get_average_SEIR_parameters(fips):
     params: dict
         The average ensemble params.
     """
-    SEIR_kwargs = ParameterEnsembleGenerator(fips, N_samples=10000,
+    SEIR_kwargs = ParameterEnsembleGenerator(fips, N_samples=100,
                                              t_list=t_list,
                                              suppression_policy=None).get_average_seir_parameters()
     SEIR_kwargs.pop('R0')
@@ -172,7 +172,8 @@ def fit_county_model(fips):
     values['I_initial'] = SEIR_params['I_initial']
     values['A_initial'] = SEIR_params['A_initial']
 
-    plot_optimization_results(m, by='fips', fit_results=values)
+    # # TODO @ Xinyu: test this after the slow inference is resolved
+    # plot_optimization_results(m, by='fips', fit_results=values)
 
     return values
 
@@ -243,7 +244,8 @@ def fit_state_model(state):
     values['I_initial'] = SEIR_params['I_initial']
     values['A_initial'] = SEIR_params['A_initial']
 
-    plot_optimization_results(m, by='state', fit_results=values)
+    # TODO @ Xinyu: test this after the slow inference is resolved
+    # plot_optimization_results(m, by='state', fit_results=values)
 
     return values
 
