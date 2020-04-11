@@ -10,7 +10,7 @@
     },
     "date": {
       "title": "Date",
-      "description": "Date of latest data",
+      "description": "ISO 8601 Date of latest data",
       "type": "string"
     },
     "cases": {
@@ -60,7 +60,7 @@
         },
         "date": {
           "title": "Date",
-          "description": "Date of latest data",
+          "description": "ISO 8601 Date of latest data",
           "type": "string"
         }
       },

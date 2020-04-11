@@ -32,8 +32,10 @@ def find_public_model_classes() -> List[Type[pydantic.BaseModel]]:
 
         spec = importlib.util.spec_from_file_location(module_name, str(path))
         mod = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = mod
-        spec.loader.exec_module(mod)
+        # If a module has already been imported don't reimport.
+        if spec.name not in sys.modules:
+            sys.modules[spec.name] = mod
+            spec.loader.exec_module(mod)
 
     model_classes = []
     for subclass in pydantic.BaseModel.__subclasses__():
