@@ -95,7 +95,7 @@ class ParameterEnsembleGenerator:
                 HICUVent_initial=0,
                 suppression_policy=self.suppression_policy,
                 R0=np.random.uniform(low=3.2, high=4),
-                R0_hospital=np.random.uniform(low=.5, high=4.5 / 6),
+                R0_hospital=np.random.uniform(low=3.2 / 6, high=4 / 6),
                 # These parameters produce an IFR ~0.0065 if we had infinite
                 # capacity, and about ~0.0125 with capacity constraints imposed
                 hospitalization_rate_general=hospitalization_rate_general,

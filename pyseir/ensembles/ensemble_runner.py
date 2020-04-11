@@ -201,6 +201,7 @@ class EnsembleRunner:
 
             for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
                 R0 = 3.6
+                self.override_params['R0'] = R0
                 policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
                 self.suppression_policies[f'suppression_policy__{scenario}'] = policy
                 self.override_params = ParameterEnsembleGenerator(
@@ -247,6 +248,8 @@ class EnsembleRunner:
             self.n_samples = 1
 
             for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
+                R0 = 3.6
+                self.override_params['R0'] = R0
                 policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
                 self.suppression_policies[f'suppression_policy__{scenario}'] = policy
                 self.override_params = ParameterEnsembleGenerator(
