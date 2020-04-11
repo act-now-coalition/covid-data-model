@@ -4,7 +4,7 @@ import click
 import logging
 
 from libs.enums import Intervention
-from libs.pipelines import dod_pipeline, top_counties_pipeline
+from libs.pipelines import dod_pipeline
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 

@@ -7,7 +7,7 @@ from libs import build_processed_dataset
 from libs import dataset_deployer
 
 from libs.datasets import results_schema as rc
-from libs.functions.generate_api import generate_api_for_projection
+from libs.functions import generate_api as api
 
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
@@ -58,7 +58,8 @@ def generate_api(
         length
     )
     return TopCountiesPipelineResult(
-        projection_result.key, generate_api_for_projection(sorted_limited)
+        projection_result.key, 
+        api.generate_api_for_projection(sorted_limited)
     )
 
 
