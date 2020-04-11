@@ -26,7 +26,7 @@ def get_average_SEIR_parameters(fips):
     params: dict
         The average ensemble params.
     """
-    SEIR_kwargs = ParameterEnsembleGenerator(fips, N_samples=100,
+    SEIR_kwargs = ParameterEnsembleGenerator(fips, N_samples=10000,
                                              t_list=t_list,
                                              suppression_policy=None).get_average_seir_parameters()
     SEIR_kwargs.pop('R0')
