@@ -3,7 +3,7 @@ import logging
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
-
+from api.state_actuals_summary import StateCaseSummary
 
 _logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ STATE_EXPORT_FIELDS = ["state", "cases", "deaths", "source", "date"]
 COUNTY_EXPORT_FIELDS = ["fips", "cases", "deaths", "source", "date"]
 
 
-def latest_case_summaries_by_state(dataset: TimeseriesDataset) -> Iterator[dict]:
+def latest_case_summaries_by_state(dataset: TimeseriesDataset) -> Iterator[StateCaseSummary]:
     """Builds summary of latest case data by state and county.
 
     Data is generated for the embeds which expects a list of records in this format:
@@ -50,4 +50,5 @@ def latest_case_summaries_by_state(dataset: TimeseriesDataset) -> Iterator[dict]
         counties = county_data[COUNTY_EXPORT_FIELDS].to_dict(orient="records")
 
         state_data.update({"counties": counties})
-        yield state, state_data
+
+        yield StateCaseSummary(**state_data)
