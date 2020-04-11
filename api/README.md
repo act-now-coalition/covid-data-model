@@ -50,9 +50,11 @@ To update the public API, run:
 ./run.py api update-schemas
 ```
 
-This will generate all schemas from files.  If you do not want to expose a schema,
-prepend the schema with a `_` (i.e. `_MyPrivateSchema`); these will not be
-uploaded.
+This will find all python classes under `api/` that subclass `pydantic.BaseModel` and
+generate the corresponding JSON Schema file into `api/schemas/`.
+
+If you do not want to generate a top-level schema in `api/schemas/`, prepend the class name
+with a `_` (i.e. `_MyPrivateSchema`); these will not be uploaded.
 
 
 ## Specific Files Schemas

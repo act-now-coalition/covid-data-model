@@ -21,7 +21,7 @@ def main():
 )
 def update_schemas(output_dir):
     """Updates all public facing API schemas."""
-    schemas = api.load_public_schemas()
+    schemas = api.find_public_model_classes()
     for schema in schemas:
         path = output_dir / f"{schema.__name__}.json"
         _logger.info(f"Updating schema {schema} to {path}")
