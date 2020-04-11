@@ -76,17 +76,16 @@ class ParameterEnsembleGenerator:
         parameter_sets = []
         for _ in range(self.N_samples):
 
-            # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
-            # TODO: 10% is being used by CA group.  CDC suggests 20% case hospitalization rate
-            # Note that this is 10% of symptomatic cases, making overall hospitalization around 5%.
-            # https: // www.statista.com / statistics / 1105402 / covid - hospitalization - rates - us - by - age - group /
-            hospitalization_rate_general = np.random.normal(loc=0.125, scale=0.03)
-            fraction_asymptomatic = np.random.uniform(0.4, 0.6)
+            hospitalization_rate_general = np.random.normal(loc=0.04, scale=0.01)
+            # For now we have disabled this bucket and lowered rates of other
+            # boxes accordingly. Since we were not modeling different contact
+            # rates, this has the same result.
+            fraction_asymptomatic = 0
 
             parameter_sets.append(dict(
                 t_list=self.t_list,
                 N=self.population,
-                A_initial=fraction_asymptomatic * self.I_initial / (1 - fraction_asymptomatic), # assume no asymptomatic cases are tested.
+                A_initial=0.,
                 I_initial=self.I_initial,
                 R_initial=0,
                 E_initial=0,
@@ -95,25 +94,24 @@ class ParameterEnsembleGenerator:
                 HICU_initial=0,
                 HICUVent_initial=0,
                 suppression_policy=self.suppression_policy,
-                R0=np.random.uniform(low=3, high=4.5),            # Imperial College
-                R0_hospital=np.random.uniform(low=.5, high=4.5 / 6),  # Imperial College
+                R0=np.random.uniform(low=3.2, high=4),
+                R0_hospital=np.random.uniform(low=3.2 / 6, high=4 / 6),
+                # These parameters produce an IFR ~0.0065 if we had infinite
+                # capacity, and about ~0.0125 with capacity constraints imposed
                 hospitalization_rate_general=hospitalization_rate_general,
-                # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
-                hospitalization_rate_icu=max(np.random.normal(loc=.29, scale=0.03) * hospitalization_rate_general, 0),
-                # http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
-                # Coronatracking.com/data
+                hospitalization_rate_icu=max(np.random.normal(loc=0.30, scale=0.05) * hospitalization_rate_general, 0),
                 fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.6, scale=0.1), 0),
-                sigma=1 / np.random.normal(loc=3.1, scale=0.86),  # Imperial college - 2 days since that is expected infectious period.
+                sigma=1 / np.random.normal(loc=3., scale=0.86),  # Imperial college - 2 days since that is expected infectious period.
                 delta=1 / np.random.gamma(6.0, scale=1),  # Kind of based on imperial college + CDC digest.
                 delta_hospital=1 / np.random.gamma(8.0, scale=1),  # Kind of based on imperial college + CDC digest.
-                kappa=1,
-                gamma=fraction_asymptomatic,
+                kappa=1, # Contact rate for asympt
+                gamma=(1-fraction_asymptomatic),
                 # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
-                symptoms_to_hospital_days=np.random.normal(loc=6.5, scale=1.5),
+                symptoms_to_hospital_days=np.random.normal(loc=6., scale=1.5),
                 symptoms_to_mortality_days=np.random.normal(loc=18.8, scale=.45), # Imperial College
-                    hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=2),
-                    hospitalization_length_of_stay_icu=np.random.normal(loc=16, scale=3),
-                    hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=17, scale=3),
+                    hospitalization_length_of_stay_general=np.random.normal(loc=6, scale=1),
+                    hospitalization_length_of_stay_icu=np.random.normal(loc=14, scale=3),
+                    hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=15, scale=3),
                 # if you assume the ARDS population is the group that would die
                 # w/o ventilation, this would suggest a 20-42% mortality rate
                 # among general hospitalized patients w/o access to ventilators:
@@ -124,10 +122,11 @@ class ParameterEnsembleGenerator:
                 # 10% Of the population should die at saturation levels. CFR
                 # from Italy is 11.9% right now, Spain 8.9%.  System has to
                 # produce,
-                mortality_rate_no_general_beds=np.random.normal(loc=.12, scale=0.04),
-                # Bumped these up a bit. Dyspnea -> ARDS -> Septic Shock all
-                # very fatal.
-                mortality_rate_no_ICU_beds=np.random.uniform(low=0.8, high=1),
+                mortality_rate_no_general_beds=np.random.normal(loc=.05, scale=0.01),
+                mortality_rate_from_hospital=0,
+                mortality_rate_from_ICU=np.random.normal(loc=0.4, scale=0.05),
+                mortality_rate_from_ICUVent=0.60,
+                mortality_rate_no_ICU_beds=1.0,
                 beds_general=self.beds * 0.4 * 2.07, # 60% utliization, no scaling...
                 # TODO.. Patch this After Issue 132
                 beds_ICU= (1 - 0.85) * self.icu_beds,  # No scaling, 85% utilization...
