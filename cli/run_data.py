@@ -36,11 +36,11 @@ def run_latest(version: data_version.DataVersion, output: pathlib.Path):
     timeseries = JHUDataset.local().timeseries()
     state_summaries = dataset_export.latest_case_summaries_by_state(timeseries)
 
-    for state, state_summary in state_summaries:
+    for state_summary in state_summaries:
+        state = state_summary.state
         output_file = output / f"{state}.summary.json"
-        with output_file.open("w") as f:
-            _logger.info(f"Writing latest data for {state}")
-            json.dump(state_summary, f)
+        _logger.info(f"Writing latest data for {state} to {output_file}")
+        output_file.write_text(state_summary.json(indent=2))
 
     version.write_file("case_summary", output)
 

@@ -1,0 +1,5 @@
+[TYPECHECK]
+# Pydantic seems to fail the type check error because
+# it fails to find BaseModel, unclear what the issue
+# is as it pydantic.BaseModel definitely exists.
+ignored-modules=pydantic
