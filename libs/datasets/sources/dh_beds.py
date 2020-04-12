@@ -4,6 +4,7 @@ from libs import enums
 import pandas as pd
 from libs.datasets.beds import BedsDataset
 from libs.datasets import dataset_utils
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import data_source
 
 _logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
             .replace("é", "e")
             .replace("á", "a")
             .replace(".", "")
+            .replace("ü", "u")
             .replace("ñ", ""),
         ): fips
         for state, county, fips in fips_combos
@@ -41,6 +43,7 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
             .replace("í", "i")
             .replace("á", "a")
             .replace(".", "")
+            .replace("ü", "u")
             .replace("ñ", "")
         )
 
@@ -140,11 +143,12 @@ class DHBeds(data_source.DataSource):
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         # All DH data is aggregated at the county level
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
-
         data[cls.Fields.COUNTRY] = "USA"
 
         # Backfilling FIPS data based on county names.
         fips_data = dataset_utils.build_fips_data_frame()
+        fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
+        fips_data = fips_data[fips_data.fips != '99999']
         data = match_county_to_fips(data, fips_data)
 
         # The virgin islands do not currently have associated fips codes.
