@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 
 TopCountiesPipelineProjectionResult = namedtuple(
-    "TopCountiesPipelineProjectionResult", ["key", "projection_df",]
+    "TopCountiesPipelineProjectionResult", ["projection_df",]
 )
 
-TopCountiesPipelineResult = namedtuple("TopCountiesPipelineResult", ["key", "api"])
+TopCountiesPipelineResult = namedtuple("TopCountiesPipelineResult", ["api"])
 
 
 def run_projections(
@@ -43,7 +43,7 @@ def run_projections(
     if run_validation:
         validate_results.validate_counties_df(counties_key_name, counties_df)
 
-    county_results = TopCountiesPipelineProjectionResult(counties_key_name, counties_df)
+    county_results = TopCountiesPipelineProjectionResult(counties_df)
 
     return county_results
 
@@ -58,15 +58,16 @@ def generate_api(
         length
     )
     return TopCountiesPipelineResult(
-        projection_result.key, api.generate_api_for_projection(sorted_limited)
+        api.generate_api_for_projection(sorted_limited)
     )
 
 
-def deploy_results(result: TopCountiesPipelineResult, output: str):
+def deploy_results(result: TopCountiesPipelineResult, key: str, output: str):
     """Deploys results from the top counties to specified output directory.
 
     Args:
         result: Top Counties Pipeline result.
+        key: Name for the file to be uploaded
         output: output folder to save results in.
     """
-    dataset_deployer.upload_json(result.key, result.api.json(), output)
+    dataset_deployer.upload_json(key, result.api.json(), output)

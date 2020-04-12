@@ -34,6 +34,6 @@ def deploy_top_counties(run_validation, input_dir, output):
         input_dir, run_validation=True
     )
     county_results_api = top_counties_pipeline.generate_api(county_result)
-    top_counties_pipeline.deploy_results(county_results_api, output)
+    top_counties_pipeline.deploy_results(county_results_api, "first_100_counties", output)
 
     logger.info("finished top counties job")
