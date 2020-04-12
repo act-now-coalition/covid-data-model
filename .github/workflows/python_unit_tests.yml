@@ -4,6 +4,8 @@ on: [push]
 
 jobs:
   build:
+    env:
+      COVID_DATA_PUBLIC_REF: 'master'
 
     runs-on: ubuntu-latest
     strategy:
@@ -11,6 +13,13 @@ jobs:
         python-version: [3.7]
 
     steps:
+    - name: Checkout covid-data-public
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-public
+        path: covid-data-public
+        lfs: true
+        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
