@@ -57,7 +57,9 @@
         }
       },
       "required": [
-        "peakShortfall"
+        "peakShortfall",
+        "peakDate",
+        "shortageStartDate"
       ]
     },
     "_Projections": {
