@@ -7,7 +7,8 @@ from libs.pipelines import top_counties_pipeline
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 
-@click.command('deploy-top-counties')
+
+@click.command("deploy-top-counties")
 @click.option(
     "--run_validation",
     "-r",
