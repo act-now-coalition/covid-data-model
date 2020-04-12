@@ -22,7 +22,9 @@ fit_params = dict(
     R0=3.0, limit_R0=[1, 8], error_R0=1.,
     I_initial=50.0, limit_I_initial=[1, 1e4], error_I_initial=10,
     t0=60, limit_t0=[-90, 90], error_t0=1,
-    eps=.5, limit_eps=[0, 2], error_eps=.2,
+    eps0=.5, limit_eps0=[0, 2], error_eps0=.2,
+    eps1=.5, limit_eps1=[0, 2], error_eps1=.2,
+    t_break=45, limit_t_break=[0, 100], error_t_break=5,
     test_fraction=.1, limit_test_fraction=[0.01, 1], error_test_fraction=.05,
     errordef=5
 )
@@ -51,7 +53,7 @@ def get_average_SEIR_parameters(fips):
     return SEIR_kwargs
 
 
-def fit_seir(R0, t0, eps, test_fraction, I_initial,
+def fit_seir(R0, t0, eps0, eps1, t_break, test_fraction, I_initial,
              times, by='fips', fips=None, state=None,
              observed_new_cases=None, observed_new_deaths=None,
              SEIR_params=None,
@@ -91,15 +93,18 @@ def fit_seir(R0, t0, eps, test_fraction, I_initial,
       : float
         Chi square of fitting model to observed cases and deaths.
     """
-    if by == 'fips':
-        suppression_policy = \
-        suppression_policies.generate_empirical_distancing_policy(
-            fips=fips, future_suppression=eps, **suppression_policy_params)
-    elif by == 'state':
-        # TODO: This takes > 200ms which is 10x the model run time. Can be optimized...
-        suppression_policy = \
-            suppression_policies.generate_empirical_distancing_policy_by_state(
-                state=state, future_suppression=eps, **suppression_policy_params)
+    # if by == 'fips':
+    #     suppression_policy = \
+    #         suppression_policies.generate_empirical_distancing_policy(
+    #             fips=fips, future_suppression=eps, **suppression_policy_params)
+    # elif by == 'state':
+    #     # TODO: This takes > 200ms which is 10x the model run time. Can be optimized...
+    #     suppression_policy = \
+    #         suppression_policies.generate_empirical_distancing_policy_by_state(
+    #             state=state, future_suppression=eps, **suppression_policy_params)
+
+    suppression_policy = suppression_policies.generate_two_step_policy(t_list, eps0, eps1, t_break)
+
 
     # Note the model is about 25 ms per execution
 
@@ -231,14 +236,13 @@ def fit_state_model(state):
     logging.info(f'Fitting MLE model to {state}')
     SEIR_params = get_average_SEIR_parameters(us.states.lookup(state).fips)
     SEIR_params['I_initial'] = SEIR_params['I_initial'] * len(state_metadata['fips']) * frac_counties_with_seed_infection
-    SEIR_params['A_initial'] = SEIR_params['A_initial'] * len(state_metadata['fips']) * frac_counties_with_seed_infection
-    suppression_policy_params = dict(t_list=t_list,
-                                     reference_start_date=ref_date)
+    suppression_policy_params = dict(t_list=t_list)
 
     # Note that error def is not right here. We need a realistic error model...
     t0_guess = 50
-    _fit_seir = lambda R0, t0, eps, test_fraction, I_initial: \
-        fit_seir(R0=R0, t0=t0, eps=eps, test_fraction=test_fraction,
+    _fit_seir = lambda R0, t0, eps0, eps1, t_break, test_fraction, I_initial: \
+        fit_seir(R0=R0, t0=t0, eps0=eps0, eps1=eps1, t_break=t_break,
+                 test_fraction=test_fraction,
                  I_initial=I_initial,
                  times=times,
                  by='state', state=state,
@@ -259,7 +263,9 @@ def fit_state_model(state):
         values['t0_date'] = ref_date + timedelta(days=t0_guess)
     else:
         values['t0_date'] = ref_date + timedelta(days=values['t0'])
-    values['Reff_current'] = values['R0'] * values['eps']
+    values['Reff_1'] = values['R0'] * values['eps0']
+    values['Reff_2'] = values['R0'] * values['eps1']
+    values['t_break'] = values['t_break']
     values['observed_total_deaths'] = np.sum(observed_new_deaths)
     values['state'] = state
     values['total_population'] = state_metadata['total_population']
@@ -421,16 +427,17 @@ def plot_inferred_result_state(fit_results):
     else:
         logging.info(f"Plotting MLE Fits for {state}")
 
-    R0, t0, eps, I_initial = \
-        fit_results['R0'], fit_results['t0'], fit_results['eps'], fit_results['I_initial']
+    R0, t0, I_initial = \
+        fit_results['R0'], fit_results['t0'], fit_results['I_initial']
 
     SEIR_params = get_average_SEIR_parameters(us.states.lookup(state).fips)
     SEIR_params['I_initial'] = I_initial
     SEIR_params['E_initial'] = 1.2 * I_initial
     model = SEIRModel(
         R0=R0,
-        suppression_policy=suppression_policies.generate_empirical_distancing_policy_by_state(
-            t_list, state, future_suppression=eps),
+        # suppression_policies.generate_empirical_distancing_policy_by_state(t_list, state, future_suppression=eps),
+        suppression_policy=suppression_policies.generate_two_step_policy(
+            t_list, eps0=fit_results['eps0'], eps1=fit_results['eps1'], t_break=fit_results['t_break']),
         **SEIR_params
     )
     model.run()
