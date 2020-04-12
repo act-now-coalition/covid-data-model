@@ -195,6 +195,13 @@ def build_fips_data_frame():
 
 
 def add_county_using_fips(data, fips_data):
+    is_county = data.aggregate_level == AggregationLevel.COUNTY.value
+    # Only want to add county names to county level data, so we'll slice out the county
+    # data and combine it back at the end.
+    not_county_df = data[~is_county]
+    data = data[is_county]
+    fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
+
     data = data.set_index(["fips", "state"])
     fips_data = fips_data.set_index(["fips", "state"])
     data = data.join(fips_data[["county"]], on=["fips", "state"], rsuffix="_r").reset_index()
@@ -216,8 +223,9 @@ def add_county_using_fips(data, fips_data):
         _logger.warning(f"{unique_fips}")
 
     if "county_r" in data.columns:
-        return data.drop("county").rename({"count_r": "county"}, axis=1)
-    return data
+        data = data.drop(columns="county").rename({"county_r": "county"}, axis=1)
+
+    return pd.concat([data, not_county_df])
 
 
 def assert_counties_have_fips(data, county_key='county', fips_key='fips'):
