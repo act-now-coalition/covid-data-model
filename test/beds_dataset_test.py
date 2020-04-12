@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
 from libs.datasets import beds
+from libs.datasets import DHBeds
 from libs.datasets import dataset_utils
 
 
@@ -94,3 +95,8 @@ def test_duplicate_index_fails(is_county):
 
     with pytest.raises(dataset_utils.DuplicateValuesForIndex):
         build_beds_dataset(rows)
+
+
+def test_dh_beds_loading():
+    beds_data = DHBeds.local().beds()
+    assert beds_data
