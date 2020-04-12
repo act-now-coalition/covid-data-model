@@ -18,6 +18,16 @@ frac_counties_with_seed_infection = 0.5
 min_deaths = 5   # minimum number of deaths for chi2 calculation and plot.
 
 
+fit_params = dict(
+    R0=3.0, limit_R0=[1, 8], error_R0=1.,
+    I_initial=50.0, limit_I_initial=[1, 1e4], error_I_initial=10,
+    t0=60, limit_t0=[-90, 90], error_t0=1,
+    eps=.5, limit_eps=[0, 2], error_eps=.2,
+    test_fraction=.1, limit_test_fraction=[0.01, 1], error_test_fraction=.05,
+    errordef=5
+)
+
+
 def get_average_SEIR_parameters(fips):
     """
     Generate the additional fitter candidates from the ensemble generator. This
@@ -41,8 +51,8 @@ def get_average_SEIR_parameters(fips):
     return SEIR_kwargs
 
 
-def fit_seir(R0, t0, eps, times,
-             by='fips', fips=None, state=None,
+def fit_seir(R0, t0, eps, test_fraction, I_initial,
+             times, by='fips', fips=None, state=None,
              observed_new_cases=None, observed_new_deaths=None,
              SEIR_params=None,
              suppression_policy_params=None):
@@ -86,25 +96,29 @@ def fit_seir(R0, t0, eps, times,
         suppression_policies.generate_empirical_distancing_policy(
             fips=fips, future_suppression=eps, **suppression_policy_params)
     elif by == 'state':
-        # TODO: This takes > 200ms. Can be optimized.
+        # TODO: This takes > 200ms which is 10x the model run time. Can be optimized...
         suppression_policy = \
-        suppression_policies.generate_empirical_distancing_policy_by_state(
-            state=state, future_suppression=eps, **suppression_policy_params)
+            suppression_policies.generate_empirical_distancing_policy_by_state(
+                state=state, future_suppression=eps, **suppression_policy_params)
 
     # Note the model is about 25 ms per execution
+
+    SEIR_params = {key: value for key, value in SEIR_params.items() if key not in fit_params and key not in ['E_initial']}
+    SEIR_params['E_initial'] = 1.2 * I_initial
+
     model = SEIRModel(
-        R0=R0, suppression_policy=suppression_policy,
+        R0=R0, suppression_policy=suppression_policy, I_initial=I_initial,
         **SEIR_params)
     model.run()
 
-    predicted_cases = model.gamma * np.interp(times, t_list + t0, model.results['total_new_infections'])
+    predicted_cases = test_fraction * model.gamma * np.interp(times, t_list + t0, model.results['total_new_infections'])
     predicted_deaths = np.interp(times, t_list + t0, model.results['total_deaths_per_day'])
 
     # Assume the error on the case count could be off by a massive factor 50.
     # Basically we don't want to use it if there appreciable mortality data available.
     # Longer term there is a better procedure.
     cases_variance = 1e10 * observed_new_cases.copy() ** 2  # Make the stdev N times larger x the number of cases
-    deaths_variance = observed_new_deaths.copy()  # Poisson dist error
+    deaths_variance = observed_new_deaths.copy() ** 2  # Poisson dist error
 
     # Zero inflated poisson Avoid floating point errors..
     cases_variance[cases_variance == 0] = 1e10
@@ -148,18 +162,20 @@ def fit_county_model(fips):
 
     # Note that error def is not right here. We need a realistic error model...
     t0_guess = 50
-    _fit_seir = lambda R0, t0, eps: fit_seir(R0=R0, t0=t0, eps=eps, times=times,
-                                             by='fips', fips=fips,
-                                             observed_new_cases=observed_new_cases,
-                                             observed_new_deaths=observed_new_deaths,
-                                             suppression_policy_params=suppression_policy_params,
-                                             SEIR_params=SEIR_params)
+    _fit_seir = lambda R0, t0, eps, test_fraction: fit_seir(
+        R0=R0,
+        t0=t0,
+        eps=eps,
+        test_fraction=test_fraction,
+        I_initial=I_initial,
+        times=times,
+        by='fips', fips=fips,
+        observed_new_cases=observed_new_cases,
+        observed_new_deaths=observed_new_deaths,
+        suppression_policy_params=suppression_policy_params,
+        SEIR_params=SEIR_params)
 
-    m = iminuit.Minuit(_fit_seir,
-                       R0=3.0, limit_R0=[1, 8], error_R0=1.,
-                       t0=t0_guess, limit_t0=[-90, 90], error_t0=1,
-                       eps=.5, limit_eps=[0, 2], error_eps=.2,
-                       errordef=1)
+    m = iminuit.Minuit(_fit_seir, **fit_params)
 
     # run MIGRAD algorithm for optimization.
     # for details refer: https://root.cern/root/html528/TMinuit.html
@@ -221,16 +237,16 @@ def fit_state_model(state):
 
     # Note that error def is not right here. We need a realistic error model...
     t0_guess = 50
-    _fit_seir = lambda R0, t0, eps: fit_seir(R0=R0, t0=t0, eps=eps, times=times,
-                                             by='state', state=state,
-                                             observed_new_cases=observed_new_cases,
-                                             observed_new_deaths=observed_new_deaths,
-                                             suppression_policy_params=suppression_policy_params,
-                                             SEIR_params=SEIR_params)
-    m = iminuit.Minuit(_fit_seir,
-                       R0=4, t0=t0_guess, eps=0.5,
-                       error_eps=.2, error_t0=1, error_R0=1., errordef=1,
-                       limit_R0=[1, 8], limit_eps=[0, 2], limit_t0=[-90, 90])
+    _fit_seir = lambda R0, t0, eps, test_fraction, I_initial: \
+        fit_seir(R0=R0, t0=t0, eps=eps, test_fraction=test_fraction,
+                 I_initial=I_initial,
+                 times=times,
+                 by='state', state=state,
+                 observed_new_cases=observed_new_cases,
+                 observed_new_deaths=observed_new_deaths,
+                 suppression_policy_params=suppression_policy_params,
+                 SEIR_params=SEIR_params)
+    m = iminuit.Minuit(_fit_seir, **fit_params)
 
     # run MIGRAD algorithm for optimization.
     # for details refer: https://root.cern/root/html528/TMinuit.html
@@ -249,11 +265,11 @@ def fit_state_model(state):
     values['total_population'] = state_metadata['total_population']
     values['population_density'] = state_metadata['population_density']
     values['I_initial'] = SEIR_params['I_initial']
-    values['A_initial'] = SEIR_params['A_initial']
+    # values['A_initial'] = SEIR_params['A_initial']
+    print(m)
 
     # TODO @ Xinyu: test this after the slow inference is resolved
     # plot_optimization_results(m, by='state', fit_results=values)
-
     return values
 
 
@@ -298,15 +314,17 @@ def plot_fitting_results(by,
     model_dates = [ref_date + timedelta(days=t + fit_results['t0']) for t in
                    t_list]
     plt.figure(figsize=(10, 8))
-    plt.errorbar(data_dates, observed_new_cases, marker='o', linestyle='',
-                 label='Observed Cases Per Day')
+    plt.errorbar(data_dates, observed_new_cases,
+                 marker='o', linestyle='', label='Observed Cases Per Day')
     plt.errorbar(data_dates, observed_new_deaths,
                  yerr=np.sqrt(observed_new_deaths), marker='o', linestyle='',
                  label='Observed Deaths Per Day')
     plt.plot(model_dates, model.results['total_new_infections'],
-             label='Estimated Total New Infections Per Day')
+             label='Estimated Total New Infections Per Day', linestyle='--', lw=2)
+    plt.plot(model_dates, fit_results['test_fraction'] * model.results['total_new_infections'],
+             label='Estimated Tested New Infections Per Day')
     if model.gamma < 1:
-        plt.plot(model_dates, model.gamma * model.results['total_new_infections'],
+        plt.plot(model_dates, fit_results['test_fraction'] * model.gamma * model.results['total_new_infections'],
                  label='Symptomatic Model Cases Per Day')
     plt.plot(model_dates, model.results['total_deaths_per_day'],
              label='Model Deaths Per Day')
@@ -350,6 +368,8 @@ def plot_inferred_result_county(fit_results):
     """
     fips = fit_results['fips']
     metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+
+    # TODO Swap out for the pass-in in time-series.
     times, observed_new_cases, observed_new_deaths = \
             load_data.load_new_case_data_by_fips(fips, t0=ref_date)
 
@@ -359,7 +379,14 @@ def plot_inferred_result_county(fit_results):
     else:
         logging.info(f"Plotting MLE Fits for {metadata['county']}")
 
-    R0, t0, eps = fit_results['R0'], fit_results['t0'], fit_results['eps']
+    R0, t0, eps, I_initial, A_initial = \
+        fit_results['R0'], fit_results['t0'], fit_results['eps'], \
+        fit_results['I_initial'], fit_results['A_initial']
+
+    SEIR_params = get_average_SEIR_parameters(us.states.lookup(state).fips)
+    SEIR_params['I_initial'] = I_initial
+    SEIR_params['E_initial'] = 1.2 * I_initial
+    SEIR_params['A_initial'] = A_initial
 
     model = SEIRModel(
         R0=R0,
@@ -394,18 +421,17 @@ def plot_inferred_result_state(fit_results):
     else:
         logging.info(f"Plotting MLE Fits for {state}")
 
-    R0, t0, eps, I_initial, A_initial = \
-        fit_results['R0'], fit_results['t0'], fit_results['eps'], \
-        fit_results['I_initial'], fit_results['A_initial']
+    R0, t0, eps, I_initial = \
+        fit_results['R0'], fit_results['t0'], fit_results['eps'], fit_results['I_initial']
 
     SEIR_params = get_average_SEIR_parameters(us.states.lookup(state).fips)
     SEIR_params['I_initial'] = I_initial
-    SEIR_params['A_initial'] = A_initial
+    SEIR_params['E_initial'] = 1.2 * I_initial
     model = SEIRModel(
         R0=R0,
         suppression_policy=suppression_policies.generate_empirical_distancing_policy_by_state(
             t_list, state, future_suppression=eps),
-            **SEIR_params
+        **SEIR_params
     )
     model.run()
 

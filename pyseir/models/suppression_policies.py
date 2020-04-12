@@ -157,6 +157,33 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     return interp1d(t_list, rho, fill_value='extrapolate')
 
 
+def generate_two_step_policy(t_list, eps0, eps1, t_break):
+    """
+    Produce a suppression policy based a two step policy where the level is
+    fixed at eps0 until t_break and then it goes to eps1
+
+    Parameters
+    ----------
+    t_list: array-like
+        List of times to interpolate over.
+    eps0: float
+        Suppression level before t_break
+    eps1: float
+        Suppression level after t_break
+    t_break: float
+        Time since simulation start to place a break.
+
+    Returns
+    -------
+    suppression_model: callable
+        suppression_model(t) returns the current suppression model at time t.
+    """
+    rho = np.ones(len(t_list))
+    rho[t_list < t_break] = eps0
+    rho[t_list >= t_break] = eps1
+    return interp1d(t_list, rho, fill_value='extrapolate')
+
+
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
                                          reference_start_date=None):
     """

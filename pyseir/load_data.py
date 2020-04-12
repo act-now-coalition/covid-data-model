@@ -313,7 +313,6 @@ def load_new_case_data_by_fips(fips, t0):
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-
     _county_case_data = load_county_case_data()
     county_case_data = _county_case_data[_county_case_data['fips'] == fips]
     times_new = (county_case_data['date'] - t0).dt.days.iloc[1:]
