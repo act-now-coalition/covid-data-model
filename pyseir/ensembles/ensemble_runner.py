@@ -142,7 +142,7 @@ class EnsembleRunner:
         self.generate_report = generate_report
 
         self.suppression_policies = None
-        self.override_params = None
+        self.override_params = dict()
         self.init_run_mode()
 
         self.all_outputs = {}
