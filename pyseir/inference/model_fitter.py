@@ -98,7 +98,6 @@ class ModelFitter:
         self.model_fit_keys = ['R0', 'eps', 't_break', 'log10_I_initial']
 
         self.SEIR_kwargs = self.get_average_seir_parameters()
-        self.minuit = None
         self.fit_results = None
         self.mle_model = None
 
@@ -294,17 +293,17 @@ class ModelFitter:
         """
         Fit a model to the data.
         """
-        self.minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
+        minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
 
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         # TODO @ Xinyu: add lines to check if minuit optimization result is valid.
-        self.minuit.migrad(precision=1e-4)
-        self.fit_results = dict(fips=self.fips, **dict(self.minuit.values))
-        self.fit_results.update({k + '_error': v for k, v in dict(self.minuit.errors).items()})
+        minuit.migrad(precision=1e-4)
+        self.fit_results = dict(fips=self.fips, **dict(minuit.values))
+        self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
-        self._fit_seir(**dict(self.minuit.values))
+        self._fit_seir(**dict(minuit.values))
 
         if np.isnan(self.fit_results['t0']):
             logging.error(f'Could not compute MLE values for {self.display_name}')
@@ -319,10 +318,10 @@ class ModelFitter:
         self.fit_results['chi2/dof deaths'] = self.chi2_deaths / (self.dof_deaths - 1)
 
         try:
-            param_state = self.minuit.get_param_states()
+            param_state = minuit.get_param_states()
             logging.info(f'Fit Results for {self.display_name} \n {param_state}')
         except:
-            param_state = dict(self.minuit.values)
+            param_state = dict(minuit.values)
             logging.info(f'Fit Results for {self.display_name} \n {param_state}')
 
         logging.info(f'Complete fit results for {self.display_name} \n {pformat(self.fit_results)}')
@@ -406,7 +405,7 @@ class ModelFitter:
                          transform=plt.gca().transAxes, fontsize=15, alpha=.6)
 
         if self.agg_level is AggregationLevel.COUNTY:
-            output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.fit_results['state'].title(), 'reports',
+            output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state, 'reports',
                 f'{self.state}__{self.county}__{self.fips}__mle_fit_results.pdf')
         else:
             output_file = os.path.join(
@@ -428,8 +427,13 @@ class ModelFitter:
         Returns
         -------
         : ModelFitter
-
         """
+        # Assert that there are some cases for counties
+        if len(fips) == 5:
+            _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(fips, t0=datetime.utcnow())
+            if observed_new_cases.sum() < 1:
+                return None
+
         model_fitter = cls(fips)
         model_fitter.fit()
         model_fitter.plot_fitting_results()
@@ -461,7 +465,7 @@ def run_state(state, states_only=False, case_death_timeseries=None):
     # Run the counties.
     if not states_only:
         county_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
-                                   f'summary_{state}__mle_fit_results.json')
+                                   f'summary__{state_obj.name}__mle_fit_results.json')
 
         df = load_data.load_county_metadata()
         all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
@@ -471,4 +475,4 @@ def run_state(state, states_only=False, case_death_timeseries=None):
         p.close()
 
         # Output
-        pd.DataFrame([fit.fit_results for fit in fitters]).to_json(county_output_file)
+        pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)
