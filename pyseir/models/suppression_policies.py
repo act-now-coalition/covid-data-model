@@ -157,7 +157,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     return interp1d(t_list, rho, fill_value='extrapolate')
 
 
-def generate_two_step_policy(t_list, eps, t_break, transition_time=7):
+def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
     """
     Produce a suppression policy based a two step policy where the level is
     fixed at 1 until t_break and then it goes to eps linearly over a fied

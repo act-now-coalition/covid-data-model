@@ -53,7 +53,7 @@ class ModelFitter:
                  ref_date=datetime(year=2020, month=1, day=1),
                  min_deaths=2,
                  n_years=1,
-                 cases_to_deaths_err_factor=.333,
+                 cases_to_deaths_err_factor=.25,
                  hospital_to_deaths_err_factor=1):
 
         self.fips = fips
@@ -98,7 +98,7 @@ class ModelFitter:
             R0=3.4, limit_R0=[2, 4.5], error_R0=.2,
             log10_I_initial=2, limit_log10_I_initial=[0, 5],
             error_log10_I_initial=.5,
-            t0=60, limit_t0=[0, 70], error_t0=1,
+            t0=60, limit_t0=[10, 70], error_t0=1,
             eps=.3, limit_eps=[0, 2], error_eps=.2,
             t_break=20, limit_t_break=[0, 100], error_t_break=2,
             test_fraction=.05, limit_test_fraction=[0.001, 1],
@@ -150,8 +150,11 @@ class ModelFitter:
 
         Here we throw out a few assumptions to plant a flag...
 
-        1. Systematic errors dominate and are likely of order 100% based on 100%
-           undercounting of deaths and hospitalizations in many places.
+        1. Systematic errors dominate and are likely of order 50% at least based
+        on 100% undercounting of deaths and hospitalizations in many places.
+        Though we account for static undercounting by letting case and hosp
+        counts float, so lets assume the error is a bit smaller for now.
+
         2. 100% is too small for 1 case count or mortality.. We should be much
            more confident in large numbers of observations
         3. TODO: Deal with this fact.. Actual observations are lower bounds.
@@ -178,7 +181,7 @@ class ModelFitter:
             Float uncertainties (stdev) for death data.
             Float uncertainties (stdev) for death data.
         """
-        # Stdev 200% of values.
+        # Stdev 50% of values.
         cases_stdev = self.cases_to_deaths_err_factor * self.observed_new_cases ** 0.5 * self.observed_new_cases.max() ** 0.5
         deaths_stdev = self.observed_new_deaths ** 0.5 * self.observed_new_deaths.max() ** 0.5
 
@@ -285,10 +288,8 @@ class ModelFitter:
         # -----------------------------------
         # Extract the predicted rates from the model.
         predicted_cases = (test_fraction * model.gamma
-                           * np.interp(self.times, self.t_list + t0,
-                                       model.results['total_new_infections']))
-        chi2_cases = np.sum((
-                                        self.observed_new_cases - predicted_cases) ** 2 / self.cases_stdev ** 2)
+                           * np.interp(self.times, self.t_list + t0, model.results['total_new_infections']))
+        chi2_cases = np.sum((self.observed_new_cases - predicted_cases) ** 2 / self.cases_stdev ** 2)
 
         # -----------------------------------
         # Chi2 Hospitalizations
@@ -298,22 +299,17 @@ class ModelFitter:
                                                        self.t_list + t0,
                                                        model.results['HGen'] +
                                                        model.results['HICU'])
-            chi2_hosp = np.sum((
-                                           self.hospitalizations - predicted_hosp) ** 2 / self.hosp_stdev ** 2)
+            chi2_hosp = np.sum((self.hospitalizations - predicted_hosp) ** 2 / self.hosp_stdev ** 2)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
+
         elif self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             # Cumulative, so differentiate the data
-            cumulative_hosp_predicted = model.results['HGen_cumulative'] + \
-                                        model.results['HICU_cumulative']
-            new_hosp_predicted = cumulative_hosp_predicted[
-                                 1:] - cumulative_hosp_predicted[:-1]
-            new_hosp_predicted = hosp_fraction * np.interp(
-                self.hospital_times[1:], self.t_list[1:] + t0,
-                new_hosp_predicted)
-            new_hosp_observed = self.hospitalizations[
-                                1:] - self.hospitalizations[:-1]
-            chi2_hosp = np.sum((
-                                           new_hosp_observed - new_hosp_predicted) ** 2 / self.hosp_stdev ** 2)
+            cumulative_hosp_predicted = model.results['HGen_cumulative'] + model.results['HICU_cumulative']
+            new_hosp_predicted = cumulative_hosp_predicted[1:] - cumulative_hosp_predicted[:-1]
+            new_hosp_predicted = hosp_fraction * np.interp(self.hospital_times[1:], self.t_list[1:] + t0, new_hosp_predicted)
+            new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
+
+            chi2_hosp = np.sum((new_hosp_observed - new_hosp_predicted) ** 2 / self.hosp_stdev ** 2)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
         else:
             chi2_hosp = 0
@@ -323,11 +319,9 @@ class ModelFitter:
         # Chi2 Deaths
         # -----------------------------------
         # Only use deaths if there are enough observations..
-        predicted_deaths = np.interp(self.times, self.t_list + t0,
-                                     model.results['total_deaths_per_day'])
+        predicted_deaths = np.interp(self.times, self.t_list + t0, model.results['total_deaths_per_day'])
         if self.observed_new_deaths.sum() > self.min_deaths:
-            chi2_deaths = np.sum((
-                                             self.observed_new_deaths - predicted_deaths) ** 2 / self.deaths_stdev ** 2)
+            chi2_deaths = np.sum((self.observed_new_deaths - predicted_deaths) ** 2 / self.deaths_stdev ** 2)
         else:
             chi2_deaths = 0
 
@@ -379,16 +373,14 @@ class ModelFitter:
         """
         Fit a model to the data.
         """
-        minuit = iminuit.Minuit(self._fit_seir, **self.fit_params,
-                                print_level=1)
+        minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
 
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         # TODO @ Xinyu: add lines to check if minuit optimization result is valid.
         minuit.migrad(precision=1e-4)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
-        self.fit_results.update(
-            {k + '_error': v for k, v in dict(minuit.errors).items()})
+        self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
         self._fit_seir(**dict(minuit.values))
@@ -399,15 +391,11 @@ class ModelFitter:
             eps_error=self.fit_results['eps_error'])
 
         if np.isnan(self.fit_results['t0']):
-            logging.error(
-                f'Could not compute MLE values for {self.display_name}')
-            self.fit_results['t0_date'] = self.ref_date + timedelta(
-                days=self.t0_guess)
+            logging.error(f'Could not compute MLE values for {self.display_name}')
+            self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.t0_guess)
         else:
-            self.fit_results['t0_date'] = self.ref_date + timedelta(
-                days=self.fit_results['t0'])
-        self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results[
-            'eps']
+            self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.fit_results['t0'])
+        self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
 
         self.fit_results['chi2'] = self.chi2_cases
         if self.hospitalizations is not None:
@@ -416,16 +404,13 @@ class ModelFitter:
 
         try:
             param_state = minuit.get_param_states()
-            logging.info(
-                f'Fit Results for {self.display_name} \n {param_state}')
+            logging.info(f'Fit Results for {self.display_name} \n {param_state}')
         except:
             param_state = dict(minuit.values)
-            logging.info(
-                f'Fit Results for {self.display_name} \n {param_state}')
+            logging.info(f'Fit Results for {self.display_name} \n {param_state}')
 
         logging.info(f'Complete fit results for {self.display_name} \n {pformat(self.fit_results)}')
-        self.mle_model = self.run_model(
-            **{k: self.fit_results[k] for k in self.model_fit_keys})
+        self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     def plot_fitting_results(self):
         """
@@ -433,11 +418,8 @@ class ModelFitter:
         """
         data_dates = [self.ref_date + timedelta(days=t) for t in self.times]
         if self.hospital_times is not None:
-            hosp_dates = [self.ref_date + timedelta(days=float(t)) for t in
-                          self.hospital_times]
-        model_dates = [
-            self.ref_date + timedelta(days=t + self.fit_results['t0']) for t in
-            self.t_list]
+            hosp_dates = [self.ref_date + timedelta(days=float(t)) for t in self.hospital_times]
+        model_dates = [self.ref_date + timedelta(days=t + self.fit_results['t0']) for t in self.t_list]
 
         # Don't display the zero-inflated error bars
         cases_err = np.array(self.cases_stdev)
@@ -488,17 +470,14 @@ class ModelFitter:
                          label='Observed Total Current Hospitalizations',
                          color='darkseagreen', capsize=3, alpha=.5,
                          markersize=10)
-            predicted_hosp = (
-                        self.mle_model.results['HGen'] + self.mle_model.results[
-                    'HICU'])
+            predicted_hosp = (self.mle_model.results['HGen'] + self.mle_model.results['HICU'])
             plt.plot(model_dates,
                      self.fit_results['hosp_fraction'] * predicted_hosp,
                      label='Estimated Total Current Hospitalizations',
                      linestyle='-.', lw=4, color='darkseagreen')
 
         plt.plot(model_dates,
-                 self.fit_results['hosp_fraction'] * self.mle_model.results[
-                     'HICU'],
+                 self.fit_results['hosp_fraction'] * self.mle_model.results['HICU'],
                  label='Estimated ICU Occupancy',
                  linestyle=':', lw=6, color='black')
 
@@ -514,15 +493,12 @@ class ModelFitter:
 
         for i, (k, v) in enumerate(self.fit_results.items()):
             if np.isscalar(v) and not isinstance(v, str):
-                plt.text(.7, .7 - 0.032 * i, f'{k}={v:1.3f}',
-                         transform=plt.gca().transAxes, fontsize=15, alpha=.6)
+                plt.text(.7, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
             else:
-                plt.text(.7, .7 - 0.032 * i, f'{k}={v}',
-                         transform=plt.gca().transAxes, fontsize=15, alpha=.6)
+                plt.text(.7, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
 
         if self.agg_level is AggregationLevel.COUNTY:
-            output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state,
-                                       'reports',
+            output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state, 'reports',
                                        f'{self.state}__{self.county}__{self.fips}__mle_fit_results.pdf')
         else:
             output_file = os.path.join(
@@ -559,7 +535,7 @@ class ModelFitter:
         return model_fitter
 
 
-def run_state(state, states_only=False, case_death_timeseries=None):
+def run_state(state, states_only=False):
     """
     Run the fitter for each county in a state.
 
@@ -569,13 +545,10 @@ def run_state(state, states_only=False, case_death_timeseries=None):
         State to run against.
     states_only: bool
         If True only run the state level.
-    case_death_timeseries: Timeseries
-        Case, death, timeseries.
     """
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
-    state_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data',
-                                     'state_summary',
+    state_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
                                      f'summary_{state}_state_only__mle_fit_results.json')
     os.makedirs(os.path.dirname(state_output_file), exist_ok=True)
     fit_results = ModelFitter.run_for_fips(state_obj.fips).fit_results
@@ -584,8 +557,7 @@ def run_state(state, states_only=False, case_death_timeseries=None):
 
     # Run the counties.
     if not states_only:
-        county_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data',
-                                          'state_summary',
+        county_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
                                           f'summary__{state_obj.name}__mle_fit_results.json')
 
         df = load_data.load_county_metadata()
@@ -596,5 +568,4 @@ def run_state(state, states_only=False, case_death_timeseries=None):
         p.close()
 
         # Output
-        pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(
-            county_output_file)
+        pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)
