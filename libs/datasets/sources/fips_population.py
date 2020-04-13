@@ -4,7 +4,7 @@ import pandas as pd
 from libs.datasets.population import PopulationDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
-from libs.us_state_abbrev import US_STATE_ABBREV
+from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS
 from libs import enums
 from libs.datasets.dataset_utils import AggregationLevel
 
@@ -77,7 +77,7 @@ class FIPSPopulation(data_source.DataSource):
             AggregationLevel.STATE,
         ).reset_index()
         states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(
-            US_STATE_ABBREV.abbrev_us_fips
+            ABBREV_US_FIPS
         )
         states_aggregated[cls.Fields.COUNTY] = None
 
