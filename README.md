@@ -24,23 +24,23 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 ## [Setup](./SETUP.md)
 
-# Running
+# API Snapshots
 
-To run a formalized job, kick it off with github actions.  Set your local token.
+We build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/) twice a day via a [github action](./.github/workflows/deploy_api.yml).
+To manually kick off a new snapshot, get a
+[perosnal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
+and run:
 
 ```bash
 export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
+./tools/publish-api.sh
 ```
 
-Then simply trigger the publish job with:
+Once a snapshot has been vetted, you can "label" it with a friendly name, e.g. pointing https://data.covidactnow.org/v0/ at https://data.covidactnow.org/snapshot/123/ with:
 ```bash
-curl -H "Accept: application/vnd.github.everest-preview+json" \
-    -H "Authorization: token $GITHUB_TOKEN" \
-    --request POST \
-    --data '{"event_type": "publish-api"}' \
-    https://api.github.com/repos/covid-projections/covid-data-model/dispatches
+export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
+./tools/label-api.sh v0 123
 ```
-
 
 # Development
 
