@@ -8,9 +8,9 @@ from pyseir.load_data import cache_all_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.ensembles.ensemble_runner import run_state
 from pyseir.reports.state_report import StateReport
-from pyseir.inference import model_fitter_mle
+from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
-from libs.datasets import JHUDataset, CDSDataset
+from libs.datasets import NYTimesDataset, CDSDataset
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 root = logging.getLogger()
@@ -22,15 +22,17 @@ formatter = logging.Formatter('%(asctime)s - %(filename)s - %(lineno)d - %(level
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
-jhu_dataset = None
+nyt_dataset = None
 cds_dataset = None
 
+
 def _cache_global_datasets():
-    global jhu_dataset, cds_dataset
+    global nyt_dataset, cds_dataset
     if cds_dataset is None:
         cds_dataset = CDSDataset.local()
-    if jhu_dataset is None:
-        jhu_dataset = JHUDataset.local()
+    if nyt_dataset is None:
+        nyt_dataset = NYTimesDataset.load()
+
 
 @click.group()
 def entry_point():
@@ -52,11 +54,12 @@ def _impute_start_dates(state=None):
 
 
 def _run_mle_fits(state=None, states_only=False):
+    _cache_global_datasets()
     if state:
-        model_fitter_mle.run_state(state.title(), states_only=states_only)
+        model_fitter.run_state(state.title(), states_only=states_only)
     else:
         for state_obj in us.STATES + us.TERRITORIES:
-            run_mle_fits(state_obj.name, states_only=states_only)
+            _run_mle_fits(state_obj.name, states_only=states_only)
 
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
@@ -82,7 +85,7 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
     _cache_global_datasets()
     if state:
         web_ui_mapper = WebUIDataAdaptorV1(state, output_interval_days=output_interval_days,
-                                           run_mode=run_mode, jhu_dataset=jhu_dataset,
+                                           run_mode=run_mode, jhu_dataset=nyt_dataset,
                                            cds_dataset=cds_dataset, output_dir=output_dir)
         web_ui_mapper.generate_state(states_only=states_only)
     else:
@@ -107,7 +110,7 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
                        ensemble_kwargs=dict(
                            run_mode=run_mode,
                            generate_report=generate_reports,
-                           covid_timeseries=jhu_dataset),
+                           covid_timeseries=nyt_dataset),
                        states_only=states_only)
         if generate_reports:
             _generate_state_reports(state.title())
@@ -136,8 +139,8 @@ def impute_start_dates(state, states_only):
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
-def run_mle_fits(state):
-    _run_mle_fits(state)
+def run_mle_fits(state, states_only):
+    _run_mle_fits(state, states_only=states_only)
 
 
 @entry_point.command()

@@ -12,9 +12,19 @@ import json
 from pyseir import OUTPUT_DIR
 from libs.datasets import NYTimesDataset
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import CovidTrackingDataSource
+from functools import lru_cache
+from enum import Enum
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
+
+FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
+
+
+class HospitalizationDataType(Enum):
+    CUMULATIVE_HOSPITALIZATIONS = 'cumulative_hospitalizations'
+    CURRENT_HOSPITALIZATIONS = 'current_hospitalizations'
 
 
 def load_zip_get_file(url, file, decoder='utf-8'):
@@ -132,6 +142,7 @@ def cache_public_implementations_data():
     df.to_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl'))
 
 
+@lru_cache(maxsize=32)
 def load_county_case_data():
     """
     Return county level case data.
@@ -145,6 +156,8 @@ def load_county_case_data():
                          .get_data(country='USA')
     return county_case_data
 
+
+@lru_cache(maxsize=1)
 def load_state_case_data():
     """
     Return county level case data.
@@ -160,6 +173,7 @@ def load_state_case_data():
     return state_case_data
 
 
+@lru_cache(maxsize=32)
 def load_county_metadata():
     """
     Return county level metadata such as age distributions, populations etc..
@@ -172,9 +186,11 @@ def load_county_metadata():
 
     county_metadata = pd.read_json(os.path.join(DATA_DIR, 'county_metadata.json'), dtype={'fips': 'str'})
     # Fix state names
-    county_metadata['state'] = county_metadata['fips'].apply(lambda x: us.states.lookup(x[:2]).name)
+    county_metadata.loc[:, 'state'] = county_metadata['fips'].apply(lambda x: us.states.lookup(x[:2]).name).str.title()
     return county_metadata
 
+
+@lru_cache(maxsize=32)
 def load_county_metadata_by_state(state):
     """
     Generate a dataframe that contains county metadata aggregated at state
@@ -199,7 +215,7 @@ def load_county_metadata_by_state(state):
 
     density_measures = ['housing_density', 'population_density']
     for col in density_measures:
-        state_metadata[col] = state_metadata[col] * state_metadata['total_population']
+        state_metadata.loc[:, col] = state_metadata[col] * state_metadata['total_population']
 
     age_dist = state_metadata.groupby('state')['age_distribution'] \
                              .apply(lambda l: np.stack(np.array(l)).sum(axis=0))
@@ -217,6 +233,7 @@ def load_county_metadata_by_state(state):
     return state_metadata
 
 
+@lru_cache(maxsize=32)
 def load_ensemble_results(fips, run_mode='default'):
     """
     Retrieve ensemble results for a given state or county fips code.
@@ -245,6 +262,7 @@ def load_ensemble_results(fips, run_mode='default'):
     return fit_results
 
 
+@lru_cache(maxsize=32)
 def load_county_metadata_by_fips(fips):
     """
     Generate a dictionary for a county which includes county metadata merged
@@ -283,6 +301,7 @@ def load_county_metadata_by_fips(fips):
     return county_metadata_merged
 
 
+@lru_cache(maxsize=32)
 def load_new_case_data_by_fips(fips, t0):
     """
     Get data for new cases.
@@ -303,15 +322,115 @@ def load_new_case_data_by_fips(fips, t0):
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-
     _county_case_data = load_county_case_data()
     county_case_data = _county_case_data[_county_case_data['fips'] == fips]
     times_new = (county_case_data['date'] - t0).dt.days.iloc[1:]
     observed_new_cases = county_case_data['cases'].values[1:] - county_case_data['cases'].values[:-1]
     observed_new_deaths = county_case_data['deaths'].values[1:] - county_case_data['deaths'].values[:-1]
 
-    return times_new, observed_new_cases, observed_new_deaths
+    # Clip because there are sometimes negatives either due to data reporting or
+    # corrections in case count. These are always tiny so we just make
+    # downstream easier to work with by clipping.
+    return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
+
+@lru_cache(maxsize=32)
+def load_hospitalization_data(fips, t0):
+    """
+    Obtain hospitalization data. We clip because there are sometimes negatives
+    either due to data reporting or corrections in case count. These are always
+    tiny so we just make downstream easier to work with by clipping.
+
+    Parameters
+    ----------
+    fips: str
+        County fips to lookup.
+    t0: datetime
+        Datetime to offset by.
+
+    Returns
+    -------
+    times: array(float)
+        List of float days since t0 for the hospitalization data.
+    observed_hospitalizations: array(int)
+        Array of new cases observed each day.
+    type: HospitalizationDataType
+        Specifies cumulative or current hospitalizations.
+    """
+    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
+        .get_subset(AggregationLevel.COUNTY, country='USA', fips=fips) \
+        .get_data(country='USA', fips=fips)
+
+    if len(hospitalization_data) == 0:
+        return None, None, None
+
+    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+
+    if (hospitalization_data['current_hospitalized'] > 0).any():
+        return times_new, \
+               hospitalization_data['current_hospitalized'].values.clip(min=0),\
+               HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
+
+        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+        # Some minor glitches for a few states..
+        for i, val in enumerate(cumulative[1:]):
+            if cumulative[i] > cumulative[i+1]:
+                cumulative[i] = cumulative[i + 1]
+        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+    else:
+        return None, None, None
+
+
+@lru_cache(maxsize=32)
+def load_hospitalization_data_by_state(state, t0):
+    """
+    Obtain hospitalization data. We clip because there are sometimes negatives
+    either due to data reporting or corrections in case count. These are always
+    tiny so we just make downstream easier to work with by clipping.
+
+    Parameters
+    ----------
+    state: str
+        State to lookup.
+    t0: datetime
+        Datetime to offset by.
+
+    Returns
+    -------
+    times: array(float) or NoneType
+        List of float days since t0 for the hospitalization data.
+    observed_hospitalizations: array(int) or NoneType
+        Array of new cases observed each day.
+    type: HospitalizationDataType
+        Specifies cumulative or current hospitalizations.
+    """
+    abbr = us.states.lookup(state).abbr
+    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
+        .get_subset(AggregationLevel.STATE, country='USA', state=abbr) \
+        .get_data(country='USA', state=abbr)
+
+    if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
+        return None, None, None
+
+    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+
+    if (hospitalization_data['current_hospitalized'] > 0).any():
+        return times_new, \
+               hospitalization_data['current_hospitalized'].values.clip(min=0), \
+               HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
+        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+        # Some minor glitches for a few states..
+        for i, val in enumerate(cumulative[1:]):
+            if cumulative[i] > cumulative[i + 1]:
+                cumulative[i] = cumulative[i + 1]
+        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+    else:
+        return None, None, None
+
+
+@lru_cache(maxsize=32)
 def load_new_case_data_by_state(state, t0):
     """
     Get data for new cases at state level.
@@ -338,7 +457,8 @@ def load_new_case_data_by_state(state, t0):
     observed_new_cases = state_case_data['cases'].values[1:] - state_case_data['cases'].values[:-1]
     observed_new_deaths = state_case_data['deaths'].values[1:] - state_case_data['deaths'].values[:-1]
 
-    return times_new, observed_new_cases, observed_new_deaths
+    return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
+
 
 def load_hospital_data():
     """
@@ -352,6 +472,7 @@ def load_hospital_data():
     return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
+@lru_cache(maxsize=1)
 def load_mobility_data_m50():
     """
     Return mobility data without normalization
@@ -363,8 +484,7 @@ def load_mobility_data_m50():
     return pd.read_pickle(os.path.join(DATA_DIR, 'mobility_data__m50.pkl'))
 
 
-# Ensembles need to access this 1e6 times and it makes 10ms simulations -> 100 ms otherwise.
-in_memory_cache = None
+@lru_cache(maxsize=1)
 def load_mobility_data_m50_index():
     """
     Return mobility data with normalization: per
@@ -375,15 +495,10 @@ def load_mobility_data_m50_index():
     -------
     : pd.DataFrame
     """
-    global in_memory_cache
-    if in_memory_cache is not None:
-        return in_memory_cache
-    else:
-        in_memory_cache = pd.read_pickle(os.path.join(DATA_DIR, 'mobility_data__m50_index.pkl')).set_index('fips')
-
-    return in_memory_cache.copy()
+    return pd.read_pickle(os.path.join(DATA_DIR, 'mobility_data__m50_index.pkl')).set_index('fips')
 
 
+@lru_cache(maxsize=1)
 def load_public_implementations_data():
     """
     Return public implementations data
@@ -392,7 +507,7 @@ def load_public_implementations_data():
     -------
     : pd.DataFrame
     """
-    return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl'))
+    return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl')).set_index('fips')
 
 
 def cache_all_data():
