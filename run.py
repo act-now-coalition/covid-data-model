@@ -14,6 +14,7 @@ from cli import run_counties_api
 
 from cli import api
 
+
 @click.group()
 def entry_point():
     """Entry point for covid-data-model CLI."""

@@ -18,26 +18,20 @@ PROD_BUCKET = "data.covidactnow.org"
     help="Run the validation on the deploy command",
 )
 @click.option(
-    "--input-dir",
-    "-i",
-    default="results",
-    help="Input directory of state projections",
+    "--input-dir", "-i", default="results", help="Input directory of state projections",
 )
 @click.option(
-    "--output",
-    "-o",
-    default="results/state",
-    help="Output directory for artifacts",
+    "--output", "-o", default="results/state", help="Output directory for artifacts",
 )
 def deploy_state_api(disable_validation, input_dir, output):
     """The entry function for invocation"""
 
     for intervention in list(Intervention):
         states_result = api_pipeline.run_projections(
-            input_dir, 
-            AggregateLevel.STATE, 
-            intervention, 
-            run_validation=not disable_validation
+            input_dir,
+            AggregateLevel.STATE,
+            intervention,
+            run_validation=not disable_validation,
         )
         states_results_api = api_pipeline.generate_api(states_result)
         api_pipeline.deploy_results(states_results_api, output)

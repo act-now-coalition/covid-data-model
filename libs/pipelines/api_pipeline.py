@@ -17,9 +17,7 @@ APIPipelineProjectionResult = namedtuple(
     "APIPipelineProjectionResult", ["intervention", "aggregate_level", "projection_df",]
 )
 
-APIPipelineAPIRow = namedtuple(
-    "APIPipelineAPIRow", ["key", "api"]
-)
+APIPipelineAPIRow = namedtuple("APIPipelineAPIRow", ["key", "api"])
 
 APIPipelineResult = namedtuple("APIPipelineResult", ["api_tuples"])
 
@@ -39,7 +37,7 @@ def run_projections(
     Returns: APIPipelineProjectionResult objects for county data.
     """
 
-    if aggregation_level == AggregateLevel.STATE: 
+    if aggregation_level == AggregateLevel.STATE:
         states_key_name = f"states.{intervention.name}"
         states_df = build_processed_dataset.get_usa_by_states_df(
             input_file, intervention.value
@@ -47,7 +45,9 @@ def run_projections(
         if run_validation:
             validate_results.validate_states_df(states_key_name, states_df)
 
-        state_results = APIPipelineProjectionResult(intervention, AggregateLevel.STATE, states_df)
+        state_results = APIPipelineProjectionResult(
+            intervention, AggregateLevel.STATE, states_df
+        )
         return state_results
     elif aggregation_level == AggregateLevel.COUNTY:
         # Run County level projections
@@ -58,24 +58,26 @@ def run_projections(
         if run_validation:
             validate_results.validate_counties_df(counties_key_name, counties_df)
 
-        county_results = APIPipelineProjectionResult(intervention, AggregateLevel.COUNTY, counties_df)
+        county_results = APIPipelineProjectionResult(
+            intervention, AggregateLevel.COUNTY, counties_df
+        )
 
         return county_results
-    else: 
+    else:
         raise Exception("Non-valid aggreation level specified")
 
-def _get_api_prefix(aggregate_level, row): 
-    if aggregate_level == AggregateLevel.COUNTY: 
+
+def _get_api_prefix(aggregate_level, row):
+    if aggregate_level == AggregateLevel.COUNTY:
         return row[rc.FIPS]
-    elif aggregate_level == AggregateLevel.STATE: 
+    elif aggregate_level == AggregateLevel.STATE:
         full_state_name = row[rc.STATE]
         return US_STATE_ABBREV[full_state_name]
     else:
         raise Exception("Only County and State Aggregate Levels supported")
 
-def generate_api(
-    projection_result: APIPipelineProjectionResult, 
-) -> APIPipelineResult:
+
+def generate_api(projection_result: APIPipelineProjectionResult,) -> APIPipelineResult:
     """
     pipethrough the rows of the projection
     if it's a county generate the key for counties:
@@ -100,5 +102,5 @@ def deploy_results(result: APIPipelineResult, output: str):
         key: Name for the file to be uploaded
         output: output folder to save results in.
     """
-    for api_tuple in result.api_tuples: 
+    for api_tuple in result.api_tuples:
         dataset_deployer.upload_json(api_tuple.key, api_tuple.api.json(), output)
