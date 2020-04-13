@@ -49,7 +49,7 @@ def _impute_start_dates(state=None):
     if state:
         generate_start_times_for_state(state=state.title())
     else:
-        for state_obj in us.STATES + us.TERRITORIES:
+        for state_obj in us.STATES:
             _impute_start_dates(state_obj.name)
 
 
@@ -58,7 +58,7 @@ def _run_mle_fits(state=None, states_only=False):
     if state:
         model_fitter.run_state(state.title(), states_only=states_only)
     else:
-        for state_obj in us.STATES + us.TERRITORIES:
+        for state_obj in us.STATES:
             _run_mle_fits(state_obj.name, states_only=states_only)
 
 
@@ -66,7 +66,7 @@ def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
     if state:
         run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
     else:
-        for state_obj in us.STATES + us.TERRITORIES:
+        for state_obj in us.STATES:
             run_state(state_obj.name, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
 
 
@@ -75,7 +75,7 @@ def _generate_state_reports(state=None):
         report = StateReport(state.title())
         report.generate_report()
     else:
-        for state_obj in us.STATES + us.TERRITORIES:
+        for state_obj in us.STATES:
             _generate_state_reports(state_obj.name)
 
 
@@ -89,7 +89,7 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
                                            cds_dataset=cds_dataset, output_dir=output_dir)
         web_ui_mapper.generate_state(states_only=states_only)
     else:
-        for state_obj in us.STATES + us.TERRITORIES:
+        for state_obj in us.STATES:
             _map_outputs(state_obj.name, output_interval_days, states_only=states_only,
                          run_mode=run_mode, output_dir=output_dir)
 
@@ -121,11 +121,11 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
             f = partial(_run_all, run_mode=run_mode, generate_reports=generate_reports,
                         output_interval_days=output_interval_days, skip_download=True, states_only=states_only)
             p = Pool()
-            p.map(f, [state_obj.name for state_obj in us.STATES + us.TERRITORIES])
+            p.map(f, [state_obj.name for state_obj in us.STATES])
             p.close()
 
         else:
-            for state_obj in us.STATES + us.TERRITORIES:
+            for state_obj in us.STATES:
                 _run_all(state_obj.name, run_mode, generate_reports, output_interval_days, skip_download=True, states_only=states_only)
 
 
@@ -150,6 +150,7 @@ def run_mle_fits(state, states_only):
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def run_ensembles(state, run_mode, generate_reports, states_only):
     _run_ensembles(state, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports), states_only=states_only)
+
 
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
