@@ -53,7 +53,7 @@ class ModelFitter:
                  ref_date=datetime(year=2020, month=1, day=1),
                  min_deaths=2,
                  n_years=1,
-                 cases_to_deaths_err_factor=3,
+                 cases_to_deaths_err_factor=.333,
                  hospital_to_deaths_err_factor=1):
 
         self.fips = fips
@@ -423,8 +423,7 @@ class ModelFitter:
             logging.info(
                 f'Fit Results for {self.display_name} \n {param_state}')
 
-        logging.info(f'Complete fit results for {self.display_name} \n {pformat(
-            self.fit_results)}')
+        logging.info(f'Complete fit results for {self.display_name} \n {pformat(self.fit_results)}')
         self.mle_model = self.run_model(
             **{k: self.fit_results[k] for k in self.model_fit_keys})
 
