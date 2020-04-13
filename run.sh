@@ -42,8 +42,6 @@ prepare () {
   COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
   CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
 
-  CAN_PREDICTIONS_DIR="${API_OUTPUT_DIR}/can_predictions/";
-
   # TODO: Move DoD onto a more general-purpose schema rather than treat them custom.
   DOD_DIR="${API_OUTPUT_DIR}/custom1"
 }
@@ -75,9 +73,8 @@ execute() {
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json
 
-  echo ">>> Generating Top 100 Counties json to ${CAN_PREDICTIONS_DIR}/first_100_counties.json"
-  mkdir -p "${CAN_PREDICTIONS_DIR}"
-  ./run.py deploy-top-counties -i "${STATES_DIR}" -o "${CAN_PREDICTIONS_DIR}"
+  echo ">>> Generating Top 100 Counties json to ${COUNTIES_DIR}/first_100_counties.json"
+  ./run.py deploy-top-counties -i "${STATES_DIR}" -o "${COUNTIES_DIR}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
