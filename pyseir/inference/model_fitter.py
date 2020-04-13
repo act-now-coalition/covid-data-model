@@ -109,11 +109,11 @@ class ModelFitter:
             log10_I_initial=2, limit_log10_I_initial=[0, 5],
             error_log10_I_initial=.5,
             t0=60, limit_t0=[10, 70], error_t0=1,
-            eps=.3, limit_eps=[0, 2], error_eps=.2,
-            t_break=20, limit_t_break=[0, 100], error_t_break=2,
+            eps=.35, limit_eps=[.05, 2], error_eps=.1,
+            t_break=30, limit_t_break=[0, 100], error_t_break=2,
             test_fraction=.05, limit_test_fraction=[0.001, 1],
             error_test_fraction=.01,
-            hosp_fraction=1, limit_hosp_fraction=[0.001, 1],
+            hosp_fraction=.7, limit_hosp_fraction=[0.1, 1],
             error_hosp_fraction=.1,
             fix_hosp_fraction=self.hospitalizations is None,
             # Let's not fit this to start...
@@ -409,10 +409,10 @@ class ModelFitter:
             self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.fit_results['t0'])
         self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
 
-        self.fit_results['chi2'] = self.chi2_cases
+        self.fit_results['chi2_cases'] = self.chi2_cases
         if self.hospitalizations is not None:
-            self.fit_results['chi2'] = self.chi2_hosp
-        self.fit_results['chi2'] = self.chi2_deaths
+            self.fit_results['chi2_hosps'] = self.chi2_hosp
+        self.fit_results['chi2_deaths'] = self.chi2_deaths
 
         try:
             param_state = minuit.get_param_states()
