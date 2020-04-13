@@ -176,10 +176,10 @@ def generate_two_step_policy(t_list, eps, t_break):
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t.
     """
-    rho = np.ones(len(t_list))
-    rho[t_list < t_break] = 1
-    rho[t_list >= t_break] = eps
-    return interp1d(t_list, rho, fill_value='extrapolate')
+    return interp1d(
+        x=[0, t_break, t_break + 14, 100000],
+        y=[1, 1, eps, eps],
+        fill_value='extrapolate')
 
 
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
@@ -294,7 +294,6 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t
     """
-
     county_metadata = load_county_metadata()
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
     

@@ -12,6 +12,7 @@ import json
 from pyseir import OUTPUT_DIR
 from libs.datasets import NYTimesDataset
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import CovidTrackingDataSource
 from functools import lru_cache
 
 
@@ -320,6 +321,82 @@ def load_new_case_data_by_fips(fips, t0):
     observed_new_deaths = county_case_data['deaths'].values[1:] - county_case_data['deaths'].values[:-1]
 
     return times_new, observed_new_cases, observed_new_deaths
+
+@lru_cache(maxsize=32)
+def load_hospitalization_data(fips, t0):
+    """
+    Obtain hospitalization data.
+
+    Parameters
+    ----------
+    fips: str
+        County fips to lookup.
+    t0: datetime
+        Datetime to offset by.
+
+    Returns
+    -------
+    times: array(float)
+        List of float days since t0 for the hospitalization data.
+    observed_hospitalizations: array(int)
+        Array of new cases observed each day.
+    type: str
+        'cumulative' or 'current'
+    """
+    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
+        .get_subset(AggregationLevel.COUNTY, country='USA', fips=fips) \
+        .get_data(country='USA', fips=fips)
+
+    if len(hospitalization_data) == 0:
+        return None, None, None
+
+    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+
+    if (hospitalization_data['current_hospitalized'] > 0).any():
+        return times_new, hospitalization_data['current_hospitalized'].values, 'current'
+    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
+        return times_new, hospitalization_data['cumulative_hospitalized'].values, 'cumulative'
+    else:
+        return None, None, None
+
+
+@lru_cache(maxsize=32)
+def load_hospitalization_data_by_state(state, t0):
+    """
+    Obtain hospitalization data.
+
+    Parameters
+    ----------
+    state: str
+        State to lookup.
+    t0: datetime
+        Datetime to offset by.
+
+    Returns
+    -------
+    times: array(float) or NoneType
+        List of float days since t0 for the hospitalization data.
+    observed_hospitalizations: array(int) or NoneType
+        Array of new cases observed each day.
+    type: str
+        'cumulative' or 'current' or NoneType
+    """
+    abbr = us.states.lookup(state).abbr
+    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
+        .get_subset(AggregationLevel.STATE, country='USA', state=abbr) \
+        .get_data(country='USA', state=abbr)
+
+    if len(hospitalization_data) == 0:
+        return None, None, None
+
+    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+
+    if (hospitalization_data['current_hospitalized'] > 0).any():
+        return times_new, hospitalization_data['current_hospitalized'].values, 'current'
+    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
+        return times_new, hospitalization_data['cumulative_hospitalized'].values, 'cumulative'
+    else:
+        return None, None, None
 
 
 @lru_cache(maxsize=32)
