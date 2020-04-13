@@ -10,6 +10,8 @@ import us
 import zipfile
 import json
 from pyseir import OUTPUT_DIR
+from libs.datasets import NYTimesDataset
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
@@ -132,13 +134,30 @@ def cache_public_implementations_data():
 
 def load_county_case_data():
     """
-    Return county level case data. The following columns:
+    Return county level case data.
 
     Returns
     -------
     : pd.DataFrame
     """
-    return pd.read_pickle(os.path.join(DATA_DIR, 'covid_case_timeseries.pkl'))
+    county_case_data = NYTimesDataset.load().timeseries() \
+                         .get_subset(AggregationLevel.COUNTY, country='USA') \
+                         .get_data(country='USA')
+    return county_case_data
+
+def load_state_case_data():
+    """
+    Return county level case data.
+
+    Returns
+    -------
+    : pd.DataFrame
+    """
+
+    state_case_data = NYTimesDataset.load().timeseries() \
+                         .get_subset(AggregationLevel.STATE, country='USA') \
+                         .get_data(country='USA')
+    return state_case_data
 
 
 def load_county_metadata():
@@ -155,6 +174,47 @@ def load_county_metadata():
     # Fix state names
     county_metadata['state'] = county_metadata['fips'].apply(lambda x: us.states.lookup(x[:2]).name)
     return county_metadata
+
+def load_county_metadata_by_state(state):
+    """
+    Generate a dataframe that contains county metadata aggregated at state
+    level.
+
+    Parameters
+    ----------
+    state: str or list(str)
+        Name of state to load the metadata for.
+
+    Returns
+    -------
+    state_metadata: pd.DataFrame
+    """
+
+    # aggregate into state level metadata
+    state_metadata = load_county_metadata()
+
+    if state:
+        state = [state] if not isinstance(state, list) else state
+        state_metadata = state_metadata[state_metadata.state.isin(state)]
+
+    density_measures = ['housing_density', 'population_density']
+    for col in density_measures:
+        state_metadata[col] = state_metadata[col] * state_metadata['total_population']
+
+    age_dist = state_metadata.groupby('state')['age_distribution'] \
+                             .apply(lambda l: np.stack(np.array(l)).sum(axis=0))
+    density_info = state_metadata.groupby('state').agg(
+        {'population_density': lambda x: sum(x),
+         'housing_density': lambda x: sum(x),
+         'total_population': lambda x: sum(x),
+         'fips': list})
+    age_bins = state_metadata[['state', 'age_bin_edges']].groupby('state').first()
+    state_metadata = pd.concat([age_dist, density_info, age_bins], axis=1)
+
+    for col in density_measures:
+        state_metadata[col] /= state_metadata['total_population']
+
+    return state_metadata
 
 
 def load_ensemble_results(fips, run_mode='default'):
@@ -243,13 +303,42 @@ def load_new_case_data_by_fips(fips, t0):
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
+
     _county_case_data = load_county_case_data()
     county_case_data = _county_case_data[_county_case_data['fips'] == fips]
     times_new = (county_case_data['date'] - t0).dt.days.iloc[1:]
     observed_new_cases = county_case_data['cases'].values[1:] - county_case_data['cases'].values[:-1]
     observed_new_deaths = county_case_data['deaths'].values[1:] - county_case_data['deaths'].values[:-1]
+
     return times_new, observed_new_cases, observed_new_deaths
 
+def load_new_case_data_by_state(state, t0):
+    """
+    Get data for new cases at state level.
+
+    Parameters
+    ----------
+    state: str
+        State full name.
+    t0: datetime
+        Datetime to offset by.
+
+    Returns
+    -------
+    times: array(float)
+        List of float days since t0 for the case and death counts below
+    observed_new_cases: array(int)
+        Array of new cases observed each day.
+    observed_new_deaths: array(int)
+        Array of new deaths observed each day.
+    """
+    _state_case_data = load_state_case_data()
+    state_case_data = _state_case_data[_state_case_data['state'] == us.states.lookup(state).abbr]
+    times_new = (state_case_data['date'] - t0).dt.days.iloc[1:]
+    observed_new_cases = state_case_data['cases'].values[1:] - state_case_data['cases'].values[:-1]
+    observed_new_deaths = state_case_data['deaths'].values[1:] - state_case_data['deaths'].values[:-1]
+
+    return times_new, observed_new_cases, observed_new_deaths
 
 def load_hospital_data():
     """
