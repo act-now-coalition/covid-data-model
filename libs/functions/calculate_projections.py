@@ -3,7 +3,7 @@ import datetime
 import os.path
 import simplejson
 
-from libs.us_state_abbrev import us_state_abbrev
+from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import FIPSPopulation
 from libs.datasets.can_model_output_schema import (
     CAN_MODEL_OUTPUT_SCHEMA,
@@ -27,7 +27,7 @@ def _get_hospitals_and_shortfalls(df, date_out):
 
 def _beds_after_given_date(df, date_out):
     if df[(df.date > date_out)].empty:
-        return df["beds"].max() 
+        return df["beds"].max()
     first_record_after_date = df[(df.date > date_out)].iloc[0]
     bed_columns = ["beds"]
     return first_record_after_date[bed_columns].values[0]
@@ -49,7 +49,7 @@ def _read_json_as_df(path):
 
 def _calculate_projection_data(file_path):
     """
-    Given a file path, return the calculations we perform for that file. 
+    Given a file path, return the calculations we perform for that file.
     Note in the future maybe return a data type to keep type clarity
     """
     # get 16 and 32 days out from now
@@ -69,7 +69,7 @@ def _calculate_projection_data(file_path):
 
         df["new_deaths"] = df.dead - df.dead.shift(1)
         hospitals_shortfall_date = NULL_VALUE
-        if not df[(df['short_fall']>0)].empty: 
+        if not df[(df['short_fall']>0)].empty:
             hospitals_shortfall_date =  df[(df['short_fall']>0)].iloc[0].date
         mean_hospitalizations = df.all_hospitalized.mean().round(0)
         mean_deaths = df.new_deaths.mean()
@@ -96,7 +96,7 @@ def _calculate_projection_data(file_path):
 def _get_intervention_type(intervention_type, state, state_interventions_df):
     if intervention_type == Intervention.CURRENT.value:
         state_intervention_results = state_interventions_df.loc[state_interventions_df["state"] == state]["intervention"]
-        if not state_intervention_results.empty: 
+        if not state_intervention_results.empty:
             intervention_string = state_intervention_results.values[0]
             return Intervention.from_str(intervention_string).value
     return intervention_type
@@ -110,7 +110,7 @@ def get_state_projections_df(input_dir, initial_intervention_type, state_interve
     # save results in a list of lists, converted to df later
     results = []
 
-    for state in list(us_state_abbrev.values()):
+    for state in list(US_STATE_ABBREV.values()):
         intervention_type = _get_intervention_type(initial_intervention_type, state, state_interventions_df)
         file_name = f"{state}.{intervention_type}.json"
         path = os.path.join(input_dir, "state", file_name)
@@ -119,7 +119,7 @@ def get_state_projections_df(input_dir, initial_intervention_type, state_interve
         if projection_data:
             results.append([state] + projection_data)
     return pd.DataFrame(results, columns=CALCULATED_PROJECTION_HEADERS_STATES)
-    
+
 def get_county_projections_df(input_dir, initial_intervention_type, state_interventions_df):
     """
     for each state in our data look at the results we generated via run.py
