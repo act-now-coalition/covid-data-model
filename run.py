@@ -9,6 +9,8 @@ from cli import run_data
 from cli import run_model
 from cli import run_dod_dataset
 from cli import run_top_counties_dataset
+from cli import run_state_api
+from cli import run_counties_api
 
 from cli import api
 
@@ -22,6 +24,8 @@ entry_point.add_command(run_data.main)
 entry_point.add_command(run_model.main)
 entry_point.add_command(run_dod_dataset.deploy_dod_projections)
 entry_point.add_command(run_top_counties_dataset.deploy_top_counties)
+entry_point.add_command(run_counties_api.deploy_counties_api)
+entry_point.add_command(run_state_api.deploy_state_api)
 entry_point.add_command(api.main)
 
 if __name__ == "__main__":

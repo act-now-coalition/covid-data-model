@@ -35,10 +35,12 @@ prepare () {
   # These directiories essentially define the structure of our API endpoints.
   # TODO: These should perhaps live in python, near the schemas (defined in api/)?
   STATES_DIR="${API_OUTPUT_DIR}/";
+  INPUT_BASE_DIR="${API_OUTPUT_DIR}/";
   # TODO: I think deploy_dod_dataset.py may currently have an implicit
   # requirement that the county model JSON is in a /county subdirectory of the
   # states?
   COUNTIES_DIR="${API_OUTPUT_DIR}/county";
+  STATES_OUTPUT_DIR="${API_OUTPUT_DIR}/state";
   COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
   CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
 
@@ -73,8 +75,16 @@ execute() {
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json
 
-  echo ">>> Generating Top 100 Counties json to ${COUNTIES_DIR}/first_100_counties.json"
-  ./run.py deploy-top-counties -i "${STATES_DIR}" -o "${COUNTIES_DIR}"
+  echo ">>> Generating Top 100 Counties json to ${COUNTIES_DIR}/counties_top_100.json"
+  mkdir -p "${COUNTIES_OUTPUT_DIR}"
+  ./run.py deploy-top-counties -i "${STATES_DIR}" -o "${COUNTIES_OUTPUT_DIR}"
+
+  echo ">>> Generating API for states to ${STATES_OUTPUT_DIR}/{STATE_ABBREV}.{INTERVENTION}.json"
+  mkdir -p "${STATES_OUTPUT_DIR}"
+  ./run.py deploy-state-api -i "${INPUT_BASE_DIR}" -o "${STATES_OUTPUT_DIR}"
+
+  echo ">>> Generating API for states to ${COUNTIES_OUTPUT_DIR}/{FIPS}.{INTERVENTION}.json"
+  ./run.py deploy-county-api -i "${INPUT_BASE_DIR}" -o "${COUNTIES_OUTPUT_DIR}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
