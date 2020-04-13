@@ -18,6 +18,8 @@ from functools import lru_cache
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
 
+FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
+
 
 def load_zip_get_file(url, file, decoder='utf-8'):
     """
@@ -322,6 +324,7 @@ def load_new_case_data_by_fips(fips, t0):
 
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
+
 @lru_cache(maxsize=32)
 def load_hospitalization_data(fips, t0):
     """
@@ -355,7 +358,13 @@ def load_hospitalization_data(fips, t0):
     if (hospitalization_data['current_hospitalized'] > 0).any():
         return times_new, hospitalization_data['current_hospitalized'].values.clip(min=0), 'current'
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        return times_new, hospitalization_data['cumulative_hospitalized'].values.clip(min=0), 'cumulative'
+
+        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+        # Some minor glitches for a few states..
+        for i, val in enumerate(cumulative[1:]):
+            if cumulative[i] > cumulative[i+1]:
+                cumulative[i] = cumulative[i + 1]
+        return times_new, cumulative, 'cumulative'
     else:
         return None, None, None
 
@@ -386,7 +395,7 @@ def load_hospitalization_data_by_state(state, t0):
         .get_subset(AggregationLevel.STATE, country='USA', state=abbr) \
         .get_data(country='USA', state=abbr)
 
-    if len(hospitalization_data) == 0:
+    if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
         return None, None, None
 
     times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
@@ -394,7 +403,13 @@ def load_hospitalization_data_by_state(state, t0):
     if (hospitalization_data['current_hospitalized'] > 0).any():
         return times_new, hospitalization_data['current_hospitalized'].values.clip(min=0), 'current'
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        return times_new, hospitalization_data['cumulative_hospitalized'].values.clip(min=0), 'cumulative'
+        cumulative = hospitalization_data[
+            'cumulative_hospitalized'].values.clip(min=0)
+        # Some minor glitches for a few states..
+        for i, val in enumerate(cumulative[1:]):
+            if cumulative[i] > cumulative[i + 1]:
+                cumulative[i] = cumulative[i + 1]
+        return times_new, cumulative, 'cumulative'
     else:
         return None, None, None
 

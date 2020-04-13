@@ -47,9 +47,9 @@ class ModelFitter:
     def __init__(self,
                  fips,
                  ref_date=datetime(year=2020, month=1, day=1),
-                 min_deaths=5,
+                 min_deaths=2,
                  n_years=1,
-                 cases_to_deaths_err_factor=3,
+                 cases_to_deaths_err_factor=1,
                  hospital_to_deaths_err_factor=1):
 
         self.fips = fips
@@ -169,7 +169,7 @@ class ModelFitter:
 
         # If cumulative hospitalizations, differentiate.
         if self.hospitalization_data_type == 'cumulative':
-            hosp_data = self.hospitalizations[1:] - self.hospitalizations[:-1]
+            hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(min=0)
             hosp_stdev = self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
         elif self.hospitalization_data_type == 'current':
             hosp_data = self.hospitalizations
@@ -301,6 +301,8 @@ class ModelFitter:
         # TODO @ Xinyu: add lines to check if minuit optimization result is valid.
         self.minuit.migrad(precision=1e-4)
         self.fit_results = dict(fips=self.fips, **dict(self.minuit.values))
+        self.fit_results.update({k + '_error': v for k, v in dict(self.minuit.errors).items()})
+
         # This just updates chi2 values
         self._fit_seir(**dict(self.minuit.values))
 
@@ -397,10 +399,10 @@ class ModelFitter:
 
         for i, (k, v) in enumerate(self.fit_results.items()):
             if np.isscalar(v) and not isinstance(v, str):
-                plt.text(.7, .45 - 0.032 * i, f'{k}={v:1.3f}',
+                plt.text(.7, .7 - 0.032 * i, f'{k}={v:1.3f}',
                          transform=plt.gca().transAxes, fontsize=15, alpha=.6)
             else:
-                plt.text(.7, .45 - 0.032 * i, f'{k}={v}',
+                plt.text(.7, .7 - 0.032 * i, f'{k}={v}',
                          transform=plt.gca().transAxes, fontsize=15, alpha=.6)
 
         if self.agg_level is AggregationLevel.COUNTY:

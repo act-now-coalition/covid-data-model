@@ -15,6 +15,7 @@ from pyseir.models.suppression_policies import generate_empirical_distancing_pol
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
+from pyseir.load_data import FAULTY_HOSPITAL_DATA_STATES
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import JHUDataset
@@ -40,8 +41,6 @@ compartment_to_capacity_attr_map = {
     'HVent': 'ventilators'
 }
 
-
-FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
 
 class EnsembleRunner:
     """
