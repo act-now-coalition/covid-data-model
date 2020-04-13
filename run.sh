@@ -73,6 +73,9 @@ execute() {
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json
 
+  echo ">>> Generating Top 100 Counties json to ${COUNTIES_DIR}/first_100_counties.json"
+  ./run.py deploy-top-counties -i "${STATES_DIR}" -o "${COUNTIES_DIR}"
+
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
 
