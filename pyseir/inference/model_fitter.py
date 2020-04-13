@@ -46,7 +46,15 @@ class ModelFitter:
         To control chi2 mix between hospitalization and deaths, we multiply the
         systematic errors of cases by this number. Thus higher numbers reduce
         the influence of hospitalization data on the fit.
+    percent_error_on_max_observation: float
+        Relative error on the max observation in each category.  The reltive
+        errors are then scaled based on the sqrt(observed value / observed max)
+        relative to the max. The overall scale here doesn't influence the max
+        likelihood fit, but it does influence the prior blending and error
+        estimates.  0.5 = 50% error. Best to be conservatively high.
     """
+
+    steady_state_exposed_to_infected_ratio = 1.2
 
     def __init__(self,
                  fips,
@@ -54,7 +62,8 @@ class ModelFitter:
                  min_deaths=2,
                  n_years=1,
                  cases_to_deaths_err_factor=.25,
-                 hospital_to_deaths_err_factor=1):
+                 hospital_to_deaths_err_factor=1,
+                 percent_error_on_max_observation=0.5):
 
         self.fips = fips
         self.ref_date = ref_date
@@ -62,6 +71,7 @@ class ModelFitter:
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
         self.hospital_to_deaths_err_factor = hospital_to_deaths_err_factor
+        self.percent_error_on_max_observation = percent_error_on_max_observation
         self.t0_guess = 60
 
         if len(fips) == 2:  # State FIPS are 2 digits
@@ -138,8 +148,7 @@ class ModelFitter:
             t_list=self.t_list,
             suppression_policy=None).get_average_seir_parameters()
 
-        SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if
-                       k not in self.fit_params}
+        SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
         del SEIR_kwargs['suppression_policy']
         del SEIR_kwargs['I_initial']
         return SEIR_kwargs
@@ -182,17 +191,22 @@ class ModelFitter:
             Float uncertainties (stdev) for death data.
         """
         # Stdev 50% of values.
-        cases_stdev = self.cases_to_deaths_err_factor * self.observed_new_cases ** 0.5 * self.observed_new_cases.max() ** 0.5
-        deaths_stdev = self.observed_new_deaths ** 0.5 * self.observed_new_deaths.max() ** 0.5
+
+        cases_stdev = self.percent_error_on_max_observation * self.cases_to_deaths_err_factor \
+                      * self.observed_new_cases ** 0.5 * self.observed_new_cases.max() ** 0.5
+        deaths_stdev = self.percent_error_on_max_observation \
+                       * self.observed_new_deaths ** 0.5 * self.observed_new_deaths.max() ** 0.5
 
         # If cumulative hospitalizations, differentiate.
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             hosp_data = (self.hospitalizations[1:] - self.hospitalizations[
                                                      :-1]).clip(min=0)
-            hosp_stdev = self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
+            hosp_stdev = self.percent_error_on_max_observation * \
+                         self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
         elif self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             hosp_data = self.hospitalizations
-            hosp_stdev = self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
+            hosp_stdev = self.percent_error_on_max_observation \
+                         * self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
         else:
             hosp_stdev = None
 
@@ -235,13 +249,11 @@ class ModelFitter:
         #     suppression_policy = \
         #         suppression_policies.generate_empirical_distancing_policy_by_state(
         #             state=state, future_suppression=eps, **suppression_policy_params)
-        suppression_policy = suppression_policies.generate_two_step_policy(
-            self.t_list, eps, t_break)
+        suppression_policy = suppression_policies.generate_two_step_policy(self.t_list, eps, t_break)
 
         # Load up some number of initial exposed so the initial flow into infected is stable.
-        steady_state_exposed_to_infected_ratio = 1.2
-        self.SEIR_kwargs[
-            'E_initial'] = steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial
+
+        self.SEIR_kwargs['E_initial'] = self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial
 
         model = SEIRModel(
             R0=R0,
