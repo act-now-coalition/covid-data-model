@@ -10,7 +10,7 @@ PROD_BUCKET = "data.covidactnow.org"
 
 @click.command("deploy-top-counties")
 @click.option(
-    "--disable_validation",
+    "--disable-validation",
     "-dv",
     is_flag=True,
     help="Run the validation on the deploy command",
