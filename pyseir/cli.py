@@ -8,7 +8,7 @@ from pyseir.load_data import cache_all_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.ensembles.ensemble_runner import run_state
 from pyseir.reports.state_report import StateReport
-from pyseir.inference import model_fitter_mle
+from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
@@ -56,7 +56,7 @@ def _impute_start_dates(state=None):
 def _run_mle_fits(state=None, states_only=False):
     _cache_global_datasets()
     if state:
-        model_fitter_mle.run_state(state.title(), states_only=states_only, timeseries=nyt_dataset)
+        model_fitter.run_state(state.title(), states_only=states_only)
     else:
         for state_obj in us.STATES + us.TERRITORIES:
             _run_mle_fits(state_obj.name, states_only=states_only)

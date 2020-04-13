@@ -320,7 +320,7 @@ def load_new_case_data_by_fips(fips, t0):
     observed_new_cases = county_case_data['cases'].values[1:] - county_case_data['cases'].values[:-1]
     observed_new_deaths = county_case_data['deaths'].values[1:] - county_case_data['deaths'].values[:-1]
 
-    return times_new, observed_new_cases, observed_new_deaths
+    return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 @lru_cache(maxsize=32)
 def load_hospitalization_data(fips, t0):
@@ -353,9 +353,9 @@ def load_hospitalization_data(fips, t0):
     times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
 
     if (hospitalization_data['current_hospitalized'] > 0).any():
-        return times_new, hospitalization_data['current_hospitalized'].values, 'current'
+        return times_new, hospitalization_data['current_hospitalized'].values.clip(min=0), 'current'
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        return times_new, hospitalization_data['cumulative_hospitalized'].values, 'cumulative'
+        return times_new, hospitalization_data['cumulative_hospitalized'].values.clip(min=0), 'cumulative'
     else:
         return None, None, None
 
@@ -392,9 +392,9 @@ def load_hospitalization_data_by_state(state, t0):
     times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
 
     if (hospitalization_data['current_hospitalized'] > 0).any():
-        return times_new, hospitalization_data['current_hospitalized'].values, 'current'
+        return times_new, hospitalization_data['current_hospitalized'].values.clip(min=0), 'current'
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        return times_new, hospitalization_data['cumulative_hospitalized'].values, 'cumulative'
+        return times_new, hospitalization_data['cumulative_hospitalized'].values.clip(min=0), 'cumulative'
     else:
         return None, None, None
 
@@ -426,7 +426,7 @@ def load_new_case_data_by_state(state, t0):
     observed_new_cases = state_case_data['cases'].values[1:] - state_case_data['cases'].values[:-1]
     observed_new_deaths = state_case_data['deaths'].values[1:] - state_case_data['deaths'].values[:-1]
 
-    return times_new, observed_new_cases, observed_new_deaths
+    return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
 def load_hospital_data():
