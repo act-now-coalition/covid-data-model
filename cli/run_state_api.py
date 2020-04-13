@@ -4,7 +4,8 @@ import logging
 
 
 from libs.pipelines import api_pipeline
-from libs.enums import Intervention, AggregateLevel
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.enums import Intervention
 
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
@@ -29,7 +30,7 @@ def deploy_state_api(disable_validation, input_dir, output):
     for intervention in list(Intervention):
         states_result = api_pipeline.run_projections(
             input_dir,
-            AggregateLevel.STATE,
+            AggregationLevel.STATE,
             intervention,
             run_validation=not disable_validation,
         )

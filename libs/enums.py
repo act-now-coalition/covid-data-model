@@ -5,11 +5,6 @@ import enum
 UNKNOWN_FIPS = "99999"
 
 
-class AggregateLevel(enum.Enum):
-    STATE = 0
-    COUNTY = 1
-
-
 class Intervention(enum.Enum):
     NO_INTERVENTION = 0
     FLATTEN = 1
