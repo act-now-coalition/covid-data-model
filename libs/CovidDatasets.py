@@ -11,7 +11,7 @@ from urllib.request import urlopen
 
 import tempfile
 
-from libs.build_params import US_STATE_ABBREV as us_state_abbrev
+from libs.us_state_abbrev import US_STATE_ABBREV
 
 local_public_data_dir = tempfile.TemporaryDirectory()
 local_public_data = local_public_data_dir.name
@@ -279,8 +279,8 @@ class JHUDataset(Dataset):
             state = state.strip()
             if ',' in state:
                 state = state.split(',')[1].strip()
-            if state in us_state_abbrev:
-                return us_state_abbrev[state]
+            if state in US_STATE_ABBREV:
+                return US_STATE_ABBREV[state]
             return state
 
         def parse_country(country):
@@ -312,7 +312,7 @@ class JHUDataset(Dataset):
                 _logger.info('File not found for date {}. Ending iteration.'.format(snapshot_date))
                 break
                 raise
-                
+
             df = df.rename(columns=self._fieldname_map)
             snapshot_date_as_datetime = datetime.datetime.combine(snapshot_date, datetime.datetime.min.time())
             df = df.assign(**{self.DATE_FIELD: snapshot_date_as_datetime})
