@@ -472,4 +472,3 @@ def run_state(state, states_only=False, case_death_timeseries=None):
 
         # Output
         pd.DataFrame([fit.fit_results for fit in fitters]).to_json(county_output_file)
-
