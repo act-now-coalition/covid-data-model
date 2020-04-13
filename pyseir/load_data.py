@@ -14,11 +14,17 @@ from libs.datasets import NYTimesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from functools import lru_cache
+from enum import Enum
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
 
 FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
+
+
+class HospitalizationDataType(Enum):
+    CUMULATIVE_HOSPITALIZATIONS = 'cumulative_hospitalizations'
+    CURRENT_HOSPITALIZATIONS = 'current_hospitalizations'
 
 
 def load_zip_get_file(url, file, decoder='utf-8'):
@@ -322,13 +328,18 @@ def load_new_case_data_by_fips(fips, t0):
     observed_new_cases = county_case_data['cases'].values[1:] - county_case_data['cases'].values[:-1]
     observed_new_deaths = county_case_data['deaths'].values[1:] - county_case_data['deaths'].values[:-1]
 
+    # Clip because there are sometimes negatives either due to data reporting or
+    # corrections in case count. These are always tiny so we just make
+    # downstream easier to work with by clipping.
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
 @lru_cache(maxsize=32)
 def load_hospitalization_data(fips, t0):
     """
-    Obtain hospitalization data.
+    Obtain hospitalization data. We clip because there are sometimes negatives
+    either due to data reporting or corrections in case count. These are always
+    tiny so we just make downstream easier to work with by clipping.
 
     Parameters
     ----------
@@ -343,8 +354,8 @@ def load_hospitalization_data(fips, t0):
         List of float days since t0 for the hospitalization data.
     observed_hospitalizations: array(int)
         Array of new cases observed each day.
-    type: str
-        'cumulative' or 'current'
+    type: HospitalizationDataType
+        Specifies cumulative or current hospitalizations.
     """
     hospitalization_data = CovidTrackingDataSource.local().timeseries()\
         .get_subset(AggregationLevel.COUNTY, country='USA', fips=fips) \
@@ -356,7 +367,9 @@ def load_hospitalization_data(fips, t0):
     times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
 
     if (hospitalization_data['current_hospitalized'] > 0).any():
-        return times_new, hospitalization_data['current_hospitalized'].values.clip(min=0), 'current'
+        return times_new, \
+               hospitalization_data['current_hospitalized'].values.clip(min=0),\
+               HospitalizationDataType.CURRENT_HOSPITALIZATIONS
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
 
         cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
@@ -364,7 +377,7 @@ def load_hospitalization_data(fips, t0):
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i+1]:
                 cumulative[i] = cumulative[i + 1]
-        return times_new, cumulative, 'cumulative'
+        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
     else:
         return None, None, None
 
@@ -372,7 +385,9 @@ def load_hospitalization_data(fips, t0):
 @lru_cache(maxsize=32)
 def load_hospitalization_data_by_state(state, t0):
     """
-    Obtain hospitalization data.
+    Obtain hospitalization data. We clip because there are sometimes negatives
+    either due to data reporting or corrections in case count. These are always
+    tiny so we just make downstream easier to work with by clipping.
 
     Parameters
     ----------
@@ -387,8 +402,8 @@ def load_hospitalization_data_by_state(state, t0):
         List of float days since t0 for the hospitalization data.
     observed_hospitalizations: array(int) or NoneType
         Array of new cases observed each day.
-    type: str
-        'cumulative' or 'current' or NoneType
+    type: HospitalizationDataType
+        Specifies cumulative or current hospitalizations.
     """
     abbr = us.states.lookup(state).abbr
     hospitalization_data = CovidTrackingDataSource.local().timeseries()\
@@ -401,15 +416,16 @@ def load_hospitalization_data_by_state(state, t0):
     times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
 
     if (hospitalization_data['current_hospitalized'] > 0).any():
-        return times_new, hospitalization_data['current_hospitalized'].values.clip(min=0), 'current'
+        return times_new, \
+               hospitalization_data['current_hospitalized'].values.clip(min=0), \
+               HospitalizationDataType.CURRENT_HOSPITALIZATIONS
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        cumulative = hospitalization_data[
-            'cumulative_hospitalized'].values.clip(min=0)
+        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
-        return times_new, cumulative, 'cumulative'
+        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
     else:
         return None, None, None
 

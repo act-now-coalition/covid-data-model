@@ -14,6 +14,7 @@ from pyseir import load_data, OUTPUT_DIR
 from pyseir.models.seir_model import SEIRModel
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
+from pyseir.load_data import HospitalizationDataType
 
 
 class ModelFitter:
@@ -161,16 +162,17 @@ class ModelFitter:
             Float uncertainties (stdev) for hosp data.
         deaths_stdev: array-like
             Float uncertainties (stdev) for death data.
+            Float uncertainties (stdev) for death data.
         """
         # Stdev 200% of values.
         cases_stdev = self.cases_to_deaths_err_factor * self.observed_new_cases ** 0.5 * self.observed_new_cases.max() ** 0.5
         deaths_stdev = self.observed_new_deaths ** 0.5 * self.observed_new_deaths.max() ** 0.5
 
         # If cumulative hospitalizations, differentiate.
-        if self.hospitalization_data_type == 'cumulative':
+        if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(min=0)
             hosp_stdev = self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
-        elif self.hospitalization_data_type == 'current':
+        elif self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             hosp_data = self.hospitalizations
             hosp_stdev = self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
         else:
@@ -186,12 +188,26 @@ class ModelFitter:
 
     def run_model(self, R0, eps, t_break, log10_I_initial):
         """
-        Generate the model.
+        Generate the model and run.
+
+        Parameters
+        ----------
+        R0: float
+            Basic reproduction number
+        eps: float
+            Fraction of reduction in contact rates as result of  to suppression
+            policy projected into future.
+        t_break: float
+            Timing for the switch in suppression policy.
+        log10_I_initial:
+            log10 initial infections.
 
         Returns
         -------
         model: SEIRModel
+            The SEIR model that has been run.
         """
+        # Leaving this block since we likely want to switch back shortly.
         # if by == 'fips':
         #     suppression_policy = \
         #         suppression_policies.generate_empirical_distancing_policy(
@@ -202,7 +218,10 @@ class ModelFitter:
         #         suppression_policies.generate_empirical_distancing_policy_by_state(
         #             state=state, future_suppression=eps, **suppression_policy_params)
         suppression_policy = suppression_policies.generate_two_step_policy(self.t_list, eps, t_break)
-        self.SEIR_kwargs['E_initial'] = 1.2 * 10**log10_I_initial
+
+        # Load up some number of initial exposed so the initial flow into infected is stable.
+        steady_state_exposed_to_infected_ratio = 1.2
+        self.SEIR_kwargs['E_initial'] = steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial
 
         model = SEIRModel(
             R0=R0,
@@ -254,12 +273,12 @@ class ModelFitter:
         # -----------------------------------
         # Chi2 Hospitalizations
         # -----------------------------------
-        if self.hospitalization_data_type == 'current':
+        if self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             predicted_hosp = hosp_fraction * np.interp(self.hospital_times, self.t_list + t0,
                                                        model.results['HGen'] + model.results['HICU'])
             chi2_hosp = np.sum((self.hospitalizations - predicted_hosp) ** 2 / self.hosp_stdev ** 2)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
-        elif self.hospitalization_data_type == 'cumulative':
+        elif self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             # Cumulative, so differentiate the data
             cumulative_hosp_predicted = model.results['HGen_cumulative'] + model.results['HICU_cumulative']
             new_hosp_predicted = cumulative_hosp_predicted[1:] - cumulative_hosp_predicted[:-1]
@@ -361,7 +380,7 @@ class ModelFitter:
         plt.plot(model_dates, self.mle_model.results['total_deaths_per_day'],
                  label='Model Deaths Per Day', color='firebrick', lw=4)
 
-        if self.hospitalization_data_type == 'cumulative':
+        if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
             plt.errorbar(hosp_dates[1:], new_hosp_observed, yerr=hosp_stdev,
                          marker='s', linestyle='', label='Observed New Hospitalizations Per Day',
@@ -372,7 +391,7 @@ class ModelFitter:
                      self.fit_results['hosp_fraction'] * predicted_hosp,
                      label='Estimated Total New Hospitalizations Per Day',
                      linestyle='-.', lw=4, color='darkseagreen', markersize=10)
-        elif self.hospitalization_data_type == 'current':
+        elif self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             plt.errorbar(hosp_dates, self.hospitalizations, yerr=hosp_stdev,
                          marker='s', linestyle='', label='Observed Total Current Hospitalizations',
                          color='darkseagreen', capsize=3, alpha=.5, markersize=10)
