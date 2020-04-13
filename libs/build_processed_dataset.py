@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 from libs.CovidDatasets import get_public_data_base_url
-from libs.us_state_abbrev import us_state_abbrev, us_fips
+from libs.us_state_abbrev import US_STATE_ABBREV, us_fips
 from libs.datasets import FIPSPopulation
 from libs.enums import Intervention
 from libs.functions.calculate_projections import (
@@ -41,7 +41,7 @@ def _get_interventions_df():
 def _get_abbrev_df():
     # TODO: read this from a dataset class
     return pd.DataFrame(
-        list(us_state_abbrev.items()), columns=["state", "abbreviation"]
+        list(US_STATE_ABBREV.items()), columns=["state", "abbreviation"]
     )
 
 
