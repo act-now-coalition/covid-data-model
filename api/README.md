@@ -20,6 +20,7 @@ We currently provide 6 file types:
 │   │   ├── <state abreviation>.summary.json
 │   │   └── case_summary.version.json
 │   ├── county/
+|   |   ├── counties_top_100.json
 │   │   ├── <state abreviation>.<fips>.<intervention number>.json
 │   │   └── county.version.json
 │   ├── county_summaries/
@@ -164,6 +165,8 @@ For `case_summary/<state abreviation>.summary.json` files see the [JSON Schema](
 
 For `county_summaries/<state abreviation>.summary.json` files see the [JSON Schema](schemas/county_summaries.json)
 
+### Top Counties
+For `county/counties_top_100.json` fields see the [JSON Schema](schema/CANPredictionAPI.json)
 
 ### Versions
 
