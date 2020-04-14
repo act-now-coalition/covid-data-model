@@ -54,17 +54,17 @@ execute() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
-  echo ">>> Generating state and county models to ${STATES_DIR}"
+  echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
   pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" > /dev/null
 
   # Move state output to the expected location.
-  mkdir -p ${STATES_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/state/* ${STATES_DIR}/
+  mkdir -p ${API_OUTPUT_STATES}/
+  mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_STATES}/
 
   # Move county output to the expected location.
-  mkdir -p ${COUNTIES_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/county/* ${COUNTIES_DIR}/
+  mkdir -p ${API_OUTPUT_COUNTIES}/
+  mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_COUNTIES}/
 
   # Clean up original output directories.
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
