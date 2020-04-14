@@ -181,10 +181,11 @@ def cache_public_implementations_data():
     df.to_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl'))
 
 
-def cache_county_contact_matrix_data(states=None):
+def cache_contact_matrix_data(states=None):
     """
-    Caches county level contact matrix data, age bin edges and corresponding
-    age distribution and save to pyseir_data/contact_matrix folder.
+    Caches county level and state level contact matrix data, age bin edges
+    and corresponding age distribution and save to pyseir_data/contact_matrix
+    folder.
 
     Parameters
     ----------
@@ -193,21 +194,28 @@ def cache_county_contact_matrix_data(states=None):
         cache contact matrix data for all US states.
     """
     county_metadata = load_county_metadata()
-    r_script_template = Template(open(R_SCRIPT_PATH, 'r').read())
     states = states or county_metadata['state'].unique()
-    states = [states] if not isinstance(states, list) else states
+    states = [states] if isinstance(states, str) else list(states)
+    state_metadata = load_county_metadata_by_state(tuple(states))
+    r_script_template = Template(open(R_SCRIPT_PATH, 'r').read())
 
     for state in states:
         state_abbr = us.states.lookup(state.title()).abbr
+        state_fips = us.states.lookup(state.title()).fips
         contact_matrix_fips = dict()
         dir_path = os.path.join(DATA_DIR, 'contact_matrix')
         if not os.path.exists(dir_path):
             os.mkdir(dir_path)
-
-        for fips in county_metadata[county_metadata['state'] == state]['fips']:
+        fips_list = [state_fips] + county_metadata[county_metadata['state'] == state]['fips'].tolist()
+        for fips in fips_list:
             contact_matrix_fips[fips] = dict()
-            age_bin_edges = county_metadata.set_index('fips').loc[fips]['age_bin_edges'][:-1]
-            age_distribution = county_metadata.set_index('fips').loc[fips]['age_distribution']
+
+            if len(fips) == 5:
+                age_bin_edges = county_metadata.set_index('fips').loc[fips]['age_bin_edges'][:-1]
+                age_distribution = county_metadata.set_index('fips').loc[fips]['age_distribution']
+            else:
+                age_bin_edges = state_metadata.loc[state]['age_bin_edges'][:-1]
+                age_distribution = state_metadata.loc[state]['age_distribution']
 
             pandas2ri.activate()
             ro = robjects
@@ -284,7 +292,7 @@ def load_county_metadata():
 
 
 @lru_cache(maxsize=32)
-def load_county_metadata_by_state(state):
+def load_county_metadata_by_state(state=None):
     """
     Generate a dataframe that contains county metadata aggregated at state
     level.
@@ -302,9 +310,12 @@ def load_county_metadata_by_state(state):
     # aggregate into state level metadata
     state_metadata = load_county_metadata()
 
-    if state:
-        state = [state] if not isinstance(state, list) else state
-        state_metadata = state_metadata[state_metadata.state.isin(state)]
+    if state is not None:
+        state = [state] if isinstance(state, str) else list(state)
+    else:
+        state = state_metadata['state'].unique()
+
+    state_metadata = state_metadata[state_metadata.state.isin(state)]
 
     density_measures = ['housing_density', 'population_density']
     for col in density_measures:
