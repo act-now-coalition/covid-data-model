@@ -16,7 +16,7 @@ on:
 
 jobs:
   publish-api:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     env:
       AWS_S3_BUCKET: 'data.covidactnow.org'
