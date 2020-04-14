@@ -132,7 +132,10 @@ class ModelFitter:
             self.state = self.geo_metadata['state']
             self.state_obj = us.states.lookup(self.state)
             self.county = self.geo_metadata['county']
-            self.display_name = self.county + ', ' + self.state
+            if self.county:
+                self.display_name = self.county + ', ' + self.state
+            else:
+                self.display_name = self.state
             # TODO Swap for new data source.
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
