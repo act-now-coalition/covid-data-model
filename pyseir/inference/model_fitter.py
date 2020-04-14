@@ -457,7 +457,7 @@ class ModelFitter:
         try:
             model_fitter = cls(fips)
             model_fitter.fit()
-            # model_fitter.plot_fitting_results()
+            model_fitter.plot_fitting_results()
         except Exception:
             logging.exception(f"Failed to run {fips}")
             return None
