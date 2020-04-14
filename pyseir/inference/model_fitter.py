@@ -54,6 +54,30 @@ class ModelFitter:
         estimates.  0.5 = 50% error. Best to be conservatively high.
     """
 
+    DEFAULT_FIT_PARAMS = dict(
+        R0=3.4, limit_R0=[2, 4.5], error_R0=.05,
+        log10_I_initial=2, limit_log10_I_initial=[0, 5],
+        error_log10_I_initial=.2,
+        t0=60, limit_t0=[10, 80], error_t0=1.0,
+        eps=.3, limit_eps=[.15, 2], error_eps=.005,
+        t_break=20, limit_t_break=[5, 40], error_t_break=1,
+        test_fraction=.1, limit_test_fraction=[0.02, 1],
+        error_test_fraction=.02,
+        hosp_fraction=.6, limit_hosp_fraction=[0.1, 1], error_hosp_fraction=.05,
+        # Let's not fit this to start...
+        errordef=.5
+    )
+
+    PARAM_SETS = {
+        ('AK', 'KY', 'KS', 'ID', 'NE', 'VA', 'RI'):  dict(
+            eps=0.4, limit_eps=[0.25, 1],
+            limit_t0=[40, 80]
+        ),
+        ('MN'):  dict(
+            eps=0.4, limit_eps=[0.25, 1], t0=20
+        )
+    }
+
     steady_state_exposed_to_infected_ratio = 1.2
 
     def __init__(self,
@@ -61,8 +85,8 @@ class ModelFitter:
                  ref_date=datetime(year=2020, month=1, day=1),
                  min_deaths=2,
                  n_years=1,
-                 cases_to_deaths_err_factor=.25,
-                 hospital_to_deaths_err_factor=1,
+                 cases_to_deaths_err_factor=.5,
+                 hospital_to_deaths_err_factor=.5,
                  percent_error_on_max_observation=0.5):
 
         self.fips = fips
@@ -79,46 +103,38 @@ class ModelFitter:
             self.state_obj = us.states.lookup(self.fips)
             self.state = self.state_obj.name
             self.geo_metadata = \
-            load_data.load_county_metadata_by_state(self.state.title()).loc[
-                self.state.title()].to_dict()
+            load_data.load_county_metadata_by_state(self.state.title()).loc[self.state.title()].to_dict()
+
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_state(self.state, self.ref_date)
+
             self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
-                load_data.load_hospitalization_data_by_state(
-                    self.state_obj.abbr, t0=self.ref_date)
+                load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
             self.geo_metadata = \
-            load_data.load_county_metadata().set_index('fips').loc[
-                fips].to_dict()
+            load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
             self.state = self.geo_metadata['state']
+            self.state_obj = us.states.lookup(self.state)
             self.county = self.geo_metadata['county']
             self.display_name = self.county + ', ' + self.state
             # TODO Swap for new data source.
             self.times, self.observed_new_cases, self.observed_new_deaths = \
-                load_data.load_new_case_data_by_fips(self.fips,
-                                                     t0=self.ref_date)
+                load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
             self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
                 load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
 
-        self.fit_params = dict(
-            R0=3.4, limit_R0=[2, 4.5], error_R0=.2,
-            log10_I_initial=2, limit_log10_I_initial=[0, 5],
-            error_log10_I_initial=.5,
-            t0=60, limit_t0=[10, 70], error_t0=1,
-            eps=.35, limit_eps=[.05, 2], error_eps=.1,
-            t_break=30, limit_t_break=[0, 100], error_t_break=2,
-            test_fraction=.05, limit_test_fraction=[0.001, 1],
-            error_test_fraction=.01,
-            hosp_fraction=.7, limit_hosp_fraction=[0.1, 1],
-            error_hosp_fraction=.1,
-            fix_hosp_fraction=self.hospitalizations is None,
-            # Let's not fit this to start...
-            errordef=.5
-        )
+        self.fit_params = self.DEFAULT_FIT_PARAMS
+        # Update any state specific params.
+        for k, v in self.PARAM_SETS.items():
+            if self.state_obj.abbr in k:
+                self.fit_params.update(v)
+
+        self.fit_params['fix_hosp_fraction'] = self.hospitalizations is None
+
         self.model_fit_keys = ['R0', 'eps', 't_break', 'log10_I_initial']
 
         self.SEIR_kwargs = self.get_average_seir_parameters()
@@ -196,6 +212,9 @@ class ModelFitter:
                       * self.observed_new_cases ** 0.5 * self.observed_new_cases.max() ** 0.5
         deaths_stdev = self.percent_error_on_max_observation \
                        * self.observed_new_deaths ** 0.5 * self.observed_new_deaths.max() ** 0.5
+
+        # add a bit more error in cases with very few deaths. This upweights cases and hospitalizations in this regime.
+        deaths_stdev[self.observed_new_deaths <= 4] = deaths_stdev[self.observed_new_deaths <= 4] * 3
 
         # If cumulative hospitalizations, differentiate.
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
@@ -366,7 +385,8 @@ class ModelFitter:
 
         # This implements a hard lower limit of 0.98.
         # TODO: As more data comes in, relax this.. Probably just use MCMC..
-        prior = gamma.pdf((x - 0.98) / .5, 1.3)
+        prior = gamma.pdf((x - 0.98) / 1.5, 1.1)
+        # prior += 0.00001 * x # Provide a slight derivative below 0.98 to prevent numerical optimization issues.
         likelihood = norm.pdf(x, R_eff, R_eff_stdev)
         posterior = prior * likelihood
         posterior = posterior / (posterior.sum() * delta_x)
@@ -390,7 +410,7 @@ class ModelFitter:
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         # TODO @ Xinyu: add lines to check if minuit optimization result is valid.
-        minuit.migrad(precision=1e-4)
+        minuit.migrad(precision=1e-5)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
         self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
 
