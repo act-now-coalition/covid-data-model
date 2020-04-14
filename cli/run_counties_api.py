@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 
 
-@click.command("deploy-county-api")
+@click.command("deploy-counties-api")
 @click.option(
     "--disable-validation",
     "-dv",

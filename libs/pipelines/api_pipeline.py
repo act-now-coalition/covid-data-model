@@ -18,7 +18,7 @@ APIPipelineProjectionResult = namedtuple(
     "APIPipelineProjectionResult", ["intervention", "aggregate_level", "projection_df",]
 )
 
-APIGenrationRow = namedtuple("APIGenrationRow", ["key", "api"])
+APIGenerationRow = namedtuple("APIGenerationRow", ["key", "api"])
 
 APIGeneration = namedtuple("APIGeneration", ["api_rows"])
 
@@ -88,7 +88,7 @@ def generate_api(projection_result: APIPipelineProjectionResult,) -> APIGenerati
         generated_data = api.generate_api_for_projection_row(row)
         key_prefix = _get_api_prefix(projection_result.aggregate_level, row)
         generated_key = f"{key_prefix}.{projection_result.intervention.name}"
-        results.append(APIGenrationRow(generated_key, generated_data))
+        results.append(APIGenerationRow(generated_key, generated_data))
     return APIGeneration(results)
 
 

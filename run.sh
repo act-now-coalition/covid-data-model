@@ -83,10 +83,10 @@ execute() {
 
   echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
   mkdir -p "${API_OUTPUT_STATES}"
-  ./run.py deploy-state-api -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_STATES}"
+  ./run.py deploy-states-api -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_STATES}"
 
   echo ">>> Generating API for states to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
-  ./run.py deploy-county-api -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_COUNTIES}"
+  ./run.py deploy-counties-api -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 
 
-@click.command("deploy-state-api")
+@click.command("deploy-states-api")
 @click.option(
     "--disable-validation",
     "-dv",
@@ -24,7 +24,7 @@ PROD_BUCKET = "data.covidactnow.org"
 @click.option(
     "--output", "-o", default="results/output/states", help="Output directory for artifacts",
 )
-def deploy_state_api(disable_validation, input_dir, output):
+def deploy_states_api(disable_validation, input_dir, output):
     """The entry function for invocation"""
 
     for intervention in list(Intervention):
