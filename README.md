@@ -26,14 +26,15 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 # API Snapshots
 
-We build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/) twice a day via a [github action](./.github/workflows/deploy_api.yml).
-To manually kick off a new snapshot, get a
-[perosnal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
+We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/) 
+twice a day via a [github action](./.github/workflows/deploy_api.yml).  To manually kick off a new
+snapshot, get a
+[personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
 and run:
 
 ```bash
 export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
-./tools/publish-api.sh
+./tools/push-api.sh
 ```
 
 Once a snapshot has been vetted, you can "label" it with a friendly name, e.g. pointing https://data.covidactnow.org/v0/ at https://data.covidactnow.org/snapshot/123/ with:

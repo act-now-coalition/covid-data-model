@@ -1,5 +1,5 @@
 #!/bin/bash
-# publish-api.sh - Builds and publishes a new API snapshot (e.g.
+# push-api.sh - Builds and publishes a new API snapshot (e.g.
 # https://data.covidactnow.org/snapshot/123/).
 
 set -o nounset
