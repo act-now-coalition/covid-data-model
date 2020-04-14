@@ -37,22 +37,32 @@ def _get_or_none(value):
         return value
 
 
-def generate_api_for_projection_row(county_row):
-    peak_date = _get_date_or_none(county_row[rc.PEAK_HOSPITALIZATIONS])
-    shortage_start_date = _get_date_or_none(county_row[rc.HOSPITAL_SHORTFALL_DATE])
-    _hospital_beds = _HospitalBeds(
+def generate_api_for_projection_row(projection_row):
+    peak_date = _get_date_or_none(projection_row[rc.PEAK_HOSPITALIZATIONS])
+    shortage_start_date = _get_date_or_none(projection_row[rc.HOSPITAL_SHORTFALL_DATE])
+    _hospital_beds = _ResourceUsageProjection(
         peakDate=peak_date,
         shortageStartDate=shortage_start_date,
-        peakShortfall=_get_or_none(county_row[rc.PEAK_HOSPITALIZATION_SHORTFALL]),
+        peakShortfall=projection_row[rc.PEAK_HOSPITALIZATION_SHORTFALL],
     )
-    _projections = _Projections(hospitalBeds=_hospital_beds)
-    county_result = CANPredictionAPIRow(
-        stateName=county_row[rc.STATE],
-        countyName=county_row[rc.COUNTY],
-        fips=county_row[rc.FIPS],
-        lastUpdatedDate=_format_date(county_row[rc.LAST_UPDATED]),
+    _projections = _Projections(
+        totalHospitalBeds=_hospital_beds,
+        ICUBeds=None,
+        cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
+        peakDeaths=None,
+        peakDeathsDate=None
+    )
+    county_result = CovidActNowCountySummary(
+        lat=projection_row[rc.LATITUDE],
+        long=projection_row[rc.LONGITUDE],
+        actuals=None,
+        stateName=projection_row[rc.STATE],
+        countyName=projection_row[rc.COUNTY],
+        fips=projection_row[rc.FIPS],
+        lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
         projections=_projections,
     )
+
     return county_result
 
 

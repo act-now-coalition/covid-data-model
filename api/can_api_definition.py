@@ -11,7 +11,7 @@ class _ResourceUsageProjection(pydantic.BaseModel):
     peakShortfall: int = pydantic.Field(
         ..., description="Shortfall of resource needed at the peek utilization"
     )
-    peakDate: datetime.date = pydantic.Field(
+    peakDate: Optional[datetime.date] = pydantic.Field(
         ..., description="Date of peak resource utilization"
     )
     shortageStartDate: Optional[datetime.date] = pydantic.Field(
