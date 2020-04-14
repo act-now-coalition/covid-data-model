@@ -575,6 +575,17 @@ def load_public_implementations_data():
     """
     return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl')).set_index('fips')
 
+def load_contact_matrix_data_by_fips(fips):
+    """
+    Load contact matrix for given fips.
+    """
+
+    fips = [fips] if not isinstance(fips, list) else fips
+    state_abbr = us.states.lookup(fips[0][:2]).abbr
+    path = os.path.join(DATA_DIR, 'contact_matrix', 'contact_matrix_fips_%s.json' % state_abbr)
+    contact_matrix_data = json.loads(open(path).read())
+    return {s: contact_matrix_data[s] for s in fips}
+
 
 def cache_all_data():
     """
