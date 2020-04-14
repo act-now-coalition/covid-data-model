@@ -25,7 +25,7 @@ class _Projections(pydantic.BaseModel):
     # TODO(igor): make non-optional
     peakDeaths: Optional[int] = pydantic.Field(..., description="Peak number of deaths within projection window")
     peakDeathsDate: Optional[datetime.date] = pydantic.Field(..., description="Date of peak number of deaths")
-
+    endDate: datetime.date = pydantic.Field(..., description="Date the projection goes until")
 
 class _ResourceUtilization(pydantic.BaseModel):
     capacity: int = pydantic.Field(..., description="Total capacity for resource")
@@ -46,14 +46,14 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
     )
     lat: float = pydantic.Field(..., description="Lattitude of point within the state or county")
     long: float = pydantic.Field(..., description="Longitude of point within the state or county")
-    lastUpdatedDate: Optional[datetime.date = pydantic.Field(..., description="Date of latest data")
+    lastUpdatedDate: Optional[datetime.date] = pydantic.Field(..., description="Date of latest data")
     projections: Optional[_Projections] = pydantic.Field(...)
     actuals: Optional[_Actuals] = pydantic.Field(...)
 
 # TODO(igor): countyName *must* be None
 class CovidActNowStateSummary(CovidActNowAreaSummary):
     stateName: str = pydantic.Field(..., description="The state name")
-    countyName: Optional[str] = pydantic.Field(..., description="The county name")
+    countyName: Optional[str] = pydantic.Field(default=None, description="The county name")
 
 class CovidActNowCountySummary(CovidActNowAreaSummary):
     stateName: str = pydantic.Field(..., description="The state name")
