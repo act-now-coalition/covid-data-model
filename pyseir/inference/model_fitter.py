@@ -430,7 +430,7 @@ class ModelFitter:
 
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
-        minuit.migrad(precision=1e-5)
+        minuit.migrad(precision=1e-4)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
         self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
 
@@ -460,8 +460,7 @@ class ModelFitter:
             self.fit_results['chi2_hosps'] = self.chi2_hosp
         self.fit_results['chi2_deaths'] = self.chi2_deaths
 
-        self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type
-
+        self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type.value
 
         try:
             param_state = minuit.get_param_states()
@@ -542,20 +541,51 @@ class ModelFitter:
                  linestyle=':', lw=6, color='black')
 
         plt.yscale('log')
-        plt.ylim(.8e0)
-        plt.xlim(data_dates[0], data_dates[-1] + timedelta(days=150))
+        y_lim = plt.ylim(.8e0)
 
+        start_intervention_date = self.ref_date + timedelta(days=self.fit_results['t_break'] + self.fit_results['t0'])
+        stop_intervention_date = start_intervention_date + timedelta(days=14)
+
+        plt.fill_betweenx([y_lim[0], y_lim[1]],
+                          [start_intervention_date, start_intervention_date],
+                          [stop_intervention_date, stop_intervention_date], alpha=0.2, label='Estimated Intervention')
+
+        running_total = timedelta(days=0)
+        for i_label, k in enumerate((
+                'symptoms_to_hospital_days',
+                'hospitalization_length_of_stay_general',
+                'hospitalization_length_of_stay_icu')):
+
+            end_time = timedelta(days=self.SEIR_kwargs[k])
+            x = start_intervention_date + running_total
+            y = 1.5 ** (i_label + 1)
+            plt.errorbar(x=[x],
+                         y=[y],
+                         xerr=[[timedelta(days=0)], [end_time]],
+                         marker='', capsize=8, color='k', elinewidth=3, capthick=3)
+            plt.text(x + (end_time + timedelta(days=2)), y, k.replace('_', ' ').title(), fontsize=14)
+            running_total += end_time
+
+        plt.hlines(self.SEIR_kwargs['beds_ICU'], *plt.xlim(), color='k', linestyles='-', linewidths=6, alpha=0.2)
+        plt.text(data_dates[0] + timedelta(days=5), self.SEIR_kwargs['beds_ICU'] * 1.1, 'Available ICU Capacity',
+                 color='k', alpha=0.5, fontsize=15)
+
+        plt.ylim(*y_lim)
+        plt.xlim(data_dates[0], data_dates[-1] + timedelta(days=150))
         plt.xticks(rotation=30, fontsize=14)
         plt.yticks(fontsize=14)
-        plt.legend(loc=1, fontsize=14)
+        plt.legend(loc=4, fontsize=14)
         plt.grid(which='both', alpha=.5)
         plt.title(self.display_name, fontsize=20)
 
         for i, (k, v) in enumerate(self.fit_results.items()):
+
+            fontweight = 'bold' if k in ('R0', 'Reff') else 'normal'
+
             if np.isscalar(v) and not isinstance(v, str):
-                plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
+                plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
             else:
-                plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
+                plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
 
         if self.agg_level is AggregationLevel.COUNTY:
             output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state, 'reports',
