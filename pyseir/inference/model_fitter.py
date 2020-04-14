@@ -608,10 +608,8 @@ def run_state(state, states_only=False):
     os.makedirs(state_output_dir, exist_ok=True)
 
     model_fitter = ModelFitter.run_for_fips(state_obj.fips)
-    results = ModelFitter.run_for_fips(state_obj.fips)
-    if not results:
+    if not model_fitter:
         return None
-    fit_results = results.fit_results
 
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(
         os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.json'))
