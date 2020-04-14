@@ -25,6 +25,8 @@ root.addHandler(handler)
 nyt_dataset = None
 cds_dataset = None
 
+DEFAULT_RUN_MODE = 'can-before-hospitalization-new-params'
+
 
 def _cache_global_datasets():
     global nyt_dataset, cds_dataset
@@ -152,7 +154,7 @@ def run_mle_fits(state, states_only):
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--generate-reports', default=False, is_flag=True, type=bool, help='If False, skip pdf report generation.')
-@click.option('--run-mode', default='default', help='State to generate files for. If no state is given, all states are computed.')
+@click.option('--run-mode', default=DEFAULT_RUN_MODE, help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def run_ensembles(state, run_mode, generate_reports, states_only):
     _run_ensembles(state, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports), states_only=states_only)
@@ -167,7 +169,7 @@ def generate_state_report(state):
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--output-interval-days', default=4, type=int, help='Number of days between outputs for the WebUI payload.')
-@click.option('--run-mode', default='default', type=str, help='State to generate files for. If no state is given, all states are computed.')
+@click.option('--run-mode', default=DEFAULT_RUN_MODE, type=str, help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def map_outputs(state, output_interval_days, run_mode, states_only):
     _map_outputs(state, output_interval_days=int(output_interval_days), run_mode=run_mode, states_only=states_only)
@@ -175,7 +177,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 
 @entry_point.command()
 @click.option('--state', default=None, help='State to generate files for. If no state is given, all states are computed.')
-@click.option('--run-mode', default='default',type=str, help='State to generate files for. If no state is given, all states are computed.')
+@click.option('--run-mode', default=DEFAULT_RUN_MODE,type=str, help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--generate-reports', default=False, type=bool, is_flag=True, help='If False, skip pdf report generation.')
 @click.option('--output-interval-days', default=4, type=int, help='Number of days between outputs for the WebUI payload.')
 @click.option('--skip-download', default=False, is_flag=True, type=bool, help='Skip the download phase.')

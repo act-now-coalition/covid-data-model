@@ -63,7 +63,7 @@ class ModelFitter:
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
         test_fraction=.1, limit_test_fraction=[0.02, 1],
         error_test_fraction=.02,
-        hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
+        hosp_fraction=1, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
         # Let's not fit this to start...
         errordef=.5
     )
@@ -87,7 +87,11 @@ class ModelFitter:
         ('MN'):  dict(
             eps=0.4, limit_eps=[0.25, 1], t0=20
         ),
-        ('WV'):  dict(limit_t_break=[7, 40], t0=70),
+        ('AL', 'DE'): dict(limit_t_break=[7, 10], t0=70),
+        ('SD', 'NM', 'WV'): dict(
+            # To Be relaxed after more data.
+            eps=0.4, t_break=5, fix_t_break=True
+        ),
         ('MI'): dict(limit_t_break=[7, 40], t0=70),
         ('VT', 'NH'):  dict(limit_t_break=[10, 30], t0=45)
     }
@@ -443,6 +447,8 @@ class ModelFitter:
             self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.t0_guess).isoformat()
         else:
             self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.fit_results['t0'])).isoformat()
+        self.fit_results['t_today'] = (datetime.today() - self.ref_date).days
+
         self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
 
         if self.fit_results['eps'] == 0.0:
@@ -453,6 +459,9 @@ class ModelFitter:
         if self.hospitalizations is not None:
             self.fit_results['chi2_hosps'] = self.chi2_hosp
         self.fit_results['chi2_deaths'] = self.chi2_deaths
+
+        self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type
+
 
         try:
             param_state = minuit.get_param_states()
@@ -503,8 +512,7 @@ class ModelFitter:
                  label='Model Deaths Per Day', color='firebrick', lw=4)
 
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
-            new_hosp_observed = self.hospitalizations[
-                                1:] - self.hospitalizations[:-1]
+            new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
             plt.errorbar(hosp_dates[1:], new_hosp_observed, yerr=hosp_stdev,
                          marker='s', linestyle='',
                          label='Observed New Hospitalizations Per Day',
@@ -545,9 +553,9 @@ class ModelFitter:
 
         for i, (k, v) in enumerate(self.fit_results.items()):
             if np.isscalar(v) and not isinstance(v, str):
-                plt.text(.7, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
+                plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
             else:
-                plt.text(.7, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
+                plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
 
         if self.agg_level is AggregationLevel.COUNTY:
             output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state, 'reports',
@@ -557,7 +565,7 @@ class ModelFitter:
                                        f'{self.state}__{self.fips}__mle_fit_results.pdf')
 
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        plt.savefig(output_file)
+        plt.savefig(output_file, bbox_inches='tight')
         plt.close()
 
     @classmethod

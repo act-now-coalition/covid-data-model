@@ -125,6 +125,9 @@ class WebUIDataAdaptorV1:
         pyseir_outputs = load_data.load_ensemble_results(fips, run_mode=self.run_mode)
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
+
+        all_hospitalized_today = None
+
         for i_policy, suppression_policy in enumerate(policies):
             if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
                 continue
@@ -132,9 +135,17 @@ class WebUIDataAdaptorV1:
             output_model = pd.DataFrame()
 
             if suppression_policy == 'suppression_policy__inferred':
-                t0 = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
+                fit_results = load_inference_result(fips)
+                t0 = datetime.fromisoformat(fit_results['t0_date'])
+
+                # Hospitalizations need to be rescaled by the inferred factor to match observations for display.
+                now_idx = int((datetime.today() - datetime.fromisoformat(fit_results['t0_date'])).days)
+                total_hosps = output_for_policy['HGen']['ci_50'][now_idx] + output_for_policy['HICU']['ci_50'][now_idx]
+                hosp_fraction = all_hospitalized_today / total_hosps
+
             else:
                 t0 = datetime.today()
+                hosp_fraction = 1.
 
             t_list = output_for_policy['t_list']
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
@@ -157,7 +168,7 @@ class WebUIDataAdaptorV1:
             # Col 8
             output_model['g'] = np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
             # Col 9
-            output_model['all_hospitalized'] = np.add(output_model['f'], output_model['g'])
+            output_model['all_hospitalized'] = hosp_fraction * np.add(output_model['f'], output_model['g'])
             # Col 10
             output_model['all_infected'] = output_model['d']
             # Col 11
@@ -165,6 +176,9 @@ class WebUIDataAdaptorV1:
             # Col 12
             final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
             output_model['beds'] = final_beds
+
+            # Need this..
+            all_hospitalized_today = output_model['all_hospitalized'][0]
 
             # Don't backfill inferences
             if suppression_policy != 'suppression_policy__inferred':

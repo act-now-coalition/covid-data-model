@@ -235,7 +235,7 @@ class EnsembleRunner:
                 self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
 
                 # 1.2 is a ~ steady state for the exposed bucket initialization.
-                self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
+                self.override_params['E_initial'] = 0.6 * (self.override_params['I_initial'] + self.override_params['A_initial'])
                 self.override_params['D_initial'] = self.covid_data.deaths.max()
 
             else:
@@ -272,7 +272,7 @@ class EnsembleRunner:
                 self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
 
                 # 1.2 is a ~ steady state for the exposed bucket initialization.
-                self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
+                self.override_params['E_initial'] = 0.6 * (self.override_params['I_initial'] + self.override_params['A_initial'])
                 self.override_params['D_initial'] = self.covid_data.deaths.max()
 
         elif self.run_mode is RunMode.DEFAULT:
