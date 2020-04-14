@@ -432,6 +432,7 @@ class ModelFitter:
 
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         plt.savefig(output_file)
+        plt.close()
 
     @classmethod
     def run_for_fips(cls, fips):
@@ -453,9 +454,13 @@ class ModelFitter:
             if observed_new_cases.sum() < 1:
                 return None
 
-        model_fitter = cls(fips)
-        model_fitter.fit()
-        model_fitter.plot_fitting_results()
+        try:
+            model_fitter = cls(fips)
+            model_fitter.fit()
+            model_fitter.plot_fitting_results()
+        except Exception:
+            logging.exception(f"Failed to run {fips}")
+            return None
         return model_fitter
 
 
@@ -477,7 +482,10 @@ def run_state(state, states_only=False, case_death_timeseries=None):
     state_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
                                f'summary_{state}_state_only__mle_fit_results.json')
     os.makedirs(os.path.dirname(state_output_file), exist_ok=True)
-    fit_results = ModelFitter.run_for_fips(state_obj.fips).fit_results
+    results = ModelFitter.run_for_fips(state_obj.fips)
+    if not results:
+        return None
+    fit_results = results.fit_results
 
     pd.DataFrame(fit_results, index=[state_obj.fips]).to_json(state_output_file)
 
@@ -488,7 +496,6 @@ def run_state(state, states_only=False, case_death_timeseries=None):
 
         df = load_data.load_county_metadata()
         all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
-
         p = Pool()
         fitters = p.map(ModelFitter.run_for_fips, all_fips)
         p.close()

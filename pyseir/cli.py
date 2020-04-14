@@ -59,7 +59,7 @@ def _run_mle_fits(state=None, states_only=False):
         model_fitter.run_state(state.title(), states_only=states_only)
     else:
         for state_obj in us.STATES + us.TERRITORIES:
-            _run_mle_fits(state_obj.name, states_only=states_only)
+            _run_mle_fits(state=state_obj.name, states_only=states_only)
 
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
@@ -106,12 +106,15 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
         if not states_only:
             _impute_start_dates(state.title())
         _run_mle_fits(state, states_only=states_only)
-        _run_ensembles(state.title(),
-                       ensemble_kwargs=dict(
-                           run_mode=run_mode,
-                           generate_report=generate_reports,
-                           covid_timeseries=nyt_dataset),
-                       states_only=states_only)
+        _run_ensembles(
+            state.title(),
+            ensemble_kwargs=dict(
+                run_mode=run_mode,
+                generate_report=generate_reports,
+                covid_timeseries=nyt_dataset
+            ),
+            states_only=states_only
+        )
         if generate_reports:
             _generate_state_reports(state.title())
         _map_outputs(state, output_interval_days, states_only=states_only,
