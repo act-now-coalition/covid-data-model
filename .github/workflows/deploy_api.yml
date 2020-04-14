@@ -59,7 +59,8 @@ jobs:
           ${{ runner.os }}-pip-
           ${{ runner.os }}-
     - name: Install Dependencies
-      run: pip install -r covid-data-model/requirements.txt
+      working-directory: ./covid-data-model
+      run: pip install -r requirements.txt
 
     - name: Build API Artifacts (run.sh)
       env:
