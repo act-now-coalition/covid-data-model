@@ -37,8 +37,8 @@ prepare () {
 
   INPUT_BASE_DIR="${API_OUTPUT_DIR}/";
 
-  API_OUTPUT_COUNTIES = "${API_OUTPUT_DIR}/counties"
-  API_OUTPUT_STATES = "${API_OUTPUT_DIR}/states"
+  API_OUTPUT_COUNTIES = "${API_OUTPUT_DIR}/us/counties"
+  API_OUTPUT_STATES = "${API_OUTPUT_DIR}/us/states"
 
   # TODO: I think deploy_dod_dataset.py may currently have an implicit
   # requirement that the county model JSON is in a /county subdirectory of the
@@ -58,7 +58,7 @@ execute() {
   # TODO(#148): We need to clean up the output of these scripts!
   ./run.py model state -o "${API_OUTPUT_DIR}" > /dev/null
 
-  echo ">>> Generating county models to ${API_OUTPUT_DIR}"
+  echo ">>> Generating county models to ${API_OUTPUT_DIR}/county"
   # TODO(#148): We need to clean up the output of these scripts!
   ./run.py model county -o "${API_OUTPUT_DIR}/county" > /dev/null
 

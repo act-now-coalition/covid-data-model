@@ -20,12 +20,14 @@ We currently provide 6 file types:
 │   │   ├── <state abreviation>.summary.json
 │   │   └── case_summary.version.json
 │   ├── county/
-|   |   ├── counties_top_100.json
 │   │   ├── <state abreviation>.<fips>.<intervention number>.json
-│   │   ├── <fips>.<intervention number>.json
 │   │   └── county.version.json
-│   ├── state/
-│   │   ├── <state abreviation>.<intervention number>.json
+│   ├── us/
+|   │   ├── counties/
+|   │   │   ├── <5 Digit FIPS>.<intervention number>.json
+|   │   │   └── counties_top_100.json
+|   │   └── states/
+|   │       └── <state abbreviation>.<intervention number>.json
 │   ├── county_summaries/
 │   │   ├── <state abreviation>.summary.json
 │   │   └── county_summary.version.json
@@ -172,9 +174,9 @@ For `county_summaries/<state abreviation>.summary.json` files see the [JSON Sche
 For `county/counties_top_100.json` fields see the [JSON Schema](schema/CANPredictionAPI.json)
 
 ### For State/County Calculated Results
-For fields like 
-- `county/<fips>.<intervention>.json` 
-- `state/<state abbreviation>.<intervention>.json` 
+For files like 
+- `us/counties/<fips>.<intervention>.json` 
+- `us/states/<state abbreviation>.<intervention>.json` 
 
 see the [JSON Schema](schema/CANPredictionAPIRow.json)
 
