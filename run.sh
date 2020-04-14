@@ -35,7 +35,7 @@ prepare () {
   # These directiories essentially define the structure of our API endpoints.
   # TODO: These should perhaps live in python, near the schemas (defined in api/)?
 
-  INPUT_BASE_DIR="${API_OUTPUT_DIR}/";
+  INPUT_BASE_DIR="${API_OUTPUT_DIR}/"
 
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
