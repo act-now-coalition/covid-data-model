@@ -3,6 +3,7 @@ import iminuit
 import numpy as np
 import os
 import us
+import pickle
 from pprint import pformat
 import pandas as pd
 from scipy.stats import gamma, norm
@@ -14,8 +15,7 @@ from pyseir.models import suppression_policies
 from pyseir import load_data, OUTPUT_DIR
 from pyseir.models.seir_model import SEIRModel
 from libs.datasets.dataset_utils import AggregationLevel
-from pyseir.parameters.parameter_ensemble_generator import \
-    ParameterEnsembleGenerator
+from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType
 
 
@@ -63,19 +63,33 @@ class ModelFitter:
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
         test_fraction=.1, limit_test_fraction=[0.02, 1],
         error_test_fraction=.02,
-        hosp_fraction=.6, limit_hosp_fraction=[0.1, 1], error_hosp_fraction=.05,
+        hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
         # Let's not fit this to start...
         errordef=.5
     )
 
     PARAM_SETS = {
-        ('AK', 'KY', 'KS', 'ID', 'NE', 'VA', 'RI'):  dict(
+        ('KY', 'KS', 'ID', 'NE', 'VA', 'RI'):  dict(
             eps=0.4, limit_eps=[0.25, 1],
             limit_t0=[40, 80]
         ),
+
+        ('AK'): dict(
+            eps=0.4, limit_eps=[0.25, 1],
+            t0=75, limit_t0=[40, 80],
+            t_break=10
+        ),
+        ('ND'): dict(
+            eps=0.4, limit_eps=[0.25, 1],
+            t0=60, limit_t0=[40, 80],
+            t_break=10
+        ),
         ('MN'):  dict(
             eps=0.4, limit_eps=[0.25, 1], t0=20
-        )
+        ),
+        ('WV'):  dict(limit_t_break=[7, 40], t0=70),
+        ('MI'): dict(limit_t_break=[7, 40], t0=70),
+        ('VT', 'NH'):  dict(limit_t_break=[10, 30], t0=45)
     }
 
     steady_state_exposed_to_infected_ratio = 1.2
@@ -207,7 +221,6 @@ class ModelFitter:
             Float uncertainties (stdev) for death data.
         """
         # Stdev 50% of values.
-
         cases_stdev = self.percent_error_on_max_observation * self.cases_to_deaths_err_factor \
                       * self.observed_new_cases ** 0.5 * self.observed_new_cases.max() ** 0.5
         deaths_stdev = self.percent_error_on_max_observation \
@@ -218,14 +231,18 @@ class ModelFitter:
 
         # If cumulative hospitalizations, differentiate.
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
-            hosp_data = (self.hospitalizations[1:] - self.hospitalizations[
-                                                     :-1]).clip(min=0)
+            hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(min=0)
             hosp_stdev = self.percent_error_on_max_observation * \
                          self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
+            # Increase errors a bit for very low hospitalizations. There are clear outliers due to data quality.
+            hosp_stdev[hosp_data <= 2] *= 3
+
         elif self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             hosp_data = self.hospitalizations
             hosp_stdev = self.percent_error_on_max_observation \
                          * self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
+            # Increase errors a bit for very low hospitalizations. There are clear outliers due to data quality.
+            hosp_stdev[hosp_data <= 2] *= 3
         else:
             hosp_stdev = None
 
@@ -409,7 +426,6 @@ class ModelFitter:
 
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
-        # TODO @ Xinyu: add lines to check if minuit optimization result is valid.
         minuit.migrad(precision=1e-5)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
         self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
@@ -424,10 +440,14 @@ class ModelFitter:
 
         if np.isnan(self.fit_results['t0']):
             logging.error(f'Could not compute MLE values for {self.display_name}')
-            self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.t0_guess)
+            self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.t0_guess).isoformat()
         else:
-            self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.fit_results['t0'])
+            self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.fit_results['t0'])).isoformat()
         self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
+
+        if self.fit_results['eps'] == 0.0:
+            raise RuntimeError(f'Fit failed for {self.state, self.fips}: '
+                               f'Epsilon == 0 which implies lack of convergence.')
 
         self.fit_results['chi2_cases'] = self.chi2_cases
         if self.hospitalizations is not None:
@@ -533,9 +553,8 @@ class ModelFitter:
             output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state, 'reports',
                                        f'{self.state}__{self.county}__{self.fips}__mle_fit_results.pdf')
         else:
-            output_file = os.path.join(
-                OUTPUT_DIR, 'pyseir', 'state_summaries',
-                f'{self.state}__{self.fips}__mle_fit_results.pdf')
+            output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'state_summaries',
+                                       f'{self.state}__{self.fips}__mle_fit_results.pdf')
 
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         plt.savefig(output_file)
@@ -580,12 +599,16 @@ def run_state(state, states_only=False):
     """
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
-    state_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
-                                     f'summary_{state}_state_only__mle_fit_results.json')
-    os.makedirs(os.path.dirname(state_output_file), exist_ok=True)
-    fit_results = ModelFitter.run_for_fips(state_obj.fips).fit_results
+    state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
 
-    pd.DataFrame(fit_results, index=[state_obj.fips]).to_json(state_output_file)
+    os.makedirs(state_output_dir, exist_ok=True)
+    model_fitter = ModelFitter.run_for_fips(state_obj.fips)
+
+    pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(
+        os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.json'))
+
+    with open(os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.pkl'), 'wb') as f:
+        pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
     if not states_only:
