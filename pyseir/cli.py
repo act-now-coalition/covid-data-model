@@ -121,15 +121,30 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
                      output_dir=output_dir, run_mode=run_mode)
     else:
         if states_only:
-            f = partial(_run_all, run_mode=run_mode, generate_reports=generate_reports,
-                        output_interval_days=output_interval_days, skip_download=True, states_only=states_only)
+            f = partial(
+                _run_all,
+                run_mode=run_mode,
+                generate_reports=generate_reports,
+                output_interval_days=output_interval_days,
+                skip_download=True,
+                states_only=states_only,
+                output_dir=output_dir
+            )
             p = Pool()
             p.map(f, [state_obj.name for state_obj in us.STATES + us.TERRITORIES])
             p.close()
 
         else:
             for state_obj in us.STATES + us.TERRITORIES:
-                _run_all(state_obj.name, run_mode, generate_reports, output_interval_days, skip_download=True, states_only=states_only)
+                _run_all(
+                    state_obj.name,
+                    run_mode,
+                    generate_reports,
+                    output_interval_days,
+                    skip_download=True,
+                    states_only=states_only,
+                    output_dir=output_dir
+                )
 
 
 @entry_point.command()
