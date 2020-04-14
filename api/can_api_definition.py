@@ -46,7 +46,7 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
     )
     lat: float = pydantic.Field(..., description="Lattitude of point within the state or county")
     long: float = pydantic.Field(..., description="Longitude of point within the state or county")
-    lastUpdatedDate: Optional[datetime.date] = pydantic.Field(..., description="Date of latest data")
+    lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
     projections: Optional[_Projections] = pydantic.Field(...)
     actuals: Optional[_Actuals] = pydantic.Field(...)
 

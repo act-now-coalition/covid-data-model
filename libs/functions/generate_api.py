@@ -10,6 +10,8 @@ from api.can_api_definition import (
 from libs.datasets import results_schema as rc
 from libs.constants import NULL_VALUE
 
+FRAMES = 32
+DAYS_PER_FRAME = 4
 
 def _format_date(input_date):
     if not input_date:
@@ -58,7 +60,7 @@ def _generate_api_for_projections(projection_row):
         cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
         peakDeaths=None,
         peakDeathsDate=None,
-        endDate=_format_date(projection_row[rc.LAST_UPDATED]) + timedelta(days=90)
+        endDate=_format_date(projection_row[rc.LAST_UPDATED]) + timedelta(days=FRAMES*DAYS_PER_FRAME)
     )
     return projections
 

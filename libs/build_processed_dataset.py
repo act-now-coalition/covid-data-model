@@ -99,8 +99,8 @@ def _get_usa_by_county_df():
     )  # note this is a hack, 49053 is dupped in JHU data :(
     final_df.index.name = "OBJECTID"
     # assert unique key test
-#    assert final_df["Combined Key"].value_counts().max() == 1
-#    assert final_df["State/County FIPS Code"].value_counts().max() == 1
+    assert final_df["Combined Key"].value_counts().max() == 1
+    assert final_df["State/County FIPS Code"].value_counts().max() == 1
 
     return final_df
 
@@ -134,7 +134,7 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     counties.index.name = "OBJECTID"
     # assert unique key test
 
-    #assert counties["Combined Key"].value_counts().max() == 1
+    assert counties["Combined Key"].value_counts().max() == 1
     return counties
 
 

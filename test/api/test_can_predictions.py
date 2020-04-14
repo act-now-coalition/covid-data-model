@@ -29,7 +29,8 @@ class CovidTimeseriesModelTest(unittest.TestCase):
         },
         'cumulativeDeaths' : 5,
         'peakDeaths' : 10,
-        'peakDeathsDate' : date(2020, 5, 15)
+        'peakDeathsDate' : date(2020, 5, 15),
+        'endDate' : date(2020, 10, 1)
       },
       actuals = {
         'population' : 883305,
