@@ -16,12 +16,14 @@ on:
 
 jobs:
   publish-api:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     env:
       AWS_S3_BUCKET: 'data.covidactnow.org'
       # To pin to an old data set or model code, put the branch/tag/commit here:
       COVID_DATA_PUBLIC_REF: 'master'
+      #####
+      # !!! Change this to your BRANCH if you want to test it
       COVID_DATA_MODEL_REF: 'master'
       SNAPSHOT_ID: ${{github.run_number}}
 
@@ -58,7 +60,7 @@ jobs:
 
     - name: Build API Artifacts (run.sh)
       env:
-        COVID_MODEL_CORES: 2
+        COVID_MODEL_CORES: 16
       run: ./covid-data-model/run.sh ./covid-data-public ./api_results
 
     - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
