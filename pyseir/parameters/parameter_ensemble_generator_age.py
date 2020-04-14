@@ -27,6 +27,15 @@ class ParameterEnsembleGeneratorAge:
         Initial infected case count to consider.
     suppression_policy: callable(t): pyseir.model.suppression_policy
         Suppression policy to apply.
+    contact_matrix_data: dict
+        Contains contact matrix, age bin edges and corresponding age
+        distribution of relevant fips. With format:
+        {<fips>:
+            'contact_matrix': list(list),
+            'age_bin_edges': list,
+            'age_distribution': list
+        ...}
+
     """
     def __init__(self, fips, N_samples, t_list,
                  I_initial=1, suppression_policy=None):
@@ -46,9 +55,8 @@ class ParameterEnsembleGeneratorAge:
         self.I_initial = I_initial
         self.suppression_policy = suppression_policy
         self.t_list = t_list
-        self.contact_matrix_data = load_data.load_contact_matrix_data_by_fips(self.fips)
-        self.population = np.array(self.contact_matrix_data[self.fips]['age_distribution'])
-
+        self.contact_matrix_data = load_data.load_contact_matrix_data_by_fips(fips)
+        self.population = np.array(self.contact_matrix_data[fips]['age_distribution'])
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
@@ -64,6 +72,15 @@ class ParameterEnsembleGeneratorAge:
         """
         Generate age specific hospitalization_rate_general,
         hospitalization_rate_icu, and mortality_rate.
+
+        Yields
+        ------
+          : np.array
+            Following rates estimated by fitting age bin centers to the
+            function interpolated using cdc hospitalization data:
+            - hospitalization_rate_general
+            - hospitalization_rate_icu
+            - mortality_rate
         """
         age_bin_edges = self.contact_matrix_data[self.fips]['age_bin_edges']
         age_bin_centers = (np.array(age_bin_edges[1:]) + np.array(age_bin_edges[:-1])) / 2
@@ -81,7 +98,18 @@ class ParameterEnsembleGeneratorAge:
 
         Returns
         -------
-
+        E_initial: np.array
+            Array of zeros with shape (number of age bin edges, )
+        A_initial: np.array
+            Array of zeros with shape (number of age bin edges, )
+        I_initial: np.array
+            Array with shape (number of age bin edges, )
+        HGen_initial: np.array
+            Array of zeros with shape (number of age bin edges, )
+        HICU_initial: np.array
+            Array of zeros with shape (number of age bin edges, )
+        HICUVent_initial: np.array
+            Array of zeros with shape (number of age bin edges, )
         """
         age_dist = self.contact_matrix_data[self.fips]['age_distribution']
         E_initial = np.zeros(len(age_dist))
