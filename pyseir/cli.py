@@ -103,8 +103,9 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
         cache_all_data()
 
     if state:
-        if not states_only:
-            _impute_start_dates(state.title())
+        # Deprecate temporarily since not needed.
+        # if not states_only:
+        #     _impute_start_dates(state.title())
         _run_mle_fits(state, states_only=states_only)
         _run_ensembles(state.title(),
                        ensemble_kwargs=dict(
