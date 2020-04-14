@@ -339,7 +339,7 @@ def forecast_each_state(
         _logger.warning(f"Missing population for {state}")
         return
 
-    for i, intervention in enumerate(build_params.get_interventions()):
+    for i, intervention in enumerate(build_params.get_interventions(state)):
         _logger.info(f"Running intervention {i} for {state}")
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
@@ -378,7 +378,7 @@ def forecast_each_county(
         f"total cases: {total_cases} beds: {beds} pop: {population}"
     )
 
-    interventions = build_params.get_interventions()
+    interventions = build_params.get_interventions(state)
     for i, intervention in enumerate(interventions):
         results = model_state(cases, beds, population, intervention)
         website_data = prepare_data_for_website(
