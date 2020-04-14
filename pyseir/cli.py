@@ -180,3 +180,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 def run_all(state, run_mode, generate_reports, output_interval_days, skip_download, output_dir, states_only):
     _run_all(state, run_mode, generate_reports, output_interval_days, skip_download=skip_download,
              output_dir=output_dir, states_only=states_only)
+
+
+if __name__ == "__main__":
+    entry_point()
