@@ -15,9 +15,13 @@ from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from functools import lru_cache
 from enum import Enum
+from string import Template
+import rpy2.robjects as robjects
+from rpy2.robjects import pandas2ri
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
+R_SCRIPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'contact_matrices.r')
 
 FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
 
@@ -140,6 +144,53 @@ def cache_public_implementations_data():
     df.columns = [col.replace('>', '').replace(' ', '_').replace('/', '_').lower() for col in df.columns]
     df.fips = df.fips.apply(lambda x: x.zfill(5))
     df.to_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl'))
+
+
+def cache_county_contact_matrix_data():
+    """
+
+    """
+    county_metadata = load_county_metadata()
+    contact_matrix_fips = dict()
+    r_script_template = Template(open(R_SCRIPT_PATH, 'r').read())
+
+    for fips in county_metadata['fips']:
+        contact_matrix_fips[fips] = dict()
+        age_bin_edges = county_metadata.set_index('fips').loc[fips]['age_bin_edges']
+        age_distribution = county_metadata.set_index('fips').loc[fips]['age_distribution']
+        age_dist = pd.DataFrame({'age_bin_edges': age_bin_edges[:-1], 'age_distribution': age_distribution})
+
+        age_distribution = age_dist['age_distribution']
+        age_bin_edges = age_dist['age_bin_edges']
+
+        r_script = r_script_template.substitute(
+                        dict(age_bin_edges=','.join([str(n) for n in age_bin_edges]),
+                             age_distribution= ','.join([str(n) for n in age_distribution])))
+
+        pandas2ri.activate()
+        ro = robjects
+        ro.r(r_script)
+        contact_matrix = ro.r('mr')
+        contact_matrix = ro.conversion.rpy2py(contact_matrix)
+        extract_age_bin_edges = lambda x: int(re.sub("[b'[)+]", '', str(x)).split(',')[0])
+        age_bin_edges = sorted([extract_age_bin_edges(col) for col in contact_matrix.columns])
+
+        age_group_size = np.zeros(age_dist.shape[0])
+        age_group_idx = None
+        for n in age_dist.index:
+            if age_dist.loc[n]['age_bin_edges'] in age_bin_edges:
+                age_group_size[n] += age_dist.loc[n]['age_distribution']
+                age_group_idx = n
+            else:
+                age_group_size[age_group_idx] += age_dist.loc[n]['age_distribution']
+        age_group_size = age_group_size[age_group_size > 0]
+
+        contact_matrix_fips[fips]['age_bin_edges'] = age_bin_edges
+        contact_matrix_fips[fips]['age_distribution'] = age_group_size
+        contact_matrix_fips[fips]['contact_matrix'] = contact_matrix
+
+    with open(os.path.join(DATA_DIR, 'contact_matrix_fips.json'), 'w') as fp:
+        json.dumps(contact_matrix_fips, fp)
 
 
 @lru_cache(maxsize=32)
@@ -470,6 +521,14 @@ def load_hospital_data():
     : pd.DataFrame
     """
     return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
+
+
+def load_hospital_data_by_age():
+    """
+    Return age specific hospitalization rate.
+    """
+
+    return pd.read_csv(os.path.join(DATA_DIR, 'cdc_hospitalization_data.csv'))
 
 
 @lru_cache(maxsize=1)
