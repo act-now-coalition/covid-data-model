@@ -12,7 +12,7 @@ age_limits = c()
 for(v in age_dist['lower.age.limit']) { age_limits <- v }
 
 m <- contact_matrix(polymod,
-                    countries = 'United Kingdom$country',
+                    countries = 'United Kingdom',
                     age.limits = age_limits,
                     n=10,
                     survey.pop=age_dist)
