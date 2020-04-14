@@ -1,9 +1,9 @@
 from datetime import datetime
-from api.can_predictions import (
-    CANPredictionAPIRow,
-    CANPredictionAPI,
+from api.can_api_definition import (
+    CovidActNowCountiesAPI,
+    CovidActNowCountySummary,
     _Projections,
-    _HospitalBeds,
+    _ResourceUsageProjection,
 )
 from libs.datasets import results_schema as rc
 from libs.constants import NULL_VALUE
@@ -23,7 +23,7 @@ def _format_date(input_date):
 
 def _get_date_or_none(panda_date_or_none):
     """ Projection Null value is a string NULL so if this date value is a string,
-     make it none. Otherwise convert to the python datetime. Example 
+     make it none. Otherwise convert to the python datetime. Example
      of this being null is when there is no bed shortfall, the shortfall dates is none """
     if isinstance(panda_date_or_none, str):
         return None
@@ -62,4 +62,4 @@ def generate_api_for_projection(projection):
     for index, county_row in projection.iterrows():
         county_result = generate_api_for_projection_row(county_row)
         api_results.append(county_result)
-    return CANPredictionAPI(data=api_results)
+    return CovidActNowCountiesAPI(data=api_results)
