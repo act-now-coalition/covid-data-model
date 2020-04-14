@@ -45,7 +45,10 @@ def download_data():
     cache_all_data()
 
 
-def _impute_start_dates(state=None):
+def _impute_start_dates(state=None, states_only=False):
+    if states_only:
+        raise NotImplementedError("Impute start dates does not yet implement support for states_only.")
+
     if state:
         generate_start_times_for_state(state=state.title())
     else:
@@ -60,7 +63,6 @@ def _run_mle_fits(state=None, states_only=False):
     else:
         for state_obj in us.STATES:
             _run_mle_fits(state_obj.name, states_only=states_only)
-
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
     if state:
@@ -107,12 +109,15 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
         # if not states_only:
         #     _impute_start_dates(state.title())
         _run_mle_fits(state, states_only=states_only)
-        _run_ensembles(state.title(),
-                       ensemble_kwargs=dict(
-                           run_mode=run_mode,
-                           generate_report=generate_reports,
-                           covid_timeseries=nyt_dataset),
-                       states_only=states_only)
+        _run_ensembles(
+            state.title(),
+            ensemble_kwargs=dict(
+                run_mode=run_mode,
+                generate_report=generate_reports,
+                covid_timeseries=nyt_dataset
+            ),
+            states_only=states_only
+        )
         if generate_reports:
             _generate_state_reports(state.title())
         _map_outputs(state, output_interval_days, states_only=states_only,
