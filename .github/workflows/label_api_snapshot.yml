@@ -1,0 +1,44 @@
+# To debug, it's recommended you modify / use the version in the test-actions repo:
+# https://github.com/covid-projections/test-actions/blob/master/.github/workflows/label_api_snapshot.yml
+
+# Used to assign a label (like /snapshot/latest or /v0) to a published API
+# snapshot (like /snapshot/123).
+#
+name: Label API Snapshot.
+
+on:
+  # Hook to trigger a manual run.
+  # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
+  repository_dispatch:
+    types: label-api-snapshot
+
+jobs:
+  label-api-snapshot:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_S3_BUCKET: 'data.covidactnow.org'
+      LABEL: '${{ github.event.client_payload.label }}'
+      SNAPSHOT_ID: '${{ github.event.client_payload.snapshot_id }}'
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+    - name: Verify Label provided
+      if: ${{ !env.LABEL }}
+      run: 'echo "Missing client_payload parameter: label" ; exit 1'
+    - name: Verify Snapshot ID provided
+      if: ${{ !env.SNAPSHOT_ID }}
+      run: 'echo "Missing client_payload parameter: snapshot_id" ; exit 1'
+
+    # TODO: We want to replace this with a "symlink" of some kind, perhaps implemented at
+    # the CloudFront layer.
+    - name: Create Label (Copy files from /snapshot/${{env.SNAPSHOT_ID}}/ to /${{env.LABEL}}/)
+      uses: jakejarvis/s3-sync-action@master
+      with:
+        args: --acl public-read --follow-symlinks --delete
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        SOURCE_DIR: 's3://${{env.AWS_S3_BUCKET}}/snapshot/${{env.SNAPSHOT_ID}}/'
+        DEST_DIR: '${{env.LABEL}}/'

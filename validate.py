@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from libs import build_params
+from libs.us_state_abbrev import US_STATE_ABBREV
 
 
 def run_run_py(datasource: str) -> None:
@@ -44,7 +45,7 @@ def validate_results(result_dir: str) -> None:
     """
     per_state_expected = len(build_params.get_interventions())
     missing_or_empty = []
-    for state in build_params.US_STATE_ABBREV.values():
+    for state in US_STATE_ABBREV.values():
         if state in UNSUPPORTED_REGIONS:
             continue
         for i in range(per_state_expected):

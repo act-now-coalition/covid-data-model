@@ -4,8 +4,10 @@ import pandas as pd
 from libs.datasets.population import PopulationDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
-from libs.build_params import US_STATE_ABBREV
+from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS
 from libs import enums
+from libs.datasets.dataset_utils import AggregationLevel
+
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 
 
@@ -40,7 +42,7 @@ class FIPSPopulation(data_source.DataSource):
 
     def __init__(self, path):
         data = pd.read_csv(path, dtype={"fips": str})
-        data['fips'] = data.fips.str.zfill(5)
+        data["fips"] = data.fips.str.zfill(5)
         data = self.standardize_data(data)
         super().__init__(data)
 
@@ -59,16 +61,27 @@ class FIPSPopulation(data_source.DataSource):
                 # TODO(chris): Possibly separate fips out by state prefix
                 cls.Fields.FIPS: enums.UNKNOWN_FIPS,
                 cls.Fields.POPULATION: None,
-                cls.Fields.COUNTY: 'Unknown'
+                cls.Fields.COUNTY: "Unknown",
             }
             unknown_fips.append(row)
 
         data = data.append(unknown_fips)
         # All DH data is aggregated at the county level
-        data[cls.Fields.AGGREGATE_LEVEL] = "county"
+        data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.COUNTY.value
         data[cls.Fields.COUNTRY] = "USA"
 
-        return data
+        states_aggregated = dataset_utils.aggregate_and_get_nonmatching(
+            data,
+            [cls.Fields.COUNTRY, cls.Fields.STATE, cls.Fields.AGGREGATE_LEVEL],
+            AggregationLevel.COUNTY,
+            AggregationLevel.STATE,
+        ).reset_index()
+        states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(
+            ABBREV_US_FIPS
+        )
+        states_aggregated[cls.Fields.COUNTY] = None
+
+        return pd.concat([data, states_aggregated])
 
 
 def build_fips_data_frame(census_csv, counties_csv):
@@ -121,10 +134,10 @@ def build_fips_data_frame(census_csv, counties_csv):
         lambda x: US_STATE_ABBREV[x.split(",")[1].strip()]
     )
     county_pop["county"] = county_pop.county_state.apply(
-        lambda x: x.split(",")[0].strip().lstrip('.')
+        lambda x: x.split(",")[0].strip().lstrip(".")
     )
-    county_pop = county_pop.replace('Sainte', 'Ste.')
-    county_pop = county_pop.replace('Saint', 'St.')
+    county_pop = county_pop.replace("Sainte", "Ste.")
+    county_pop = county_pop.replace("Saint", "St.")
 
     left = state_data.set_index(["state", "county"])
     right = county_pop.set_index(["state", "county"])
