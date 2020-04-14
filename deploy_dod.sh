@@ -16,7 +16,7 @@ RESULTS_DIR="results/dod_results"
 mkdir -p "${MODELS_DIR}"
 
 # Run State and County level models
-pyseir run-all --run-mode=can-before-hospitalization --output-dir="${MODELS_DIR}"
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${MODELS_DIR}"
 # Previous method for invoking the original Python SEIR model follows.
 #./run.py model state -o "${MODELS_DIR}/state"
 #./run.py model county -o "${MODELS_DIR}/county"

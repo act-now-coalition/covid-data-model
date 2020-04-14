@@ -115,12 +115,12 @@ class EnsembleRunner:
                 f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
         county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
-        
+
         if not covid_timeseries:
             covid_timeseries = JHUDataset.local().timeseries()
         else:
             covid_timeseries = covid_timeseries.timeseries()
-            
+
         self.covid_data = covid_timeseries\
             .get_subset(self.agg_level, country='USA', state=self.state_abbr) \
             .get_data(country='USA', state=self.state_abbr, fips=county_fips) \
