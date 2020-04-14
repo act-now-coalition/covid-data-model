@@ -9,6 +9,7 @@ on:
   schedule:
    - cron: '30 0,12 * * *'
 
+  push:
   # Hook to trigger a manual run.
   # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
   repository_dispatch:
@@ -24,7 +25,7 @@ jobs:
       COVID_DATA_PUBLIC_REF: 'master'
       #####
       # !!! Change this to your BRANCH if you want to test it
-      COVID_DATA_MODEL_REF: 'master'
+      COVID_DATA_MODEL_REF: 'model/add_pyseir'
       SNAPSHOT_ID: ${{github.run_number}}
 
     steps:
