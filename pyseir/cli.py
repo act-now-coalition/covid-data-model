@@ -45,7 +45,10 @@ def download_data():
     cache_all_data()
 
 
-def _impute_start_dates(state=None):
+def _impute_start_dates(state=None, states_only=False):
+    if states_only:
+        raise NotImplementedError("Impute start dates does not yet implement support for states_only.")
+
     if state:
         generate_start_times_for_state(state=state.title())
     else:
