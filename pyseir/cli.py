@@ -62,7 +62,7 @@ def _run_mle_fits(state=None, states_only=False):
         model_fitter.run_state(state.title(), states_only=states_only)
     else:
         for state_obj in us.STATES:
-            _run_mle_fits(state_obj.name, states_only=states_only)
+            _run_mle_fits(state=state_obj.name, states_only=states_only)
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
     if state:
@@ -124,15 +124,30 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
                      output_dir=output_dir, run_mode=run_mode)
     else:
         if states_only:
-            f = partial(_run_all, run_mode=run_mode, generate_reports=generate_reports,
-                        output_interval_days=output_interval_days, skip_download=True, states_only=states_only)
+            f = partial(
+                _run_all,
+                run_mode=run_mode,
+                generate_reports=generate_reports,
+                output_interval_days=output_interval_days,
+                skip_download=True,
+                states_only=states_only,
+                output_dir=output_dir
+            )
             p = Pool()
             p.map(f, [state_obj.name for state_obj in us.STATES])
             p.close()
 
         else:
             for state_obj in us.STATES:
-                _run_all(state_obj.name, run_mode, generate_reports, output_interval_days, skip_download=True, states_only=states_only)
+                _run_all(
+                    state_obj.name,
+                    run_mode,
+                    generate_reports,
+                    output_interval_days,
+                    skip_download=True,
+                    states_only=states_only,
+                    output_dir=output_dir
+                )
 
 
 @entry_point.command()
@@ -184,3 +199,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 def run_all(state, run_mode, generate_reports, output_interval_days, skip_download, output_dir, states_only):
     _run_all(state, run_mode, generate_reports, output_interval_days, skip_download=skip_download,
              output_dir=output_dir, states_only=states_only)
+
+
+if __name__ == "__main__":
+    entry_point()

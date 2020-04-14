@@ -605,9 +605,11 @@ def run_state(state, states_only=False):
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
     state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
-
     os.makedirs(state_output_dir, exist_ok=True)
+
     model_fitter = ModelFitter.run_for_fips(state_obj.fips)
+    if not model_fitter:
+        return None
 
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(
         os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.json'))
