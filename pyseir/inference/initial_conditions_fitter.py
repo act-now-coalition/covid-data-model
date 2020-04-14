@@ -237,8 +237,9 @@ def generate_start_times_for_state(state, generate_report=False):
     samples_with_data = merged['days_from_2020_01_01'].notnull()
     samples_with_no_data = merged['days_from_2020_01_01'].isnull()
     if samples_with_no_data.any():
-        X = np.log(merged[['population_density', 'housing_density', 'total_population']][samples_with_data]).fillna(0)
-        X_predict = np.log(merged[['population_density', 'housing_density', 'total_population']][samples_with_no_data]).fillna(0)
+        X = np.nan_to_num(np.log(merged[['population_density', 'housing_density', 'total_population']][samples_with_data]), nan=0)
+        X_predict = np.log(merged[['population_density', 'housing_density', 'total_population']][samples_with_no_data], nan=0)
+
         # Test a few regressions
         for estimator in [LinearRegression(), RandomForestRegressor(), BayesianRidge()]:
             cv_result = cross_validate(estimator, X=X, y=merged['days_from_2020_01_01'][samples_with_data], scoring='r2', cv=2)
