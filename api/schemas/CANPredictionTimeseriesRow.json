@@ -1,0 +1,57 @@
+{
+  "title": "CANPredictionTimeseriesRow",
+  "type": "object",
+  "properties": {
+    "date": {
+      "title": "Date",
+      "descrition": "Date of timeseries data point",
+      "type": "string",
+      "format": "date"
+    },
+    "hospitalBedsInUse": {
+      "title": "Hospitalbedsinuse",
+      "description": "Number of hospital beds projected to be in-use or that were actually in use (if in the past)",
+      "type": "integer"
+    },
+    "hospitalBedCapacity": {
+      "title": "Hospitalbedcapacity",
+      "description": "Number of hospital beds projected to be in-use or actually in use (if in the past)",
+      "type": "integer"
+    },
+    "ICUBedsInUse": {
+      "title": "Icubedsinuse",
+      "description": "Number of ICU beds projected to be in-use or that were actually in use (if in the past)",
+      "type": "integer"
+    },
+    "ICUBedCapacity": {
+      "title": "Icubedcapacity",
+      "description": "Number of ICU beds projected to be in-use or actually in use (if in the past)",
+      "type": "integer"
+    },
+    "newDeaths": {
+      "title": "Newdeaths",
+      "description": "Number of new deaths",
+      "type": "integer"
+    },
+    "newConfirmedCases": {
+      "title": "Newconfirmedcases",
+      "description": "Number of new confirmed cases",
+      "type": "integer"
+    },
+    "newInfections": {
+      "title": "Newinfections",
+      "description": "Number of new infections",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "date",
+    "hospitalBedsInUse",
+    "hospitalBedCapacity",
+    "ICUBedsInUse",
+    "ICUBedCapacity",
+    "newDeaths",
+    "newConfirmedCases",
+    "newInfections"
+  ]
+}

@@ -58,7 +58,7 @@ def generate_api(
         length
     )
     return TopCountiesPipelineResult(
-        api.generate_api_for_projection(sorted_limited)
+        api.generate_api_for_county_projection(sorted_limited)
     )
 
 
