@@ -14,7 +14,7 @@ if [ ! -d "${PUBLIC_DATA_PATH}" ] ; then
 fi
 
 # Run State and County level models
-pyseir run-all --run-mode=can-before-hospitalization --output-dir="results/"
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="results/"
 
 # Relocate output to the expected location.
 cp results/web_ui/county/* ${PUBLIC_DATA_PATH}/county/

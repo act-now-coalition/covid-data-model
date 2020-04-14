@@ -5,6 +5,7 @@ import numpy as np
 from multiprocessing import Pool
 from functools import partial
 import us
+import pickle
 import simplejson as json
 from enum import Enum
 import copy
@@ -114,12 +115,12 @@ class EnsembleRunner:
                 f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
         county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
-        
+
         if not covid_timeseries:
             covid_timeseries = JHUDataset.local().timeseries()
         else:
             covid_timeseries = covid_timeseries.timeseries()
-            
+
         self.covid_data = covid_timeseries\
             .get_subset(self.agg_level, country='USA', state=self.state_abbr) \
             .get_data(country='USA', state=self.state_abbr, fips=county_fips) \
@@ -246,10 +247,13 @@ class EnsembleRunner:
         elif self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS:
             self.n_samples = 1
 
-            for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
+            for scenario in ['no_intervention', 'flatten_the_curve', 'inferred', 'social_distancing']:
                 R0 = 3.6
                 self.override_params['R0'] = R0
-                policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
+                if scenario != 'inferred':
+                    policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
+                else:
+                    policy = None
                 self.suppression_policies[f'suppression_policy__{scenario}'] = policy
                 self.override_params = ParameterEnsembleGenerator(
                     self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
@@ -307,13 +311,23 @@ class EnsembleRunner:
 
             logging.info(f'Running simulation ensemble for {self.state_name} {self.fips} {suppression_policy_name}')
 
-            parameter_sampler = ParameterEnsembleGenerator(
-                fips=self.fips,
-                N_samples=self.n_samples,
-                t_list=self.t_list,
-                suppression_policy=suppression_policy)
-            parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
-            model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
+            if suppression_policy_name == 'suppression_policy__inferred':
+                if self.agg_level is AggregationLevel.STATE:
+                    # TODO: Move this to a callable to be consistent with model fitter.
+                    state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
+                    with open(os.path.join(state_output_dir, f'summary_{self.state_name}_state_only__mle_fit_results.pkl'), 'rb') as f:
+                        model_ensemble = [pickle.load(f)]
+                else:
+                    # County inference not yet implemented.
+                    continue
+            else:
+                parameter_sampler = ParameterEnsembleGenerator(
+                    fips=self.fips,
+                    N_samples=self.n_samples,
+                    t_list=self.t_list,
+                    suppression_policy=suppression_policy)
+                parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
+                model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
             logging.info(f'Generating outputs for {suppression_policy_name}')
             if self.agg_level is AggregationLevel.COUNTY:

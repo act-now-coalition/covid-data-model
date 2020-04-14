@@ -5,6 +5,7 @@ import math
 import pandas as pd
 from datetime import timedelta, datetime, date
 from pyseir import load_data
+from pyseir.inference.fit_results import load_inference_result
 import simplejson as json
 import logging
 import us
@@ -123,14 +124,17 @@ class WebUIDataAdaptorV1:
         logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
         pyseir_outputs = load_data.load_ensemble_results(fips, run_mode=self.run_mode)
 
-        t0 = datetime.today()
-
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
         for i_policy, suppression_policy in enumerate(policies):
             if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
                 continue
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
+
+            if suppression_policy == 'suppression_policy__inferred':
+                t0 = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
+            else:
+                t0 = datetime.today()
 
             t_list = output_for_policy['t_list']
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
@@ -162,8 +166,10 @@ class WebUIDataAdaptorV1:
             final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
             output_model['beds'] = final_beds
 
-            backfill = self.backfill_output_model_fips(fips, t0, final_beds, output_model)
-            output_model = pd.concat([backfill, output_model])[output_model.columns].reset_index(drop=True)
+            # Don't backfill inferences
+            if suppression_policy != 'suppression_policy__inferred':
+                backfill = self.backfill_output_model_fips(fips, t0, final_beds, output_model)
+                output_model = pd.concat([backfill, output_model])[output_model.columns].reset_index(drop=True)
 
             # Truncate date range of output.
             output_dates = pd.to_datetime(output_model['date'])

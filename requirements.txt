@@ -26,4 +26,5 @@ pip
 iminuit
 fastparquet
 us
+adtk
 -e .
