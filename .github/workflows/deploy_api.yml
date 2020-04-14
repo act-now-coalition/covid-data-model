@@ -27,7 +27,7 @@ jobs:
       AWS_S3_BUCKET: 'data.covidactnow.org'
       # To pin to an old data set or model code, put the branch/tag/commit here:
       COVID_DATA_PUBLIC_REF: 'master'
-      COVID_DATA_MODEL_REF: 'model/add_pyseir'
+      COVID_DATA_MODEL_REF: 'chris/pyseir-a-couple-small-fixes'
       SNAPSHOT_ID: ${{github.run_number}}
 
     steps:
