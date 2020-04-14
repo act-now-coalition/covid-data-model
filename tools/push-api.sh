@@ -29,7 +29,7 @@ exit_with_usage () {
 execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
       --request POST \
-      --data "{\"event_type\": \"publish-api\", }" \
+      --data "{\"event_type\": \"publish-api\" }" \
       https://api.github.com/repos/covid-projections/covid-data-model/dispatches
 
   echo "Publish requested. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."
