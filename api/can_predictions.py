@@ -9,7 +9,7 @@ Documented https://www.dropbox.com/scl/fi/o4bec2kz8dkcxdtabtqda/CAN-V1-API-Draft
 
 
 class _HospitalBeds(pydantic.BaseModel):
-    peakShortfall: int = pydantic.Field(
+    peakShortfall: Optional[int] = pydantic.Field(
         ..., description="Shortfall of beds needed at the peek hospitalizaitons"
     )
     peakDate: Optional[datetime.datetime] = pydantic.Field(
