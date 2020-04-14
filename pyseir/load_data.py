@@ -530,7 +530,7 @@ def load_hospital_data():
     return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
-def load_hospital_data_by_age():
+def load_cdc_hospitalization_data():
     """
     Return age specific hospitalization rate.
     """
