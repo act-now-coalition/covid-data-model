@@ -2,6 +2,7 @@ import pandas as pd
 from libs.datasets.beds import BedsDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.population import PopulationDataset
+from functools import lru_cache
 
 
 class DataSource(object):
@@ -38,14 +39,17 @@ class DataSource(object):
         """
         raise NotImplementedError("Subclass must implement")
 
+    @lru_cache(maxsize=1)
     def beds(self) -> "BedsDataset":
         """Builds generic beds dataset"""
         return BedsDataset.from_source(self)
 
+    @lru_cache(maxsize=1)
     def population(self) -> "PopulationDataset":
         """Builds generic beds dataset"""
         return PopulationDataset.from_source(self)
 
+    @lru_cache(maxsize=1)
     def timeseries(self) -> "TimeseriesDataset":
         """Builds generic beds dataset"""
         return TimeseriesDataset.from_source(self)

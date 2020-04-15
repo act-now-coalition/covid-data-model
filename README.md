@@ -70,3 +70,29 @@ python deploy_dod_dataset.py
 # Upload artifacts to S3 bucket:
 BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
 ```
+
+
+# [NEW 4/7] PySEIR Setup
+
+## Installation
+
+Install miniconda python 3.7 from here [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
+
+Execute
+`conda env create -f environment.yaml`
+
+Activate the environment here..
+`conda activate pyseir`
+
+### Installing pyseir
+Change to into the county_covid_seir_models directory
+`pip install -e .`
+
+
+### Running Models
+Example here. You can remove the `--state` flag to run everything. To run only states, add `--states-only`.
+`pyseir run-all --run-mode='can-before-hospitalization-new-params' --output-interval-days=4 --state="California"`
+
+`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags. 
+
+Check the `output/` folder for results.
