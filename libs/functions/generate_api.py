@@ -76,16 +76,22 @@ def _generate_api_for_projections(projection_row):
     return projections
 
 
-def _generate_timeseries_row(json_data_row):
+def _generate_timeseries_row(json_data_row, previous_row):
+    if previous_row: 
+        new_deaths = int(json_data_row[can_schema.DEAD]) - int(previous_row[can_schema.DEAD])
+        new_infections = int(json_data_row[can_schema.INFECTED]) - int(previous_row[can_schema.INFECTED])
+    else: 
+        new_deaths = 0
+        new_infections = 0 
     return CANPredictionTimeseriesRow(
         date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
         hospitalBedsInUse=json_data_row[can_schema.ALL_HOSPITALIZED],
         hospitalBedCapacity=json_data_row[can_schema.BEDS],
         ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
-        ICUBedCapacity=0,  # idk
-        newDeaths=json_data_row[can_schema.DEAD],
+        ICUBedCapacity=0,
+        newDeaths=new_deaths,
         newConfirmedCases=0,  # idk
-        newInfections=json_data_row[can_schema.INFECTED],  # idk?
+        newInfections=new_infections,
     )
 
 
@@ -96,8 +102,10 @@ def generate_api_for_state_timeseries(projection_row, intervention, input_dir):
         input_dir, state_abbrev, fips, AggregationLevel.STATE, intervention
     )
     timeseries = []
+    previous_row = None
     for data_series in can_dataseries:
-        timeseries.append(_generate_timeseries_row(data_series))
+        timeseries.append(_generate_timeseries_row(data_series, previous_row))
+        previous_row = data_series
     projections = _generate_api_for_projections(projection_row)
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
@@ -118,8 +126,10 @@ def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
         input_dir, state_abbrev, fips, AggregationLevel.COUNTY, intervention
     )
     timeseries = []
+    previous_row = None
     for data_series in can_dataseries:
-        timeseries.append(_generate_timeseries_row(data_series))
+        timeseries.append(_generate_timeseries_row(data_series, previous_row))
+        previous_row = data_series
     projections = _generate_api_for_projections(projection_row)
     return CovidActNowCountyTimeseries(
         lat=projection_row[rc.LATITUDE],

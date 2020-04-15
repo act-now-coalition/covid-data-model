@@ -3,7 +3,7 @@ Ouput of the
 """
 DATE = "date"
 TOTAL = "total"
-SUSCEPTIBLE = "susceptible"
+TOTAL_SUSCEPTIBLE = "susceptible"
 EXPOSED = "exposed"
 INFECTED = "infected"
 INFECTED_A = "infected_a"
@@ -15,28 +15,12 @@ DEAD = "dead"
 BEDS = "beds"
 POPULATION = "population"
 
-#,date,
-# total,
-# susceptible,
-# exposed,
-# infected,
-# infected_a,
-# infected_b,
-# infected_c,
-# recovered,
-# dead,
-# pct_change,
-# doubling_time,
-# beds,
-# all_hospitalized,
-# all_infected
-
 CAN_MODEL_OUTPUT_SCHEMA = [
     "day_num",
     # ^ for index column
     DATE,
     TOTAL,
-    SUSCEPTIBLE,
+    TOTAL_SUSCEPTIBLE,
     EXPOSED,
     INFECTED, 
     INFECTED_A, # (not hospitalized, but infected)
