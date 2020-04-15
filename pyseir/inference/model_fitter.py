@@ -431,7 +431,7 @@ class ModelFitter:
 
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
-        minuit.migrad(precision=1e-4)
+        minuit.migrad(precision=1e-5)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
         self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
 
@@ -628,7 +628,7 @@ class ModelFitter:
             for i in range(n_retries):
                 model_fitter = cls(fips)
                 model_fitter.fit()
-                if model_fitter.mle_model:
+                if model_fitter.mle_model and model_fitter.fit_results['eps'] != 0:
                     model_fitter.plot_fitting_results()
                     break
 
