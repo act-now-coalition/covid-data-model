@@ -42,10 +42,10 @@ def get_backfill_historical_estimates(df):
     RECOVERY_SHIFT = 13
     HOSPITALIZATION_RATIO = 0.073
 
-    df['estimated_recovered'] = df.cases.shift(RECOVERY_SHIFT).fillna(0)
-    df['active'] = df.cases - (df.deaths + df.estimated_recovered)
-    df['estimated_hospitalized'] = df['active']/CONFIRMED_HOSPITALIZED_RATIO
-    df['estimated_infected'] = df['estimated_hospitalized']/HOSPITALIZATION_RATIO
+    df["estimated_recovered"] = df.cases.shift(RECOVERY_SHIFT).fillna(0)
+    df["active"] = df.cases - (df.deaths + df.estimated_recovered)
+    df["estimated_hospitalized"] = df["active"] / CONFIRMED_HOSPITALIZED_RATIO
+    df["estimated_infected"] = df["estimated_hospitalized"] / HOSPITALIZATION_RATIO
     return df
 
 
@@ -71,15 +71,15 @@ def prepare_data_for_website(
 
     cols = [
         "date",
-        "a", # total
-        "b", # susceptible
-        "c", # exposed
-        "d", # infected
-        "e", # infected_a (not hospitalized, but infected)
-        "f", # infected_b (hospitalized not in icu)
-        "g", # infected_c (in icu)
-        "all_hospitalized", # infected_b + infected_c
-        "all_infected", # infected_a + infected_b + infected_c
+        "a",  # total
+        "b",  # susceptible
+        "c",  # exposed
+        "d",  # infected
+        "e",  # infected_a (not hospitalized, but infected)
+        "f",  # infected_b (hospitalized not in icu)
+        "g",  # infected_c (in icu)
+        "all_hospitalized",  # infected_b + infected_c
+        "all_infected",  # infected_a + infected_b + infected_c
         "dead",
         "beds",
         "i",
@@ -130,15 +130,19 @@ def prepare_data_for_website(
     )
     historicals_df = get_backfill_historical_estimates(historicals)
 
-    relevant_date_index = pd.to_datetime(website_ordering.date).isin(historicals_df.date)
-    extract_real_date_index = historicals_df.date.isin(pd.to_datetime(website_ordering.date))
+    relevant_date_index = pd.to_datetime(website_ordering.date).isin(
+        historicals_df.date
+    )
+    extract_real_date_index = historicals_df.date.isin(
+        pd.to_datetime(website_ordering.date)
+    )
 
-    website_ordering.loc[relevant_date_index, 'all_infected'] = (
-        historicals_df[extract_real_date_index]['estimated_infected'].values
-    )
-    website_ordering.loc[relevant_date_index, 'all_hospitalized'] = (
-        historicals_df[extract_real_date_index]['estimated_hospitalized'].values
-    )
+    website_ordering.loc[relevant_date_index, "all_infected"] = historicals_df[
+        extract_real_date_index
+    ]["estimated_infected"].values
+    website_ordering.loc[relevant_date_index, "all_hospitalized"] = historicals_df[
+        extract_real_date_index
+    ]["estimated_hospitalized"].values
 
     return website_ordering
 
@@ -232,7 +236,6 @@ def model_state(timeseries, starting_beds, population, interventions=None):
         )
         for exp in range(0, len(results.index))
     )
-
     return results
 
 
@@ -285,6 +288,7 @@ def catch_and_return_errors(func) -> Tuple[Optional[Exception], Optional[Any]]:
 
     Returns: Tuple of optional error and optional result.
     """
+
     @functools.wraps(func)
     def run(*args, **kwargs):
 
@@ -306,6 +310,7 @@ def _result_callback_wrapper(key):
 
     Returns: Callback function.
     """
+
     def callback(result):
         error, _ = result
 
@@ -429,7 +434,7 @@ def run_county_level_forecast(
             pool.apply_async(
                 forecast_each_county,
                 args,
-                callback=_result_callback_wrapper(f"{county}, {state}: {fips}")
+                callback=_result_callback_wrapper(f"{county}, {state}: {fips}"),
             )
 
     pool.close()
@@ -465,7 +470,7 @@ def run_state_level_forecast(
         pool.apply_async(
             forecast_each_state,
             args,
-            callback=_result_callback_wrapper(f"{state}, {country}")
+            callback=_result_callback_wrapper(f"{state}, {country}"),
         )
 
     pool.close()
