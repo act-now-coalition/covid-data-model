@@ -7,7 +7,6 @@ from functools import partial
 import us
 import pickle
 import simplejson as json
-from enum import Enum
 import copy
 from collections import defaultdict
 from pyseir.models.seir_model import SEIRModel
@@ -16,24 +15,13 @@ from pyseir.models.suppression_policies import generate_empirical_distancing_pol
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
 from pyseir.load_data import FAULTY_HOSPITAL_DATA_STATES
-from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import JHUDataset
 
 
 _logger = logging.getLogger(__name__)
-
-
-class RunMode(Enum):
-    # Read params from the parameter sampler default and use empirical
-    # suppression policies.
-    DEFAULT = 'default'
-    # 4 basic suppression scenarios and specialized parameters to match
-    # covidactnow before scenarios.  Uses hospitalization data to fix.
-    CAN_BEFORE_HOSPITALIZATION = 'can-before-hospitalization'
-    # Same as CAN Before but with updated ICU, hosp rates increased.
-    CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = 'can-before-hospitalization-new-params'
 
 
 compartment_to_capacity_attr_map = {
@@ -227,7 +215,7 @@ class EnsembleRunner:
                 self.override_params['A_initial'] = 0
                 self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
 
-                # 1.2 is a ~ steady state for the exposed bucket initialization.
+                # 0.6 is a ~ steady state for the exposed bucket initialization at Reff ~ 1.2
                 self.override_params['E_initial'] = 0.6 * (self.override_params['I_initial'] + self.override_params['A_initial'])
                 self.override_params['D_initial'] = self.covid_data.deaths.max()
 

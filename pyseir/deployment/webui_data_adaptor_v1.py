@@ -8,7 +8,7 @@ from datetime import timedelta, datetime, date
 from multiprocessing import Pool
 from pyseir import load_data
 from pyseir.inference.fit_results import load_inference_result
-from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
@@ -31,10 +31,11 @@ class WebUIDataAdaptorV1:
 
         self.output_interval_days = output_interval_days
         self.state = state
-        self.run_mode = run_mode
+        self.run_mode = RunMode(run_mode)
         self.include_imputed = include_imputed
         self.state_abbreviation = us.states.lookup(state).abbr
         self.population_data = FIPSPopulation.local().population()
+        self.output_dir = output_dir
 
         self.jhu_local = jhu_dataset or JHUDataset.local()
         self.cds_dataset = cds_dataset or CDSDataset.local()
@@ -114,7 +115,7 @@ class WebUIDataAdaptorV1:
             # output_dir = self.state_output_dir
 
         logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
-        pyseir_outputs = load_data.load_ensemble_results(fips, run_mode=self.run_mode)
+        pyseir_outputs = load_data.load_ensemble_results(fips)
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
 
@@ -196,7 +197,8 @@ class WebUIDataAdaptorV1:
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
 
-            output_path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT).replace('__INTERVENTION_IDX__', str(i_policy))
+            output_path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir)
+            output_path = output_path.replace('__INTERVENTION_IDX__', str(i_policy))
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 

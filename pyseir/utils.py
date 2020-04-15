@@ -11,6 +11,17 @@ WEB_UI_FOLDER = lambda output_dir: os.path.join(output_dir, 'web_ui')
 STATE_SUMMARY_FOLDER = lambda output_dir: os.path.join(output_dir, 'pyseir', 'state_summaries')
 
 
+class RunMode(Enum):
+    # Read params from the parameter sampler default and use empirical
+    # suppression policies.
+    DEFAULT = 'default'
+    # 4 basic suppression scenarios and specialized parameters to match
+    # covidactnow before scenarios.  Uses hospitalization data to fix.
+    CAN_BEFORE_HOSPITALIZATION = 'can-before-hospitalization'
+    # Same as CAN Before but with updated ICU, hosp rates increased.
+    CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = 'can-before-hospitalization-new-params'
+
+
 class RunArtifact(Enum):
     MLE_FIT_RESULT = 'mle_fit_result'
     MLE_FIT_MODEL = 'mle_fit_model'
@@ -90,3 +101,4 @@ def get_run_artifact_path(fips, artifact, output_dir=OUTPUT_DIR):
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return path
+

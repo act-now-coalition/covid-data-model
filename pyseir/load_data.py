@@ -269,7 +269,7 @@ def load_county_metadata_by_state(state):
 
 
 @lru_cache(maxsize=32)
-def load_ensemble_results(fips, run_mode='default'):
+def load_ensemble_results(fips):
     """
     Retrieve ensemble results for a given state or county fips code.
 
@@ -277,8 +277,6 @@ def load_ensemble_results(fips, run_mode='default'):
     ----------
     fips: str
         State or county FIPS to load.
-    run_mode: str
-        Which run mode to pull results from.
 
     Returns
     -------
