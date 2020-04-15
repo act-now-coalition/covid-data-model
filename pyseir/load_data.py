@@ -21,7 +21,6 @@ from rpy2.robjects import pandas2ri
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
-R_SCRIPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'contact_matrices.r')
 
 FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
 
@@ -179,68 +178,6 @@ def cache_public_implementations_data():
     df.columns = [col.replace('>', '').replace(' ', '_').replace('/', '_').lower() for col in df.columns]
     df.fips = df.fips.apply(lambda x: x.zfill(5))
     df.to_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl'))
-
-
-def cache_contact_matrix_data(states=None):
-    """
-    Caches county level and state level contact matrix data, age bin edges
-    and corresponding age distribution and save to pyseir_data/contact_matrix
-    folder.
-
-    Parameters
-    ----------
-    states: str or list(str)
-        State for which contact matrix at county level is cached. If None will
-        cache contact matrix data for all US states.
-    """
-    county_metadata = load_county_metadata()
-    states = states or county_metadata['state'].unique()
-    states = [states] if isinstance(states, str) else list(states)
-    state_metadata = load_county_metadata_by_state(tuple(states))
-    r_script_template = Template(open(R_SCRIPT_PATH, 'r').read())
-
-    for state in states:
-        state_abbr = us.states.lookup(state.title()).abbr
-        state_fips = us.states.lookup(state.title()).fips
-        contact_matrix_fips = dict()
-        dir_path = os.path.join(DATA_DIR, 'contact_matrix')
-        if not os.path.exists(dir_path):
-            os.mkdir(dir_path)
-        fips_list = [state_fips] + county_metadata[county_metadata['state'] == state]['fips'].tolist()
-        for fips in fips_list:
-            contact_matrix_fips[fips] = dict()
-
-            if len(fips) == 5:
-                age_bin_edges = county_metadata.set_index('fips').loc[fips]['age_bin_edges'][:-1]
-                age_distribution = county_metadata.set_index('fips').loc[fips]['age_distribution']
-            else:
-                age_bin_edges = state_metadata.loc[state]['age_bin_edges'][:-1]
-                age_distribution = state_metadata.loc[state]['age_distribution']
-
-            pandas2ri.activate()
-            ro = robjects
-            r_script = r_script_template.substitute(
-                            dict(age_bin_edges=','.join([str(n) for n in age_bin_edges]),
-                                 age_distribution= ','.join([str(n) for n in age_distribution]),
-                                 matrices='$matrices',
-                                 matrix='$matrix'))
-
-            ro.r(r_script)
-            contact_matrix = ro.r('mr')
-            contact_matrix = ro.conversion.rpy2py(contact_matrix)
-            extract_age_bin_edges = lambda x: int(re.sub("[b'[)+]", '', str(x)).split(',')[0])
-            age_bin_edges = sorted([extract_age_bin_edges(col) for col in contact_matrix.columns])
-
-            age_group_size = np.zeros(len(age_bin_edges))
-            age_group_size[:-1] += age_distribution[:len(age_bin_edges) - 1]
-            age_group_size[-1] += sum(age_distribution[len(age_bin_edges):])
-
-            contact_matrix_fips[fips]['age_bin_edges'] = age_bin_edges
-            contact_matrix_fips[fips]['age_distribution'] = age_group_size.tolist()
-            contact_matrix_fips[fips]['contact_matrix'] = contact_matrix.values.tolist()
-
-        with open(os.path.join(dir_path, 'contact_matrix_fips_%s.json' % state_abbr), 'w') as fp:
-            json.dump(contact_matrix_fips, fp)
 
 
 @lru_cache(maxsize=32)
