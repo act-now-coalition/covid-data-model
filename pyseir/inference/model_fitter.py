@@ -1,7 +1,6 @@
 import logging
 import iminuit
 import numpy as np
-import os
 import us
 import pickle
 from pprint import pformat
@@ -17,6 +16,7 @@ from pyseir.models.seir_model import SEIRModel
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType
+from pyseir.utils import get_run_artifact_path, RunArtifact
 
 
 class ModelFitter:
@@ -59,11 +59,10 @@ class ModelFitter:
         log10_I_initial=2, limit_log10_I_initial=[0, 5],
         error_log10_I_initial=.2,
         t0=60, limit_t0=[10, 80], error_t0=1.0,
-        eps=.3, limit_eps=[.15, 2], error_eps=.005,
+        eps=.4, limit_eps=[.15, 2], error_eps=.005,
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
-        test_fraction=.1, limit_test_fraction=[0.02, 1],
-        error_test_fraction=.02,
-        hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
+        test_fraction=.1, limit_test_fraction=[0.02, 1], error_test_fraction=.02,
+        hosp_fraction=1, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
         # Let's not fit this to start...
         errordef=.5
     )
@@ -87,7 +86,11 @@ class ModelFitter:
         ('MN'):  dict(
             eps=0.4, limit_eps=[0.25, 1], t0=20
         ),
-        ('WV'):  dict(limit_t_break=[7, 40], t0=70),
+        ('AL', 'DE'): dict(limit_t_break=[7, 10], t0=70),
+        ('SD', 'NM', 'WV'): dict(
+            # To Be relaxed after more data.
+            eps=0.4, t_break=5, fix_t_break=True
+        ),
         ('MI'): dict(limit_t_break=[7, 40], t0=70),
         ('VT', 'NH'):  dict(limit_t_break=[10, 30], t0=45)
     }
@@ -116,8 +119,7 @@ class ModelFitter:
             self.agg_level = AggregationLevel.STATE
             self.state_obj = us.states.lookup(self.fips)
             self.state = self.state_obj.name
-            self.geo_metadata = \
-            load_data.load_county_metadata_by_state(self.state).loc[self.state].to_dict()
+            self.geo_metadata = load_data.load_county_metadata_by_state(self.state).loc[self.state].to_dict()
 
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_state(self.state, self.ref_date)
@@ -127,8 +129,7 @@ class ModelFitter:
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
-            self.geo_metadata = \
-            load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+            self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
             self.state = self.geo_metadata['state']
             self.state_obj = us.states.lookup(self.state)
             self.county = self.geo_metadata['county']
@@ -151,6 +152,8 @@ class ModelFitter:
                 self.fit_params.update(v)
 
         self.fit_params['fix_hosp_fraction'] = self.hospitalizations is None
+        if self.hospitalizations is None:
+            self.fit_params['hosp_fraction'] = 1
 
         self.model_fit_keys = ['R0', 'eps', 't_break', 'log10_I_initial']
 
@@ -436,6 +439,10 @@ class ModelFitter:
         # This just updates chi2 values
         self._fit_seir(**dict(minuit.values))
 
+        if self.fit_results['eps'] < 0.01:
+            raise RuntimeError(f'Fit failed for {self.state, self.fips}: '
+                               f'Epsilon == 0 which implies lack of convergence.')
+
         # TODO: Add confidence intervals here.
         self.fit_results['eps'] = self.get_posterior_estimate_eps(
             R0=self.fit_results['R0'], eps=self.fit_results['eps'],
@@ -446,16 +453,19 @@ class ModelFitter:
             self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.t0_guess).isoformat()
         else:
             self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.fit_results['t0'])).isoformat()
-        self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
+        self.fit_results['t_today'] = (datetime.today() - self.ref_date).days
 
-        if self.fit_results['eps'] == 0.0:
-            raise RuntimeError(f'Fit failed for {self.state, self.fips}: '
-                               f'Epsilon == 0 which implies lack of convergence.')
+        self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
 
         self.fit_results['chi2_cases'] = self.chi2_cases
         if self.hospitalizations is not None:
             self.fit_results['chi2_hosps'] = self.chi2_hosp
         self.fit_results['chi2_deaths'] = self.chi2_deaths
+
+        if self.hospitalization_data_type:
+            self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type.value
+        else:
+            self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type
 
         try:
             param_state = minuit.get_param_states()
@@ -537,34 +547,61 @@ class ModelFitter:
                  linestyle=':', lw=6, color='black')
 
         plt.yscale('log')
-        plt.ylim(.8e0)
-        plt.xlim(data_dates[0], data_dates[-1] + timedelta(days=150))
+        y_lim = plt.ylim(.8e0)
 
+        start_intervention_date = self.ref_date + timedelta(days=self.fit_results['t_break'] + self.fit_results['t0'])
+        stop_intervention_date = start_intervention_date + timedelta(days=14)
+
+        plt.fill_betweenx([y_lim[0], y_lim[1]],
+                          [start_intervention_date, start_intervention_date],
+                          [stop_intervention_date, stop_intervention_date], alpha=0.2, label='Estimated Intervention')
+
+        running_total = timedelta(days=0)
+        for i_label, k in enumerate((
+                'symptoms_to_hospital_days',
+                'hospitalization_length_of_stay_general',
+                'hospitalization_length_of_stay_icu')):
+
+            end_time = timedelta(days=self.SEIR_kwargs[k])
+            x = start_intervention_date + running_total
+            y = 1.5 ** (i_label + 1)
+            plt.errorbar(x=[x],
+                         y=[y],
+                         xerr=[[timedelta(days=0)], [end_time]],
+                         marker='', capsize=8, color='k', elinewidth=3, capthick=3)
+            plt.text(x + (end_time + timedelta(days=2)), y, k.replace('_', ' ').title(), fontsize=14)
+            running_total += end_time
+
+        plt.hlines(self.SEIR_kwargs['beds_ICU'], *plt.xlim(), color='k', linestyles='-', linewidths=6, alpha=0.2)
+        plt.text(data_dates[0] + timedelta(days=5), self.SEIR_kwargs['beds_ICU'] * 1.1, 'Available ICU Capacity',
+                 color='k', alpha=0.5, fontsize=15)
+
+        plt.ylim(*y_lim)
+        plt.xlim(data_dates[0], data_dates[-1] + timedelta(days=150))
         plt.xticks(rotation=30, fontsize=14)
         plt.yticks(fontsize=14)
-        plt.legend(loc=1, fontsize=14)
+        plt.legend(loc=4, fontsize=14)
         plt.grid(which='both', alpha=.5)
         plt.title(self.display_name, fontsize=20)
 
         for i, (k, v) in enumerate(self.fit_results.items()):
+
+            fontweight = 'bold' if k in ('R0', 'Reff') else 'normal'
+
             if np.isscalar(v) and not isinstance(v, str):
-                plt.text(.7, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
+                plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
             else:
-                plt.text(.7, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
+                plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
 
-        if self.agg_level is AggregationLevel.COUNTY:
-            output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state, 'reports',
-                                       f'{self.state}__{self.county}__{self.fips}__mle_fit_results.pdf')
-        else:
-            output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'state_summaries',
-                                       f'{self.state}__{self.fips}__mle_fit_results.pdf')
-
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        plt.savefig(output_file)
+        output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
+        plt.savefig(output_file, bbox_inches='tight')
         plt.close()
 
+        self.mle_model.plot_results()
+        plt.savefig(output_file.replace('mle_fit_results', 'mle_fit_model'), bbox_inches='tight')
+
     @classmethod
-    def run_for_fips(cls, fips):
+    def run_for_fips(cls, fips, n_retries=3):
         """
         Run the model fitter for a state or county fips code.
 
@@ -572,6 +609,10 @@ class ModelFitter:
         ----------
         fips: str
             2-digit state or 5-digit county fips code.
+        n_retries: int
+            The model fitter is stochastic in nature and a seed cannot be set.
+            This is a bandaid until more sophisticated retries can be
+            implemented.
 
         Returns
         -------
@@ -580,14 +621,22 @@ class ModelFitter:
         # Assert that there are some cases for counties
         if len(fips) == 5:
             _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
-                fips, t0=datetime.utcnow())
+                fips, t0=datetime.today())
             if observed_new_cases.sum() < 1:
                 return None
 
         try:
-            model_fitter = cls(fips)
-            model_fitter.fit()
-            model_fitter.plot_fitting_results()
+            for i in range(n_retries):
+                model_fitter = cls(fips)
+                try:
+                    model_fitter.fit()
+                    if model_fitter.mle_model:
+                        model_fitter.plot_fitting_results()
+                        break
+                except RuntimeError as e:
+                    logging.warning('No convergence.. Retrying ' + str(e))
+            if model_fitter.mle_model is None:
+                raise RuntimeError(f'Could not converge after {n_retries} for fips {fips}')
         except Exception:
             logging.exception(f"Failed to run {fips}")
             return None
@@ -607,29 +656,22 @@ def run_state(state, states_only=False):
     """
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
-    state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
-    os.makedirs(state_output_dir, exist_ok=True)
 
     model_fitter = ModelFitter.run_for_fips(state_obj.fips)
-    if not model_fitter:
-        return None
 
-    pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(
-        os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.json'))
+    output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
+    pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
 
-    with open(os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.pkl'), 'wb') as f:
+    with open(get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
         pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
     if not states_only:
-        county_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
-                                          f'summary__{state_obj.name}__mle_fit_results.json')
-
         df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
+        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips.values
         p = Pool()
         fitters = p.map(ModelFitter.run_for_fips, all_fips)
         p.close()
 
-        # Output
+        county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
         pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)

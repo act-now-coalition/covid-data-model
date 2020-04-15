@@ -120,11 +120,11 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
             if actual_date <= today:
                 rho.append(1)
             elif (actual_date - today).days <= 30:
-                rho.append(1.1 / R0)
+                rho.append(0.97 / R0)
             elif (actual_date - today).days <= 60:
-                rho.append(1.0 / R0)
+                rho.append(0.97 / R0)
             elif (actual_date - today).days <= 90:
-                rho.append(0.8 / R0)
+                rho.append(0.97 / R0)
             else: # Open back up...
                 rho.append(1)
 
