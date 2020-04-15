@@ -27,11 +27,9 @@ def get_can_projection_path(
     intervention = _get_intervention(initial_intervention, state_abbrev)
     if aggregation_level == AggregationLevel.STATE:
         file_name = f"{state_abbrev}.{intervention.value}.json"
-        data_directory = "state"
     else:
         file_name = f"{state_abbrev}.{fips}.{intervention.value}.json"
-        data_directory = "county"
-    file_path = os.path.join(input_dir, data_directory, file_name)
+    file_path = os.path.join(input_dir, file_name)
     return file_path
 
 

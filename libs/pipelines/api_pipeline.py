@@ -73,7 +73,6 @@ def run_projections(
         county_results = APIPipelineProjectionResult(
             intervention, AggregationLevel.COUNTY, counties_df
         )
-
         return county_results
     else:
         raise ValueError("Non-valid aggreation level specified")
