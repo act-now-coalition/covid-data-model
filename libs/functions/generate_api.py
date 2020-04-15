@@ -144,7 +144,7 @@ def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
     )
 
 
-def generate_api_for_state_projection_row(projection_row, intervention, input_dir):
+def generate_api_for_state_projection_row(projection_row):
     projections = _generate_api_for_projections(projection_row)
     state_result = CovidActNowStateSummary(
         lat=projection_row[rc.LATITUDE],
@@ -158,7 +158,7 @@ def generate_api_for_state_projection_row(projection_row, intervention, input_di
     return state_result
 
 
-def generate_api_for_county_projection_row(projection_row, intervention, input_dir):
+def generate_api_for_county_projection_row(projection_row):
     projections = _generate_api_for_projections(projection_row)
     county_result = CovidActNowCountySummary(
         lat=projection_row[rc.LATITUDE],
