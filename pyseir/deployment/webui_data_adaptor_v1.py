@@ -1,15 +1,14 @@
-import os
-from pyseir import OUTPUT_DIR
 import numpy as np
 import math
 import pandas as pd
-from datetime import timedelta, datetime, date
-from pyseir import load_data
-from pyseir.inference.fit_results import load_inference_result
 import simplejson as json
 import logging
 import us
+from datetime import timedelta, datetime, date
 from multiprocessing import Pool
+from pyseir import load_data
+from pyseir.inference.fit_results import load_inference_result
+from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
@@ -32,17 +31,11 @@ class WebUIDataAdaptorV1:
 
         self.output_interval_days = output_interval_days
         self.state = state
-        self.run_mode = run_mode
+        self.run_mode = RunMode(run_mode)
         self.include_imputed = include_imputed
-
-        output_dir = output_dir or OUTPUT_DIR
-        self.county_output_dir = os.path.join(output_dir, 'web_ui', 'county')
-        self.state_output_dir = os.path.join(output_dir, 'web_ui', 'state')
         self.state_abbreviation = us.states.lookup(state).abbr
-
-        os.makedirs(self.county_output_dir, exist_ok=True)
-        os.makedirs(self.state_output_dir, exist_ok=True)
         self.population_data = FIPSPopulation.local().population()
+        self.output_dir = output_dir
 
         self.jhu_local = jhu_dataset or JHUDataset.local()
         self.cds_dataset = cds_dataset or CDSDataset.local()
@@ -116,15 +109,18 @@ class WebUIDataAdaptorV1:
         """
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
-            output_dir = self.county_output_dir
+            # output_dir = self.county_output_dir
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
-            output_dir = self.state_output_dir
+            # output_dir = self.state_output_dir
 
         logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
-        pyseir_outputs = load_data.load_ensemble_results(fips, run_mode=self.run_mode)
+        pyseir_outputs = load_data.load_ensemble_results(fips)
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
+
+        all_hospitalized_today = None
+
         for i_policy, suppression_policy in enumerate(policies):
             if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
                 continue
@@ -132,9 +128,17 @@ class WebUIDataAdaptorV1:
             output_model = pd.DataFrame()
 
             if suppression_policy == 'suppression_policy__inferred':
-                t0 = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
+                fit_results = load_inference_result(fips)
+                t0 = datetime.fromisoformat(fit_results['t0_date'])
+
+                # Hospitalizations need to be rescaled by the inferred factor to match observations for display.
+                now_idx = int((datetime.today() - datetime.fromisoformat(fit_results['t0_date'])).days)
+                total_hosps = output_for_policy['HGen']['ci_50'][now_idx] + output_for_policy['HICU']['ci_50'][now_idx]
+                hosp_fraction = all_hospitalized_today / total_hosps
+
             else:
                 t0 = datetime.today()
+                hosp_fraction = 1.
 
             t_list = output_for_policy['t_list']
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
@@ -157,7 +161,7 @@ class WebUIDataAdaptorV1:
             # Col 8
             output_model['g'] = np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
             # Col 9
-            output_model['all_hospitalized'] = np.add(output_model['f'], output_model['g'])
+            output_model['all_hospitalized'] = hosp_fraction * np.add(output_model['f'], output_model['g'])
             # Col 10
             output_model['all_infected'] = output_model['d']
             # Col 11
@@ -165,6 +169,9 @@ class WebUIDataAdaptorV1:
             # Col 12
             final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
             output_model['beds'] = final_beds
+
+            # Record the current number of hospitalizations in order to rescale the inference results.
+            all_hospitalized_today = output_model['all_hospitalized'][0]
 
             # Don't backfill inferences
             if suppression_policy != 'suppression_policy__inferred':
@@ -190,11 +197,8 @@ class WebUIDataAdaptorV1:
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
 
-            if len(fips) == 5:
-                output_path = os.path.join(output_dir, f'{self.state_abbreviation}.{fips}.{i_policy}.json')
-            else:
-                output_path = os.path.join(output_dir, f'{self.state_abbreviation}.{i_policy}.json')
-
+            output_path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir)
+            output_path = output_path.replace('__INTERVENTION_IDX__', str(i_policy))
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 

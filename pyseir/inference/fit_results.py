@@ -3,7 +3,7 @@ from pyseir.load_data import load_county_metadata
 from pyseir import OUTPUT_DIR
 import pandas as pd
 from datetime import datetime
-import us
+from pyseir.utils import get_run_artifact_path, RunArtifact
 
 
 def load_t0(fips):
@@ -33,19 +33,12 @@ def load_inference_result(fips):
     Parameters
     ----------
     fips: str
-        2 or 5 digit fips code.
+        State or County FIPS code.
 
     Returns
     -------
     : dict
         Dictionary of fit result information.
     """
-
-    if len(fips) == 2:
-        state = us.states.lookup(fips).name
-        state_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
-                                         f'summary_{state}_state_only__mle_fit_results.json')
-    else:
-        raise NotImplementedError()
-
-    return pd.read_json(state_output_file).iloc[0].to_dict()
+    output_file = get_run_artifact_path(fips, RunArtifact.MLE_FIT_RESULT)
+    return pd.read_json(output_file).iloc[0].to_dict()
