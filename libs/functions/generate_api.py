@@ -15,7 +15,7 @@ from libs.constants import NULL_VALUE
 from libs.functions import get_can_projection
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.us_state_abbrev import US_STATE_ABBREV
-from libs.datasets import can_model_output_schema as can_scema
+from libs.datasets import can_model_output_schema as can_schema
 
 FRAMES = 32
 DAYS_PER_FRAME = 4
@@ -77,16 +77,15 @@ def _generate_api_for_projections(projection_row):
 
 
 def _generate_timeseries_row(json_data_row):
-    print(json_data_row)
     return CANPredictionTimeseriesRow(
-        date=datetime.strptime(json_data_row[can_scema.DATE], "%m/%d/%y"),
-        hospitalBedsInUse=json_data_row[can_scema.ALL_HOSPITALIZED],
-        hospitalBedCapacity=json_data_row[can_scema.BEDS],
-        ICUBedsInUse=json_data_row[can_scema.INFECTED_C],
+        date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
+        hospitalBedsInUse=json_data_row[can_schema.ALL_HOSPITALIZED],
+        hospitalBedCapacity=json_data_row[can_schema.BEDS],
+        ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
         ICUBedCapacity=0,  # idk
-        newDeaths=json_data_row[can_scema.DEAD],
+        newDeaths=json_data_row[can_schema.DEAD],
         newConfirmedCases=0,  # idk
-        newInfections=json_data_row[can_scema.INFECTED],  # idk?
+        newInfections=json_data_row[can_schema.INFECTED],  # idk?
     )
 
 
