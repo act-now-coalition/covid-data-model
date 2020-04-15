@@ -75,7 +75,30 @@ def run_projections(
     else:
         raise ValueError("Non-valid aggreation level specified")
 
-def generate_api(projection_result: APIPipelineProjectionResult,) -> APIGeneration:
+def _generate_api_without_ts(projection_result, row, input_dir): 
+    if projection_result.aggregation_level == AggregationLevel.STATE: 
+        generated_data = api.generate_api_for_state_projection_row(row, projection_result.intervention, input_dir)
+    elif projection_result.aggregation_level == AggregationLevel.COUNTY: 
+        generated_data = api.generate_api_for_county_projection_row(row, projection_result.intervention, input_dir)
+    else: 
+        raise ValueError("Aggregate Level not supported by api generation")
+    key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
+    generated_key = f"{key_prefix}.{projection_result.intervention.name}"
+    return APIGenerationRow(generated_key, generated_data)
+
+def _generate_api_with_ts(projection_result, row, input_dir):
+    if projection_result.aggregation_level == AggregationLevel.STATE: 
+        generated_data = api.generate_api_for_state_timeseries(row, projection_result.intervention, input_dir)
+    elif projection_result.aggregation_level == AggregationLevel.COUNTY: 
+        generated_data = api.generate_api_for_county_timeseries(row, projection_result.intervention, input_dir)
+    else: 
+        raise ValueError("Aggregate Level not supported by api generation")
+    key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
+    generated_key = f"{key_prefix}.{projection_result.intervention.name}.timeseries"
+    return APIGenerationRow(generated_key, generated_data)
+
+
+def generate_api(projection_result: APIPipelineProjectionResult, input_dir: str) -> APIGeneration:
     """
     pipethrough the rows of the projection
     if it's a county generate the key for counties:
@@ -85,15 +108,8 @@ def generate_api(projection_result: APIPipelineProjectionResult,) -> APIGenerati
     """
     results = []
     for index, row in projection_result.projection_df.iterrows():
-        if projection_result.aggregation_level == AggregationLevel.STATE: 
-            generated_data = api.generate_api_for_state_projection_row(row)
-        elif projection_result.aggregation_level == AggregationLevel.COUNTY: 
-            generated_data = api.generate_api_for_county_projection_row(row)
-        else: 
-            raise ValueError("Aggregate Level not supported by api generation")
-        key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
-        generated_key = f"{key_prefix}.{projection_result.intervention.name}"
-        results.append(APIGenerationRow(generated_key, generated_data))
+        results.append(_generate_api_without_ts(projection_result, row, input_dir))
+        results.append(_generate_api_with_ts(projection_result, row, input_dir))
     return APIGeneration(results)
 
 

@@ -37,7 +37,7 @@ def deploy_counties_api(disable_validation, input_dir, output):
             intervention,
             run_validation=not disable_validation,
         )
-        county_results_api = api_pipeline.generate_api(county_result)
+        county_results_api = api_pipeline.generate_api(county_result, input_dir)
         api_pipeline.deploy_results(county_results_api, output)
 
         logger.info("finished top counties job")

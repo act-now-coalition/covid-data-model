@@ -64,10 +64,10 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     hospitalBedsInUse: int = pydantic.Field(..., description="Number of hospital beds projected to be in-use or that were actually in use (if in the past)")
     hospitalBedCapacity: int = pydantic.Field(..., description="Number of hospital beds projected to be in-use or actually in use (if in the past)")
     ICUBedsInUse: int = pydantic.Field(..., description="Number of ICU beds projected to be in-use or that were actually in use (if in the past)")
-    ICUBedCapacity: int = pydantic.Field(..., description="Number of ICU beds projected to be in-use or actually in use (if in the past)")
+    ICUBedCapacity: Optional[int] = pydantic.Field(..., description="Number of ICU beds projected to be in-use or actually in use (if in the past)")
     newDeaths: int = pydantic.Field(..., description="Number of new deaths")
-    newConfirmedCases: int = pydantic.Field(..., description="Number of new confirmed cases")
-    newInfections: int = pydantic.Field(..., description="Number of new infections")
+    newConfirmedCases: Optional[int] = pydantic.Field(..., description="Number of new confirmed cases")
+    newInfections: Optional[int] = pydantic.Field(..., description="Number of new infections")
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
