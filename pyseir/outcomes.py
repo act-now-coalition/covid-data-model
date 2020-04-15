@@ -17,9 +17,26 @@ class ContinuousParameter:
     parameter_name: str
     lower_bound: float
     upper_bound: float
+    alpha: float = None
+    beta: float = None
     
-    def uniform_sample(self, num_samples):
-        return (self.upper_bound - self.lower_bound) * np.random.random_sample(num_samples) + self.lower_bound
+    def sample(self, num_samples):
+        if self.alpha:
+            return self.sample_beta(num_samples)
+        else:
+            return self.sample_uniform(num_samples)
+
+    def sample_uniform(self, num_samples):
+        scale = (self.upper_bound - self.lower_bound) 
+        shift = self.lower_bound
+        samples = np.random.random_sample(num_samples)
+        return scale * samples + shift
+
+    def sample_beta(self, num_samples):
+        scale = (self.upper_bound - self.lower_bound) 
+        shift = self.lower_bound
+        samples = np.random.beta(a=self.alpha, b=self.beta, size=num_samples)
+        return scale * samples + shift
 
 
 class OutcomesSampler:
@@ -43,7 +60,7 @@ class OutcomesSampler:
         self.outcomes_df = pd.merge(self.outcomes_df, outcomes, left_index=True, right_index=True)
 
     def _random_parameters(self) -> pd.DataFrame:
-        samples = {i.parameter_name: i.uniform_sample(self.num_samples) for i in self.parameter_space}
+        samples = {i.parameter_name: i.sample(self.num_samples) for i in self.parameter_space}
         return pd.DataFrame(samples)
 
     def _evaluate_model(self, parameters: Dict[str, Any]) -> sm.SEIRModel:
@@ -82,12 +99,13 @@ class OutcomeModels:
     def __init__(self, 
                  outcome_samples: pd.DataFrame, 
                  parameter_space: List[ContinuousParameter],
-                 fn_approximator: Callable):
+                 fn_approximator: Callable,
+                 n_jobs=-1):
         self.outcome_samples = outcome_samples
         self.parameter_space = parameter_space
         parameter_names = [p.parameter_name for p in self.parameter_space]
         outcome_names = [i for i in self.outcome_samples.columns if i not in parameter_names]
-        self.train_set, self.test_set = train_test_split(self.outcome_samples)
+        self.train_set, self.test_set = train_test_split(self.outcome_samples, test_size=0.1)
         outcome_models = \
             Parallel(n_jobs=-1)(delayed(fn_approximator)(oc, self.train_set[parameter_names], self.train_set[oc]) 
                                       for oc in outcome_names)
