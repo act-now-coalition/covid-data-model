@@ -9,10 +9,10 @@ import io
 import us
 import zipfile
 import json
-from pyseir import OUTPUT_DIR
 from libs.datasets import NYTimesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from functools import lru_cache
 from enum import Enum
 
@@ -276,7 +276,7 @@ def load_ensemble_results(fips, run_mode='default'):
     Parameters
     ----------
     fips: str
-        County FIPS to load.
+        State or county FIPS to load.
     run_mode: str
         Which run mode to pull results from.
 
@@ -284,15 +284,8 @@ def load_ensemble_results(fips, run_mode='default'):
     -------
     ensemble_results: dict
     """
-    if len(fips) == 5:  # County
-        county_metadata = load_county_metadata().set_index('fips')
-        state, county = county_metadata.loc[fips]['state'], county_metadata.loc[fips]['county']
-        path = os.path.join(OUTPUT_DIR, 'pyseir', state, 'data', f"{state}__{county}__{fips}__{run_mode}__ensemble_projections.json")
-    elif len(fips) == 2:
-        state = us.states.lookup(fips).name
-        path = os.path.join(OUTPUT_DIR, 'pyseir', state, 'data', f"{state}__{fips}__{run_mode}__ensemble_projections.json")
-
-    with open(path) as f:
+    output_filename = get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT)
+    with open(output_filename) as f:
         fit_results = json.load(f)
     return fit_results
 

@@ -1,0 +1,91 @@
+import os
+import us
+from enum import Enum
+from pyseir import OUTPUT_DIR
+from pyseir import load_data
+from libs.datasets.dataset_utils import AggregationLevel
+
+REPORTS_FOLDER = lambda output_dir, state_name: os.path.join(output_dir, 'pyseir', state_name, 'reports')
+DATA_FOLDER = lambda output_dir, state_name: os.path.join(output_dir, 'pyseir', state_name, 'data')
+WEB_UI_FOLDER = lambda output_dir: os.path.join(output_dir, 'web_ui')
+STATE_SUMMARY_FOLDER = lambda output_dir: os.path.join(output_dir, 'pyseir', 'state_summaries')
+
+
+class RunArtifact(Enum):
+    MLE_FIT_RESULT = 'mle_fit_result'
+    MLE_FIT_MODEL = 'mle_fit_model'
+    MLE_FIT_REPORT = 'mle_fit_report'
+
+    ENSEMBLE_RESULT = 'ensemble_result'
+    ENSEMBLE_REPORT = 'ensemble_report'
+
+    WEB_UI_RESULT = 'web_ui_result'
+
+def get_run_artifact_path(fips, artifact, output_dir=OUTPUT_DIR):
+    """
+    Get an artifact path for a given locale and artifact type.
+
+    Parameters
+    ----------
+    fips: str
+        State or county fips code. Can also be a 2 character state abbreviation.
+    artifact: RunArtifact
+        The artifact type to retrieve the pointer for.
+    output_dir: str
+        Output directory to obtain the path for.
+
+    Returns
+    -------
+    path: str
+        Location of the artifact.
+    """
+    state_obj = us.states.lookup(fips[:2])
+    if len(fips) == 5:
+        agg_level = AggregationLevel.COUNTY
+        county = load_data.load_county_metadata_by_fips(fips)['county']
+    else:
+        agg_level = AggregationLevel.STATE
+
+    artifact = RunArtifact(artifact)
+
+    if artifact is RunArtifact.MLE_FIT_REPORT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'{state_obj.name}__{county}__{fips}__mle_fit_results.pdf')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'{state_obj.name}__{fips}__mle_fit_results.pdf')
+
+    elif artifact is RunArtifact.MLE_FIT_RESULT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'summary__{state_obj.name}_state_only__mle_fit_results.json')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'summary__{state_obj.name}_counties__mle_fit_results.json')
+
+    elif artifact is RunArtifact.MLE_FIT_MODEL:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(DATA_FOLDER(output_dir, state_obj.name), f'summary__{state_obj.name}_state_only__mle_fit_results.json')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'summary__{state_obj.name}_state_only__mle_fit_model.pkl')
+
+    elif artifact is RunArtifact.ENSEMBLE_RESULT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(DATA_FOLDER(output_dir, state_obj.name), f'{state_obj.name}__{county}__{fips}__ensemble_projections.json')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'{state_obj.name}__{fips}__ensemble_projections.json')
+
+    elif artifact is RunArtifact.ENSEMBLE_RESULT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'{state_obj.name}__{county}__{fips}__ensemble_projections.pdf')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'{state_obj.name}__{fips}__ensemble_projections.pdf')
+
+    elif artifact is RunArtifact.WEB_UI_RESULT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(WEB_UI_FOLDER(output_dir), 'county', f'{state_obj.abbr}.{fips}.__INTERVENTION_IDX__.json')
+        else:
+            path = os.path.join(WEB_UI_FOLDER(output_dir), 'state', f'{state_obj.abbr}.__INTERVENTION_IDX__.json')
+
+    else:
+        raise ValueError(f'No paths available for artifact {RunArtifact}')
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return path

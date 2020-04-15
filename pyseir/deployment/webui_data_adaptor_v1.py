@@ -1,15 +1,14 @@
-import os
-from pyseir import OUTPUT_DIR
 import numpy as np
 import math
 import pandas as pd
-from datetime import timedelta, datetime, date
-from pyseir import load_data
-from pyseir.inference.fit_results import load_inference_result
 import simplejson as json
 import logging
 import us
+from datetime import timedelta, datetime, date
 from multiprocessing import Pool
+from pyseir import load_data
+from pyseir.inference.fit_results import load_inference_result
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
@@ -35,13 +34,13 @@ class WebUIDataAdaptorV1:
         self.run_mode = run_mode
         self.include_imputed = include_imputed
 
-        output_dir = output_dir or OUTPUT_DIR
-        self.county_output_dir = os.path.join(output_dir, 'web_ui', 'county')
-        self.state_output_dir = os.path.join(output_dir, 'web_ui', 'state')
+        # output_dir = output_dir or OUTPUT_DIR
+        # self.county_output_dir = os.path.join(output_dir, 'web_ui', 'county')
+        # self.state_output_dir = os.path.join(output_dir, 'web_ui', 'state')
         self.state_abbreviation = us.states.lookup(state).abbr
 
-        os.makedirs(self.county_output_dir, exist_ok=True)
-        os.makedirs(self.state_output_dir, exist_ok=True)
+        # os.makedirs(self.county_output_dir, exist_ok=True)
+        # os.makedirs(self.state_output_dir, exist_ok=True)
         self.population_data = FIPSPopulation.local().population()
 
         self.jhu_local = jhu_dataset or JHUDataset.local()
@@ -116,10 +115,10 @@ class WebUIDataAdaptorV1:
         """
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
-            output_dir = self.county_output_dir
+            # output_dir = self.county_output_dir
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
-            output_dir = self.state_output_dir
+            # output_dir = self.state_output_dir
 
         logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
         pyseir_outputs = load_data.load_ensemble_results(fips, run_mode=self.run_mode)
@@ -204,11 +203,7 @@ class WebUIDataAdaptorV1:
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
 
-            if len(fips) == 5:
-                output_path = os.path.join(output_dir, f'{self.state_abbreviation}.{fips}.{i_policy}.json')
-            else:
-                output_path = os.path.join(output_dir, f'{self.state_abbreviation}.{i_policy}.json')
-
+            output_path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT).replace('__INTERVENTION_IDX__', str(i_policy))
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 

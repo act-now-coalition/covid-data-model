@@ -1,7 +1,6 @@
 import logging
 import iminuit
 import numpy as np
-import os
 import us
 import pickle
 from pprint import pformat
@@ -17,6 +16,7 @@ from pyseir.models.seir_model import SEIRModel
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType
+from pyseir.utils import get_run_artifact_path, RunArtifact
 
 
 class ModelFitter:
@@ -452,15 +452,18 @@ class ModelFitter:
         self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
 
         if self.fit_results['eps'] == 0.0:
-            raise RuntimeError(f'Fit failed for {self.state, self.fips}: '
-                               f'Epsilon == 0 which implies lack of convergence.')
+            logging.error(f'Fit failed for {self.state, self.fips}: '
+                          f'Epsilon == 0 which implies lack of convergence.')
 
         self.fit_results['chi2_cases'] = self.chi2_cases
         if self.hospitalizations is not None:
             self.fit_results['chi2_hosps'] = self.chi2_hosp
         self.fit_results['chi2_deaths'] = self.chi2_deaths
 
-        self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type.value
+        if self.hospitalization_data_type:
+            self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type.value
+        else:
+            self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type
 
         try:
             param_state = minuit.get_param_states()
@@ -587,16 +590,12 @@ class ModelFitter:
             else:
                 plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
 
-        if self.agg_level is AggregationLevel.COUNTY:
-            output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state, 'reports',
-                                       f'{self.state}__{self.county}__{self.fips}__mle_fit_results.pdf')
-        else:
-            output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'state_summaries',
-                                       f'{self.state}__{self.fips}__mle_fit_results.pdf')
-
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
         plt.savefig(output_file, bbox_inches='tight')
         plt.close()
+
+        self.mle_model.plot_results()
+        plt.savefig(output_file.replace('mle_fit_results', 'mle_fit_model'), bbox_inches='tight')
 
     @classmethod
     def run_for_fips(cls, fips):
@@ -642,27 +641,23 @@ def run_state(state, states_only=False):
     """
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
-    state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
 
-    os.makedirs(state_output_dir, exist_ok=True)
     model_fitter = ModelFitter.run_for_fips(state_obj.fips)
 
-    pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(
-        os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.json'))
+    output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
+    pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
 
-    with open(os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.pkl'), 'wb') as f:
+    with open(get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
         pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
     if not states_only:
-        county_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
-                                          f'summary__{state_obj.name}__mle_fit_results.json')
 
         df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
+        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips.values
         p = Pool()
         fitters = p.map(ModelFitter.run_for_fips, all_fips)
         p.close()
 
-        # Output
+        county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
         pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)

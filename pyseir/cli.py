@@ -11,6 +11,7 @@ from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
+from pyseir import OUTPUT_DIR
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 root = logging.getLogger()
@@ -65,6 +66,7 @@ def _run_mle_fits(state=None, states_only=False):
     else:
         for state_obj in us.STATES:
             _run_mle_fits(state_obj.name, states_only=states_only)
+
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
     if state:

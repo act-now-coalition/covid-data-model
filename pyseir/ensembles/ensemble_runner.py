@@ -13,10 +13,10 @@ from collections import defaultdict
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.models.suppression_policies import generate_empirical_distancing_policy, generate_covidactnow_scenarios
-from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
 from pyseir.load_data import FAULTY_HOSPITAL_DATA_STATES
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import JHUDataset
@@ -80,7 +80,6 @@ class EnsembleRunner:
                  run_mode=RunMode.DEFAULT,
                  min_hospitalization_threshold=5,
                  hospitalization_to_confirmed_case_ratio=1 / 4,
-                 output_dir=None,
                  covid_timeseries=None):
 
         self.fips = fips
@@ -93,26 +92,20 @@ class EnsembleRunner:
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
-        self.output_dir = output_dir or os.path.join(OUTPUT_DIR, 'pyseir')
-        os.makedirs(self.output_dir, exist_ok=True)
-
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata_by_fips(fips)
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
             self.state_name = us.states.lookup(self.county_metadata['state']).name
 
-            self.output_file_report = os.path.join(self.output_dir, self.state_name, 'reports',
-                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf")
-            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
-                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+            self.output_file_report = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_REPORT)
+            self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
 
         else:
             self.state_abbr = us.states.lookup(self.fips).abbr
             self.state_name = us.states.lookup(self.fips).name
 
             self.output_file_report = None
-            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
-                f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+            self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
 
         county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
@@ -313,9 +306,7 @@ class EnsembleRunner:
 
             if suppression_policy_name == 'suppression_policy__inferred':
                 if self.agg_level is AggregationLevel.STATE:
-                    # TODO: Move this to a callable to be consistent with model fitter.
-                    state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
-                    with open(os.path.join(state_output_dir, f'summary_{self.state_name}_state_only__mle_fit_results.pkl'), 'rb') as f:
+                    with open(get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL), 'rb') as f:
                         model_ensemble = [pickle.load(f)]
                 else:
                     # County inference not yet implemented.
