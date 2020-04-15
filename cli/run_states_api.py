@@ -22,7 +22,10 @@ PROD_BUCKET = "data.covidactnow.org"
     "--input-dir", "-i", default="results", help="Input directory of state projections",
 )
 @click.option(
-    "--output", "-o", default="results/output/states", help="Output directory for artifacts",
+    "--output",
+    "-o",
+    default="results/output/states",
+    help="Output directory for artifacts",
 )
 def deploy_states_api(disable_validation, input_dir, output):
     """The entry function for invocation"""

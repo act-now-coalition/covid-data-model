@@ -25,7 +25,10 @@ PROD_BUCKET = "data.covidactnow.org"
     help="Input directory of county projections",
 )
 @click.option(
-    "--output", "-o", default="results/output/counties", help="Output directory for artifacts",
+    "--output",
+    "-o",
+    default="results/output/counties",
+    help="Output directory for artifacts",
 )
 def deploy_counties_api(disable_validation, input_dir, output):
     """The entry function for invocation"""
