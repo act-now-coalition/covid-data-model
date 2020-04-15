@@ -30,7 +30,6 @@ class SEIRModelAge:
                  delta_hospital=1 / 8.0,
                  kappa=1,
                  gamma=0.5,
-
                  contact_matrix=np.random.rand(18, 18),
                  # data source: https://www.cdc.gov/mmwr/volumes/69/wr/mm6912e2.htm#T1_down
                  # rates have been interpolated through centers of age_bin_edges
@@ -203,7 +202,7 @@ class SEIRModelAge:
 
         # Epidemiological Parameters
         self.R0 = R0                    # Reproduction Number
-        self.R0_hospital = R0_hospital  # Reproduction Number
+        self.R0_hospital = R0_hospital  # Reproduction Number at hospital
         self.delta = delta              # 1 / infectious period
         self.delta_hospital = delta_hospital
         self.beta_hospital = self.R0_hospital * self.delta_hospital
