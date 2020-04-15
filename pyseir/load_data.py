@@ -15,6 +15,9 @@ from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from functools import lru_cache
 from enum import Enum
+from string import Template
+import rpy2.robjects as robjects
+from rpy2.robjects import pandas2ri
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
@@ -226,7 +229,7 @@ def load_county_metadata():
 
 
 @lru_cache(maxsize=32)
-def load_county_metadata_by_state(state):
+def load_county_metadata_by_state(state=None):
     """
     Generate a dataframe that contains county metadata aggregated at state
     level.
@@ -244,9 +247,12 @@ def load_county_metadata_by_state(state):
     # aggregate into state level metadata
     state_metadata = load_county_metadata()
 
-    if state:
-        state = [state] if not isinstance(state, list) else state
-        state_metadata = state_metadata[state_metadata.state.isin(state)]
+    if state is not None:
+        state = [state] if isinstance(state, str) else list(state)
+    else:
+        state = state_metadata['state'].unique()
+
+    state_metadata = state_metadata[state_metadata.state.isin(state)]
 
     density_measures = ['housing_density', 'population_density']
     for col in density_measures:
@@ -510,6 +516,14 @@ def load_hospital_data():
     return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
+def load_cdc_hospitalization_data():
+    """
+    Return age specific hospitalization rate.
+    """
+
+    return pd.read_csv(os.path.join(DATA_DIR, 'cdc_hospitalization_data.csv'))
+
+
 @lru_cache(maxsize=1)
 def load_mobility_data_m50():
     """
@@ -546,6 +560,17 @@ def load_public_implementations_data():
     : pd.DataFrame
     """
     return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl')).set_index('fips')
+
+def load_contact_matrix_data_by_fips(fips):
+    """
+    Load contact matrix for given fips.
+    """
+
+    fips = [fips] if isinstance(fips, str) else list(fips)
+    state_abbr = us.states.lookup(fips[0][:2]).abbr
+    path = os.path.join(DATA_DIR, 'contact_matrix', 'contact_matrix_fips_%s.json' % state_abbr)
+    contact_matrix_data = json.loads(open(path).read())
+    return {s: contact_matrix_data[s] for s in fips}
 
 
 def cache_all_data():
