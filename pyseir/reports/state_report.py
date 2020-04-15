@@ -29,8 +29,8 @@ class StateReport:
         self.ensemble_data_by_county = {fips: load_data.load_ensemble_results(fips) for fips in self.counties}
         self.county_metadata = county_metadata.set_index('fips')
         self.names = [self.county_metadata.loc[fips, 'county'].replace(' County', '') for fips in self.counties]
-        self.filename = os.path.join(OUTPUT_DIR, self.state, 'reports', f"summary__{self.state.title()}__state_report.pdf")
-        self.surge_filename = os.path.join(OUTPUT_DIR, self.state, 'reports', f"summary__{self.state.title()}__state_surge_report.xlsx")
+        self.filename = os.path.join(OUTPUT_DIR, self.state, 'reports', f"summary__{self.state}__state_report.pdf")
+        self.surge_filename = os.path.join(OUTPUT_DIR, self.state, 'reports', f"summary__{self.state}__state_surge_report.xlsx")
 
     def generate_report(self):
         """
@@ -56,7 +56,7 @@ class StateReport:
             love in the plots, such as confidence intervals.
         """
         fig = plt.figure(figsize=(30, 20))
-        plt.suptitle(f'{self.state.title()}: Median Peak Estimates for {compartment_to_name_map[compartment]} Surges', fontsize=20)
+        plt.suptitle(f'{self.state}: Median Peak Estimates for {compartment_to_name_map[compartment]} Surges', fontsize=20)
 
         color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color'] + list('bgrcmyk')
         for i_plt, suppression_policy in enumerate(list(self.ensemble_data_by_county.values())[0].keys()):

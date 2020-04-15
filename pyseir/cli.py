@@ -53,7 +53,7 @@ def _impute_start_dates(state=None, states_only=False):
         raise NotImplementedError("Impute start dates does not yet implement support for states_only.")
 
     if state:
-        generate_start_times_for_state(state=state.title())
+        generate_start_times_for_state(state=state)
     else:
         for state_obj in us.STATES:
             _impute_start_dates(state_obj.name)
@@ -62,10 +62,10 @@ def _impute_start_dates(state=None, states_only=False):
 def _run_mle_fits(state=None, states_only=False):
     _cache_global_datasets()
     if state:
-        model_fitter.run_state(state.title(), states_only=states_only)
+        model_fitter.run_state(state, states_only=states_only)
     else:
         for state_obj in us.STATES:
-            _run_mle_fits(state_obj.name, states_only=states_only)
+            _run_mle_fits(state=state_obj.name, states_only=states_only)
 
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
@@ -78,7 +78,7 @@ def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
 
 def _generate_state_reports(state=None):
     if state:
-        report = StateReport(state.title())
+        report = StateReport(state)
         report.generate_report()
     else:
         for state_obj in us.STATES:
@@ -111,10 +111,10 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
     if state:
         # Deprecate temporarily since not needed.
         # if not states_only:
-        #     _impute_start_dates(state.title())
+        #     _impute_start_dates(state)
         _run_mle_fits(state, states_only=states_only)
         _run_ensembles(
-            state.title(),
+            state,
             ensemble_kwargs=dict(
                 run_mode=run_mode,
                 generate_report=generate_reports,
@@ -123,22 +123,37 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
             states_only=states_only
         )
         if generate_reports:
-            _generate_state_reports(state.title())
+            _generate_state_reports(state)
         _map_outputs(state, output_interval_days, states_only=states_only,
                      output_dir=output_dir, run_mode=run_mode)
     else:
         if states_only:
-            f = partial(_run_all, run_mode=run_mode, generate_reports=generate_reports,
-                        output_interval_days=output_interval_days, skip_download=True, states_only=states_only)
+            f = partial(
+                _run_all,
+                run_mode=run_mode,
+                generate_reports=generate_reports,
+                output_interval_days=output_interval_days,
+                skip_download=True,
+                states_only=states_only,
+                output_dir=output_dir
+            )
             p = Pool()
             p.map(f, [state_obj.name for state_obj in us.STATES])
             p.close()
 
         else:
             for state_obj in us.STATES:
-                _run_all(state_obj.name, run_mode, generate_reports, output_interval_days, skip_download=True, states_only=states_only)
+                _run_all(
+                    state_obj.name,
+                    run_mode,
+                    generate_reports,
+                    output_interval_days,
+                    skip_download=True,
+                    states_only=states_only,
+                    output_dir=output_dir
+                )
 
-
+                
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
@@ -188,3 +203,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 def run_all(state, run_mode, generate_reports, output_interval_days, skip_download, output_dir, states_only):
     _run_all(state, run_mode, generate_reports, output_interval_days, skip_download=skip_download,
              output_dir=output_dir, states_only=states_only)
+
+
+if __name__ == "__main__":
+    entry_point()

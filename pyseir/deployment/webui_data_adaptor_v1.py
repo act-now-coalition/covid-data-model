@@ -169,7 +169,7 @@ class WebUIDataAdaptorV1:
             final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
             output_model['beds'] = final_beds
 
-            # Need this..
+            # Record the current number of hospitalizations in order to rescale the inference results.
             all_hospitalized_today = output_model['all_hospitalized'][0]
 
             # Don't backfill inferences

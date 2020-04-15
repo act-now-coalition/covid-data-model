@@ -14,6 +14,7 @@ PROD_BUCKET = "data.covidactnow.org"
 @click.option('--input-dir', '-i', default='results', help='Input directory of state/county projections')
 @click.option('--output', '-o', default='results/dod', help='Output directory for artifacts')
 def deploy_dod_projections(disable_validation, input_dir, output):
+
     """Generates and runs dod data projections from model outputs.
 
     Used for manual trigger

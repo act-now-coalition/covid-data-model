@@ -22,6 +22,12 @@ We currently provide 6 file types:
 │   ├── county/
 │   │   ├── <state abreviation>.<fips>.<intervention number>.json
 │   │   └── county.version.json
+│   ├── us/
+|   │   ├── counties/
+|   │   │   ├── <5 Digit FIPS>.<intervention number>.json
+|   │   │   └── counties_top_100.json
+|   │   └── states/
+|   │       └── <state abbreviation>.<intervention number>.json
 │   ├── county_summaries/
 │   │   ├── <state abreviation>.summary.json
 │   │   └── county_summary.version.json
@@ -37,6 +43,24 @@ We currently provide 6 file types:
 │   ├── <state abreviation>.<intervention number>.json
 │   └── states.version.json
 ```
+
+
+## Generating a new API schema
+
+To generate a new tracked API schema, create a new python file in the `api/` folder containing
+a `pydantic.BaseModel` class definition. Read [these docs](https://pydantic-docs.helpmanual.io/usage/schema/)
+to learn more about how pydantic generates json-schema from python objects.
+
+To update the public API, run:
+```
+./run.py api update-schemas
+```
+
+This will find all python classes under `api/` that subclass `pydantic.BaseModel` and
+generate the corresponding JSON Schema file into `api/schemas/`.
+
+If you do not want to generate a top-level schema in `api/schemas/`, prepend the class name
+with a `_` (i.e. `_MyPrivateSchema`); these will not be uploaded.
 
 
 ## Specific Files Schemas
@@ -140,12 +164,21 @@ Here's an example
 
 ### Case Summary
 
-For `case_summary/<state abreviation>.summary.json` files see the [JSON Schema](schemas/case_summary.json)
+For `case_summary/<state abreviation>.summary.json` files see the [JSON Schema](schemas/StateCaseSummary.json)
 
 ### County Summaries
 
 For `county_summaries/<state abreviation>.summary.json` files see the [JSON Schema](schemas/county_summaries.json)
 
+### Top Counties
+For `county/counties_top_100.json` fields see the [JSON Schema](schema/CANPredictionAPI.json)
+
+### For State/County Calculated Results
+For files like 
+- `us/counties/<fips>.<intervention>.json` 
+- `us/states/<state abbreviation>.<intervention>.json` 
+
+see the [JSON Schema](schema/CANPredictionAPIRow.json)
 
 ### Versions
 

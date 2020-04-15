@@ -34,11 +34,15 @@ prepare () {
 
   # These directiories essentially define the structure of our API endpoints.
   # TODO: These should perhaps live in python, near the schemas (defined in api/)?
-  STATES_DIR="${API_OUTPUT_DIR}/";
+
+  INPUT_BASE_DIR="${API_OUTPUT_DIR}/"
+
+  API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
+  API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
+
   # TODO: I think deploy_dod_dataset.py may currently have an implicit
   # requirement that the county model JSON is in a /county subdirectory of the
   # states?
-  COUNTIES_DIR="${API_OUTPUT_DIR}/county";
   COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
   CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
 
@@ -50,17 +54,17 @@ execute() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
-  echo ">>> Generating state and county models to ${STATES_DIR}"
+  echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
   pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" > /dev/null
 
   # Move state output to the expected location.
-  mkdir -p ${STATES_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/state/* ${STATES_DIR}/
+  mkdir -p ${API_OUTPUT_STATES}/
+  mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_STATES}/
 
   # Move county output to the expected location.
-  mkdir -p ${COUNTIES_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/county/* ${COUNTIES_DIR}/
+  mkdir -p ${API_OUTPUT_COUNTIES}/
+  mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_COUNTIES}/
 
   # Clean up original output directories.
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
@@ -70,6 +74,10 @@ execute() {
   # Previous method for invoking the original Python SEIR model follows.
   #./run.py model state -o "${API_OUTPUT_DIR}" > /dev/null
   #./run.py model county -o "${COUNTIES_DIR}" > /dev/null
+
+  # echo ">>> Generating county models to ${API_OUTPUT_DIR}/county"
+  # TODO(#148): We need to clean up the output of these scripts!
+  # ./run.py model county -o "${API_OUTPUT_DIR}/county" > /dev/null
 
   echo ">>> Generating county summaries to ${COUNTY_SUMMARIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
@@ -81,10 +89,21 @@ execute() {
 
   echo ">>> Generating DoD artifacts to ${DOD_DIR}"
   mkdir -p "${DOD_DIR}"
-  ./run.py deploy-dod -i "${STATES_DIR}" -o "${DOD_DIR}"
+  ./run.py deploy-dod -i "${INPUT_BASE_DIR}" -o "${DOD_DIR}"
 
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json
+
+  echo ">>> Generating Top 100 Counties json to ${API_OUTPUT_COUNTIES}/counties_top_100.json"
+  mkdir -p "${API_OUTPUT_COUNTIES}"
+  ./run.py deploy-top-counties -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_COUNTIES}"
+
+  echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
+  mkdir -p "${API_OUTPUT_STATES}"
+  ./run.py deploy-states-api -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_STATES}"
+
+  echo ">>> Generating API for states to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
+  ./run.py deploy-counties-api -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
