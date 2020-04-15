@@ -684,6 +684,10 @@ class SEIRModelAge:
         ----------
         y_scale: str
             Matplotlib scale to use on y-axis. Typically 'log' or 'linear'
+        by_age_group: bool
+            Whether plot projections by age group.
+        xlim: float
+            Limits of x axis.
         """
         if not by_age_group:
             # Plot the data on three separate curves for S(t), I(t) and R(t)
@@ -715,11 +719,6 @@ class SEIRModelAge:
 
             plt.plot(self.t_list, self.results['D'], alpha=.4, c='k', lw=1, label='Direct Deaths',
                      linestyle='-')
-            # plt.plot(self.t_list, self.results['deaths_from_hospital_bed_limits'], alpha=1, c='k', lw=1, label='Deaths
-            # From Bed Limits', linestyle=':')
-            # plt.plot(self.t_list, self.results['deaths_from_icu_bed_limits'], alpha=1, c='k', lw=2, label='Deaths From ICU Bed Limits', linestyle='-.')
-            # plt.plot(self.t_list, self.results['deaths_from_ventilator_limits'], alpha=1, c='k', lw=2, label='Deaths From No Ventillator', linestyle='--')
-            # plt.plot(self.t_list, self.results['total_deaths'], alpha=1, c='k', lw=4, label='Total Deaths', linestyle='-')
 
             plt.plot(self.t_list, self.results['HGen'], alpha=1, lw=2, c='steelblue',
                      label='General Beds Required', linestyle='-')
@@ -742,13 +741,13 @@ class SEIRModelAge:
             else:
                 plt.xlim(0, self.t_list.max())
 
-            # Reproduction numbers
             plt.subplot(223)
             plt.plot(self.t_list, [self.suppression_policy(t) for t in self.t_list], c='steelblue')
             plt.ylabel('Contact Rate Reduction')
             plt.xlabel('Time [days]', fontsize=12)
             plt.grid(True, which='both')
 
+            # Reproduction number through time
             plt.subplot(224)
             plt.plot(self.t_list, self.results['Rt'], c='steelblue')
             plt.ylabel('R(t)')
