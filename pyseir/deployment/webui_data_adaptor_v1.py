@@ -9,10 +9,11 @@ from pyseir.inference.fit_results import load_inference_result
 import simplejson as json
 import logging
 import us
-from multiprocessing import Pool
+from pyseir import Pool
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
+from pyseir import divide_up_pool
 
 
 class WebUIDataAdaptorV1:
@@ -222,7 +223,8 @@ class WebUIDataAdaptorV1:
                 fips_with_cases = fips_with_cases[fips_with_cases.cases > 0].fips.unique().tolist()
                 all_fips = [fips for fips in all_fips if fips in fips_with_cases]
 
-            p = Pool()
+            parallelization_within_states = divide_up_pool()[0]
+            p = Pool(parallelization_within_states)
             p.map(self.map_fips, all_fips)
             p.close()
 

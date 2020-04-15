@@ -9,11 +9,12 @@ import iminuit
 from sklearn.linear_model import LinearRegression, BayesianRidge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_validate
-from multiprocessing import Pool
+from pyseir import Pool
 from functools import partial
 import seaborn as sns
 from pyseir import load_data
 from pyseir import OUTPUT_DIR
+from pyseir import divide_up_pool
 
 
 class InitialConditionsFitter:
@@ -222,7 +223,9 @@ def generate_start_times_for_state(state, generate_report=False):
 
     # Fit exponential model to extract T0.
     f = partial(_fit_fips, generate_report=generate_report)
-    p = Pool()
+
+    parallelization_within_states = divide_up_pool()[0]
+    p = Pool(parallelization_within_states)
     fips_to_fit_map = {fips: val for fips, val in zip(counties.values, p.map(f, counties.values))}
     p.close()
 

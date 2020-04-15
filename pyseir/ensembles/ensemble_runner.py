@@ -2,7 +2,7 @@ import datetime
 import logging
 import os
 import numpy as np
-from multiprocessing import Pool
+from pyseir import Pool
 from functools import partial
 import us
 import pickle
@@ -20,6 +20,7 @@ from pyseir.load_data import FAULTY_HOSPITAL_DATA_STATES
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import JHUDataset
+from pyseir import divide_up_pool
 
 
 _logger = logging.getLogger(__name__)
@@ -513,7 +514,9 @@ def run_state(state, ensemble_kwargs, states_only=False):
         # Run county level
         df = load_data.load_county_metadata()
         all_fips = df[df['state'].str.lower() == state.lower()].fips
-        p = Pool()
+
+        parallelization_within_states = divide_up_pool()[0]
+        p = Pool(parallelization_within_states)
         f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
         p.map(f, all_fips)
         p.close()

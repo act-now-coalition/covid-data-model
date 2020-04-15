@@ -10,13 +10,15 @@ from scipy.stats import gamma, norm
 from copy import deepcopy
 from matplotlib import pyplot as plt
 from datetime import datetime, timedelta
-from multiprocessing import Pool
+# from multiprocessing import Pool
+from pyseir import Pool
 from pyseir.models import suppression_policies
 from pyseir import load_data, OUTPUT_DIR
 from pyseir.models.seir_model import SEIRModel
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType
+from pyseir import divide_up_pool
 
 
 class ModelFitter:
@@ -627,7 +629,9 @@ def run_state(state, states_only=False):
 
         df = load_data.load_county_metadata()
         all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
-        p = Pool()
+
+        parallelization_within_states = divide_up_pool()[0]
+        p = Pool(parallelization_within_states)
         fitters = p.map(ModelFitter.run_for_fips, all_fips)
         p.close()
 
