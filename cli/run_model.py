@@ -9,7 +9,7 @@ from libs.pipelines import can_model_pipeline
 _logger = logging.getLogger(__name__)
 
 
-@click.group('model')
+@click.group("model")
 def main():
     """Run models"""
     pass
@@ -25,9 +25,7 @@ def main():
     default=pathlib.Path("results/county"),
 )
 @data_version.with_git_version_click_option
-def run_county(
-    version: data_version.DataVersion, output, state=None
-):
+def run_county(version: data_version.DataVersion, output, state=None):
     """Run county level model."""
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
@@ -78,7 +76,9 @@ def run_state(version: data_version.DataVersion, output, state=None):
     min_date = datetime.datetime(2020, 3, 7)
     max_date = datetime.datetime(2020, 7, 6)
 
-    can_model_pipeline.run_state_level_forecast(min_date, max_date, output, country="USA", state=state)
+    can_model_pipeline.run_state_level_forecast(
+        min_date, max_date, output, country="USA", state=state
+    )
     _logger.info(f"Wrote output to {output}")
     # only write the version if we saved everything
     if not state:

@@ -7,6 +7,7 @@ from libs.CovidDatasets import get_public_data_base_url
 from libs.constants import NULL_VALUE
 from libs.datasets.results_schema import NON_INTEGER_FIELDS, SHAPEFILE_FIELDS
 
+
 def _file_uri_to_path(uri: str) -> str:
     return urlparse(uri).path
 

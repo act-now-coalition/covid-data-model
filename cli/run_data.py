@@ -15,7 +15,7 @@ from libs.datasets import data_version
 _logger = logging.getLogger(__name__)
 
 
-@click.group('data')
+@click.group("data")
 def main():
     """Generate reports from raw data."""
     pass

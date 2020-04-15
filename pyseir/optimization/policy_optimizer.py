@@ -1,5 +1,10 @@
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize, dual_annealing, basinhopping, differential_evolution
+from scipy.optimize import (
+    minimize,
+    dual_annealing,
+    basinhopping,
+    differential_evolution,
+)
 
 
 class PolicyOptimizer:
@@ -36,13 +41,15 @@ class PolicyOptimizer:
         parameters.  A given suppression policy may implement these internally.
     """
 
-    def __init__(self,
-                 seir_model_class,
-                 seir_model_args,
-                 parametric_policy,
-                 x0,
-                 parametric_policy_kwargs=None,
-                 optimization_bounds=None):
+    def __init__(
+        self,
+        seir_model_class,
+        seir_model_args,
+        parametric_policy,
+        x0,
+        parametric_policy_kwargs=None,
+        optimization_bounds=None,
+    ):
 
         self.seir_model_class = seir_model_class
         self.seir_model_args = seir_model_args
@@ -57,7 +64,7 @@ class PolicyOptimizer:
             D=[],
             deaths_from_ventilator_limits=[],
             deaths_from_icu_bed_limits=[],
-            deaths_from_hospital_bed_limits=[]
+            deaths_from_hospital_bed_limits=[],
         )
         self.minimization_results = None
         self.best_model = None
@@ -77,14 +84,22 @@ class PolicyOptimizer:
         model = self.seir_model_class(
             **self.seir_model_args,
             suppression_policy=self.parametric_policy(
-                x, t_list=self.seir_model_args['t_list'], **self.parametric_policy_kwargs)
+                x,
+                t_list=self.seir_model_args["t_list"],
+                **self.parametric_policy_kwargs
+            )
         )
 
         model.run()
 
         # Store array of run results
-        for key in ('total_deaths', 'D', 'deaths_from_hospital_bed_limits',
-                    'deaths_from_icu_bed_limits', 'deaths_from_ventilator_limits'):
+        for key in (
+            "total_deaths",
+            "D",
+            "deaths_from_hospital_bed_limits",
+            "deaths_from_icu_bed_limits",
+            "deaths_from_ventilator_limits",
+        ):
             self.fit_results[key].append(model.results[key][-1])
 
         # This may get memory hungry so leaving out for now...
@@ -93,8 +108,8 @@ class PolicyOptimizer:
         # We can also add a small Gaussian Prior Toward No Distancing Policy
         # (i.e. suppression_level=1) to stabilize the Fit
         # This prior could be refined to be an alternative outcome such as economic incentives
-        loss = self.fit_results['total_deaths'][-1]
-                #+ 10 * self.fit_results['total_deaths'][-1] * np.average((x - 1) ** 2)
+        loss = self.fit_results["total_deaths"][-1]
+        # + 10 * self.fit_results['total_deaths'][-1] * np.average((x - 1) ** 2)
         return loss
 
     def run(self, minimize_kwargs=dict(tol=0.01, method=None)):
@@ -114,14 +129,16 @@ class PolicyOptimizer:
             self._loss_function,
             x0=self.x0,
             bounds=self.optimization_bounds,
-            **minimize_kwargs)
+            **minimize_kwargs
+        )
 
         self.best_model = self.seir_model_class(
             **self.seir_model_args,
             suppression_policy=self.parametric_policy(
-                self.minimization_results['x'],
-                t_list=self.seir_model_args['t_list'],
-                **self.parametric_policy_kwargs)
+                self.minimization_results["x"],
+                t_list=self.seir_model_args["t_list"],
+                **self.parametric_policy_kwargs
+            )
         )
         self.best_model.run()
 
@@ -137,7 +154,7 @@ class PolicyOptimizer:
         """
         self.best_model.plot_results(**kwargs)
 
-    def plot_loss(self, y_scale='linear'):
+    def plot_loss(self, y_scale="linear"):
         """
         Plot the loss function by
 
@@ -148,15 +165,29 @@ class PolicyOptimizer:
         """
         plt.figure(figsize=(8, 8))
 
-        evals = range(len(self.fit_results['total_deaths']))
-        plt.plot(evals, self.fit_results['total_deaths'], label='Total Deaths', linestyle='')
-        plt.plot(evals, self.fit_results['D'], label='Direct COVID Deaths')
-        plt.plot(evals, self.fit_results['deaths_from_hospital_bed_limits'], label='Deaths from General Bed Limits')
-        plt.plot(evals, self.fit_results['deaths_from_icu_bed_limits'], label='Deaths from ICU Bed Limits')
-        plt.plot(evals, self.fit_results['deaths_from_ventilator_limits'], label='Deaths from Ventilator Bed Limits')
+        evals = range(len(self.fit_results["total_deaths"]))
+        plt.plot(
+            evals, self.fit_results["total_deaths"], label="Total Deaths", linestyle=""
+        )
+        plt.plot(evals, self.fit_results["D"], label="Direct COVID Deaths")
+        plt.plot(
+            evals,
+            self.fit_results["deaths_from_hospital_bed_limits"],
+            label="Deaths from General Bed Limits",
+        )
+        plt.plot(
+            evals,
+            self.fit_results["deaths_from_icu_bed_limits"],
+            label="Deaths from ICU Bed Limits",
+        )
+        plt.plot(
+            evals,
+            self.fit_results["deaths_from_ventilator_limits"],
+            label="Deaths from Ventilator Bed Limits",
+        )
 
         plt.legend()
-        plt.grid(which='both')
+        plt.grid(which="both")
         plt.yscale(y_scale)
-        plt.xlabel('Optimization Iteration', fontsize=14)
-        plt.ylabel('Deaths', fontsize=14)
+        plt.xlabel("Optimization Iteration", fontsize=14)
+        plt.ylabel("Deaths", fontsize=14)

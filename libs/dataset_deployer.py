@@ -67,7 +67,7 @@ def upload_csv(key_name: str, csv: str, output_dir: str):
     _logger.info(f"Generated csv for {key_name}")
 
 
-def upload_json(key_name, json: str, output_dir: str): 
+def upload_json(key_name, json: str, output_dir: str):
     DatasetDeployer(f"{key_name}.json", json, output_dir).persist()
     _logger.info(f"Generated json for {key_name}")
 

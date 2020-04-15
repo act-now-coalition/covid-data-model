@@ -5,14 +5,26 @@ import logging
 
 from libs.enums import Intervention
 from libs.pipelines import dod_pipeline
+
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 
 
-@click.command('deploy-dod')
-@click.option('--disable-validation', is_flag=True, help='Disable validation of generated projection files')
-@click.option('--input-dir', '-i', default='results', help='Input directory of state/county projections')
-@click.option('--output', '-o', default='results/dod', help='Output directory for artifacts')
+@click.command("deploy-dod")
+@click.option(
+    "--disable-validation",
+    is_flag=True,
+    help="Disable validation of generated projection files",
+)
+@click.option(
+    "--input-dir",
+    "-i",
+    default="results",
+    help="Input directory of state/county projections",
+)
+@click.option(
+    "--output", "-o", default="results/dod", help="Output directory for artifacts"
+)
 def deploy_dod_projections(disable_validation, input_dir, output):
 
     """Generates and runs dod data projections from model outputs.
@@ -38,4 +50,4 @@ def deploy_dod_projections(disable_validation, input_dir, output):
         dod_pipeline.deploy_results(state_result, output)
         dod_pipeline.deploy_results(county_result, output)
 
-    logger.info('finished dod job')
+    logger.info("finished dod job")

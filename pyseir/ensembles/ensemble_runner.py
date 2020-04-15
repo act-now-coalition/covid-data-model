@@ -12,7 +12,10 @@ import copy
 from collections import defaultdict
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-from pyseir.models.suppression_policies import generate_empirical_distancing_policy, generate_covidactnow_scenarios
+from pyseir.models.suppression_policies import (
+    generate_empirical_distancing_policy,
+    generate_covidactnow_scenarios,
+)
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
@@ -28,18 +31,18 @@ _logger = logging.getLogger(__name__)
 class RunMode(Enum):
     # Read params from the parameter sampler default and use empirical
     # suppression policies.
-    DEFAULT = 'default'
+    DEFAULT = "default"
     # 4 basic suppression scenarios and specialized parameters to match
     # covidactnow before scenarios.  Uses hospitalization data to fix.
-    CAN_BEFORE_HOSPITALIZATION = 'can-before-hospitalization'
+    CAN_BEFORE_HOSPITALIZATION = "can-before-hospitalization"
     # Same as CAN Before but with updated ICU, hosp rates increased.
-    CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = 'can-before-hospitalization-new-params'
+    CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = "can-before-hospitalization-new-params"
 
 
 compartment_to_capacity_attr_map = {
-    'HGen': 'beds_general',
-    'HICU': 'beds_ICU',
-    'HVent': 'ventilators'
+    "HGen": "beds_general",
+    "HICU": "beds_ICU",
+    "HVent": "ventilators",
 }
 
 
@@ -72,47 +75,69 @@ class EnsembleRunner:
     covid_timeseries: NoneType or DataSet
         Can be optionally passed in to prevent reloading.
     """
-    def __init__(self, fips, n_years=.5, n_samples=250,
-                 suppression_policy=(0.35, 0.5, 0.75, 1),
-                 skip_plots=False,
-                 output_percentiles=(5, 25, 32, 50, 75, 68, 95),
-                 generate_report=True,
-                 run_mode=RunMode.DEFAULT,
-                 min_hospitalization_threshold=5,
-                 hospitalization_to_confirmed_case_ratio=1 / 4,
-                 output_dir=None,
-                 covid_timeseries=None):
+
+    def __init__(
+        self,
+        fips,
+        n_years=0.5,
+        n_samples=250,
+        suppression_policy=(0.35, 0.5, 0.75, 1),
+        skip_plots=False,
+        output_percentiles=(5, 25, 32, 50, 75, 68, 95),
+        generate_report=True,
+        run_mode=RunMode.DEFAULT,
+        min_hospitalization_threshold=5,
+        hospitalization_to_confirmed_case_ratio=1 / 4,
+        output_dir=None,
+        covid_timeseries=None,
+    ):
 
         self.fips = fips
-        self.agg_level = AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
+        self.agg_level = (
+            AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
+        )
 
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years))
         self.skip_plots = skip_plots
         self.run_mode = RunMode(run_mode)
         self.hospitalizations_for_state = None
         self.min_hospitalization_threshold = min_hospitalization_threshold
-        self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
+        self.hospitalization_to_confirmed_case_ratio = (
+            hospitalization_to_confirmed_case_ratio
+        )
 
-        self.output_dir = output_dir or os.path.join(OUTPUT_DIR, 'pyseir')
+        self.output_dir = output_dir or os.path.join(OUTPUT_DIR, "pyseir")
         os.makedirs(self.output_dir, exist_ok=True)
 
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata_by_fips(fips)
-            self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
-            self.state_name = us.states.lookup(self.county_metadata['state']).name
+            self.state_abbr = us.states.lookup(self.county_metadata["state"]).abbr
+            self.state_name = us.states.lookup(self.county_metadata["state"]).name
 
-            self.output_file_report = os.path.join(self.output_dir, self.state_name, 'reports',
-                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf")
-            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
-                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+            self.output_file_report = os.path.join(
+                self.output_dir,
+                self.state_name,
+                "reports",
+                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf",
+            )
+            self.output_file_data = os.path.join(
+                self.output_dir,
+                self.state_name,
+                "data",
+                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json",
+            )
 
         else:
             self.state_abbr = us.states.lookup(self.fips).abbr
             self.state_name = us.states.lookup(self.fips).name
 
             self.output_file_report = None
-            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
-                f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+            self.output_file_data = os.path.join(
+                self.output_dir,
+                self.state_name,
+                "data",
+                f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json",
+            )
 
         county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
@@ -121,10 +146,13 @@ class EnsembleRunner:
         else:
             covid_timeseries = covid_timeseries.timeseries()
 
-        self.covid_data = covid_timeseries\
-            .get_subset(self.agg_level, country='USA', state=self.state_abbr) \
-            .get_data(country='USA', state=self.state_abbr, fips=county_fips) \
-            .sort_values('date')
+        self.covid_data = (
+            covid_timeseries.get_subset(
+                self.agg_level, country="USA", state=self.state_abbr
+            )
+            .get_data(country="USA", state=self.state_abbr, fips=county_fips)
+            .sort_values("date")
+        )
 
         os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
         if self.output_file_report:
@@ -138,7 +166,7 @@ class EnsembleRunner:
         self.date_generated = datetime.datetime.utcnow().isoformat()
         self.suppression_policy = suppression_policy
         self.summary = copy.deepcopy(self.__dict__)
-        self.summary.pop('t_list')
+        self.summary.pop("t_list")
         self.generate_report = generate_report
 
         self.suppression_policies = None
@@ -163,29 +191,42 @@ class EnsembleRunner:
         """
         fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
-        hospitalization_data = CovidTrackingDataSource.local()\
-            .timeseries()\
-            .get_subset(self.agg_level, country='USA', state=self.state_abbr)\
-            .get_data(state=self.state_abbr, country='USA', fips=fips)\
-            .sort_values('date')
+        hospitalization_data = (
+            CovidTrackingDataSource.local()
+            .timeseries()
+            .get_subset(self.agg_level, country="USA", state=self.state_abbr)
+            .get_data(state=self.state_abbr, country="USA", fips=fips)
+            .sort_values("date")
+        )
 
         # If there are enough hospitalizations, use those to define initial conditions.
-        if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in FAULTY_HOSPITAL_DATA_STATES:
-            latest_date = hospitalization_data.iloc[-1]['date'].date()
-            n_current = hospitalization_data.iloc[-1]['current_hospitalized']
-            if n_current > self.min_hospitalization_threshold and not np.isnan(n_current):
+        if (
+            not use_cases
+            and len(hospitalization_data) > 0
+            and self.state_abbr not in FAULTY_HOSPITAL_DATA_STATES
+        ):
+            latest_date = hospitalization_data.iloc[-1]["date"].date()
+            n_current = hospitalization_data.iloc[-1]["current_hospitalized"]
+            if n_current > self.min_hospitalization_threshold and not np.isnan(
+                n_current
+            ):
                 hospitalizations_total = n_current
 
             # TODO: We will need a better estimator for current hospitalizations
             # in cases where cumulative is not available. Punting on this until
             # post-release.
             else:
-                hospitalizations_total = hospitalization_data.iloc[-1]['cumulative_hospitalized']
+                hospitalizations_total = hospitalization_data.iloc[-1][
+                    "cumulative_hospitalized"
+                ]
 
         # Fallback to case data if not.
         else:
             latest_date = self.covid_data.date.max()
-            hospitalizations_total = self.covid_data.cases.max() * self.hospitalization_to_confirmed_case_ratio
+            hospitalizations_total = (
+                self.covid_data.cases.max()
+                * self.hospitalization_to_confirmed_case_ratio
+            )
         return latest_date, hospitalizations_total
 
     def init_run_mode(self):
@@ -199,89 +240,163 @@ class EnsembleRunner:
         if self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION:
             self.n_samples = 1
 
-            for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
+            for scenario in [
+                "no_intervention",
+                "flatten_the_curve",
+                "full_containment",
+                "social_distancing",
+            ]:
                 R0 = 3.6
-                self.override_params['R0'] = R0
-                policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
-                self.suppression_policies[f'suppression_policy__{scenario}'] = policy
+                self.override_params["R0"] = R0
+                policy = generate_covidactnow_scenarios(
+                    t_list=self.t_list,
+                    R0=R0,
+                    t0=datetime.datetime.today(),
+                    scenario=scenario,
+                )
+                self.suppression_policies[f"suppression_policy__{scenario}"] = policy
                 self.override_params = ParameterEnsembleGenerator(
-                    self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
+                    self.fips,
+                    N_samples=500,
+                    t_list=self.t_list,
+                    suppression_policy=policy,
+                ).get_average_seir_parameters()
 
-            self.override_params['mortality_rate_no_general_beds'] = 0.0
-            self.override_params['mortality_rate_from_hospital'] = 0.0
-            self.override_params['mortality_rate_from_ICU'] = 0.40
-            self.override_params['mortality_rate_no_ICU_beds'] = 1.0
+            self.override_params["mortality_rate_no_general_beds"] = 0.0
+            self.override_params["mortality_rate_from_hospital"] = 0.0
+            self.override_params["mortality_rate_from_ICU"] = 0.40
+            self.override_params["mortality_rate_no_ICU_beds"] = 1.0
 
-            self.override_params['hospitalization_length_of_stay_general'] = 6
-            self.override_params['hospitalization_length_of_stay_icu'] = 13
-            self.override_params['hospitalization_length_of_stay_icu_and_ventilator'] = 14
+            self.override_params["hospitalization_length_of_stay_general"] = 6
+            self.override_params["hospitalization_length_of_stay_icu"] = 13
+            self.override_params[
+                "hospitalization_length_of_stay_icu_and_ventilator"
+            ] = 14
 
-            self.override_params['hospitalization_rate_general'] = 0.0727
-            self.override_params['hospitalization_rate_icu'] = 0.13 * self.override_params['hospitalization_rate_general']
-            self.override_params['beds_ICU'] = 0
-            self.override_params['symptoms_to_hospital_days'] = 6
+            self.override_params["hospitalization_rate_general"] = 0.0727
+            self.override_params["hospitalization_rate_icu"] = (
+                0.13 * self.override_params["hospitalization_rate_general"]
+            )
+            self.override_params["beds_ICU"] = 0
+            self.override_params["symptoms_to_hospital_days"] = 6
 
             if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
                 self.t0 = self.covid_data.date.max()
                 self.t0, hospitalizations_total = self.get_initial_hospitalizations()
 
-                self.override_params['HGen_initial'] = hospitalizations_total * (1 - self.override_params['hospitalization_rate_icu'] / self.override_params['hospitalization_rate_general'])
-                self.override_params['HICU_initial'] = hospitalizations_total * self.override_params['hospitalization_rate_icu']/ self.override_params['hospitalization_rate_general']
-                self.override_params['HICUVent_initial'] = self.override_params['HICU_initial'] * self.override_params['fraction_icu_requiring_ventilator']
-                self.override_params['I_initial'] = hospitalizations_total / self.override_params['hospitalization_rate_general']
+                self.override_params["HGen_initial"] = hospitalizations_total * (
+                    1
+                    - self.override_params["hospitalization_rate_icu"]
+                    / self.override_params["hospitalization_rate_general"]
+                )
+                self.override_params["HICU_initial"] = (
+                    hospitalizations_total
+                    * self.override_params["hospitalization_rate_icu"]
+                    / self.override_params["hospitalization_rate_general"]
+                )
+                self.override_params["HICUVent_initial"] = (
+                    self.override_params["HICU_initial"]
+                    * self.override_params["fraction_icu_requiring_ventilator"]
+                )
+                self.override_params["I_initial"] = (
+                    hospitalizations_total
+                    / self.override_params["hospitalization_rate_general"]
+                )
 
                 # The following two params disable the asymptomatic compartment.
-                self.override_params['A_initial'] = 0
-                self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
+                self.override_params["A_initial"] = 0
+                self.override_params[
+                    "gamma"
+                ] = 1  # 100% of Exposed go to the infected bucket.
 
                 # 1.2 is a ~ steady state for the exposed bucket initialization.
-                self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
-                self.override_params['D_initial'] = self.covid_data.deaths.max()
+                self.override_params["E_initial"] = 1.2 * (
+                    self.override_params["I_initial"]
+                    + self.override_params["A_initial"]
+                )
+                self.override_params["D_initial"] = self.covid_data.deaths.max()
 
             else:
                 self.t0 = datetime.datetime.today()
-                self.override_params['I_initial'] = 1
-                self.override_params['A_initial'] = 0
-                self.override_params['gamma'] = 1  # 100% of Exposed go to the infected bucket.
+                self.override_params["I_initial"] = 1
+                self.override_params["A_initial"] = 0
+                self.override_params[
+                    "gamma"
+                ] = 1  # 100% of Exposed go to the infected bucket.
 
         elif self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS:
             self.n_samples = 1
 
-            for scenario in ['no_intervention', 'flatten_the_curve', 'inferred', 'social_distancing']:
+            for scenario in [
+                "no_intervention",
+                "flatten_the_curve",
+                "inferred",
+                "social_distancing",
+            ]:
                 R0 = 3.6
-                self.override_params['R0'] = R0
-                if scenario != 'inferred':
-                    policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
+                self.override_params["R0"] = R0
+                if scenario != "inferred":
+                    policy = generate_covidactnow_scenarios(
+                        t_list=self.t_list,
+                        R0=R0,
+                        t0=datetime.datetime.today(),
+                        scenario=scenario,
+                    )
                 else:
                     policy = None
-                self.suppression_policies[f'suppression_policy__{scenario}'] = policy
+                self.suppression_policies[f"suppression_policy__{scenario}"] = policy
                 self.override_params = ParameterEnsembleGenerator(
-                    self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
+                    self.fips,
+                    N_samples=500,
+                    t_list=self.t_list,
+                    suppression_policy=policy,
+                ).get_average_seir_parameters()
 
             if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
                 self.t0 = self.covid_data.date.max()
                 self.t0, hospitalizations_total = self.get_initial_hospitalizations()
 
-                self.override_params['HGen_initial'] = hospitalizations_total * (1 - self.override_params['hospitalization_rate_icu'])
-                self.override_params['HICU_initial'] = hospitalizations_total * self.override_params['hospitalization_rate_icu']
-                self.override_params['HICUVent_initial'] = self.override_params['HICU_initial'] * self.override_params['fraction_icu_requiring_ventilator']
-                self.override_params['I_initial'] = hospitalizations_total / self.override_params['hospitalization_rate_general']
+                self.override_params["HGen_initial"] = hospitalizations_total * (
+                    1 - self.override_params["hospitalization_rate_icu"]
+                )
+                self.override_params["HICU_initial"] = (
+                    hospitalizations_total
+                    * self.override_params["hospitalization_rate_icu"]
+                )
+                self.override_params["HICUVent_initial"] = (
+                    self.override_params["HICU_initial"]
+                    * self.override_params["fraction_icu_requiring_ventilator"]
+                )
+                self.override_params["I_initial"] = (
+                    hospitalizations_total
+                    / self.override_params["hospitalization_rate_general"]
+                )
 
                 # The following two params disable the asymptomatic compartment.
-                self.override_params['A_initial'] = 0
-                self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
+                self.override_params["A_initial"] = 0
+                self.override_params[
+                    "gamma"
+                ] = 1  # 100% of Exposed go to the infected bucket.
 
                 # 1.2 is a ~ steady state for the exposed bucket initialization.
-                self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
-                self.override_params['D_initial'] = self.covid_data.deaths.max()
+                self.override_params["E_initial"] = 1.2 * (
+                    self.override_params["I_initial"]
+                    + self.override_params["A_initial"]
+                )
+                self.override_params["D_initial"] = self.covid_data.deaths.max()
 
         elif self.run_mode is RunMode.DEFAULT:
             for suppression_policy in self.suppression_policy:
-                self.suppression_policies[f'suppression_policy__{suppression_policy}']= generate_empirical_distancing_policy(
-                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy)
+                self.suppression_policies[
+                    f"suppression_policy__{suppression_policy}"
+                ] = generate_empirical_distancing_policy(
+                    t_list=self.t_list,
+                    fips=self.fips,
+                    future_suppression=suppression_policy,
+                )
             self.override_params = dict()
         else:
-            raise ValueError('Invalid run mode.')
+            raise ValueError("Invalid run mode.")
 
     @staticmethod
     def _run_single_simulation(parameter_set):
@@ -307,15 +422,28 @@ class EnsembleRunner:
         Run an ensemble of models for each suppression policy nad generate the
         output report / results dataset.
         """
-        for suppression_policy_name, suppression_policy in self.suppression_policies.items():
+        for (
+            suppression_policy_name,
+            suppression_policy,
+        ) in self.suppression_policies.items():
 
-            logging.info(f'Running simulation ensemble for {self.state_name} {self.fips} {suppression_policy_name}')
+            logging.info(
+                f"Running simulation ensemble for {self.state_name} {self.fips} {suppression_policy_name}"
+            )
 
-            if suppression_policy_name == 'suppression_policy__inferred':
+            if suppression_policy_name == "suppression_policy__inferred":
                 if self.agg_level is AggregationLevel.STATE:
                     # TODO: Move this to a callable to be consistent with model fitter.
-                    state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
-                    with open(os.path.join(state_output_dir, f'summary_{self.state_name}_state_only__mle_fit_results.pkl'), 'rb') as f:
+                    state_output_dir = os.path.join(
+                        OUTPUT_DIR, "pyseir", "data", "state_summary"
+                    )
+                    with open(
+                        os.path.join(
+                            state_output_dir,
+                            f"summary_{self.state_name}_state_only__mle_fit_results.pkl",
+                        ),
+                        "rb",
+                    ) as f:
                         model_ensemble = [pickle.load(f)]
                 else:
                     # County inference not yet implemented.
@@ -325,28 +453,41 @@ class EnsembleRunner:
                     fips=self.fips,
                     N_samples=self.n_samples,
                     t_list=self.t_list,
-                    suppression_policy=suppression_policy)
-                parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
-                model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
+                    suppression_policy=suppression_policy,
+                )
+                parameter_ensemble = parameter_sampler.sample_seir_parameters(
+                    override_params=self.override_params
+                )
+                model_ensemble = list(
+                    map(self._run_single_simulation, parameter_ensemble)
+                )
 
-            logging.info(f'Generating outputs for {suppression_policy_name}')
+            logging.info(f"Generating outputs for {suppression_policy_name}")
             if self.agg_level is AggregationLevel.COUNTY:
-                self.all_outputs['county_metadata'] = self.county_metadata
-                self.all_outputs['county_metadata']['age_distribution'] = list(self.all_outputs['county_metadata']['age_distribution'])
-                self.all_outputs['county_metadata']['age_bins'] = list(self.all_outputs['county_metadata']['age_distribution'])
+                self.all_outputs["county_metadata"] = self.county_metadata
+                self.all_outputs["county_metadata"]["age_distribution"] = list(
+                    self.all_outputs["county_metadata"]["age_distribution"]
+                )
+                self.all_outputs["county_metadata"]["age_bins"] = list(
+                    self.all_outputs["county_metadata"]["age_distribution"]
+                )
 
-            self.all_outputs[f'{suppression_policy_name}'] = self._generate_output_for_suppression_policy(model_ensemble)
+            self.all_outputs[
+                f"{suppression_policy_name}"
+            ] = self._generate_output_for_suppression_policy(model_ensemble)
 
         if self.generate_report and self.output_file_report:
-            logging.info(f'Generating report for {self.state_name} {self.fips}')
-            report = CountyReport(self.fips,
-                                  model_ensemble=model_ensemble,
-                                  county_outputs=self.all_outputs,
-                                  filename=self.output_file_report,
-                                  summary=self.summary)
+            logging.info(f"Generating report for {self.state_name} {self.fips}")
+            report = CountyReport(
+                self.fips,
+                model_ensemble=model_ensemble,
+                county_outputs=self.all_outputs,
+                filename=self.output_file_report,
+                summary=self.summary,
+            )
             report.generate_and_save()
 
-        with open(self.output_file_data, 'w') as f:
+        with open(self.output_file_data, "w") as f:
             json.dump(self.all_outputs, f)
 
     @staticmethod
@@ -365,12 +506,18 @@ class EnsembleRunner:
         value_stack: array[n_samples, time steps]
             Array with the stacked model output results.
         """
-        compartments = {key: [] for key in model_ensemble[0].results.keys() if key not in ('t_list', 'county_metadata')}
+        compartments = {
+            key: []
+            for key in model_ensemble[0].results.keys()
+            if key not in ("t_list", "county_metadata")
+        }
         for model in model_ensemble:
             for key in compartments:
                 compartments[key].append(model.results[key])
 
-        return {key: np.vstack(value_stack) for key, value_stack in compartments.items()}
+        return {
+            key: np.vstack(value_stack) for key, value_stack in compartments.items()
+        }
 
     @staticmethod
     def _get_surge_window(model_ensemble, compartment):
@@ -397,12 +544,26 @@ class EnsembleRunner:
         surge_end = []
         for m in model_ensemble:
             # Find the first t where overcapacity occurs
-            surge_start_idx = np.argwhere(m.results[compartment] > getattr(m, compartment_to_capacity_attr_map[compartment]))
-            surge_start.append(m.t_list[surge_start_idx[0][0]] if len(surge_start_idx) > 0 else float('NaN'))
+            surge_start_idx = np.argwhere(
+                m.results[compartment]
+                > getattr(m, compartment_to_capacity_attr_map[compartment])
+            )
+            surge_start.append(
+                m.t_list[surge_start_idx[0][0]]
+                if len(surge_start_idx) > 0
+                else float("NaN")
+            )
 
             # Reverse the t-list and capacity and do the same.
-            surge_end_idx = np.argwhere(m.results[compartment][::-1] > getattr(m, compartment_to_capacity_attr_map[compartment]))
-            surge_end.append(m.t_list[::-1][surge_end_idx[0][0]] if len(surge_end_idx) > 0 else float('NaN'))
+            surge_end_idx = np.argwhere(
+                m.results[compartment][::-1]
+                > getattr(m, compartment_to_capacity_attr_map[compartment])
+            )
+            surge_end.append(
+                m.t_list[::-1][surge_end_idx[0][0]]
+                if len(surge_end_idx) > 0
+                else float("NaN")
+            )
 
         return surge_start, surge_end
 
@@ -432,10 +593,14 @@ class EnsembleRunner:
 
         peak_data = dict()
         for percentile in self.output_percentiles:
-            peak_data['peak_value_ci%i' % percentile] = np.percentile(values_at_peak_index, percentile).tolist()
-            peak_data['peak_time_ci%i' % percentile] = np.percentile(peak_times, percentile).tolist()
+            peak_data["peak_value_ci%i" % percentile] = np.percentile(
+                values_at_peak_index, percentile
+            ).tolist()
+            peak_data["peak_time_ci%i" % percentile] = np.percentile(
+                peak_times, percentile
+            ).tolist()
 
-        peak_data['peak_value_mean'] = np.mean(values_at_peak_index).tolist()
+        peak_data["peak_value_mean"] = np.mean(values_at_peak_index).tolist()
         return peak_data
 
     def _generate_output_for_suppression_policy(self, model_ensemble):
@@ -453,23 +618,35 @@ class EnsembleRunner:
             Output data for this suppression policc ensemble.
         """
         outputs = defaultdict(dict)
-        outputs['t_list'] = model_ensemble[0].t_list.tolist()
+        outputs["t_list"] = model_ensemble[0].t_list.tolist()
 
         # ------------------------------------------
         # Calculate Confidence Intervals and Peaks
         # ------------------------------------------
-        for compartment, value_stack in self._generate_compartment_arrays(model_ensemble).items():
+        for compartment, value_stack in self._generate_compartment_arrays(
+            model_ensemble
+        ).items():
             compartment_output = dict()
 
             # Compute percentiles over the ensemble
             for percentile in self.output_percentiles:
-                outputs[compartment]['ci_%i' % percentile] = np.percentile(value_stack, percentile, axis=0).tolist()
+                outputs[compartment]["ci_%i" % percentile] = np.percentile(
+                    value_stack, percentile, axis=0
+                ).tolist()
 
             if compartment in compartment_to_capacity_attr_map:
-                compartment_output['surge_start'], compartment_output['surge_start'] = self._get_surge_window(model_ensemble, compartment)
-                compartment_output['capacity'] = [getattr(m, compartment_to_capacity_attr_map[compartment]) for m in model_ensemble]
+                (
+                    compartment_output["surge_start"],
+                    compartment_output["surge_start"],
+                ) = self._get_surge_window(model_ensemble, compartment)
+                compartment_output["capacity"] = [
+                    getattr(m, compartment_to_capacity_attr_map[compartment])
+                    for m in model_ensemble
+                ]
 
-            compartment_output.update(self._detect_peak_time_and_value(value_stack, outputs['t_list']))
+            compartment_output.update(
+                self._detect_peak_time_and_value(value_stack, outputs["t_list"])
+            )
 
             # Merge this dictionary into the suppression level one.
             outputs[compartment].update(compartment_output)
@@ -512,7 +689,7 @@ def run_state(state, ensemble_kwargs, states_only=False):
     if not states_only:
         # Run county level
         df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state.lower()].fips
+        all_fips = df[df["state"].str.lower() == state.lower()].fips
         p = Pool()
         f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
         p.map(f, all_fips)

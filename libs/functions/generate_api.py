@@ -77,12 +77,16 @@ def _generate_api_for_projections(projection_row):
 
 
 def _generate_timeseries_row(json_data_row, previous_row):
-    if previous_row: 
-        new_deaths = int(json_data_row[can_schema.DEAD]) - int(previous_row[can_schema.DEAD])
-        new_infections = int(json_data_row[can_schema.INFECTED]) - int(previous_row[can_schema.INFECTED])
-    else: 
+    if previous_row:
+        new_deaths = int(json_data_row[can_schema.DEAD]) - int(
+            previous_row[can_schema.DEAD]
+        )
+        new_infections = int(json_data_row[can_schema.INFECTED]) - int(
+            previous_row[can_schema.INFECTED]
+        )
+    else:
         new_deaths = 0
-        new_infections = 0 
+        new_infections = 0
     return CANPredictionTimeseriesRow(
         date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
         hospitalBedsInUse=json_data_row[can_schema.ALL_HOSPITALIZED],

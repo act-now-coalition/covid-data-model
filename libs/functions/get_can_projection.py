@@ -49,7 +49,7 @@ def get_can_raw_data(input_dir, state_abbrev, fips, aggregation_level, intervent
     file_path = get_can_projection_path(
         input_dir, state_abbrev, fips, aggregation_level, intervention
     )
-    if os.path.exists(file_path): 
+    if os.path.exists(file_path):
         with open(file_path) as json_file:
             return standardize_json_data(json.load(json_file), CAN_MODEL_OUTPUT_SCHEMA)
     # TODO : probably error out or log something here

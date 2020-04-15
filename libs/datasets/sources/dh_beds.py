@@ -92,7 +92,7 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
                 match = True
                 break
 
-        if not match and state == 'VI':
+        if not match and state == "VI":
             matched[key] = enums.UNKNOWN_FIPS
         elif not match:
             _logger.warning(f"Could not match {key}")
@@ -147,13 +147,15 @@ class DHBeds(data_source.DataSource):
 
         # Backfilling FIPS data based on county names.
         fips_data = dataset_utils.build_fips_data_frame()
-        fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
-        fips_data = fips_data[fips_data.fips != '99999']
+        fips_data = fips_data[
+            fips_data.aggregate_level == AggregationLevel.COUNTY.value
+        ]
+        fips_data = fips_data[fips_data.fips != "99999"]
         data = match_county_to_fips(data, fips_data)
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.
-        is_virgin_islands = data[cls.Fields.STATE] == 'VI'
+        is_virgin_islands = data[cls.Fields.STATE] == "VI"
         return data[~is_virgin_islands]
 
     @classmethod

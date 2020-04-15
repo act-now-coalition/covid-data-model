@@ -2,9 +2,11 @@ from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
-from pyseir.load_data import (load_public_implementations_data,
-                              load_county_metadata,
-                              load_county_case_data)
+from pyseir.load_data import (
+    load_public_implementations_data,
+    load_county_metadata,
+    load_county_case_data,
+)
 from pyseir.inference.infer_t0 import infer_t0
 
 
@@ -12,18 +14,20 @@ from pyseir.inference.infer_t0 import infer_t0
 # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-Europe-estimates-and-NPI-impact-30-03-2020.pdf
 # These are intended to act indendently, as shown by a multivariate fit from Imp. College.  The exception is lockdown which supercedes everything.
 distancing_measure_suppression = {
-    'stay_at_home': .48,
-    '50_gatherings': .05,
-    '500_gatherings': .02,  # Made this one up since not examined. Assume it isn't very effective at county level, esp. relative to 50 gatherings
-    'self_isolation': 0.05, # This one is not included in the policies dataset , but is in the imperial college paper. Keep it around for now..
-    'public_schools': .18,  # Total social distancing was about
-    'entertainment_gym': 0.02,
-    'restaurant_dine-in': 0.03,
-    'federal_guidelines': 0.03 # Making this up as well. Probably not very effective relative to stay at home...
+    "stay_at_home": 0.48,
+    "50_gatherings": 0.05,
+    "500_gatherings": 0.02,  # Made this one up since not examined. Assume it isn't very effective at county level, esp. relative to 50 gatherings
+    "self_isolation": 0.05,  # This one is not included in the policies dataset , but is in the imperial college paper. Keep it around for now..
+    "public_schools": 0.18,  # Total social distancing was about
+    "entertainment_gym": 0.02,
+    "restaurant_dine-in": 0.03,
+    "federal_guidelines": 0.03,  # Making this up as well. Probably not very effective relative to stay at home...
 }
 
 
-def generate_triggered_suppression_model(t_list, lockdown_days, open_days, reduction=0.25, start_on=0):
+def generate_triggered_suppression_model(
+    t_list, lockdown_days, open_days, reduction=0.25, start_on=0
+):
     """
     Generates a contact reduction model which switches a binary supression
     policy on and off.
@@ -44,7 +48,7 @@ def generate_triggered_suppression_model(t_list, lockdown_days, open_days, reduc
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t.
     """
-    state = 'lockdown'
+    state = "lockdown"
     state_switch = start_on + lockdown_days
     rho = []
 
@@ -56,19 +60,19 @@ def generate_triggered_suppression_model(t_list, lockdown_days, open_days, reduc
         for t in t_list:
 
             if t >= state_switch:
-                if state == 'open':
-                    state = 'lockdown'
+                if state == "open":
+                    state = "lockdown"
                     state_switch += lockdown_days
-                elif state == 'lockdown':
-                    state = 'open'
+                elif state == "lockdown":
+                    state = "open"
                     state_switch += open_days
-            if state == 'open':
+            if state == "open":
                 rho.append(1)
-            elif state == 'lockdown':
+            elif state == "lockdown":
                 rho.append(reduction)
     rho = np.array(rho)
     rho[t_list < start_on] = 1
-    return interp1d(t_list, rho, fill_value='extrapolate')
+    return interp1d(t_list, rho, fill_value="extrapolate")
 
 
 def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
@@ -113,10 +117,10 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
         actual_date = t0 + timedelta(days=t)
         today = datetime.utcnow()
 
-        if scenario == 'no_intervention':
+        if scenario == "no_intervention":
             rho.append(1)
 
-        elif scenario == 'flatten_the_curve':
+        elif scenario == "flatten_the_curve":
             if actual_date <= today:
                 rho.append(1)
             elif (actual_date - today).days <= 30:
@@ -125,26 +129,26 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
                 rho.append(1.0 / R0)
             elif (actual_date - today).days <= 90:
                 rho.append(0.8 / R0)
-            else: # Open back up...
+            else:  # Open back up...
                 rho.append(1)
 
-        elif scenario == 'full_containment':
+        elif scenario == "full_containment":
             if actual_date <= today:
                 rho.append(1)
             elif (actual_date - today).days <= 7:
                 rho.append(1.3 / R0)
             elif (actual_date - today).days <= 30 + 7 * 1:
-                rho.append(.3 / R0)
+                rho.append(0.3 / R0)
             elif (actual_date - today).days <= 30 + 7 * 2:
-                rho.append(.2 / R0)
+                rho.append(0.2 / R0)
             elif (actual_date - today).days <= 30 + 7 * 3:
-                rho.append(.1 / R0)
+                rho.append(0.1 / R0)
             elif (actual_date - today).days <= 30 + 7 * 4:
-                rho.append(.035 / R0)
+                rho.append(0.035 / R0)
             else:
                 rho.append(0)
 
-        elif scenario == 'social_distancing':
+        elif scenario == "social_distancing":
             if actual_date <= today:
                 rho.append(1)
             elif (actual_date - today).days <= 90:
@@ -152,9 +156,9 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
             else:
                 rho.append(1)
         else:
-            raise ValueError(f'Invalid scenario {scenario}')
+            raise ValueError(f"Invalid scenario {scenario}")
 
-    return interp1d(t_list, rho, fill_value='extrapolate')
+    return interp1d(t_list, rho, fill_value="extrapolate")
 
 
 def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
@@ -180,11 +184,13 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
     return interp1d(
         x=[0, t_break, t_break + transition_time, 100000],
         y=[1, 1, eps, eps],
-        fill_value='extrapolate')
+        fill_value="extrapolate",
+    )
 
 
-def generate_empirical_distancing_policy(t_list, fips, future_suppression,
-                                         reference_start_date=None):
+def generate_empirical_distancing_policy(
+    t_list, fips, future_suppression, reference_start_date=None
+):
     """
     Produce a suppression policy based on Imperial College estimates of social
     distancing programs combined with County level datasets about their
@@ -239,34 +245,50 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression,
             # If the policy was enacted on this timestep then activate it in
             # addition to others. These measures are additive unless lockdown is
             # instituted.
-            for independent_measure in ['public_schools',
-                                        'entertainment_gym',
-                                        'restaurant_dine-in',
-                                        'federal_guidelines']:
+            for independent_measure in [
+                "public_schools",
+                "entertainment_gym",
+                "restaurant_dine-in",
+                "federal_guidelines",
+            ]:
 
-                if not pd.isnull(policies[independent_measure]) and t_actual > \
-                        policies[independent_measure]:
-                    rho_this_t -= distancing_measure_suppression[
-                        independent_measure]
+                if (
+                    not pd.isnull(policies[independent_measure])
+                    and t_actual > policies[independent_measure]
+                ):
+                    rho_this_t -= distancing_measure_suppression[independent_measure]
 
             # Only take the max of these, since 500 doesn't matter if 50 is enacted.
-            if not pd.isnull(policies['50_gatherings']) and t_actual > policies['50_gatherings']:
-                rho_this_t -= distancing_measure_suppression['50_gatherings']
-            elif not pd.isnull(policies['500_gatherings']) and t_actual > policies['500_gatherings']:
-                rho_this_t -= distancing_measure_suppression['500_gatherings']
+            if (
+                not pd.isnull(policies["50_gatherings"])
+                and t_actual > policies["50_gatherings"]
+            ):
+                rho_this_t -= distancing_measure_suppression["50_gatherings"]
+            elif (
+                not pd.isnull(policies["500_gatherings"])
+                and t_actual > policies["500_gatherings"]
+            ):
+                rho_this_t -= distancing_measure_suppression["500_gatherings"]
 
             # If lockdown, then we don't care about any others, just set to
             # future suppression.
-            if pd.isnull(policies['stay_at_home']) and t_actual > policies['stay_at_home']:
+            if (
+                pd.isnull(policies["stay_at_home"])
+                and t_actual > policies["stay_at_home"]
+            ):
                 rho_this_t = future_suppression
             rho.append(rho_this_t)
 
-    t_list_since_reference_date = t_list + (pd.to_datetime(t0) - pd.to_datetime(reference_start_date)).days
+    t_list_since_reference_date = (
+        t_list + (pd.to_datetime(t0) - pd.to_datetime(reference_start_date)).days
+    )
 
-    return interp1d(t_list_since_reference_date, rho, fill_value='extrapolate')
+    return interp1d(t_list_since_reference_date, rho, fill_value="extrapolate")
 
 
-def generate_empirical_distancing_policy_by_state(t_list, state, future_suppression, reference_start_date=None):
+def generate_empirical_distancing_policy_by_state(
+    t_list, state, future_suppression, reference_start_date=None
+):
     """
     Produce a suppression policy at state level based on Imperial College
     estimates of social distancing programs combined with County level
@@ -297,22 +319,27 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     """
     county_metadata = load_county_metadata()
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
-    
+
     if reference_start_date is None:
         reference_start_date = min([infer_t0(fips) for fips in counties_fips])
 
     # Aggregate the counties to the state level, weighted by population.
-    weight = county_metadata.loc[county_metadata.state == state, 'total_population'].values
+    weight = county_metadata.loc[
+        county_metadata.state == state, "total_population"
+    ].values
     weight = weight / weight.sum()
     results = []
     for fips in counties_fips:
         suppression_policy = generate_empirical_distancing_policy(
-            fips=fips, t_list=t_list, future_suppression=future_suppression,
-            reference_start_date=reference_start_date)
+            fips=fips,
+            t_list=t_list,
+            future_suppression=future_suppression,
+            reference_start_date=reference_start_date,
+        )
         results.append(suppression_policy(t_list).clip(max=1, min=0))
     results_for_state = (np.vstack(results).T * weight).sum(axis=1)
 
-    return interp1d(t_list, results_for_state, fill_value='extrapolate')
+    return interp1d(t_list, results_for_state, fill_value="extrapolate")
 
 
 def piecewise_parametric_policy(x, t_list):
@@ -339,11 +366,15 @@ def piecewise_parametric_policy(x, t_list):
     split_power_law = x[0]
     suppression_levels = x[1:]
     period = int(np.max(t_list) - np.min(t_list))
-    periods = np.array([(t + 1) ** split_power_law for t in range(len(suppression_levels))])
+    periods = np.array(
+        [(t + 1) ** split_power_law for t in range(len(suppression_levels))]
+    )
     periods = (periods / periods.sum() * period).cumsum()
     periods[-1] += 0.001  # Prevents floating point errors.
-    suppression_levels = [suppression_levels[np.argwhere(t <= periods)[0][0]] for t in t_list]
-    policy = interp1d(t_list, suppression_levels, fill_value='extrapolate')
+    suppression_levels = [
+        suppression_levels[np.argwhere(t <= periods)[0][0]] for t in t_list
+    ]
+    policy = interp1d(t_list, suppression_levels, fill_value="extrapolate")
     return policy
 
 
@@ -371,8 +402,13 @@ def fourier_parametric_policy(x, t_list, suppression_bounds=(0.5, 1.5)):
     """
     frequency_domain = np.zeros(len(t_list))
     frequency_domain[0] = (3 * (t_list.max() - t_list.min()) / 4) * x[0]
-    frequency_domain[1:len(x)] = x[1:]
-    time_domain = np.fft.ifft(frequency_domain).real + np.fft.ifft(frequency_domain).imag
+    frequency_domain[1 : len(x)] = x[1:]
+    time_domain = (
+        np.fft.ifft(frequency_domain).real + np.fft.ifft(frequency_domain).imag
+    )
 
-    return interp1d(t_list, time_domain.clip(min=suppression_bounds[0], max=suppression_bounds[1]),
-                    fill_value='extrapolate')
+    return interp1d(
+        t_list,
+        time_domain.clip(min=suppression_bounds[0], max=suppression_bounds[1]),
+        fill_value="extrapolate",
+    )
