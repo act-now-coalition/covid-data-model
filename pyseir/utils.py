@@ -21,6 +21,7 @@ class RunArtifact(Enum):
 
     WEB_UI_RESULT = 'web_ui_result'
 
+
 def get_run_artifact_path(fips, artifact, output_dir=OUTPUT_DIR):
     """
     Get an artifact path for a given locale and artifact type.
@@ -72,7 +73,7 @@ def get_run_artifact_path(fips, artifact, output_dir=OUTPUT_DIR):
         else:
             path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'{state_obj.name}__{fips}__ensemble_projections.json')
 
-    elif artifact is RunArtifact.ENSEMBLE_RESULT:
+    elif artifact is RunArtifact.ENSEMBLE_REPORT:
         if agg_level is AggregationLevel.COUNTY:
             path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'{state_obj.name}__{county}__{fips}__ensemble_projections.pdf')
         else:

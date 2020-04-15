@@ -131,8 +131,8 @@ class ModelFitter:
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
-            self.geo_metadata = \
-            load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+            self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+
             self.state = self.geo_metadata['state']
             self.state_obj = us.states.lookup(self.state)
             self.county = self.geo_metadata['county']
