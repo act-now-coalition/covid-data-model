@@ -25,7 +25,10 @@ PROD_BUCKET = "data.covidactnow.org"
     help="Input directory of county projections",
 )
 @click.option(
-    "--output", "-o", default="results/output/counties", help="Output directory for artifacts",
+    "--output",
+    "-o",
+    default="results/output/counties",
+    help="Output directory for artifacts",
 )
 def deploy_counties_api(disable_validation, input_dir, output):
     """The entry function for invocation"""
@@ -37,7 +40,7 @@ def deploy_counties_api(disable_validation, input_dir, output):
             intervention,
             run_validation=not disable_validation,
         )
-        county_results_api = api_pipeline.generate_api(county_result)
+        county_results_api = api_pipeline.generate_api(county_result, input_dir)
         api_pipeline.deploy_results(county_results_api, output)
 
         logger.info("finished top counties job")
