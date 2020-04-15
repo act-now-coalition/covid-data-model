@@ -600,7 +600,7 @@ class ModelFitter:
         plt.savefig(output_file.replace('mle_fit_results', 'mle_fit_model'), bbox_inches='tight')
 
     @classmethod
-    def run_for_fips(cls, fips):
+    def run_for_fips(cls, fips, n_retries=3):
         """
         Run the model fitter for a state or county fips code.
 
@@ -608,6 +608,10 @@ class ModelFitter:
         ----------
         fips: str
             2-digit state or 5-digit county fips code.
+        n_retries: int
+            The model fitter is stochastic in nature and a seed cannot be set.
+            This is a bandaid until more sophisticated retries can be
+            implemented.
 
         Returns
         -------
@@ -616,14 +620,18 @@ class ModelFitter:
         # Assert that there are some cases for counties
         if len(fips) == 5:
             _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
-                fips, t0=datetime.utcnow())
+                fips, t0=datetime.today())
             if observed_new_cases.sum() < 1:
                 return None
 
         try:
-            model_fitter = cls(fips)
-            model_fitter.fit()
-            model_fitter.plot_fitting_results()
+            for i in range(n_retries):
+                model_fitter = cls(fips)
+                model_fitter.fit()
+                if model_fitter.mle_model:
+                    model_fitter.plot_fitting_results()
+                    break
+
         except Exception:
             logging.exception(f"Failed to run {fips}")
             return None
