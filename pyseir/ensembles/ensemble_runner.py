@@ -320,7 +320,6 @@ class EnsembleRunner:
                 parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
                 model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
-            logging.info(f'Generating outputs for {suppression_policy_name}')
             if self.agg_level is AggregationLevel.COUNTY:
                 self.all_outputs['county_metadata'] = self.county_metadata
                 self.all_outputs['county_metadata']['age_distribution'] = list(self.all_outputs['county_metadata']['age_distribution'])
@@ -329,7 +328,6 @@ class EnsembleRunner:
             self.all_outputs[f'{suppression_policy_name}'] = self._generate_output_for_suppression_policy(model_ensemble)
 
         if self.generate_report and self.output_file_report:
-            logging.info(f'Generating report for {self.state_name} {self.fips}')
             report = CountyReport(self.fips,
                                   model_ensemble=model_ensemble,
                                   county_outputs=self.all_outputs,

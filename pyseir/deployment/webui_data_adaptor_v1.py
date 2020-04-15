@@ -33,14 +33,7 @@ class WebUIDataAdaptorV1:
         self.state = state
         self.run_mode = run_mode
         self.include_imputed = include_imputed
-
-        # output_dir = output_dir or OUTPUT_DIR
-        # self.county_output_dir = os.path.join(output_dir, 'web_ui', 'county')
-        # self.state_output_dir = os.path.join(output_dir, 'web_ui', 'state')
         self.state_abbreviation = us.states.lookup(state).abbr
-
-        # os.makedirs(self.county_output_dir, exist_ok=True)
-        # os.makedirs(self.state_output_dir, exist_ok=True)
         self.population_data = FIPSPopulation.local().population()
 
         self.jhu_local = jhu_dataset or JHUDataset.local()
