@@ -26,6 +26,7 @@ nyt_dataset = None
 cds_dataset = None
 
 DEFAULT_RUN_MODE = 'can-before-hospitalization-new-params'
+ALL_STATES = [state_obj.name for state_obj in us.STATES]
 
 
 def _cache_global_datasets():
@@ -54,8 +55,8 @@ def _impute_start_dates(state=None, states_only=False):
     if state:
         generate_start_times_for_state(state=state)
     else:
-        for state_obj in us.STATES:
-            _impute_start_dates(state_obj.name)
+        for state_name in ALL_STATES:
+            _impute_start_dates(state_name)
 
 
 def _run_mle_fits(state=None, states_only=False):
@@ -63,16 +64,16 @@ def _run_mle_fits(state=None, states_only=False):
     if state:
         model_fitter.run_state(state, states_only=states_only)
     else:
-        for state_obj in us.STATES:
-            _run_mle_fits(state=state_obj.name, states_only=states_only)
+        for state_name in ALL_STATES:
+            _run_mle_fits(state=state_name, states_only=states_only)
 
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
     if state:
         run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
     else:
-        for state_obj in us.STATES:
-            run_state(state_obj.name, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
+        for state_name in ALL_STATES:
+            run_state(state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
 
 
 def _generate_state_reports(state=None):
@@ -80,8 +81,8 @@ def _generate_state_reports(state=None):
         report = StateReport(state)
         report.generate_report()
     else:
-        for state_obj in us.STATES:
-            _generate_state_reports(state_obj.name)
+        for state_name in ALL_STATES:
+            _generate_state_reports(state_name)
 
 
 def _map_outputs(state=None, output_interval_days=4, states_only=False,
@@ -94,12 +95,12 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
                                            cds_dataset=cds_dataset, output_dir=output_dir)
         web_ui_mapper.generate_state(states_only=states_only)
     else:
-        for state_obj in us.STATES:
-            _map_outputs(state_obj.name, output_interval_days, states_only=states_only,
+        for state_name in ALL_STATES:
+            _map_outputs(state_name, output_interval_days, states_only=states_only,
                          run_mode=run_mode, output_dir=output_dir)
 
 
-def _run_all(state=None, run_mode='default', generate_reports=True, output_interval_days=4,
+def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
              skip_download=False, states_only=False, output_dir=None):
 
     _cache_global_datasets()
@@ -135,22 +136,22 @@ def _run_all(state=None, run_mode='default', generate_reports=True, output_inter
                 generate_reports=generate_reports,
                 output_interval_days=output_interval_days,
                 skip_download=True,
-                states_only=states_only,
+                states_only=True,
                 output_dir=output_dir
             )
             p = Pool()
-            p.map(f, [state_obj.name for state_obj in us.STATES])
+            p.map(f, ALL_STATES)
             p.close()
 
         else:
-            for state_obj in us.STATES:
+            for state_name in ALL_STATES:
                 _run_all(
-                    state_obj.name,
+                    state_name,
                     run_mode,
                     generate_reports,
                     output_interval_days,
                     skip_download=True,
-                    states_only=states_only,
+                    states_only=False,
                     output_dir=output_dir
                 )
 

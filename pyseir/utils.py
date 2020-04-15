@@ -33,7 +33,7 @@ class RunArtifact(Enum):
     WEB_UI_RESULT = 'web_ui_result'
 
 
-def get_run_artifact_path(fips, artifact, output_dir=OUTPUT_DIR):
+def get_run_artifact_path(fips, artifact, output_dir=None):
     """
     Get an artifact path for a given locale and artifact type.
 
@@ -43,7 +43,7 @@ def get_run_artifact_path(fips, artifact, output_dir=OUTPUT_DIR):
         State or county fips code. Can also be a 2 character state abbreviation.
     artifact: RunArtifact
         The artifact type to retrieve the pointer for.
-    output_dir: str
+    output_dir: str or NoneType
         Output directory to obtain the path for.
 
     Returns
@@ -60,40 +60,44 @@ def get_run_artifact_path(fips, artifact, output_dir=OUTPUT_DIR):
 
     artifact = RunArtifact(artifact)
 
+    output_dir = output_dir or OUTPUT_DIR
+
     if artifact is RunArtifact.MLE_FIT_REPORT:
         if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'{state_obj.name}__{county}__{fips}__mle_fit_results.pdf')
+            path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'mle_fit_results__{state_obj.name}__{county}__{fips}.pdf')
         else:
-            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'{state_obj.name}__{fips}__mle_fit_results.pdf')
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'reports', f'mle_fit_results__{state_obj.name}__{fips}.pdf')
 
     elif artifact is RunArtifact.MLE_FIT_RESULT:
         if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'summary__{state_obj.name}_state_only__mle_fit_results.json')
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'data', f'mle_fit_results__{state_obj.name}_counties.json')
         else:
-            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'summary__{state_obj.name}_counties__mle_fit_results.json')
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'data', f'mle_fit_results__{state_obj.name}_state_only.json')
 
     elif artifact is RunArtifact.MLE_FIT_MODEL:
         if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(DATA_FOLDER(output_dir, state_obj.name), f'summary__{state_obj.name}_state_only__mle_fit_results.json')
+            path = os.path.join(DATA_FOLDER(output_dir, state_obj.name), f'mle_fit_model__{state_obj.name}__{county}__{fips}.pkl')
         else:
-            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'summary__{state_obj.name}_state_only__mle_fit_model.pkl')
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'data', f'mle_fit_model__{state_obj.name}_state_only.pkl')
 
     elif artifact is RunArtifact.ENSEMBLE_RESULT:
         if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(DATA_FOLDER(output_dir, state_obj.name), f'{state_obj.name}__{county}__{fips}__ensemble_projections.json')
+            path = os.path.join(DATA_FOLDER(output_dir, state_obj.name), f'ensemble_projections__{state_obj.name}__{county}__{fips}.json')
         else:
-            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'{state_obj.name}__{fips}__ensemble_projections.json')
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'data', f'ensemble_projections__{state_obj.name}__{fips}.json')
 
     elif artifact is RunArtifact.ENSEMBLE_REPORT:
         if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'{state_obj.name}__{county}__{fips}__ensemble_projections.pdf')
+            path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'ensemble_projections__{state_obj.name}__{county}__{fips}.pdf')
         else:
-            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), f'{state_obj.name}__{fips}__ensemble_projections.pdf')
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'reports', f'ensemble_projections__{state_obj.name}__{fips}.pdf')
 
     elif artifact is RunArtifact.WEB_UI_RESULT:
         if agg_level is AggregationLevel.COUNTY:
+
             path = os.path.join(WEB_UI_FOLDER(output_dir), 'county', f'{state_obj.abbr}.{fips}.__INTERVENTION_IDX__.json')
         else:
+            print(output_dir, state_obj.abbr, fips)
             path = os.path.join(WEB_UI_FOLDER(output_dir), 'state', f'{state_obj.abbr}.__INTERVENTION_IDX__.json')
 
     else:
