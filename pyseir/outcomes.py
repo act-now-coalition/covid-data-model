@@ -84,7 +84,7 @@ class OutcomesSampler:
                 parameters[p.parameter_name] = v
         
         model = self._evaluate_model(parameters)
-        outcomes = {f.__name__: f(model.results[k.split("-")[0]]) for k, f in outcome_f.items()}
+        outcomes = {k: f(model.results[k.split("-")[0]]) for k, f in outcome_f.items()}
         return outcomes
 
     def get_outcomes(self, outcome_fs: Dict[str, Callable]) -> pd.DataFrame:
