@@ -24,6 +24,14 @@ from libs.datasets import JHUDataset
 
 _logger = logging.getLogger(__name__)
 
+def _get_or_make_directory(*path): 
+    current_path_pieces = []
+    for path_piece in path: 
+        current_path = os.path.join(*current_path_pieces, path_piece)
+        if not os.path.exists(current_path): 
+            os.mkdir(current_path)
+        current_path_pieces.append(path_piece)
+    return os.path.join(*current_path_pieces)
 
 class RunMode(Enum):
     # Read params from the parameter sampler default and use empirical
@@ -93,7 +101,7 @@ class EnsembleRunner:
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
-        self.output_dir = output_dir or os.path.join(OUTPUT_DIR, 'pyseir')
+        self.output_dir = output_dir or _get_or_make_directory(OUTPUT_DIR, 'pyseir')
         os.makedirs(self.output_dir, exist_ok=True)
 
         if self.agg_level is AggregationLevel.COUNTY:
@@ -101,9 +109,11 @@ class EnsembleRunner:
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
             self.state_name = us.states.lookup(self.county_metadata['state']).name
 
-            self.output_file_report = os.path.join(self.output_dir, self.state_name, 'reports',
+            output_reports_dir = _get_or_make_directory(self.output_dir, self.state_name, 'reports')
+            self.output_file_report = os.path.join(output_reports_dir,
                 f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf")
-            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
+            output_data_dir = _get_or_make_directory(self.output_dir, self.state_name, 'data')
+            self.output_file_data = os.path.join(output_data_dir,
                 f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
         else:
@@ -111,7 +121,8 @@ class EnsembleRunner:
             self.state_name = us.states.lookup(self.fips).name
 
             self.output_file_report = None
-            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
+            output_data_dir = _get_or_make_directory(self.output_dir, self.state_name, 'data')
+            self.output_file_data = os.path.join(output_data_dir,
                 f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
 
         county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
@@ -314,7 +325,7 @@ class EnsembleRunner:
             if suppression_policy_name == 'suppression_policy__inferred':
                 if self.agg_level is AggregationLevel.STATE:
                     # TODO: Move this to a callable to be consistent with model fitter.
-                    state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
+                    state_output_dir = _get_or_make_directory(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
                     with open(os.path.join(state_output_dir, f'summary_{self.state_name}_state_only__mle_fit_results.pkl'), 'rb') as f:
                         model_ensemble = [pickle.load(f)]
                 else:
