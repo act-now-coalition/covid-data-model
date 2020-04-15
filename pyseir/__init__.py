@@ -19,8 +19,9 @@ def divide_up_pool():
     total = os.cpu_count()
     if total < 20:
         return total, 1
-    return math.floor(total / 4), 4
-
+    if total < 52:
+        return math.floor(total/4), 4
+    return math.floor(total/8), 8
 
 class NoDaemonProcess(multiprocessing.Process):
     # make 'daemon' attribute always return False

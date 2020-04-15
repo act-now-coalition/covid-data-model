@@ -18,7 +18,7 @@ root = logging.getLogger()
 root.setLevel(logging.INFO)
 
 # handler = logging.StreamHandler(sys.stdout)
-handler = logging.FileHandler('myapp.log')
+handler = logging.FileHandler('~/myapp.log')
 handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
     "%(asctime)s - %(filename)s - %(lineno)d - %(levelname)s - %(message)s"
@@ -141,19 +141,19 @@ def _run_all(
         if not states_only:
             _impute_start_dates(state)
         _run_mle_fits(state, states_only=states_only)
-        # _run_ensembles(
-        #     state,
-        #     ensemble_kwargs=dict(
-        #         run_mode=run_mode,
-        #         generate_report=generate_reports,
-        #         covid_timeseries=nyt_dataset
-        #     ),
-        #     states_only=states_only
-        # )
-        # if generate_reports:
-        #     _generate_state_reports(state)
-        # _map_outputs(state, output_interval_days, states_only=states_only,
-        #              output_dir=output_dir, run_mode=run_mode)
+        _run_ensembles(
+            state,
+            ensemble_kwargs=dict(
+                run_mode=run_mode,
+                generate_report=generate_reports,
+                covid_timeseries=nyt_dataset
+            ),
+            states_only=states_only
+        )
+        if generate_reports:
+            _generate_state_reports(state)
+        _map_outputs(state, output_interval_days, states_only=states_only,
+                     output_dir=output_dir, run_mode=run_mode)
     else:
         if states_only:
             f = partial(
@@ -167,12 +167,12 @@ def _run_all(
             )
             states_at_a_time = divide_up_pool()[1]
             pool = Pool(states_at_a_time)
-            pool.starmap(f, [state_obj.name for state_obj in us.STATES])
+            pool.starmap_async(f, [state_obj.name for state_obj in us.STATES])
             pool.close()
             pool.join()
 
         else:
-            root.info(f'breakitup ')
+            root.info(f'break up the states')
             state_args = []
             for state_obj in us.STATES:
                 args = (
@@ -190,7 +190,7 @@ def _run_all(
             states_at_a_time = divide_up_pool()[1]
             root.info(states_at_a_time)
             pool = Pool(states_at_a_time)
-            pool.starmap(_run_all, state_args)
+            pool.starmap_async(_run_all, state_args)
             pool.close()
             pool.join()
 
