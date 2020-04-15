@@ -105,4 +105,3 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return path
-
