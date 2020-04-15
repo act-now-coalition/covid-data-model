@@ -59,10 +59,9 @@ class ModelFitter:
         log10_I_initial=2, limit_log10_I_initial=[0, 5],
         error_log10_I_initial=.2,
         t0=60, limit_t0=[10, 80], error_t0=1.0,
-        eps=.3, limit_eps=[.15, 2], error_eps=.005,
+        eps=.4, limit_eps=[.15, 2], error_eps=.005,
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
-        test_fraction=.1, limit_test_fraction=[0.02, 1],
-        error_test_fraction=.02,
+        test_fraction=.1, limit_test_fraction=[0.02, 1], error_test_fraction=.02,
         hosp_fraction=1, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
         # Let's not fit this to start...
         errordef=.5
@@ -153,6 +152,8 @@ class ModelFitter:
                 self.fit_params.update(v)
 
         self.fit_params['fix_hosp_fraction'] = self.hospitalizations is None
+        if self.hospitalizations is None:
+            self.fit_params['hosp_fraction'] = 1
 
         self.model_fit_keys = ['R0', 'eps', 't_break', 'log10_I_initial']
 
@@ -438,6 +439,10 @@ class ModelFitter:
         # This just updates chi2 values
         self._fit_seir(**dict(minuit.values))
 
+        if self.fit_results['eps'] < 0.01:
+            raise RuntimeError(f'Fit failed for {self.state, self.fips}: '
+                               f'Epsilon == 0 which implies lack of convergence.')
+
         # TODO: Add confidence intervals here.
         self.fit_results['eps'] = self.get_posterior_estimate_eps(
             R0=self.fit_results['R0'], eps=self.fit_results['eps'],
@@ -451,10 +456,6 @@ class ModelFitter:
         self.fit_results['t_today'] = (datetime.today() - self.ref_date).days
 
         self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
-
-        if self.fit_results['eps'] == 0.0:
-            logging.error(f'Fit failed for {self.state, self.fips}: '
-                          f'Epsilon == 0 which implies lack of convergence.')
 
         self.fit_results['chi2_cases'] = self.chi2_cases
         if self.hospitalizations is not None:
@@ -627,11 +628,15 @@ class ModelFitter:
         try:
             for i in range(n_retries):
                 model_fitter = cls(fips)
-                model_fitter.fit()
-                if model_fitter.mle_model and model_fitter.fit_results['eps'] != 0:
-                    model_fitter.plot_fitting_results()
-                    break
-
+                try:
+                    model_fitter.fit()
+                    if model_fitter.mle_model:
+                        model_fitter.plot_fitting_results()
+                        break
+                except RuntimeError as e:
+                    logging.warning('No convergence.. Retrying ' + str(e))
+            if model_fitter.mle_model is None:
+                raise RuntimeError(f'Could not converge after {n_retries} for fips {fips}')
         except Exception:
             logging.exception(f"Failed to run {fips}")
             return None
