@@ -28,3 +28,4 @@ fastparquet
 us
 adtk
 -e .
+pydantic==1.4

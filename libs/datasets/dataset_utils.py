@@ -3,7 +3,7 @@ import enum
 import logging
 import pathlib
 import pandas as pd
-from libs import build_params
+from libs.us_state_abbrev import US_STATE_ABBREV
 
 if os.getenv("COVID_DATA_PUBLIC"):
     LOCAL_PUBLIC_DATA_PATH = pathlib.Path(os.getenv("COVID_DATA_PUBLIC"))
@@ -22,7 +22,6 @@ class AggregationLevel(enum.Enum):
 
 
 class DuplicateValuesForIndex(Exception):
-
     def __init__(self, index, duplicate_data):
         self.index = index
         self.data = duplicate_data
@@ -57,7 +56,7 @@ def parse_state(state):
         return state
     state_split = [val.strip() for val in state.split(",")]
     state = state_split[1] if len(state_split) == 2 else state_split[0]
-    return build_params.US_STATE_ABBREV.get(state, state)
+    return US_STATE_ABBREV.get(state, state)
 
 
 def plot_grouped_data(data, group, series="source", values="cases"):
@@ -140,9 +139,7 @@ def compare_datasets(
     contains_both = contains_both.reset_index()
     values_matching = contains_both[first_name] == contains_both[other_name]
     not_matching = contains_both[~values_matching]
-    not_matching["delta"] = (
-        contains_both[first_name] - contains_both[other_name]
-    )
+    not_matching["delta"] = contains_both[first_name] - contains_both[other_name]
     not_matching["delta_ratio"] = (
         contains_both[first_name] - contains_both[other_name]
     ) / contains_both[first_name]
@@ -195,14 +192,23 @@ def build_fips_data_frame():
 
 
 def add_county_using_fips(data, fips_data):
+    is_county = data.aggregate_level == AggregationLevel.COUNTY.value
+    # Only want to add county names to county level data, so we'll slice out the county
+    # data and combine it back at the end.
+    not_county_df = data[~is_county]
+    data = data[is_county]
+    fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
+
     data = data.set_index(["fips", "state"])
     fips_data = fips_data.set_index(["fips", "state"])
-    data = data.join(fips_data[["county"]], on=["fips", "state"], rsuffix="_r").reset_index()
+    data = data.join(
+        fips_data[["county"]], on=["fips", "state"], rsuffix="_r"
+    ).reset_index()
     is_missing_county = data.county.isnull() & data.fips.notnull()
 
-    data.loc[is_missing_county, 'county'] = (
-        data.loc[is_missing_county, 'county'].fillna('')
-    )
+    data.loc[is_missing_county, "county"] = data.loc[
+        is_missing_county, "county"
+    ].fillna("")
     non_matching = data[is_missing_county]
 
     # Not all datasources have country.  If the dataset doesn't have country,
@@ -216,12 +222,13 @@ def add_county_using_fips(data, fips_data):
         _logger.warning(f"{unique_fips}")
 
     if "county_r" in data.columns:
-        return data.drop("county").rename({"count_r": "county"}, axis=1)
-    return data
+        data = data.drop(columns="county").rename({"county_r": "county"}, axis=1)
+
+    return pd.concat([data, not_county_df])
 
 
-def assert_counties_have_fips(data, county_key='county', fips_key='fips'):
-    is_county = data['aggregate_level'] == AggregationLevel.COUNTY.value
+def assert_counties_have_fips(data, county_key="county", fips_key="fips"):
+    is_county = data["aggregate_level"] == AggregationLevel.COUNTY.value
     is_fips_null = is_county & data[fips_key].isnull()
     if sum(is_fips_null):
         print(data[is_fips_null])
@@ -263,7 +270,7 @@ def summarize(data, aggregate_level, groupby):
     # Standardizes the length metrics line up
     key_fmt = "{:20} {}"
 
-    data = data[data['aggregate_level'] == aggregate_level.value]
+    data = data[data["aggregate_level"] == aggregate_level.value]
     missing_fips = sum(data.fips.isna())
     index_size = data.groupby(groupby).size()
     non_unique = index_size > 1

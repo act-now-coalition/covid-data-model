@@ -120,8 +120,7 @@ class ModelFitter:
             self.agg_level = AggregationLevel.STATE
             self.state_obj = us.states.lookup(self.fips)
             self.state = self.state_obj.name
-            self.geo_metadata = \
-            load_data.load_county_metadata_by_state(self.state.title()).loc[self.state.title()].to_dict()
+            self.geo_metadata = load_data.load_county_metadata_by_state(self.state).loc[self.state].to_dict()
 
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_state(self.state, self.ref_date)
@@ -132,11 +131,13 @@ class ModelFitter:
         else:
             self.agg_level = AggregationLevel.COUNTY
             self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
-
             self.state = self.geo_metadata['state']
             self.state_obj = us.states.lookup(self.state)
             self.county = self.geo_metadata['county']
-            self.display_name = self.county + ', ' + self.state
+            if self.county:
+                self.display_name = self.county + ', ' + self.state
+            else:
+                self.display_name = self.state
             # TODO Swap for new data source.
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
@@ -514,7 +515,8 @@ class ModelFitter:
                  label='Model Deaths Per Day', color='firebrick', lw=4)
 
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
-            new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
+            new_hosp_observed = self.hospitalizations[
+                                1:] - self.hospitalizations[:-1]
             plt.errorbar(hosp_dates[1:], new_hosp_observed, yerr=hosp_stdev,
                          marker='s', linestyle='',
                          label='Observed New Hospitalizations Per Day',
@@ -652,7 +654,6 @@ def run_state(state, states_only=False):
 
     # Run the counties.
     if not states_only:
-
         df = load_data.load_county_metadata()
         all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips.values
         p = Pool()
