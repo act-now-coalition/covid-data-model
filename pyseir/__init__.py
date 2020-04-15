@@ -20,7 +20,7 @@ def divide_up_pool():
     if total < 20:
         return total, 1
     # if total < 52:
-    return math.floor(total/4), 4
+    return math.floor(total/10), 10
     #return math.floor(total/8), 8
 
 class NoDaemonProcess(multiprocessing.Process):

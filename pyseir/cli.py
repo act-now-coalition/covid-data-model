@@ -128,11 +128,11 @@ def _run_all(
     states_only=False,
     output_dir=None,
 ):
-    #_cache_global_datasets()
+    _cache_global_datasets()
 
 
-    #if not skip_download:
-    #    cache_all_data()
+    if not skip_download:
+       cache_all_data()
 
     root.info(f'the state is [{state}]')
     root.info(f'the states_only is [{states_only}]')
@@ -167,7 +167,7 @@ def _run_all(
             )
             states_at_a_time = divide_up_pool()[1]
             pool = Pool(states_at_a_time)
-            pool.starmap_async(f, [state_obj.name for state_obj in us.STATES])
+            pool.starmap(f, [state_obj.name for state_obj in us.STATES])
             pool.close()
             pool.join()
 
@@ -182,15 +182,15 @@ def _run_all(
                     output_interval_days,  #'output_interval_days':
                     True,  #'skip_download':
                     states_only,  #'states_only':
-                    output_dir,
-                )  #'output_dir':
+                    output_dir, #'output_dir':
+                )
                 root.info(f'args {args}')
                 state_args.append(args)
 
             states_at_a_time = divide_up_pool()[1]
             root.info(states_at_a_time)
             pool = Pool(states_at_a_time)
-            pool.starmap_async(_run_all, state_args)
+            pool.starmap(_run_all, state_args)
             pool.close()
             pool.join()
 
