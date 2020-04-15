@@ -82,7 +82,8 @@ class ParameterEnsembleGeneratorAge:
             - hospitalization_rate_icu
             - mortality_rate
         """
-        age_bin_edges = self.contact_matrix_data[self.fips]['age_bin_edges']
+        age_bin_edges = self.contact_matrix_data[self.fips]['age_bin_edges'].copy()
+        age_bin_edges.append(120)
         age_bin_centers = (np.array(age_bin_edges[1:]) + np.array(age_bin_edges[:-1])) / 2
 
         for suffix in ['_hgen', '_icu', '_fatility']:
@@ -170,7 +171,8 @@ class ParameterEnsembleGeneratorAge:
                 HICUVent_initial=HICUVent_initial,
                 suppression_policy=self.suppression_policy,
                 age_bin_edges=age_bin_edges,
-                contact_matrix=np.random.normal(loc=contact_matrix, scale=contact_matrix/10).clip(min=0),
+                contact_matrix=np.random.normal(loc=contact_matrix,
+                                                scale=contact_matrix/10).clip(min=0),
                 R0=np.random.uniform(low=3.2, high=4),
                 R0_hospital=np.random.uniform(low=3.2 / 6, high=4 / 6),
                 # These parameters produce an IFR ~0.0065 if we had infinite
