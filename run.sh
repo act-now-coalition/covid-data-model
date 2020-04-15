@@ -54,13 +54,30 @@ execute() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
-  echo ">>> Generating state models to ${API_OUTPUT_DIR}"
+  echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-  ./run.py model state -o "${API_OUTPUT_DIR}" > /dev/null
+  pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" > /dev/null
 
-  echo ">>> Generating county models to ${API_OUTPUT_DIR}/county"
+  # Move state output to the expected location.
+  mkdir -p ${API_OUTPUT_STATES}/
+  mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_STATES}/
+
+  # Move county output to the expected location.
+  mkdir -p ${API_OUTPUT_COUNTIES}/
+  mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_COUNTIES}/
+
+  # Clean up original output directories.
+  rmdir ${API_OUTPUT_DIR}/web_ui/state/
+  rmdir ${API_OUTPUT_DIR}/web_ui/county/
+  rmdir ${API_OUTPUT_DIR}/web_ui/
+
+  # Previous method for invoking the original Python SEIR model follows.
+  #./run.py model state -o "${API_OUTPUT_DIR}" > /dev/null
+  #./run.py model county -o "${COUNTIES_DIR}" > /dev/null
+
+  # echo ">>> Generating county models to ${API_OUTPUT_DIR}/county"
   # TODO(#148): We need to clean up the output of these scripts!
-  ./run.py model county -o "${API_OUTPUT_DIR}/county" > /dev/null
+  # ./run.py model county -o "${API_OUTPUT_DIR}/county" > /dev/null
 
   echo ">>> Generating county summaries to ${COUNTY_SUMMARIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
