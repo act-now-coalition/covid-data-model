@@ -97,7 +97,6 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
 
             path = os.path.join(WEB_UI_FOLDER(output_dir), 'county', f'{state_obj.abbr}.{fips}.__INTERVENTION_IDX__.json')
         else:
-            print(output_dir, state_obj.abbr, fips)
             path = os.path.join(WEB_UI_FOLDER(output_dir), 'state', f'{state_obj.abbr}.__INTERVENTION_IDX__.json')
 
     else:

@@ -109,10 +109,8 @@ class WebUIDataAdaptorV1:
         """
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
-            # output_dir = self.county_output_dir
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
-            # output_dir = self.state_output_dir
 
         logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
         pyseir_outputs = load_data.load_ensemble_results(fips)
