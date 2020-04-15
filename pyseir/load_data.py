@@ -566,7 +566,7 @@ def load_contact_matrix_data_by_fips(fips):
     Load contact matrix for given fips.
     """
 
-    fips = [fips] if not isinstance(fips, list) else fips
+    fips = [fips] if isinstance(fips, str) else list(fips)
     state_abbr = us.states.lookup(fips[0][:2]).abbr
     path = os.path.join(DATA_DIR, 'contact_matrix', 'contact_matrix_fips_%s.json' % state_abbr)
     contact_matrix_data = json.loads(open(path).read())
