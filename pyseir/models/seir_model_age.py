@@ -101,6 +101,8 @@ class SEIRModelAge:
             Birth per capita per day
         natural_death_rate : float
             Fatility rate due to natural cause.
+        max_age: int
+            Age upper limit.
         age_steps : np.array
             Time people spend in each age group.
             Last age bin edge is assumed to be 120 years old.
@@ -195,20 +197,19 @@ class SEIRModelAge:
         # Create age steps and groups to define age compartments
         self.age_steps = np.array(age_bin_edges)[1:] - np.array(age_bin_edges)[:-1]
         self.age_steps *= 365  # the model is using day as time unit
-        self.age_steps = np.append(self.age_steps, 120 * 365 - age_bin_edges[-1])
+        self.age_steps = np.append(self.age_steps, max_age * 365 - age_bin_edges[-1])
         self.age_groups = list(zip(list(age_bin_edges[:-1]), list(age_bin_edges[1:])))
         self.age_groups.append((age_bin_edges[-1], max_age))
 
         # Epidemiological Parameters
         self.R0 = R0                    # Reproduction Number
         self.R0_hospital = R0_hospital  # Reproduction Number
-        self.sigma = sigma              # Latent Period = 1 / incubation
         self.delta = delta              # 1 / infectious period
         self.delta_hospital = delta_hospital
+        self.beta_hospital = self.R0_hospital * self.delta_hospital
+        self.sigma = sigma  # Latent Period = 1 / incubation
         self.gamma = gamma              # Clinical outbreak rate
         self.kappa = kappa              # Discount fraction due to isolation of symptomatic cases.
-
-        self.beta_hospital = self.R0 * self.delta_hospital
 
         self.contact_matrix = np.array(contact_matrix)
         self.symptoms_to_hospital_days = symptoms_to_hospital_days
