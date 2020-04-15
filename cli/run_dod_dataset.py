@@ -11,9 +11,10 @@ PROD_BUCKET = "data.covidactnow.org"
 
 @click.command('deploy-dod')
 @click.option('--disable-validation', is_flag=True, help='Disable validation of generated projection files')
-@click.option('--input-dir', '-i', default='results', help='Input directory of state/county projections')
+@click.option('--input-state-dir', '-is', default='results/state', help='Input directory of state projections')
+@click.option('--input-county-dir', '-ic', default='results/county', help='Input directory of county projections')
 @click.option('--output', '-o', default='results/dod', help='Output directory for artifacts')
-def deploy_dod_projections(disable_validation, input_dir, output):
+def deploy_dod_projections(disable_validation, input_state_dir, input_county_dir, output):
 
     """Generates and runs dod data projections from model outputs.
 
@@ -33,7 +34,7 @@ def deploy_dod_projections(disable_validation, input_dir, output):
         logger.info(f"Starting to generate files for {intervention.name}.")
 
         state_result, county_result = dod_pipeline.run_projections(
-            input_dir, intervention, run_validation=not disable_validation
+            input_state_dir, input_county_dir, intervention, run_validation=not disable_validation
         )
         dod_pipeline.deploy_results(state_result, output)
         dod_pipeline.deploy_results(county_result, output)
