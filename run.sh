@@ -34,9 +34,6 @@ prepare () {
 
   # These directiories essentially define the structure of our API endpoints.
   # TODO: These should perhaps live in python, near the schemas (defined in api/)?
-
-  INPUT_BASE_DIR="${API_OUTPUT_DIR}/"
-
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
 
@@ -89,21 +86,21 @@ execute() {
 
   echo ">>> Generating DoD artifacts to ${DOD_DIR}"
   mkdir -p "${DOD_DIR}"
-  ./run.py deploy-dod -i "${INPUT_BASE_DIR}" -o "${DOD_DIR}"
+  ./run.py deploy-dod -ic "${API_OUTPUT_COUNTIES}" -is "${API_OUTPUT_STATES}" -o "${DOD_DIR}"
 
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json
 
   echo ">>> Generating Top 100 Counties json to ${API_OUTPUT_COUNTIES}/counties_top_100.json"
   mkdir -p "${API_OUTPUT_COUNTIES}"
-  ./run.py deploy-top-counties -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_COUNTIES}"
+  ./run.py deploy-top-counties -i "${API_OUTPUT_COUNTIES}" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
   mkdir -p "${API_OUTPUT_STATES}"
-  ./run.py deploy-states-api -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_STATES}"
+  ./run.py deploy-states-api -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_STATES}"
 
   echo ">>> Generating API for states to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
-  ./run.py deploy-counties-api -i "${INPUT_BASE_DIR}" -o "${API_OUTPUT_COUNTIES}"
+  ./run.py deploy-counties-api -i "${API_OUTPUT_COUNTIES}" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }

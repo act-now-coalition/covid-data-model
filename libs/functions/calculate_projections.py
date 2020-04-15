@@ -113,7 +113,7 @@ def get_state_projections_df(input_dir, initial_intervention_type, state_interve
     for state in list(US_STATE_ABBREV.values()):
         intervention_type = _get_intervention_type(initial_intervention_type, state, state_interventions_df)
         file_name = f"{state}.{intervention_type}.json"
-        path = os.path.join(input_dir, "state", file_name)
+        path = os.path.join(input_dir, file_name)
         # if the file exists in that directory then process
         projection_data = _calculate_projection_data(path)
         if projection_data:
@@ -137,7 +137,7 @@ def get_county_projections_df(input_dir, initial_intervention_type, state_interv
         fips = fips_row["fips"]
         intervention_type = _get_intervention_type(initial_intervention_type, state, state_interventions_df)
         file_name = f"{state}.{fips}.{intervention_type}.json"
-        path = os.path.join(input_dir, "county", file_name)
+        path = os.path.join(input_dir, file_name)
         # if the file exists in that directory then process
         projection_data = _calculate_projection_data(path)
         if projection_data:
