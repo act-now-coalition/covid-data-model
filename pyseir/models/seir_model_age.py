@@ -711,7 +711,6 @@ class SEIRModelAge:
             S_fracs_within_age_group = S / S.sum(axis=0)
             Rt = self.calculate_Rt(S_fracs_within_age_group, self.suppression_policy(self.t_list))
 
-        # TODO @ Xinyu: add age specific compartments once age specific data is avalable
         self.results = {
             't_list': self.t_list,
             'S': S.sum(axis=0),
@@ -838,8 +837,8 @@ class SEIRModelAge:
         else:
             # Plot the data by age group
             fig, axes = plt.subplots(len(self.age_groups), 2, figsize=(10, 50))
-            for n, age_group in enumerate(self.age_groups):
-                ax1, ax2 = axes[n]
+            for ax, n in zip(axes, range(len(self.age_groups))):
+                ax1, ax2 = ax
                 ax1.plot(self.t_list, self.results['by_age']['S'][n, :], alpha=1, lw=2, label='Susceptible')
                 ax1.plot(self.t_list, self.results['by_age']['E'][n, :], alpha=.5, lw=2, label='Exposed')
                 ax1.plot(self.t_list, self.results['by_age']['A'][n, :], alpha=.5, lw=2, label='Asymptomatic')
@@ -854,7 +853,8 @@ class SEIRModelAge:
                 ax2.legend()
                 ax1.set_xlabel('days')
                 ax2.set_xlabel('days')
-                ax1.set_title('age group %d-%d' %(age_group[0], age_group[1]))
+                ax1.set_title('age group %d-%d' %(self.age_groups[n][0],
+                                                  self.age_groups[n][1]))
                 ax1.set_yscale('log')
                 ax2.set_yscale('log')
                 ax1.set_ylim(ymin=1)
