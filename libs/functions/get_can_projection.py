@@ -14,7 +14,7 @@ def _get_interventions_for_state(state):
     return interventions[state]
 
 
-def _get_intervention(intervention, state):
+def get_intervention(intervention, state):
     if intervention == Intervention.CURRENT.value:
         state_intervention = _get_interventions_for_state(state)
         return Intervention.from_str(state_intervention).value
@@ -24,7 +24,7 @@ def _get_intervention(intervention, state):
 def get_can_projection_path(
     input_dir, state_abbrev, fips, aggregation_level, initial_intervention
 ):
-    intervention = _get_intervention(initial_intervention, state_abbrev)
+    intervention = get_intervention(initial_intervention, state_abbrev)
     if aggregation_level == AggregationLevel.STATE:
         file_name = f"{state_abbrev}.{intervention.value}.json"
     else:
@@ -47,7 +47,7 @@ def get_can_raw_data(input_dir, state_abbrev, fips, aggregation_level, intervent
     file_path = get_can_projection_path(
         input_dir, state_abbrev, fips, aggregation_level, intervention
     )
-    if os.path.exists(file_path): 
+    if os.path.exists(file_path):
         with open(file_path) as json_file:
             return standardize_json_data(json.load(json_file), CAN_MODEL_OUTPUT_SCHEMA)
     # TODO : probably error out or log something here

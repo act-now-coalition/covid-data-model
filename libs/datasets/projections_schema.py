@@ -13,6 +13,7 @@ OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
     "Confirmed": "Current Confirmed",
     "Recovered": "Current Recovered",
     "Active": "Current Active",
+    "Beds at Peak Hospitilization Date": "Peak Bed Capacity"
 }
 
 

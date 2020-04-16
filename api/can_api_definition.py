@@ -27,20 +27,6 @@ class _Projections(pydantic.BaseModel):
     ICUBeds: Optional[_ResourceUsageProjection] = pydantic.Field(
         ..., description="Projection about ICU hospital bed utilization"
     )
-    cumulativeDeaths: int = pydantic.Field(
-        ..., description="Cumulative number of deaths within projection window"
-    )
-    # TODO(igor): make non-optional
-    peakDeaths: Optional[int] = pydantic.Field(
-        ..., description="Peak number of deaths within projection window"
-    )
-    peakDeathsDate: Optional[datetime.date] = pydantic.Field(
-        ..., description="Date of peak number of deaths"
-    )
-    endDate: datetime.date = pydantic.Field(
-        ..., description="Date the projection goes until"
-    )
-
 
 class _ResourceUtilization(pydantic.BaseModel):
     capacity: int = pydantic.Field(..., description="Total capacity for resource")

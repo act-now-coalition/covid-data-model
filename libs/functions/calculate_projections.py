@@ -144,7 +144,7 @@ def get_county_projections_df(input_dir, initial_intervention_type, state_interv
             results.append([state, fips] + projection_data)
         else:
             missing = missing + 1
-    if (missing > 2000): 
+    if (missing > 2000):
         raise Exception(f"Missing a majority of counties from input_dir: {input_dir}")
     print(f"Models missing for {missing} counties")
     ndf = pd.DataFrame(results, columns=CALCULATED_PROJECTION_HEADERS_COUNTIES)
