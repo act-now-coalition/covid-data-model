@@ -728,15 +728,15 @@ class SEIRModelAge:
             # divided by the mean length of stay approximates the number of
             # deaths from each source.
             # Ideally this is included in the dynamics, but this is left as a TODO.
-            'deaths_from_hospital_bed_limits': np.cumsum(D_no_hgen),
+            'deaths_from_hospital_bed_limits': D_no_hgen,
             # Here ICU = ICU + ICUVent, but we want to remove the ventilated fraction and account for that below.
-            'deaths_from_icu_bed_limits': np.cumsum(D_no_icu),
+            'deaths_from_icu_bed_limits': D_no_icu,
             'HGen_cumulative': np.cumsum(HGen.sum(axis=0)) / self.hospitalization_length_of_stay_general,
             'HICU_cumulative': np.cumsum(HICU.sum(axis=0)) / self.hospitalization_length_of_stay_icu,
             'HVent_cumulative': np.cumsum(HICUVent.sum(axis=0)) / self.hospitalization_length_of_stay_icu_and_ventilator
         }
 
-        self.results['total_deaths'] = D
+        self.results['total_deaths'] = D + D_no_hgen + D_no_icu
 
         # Derivatives of the cumulative give the "new" infections per day.
         self.results['total_new_infections'] = np.append([0], np.diff(TotalAllInfections))
