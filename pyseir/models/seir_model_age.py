@@ -51,6 +51,13 @@ class SEIRModelAge:
         Last age bin edge is assumed to be 120 years old.
     age_groups : np.array
         Age groups, e.g.
+    num_compartments_by_age: int
+        Number of compartments with age structure.
+        Default 7: S, E, A, I, HGen, HICU, HICUVent.
+    num_compartments_not_by_age: int
+        Number of compartments without age structure.
+        Default 7: R, D, D_no_hgen, D_no_icu, HAdmissions_general,
+        HAdmissions_ICU, TotalAllInfections.
     R0: float
         Basic Reproduction number
     R0_hospital: float
@@ -144,6 +151,8 @@ class SEIRModelAge:
                  age_bin_edges=np.array([0, 5, 10, 15, 20, 25,
                                          30, 35, 40, 45, 50, 55,
                                          60, 65, 70, 75, 80, 85]),
+                 num_compartments_by_age=7,
+                 num_compartments_not_by_age=7,
                  max_age=120,
                  D_initial=0,
                  R0=3.75,
@@ -213,6 +222,8 @@ class SEIRModelAge:
         self.age_steps = np.append(self.age_steps, max_age * 365 - age_bin_edges[-1])
         self.age_groups = list(zip(list(age_bin_edges[:-1]), list(age_bin_edges[1:])))
         self.age_groups.append((age_bin_edges[-1], max_age))
+        self.num_compartments_by_age = num_compartments_by_age
+        self.num_compartments_not_by_age = num_compartments_not_by_age
 
         # Epidemiological Parameters
         self.R0 = R0                    # Reproduction Number
@@ -298,7 +309,7 @@ class SEIRModelAge:
         Parameters
         ----------
         beta: float
-            Probability
+            Transmission probability per contact.
         S_fracs: float
             fraction of susceptible population,
 
@@ -451,7 +462,12 @@ class SEIRModelAge:
 
     def _estimate_beta(self, expected_R0):
         """
-        Estimate beta for given R0.
+        Estimate beta for given R0. Note that beta can be greater than 1 for
+        some expected R0 given a contact matrix. This is because the
+        contact matrix sometimes underestimate overall contact rate.
+        In this case, beta is the product of transmission probability per
+        contact and the factor that lift the average contact rate to match
+        the expected R0.
 
         Parameters
         ----------
@@ -472,12 +488,25 @@ class SEIRModelAge:
     def calculate_Rt(self, S_fracs, suppression_policy=None):
         """
         Calculate R(t)
+
+        Parameters
+        ----------
+        S_fracs: np.array
+            Fraction of each age group among susceptible population.
+        suppression_policy: int or np.array
+            Fraction of remained effective contacts as result suppression
+            policy through time.
+
+        Returns
+        -------
+        Rt: np.array
+            Basic reproduction number through time.
         """
-        Rts = np.zeros(S_fracs.shape[1])
+        Rt = np.zeros(S_fracs.shape[1])
         for n in range(S_fracs.shape[1]):
-            Rts[n] += self.calculate_R0(self.beta, S_fracs[:, n])
-        Rts *= suppression_policy
-        return Rts
+            Rt[n] += self.calculate_R0(self.beta, S_fracs[:, n])
+        Rt *= suppression_policy
+        return Rt
 
     def _time_step(self, t, y):
         """
@@ -486,11 +515,19 @@ class SEIRModelAge:
         Parameters
         ----------
         y: array
+            Input compartment size
+        t: float
+            Time step.
 
+        Returns
+        -------
+          :  np.array
+            ODE derivatives.
         """
         # np.split(y[:-7], 7)  <--- This is 7x slower than the code below.
-        chunk_size = y[:-7].shape[0] // 7
-        S, E, A, I, HNonICU, HICU, HICUVent = [y[(i * chunk_size):((i + 1) * chunk_size)] for i in range(7)]
+        chunk_size = y[:-self.num_compartments_not_by_age].shape[0] // self.num_compartments_by_age
+        S, E, A, I, HNonICU, HICU, HICUVent = [y[(i * chunk_size):((i + 1) * chunk_size)]
+                                               for i in range(self.num_compartments_by_age)]
 
         R = y[-7]
         # TODO: County-by-county affinity matrix terms can be used to describe
@@ -597,10 +634,6 @@ class SEIRModelAge:
               + sum(recovered_from_icu_no_vent)
               - self.natural_death_rate)
 
-        # TODO Modify this based on increased mortality if beds saturated
-        # TODO Age dep mortality. Recent estimate fo relative distribution Fig 3 here:
-        #      http://www.healthdata.org/sites/default/files/files/research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
-
         # Death among hospitalized.
         dDdt = sum(died_from_icu) + sum(died_from_icu_vent) + sum(died_from_hosp)
         died_from_hospital_bed_limits = max(sum(HNonICU) - self.beds_general, 0) * self.mortality_rate_no_general_beds \
@@ -626,18 +659,29 @@ class SEIRModelAge:
         results: dict
         {
             't_list': self.t_list,
-            'S': S,
-            'E': E,
-            'I': I,
-            'R': R,
-            'HNonICU': HNonICU,
-            'HICU': HICU,
-            'HVent': HVent,
-            'D': Deaths from straight mortality. Not including hospital saturation deaths,
-            'deaths_from_hospital_bed_limits':
-            'deaths_from_icu_bed_limits':
-            'deaths_from_ventilator_limits':
-            'total_deaths':
+            'S': susceptible population combining all age groups,
+            'E': exposed population combining all age groups,
+            'I': symptomatic population combining all age groups,
+            'A': asymptomatic population combining all age groups,
+            'R': recovered population,
+            'HGen': general hospitalized population combining all age groups,
+            'HICU': icu admitted population combining all age groups,
+            'HVent': population on ventilator combining all age groups,
+            'D': Deaths during hospitalization,
+            'deaths_from_hospital_bed_limits': deaths due to hospital bed
+                                               limitation
+            'deaths_from_icu_bed_limits': deaths due to icu limitation
+            'deaths_from_ventilator_limits': deaths due to ventilator limitation
+            'total_deaths': Deaths
+            'by_age':
+                {
+                    'S': susceptible population by age group
+                    'E': exposed population by age group
+                    'I': symptomatic population by age group
+                    'A': asymptomatic population by age group
+                    'HGen': general hospitalized population by age group
+                    'HICU': icu admitted population by age group
+                    'HVent': population on ventilator by age group
         }
         """
         # Initial conditions vector
@@ -649,18 +693,20 @@ class SEIRModelAge:
                                        HAdmissions_general, HAdmissions_ICU,
                                        TotalAllInfections])])
 
-        # Integrate the SIR equations over the time grid, t.
+        # Integrate the SEIR equations over the time grid, t.
         result_time_series = solve_ivp(fun=self._time_step,
                                        t_span=[self.t_list.min(), self.t_list.max()],
                                        y0=y0,
                                        t_eval=self.t_list,
                                        method='RK23', rtol=1e-3, atol=1e-3).y
 
-        S, E, A, I, HGen, HICU, HICUVent = np.split(result_time_series[:-7], 7)
+        S, E, A, I, HGen, HICU, HICUVent = np.split(result_time_series[:-self.num_compartments_not_by_age],
+                                                    self.num_compartments_by_age)
         R, D, D_no_hgen, D_no_icu, HAdmissions_general, HAdmissions_ICU, TotalAllInfections = result_time_series[-7:]
 
         if self.approximate_R0:
-            Rt = self.R0 * self.suppression_policy(self.t_list)
+            Rt = np.zeros(len(self.t_list))
+            Rt += self.R0 * self.suppression_policy(self.t_list)
         else:
             S_fracs_within_age_group = S / S.sum(axis=0)
             Rt = self.calculate_Rt(S_fracs_within_age_group, self.suppression_policy(self.t_list))
