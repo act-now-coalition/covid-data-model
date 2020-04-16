@@ -9,17 +9,15 @@ import io
 import us
 import zipfile
 import json
-from pyseir import OUTPUT_DIR
 from libs.datasets import NYTimesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from functools import lru_cache
 from enum import Enum
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
-
-FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
 
 
 class HospitalizationDataType(Enum):
@@ -274,30 +272,21 @@ def load_county_metadata_by_state(state=None):
 
 
 @lru_cache(maxsize=32)
-def load_ensemble_results(fips, run_mode='default'):
+def load_ensemble_results(fips):
     """
     Retrieve ensemble results for a given state or county fips code.
 
     Parameters
     ----------
     fips: str
-        County FIPS to load.
-    run_mode: str
-        Which run mode to pull results from.
+        State or county FIPS to load.
 
     Returns
     -------
     ensemble_results: dict
     """
-    if len(fips) == 5:  # County
-        county_metadata = load_county_metadata().set_index('fips')
-        state, county = county_metadata.loc[fips]['state'], county_metadata.loc[fips]['county']
-        path = os.path.join(OUTPUT_DIR, 'pyseir', state, 'data', f"{state}__{county}__{fips}__{run_mode}__ensemble_projections.json")
-    elif len(fips) == 2:
-        state = us.states.lookup(fips).name
-        path = os.path.join(OUTPUT_DIR, 'pyseir', state, 'data', f"{state}__{fips}__{run_mode}__ensemble_projections.json")
-
-    with open(path) as f:
+    output_filename = get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT)
+    with open(output_filename) as f:
         fit_results = json.load(f)
     return fit_results
 
@@ -450,7 +439,7 @@ def load_hospitalization_data_by_state(state, t0):
         .get_subset(AggregationLevel.STATE, country='USA', state=abbr) \
         .get_data(country='USA', state=abbr)
 
-    if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
+    if len(hospitalization_data) == 0:
         return None, None, None
 
     times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values

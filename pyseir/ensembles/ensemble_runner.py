@@ -7,33 +7,20 @@ from functools import partial
 import us
 import pickle
 import simplejson as json
-from enum import Enum
 import copy
 from collections import defaultdict
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.models.suppression_policies import generate_empirical_distancing_policy, generate_covidactnow_scenarios
-from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
-from pyseir.load_data import FAULTY_HOSPITAL_DATA_STATES
+from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import JHUDataset
 
 
 _logger = logging.getLogger(__name__)
-
-
-class RunMode(Enum):
-    # Read params from the parameter sampler default and use empirical
-    # suppression policies.
-    DEFAULT = 'default'
-    # 4 basic suppression scenarios and specialized parameters to match
-    # covidactnow before scenarios.  Uses hospitalization data to fix.
-    CAN_BEFORE_HOSPITALIZATION = 'can-before-hospitalization'
-    # Same as CAN Before but with updated ICU, hosp rates increased.
-    CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = 'can-before-hospitalization-new-params'
 
 
 compartment_to_capacity_attr_map = {
@@ -80,7 +67,6 @@ class EnsembleRunner:
                  run_mode=RunMode.DEFAULT,
                  min_hospitalization_threshold=5,
                  hospitalization_to_confirmed_case_ratio=1 / 4,
-                 output_dir=None,
                  covid_timeseries=None):
 
         self.fips = fips
@@ -93,26 +79,20 @@ class EnsembleRunner:
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
-        self.output_dir = output_dir or os.path.join(OUTPUT_DIR, 'pyseir')
-        os.makedirs(self.output_dir, exist_ok=True)
-
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata_by_fips(fips)
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
             self.state_name = us.states.lookup(self.county_metadata['state']).name
 
-            self.output_file_report = os.path.join(self.output_dir, self.state_name, 'reports',
-                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.pdf")
-            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
-                f"{self.state_name}__{self.county_metadata['county']}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+            self.output_file_report = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_REPORT)
+            self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
 
         else:
             self.state_abbr = us.states.lookup(self.fips).abbr
             self.state_name = us.states.lookup(self.fips).name
 
             self.output_file_report = None
-            self.output_file_data = os.path.join(self.output_dir, self.state_name, 'data',
-                f"{self.state_name}__{self.fips}__{self.run_mode.value}__ensemble_projections.json")
+            self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
 
         county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
@@ -170,7 +150,7 @@ class EnsembleRunner:
             .sort_values('date')
 
         # If there are enough hospitalizations, use those to define initial conditions.
-        if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in FAULTY_HOSPITAL_DATA_STATES:
+        if not use_cases and len(hospitalization_data) > 0:
             latest_date = hospitalization_data.iloc[-1]['date'].date()
             n_current = hospitalization_data.iloc[-1]['current_hospitalized']
             if n_current > self.min_hospitalization_threshold and not np.isnan(n_current):
@@ -234,8 +214,8 @@ class EnsembleRunner:
                 self.override_params['A_initial'] = 0
                 self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
 
-                # 1.2 is a ~ steady state for the exposed bucket initialization.
-                self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
+                # 0.6 is a ~ steady state for the exposed bucket initialization at Reff ~ 1.2
+                self.override_params['E_initial'] = 0.6 * (self.override_params['I_initial'] + self.override_params['A_initial'])
                 self.override_params['D_initial'] = self.covid_data.deaths.max()
 
             else:
@@ -272,7 +252,7 @@ class EnsembleRunner:
                 self.override_params['gamma'] = 1   # 100% of Exposed go to the infected bucket.
 
                 # 1.2 is a ~ steady state for the exposed bucket initialization.
-                self.override_params['E_initial'] = 1.2 * (self.override_params['I_initial'] + self.override_params['A_initial'])
+                self.override_params['E_initial'] = 0.6 * (self.override_params['I_initial'] + self.override_params['A_initial'])
                 self.override_params['D_initial'] = self.covid_data.deaths.max()
 
         elif self.run_mode is RunMode.DEFAULT:
@@ -313,9 +293,7 @@ class EnsembleRunner:
 
             if suppression_policy_name == 'suppression_policy__inferred':
                 if self.agg_level is AggregationLevel.STATE:
-                    # TODO: Move this to a callable to be consistent with model fitter.
-                    state_output_dir = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary')
-                    with open(os.path.join(state_output_dir, f'summary_{self.state_name}_state_only__mle_fit_results.pkl'), 'rb') as f:
+                    with open(get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL), 'rb') as f:
                         model_ensemble = [pickle.load(f)]
                 else:
                     # County inference not yet implemented.
@@ -329,7 +307,6 @@ class EnsembleRunner:
                 parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
                 model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
-            logging.info(f'Generating outputs for {suppression_policy_name}')
             if self.agg_level is AggregationLevel.COUNTY:
                 self.all_outputs['county_metadata'] = self.county_metadata
                 self.all_outputs['county_metadata']['age_distribution'] = list(self.all_outputs['county_metadata']['age_distribution'])
@@ -338,7 +315,6 @@ class EnsembleRunner:
             self.all_outputs[f'{suppression_policy_name}'] = self._generate_output_for_suppression_policy(model_ensemble)
 
         if self.generate_report and self.output_file_report:
-            logging.info(f'Generating report for {self.state_name} {self.fips}')
             report = CountyReport(self.fips,
                                   model_ensemble=model_ensemble,
                                   county_outputs=self.all_outputs,
