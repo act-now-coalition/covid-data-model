@@ -62,8 +62,8 @@ jobs:
     - name: current-dir
       run: pwd
 
-    - name: Zip Model Results (run.sh .. .. execute_zip_artifacts)
-      run: ./covid-data-model/run.sh ./covid-data-public ./api_results execute_zip_artifacts
+    - name: Zip Model Results (run.sh .. .. execute_zip_folder)
+      run: ./covid-data-model/run.sh ./covid-data-public ./api_results execute_zip_folder
     - name: current-dir
       run: pwd
     - name: Upload Model Results
