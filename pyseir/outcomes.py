@@ -16,7 +16,7 @@ from pyseir.models import seir_model as sm
 class ContinuousParameter:
     """
     This class is used by the OutcomesSampler to define a range for a model parameter
-    over which it will sample points and evaluate the SEIRModel on. 
+    over which it will sample points and evaluate the SEIRModel on.
 
     Parameters
     ----------
@@ -38,9 +38,9 @@ class ContinuousParameter:
     alpha: float = 1
     beta: float = 1
 
-    def sample(self, num_samples: int, random_state: int=None) -> np.array:
+    def sample(self, num_samples: int, random_state: int = None) -> np.array:
         """
-        Sample points between the lower_bound and the upper_bound using a Beta distribution. 
+        Sample points between the lower_bound and the upper_bound using a Beta distribution.
         The default values of alpha and beta correspond to a uniform distribution.
 
         Parameters
@@ -54,7 +54,7 @@ class ContinuousParameter:
         samples: numpy array
             An array with num_samples between lower_bound and upper_bound
         """
-        scale = (self.upper_bound - self.lower_bound) 
+        scale = self.upper_bound - self.lower_bound
         shift = self.lower_bound
         rs = np.random.RandomState(random_state)
         samples = rs.beta(a=self.alpha, b=self.beta, size=num_samples)
@@ -70,7 +70,7 @@ class OutcomesSampler:
     parameter_generator: ParameterEnsembleGenerator
         Generate parameters for SEIR modeling.
     parameter_space: List[ContinuousParameter]
-        A collection of ContinuousParameters that defines the space the SEIRModel will be 
+        A collection of ContinuousParameters that defines the space the SEIRModel will be
         evaluated on.
     outcome_fs: Dict[str, Callable]
         A dictionary of functions to evaluate on rollouts of the SEIRModel which return
@@ -81,12 +81,14 @@ class OutcomesSampler:
         Controls the number of processes joblib will use. Defaults to -1 which will use all CPU's
     """
 
-    def __init__(self,
-                 parameter_generator: ParameterEnsembleGenerator,    
-                 parameter_space: List[ContinuousParameter],
-                 outcome_fs: Dict[str, Callable],
-                 num_samples: int=1000,
-                 n_jobs=-1):
+    def __init__(
+            self,
+            parameter_generator: ParameterEnsembleGenerator,
+            parameter_space: List[ContinuousParameter],
+            outcome_fs: Dict[str, Callable],
+            num_samples: int = 1000,
+            n_jobs=-1,
+    ):
 
         self.num_samples = num_samples
         self.parameter_space = parameter_space
@@ -97,7 +99,9 @@ class OutcomesSampler:
 
         self.outcomes_df = self._random_parameters()
         outcomes = self.get_outcomes(outcome_fs)
-        self.outcomes_df = pd.merge(self.outcomes_df, outcomes, left_index=True, right_index=True)
+        self.outcomes_df = pd.merge(
+            self.outcomes_df, outcomes, left_index=True, right_index=True
+        )
 
     def _random_parameters(self) -> pd.DataFrame:
         """
@@ -109,7 +113,9 @@ class OutcomesSampler:
             A DataFrame with num_samples of points in parameter_space
         """
 
-        samples = {i.parameter_name: i.sample(self.num_samples) for i in self.parameter_space}
+        samples = {
+            i.parameter_name: i.sample(self.num_samples) for i in self.parameter_space
+        }
         return pd.DataFrame(samples)
 
     def _evaluate_model(self, parameters: Dict[str, Any]) -> sm.SEIRModel:
@@ -120,7 +126,7 @@ class OutcomesSampler:
         ----------
         parameters: dict
             SEIRModel parameters
-        
+
         Returns
         -------
         model: SEIRModel
@@ -130,17 +136,16 @@ class OutcomesSampler:
         model = sm.SEIRModel(**parameters)
         model.run()
         return model
-    
-    def _rollout(self,
-                 x: np.array, 
-                 parameters: dict,
-                 outcome_fs: Dict[str, Callable]) -> pd.DataFrame:
+
+    def _rollout(
+            self, point: pd.Series, parameters: dict, outcome_fs: Dict[str, Callable]
+    ) -> pd.DataFrame:
         """
         Evaluates SEIRModel and calculates outcomes from the rollout of the model
 
         Parameters
         ----------
-        x: numpy array
+        point: pd.Series
             A point in parameter_space
         parameters: dict
             A dictionary of SEIRModel parameters
@@ -156,13 +161,16 @@ class OutcomesSampler:
         fips = self.parameter_generator.fips
         t_list = self.parameter_generator.t_list
 
-        for p, v in zip(self.parameter_space, x):
-            if p.parameter_name == "suppression_policy":
-                parameters['suppression_policy'] = \
-                    sp.generate_empirical_distancing_policy(t_list, fips=fips, future_suppression=v)
+        for parameter, value in zip(self.parameter_space, point):
+            if parameter.parameter_name == "suppression_policy":
+                parameters[
+                    "suppression_policy"
+                ] = sp.generate_empirical_distancing_policy(
+                    t_list, fips=fips, future_suppression=value
+                )
             else:
-                parameters[p.parameter_name] = v
-        
+                parameters[parameter.parameter_name] = value
+
         model = self._evaluate_model(parameters)
         outcomes = {k: f(model.results[k.split("-")[0]]) for k, f in outcome_fs.items()}
         return outcomes
@@ -179,13 +187,17 @@ class OutcomesSampler:
         Returns
         -------
         outcomes_df: DataFrame
-            A DataFrame with points in parameter space and outcomes calculated from a rollout of 
-            SEIRModel at each point 
+            A DataFrame with points in parameter space and outcomes calculated from a rollout of
+            SEIRModel at each point
         """
 
         parameters = copy.deepcopy(self.parameter_defaults)
-        space = self.outcomes_df[[p.parameter_name for p in self.parameter_space]].values
-        outcomes = Parallel(n_jobs=self.n_jobs)(delayed(self._rollout)(x, parameters, outcome_fs) for x in space)
+        space = self.outcomes_df[
+            [p.parameter_name for p in self.parameter_space]
+        ].values
+        outcomes = Parallel(n_jobs=self.n_jobs)(
+            delayed(self._rollout)(x, parameters, outcome_fs) for x in space
+        )
         return pd.DataFrame(outcomes)
 
 
@@ -209,24 +221,40 @@ class OutcomeModels:
         Seed for numpy.random.RandomState
     """
 
-    def __init__(self, 
-                 outcome_samples: pd.DataFrame, 
-                 parameter_names: List[str],
-                 fn_approximator: Callable,
-                 n_jobs=-1,
-                 random_state: int=None):
+    def __init__(
+            self,
+            outcome_samples: pd.DataFrame,
+            parameter_names: List[str],
+            fn_approximator: Callable,
+            n_jobs=-1,
+            random_state: int = None,
+    ):
         self.outcome_samples = outcome_samples
         self.parameter_names = parameter_names
-        self.outcome_names = [i for i in self.outcome_samples.columns if i not in self.parameter_names]
-        self.train_set, self.test_set = train_test_split(self.outcome_samples, test_size=0.1, random_state=random_state)
-        outcome_models = \
-            Parallel(n_jobs=-1)(delayed(fn_approximator)(oc, self.train_set[parameter_names], self.train_set[oc]) 
-                                      for oc in self.outcome_names)
+        self.n_jobs = n_jobs
+
+        self.outcome_names = [
+            i for i in self.outcome_samples.columns if i not in self.parameter_names
+        ]
+        self.train_set, self.test_set = train_test_split(
+            self.outcome_samples, test_size=0.1, random_state=random_state
+        )
+
+        self.fit_models(fn_approximator)
+
+    def fit_models(self, fn_approximator: Callable) -> None:
+        """
+        Fits model defined in fn_approximator
+
+        Parameters
+        ----------
+        fn_approximator: Callable
+            A function that takes a training set and returns a fitted model
+        """
+        outcome_models = Parallel(n_jobs=self.n_jobs)(
+            delayed(fn_approximator)(
+                oc, self.train_set[self.parameter_names], self.train_set[oc]
+            )
+            for oc in self.outcome_names
+        )
         self.outcome_models = dict(outcome_models)
-
-    
-        
-
-        
-
-
