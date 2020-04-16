@@ -50,20 +50,20 @@ execute() {
 
   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-  pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" > /dev/null
+  # pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" > /dev/null
 
   # Move state output to the expected location.
-  mkdir -p ${API_OUTPUT_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_DIR}/
+  #mkdir -p ${API_OUTPUT_DIR}/
+  #mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_DIR}/
 
   # Move county output to the expected location.
-  mkdir -p ${API_OUTPUT_DIR}/county
-  mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_DIR}/county/
+  #mkdir -p ${API_OUTPUT_DIR}/county
+  #mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_DIR}/county/
 
   # Clean up original output directories.
-  rmdir ${API_OUTPUT_DIR}/web_ui/state/
-  rmdir ${API_OUTPUT_DIR}/web_ui/county/
-  rmdir ${API_OUTPUT_DIR}/web_ui/
+  #rmdir ${API_OUTPUT_DIR}/web_ui/state/
+  #rmdir ${API_OUTPUT_DIR}/web_ui/county/
+  #rmdir ${API_OUTPUT_DIR}/web_ui/
 
   # Previous method for invoking the original Python SEIR model follows.
   #./run.py model state -o "${API_OUTPUT_DIR}" > /dev/null
@@ -75,22 +75,22 @@ execute() {
 
   echo ">>> Generating county summaries to ${COUNTY_SUMMARIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-  ./run.py model county-summary -o "${COUNTY_SUMMARIES_DIR}" > /dev/null
+  #./run.py model county-summary -o "${COUNTY_SUMMARIES_DIR}" > /dev/null
 
   echo ">>> Generating case summaries to ${CASE_SUMMARIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-  ./run.py data latest -o "${CASE_SUMMARIES_DIR}" > /dev/null
+  #./run.py data latest -o "${CASE_SUMMARIES_DIR}" > /dev/null
 
   echo ">>> Generating DoD artifacts to ${DOD_DIR}"
   mkdir -p "${DOD_DIR}"
-  ./run.py deploy-dod -ic "${API_OUTPUT_DIR}/county" -is "${API_OUTPUT_DIR}" -o "${DOD_DIR}"
+  #./run.py deploy-dod -ic "${API_OUTPUT_DIR}/county" -is "${API_OUTPUT_DIR}" -o "${DOD_DIR}"
 
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
-  generate_version_json
+  #generate_version_json
 
   echo ">>> Generating Top 100 Counties json to ${API_OUTPUT_COUNTIES}/counties_top_100.json"
   mkdir -p "${API_OUTPUT_COUNTIES}"
-  ./run.py deploy-top-counties -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
+  #./run.py deploy-top-counties -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
   mkdir -p "${API_OUTPUT_STATES}"
