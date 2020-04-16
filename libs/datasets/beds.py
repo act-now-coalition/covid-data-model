@@ -136,7 +136,7 @@ class BedsDataset(object):
         return None
 
     def get_county_level(
-            self, state, county=None, fips=None, column=Fields.MAX_BED_COUNT
+        self, state, county=None, fips=None, column=Fields.MAX_BED_COUNT
     ) -> Optional[int]:
         """Get beds for a specific county (from fips code or county).
 

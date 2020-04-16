@@ -22,12 +22,12 @@ CAN_MODEL_OUTPUT_SCHEMA = [
     TOTAL,
     TOTAL_SUSCEPTIBLE,
     EXPOSED,
-    INFECTED, 
-    INFECTED_A, # (not hospitalized, but infected)
-    INFECTED_B, # infected_b (hospitalized not in icu)
-    INFECTED_C, # infected_c (in icu)
-    ALL_HOSPITALIZED, # infected_b + infected_c
-    ALL_INFECTED, # infected_a + infected_b + infected_c
+    INFECTED,
+    INFECTED_A,  # (not hospitalized, but infected)
+    INFECTED_B,  # infected_b (hospitalized not in icu)
+    INFECTED_C,  # infected_c (in icu)
+    ALL_HOSPITALIZED,  # infected_b + infected_c
+    ALL_INFECTED,  # infected_a + infected_b + infected_c
     DEAD,
     BEDS,
     "i",
@@ -40,4 +40,4 @@ CAN_MODEL_OUTPUT_SCHEMA = [
 ]
 
 # Exclude the unnamed columns from our data frames until we have a use for them
-CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS = ["i","j","k","l","m","n"]
+CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS = ["i", "j", "k", "l", "m", "n"]

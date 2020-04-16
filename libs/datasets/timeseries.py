@@ -44,7 +44,7 @@ class TimeseriesDataset(object):
                 cls.DEATHS,
                 cls.RECOVERED,
                 cls.CURRENT_HOSPITALIZED,
-                cls.CUMULATIVE_HOSPITALIZED
+                cls.CUMULATIVE_HOSPITALIZED,
             ]
 
     def __init__(self, data: pd.DataFrame, source_data=None):

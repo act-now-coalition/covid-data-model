@@ -80,13 +80,9 @@ def run_projections(
 
 def _generate_api_without_ts(projection_result, row, input_dir):
     if projection_result.aggregation_level == AggregationLevel.STATE:
-        generated_data = api.generate_api_for_state_projection_row(
-            row
-        )
+        generated_data = api.generate_api_for_state_projection_row(row)
     elif projection_result.aggregation_level == AggregationLevel.COUNTY:
-        generated_data = api.generate_api_for_county_projection_row(
-            row
-        )
+        generated_data = api.generate_api_for_county_projection_row(row)
     else:
         raise ValueError("Aggregate Level not supported by api generation")
     key_prefix = _get_api_prefix(projection_result.aggregation_level, row)

@@ -6,6 +6,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import enums
+
 _logger = logging.getLogger(__name__)
 
 
@@ -123,7 +124,7 @@ class JHUDataset(data_source.DataSource):
         """
         overrides = {
             # Assigning nantucket county to dukes and nantucket
-            ('MA', 'Dukes and Nantucket'): '25019'
+            ("MA", "Dukes and Nantucket"): "25019"
         }
         for (state, county), fips in overrides.items():
             matches_state = data[cls.Fields.STATE] == state
@@ -137,7 +138,9 @@ class JHUDataset(data_source.DataSource):
 
     @classmethod
     def _aggregate_fips_data(cls, data):
-        is_county_level = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        is_county_level = (
+            data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        )
         has_fips = data[cls.Fields.FIPS].notnull()
         county_data = data[is_county_level & has_fips]
 
@@ -154,10 +157,7 @@ class JHUDataset(data_source.DataSource):
         ]
         result = county_data.groupby(group_key).sum().reset_index()
 
-        return pd.concat([
-            data[~(is_county_level & has_fips)],
-            result
-        ])
+        return pd.concat([data[~(is_county_level & has_fips)], result])
 
     @classmethod
     def local(cls) -> "JHUTimeseriesData":
