@@ -133,10 +133,11 @@ execute_zip_folder() {
   cd "$(dirname "$0")"
 
   echo ">>> Generating all.zip with all API artifacts."
-  pushd "${API_OUTPUT_DIR}"
-  zip -r all.zip *
+  #pushd "${API_OUTPUT_DIR}/.."
+  API_RESULTS_ZIP="api_results.zip"
+  zip -r ${API_RESULTS_ZIP} "${API_OUTPUT_DIR}/*"
   #gzip -r ${API_OUTPUT_DIR}
-  popd
+  #popd
 }
 
 
