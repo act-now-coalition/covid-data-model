@@ -59,11 +59,11 @@ jobs:
       env:
         COVID_MODEL_CORES: 96
       run: ./covid-data-model/run.sh ./covid-data-public ./api_results execute_model
-    - name: Upload Model Results
-      uses: actions/upload-artifact@v1
-      with:
-        name: model-results
-        path: ./api_results
+    # - name: Upload Model Results
+    #   uses: actions/upload-artifact@v1
+    #   with:
+    #     name: model-results
+    #     path: ./api_results
 
   execute-summaries:
     runs-on: self-hosted
@@ -105,10 +105,10 @@ jobs:
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
 
-    - uses: actions/download-artifact@v1
-      with:
-        name: model-results
-        path: ./api_results
+    # - uses: actions/download-artifact@v1
+    #   with:
+    #     name: model-results
+    #     path: ./api_results
     - name: Build Summaries (run.sh .. .. execute_summaries)
       env:
         COVID_MODEL_CORES: 96
@@ -159,10 +159,10 @@ jobs:
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
 
-    - uses: actions/download-artifact@v1
-      with:
-        name: model-results
-        path: ./api_results
+    # - uses: actions/download-artifact@v1
+    #   with:
+    #     name: model-results
+    #     path: ./api_results
     - name: Build DoD (run.sh .. .. execute_summaries)
       env:
         COVID_MODEL_CORES: 96
@@ -212,10 +212,10 @@ jobs:
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
 
-    - uses: actions/download-artifact@v1
-      with:
-        name: model-results
-        path: ./api_results
+    # - uses: actions/download-artifact@v1
+    #   with:
+    #     name: model-results
+    #     path: ./api_results
     - name: Build API (run.sh .. .. execute_api)
       env:
         COVID_MODEL_CORES: 96
