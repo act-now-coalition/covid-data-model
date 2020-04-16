@@ -167,7 +167,7 @@ class WebUIDataAdaptorV1:
             # Col 12
             final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
             output_model['beds'] = final_beds
-            output_model['cumulative_infected'] = np.interp(t_list_downsampled, t_list[1:], np.cumsum(output_for_policy['total_new_infections']['ci_50']))
+            output_model['cumulative_infected'] = np.interp(t_list_downsampled, t_list, np.cumsum(output_for_policy['total_new_infections']['ci_50']))
 
             # Record the current number of hospitalizations in order to rescale the inference results.
             all_hospitalized_today = output_model['all_hospitalized'][0]
