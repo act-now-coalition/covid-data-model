@@ -1,15 +1,9 @@
+import scipy
 import numpy as np
 import pandas as pd
-import us
 from pyseir import load_data
-from libs.datasets import FIPSPopulation
-from libs.datasets import DHBeds
-from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-import scipy
 
-beds_data = None
-population_data = None
 hosp_data = None
 
 class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
@@ -125,6 +119,12 @@ class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
         hospitalization_rate_general, hospitalization_rate_icu, mortality_rate = \
             self.generate_age_specific_rates()
 
+        # rescale hospitalization rates to match the overall average
+        hospitalization_rate_general = hospitalization_rate_general * 0.04 / \
+            hospitalization_rate_general.mean()
+        hospitalization_rate_icu = hospitalization_rate_icu * 0.04 * 0.3 / \
+            hospitalization_rate_icu.mean()
+
         # shift to have mean 0.4
         mortality_rate_from_ICU = mortality_rate + 0.4 - mortality_rate.mean()
 
@@ -136,6 +136,7 @@ class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
             # boxes accordingly. Since we were not modeling different contact
             # rates, this has the same result.
 
+            # rescale to match overall average
             parameter_set.update(
                 dict(N=self.population,
                      A_initial=A_initial,
@@ -154,7 +155,6 @@ class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
                                                                    scale=hospitalization_rate_general / 10).clip(min=0),
                      hospitalization_rate_icu=np.random.normal(loc=hospitalization_rate_icu,
                                                                scale=hospitalization_rate_icu / 10).clip(min=0),
-                     fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.6, scale=0.1), 0),
                      # w/o ventilation, this would suggest a 20-42% mortality rate
                      # among general hospitalized patients w/o access to ventilators:
                      # “Among all patients, a range of 3% to 17% developed ARDS
