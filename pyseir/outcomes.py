@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Callable, Any
 
 import numpy as np
+from numpy.random import RandomState
 import pandas as pd
 from joblib import Parallel, delayed
 from sklearn.model_selection import train_test_split
@@ -56,7 +57,7 @@ class ContinuousParameter:
         """
         scale = self.upper_bound - self.lower_bound
         shift = self.lower_bound
-        rs = np.random.RandomState(random_state)
+        rs = RandomState(random_state)
         samples = rs.beta(a=self.alpha, b=self.beta, size=num_samples)
         return scale * samples + shift
 
