@@ -103,7 +103,7 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
 def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
              skip_download=False, states_only=False, output_dir=None):
     #Temp override for testing
-    states_only=True
+    state="NY"
     _cache_global_datasets()
 
     if not skip_download:
