@@ -180,13 +180,11 @@ class ModelFitter:
             The average ensemble params.
         """
         if self.with_age_structure:
-            SEIR_kwargs = ParameterEnsembleGeneratorAge(
-                fips=self.fips,
-                N_samples=5000,
-                t_list=self.t_list,
-                suppression_policy=None).get_average_seir_parameters()
+            parameter_generator = ParameterEnsembleGeneratorAge
         else:
-            SEIR_kwargs = ParameterEnsembleGenerator(
+            parameter_generator = ParameterEnsembleGenerator
+
+        SEIR_kwargs = parameter_generator(
                 fips=self.fips,
                 N_samples=5000,
                 t_list=self.t_list,
@@ -305,22 +303,18 @@ class ModelFitter:
 
         if self.with_age_structure:
             age_distribution = self.SEIR_kwargs['N'] / self.SEIR_kwargs['N'].sum()
+            seir_model = SEIRModelAge
+        else:
+            age_distribution = 1
+            seir_model = SEIRModel
 
-            self.SEIR_kwargs['E_initial'] = \
-                self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial * age_distribution
+        self.SEIR_kwargs['E_initial'] = \
+            self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial * age_distribution
 
-            model = SEIRModelAge(
+        model = seir_model(
                 R0=R0,
                 suppression_policy=suppression_policy,
                 I_initial=10 ** log10_I_initial * age_distribution,
-                **self.SEIR_kwargs)
-        else:
-            self.SEIR_kwargs['E_initial'] = self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial
-
-            model = SEIRModel(
-                R0=R0,
-                suppression_policy=suppression_policy,
-                I_initial=10 ** log10_I_initial,
                 **self.SEIR_kwargs)
         model.run()
         return model
@@ -569,11 +563,6 @@ class ModelFitter:
         plt.grid(which='both', alpha=.5)
         plt.title(self.display_name, fontsize=20)
 
-        if self.with_age_structure:
-            suffix = '_with_age_structure'
-        else:
-            suffix = ''
-
         for i, (k, v) in enumerate(self.fit_results.items()):
             if np.isscalar(v) and not isinstance(v, str):
                 plt.text(.7, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6)
@@ -582,10 +571,10 @@ class ModelFitter:
 
         if self.agg_level is AggregationLevel.COUNTY:
             output_file = os.path.join(OUTPUT_DIR, 'pyseir', self.state, 'reports',
-                                       f'{self.state}__{self.county}__{self.fips}__mle_fit_results{suffix}.pdf')
+                                       f'{self.state}__{self.county}__{self.fips}__mle_fit_results.pdf')
         else:
             output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'state_summaries',
-                                       f'{self.state}__{self.fips}__mle_fit_results{suffix}.pdf')
+                                       f'{self.state}__{self.fips}__mle_fit_results.pdf')
 
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         plt.savefig(output_file)
@@ -637,10 +626,6 @@ def run_state(state, states_only=False, with_age_structure=False):
     with_age_structure: bool
         If True run model with age structure.
     """
-    if with_age_structure:
-        suffix = '_with_age_structure'
-    else:
-        suffix = ''
 
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
@@ -650,15 +635,15 @@ def run_state(state, states_only=False, with_age_structure=False):
     model_fitter = ModelFitter.run_for_fips(state_obj.fips, with_age_structure)
 
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(
-        os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results{suffix}.json'))
+        os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.json'))
 
-    with open(os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results{suffix}.pkl'), 'wb') as f:
+    with open(os.path.join(state_output_dir, f'summary_{state}_state_only__mle_fit_results.pkl'), 'wb') as f:
         pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
     if not states_only:
         county_output_file = os.path.join(OUTPUT_DIR, 'pyseir', 'data', 'state_summary',
-                                          f'summary__{state_obj.name}__mle_fit_results{suffix}.json')
+                                          f'summary__{state_obj.name}__mle_fit_results.json')
 
         df = load_data.load_county_metadata()
         all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
