@@ -38,7 +38,7 @@ class ContinuousParameter:
     alpha: float = 1
     beta: float = 1
 
-    def sample(self, num_samples: int) -> np.array:
+    def sample(self, num_samples: int, random_state: int=None) -> np.array:
         """
         Sample points between the lower_bound and the upper_bound using a Beta distribution. 
         The default values of alpha and beta correspond to a uniform distribution.
@@ -47,7 +47,8 @@ class ContinuousParameter:
         ----------
         num_samples: int
             The number of samples to draw between lower_bound and upper_bound
-
+        random_state: int
+            Seed for numpy.random.RandomState
         Returns
         -------
         samples: numpy array
@@ -55,7 +56,8 @@ class ContinuousParameter:
         """
         scale = (self.upper_bound - self.lower_bound) 
         shift = self.lower_bound
-        samples = np.random.beta(a=self.alpha, b=self.beta, size=num_samples)
+        rs = np.random.RandomState(random_state)
+        samples = rs.beta(a=self.alpha, b=self.beta, size=num_samples)
         return scale * samples + shift
 
 
@@ -199,17 +201,24 @@ class OutcomeModels:
     parameter_names: List[str]
         List of the names of the parameters that define the space the SEIRModel
         was evaluated in
+    fn_approximator: Callable
+        A function that takes a training set and returns a fitted model
+    n_jobs: int
+        Controls the number of processes joblib will use. Defaults to -1 which will use all CPU's
+    random_state: int
+        Seed for numpy.random.RandomState
     """
 
     def __init__(self, 
                  outcome_samples: pd.DataFrame, 
                  parameter_names: List[str],
                  fn_approximator: Callable,
-                 n_jobs=-1):
+                 n_jobs=-1,
+                 random_state: int=None):
         self.outcome_samples = outcome_samples
         self.parameter_names = parameter_names
         self.outcome_names = [i for i in self.outcome_samples.columns if i not in self.parameter_names]
-        self.train_set, self.test_set = train_test_split(self.outcome_samples, test_size=0.1)
+        self.train_set, self.test_set = train_test_split(self.outcome_samples, test_size=0.1, random_state=random_state)
         outcome_models = \
             Parallel(n_jobs=-1)(delayed(fn_approximator)(oc, self.train_set[parameter_names], self.train_set[oc]) 
                                       for oc in self.outcome_names)
