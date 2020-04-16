@@ -439,7 +439,7 @@ class ModelFitter:
         # This just updates chi2 values
         self._fit_seir(**dict(minuit.values))
 
-        if self.fit_results['eps'] < 0.01:
+        if self.fit_results['eps'] < 0.1:
             raise RuntimeError(f'Fit failed for {self.state, self.fips}: '
                                f'Epsilon == 0 which implies lack of convergence.')
 
