@@ -440,7 +440,8 @@ class SEIRModelAge:
         """
         Calculate R(t)
         """
-        suppression_policy = suppression_policy or [1] * S_fracs.shape[1]
+        if suppression_policy is None:
+            suppression_policy = [1] * S_fracs.shape[1]
         Rts = list()
         for n in range(S_fracs.shape[1]):
             Rt = self.calculate_R0(self.beta, S_fracs[:, n]) * suppression_policy[n]
