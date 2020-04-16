@@ -9,14 +9,24 @@ set -o errexit
 # Checks command-line arguments, sets variables, etc.
 prepare () {
   # Parse args if specified.
-  if [ $# -ne 2 ]; then
-    echo "Usage: $0 [covid-data-public directory] [output-directory]"
+  if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+    echo "Usage: $0 [covid-data-public directory] [output-directory] (optional method)"
     echo
     echo "Example: $0 ../covid-data-public/ ./api_results/"
+    echo "Example: $0 ../covid-data-public/ ./api_results/ execute_model"
+    echo "Example: $0 ../covid-data-public/ ./api_results/ execute_summaries"
+    echo "Example: $0 ../covid-data-public/ ./api_results/ execute_dod"
+    echo "Example: $0 ../covid-data-public/ ./api_results/ execute_api"
     exit 1
   else
     DATA_SOURCES_DIR="$(abs_path $1)"
     API_OUTPUT_DIR="$(abs_path $2)"
+  fi
+
+  if [ $# -eq 2 ]; then
+    DEFAULT_FUNC="execute"
+  else
+    DEFAULT_FUNC="${3}"
   fi
 
   if [ ! -d "${DATA_SOURCES_DIR}" ] ; then
@@ -28,6 +38,7 @@ prepare () {
     echo "Directory ${API_OUTPUT_DIR} does not exist. Creating."
     mkdir -p "${API_OUTPUT_DIR}"
   fi
+
 
   # run_model.py uses the COVID_DATA_PUBLIC environment variable to find inputs.
   export COVID_DATA_PUBLIC="${DATA_SOURCES_DIR}"
@@ -44,7 +55,7 @@ prepare () {
   DOD_DIR="${API_OUTPUT_DIR}/custom1"
 }
 
-execute() {
+execute_model() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
@@ -72,6 +83,11 @@ execute() {
   # echo ">>> Generating county models to ${API_OUTPUT_DIR}/county"
   # TODO(#148): We need to clean up the output of these scripts!
   # ./run.py model county -o "${API_OUTPUT_DIR}/county" > /dev/null
+}
+
+execute_summaries() {
+  # Go to repo root (where run.sh lives).
+  cd "$(dirname "$0")"
 
   echo ">>> Generating county summaries to ${COUNTY_SUMMARIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
@@ -80,10 +96,20 @@ execute() {
   echo ">>> Generating case summaries to ${CASE_SUMMARIES_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
   ./run.py data latest -o "${CASE_SUMMARIES_DIR}" > /dev/null
+}
+
+execute_dod() {
+  # Go to repo root (where run.sh lives).
+  cd "$(dirname "$0")"
 
   echo ">>> Generating DoD artifacts to ${DOD_DIR}"
   mkdir -p "${DOD_DIR}"
   ./run.py deploy-dod -ic "${API_OUTPUT_DIR}/county" -is "${API_OUTPUT_DIR}" -o "${DOD_DIR}"
+}
+
+execute_api() {
+  # Go to repo root (where run.sh lives).
+  cd "$(dirname "$0")"
 
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json
@@ -101,6 +127,15 @@ execute() {
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
+
+execute() {
+  execute_model
+  execute_dod
+  execute_summaries
+  execute_api
+}
+
+### Utilities for scripting
 
 # Generates a version.json file in the API_OUTPUT_DIR capturing the time
 # and state of all repos.
@@ -167,5 +202,31 @@ function abs_path() {
   )
 }
 
+
 prepare "$@"
-execute
+
+case $DEFAULT_FUNC in
+  execute_model)
+    echo "Executing Model Results"
+    execute_model
+    ;;
+  execute_summaries)
+    echo "Executing Sumaries"
+    execute_summaries
+    ;;
+  execute_dod)
+    echo "Executing DoD Pipeline"
+    execute_dod
+    ;;
+  execute_api)
+    echo "Executing Api"
+    execute_api
+    ;;
+  execute)
+    echo "Executing Entire Pipeline"
+    execute
+    ;;
+  *)
+    echo "Invalid Function. Exiting"
+    ;;
+esac
