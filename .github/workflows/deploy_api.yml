@@ -9,6 +9,7 @@ on:
   schedule:
    - cron: '30 0,12 * * *'
 
+  push:
   # Hook to trigger a manual run.
   # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
   repository_dispatch:
@@ -24,7 +25,7 @@ jobs:
       COVID_DATA_PUBLIC_REF: 'master'
       #####
       # !!! Change this to your BRANCH if you want to test it
-      COVID_DATA_MODEL_REF: 'master'
+      COVID_DATA_MODEL_REF: 'fridiculous/add-artifacts'
       SNAPSHOT_ID: ${{github.run_number}}
 
     steps:
@@ -64,14 +65,14 @@ jobs:
         COVID_MODEL_CORES: 96
       run: ./covid-data-model/run.sh ./covid-data-public ./api_results
 
-    - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
-      uses: jakejarvis/s3-sync-action@master
-      with:
-        args: --acl public-read --follow-symlinks --delete
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        SOURCE_DIR: './api_results/'
-        DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}'
+    # - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
+    #   uses: jakejarvis/s3-sync-action@master
+    #   with:
+    #     args: --acl public-read --follow-symlinks --delete
+    #   env:
+    #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     SOURCE_DIR: './api_results/'
+    #     DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}'
 
       # TODO: Upload RedirectRules to AWS to make snapshot/latest pointer work.
