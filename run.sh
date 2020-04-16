@@ -10,7 +10,7 @@ set -o errexit
 prepare () {
   # Parse args if specified.
   if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-    echo "Usage: $0 [covid-data-public directory] [output-directory] (optional method)"
+    echo "Usage: $0 [covid-data-public directory] [output-directory] (optional - specific function)"
     echo
     echo "Example: $0 ../covid-data-public/ ./api_results/"
     echo "Example: $0 ../covid-data-public/ ./api_results/ execute_model"
@@ -24,9 +24,9 @@ prepare () {
   fi
 
   if [ $# -eq 2 ]; then
-    DEFAULT_FUNC="execute"
+    EXECUTE_FUNC="execute"
   else
-    DEFAULT_FUNC="${3}"
+    EXECUTE_FUNC="${3}"
   fi
 
   if [ ! -d "${DATA_SOURCES_DIR}" ] ; then
@@ -205,7 +205,7 @@ function abs_path() {
 
 prepare "$@"
 
-case $DEFAULT_FUNC in
+case $EXECUTE_FUNC in
   execute_model)
     echo "Executing Model Results"
     execute_model
