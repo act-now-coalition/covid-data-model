@@ -636,7 +636,7 @@ class SEIRModelAge:
         R, D, D_no_hgen, D_no_icu, HAdmissions_general, HAdmissions_ICU, TotalAllInfections = result_time_series[-7:]
 
         if self.approximate_R0:
-            Rt = self.suppression_policy(self.t_list)
+            Rt = self.R0 * self.suppression_policy(self.t_list)
         else:
             S_fracs_within_age_group = S / S.sum(axis=0)
             if self.suppression_policy is not None:
