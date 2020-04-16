@@ -4,6 +4,129 @@ import matplotlib.pyplot as plt
 
 
 class SEIRModelAge:
+    """
+    This class implements a SEIR-like compartmental epidemic model
+    consisting of SEIR states plus death, and hospitalizations and age
+    structure.
+
+    In the diff eq modeling, these parameters are assumed exponentially
+    distributed and modeling occurs in the thermodynamic limit,
+    i.e. we do not perform monte carlo for individual cases.
+
+    Parameters
+    ----------
+    N: np.array
+        Total population per age group.
+    t_list: array-like
+        Array of timesteps. Usually these are spaced daily.
+    suppression_policy: callable
+        Suppression_policy(t) should return a scalar in [0, 1] which
+        represents the contact rate reduction from social distancing.
+    A_initial: np.array
+        Initial asymptomatic per age group
+    I_initial: np.array
+        Initial infections per age group
+    R_initial: int
+        Initial recovered (combining all age groups)
+    E_initial: int
+        Initial exposed per age group
+    HGen_initial: int
+        Initial number of General hospital admissions per age group
+    HICU_initial: int
+        Initial number of ICU cases per age group
+    HICUVent_initial: int
+        Initial number of ICU cases per age group
+    D_initial: int
+        Initial number of deaths (combining all age groups)
+    n_days: int
+        Number of days to simulate.
+    birth_rate : float
+        Birth per capita per day
+    natural_death_rate : float
+        Fatility rate due to natural cause.
+    max_age: int
+        Age upper limit.
+    age_steps : np.array
+        Time people spend in each age group.
+        Last age bin edge is assumed to be 120 years old.
+    age_groups : np.array
+        Age groups, e.g.
+    R0: float
+        Basic Reproduction number
+    R0_hospital: float
+        Basic Reproduction number in the hospital.
+    kappa: float
+        Fractional contact rate for those with symptoms since they
+        should be
+        isolated vs asymptomatic who are less isolated. A value 1
+        implies
+        the same rate. A value 0 implies symptomatic people never infect
+        others.
+    sigma: float
+        Latent decay scale is defined as 1 / incubation period.
+        1 / 4.8: https://www.imperial.ac.uk/media/imperial-college
+        /medicine/sph/ide/gida-fellowships/Imperial-College-COVID19
+        -Global-Impact-26-03-2020.pdf
+        1 / 5.2 [3, 8]: https://arxiv.org/pdf/2003.10047.pdf
+    delta : float
+        1 / infectious period.
+    delta_hospital: float
+        Infectious period for patients in the hospital which is
+        usually a bit
+        longer.
+    gamma: float
+        Clinical outbreak rate (fraction of infected that show symptoms)
+    contact_matrix : np.array
+        With cell at ith row and jth column as contact rate made by ith
+        age group with jth age group.
+    approximate_R0: bool
+        If True calculate R(t) as funciton of initial R0 and suppression policy.
+    hospitalization_rate_general: np.array
+        Fraction of infected that are hospitalized generally (not in
+        ICU)
+        by age group.
+    hospitalization_rate_icu: np.array
+        Fraction of infected that are hospitalized in the ICU
+        by age group.
+    hospitalization_length_of_stay_icu_and_ventilator: float
+        Mean LOS for those requiring ventilators
+    fraction_icu_requiring_ventilator: float
+        Of the ICU cases, which require ventilators.
+    beds_general: int
+        General (non-ICU) hospital beds available.
+    beds_ICU: int
+        ICU beds available
+    ventilators: int
+        Ventilators available.
+    symptoms_to_hospital_days: float
+        Mean number of days elapsing between infection and
+        hospital admission.
+    symptoms_to_mortality_days: float
+        Mean number of days for an infected individual to die.
+        Hospitalization to death Needs to be added to time to
+        15.16 [0, 42] - https://arxiv.org/pdf/2003.10047.pdf
+    hospitalization_length_of_stay_general: float
+        Mean number of days for a hospitalized individual to be
+        discharged.
+    hospitalization_length_of_stay_icu
+        Mean number of days for a ICU hospitalized individual to be
+        discharged.
+    mortality_rate_no_ICU_beds: float
+        The percentage of those requiring ICU that die if ICU beds
+        are not available.
+    mortality_rate_no_ventilator: float
+        The percentage of those requiring ventilators that die if
+        they are not available.
+    mortality_rate_no_general_beds: float
+        The percentage of those requiring general hospital beds that
+        die if they are not available.
+    mortality_rate_from_ICU: np.array
+        Mortality rate among patients admitted to ICU by age group.
+    mortality_rate_from_ICUVent: float
+        Mortality rate among patients admitted to ICU with ventilator.
+    initial_hospital_bed_utilization: float
+        Starting utilization fraction for hospital beds and ICU beds.
+    """
 
     def __init__(self,
                  N,
@@ -31,6 +154,7 @@ class SEIRModelAge:
                  kappa=1,
                  gamma=0.5,
                  contact_matrix=np.random.rand(18, 18),
+                 approximate_R0=True,
                  # data source: https://www.cdc.gov/mmwr/volumes/69/wr/mm6912e2.htm#T1_down
                  # rates have been interpolated through centers of age_bin_edges
                  hospitalization_rate_general=np.array(
@@ -60,126 +184,11 @@ class SEIRModelAge:
                  mortality_rate_no_ICU_beds=1.,
                  mortality_rate_from_ICUVent=1.0,
                  mortality_rate_no_general_beds=0.0,
-                 initial_hospital_bed_utilization=0.6,
-                 approximate_R0=True):
-        """
-        This class implements a SEIR-like compartmental epidemic model
-        consisting of SEIR states plus death, and hospitalizations.
+                 initial_hospital_bed_utilization=0.6):
 
-        In the diff eq modeling, these parameters are assumed exponentially
-        distributed and modeling occurs in the thermodynamic limit, i.e. we do
-        not perform monte carlo for individual cases.
-
-        Parameters
-        ----------
-        N: np.array
-            Total population per age group.
-        t_list: array-like
-            Array of timesteps. Usually these are spaced daily.
-        suppression_policy: callable
-            Suppression_policy(t) should return a scalar in [0, 1] which
-            represents the contact rate reduction from social distancing.
-        A_initial: np.array
-            Initial asymptomatic per age group
-        I_initial: np.array
-            Initial infections per age group
-        R_initial: int
-            Initial recovered (combining all age groups)
-        E_initial: int
-            Initial exposed per age group
-        HGen_initial: int
-            Initial number of General hospital admissions per age group
-        HICU_initial: int
-            Initial number of ICU cases per age group
-        HICUVent_initial: int
-            Initial number of ICU cases per age group
-        D_initial: int
-            Initial number of deaths (combining all age groups)
-        n_days: int
-            Number of days to simulate.
-        birth_rate : float
-            Birth per capita per day
-        natural_death_rate : float
-            Fatility rate due to natural cause.
-        max_age: int
-            Age upper limit.
-        age_steps : np.array
-            Time people spend in each age group.
-            Last age bin edge is assumed to be 120 years old.
-        age_groups : np.array
-            Age groups, e.g.
-        R0: float
-            Basic Reproduction number
-        R0_hospital: float
-            Basic Reproduction number in the hospital.
-        kappa: float
-            Fractional contact rate for those with symptoms since they should be
-            isolated vs asymptomatic who are less isolated. A value 1 implies
-            the same rate. A value 0 implies symptomatic people never infect
-            others.
-        sigma: float
-            Latent decay scale is defined as 1 / incubation period.
-            1 / 4.8: https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-Global-Impact-26-03-2020.pdf
-            1 / 5.2 [3, 8]: https://arxiv.org/pdf/2003.10047.pdf
-        delta : float
-            1 / infectious period.
-        delta_hospital: float
-            Infectious period for patients in the hospital which is usually a bit
-            longer.
-        gamma: float
-            Clinical outbreak rate (fraction of infected that show symptoms)
-        contact_matrix : np.array
-            With cell at ith row and jth column as contact rate made by ith
-            age group with jth age group.
-        hospitalization_rate_general: np.array
-            Fraction of infected that are hospitalized generally (not in ICU)
-            by age group.
-        hospitalization_rate_icu: np.array
-            Fraction of infected that are hospitalized in the ICU
-            by age group.
-        hospitalization_length_of_stay_icu_and_ventilator: float
-            Mean LOS for those requiring ventilators
-        fraction_icu_requiring_ventilator: float
-            Of the ICU cases, which require ventilators.
-        beds_general: int
-            General (non-ICU) hospital beds available.
-        beds_ICU: int
-            ICU beds available
-        ventilators: int
-            Ventilators available.
-        symptoms_to_hospital_days: float
-            Mean number of days elapsing between infection and
-            hospital admission.
-        symptoms_to_mortality_days: float
-            Mean number of days for an infected individual to die.
-            Hospitalization to death Needs to be added to time to
-                15.16 [0, 42] - https://arxiv.org/pdf/2003.10047.pdf
-        hospitalization_length_of_stay_general: float
-            Mean number of days for a hospitalized individual to be discharged.
-        hospitalization_length_of_stay_icu
-            Mean number of days for a ICU hospitalized individual to be
-            discharged.
-        mortality_rate_no_ICU_beds: float
-            The percentage of those requiring ICU that die if ICU beds are not
-            available.
-        mortality_rate_no_ventilator: float
-            The percentage of those requiring ventilators that die if they are
-            not available.
-        mortality_rate_no_general_beds: float
-            The percentage of those requiring general hospital beds that die if
-            they are not available.
-        mortality_rate_from_ICU: np.array
-            Mortality rate among patients admitted to ICU by age group.
-        mortality_rate_from_ICUVent: float
-            Mortality rate among patients admitted to ICU with ventilator.
-        initial_hospital_bed_utilization: float
-            Starting utilization fraction for hospital beds and ICU beds.
-        approximate_R0: bool
-            If True, use an approximation that is much faster for R0 over time.
-            This is much better for optimization scenarios where runtime is
-            critical.
-        """
         self.N = np.array(N)
+        if suppression_policy is None:
+            suppression_policy = lambda x: 1
         self.suppression_policy = suppression_policy
         self.I_initial = np.array(I_initial)
         self.A_initial = np.array(A_initial)
@@ -211,26 +220,21 @@ class SEIRModelAge:
         self.delta = delta              # 1 / infectious period
         self.delta_hospital = delta_hospital
         self.beta_hospital = self.R0_hospital * self.delta_hospital
-        self.sigma = sigma  # Latent Period = 1 / incubation
+        self.sigma = sigma              # Latent Period = 1 / incubation
         self.gamma = gamma              # Clinical outbreak rate
         self.kappa = kappa              # Discount fraction due to isolation of symptomatic cases.
 
         self.contact_matrix = np.array(contact_matrix)
+        self.approximate_R0 = approximate_R0
         self.symptoms_to_hospital_days = symptoms_to_hospital_days
         self.symptoms_to_mortality_days = symptoms_to_mortality_days
 
-        # Hospitalization Parameters
-        # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-Global-Impact-26-03-2020.pdf
-        # Page 16
         self.hospitalization_rate_general = np.array(hospitalization_rate_general)
         self.hospitalization_rate_icu = np.array(hospitalization_rate_icu)
         self.hospitalization_length_of_stay_general = hospitalization_length_of_stay_general
         self.hospitalization_length_of_stay_icu = hospitalization_length_of_stay_icu
         self.hospitalization_length_of_stay_icu_and_ventilator = hospitalization_length_of_stay_icu_and_ventilator
 
-        # http://www.healthdata.org/sites/default/files/files
-        # /research_articles/2020/covid_paper_MEDRXIV-2020-043752v1-Murray.pdf
-        # = 0.53
         self.fraction_icu_requiring_ventilator = fraction_icu_requiring_ventilator
 
         # Capacity
@@ -246,14 +250,13 @@ class SEIRModelAge:
         self.mortality_rate_from_ICU = np.array(mortality_rate_from_ICU)
         self.mortality_rate_from_hospital = mortality_rate_from_hospital
 
-        # beta as the transmission probability per contact times the rescale factor to rescale contact matrix data to
-        # match expected R0
+        # beta as the transmission probability per contact times the rescale
+        # factor to rescale contact matrix data to match expected R0
         self.beta = self._estimate_beta(self.R0)
 
         # List of times to integrate.
         self.t_list = t_list
         self.results = None
-        self.approximate_R0 = approximate_R0
 
     def _aging_rate(self, v):
         """
@@ -271,19 +274,32 @@ class SEIRModelAge:
         age_out: np.array
             Rate of flow out of each compartment in v as result of aging.
         """
+
         age_in = v[:-1] / self.age_steps[:-1]
-        age_in = np.array([0] + list(age_in))  # This is 6x faster than np.insert
+        age_in = np.insert(age_in, 0, 0)
         age_out = v / self.age_steps
+
         return age_in, age_out
 
     def calculate_R0(self, beta=None, S_fracs=None):
         """
         Using Next Generation Matrix method to calculate R0 given beta.
         When beta is None, use its default value 1.
+        Ref: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2871801/
+        The method R0 is calculated as the dominant eigenvalue of next
+        generation matrix K, which is the product of transmission matrix T
+        and negative inverse of transition matrix Z.
+        Transmission matrix T describes rate of immediate new infections in
+        state of row caused by state of column. Since all new infections
+        first become exposed, values are only nonzero for corresponding rows.
+        Transition matrix Z describes rate of flow from column state to row
+        state or out of a state (diagonal).
 
         Parameters
         ----------
-        S_fracs: Float
+        beta: float
+            Probability
+        S_fracs: float
             fraction of susceptible population,
 
         Returns
@@ -292,7 +308,8 @@ class SEIRModelAge:
             Basic reproduction number.
         """
 
-        # percentage of susceptible in each age group (assuming that initial condition is disease-free equilibrium)
+        # percentage of susceptible in each age group (assuming that initial
+        # condition is disease-free equilibrium)
         if S_fracs is None:
             S_fracs = self.N / self.N.sum()
 
@@ -304,14 +321,18 @@ class SEIRModelAge:
         # [C_n1 * P_n, C_n2 * P_n, ... C_nn * P_n]
         contact_with_susceptible = self.contact_matrix * S_fracs.T
 
-        # transmission matrix with rates of immediate new infections into rows
-        # due to transmission from columns
-        T_E_E = np.zeros((age_group_num, age_group_num))  # from E to E
-        T_E_A = contact_with_susceptible * beta # A to E
-        T_E_I = contact_with_susceptible * beta * self.kappa  # I to E
+        # transmission matrix with rates of immediate new infections into
+        # compartment of rows due to transmission from compartment from
+        # columns.
+        # All sub_matrix is named as T_<row compartment>_<column compartment>
+        T_E_E = np.zeros((age_group_num, age_group_num))           # E to E
+        T_E_A = contact_with_susceptible * beta                    # A to E
+        T_E_I = contact_with_susceptible * beta * self.kappa       # I to E
         T_E_nonICU = contact_with_susceptible * self.beta_hospital # nonICU to E
         T_E_ICU = contact_with_susceptible * self.beta_hospital    # ICU to E
 
+        # all immediate new infections flow into E so the rest values are
+        # zeros
         T_A_E = np.zeros((age_group_num, age_group_num))      # E to A
         T_A_A = np.zeros((age_group_num, age_group_num))      # A to A
         T_A_I = np.zeros((age_group_num, age_group_num))      # I to A
@@ -345,7 +366,11 @@ class SEIRModelAge:
                                 T_ICU_nonICU, T_ICU_ICU], axis=1)  # all rates to ICU
         T = np.concatenate([T_E, T_A, T_I, T_nonICU, T_ICU])
 
-        # matrix of rates of transitions from rows to columns
+
+        # Matrix of rates of transitions from compartment of rows to
+        # compartments of columns, or out of a compartment (when row = column)
+        # All sub_matrix is named as Z_<row compartment>_<column compartment>
+
         # rates of transition out of E (incubation or aging) and into E (aging)
         aging_rate_in = 1 / self.age_steps[:-1]
         aging_rate_out = 1 / self.age_steps
@@ -356,33 +381,36 @@ class SEIRModelAge:
         Z_E_ICU = np.zeros((age_group_num, age_group_num))
         Z_E = np.concatenate([Z_E_E, Z_E_A, Z_E_I, Z_E_nonICU, Z_E_ICU], axis=1)
 
-        # rates of transition out of A (recovery and aging) and into A (aging)
+        # rates of transition out of A (recovery and aging) and into A (aging
+        # and from exposed)
         Z_A_E = np.zeros((age_group_num, age_group_num))
-        np.fill_diagonal(Z_A_E, self.sigma * (1 - self.gamma))   # transition from E to A
+        np.fill_diagonal(Z_A_E, self.sigma * (1 - self.gamma))   # from E to A
         Z_A_A = np.diag(-(aging_rate_out + self.delta)) + np.diag(aging_rate_in, k=-1)
         Z_A_I = np.zeros((age_group_num, age_group_num))
         Z_A_nonICU = np.zeros((age_group_num, age_group_num))
         Z_A_ICU = np.zeros((age_group_num, age_group_num))
         Z_A = np.concatenate([Z_A_E, Z_A_A, Z_A_I, Z_A_nonICU, Z_A_ICU], axis=1)
 
-        # rates of transition out of A (recovery and aging) and into A (aging)
-        Z_I_E = np.zeros((age_group_num, age_group_num))
-        np.fill_diagonal(Z_I_E, self.sigma * self.gamma)         # transition from E to I
-        Z_I_A = np.zeros((age_group_num, age_group_num))
-
+        # rates of transition out of I (recovery, hospitalization and aging)
+        # and into I (aging and from exposed)
         rate_recovered = self.delta
         rate_in_hospital_general = (
                 self.hospitalization_rate_general - self.hospitalization_rate_icu) / self.symptoms_to_hospital_days
         rate_in_hospital_icu = self.hospitalization_rate_icu / self.symptoms_to_hospital_days
         rate_out_of_I = aging_rate_out + rate_recovered + rate_in_hospital_general + rate_in_hospital_icu
 
+        Z_I_E = np.zeros((age_group_num, age_group_num))
+        np.fill_diagonal(Z_I_E, self.sigma * self.gamma)  # from E to I
+        Z_I_A = np.zeros((age_group_num, age_group_num))
         Z_I_I = np.diag(-rate_out_of_I) + np.diag(aging_rate_in, k=-1)  # transition out of I
         Z_I_nonICU = np.zeros((age_group_num, age_group_num))
         Z_I_ICU = np.zeros((age_group_num, age_group_num))
         Z_I = np.concatenate([Z_I_E, Z_I_A, Z_I_I, Z_I_nonICU, Z_I_ICU], axis=1)
 
-
-        died_from_hosp = self.mortality_rate_from_ICU / self.hospitalization_length_of_stay_general
+        # rates of transition out of nonICU (recovery, death and aging)
+        # and into nonICU (aging and from infected)
+        died_from_hosp = self.mortality_rate_from_hospital / \
+                         self.hospitalization_length_of_stay_general
         recovered_after_hospital_general = (1 - self.mortality_rate_from_hospital) / \
                                            self.hospitalization_length_of_stay_general
         rate_out_of_nonICU = aging_rate_out + died_from_hosp + recovered_after_hospital_general
@@ -394,7 +422,8 @@ class SEIRModelAge:
         Z_nonICU_ICU = np.zeros((age_group_num, age_group_num))
         Z_nonICU = np.concatenate([Z_nonICU_E, Z_nonICU_A, Z_nonICU_I, Z_nonICU_nonICU, Z_nonICU_ICU], axis=1)
 
-
+        # rates of transition out of ICU (recovery, death and aging) and into
+        # ICU (aging and from infected)
         died_from_icu = (1 - self.fraction_icu_requiring_ventilator) * self.mortality_rate_from_ICU / \
                         self.hospitalization_length_of_stay_icu
         died_from_icu_vent = self.mortality_rate_from_ICUVent / self.hospitalization_length_of_stay_icu_and_ventilator
@@ -403,13 +432,13 @@ class SEIRModelAge:
         recovered_from_icu_vent = (1 - np.maximum(self.mortality_rate_from_ICU, self.mortality_rate_from_ICUVent))\
                                   / self.hospitalization_length_of_stay_icu_and_ventilator
         rate_out_of_ICU = aging_rate_out + died_from_icu + died_from_icu_vent + recovered_from_icu_no_vent + recovered_from_icu_vent
+
         Z_ICU_E = np.zeros((age_group_num, age_group_num))
         Z_ICU_A = np.zeros((age_group_num, age_group_num))
         Z_ICU_I = np.diag(rate_in_hospital_icu)
         Z_ICU_nonICU = np.zeros((age_group_num, age_group_num))
         Z_ICU_ICU = np.diag(-(rate_out_of_ICU)) + np.diag(aging_rate_in, k=-1)
         Z_ICU = np.concatenate([Z_ICU_E, Z_ICU_A, Z_ICU_I, Z_ICU_nonICU, Z_ICU_ICU], axis=1)
-
         Z = np.concatenate([Z_E, Z_A, Z_I, Z_nonICU, Z_ICU])
 
         # Calculate R0 from transmission and transition matrix
@@ -444,12 +473,10 @@ class SEIRModelAge:
         """
         Calculate R(t)
         """
-        if suppression_policy is None:
-            suppression_policy = [1] * S_fracs.shape[1]
-        Rts = list()
+        Rts = np.zeros(S_fracs.shape[1])
         for n in range(S_fracs.shape[1]):
-            Rt = self.calculate_R0(self.beta, S_fracs[:, n]) * suppression_policy[n]
-            Rts.append(Rt)
+            Rts[n] += self.calculate_R0(self.beta, S_fracs[:, n])
+        Rts *= suppression_policy
         return Rts
 
     def _time_step(self, t, y):
@@ -488,11 +515,7 @@ class SEIRModelAge:
         S_and_hosp = S[:, np.newaxis].dot(frac_hospt[:, np.newaxis].T)
         contacts_S_and_I = (S_and_I * self.contact_matrix).sum(axis=1)
         contacts_S_and_hosp = (S_and_hosp * self.contact_matrix).sum(axis=1)
-        if self.suppression_policy is None:
-            suppression = 1
-        else:
-            suppression = self.suppression_policy(t)
-        number_exposed = self.beta * suppression * contacts_S_and_I + self.beta_hospital * contacts_S_and_hosp
+        number_exposed = self.beta * self.suppression_policy(t) * contacts_S_and_I + self.beta_hospital * contacts_S_and_hosp
 
         age_in_S, age_out_S = self._aging_rate(S)
         age_in_S[0] = self.N.sum() * self.birth_rate
@@ -559,7 +582,8 @@ class SEIRModelAge:
         age_in_HICUVent, age_out_HICUVent = self._aging_rate(HICUVent)
         rate_ventilator_needed = infected_and_in_hospital_icu * self.fraction_icu_requiring_ventilator
         rate_removing_ventilator = HICUVent / self.hospitalization_length_of_stay_icu_and_ventilator
-        dHICUVent_dt = age_in_HICUVent + rate_vantilator_needed - rate_removing_ventilator - age_out_HICUVent
+        dHICUVent_dt = age_in_HICUVent + rate_ventilator_needed - \
+                       rate_removing_ventilator - age_out_HICUVent
 
         # Tracking categories...
         dTotalInfections = sum(exposed_and_symptomatic) + sum(exposed_and_asymptomatic)
@@ -639,10 +663,7 @@ class SEIRModelAge:
             Rt = self.R0 * self.suppression_policy(self.t_list)
         else:
             S_fracs_within_age_group = S / S.sum(axis=0)
-            if self.suppression_policy is not None:
-                Rt = self.calculate_Rt(S_fracs_within_age_group, self.suppression_policy(self.t_list))
-            else:
-                Rt = self.calculate_Rt(S_fracs_within_age_group)
+            Rt = self.calculate_Rt(S_fracs_within_age_group, self.suppression_policy(self.t_list))
 
         # TODO @ Xinyu: add age specific compartments once age specific data is avalable
         self.results = {
