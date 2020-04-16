@@ -54,6 +54,7 @@ jobs:
     - name: Install Dependencies
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
+
     - name: Build model Results (run.sh .. .. execute_model)
       env:
         COVID_MODEL_CORES: 96
@@ -100,10 +101,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
           ${{ runner.os }}-
-
-            - name: Install Dependencies
+    - name: Install Dependencies
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
+
     - uses: actions/download-artifact@v1
       with:
         name: model-results
@@ -157,6 +158,7 @@ jobs:
     - name: Install Dependencies
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
+
     - uses: actions/download-artifact@v1
       with:
         name: model-results
@@ -209,6 +211,7 @@ jobs:
     - name: Install Dependencies
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
+
     - uses: actions/download-artifact@v1
       with:
         name: model-results
