@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.integrate import odeint
+from scipy.integrate import odeint, solve_ivp
 import matplotlib.pyplot as plt
 
 
@@ -60,7 +60,8 @@ class SEIRModelAge:
                  mortality_rate_no_ICU_beds=1.,
                  mortality_rate_from_ICUVent=1.0,
                  mortality_rate_no_general_beds=0.0,
-                 initial_hospital_bed_utilization=0.6):
+                 initial_hospital_bed_utilization=0.6,
+                 approximate_R0=True):
         """
         This class implements a SEIR-like compartmental epidemic model
         consisting of SEIR states plus death, and hospitalizations.
@@ -173,6 +174,10 @@ class SEIRModelAge:
             Mortality rate among patients admitted to ICU with ventilator.
         initial_hospital_bed_utilization: float
             Starting utilization fraction for hospital beds and ICU beds.
+        approximate_R0: bool
+            If True, use an approximation that is much faster for R0 over time.
+            This is much better for optimization scenarios where runtime is
+            critical.
         """
         self.N = np.array(N)
         self.suppression_policy = suppression_policy
@@ -248,6 +253,7 @@ class SEIRModelAge:
         # List of times to integrate.
         self.t_list = t_list
         self.results = None
+        self.approximate_R0 = approximate_R0
 
     def _aging_rate(self, v):
         """
@@ -265,11 +271,9 @@ class SEIRModelAge:
         age_out: np.array
             Rate of flow out of each compartment in v as result of aging.
         """
-
         age_in = v[:-1] / self.age_steps[:-1]
-        age_in = np.insert(age_in, 0, 0)
+        age_in = np.array([0] + list(age_in))  # This is 6x faster than np.insert
         age_out = v / self.age_steps
-
         return age_in, age_out
 
     def calculate_R0(self, beta=None, S_fracs=None):
@@ -448,8 +452,7 @@ class SEIRModelAge:
             Rts.append(Rt)
         return Rts
 
-
-    def _time_step(self, y, t):
+    def _time_step(self, t, y):
         """
         One integral moment.
 
@@ -458,8 +461,10 @@ class SEIRModelAge:
         y: array
 
         """
-        # with the rest seven compartments as:
-        S, E, A, I, HNonICU, HICU, HICUVent = np.split(y[:-7], 7)
+        # np.split(y[:-7], 7)  <--- This is 7x slower than the code below.
+        chunk_size = y[:-7].shape[0] // 7
+        S, E, A, I, HNonICU, HICU, HICUVent = [y[(i * chunk_size):((i + 1) * chunk_size)] for i in range(7)]
+
         R = y[-7]
         # TODO: County-by-county affinity matrix terms can be used to describe
         # transmission network effects. ( also known as Multi-Region SEIR)
@@ -621,16 +626,23 @@ class SEIRModelAge:
                                        TotalAllInfections])])
 
         # Integrate the SIR equations over the time grid, t.
-        result_time_series = odeint(self._time_step, y0, self.t_list, atol=1e-3, rtol=1e-3)
-        S, E, A, I, HGen, HICU, HICUVent = np.split(result_time_series.T[:-7], 7)
-        R, D, D_no_hgen, D_no_icu, HAdmissions_general, HAdmissions_ICU, TotalAllInfections = result_time_series.T[-7:]
+        result_time_series = solve_ivp(fun=self._time_step,
+                                       t_span=[self.t_list.min(), self.t_list.max()],
+                                       y0=y0,
+                                       t_eval=self.t_list,
+                                       method='RK23', rtol=1e-3, atol=1e-3).y
 
-        S_fracs_within_age_group = S / S.sum(axis=0)
+        S, E, A, I, HGen, HICU, HICUVent = np.split(result_time_series[:-7], 7)
+        R, D, D_no_hgen, D_no_icu, HAdmissions_general, HAdmissions_ICU, TotalAllInfections = result_time_series[-7:]
 
-        if self.suppression_policy is not None:
-            Rt = self.calculate_Rt(S_fracs_within_age_group, self.suppression_policy(self.t_list))
+        if self.approximate_R0:
+            Rt = self.suppression_policy(self.t_list)
         else:
-            Rt = self.calculate_Rt(S_fracs_within_age_group)
+            S_fracs_within_age_group = S / S.sum(axis=0)
+            if self.suppression_policy is not None:
+                Rt = self.calculate_Rt(S_fracs_within_age_group, self.suppression_policy(self.t_list))
+            else:
+                Rt = self.calculate_Rt(S_fracs_within_age_group)
 
         # TODO @ Xinyu: add age specific compartments once age specific data is avalable
         self.results = {
@@ -675,7 +687,6 @@ class SEIRModelAge:
         self.results['by_age']['HGen'] = HGen
         self.results['by_age']['HICU'] = HICU
         self.results['by_age']['HVent'] = HICUVent
-
 
     def plot_results(self, y_scale='log', by_age_group=False, xlim=None):
         """
