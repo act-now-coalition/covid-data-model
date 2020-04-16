@@ -37,9 +37,6 @@ prepare () {
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
 
-  # TODO: I think deploy_dod_dataset.py may currently have an implicit
-  # requirement that the county model JSON is in a /county subdirectory of the
-  # states?
   COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
   CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
 
@@ -56,12 +53,12 @@ execute() {
   pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" > /dev/null
 
   # Move state output to the expected location.
-  mkdir -p ${API_OUTPUT_STATES}/
-  mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_STATES}/
+  mkdir -p ${API_OUTPUT_DIR}/
+  mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_DIR}/
 
   # Move county output to the expected location.
-  mkdir -p ${API_OUTPUT_COUNTIES}/
-  mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_COUNTIES}/
+  mkdir -p ${API_OUTPUT_DIR}/county
+  mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_DIR}/county/
 
   # Clean up original output directories.
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
@@ -86,21 +83,21 @@ execute() {
 
   echo ">>> Generating DoD artifacts to ${DOD_DIR}"
   mkdir -p "${DOD_DIR}"
-  ./run.py deploy-dod -ic "${API_OUTPUT_COUNTIES}" -is "${API_OUTPUT_STATES}" -o "${DOD_DIR}"
+  ./run.py deploy-dod -ic "${API_OUTPUT_DIR}/county" -is "${API_OUTPUT_DIR}" -o "${DOD_DIR}"
 
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json
 
   echo ">>> Generating Top 100 Counties json to ${API_OUTPUT_COUNTIES}/counties_top_100.json"
   mkdir -p "${API_OUTPUT_COUNTIES}"
-  ./run.py deploy-top-counties -i "${API_OUTPUT_COUNTIES}" -o "${API_OUTPUT_COUNTIES}"
+  ./run.py deploy-top-counties -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
   mkdir -p "${API_OUTPUT_STATES}"
-  ./run.py deploy-states-api -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_STATES}"
+  ./run.py deploy-states-api -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_STATES}"
 
-  echo ">>> Generating API for states to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
-  ./run.py deploy-counties-api -i "${API_OUTPUT_COUNTIES}" -o "${API_OUTPUT_COUNTIES}"
+  echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
+  ./run.py deploy-counties-api -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
