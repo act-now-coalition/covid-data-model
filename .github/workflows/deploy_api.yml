@@ -113,11 +113,11 @@ jobs:
       env:
         COVID_MODEL_CORES: 96
       run: ./covid-data-model/run.sh ./covid-data-public ./api_results execute_summaries
-    - name: Upload Summaries with Model Results
-      uses: actions/upload-artifact@v1
-      with:
-        name: model-results-with-summaries
-        path: ./api_results
+    # - name: Upload Summaries with Model Results
+    #   uses: actions/upload-artifact@v1
+    #   with:
+    #     name: model-results-with-summaries
+    #     path: ./api_results
 
   execute-dod:
     runs-on: self-hosted
@@ -167,11 +167,11 @@ jobs:
       env:
         COVID_MODEL_CORES: 96
       run: ./covid-data-model/run.sh ./covid-data-public ./api_results execute_dod
-    - name: Upload DoD with Model Results
-      uses: actions/upload-artifact@v1
-      with:
-        name: model-results-with-dod
-        path: ./api_results
+    # - name: Upload DoD with Model Results
+    #   uses: actions/upload-artifact@v1
+    #   with:
+    #     name: model-results-with-dod
+    #     path: ./api_results
 
   execute-api:
     runs-on: self-hosted
@@ -220,11 +220,11 @@ jobs:
       env:
         COVID_MODEL_CORES: 96
       run: ./covid-data-model/run.sh ./covid-data-public ./api_results execute_api
-    - name: Upload API with Model Results
-      uses: actions/upload-artifact@v1
-      with:
-        name: model-results-with-api
-        path: ./api_results
+    # - name: Upload API with Model Results
+    #   uses: actions/upload-artifact@v1
+    #   with:
+    #     name: model-results-with-api
+    #     path: ./api_results
 
     # - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
     #   uses: jakejarvis/s3-sync-action@master
