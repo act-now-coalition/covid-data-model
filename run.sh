@@ -103,6 +103,12 @@ execute() {
   pushd "${API_OUTPUT_DIR}"
   zip -r all.zip *
   popd
+
+  echo ">>> Generating pyseir_state_summaries.zip from output/pyseir/state_summaries."
+  pushd output/pyseir
+  zip -r "${API_OUTPUT_DIR}/pyseir_state_summaries.zip" state_summaries/*
+  popd
+
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
 
