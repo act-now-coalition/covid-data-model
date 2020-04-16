@@ -154,7 +154,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
         else:
             raise ValueError(f'Invalid scenario {scenario}')
 
-    return interp1d(t_list, rho, fill_value='extrapolate')
+    return lambda x: np.interp(x, t_list, rho)
 
 
 def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
@@ -177,10 +177,11 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t.
     """
-    return interp1d(
-        x=[0, t_break, t_break + transition_time, 100000],
-        y=[1, 1, eps, eps],
-        fill_value='extrapolate')
+    return lambda x: np.interp(
+        x,
+        [0, t_break, t_break + transition_time, 100000],
+        [1, 1, eps, eps]
+    )
 
 
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
@@ -263,7 +264,7 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression,
 
     t_list_since_reference_date = t_list + (pd.to_datetime(t0) - pd.to_datetime(reference_start_date)).days
 
-    return interp1d(t_list_since_reference_date, rho, fill_value='extrapolate')
+    return lambda x: np.interp(x, t_list_since_reference_date, rho)
 
 
 def generate_empirical_distancing_policy_by_state(t_list, state, future_suppression, reference_start_date=None):
@@ -312,7 +313,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
         results.append(suppression_policy(t_list).clip(max=1, min=0))
     results_for_state = (np.vstack(results).T * weight).sum(axis=1)
 
-    return interp1d(t_list, results_for_state, fill_value='extrapolate')
+    return lambda x: np.interp(x, t_list, results_for_state)
 
 
 def piecewise_parametric_policy(x, t_list):
