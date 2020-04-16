@@ -13,8 +13,11 @@ from multiprocessing import Pool
 from pyseir.models import suppression_policies
 from pyseir import load_data, OUTPUT_DIR
 from pyseir.models.seir_model import SEIRModel
+from pyseir.models.seir_model_age import SEIRModelAge
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
+from pyseir.parameters.parameter_ensemble_generator_age import \
+    ParameterEnsembleGeneratorAge
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 
@@ -27,6 +30,7 @@ class ModelFitter:
     statistical ones. We allow for relative rates of confirmed cases, hosp and
     deaths to float, allowing the fitter to focus on the shape parameters rather
     than absolutes.
+
     Parameters
     ----------
     fips: str
@@ -51,6 +55,8 @@ class ModelFitter:
         relative to the max. The overall scale here doesn't influence the max
         likelihood fit, but it does influence the prior blending and error
         estimates.  0.5 = 50% error. Best to be conservatively high.
+    with_age_structure: bool
+        Whether run model with age structure.
     """
 
     DEFAULT_FIT_PARAMS = dict(
@@ -103,7 +109,8 @@ class ModelFitter:
                  n_years=1,
                  cases_to_deaths_err_factor=.5,
                  hospital_to_deaths_err_factor=.5,
-                 percent_error_on_max_observation=0.5):
+                 percent_error_on_max_observation=0.5,
+                 with_age_structure=False):
 
         self.fips = fips
         self.ref_date = ref_date
@@ -113,6 +120,7 @@ class ModelFitter:
         self.hospital_to_deaths_err_factor = hospital_to_deaths_err_factor
         self.percent_error_on_max_observation = percent_error_on_max_observation
         self.t0_guess = 60
+        self.with_age_structure = with_age_structure
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -171,16 +179,22 @@ class ModelFitter:
         """
         Generate the additional fitter candidates from the ensemble generator. This
         has the suppression policy and R0 keys removed.
+
         Returns
         -------
         SEIR_kwargs: dict
             The average ensemble params.
         """
-        SEIR_kwargs = ParameterEnsembleGenerator(
-            fips=self.fips,
-            N_samples=5000,
-            t_list=self.t_list,
-            suppression_policy=None).get_average_seir_parameters()
+        if self.with_age_structure:
+            parameter_generator = ParameterEnsembleGeneratorAge
+        else:
+            parameter_generator = ParameterEnsembleGenerator
+
+        SEIR_kwargs = parameter_generator(
+                fips=self.fips,
+                N_samples=5000,
+                t_list=self.t_list,
+                suppression_policy=None).get_average_seir_parameters()
 
         SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
         del SEIR_kwargs['suppression_policy']
@@ -207,6 +221,7 @@ class ModelFitter:
         the errors in the following way:
         1. Set the error of the largest observation to 100% of its value.
         2. Scale all other errors based on sqrt(value) * sqrt(max_value)
+
         Returns
         -------
         cases_stdev: array-like
@@ -254,6 +269,7 @@ class ModelFitter:
     def run_model(self, R0, eps, t_break, log10_I_initial):
         """
         Generate the model and run.
+
         Parameters
         ----------
         R0: float
@@ -265,6 +281,7 @@ class ModelFitter:
             Timing for the switch in suppression policy.
         log10_I_initial:
             log10 initial infections.
+
         Returns
         -------
         model: SEIRModel
@@ -282,15 +299,23 @@ class ModelFitter:
         #             state=state, future_suppression=eps, **suppression_policy_params)
         suppression_policy = suppression_policies.generate_two_step_policy(self.t_list, eps, t_break)
 
-        # Load up some number of initial exposed so the initial flow into infected is stable.
+        if self.with_age_structure:
+            age_distribution = self.SEIR_kwargs['N'] / self.SEIR_kwargs['N'].sum()
+            seir_model = SEIRModelAge
+        else:
+            age_distribution = 1
+            seir_model = SEIRModel
 
-        self.SEIR_kwargs['E_initial'] = self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial
+        # Load up some number of initial exposed so the initial flow into
+        # infected is stable.
+        self.SEIR_kwargs['E_initial'] = \
+            self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial * age_distribution
 
-        model = SEIRModel(
-            R0=R0,
-            suppression_policy=suppression_policy,
-            I_initial=10 ** log10_I_initial,
-            **self.SEIR_kwargs)
+        model = seir_model(
+                R0=R0,
+                suppression_policy=suppression_policy,
+                I_initial=10 ** log10_I_initial * age_distribution,
+                **self.SEIR_kwargs)
         model.run()
         return model
 
@@ -298,6 +323,7 @@ class ModelFitter:
                   log10_I_initial):
         """
         Fit SEIR model by MLE.
+
         Parameters
         ----------
         R0: float
@@ -315,6 +341,7 @@ class ModelFitter:
             Fraction of actual hospitalizations vs the total.
         log10_I_initial:
             log10 initial infections.
+
         Returns
         -------
           : float
@@ -587,9 +614,10 @@ class ModelFitter:
         plt.savefig(output_file.replace('mle_fit_results', 'mle_fit_model'), bbox_inches='tight')
 
     @classmethod
-    def run_for_fips(cls, fips, n_retries=3):
+    def run_for_fips(cls, fips, n_retries=3, with_age_structure=False):
         """
         Run the model fitter for a state or county fips code.
+
         Parameters
         ----------
         fips: str
@@ -598,6 +626,9 @@ class ModelFitter:
             The model fitter is stochastic in nature and a seed cannot be set.
             This is a bandaid until more sophisticated retries can be
             implemented.
+        with_age_structure: bool
+            If True run model with age structure.
+
         Returns
         -------
         : ModelFitter
@@ -611,7 +642,8 @@ class ModelFitter:
 
         try:
             for i in range(n_retries):
-                model_fitter = cls(fips)
+                model_fitter = cls(fips=fips,
+                                   with_age_structure=with_age_structure)
                 try:
                     model_fitter.fit()
                     if model_fitter.mle_model:
@@ -627,20 +659,23 @@ class ModelFitter:
         return model_fitter
 
 
-def run_state(state, states_only=False):
+def run_state(state, states_only=False, with_age_structure=False):
     """
     Run the fitter for each county in a state.
+
     Parameters
     ----------
     state: str
         State to run against.
     states_only: bool
         If True only run the state level.
+    with_age_structure: bool
+        If True run model with age structure.
     """
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
 
-    model_fitter = ModelFitter.run_for_fips(state_obj.fips)
+    model_fitter = ModelFitter.run_for_fips(state_obj.fips, with_age_structure)
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
