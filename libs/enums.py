@@ -9,8 +9,8 @@ class Intervention(enum.Enum):
     NO_INTERVENTION = 0
     FLATTEN = 1
     # FULL_CONTAINMENT = 2 # you are cancelled
-    SOCIAL_DISTANCING = 3
-    CURRENT = 4  # look at what the state is and get the file for that
+    SOCIAL_DISTANCING = 2
+    CURRENT = 3  # look at what the state is and get the file for that
 
     @classmethod
     def from_str(cls, label):

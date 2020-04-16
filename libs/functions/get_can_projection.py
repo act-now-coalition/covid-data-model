@@ -17,7 +17,7 @@ def _get_interventions_for_state(state):
 def _get_intervention(intervention, state):
     if intervention == Intervention.CURRENT.value:
         state_intervention = _get_interventions_for_state(state)
-        return Intervention.from_str(state_intervention).value
+        return Intervention.from_str(state_intervention)
     return intervention
 
 
