@@ -19,8 +19,6 @@ from enum import Enum
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
 
-FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
-
 
 class HospitalizationDataType(Enum):
     CUMULATIVE_HOSPITALIZATIONS = 'cumulative_hospitalizations'
@@ -436,7 +434,7 @@ def load_hospitalization_data_by_state(state, t0):
         .get_subset(AggregationLevel.STATE, country='USA', state=abbr) \
         .get_data(country='USA', state=abbr)
 
-    if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
+    if len(hospitalization_data) == 0:
         return None, None, None
 
     times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
