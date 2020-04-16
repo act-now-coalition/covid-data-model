@@ -552,7 +552,7 @@ class SEIRModelAge:
         # This compartment is for tracking ventillator count. The beds are
         # accounted for in the ICU cases.
         age_in_HICUVent, age_out_HICUVent = self._aging_rate(HICUVent)
-        rate_vantilator_needed = infected_and_in_hospital_icu * self.fraction_icu_requiring_ventilator
+        rate_ventilator_needed = infected_and_in_hospital_icu * self.fraction_icu_requiring_ventilator
         rate_removing_ventilator = HICUVent / self.hospitalization_length_of_stay_icu_and_ventilator
         dHICUVent_dt = age_in_HICUVent + rate_vantilator_needed - rate_removing_ventilator - age_out_HICUVent
 
