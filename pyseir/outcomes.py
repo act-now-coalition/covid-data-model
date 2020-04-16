@@ -17,22 +17,10 @@ class ContinuousParameter:
     parameter_name: str
     lower_bound: float
     upper_bound: float
-    alpha: float = None
-    beta: float = None
-    
+    alpha: float = 1
+    beta: float = 1
+
     def sample(self, num_samples):
-        if self.alpha:
-            return self.sample_beta(num_samples)
-        else:
-            return self.sample_uniform(num_samples)
-
-    def sample_uniform(self, num_samples):
-        scale = (self.upper_bound - self.lower_bound) 
-        shift = self.lower_bound
-        samples = np.random.random_sample(num_samples)
-        return scale * samples + shift
-
-    def sample_beta(self, num_samples):
         scale = (self.upper_bound - self.lower_bound) 
         shift = self.lower_bound
         samples = np.random.beta(a=self.alpha, b=self.beta, size=num_samples)
