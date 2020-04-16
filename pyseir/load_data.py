@@ -15,9 +15,6 @@ from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from functools import lru_cache
 from enum import Enum
-from string import Template
-import rpy2.robjects as robjects
-from rpy2.robjects import pandas2ri
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
@@ -519,6 +516,14 @@ def load_hospital_data():
 def load_cdc_hospitalization_data():
     """
     Return age specific hospitalization rate.
+    Source: https://www.cdc.gov/mmwr/volumes/69/wr/mm6912e2.htm#T1_down
+    Table has columns: lower_age, upper_age, mean_age, lower_{outcome type},
+    upper_{outcome type}, and mean_{outcome type}.
+    Outcome types and their meanings:
+    - hosp: percentage of all hospitalizations among cases
+    - icu: percentage of icu admission among cases
+    - hgen: percentage of general hospitalization (all hospitalizations - icu)
+    - fatality: case fatality rate
     """
 
     return pd.read_csv(os.path.join(DATA_DIR, 'cdc_hospitalization_data.csv'))
@@ -564,6 +569,26 @@ def load_public_implementations_data():
 def load_contact_matrix_data_by_fips(fips):
     """
     Load contact matrix for given fips.
+    Source: polymod survey in UK
+    (https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0050074).
+    Contact matrix at each county has been adjusted by county demographics.
+
+    Parameters
+    ----------
+    fips: str
+         State or county FIPS code.
+
+    Returns
+    -------
+      : dict
+        With fips as keys and values:
+           - 'contact_matrix': list(list)
+              number of contacts made by age group in rows with age groups in
+              columns
+           - 'age_bin_edges': list
+              lower age limits to define age groups
+           - 'age_distribution': list
+             population size of each age group
     """
 
     fips = [fips] if isinstance(fips, str) else list(fips)
