@@ -125,18 +125,27 @@ execute_api() {
   echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
   ./run.py deploy-counties-api -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
 
+  echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
+}
+
+execute_zip_folder() {
+  # Go to repo root (where run.sh lives).
+  cd "$(dirname "$0")"
+
   echo ">>> Generating all.zip with all API artifacts."
   pushd "${API_OUTPUT_DIR}"
   zip -r all.zip *
+  #gzip -r ${API_OUTPUT_DIR}
   popd
-  echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
+
 
 execute() {
   execute_model
   execute_dod
   execute_summaries
   execute_api
+  execute_zip_folder
 }
 
 ### Utilities for scripting
@@ -225,6 +234,10 @@ case $EXECUTE_FUNC in
   execute_api)
     echo "Executing Api"
     execute_api
+    ;;
+  execute_zip_folder)
+    echo "Executing Api"
+    execute_zip_folder
     ;;
   execute)
     echo "Executing Entire Pipeline"
