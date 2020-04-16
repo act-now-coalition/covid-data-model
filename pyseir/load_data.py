@@ -249,6 +249,8 @@ def load_county_metadata_by_state(state=None):
     else:
         state = state_metadata['state'].unique()
 
+    state = [s.title() for s in state]
+
     state_metadata = state_metadata[state_metadata.state.isin(state)]
 
     density_measures = ['housing_density', 'population_density']
