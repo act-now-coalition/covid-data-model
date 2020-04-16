@@ -125,6 +125,10 @@ execute_api() {
   echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
   ./run.py deploy-counties-api -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
 
+  echo ">>> Generating all.zip with all API artifacts."
+  pushd "${API_OUTPUT_DIR}"
+  zip -r all.zip *
+  popd
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
 
