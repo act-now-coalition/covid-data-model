@@ -102,7 +102,8 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
 
 def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
              skip_download=False, states_only=False, output_dir=None):
-
+    #Temp override for testing
+    states_only=True
     _cache_global_datasets()
 
     if not skip_download:
@@ -155,7 +156,7 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
                     output_dir=output_dir
                 )
 
-                
+
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
