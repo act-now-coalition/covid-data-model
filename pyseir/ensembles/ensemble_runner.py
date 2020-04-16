@@ -14,7 +14,6 @@ from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGene
 from pyseir.models.suppression_policies import generate_empirical_distancing_policy, generate_covidactnow_scenarios
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
-from pyseir.load_data import FAULTY_HOSPITAL_DATA_STATES
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
@@ -151,7 +150,7 @@ class EnsembleRunner:
             .sort_values('date')
 
         # If there are enough hospitalizations, use those to define initial conditions.
-        if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in FAULTY_HOSPITAL_DATA_STATES:
+        if not use_cases and len(hospitalization_data) > 0:
             latest_date = hospitalization_data.iloc[-1]['date'].date()
             n_current = hospitalization_data.iloc[-1]['current_hospitalized']
             if n_current > self.min_hospitalization_threshold and not np.isnan(n_current):
