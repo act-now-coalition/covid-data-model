@@ -539,7 +539,7 @@ class SEIRModelAge:
         #  matrices as workplace interactions are the dominant term. See:
         #  https://www.census.gov/topics/employment/commuting/guidance/flows.html
         # Effective contact rate * those that get exposed * those susceptible.
-        total_ppl = (S + E + A + I + R + HNonICU + HICU + HICUVent).sum()
+        total_ppl = self.N.sum()
 
         # get matrix:
         # [C_11 * S_1 * I_1/N, ... C1j * S_1 * I_j/N...]
