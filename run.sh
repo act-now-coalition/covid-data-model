@@ -136,8 +136,11 @@ execute_zip_folder() {
   #pushd "${API_OUTPUT_DIR}/.."
   ZIP_FOLDER="./zips"
   mkdir -p ${ZIP_FOLDER}
-  api-results_ZIP="${ZIP_FOLDER}/api-results.zip"
-  zip -r ${api-results_ZIP} "${API_OUTPUT_DIR}/"
+  API_RESULTS_ZIP="${ZIP_FOLDER}/api-results.zip"
+  echo "${ZIP_FOLDER}"
+  echo "${API_RESULTS_ZIP}"
+  echo "${API_OUTPUT_DIR}/"
+  zip -r ${API_RESULTS_ZIP} "${API_OUTPUT_DIR}/"
   #gzip -r ${API_OUTPUT_DIR}
   #popd
 }
