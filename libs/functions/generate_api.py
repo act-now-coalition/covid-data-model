@@ -73,16 +73,18 @@ def _generate_api_for_projections(projection_row):
     return projections
 
 def _generate_actuals(projection_row, intervention, state):
-    # TODO(igor): move this out of here
+    # TODO(igor): fixme
     intervention_str = {
         Intervention.NO_INTERVENTION: 'limited_action',
         Intervention.FLATTEN: 'stay_at_home',
         Intervention.SOCIAL_DISTANCING: 'social_distancing',
-        Intervention.CURRENT: 'current', # this should never happen, but does
-    }[get_can_projection.get_intervention(intervention, state)]
+        0: 'limited_action',
+        1: 'stay_at_home',
+        3: 'social_distancing',
 
+    }[get_can_projection.igors_get_intervention(intervention, state)]
     return _Actuals(
-        population= 999, # TODO(igor): fixme
+        population=projection_row[rc.POPULATION],
         intervention=intervention_str,
         cumulativeConfirmedCases=projection_row[rc.CURRENT_CONFIRMED],
         cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
@@ -93,24 +95,16 @@ def _generate_actuals(projection_row, intervention, state):
         ICUBeds = None
     )
 
-def _generate_timeseries_row(json_data_row, previous_row):
-    if previous_row:
-        new_deaths = int(json_data_row[can_schema.DEAD]) - int(previous_row[can_schema.DEAD])
-        new_infections = int(json_data_row[can_schema.INFECTED]) - int(previous_row[can_schema.INFECTED])
-    else:
-        new_deaths = 0
-        new_infections = 0
+def _generate_timeseries_row(json_data_row):
     return CANPredictionTimeseriesRow(
         date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
-        hospitalBedsInUse=json_data_row[can_schema.ALL_HOSPITALIZED],
+        hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
         hospitalBedCapacity=json_data_row[can_schema.BEDS],
         ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
-        ICUBedCapacity=0,
-        newDeaths=new_deaths,
-        newConfirmedCases=0,  # idk
-        newInfections=new_infections,
+        ICUBedCapacity=None,
+        cumulativeDeaths=json_data_row[can_schema.DEAD],
+        cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
     )
-
 
 def generate_api_for_state_timeseries(projection_row, intervention, input_dir):
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
@@ -119,10 +113,8 @@ def generate_api_for_state_timeseries(projection_row, intervention, input_dir):
         input_dir, state_abbrev, fips, AggregationLevel.STATE, intervention
     )
     timeseries = []
-    previous_row = None
     for data_series in can_dataseries:
-        timeseries.append(_generate_timeseries_row(data_series, previous_row))
-        previous_row = data_series
+        timeseries.append(_generate_timeseries_row(data_series))
     projections = _generate_api_for_projections(projection_row)
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
@@ -143,10 +135,8 @@ def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
         input_dir, state_abbrev, fips, AggregationLevel.COUNTY, intervention
     )
     timeseries = []
-    previous_row = None
     for data_series in can_dataseries:
-        timeseries.append(_generate_timeseries_row(data_series, previous_row))
-        previous_row = data_series
+        timeseries.append(_generate_timeseries_row(data_series))
     projections = _generate_api_for_projections(projection_row)
     return CovidActNowCountyTimeseries(
         lat=projection_row[rc.LATITUDE],

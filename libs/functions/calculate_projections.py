@@ -44,6 +44,7 @@ def _read_json_as_df(path):
     df["all_hospitalized"] = df["all_hospitalized"].astype("int")
     df["beds"] = df["beds"].astype("int")
     df["dead"] = df["dead"].astype("int")
+    df["population"] = df["population"].astype("int")
     return df
 
 
@@ -78,6 +79,7 @@ def _calculate_projection_data(file_path):
         beds_at_peak_hospitalization_date = _beds_after_given_date(df, peak_hospitalizations_date)
         peak_hospitalizations_short_falls = df.iloc[df.all_hospitalized.idxmax()].short_fall
         peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
+        population = df.iloc[0].population
         return [
             hosp_16_days,
             hosp_32_days,
@@ -90,6 +92,7 @@ def _calculate_projection_data(file_path):
             hospitals_shortfall_date,
             peak_hospitalizations_short_falls,
             beds_at_peak_hospitalization_date,
+            population
         ]
     return None
 
@@ -109,7 +112,6 @@ def get_state_projections_df(input_dir, initial_intervention_type, state_interve
 
     # save results in a list of lists, converted to df later
     results = []
-
     for state in list(US_STATE_ABBREV.values()):
         intervention_type = _get_intervention_type(initial_intervention_type, state, state_interventions_df)
         file_name = f"{state}.{intervention_type}.json"

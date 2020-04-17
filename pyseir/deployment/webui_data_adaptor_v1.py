@@ -107,7 +107,9 @@ class WebUIDataAdaptorV1:
         fips: str
             County FIPS code to map.
         """
+        is_county = False
         if len(fips) == 5:
+            is_county = True
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
@@ -196,8 +198,13 @@ class WebUIDataAdaptorV1:
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
 
+            # TODO(igor): hack to get the right policy ids
             output_path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir)
-            output_path = output_path.replace('__INTERVENTION_IDX__', str(i_policy))
+            if is_county and i_policy > 1:
+                output_path = output_path.replace('__INTERVENTION_IDX__', str(i_policy+1))
+            else:
+                output_path = output_path.replace('__INTERVENTION_IDX__', str(i_policy))
+
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 
