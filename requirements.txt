@@ -21,7 +21,6 @@ simplejson==3.17.0
 boto3==1.12.28
 seaborn==0.10.0
 click==7.1.1
-sentry-sdk==0.14.3
 scikit-learn
 pip
 iminuit

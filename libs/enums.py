@@ -4,14 +4,22 @@ import enum
 # TODO: This should maybe be unique per state.
 UNKNOWN_FIPS = "99999"
 
-
 class Intervention(enum.Enum):
     NO_INTERVENTION = 0
-    FLATTEN = 1
+    FLATTEN = 1 # on the webiste, strictDistancingNow
     # FULL_CONTAINMENT = 2 # you are cancelled
-    SOCIAL_DISTANCING = 3
+    SOCIAL_DISTANCING = 3 # weak distancingNow on the website
     CURRENT = 4  # look at what the state is and get the file for that
     INFERRED = 5 # given the previous pattern, how do we predict going forward
+
+    @classmethod
+    def county_supported_interventions(cls): 
+        return [
+            Intervention.NO_INTERVENTION,
+            Intervention.FLATTEN,
+            Intervention.SOCIAL_DISTANCING,
+            Intervention.CURRENT
+        ]
 
     @classmethod
     def from_webui_data_adaptor(cls, label):

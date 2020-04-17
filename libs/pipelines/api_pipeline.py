@@ -64,7 +64,6 @@ def run_projections(
     elif aggregation_level == AggregationLevel.COUNTY:
         # Run County level projections
         counties_key_name = f"counties.{intervention.name}"
-        print(counties_key_name)
         counties_df = build_processed_dataset.get_usa_by_county_with_projection_df(
             input_file, intervention.value
         )
