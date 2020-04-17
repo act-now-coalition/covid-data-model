@@ -167,6 +167,7 @@ class WebUIDataAdaptorV1:
             # Col 12
             final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
             output_model['beds'] = final_beds
+            output_model['cumulative_infected'] = np.interp(t_list_downsampled, t_list, np.cumsum(output_for_policy['total_new_infections']['ci_50']))
 
             # Record the current number of hospitalizations in order to rescale the inference results.
             all_hospitalized_today = output_model['all_hospitalized'][0]
@@ -182,7 +183,7 @@ class WebUIDataAdaptorV1:
                                         & (output_dates < datetime.today() + timedelta(days=90))]
             output_model = output_model.fillna(0)
 
-            for col in ['i', 'j', 'k', 'l']:
+            for col in ['j', 'k', 'l']:
                 output_model[col] = 0
             output_model['population'] = population
             for col in ['m', 'n']:
