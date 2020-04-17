@@ -15,7 +15,7 @@ We currently provide 6 file types:
 (pre-launch of v0)
 
 ```bash
-├── /v0/<snapshot id>/
+├── /latest/ | /snapshots/<snapshot id>/
 │   └── case_summary/
 │   │   ├── <state abreviation>.summary.json
 │   │   └── case_summary.version.json
