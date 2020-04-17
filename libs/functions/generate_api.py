@@ -72,13 +72,8 @@ def _generate_api_for_projections(projection_row):
     )
     return projections
 
-def _generate_actuals(projection_row, intervention, state):
-    intervention_str = {
-        Intervention.NO_INTERVENTION: 'limited_action',
-        Intervention.FLATTEN: 'stay_at_home',
-        Intervention.INFERRED: 'projected',
-        Intervention.SOCIAL_DISTANCING: 'social_distancing',
-    }[get_can_projection.get_intervention(intervention, state)]
+def _generate_actuals(projection_row, state):
+    intervention_str = get_can_projection.get_intervention_for_state(state).api_name()
     return _Actuals(
         population=projection_row[rc.POPULATION],
         intervention=intervention_str,
@@ -117,7 +112,7 @@ def generate_api_for_state_timeseries(projection_row, intervention, input_dir):
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_actuals(projection_row, intervention, state_abbrev),
+        actuals=_generate_actuals(projection_row, state_abbrev),
         stateName=projection_row[rc.STATE],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
@@ -141,7 +136,7 @@ def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
     return CovidActNowCountyTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_actuals(projection_row, intervention, state_abbrev),
+        actuals=_generate_actuals(projection_row, state_abbrev),
         stateName=projection_row[rc.STATE],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],
@@ -157,7 +152,7 @@ def generate_api_for_state_projection_row(projection_row):
     state_result = CovidActNowStateSummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_actuals(projection_row, Intervention.FLATTEN, state_abbrev),
+        actuals=_generate_actuals(projection_row, state_abbrev),
         stateName=projection_row[rc.STATE],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
@@ -172,7 +167,7 @@ def generate_api_for_county_projection_row(projection_row):
     county_result = CovidActNowCountySummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_actuals(projection_row, Intervention.FLATTEN, state_abbrev),
+        actuals=_generate_actuals(projection_row, state_abbrev),
         stateName=projection_row[rc.STATE],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],

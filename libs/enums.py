@@ -12,6 +12,9 @@ class Intervention(enum.Enum):
     # We are using enum 2 for consistency with the website
     INFERRED = 2 # given the previous pattern, how do we predict going forward
 
+    def api_name(self):
+        return self.name()
+
     @classmethod
     def county_supported_interventions(cls):
         return [
