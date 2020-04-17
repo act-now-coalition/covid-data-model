@@ -68,7 +68,7 @@ jobs:
     - name: Upload Model Results
       uses: actions/upload-artifact@v2-preview
       with:
-        name: model-results
+        name: model-results-${{env.SNAPSHOT_ID}}
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
 
   execute-summaries:
