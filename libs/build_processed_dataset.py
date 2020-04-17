@@ -7,6 +7,7 @@ import pprint
 import shapefile
 import simplejson
 import statistics
+import logging
 import math, sys
 
 from urllib.parse import urlparse
@@ -15,6 +16,7 @@ from collections import defaultdict
 from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import US_STATE_ABBREV, us_fips
 from libs.datasets import FIPSPopulation
+from libs.datasets import JHUDataset
 from libs.enums import Intervention
 from libs.functions.calculate_projections import (
     get_state_projections_df,
@@ -27,8 +29,7 @@ from libs.datasets.results_schema import (
 )
 from libs.constants import NULL_VALUE
 
-# @TODO: Attempt today. If that fails, attempt yesterday.
-latest = datetime.date.today() - datetime.timedelta(days=1)
+_logger = logging.getLogger(__name__)
 
 
 def _get_interventions_df():
@@ -50,10 +51,9 @@ county_replace_with_null = {"Unassigned": NULL_VALUE}
 
 def _get_usa_by_county_df():
     # TODO: read this from a dataset class
-    url = "{}/data/cases-jhu/csse_covid_19_daily_reports/{}.csv".format(
-        get_public_data_base_url(), latest.strftime("%m-%d-%Y")
-    )
-    raw_df = pd.read_csv(url, dtype={"FIPS": str})
+    latest_path = JHUDataset.latest_path()
+    _logger.info(f"Loading latest JHU data from {latest_path}")
+    raw_df = pd.read_csv(latest_path, dtype={"FIPS": str})
     raw_df["FIPS"] = raw_df["FIPS"].astype(str).str.zfill(5)
 
     column_mapping = {
@@ -134,7 +134,8 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     counties.index.name = "OBJECTID"
     # assert unique key test
 
-    assert counties["Combined Key"].value_counts().max() == 1
+    if counties["Combined Key"].value_counts().max() != 1: 
+        raise Exception(f"counties['Combined Key'].value_counts().max() = {counties['Combined Key'].value_counts().max()}, at input_dir {input_dir}.")
     return counties
 
 
