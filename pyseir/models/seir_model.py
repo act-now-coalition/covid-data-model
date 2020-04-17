@@ -172,7 +172,7 @@ class SEIRModel:
                  mortality_rate_no_ICU_beds=1.,
                  mortality_rate_from_ICUVent=1.0,
                  mortality_rate_no_general_beds=0.0,
-                 initial_hospital_bed_utilization=0.6,):
+                 initial_hospital_bed_utilization=0.6):
 
         self.N = N
         self.suppression_policy = suppression_policy
