@@ -73,7 +73,7 @@ def _generate_api_for_projections(projection_row):
     return projections
 
 def _generate_actuals(projection_row, state):
-    intervention_str = get_can_projection.get_intervention_for_state(state).api_name()
+    intervention_str = get_can_projection.get_intervention_for_state(state).name
     return _Actuals(
         population=projection_row[rc.POPULATION],
         intervention=intervention_str,

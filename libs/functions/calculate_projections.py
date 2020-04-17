@@ -97,7 +97,7 @@ def _calculate_projection_data(file_path):
     return None
 
 def _get_intervention_type(intervention_type, state, state_interventions_df):
-    if intervention_type == Intervention.CURRENT.value:
+    if intervention_type == Intervention.SELECTED_MITIGATION.value:
         state_intervention_results = state_interventions_df.loc[state_interventions_df["state"] == state]["intervention"]
         if not state_intervention_results.empty:
             intervention_string = state_intervention_results.values[0]

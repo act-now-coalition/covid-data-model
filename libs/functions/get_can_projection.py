@@ -15,7 +15,7 @@ def get_intervention_for_state(state):
 
 
 def _get_intervention(intervention, state):
-    if intervention == Intervention.CURRENT:
+    if intervention == Intervention.SELECTED_MITIGATION:
         return get_intervention_for_state(state)
     return intervention
 
