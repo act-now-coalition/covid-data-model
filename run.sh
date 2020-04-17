@@ -12,11 +12,11 @@ prepare () {
   if [ $# -lt 2 ] || [ $# -gt 3 ]; then
     echo "Usage: $0 [covid-data-public directory] [output-directory] (optional - specific function)"
     echo
-    echo "Example: $0 ../covid-data-public/ ./api_results/"
-    echo "Example: $0 ../covid-data-public/ ./api_results/ execute_model"
-    echo "Example: $0 ../covid-data-public/ ./api_results/ execute_summaries"
-    echo "Example: $0 ../covid-data-public/ ./api_results/ execute_dod"
-    echo "Example: $0 ../covid-data-public/ ./api_results/ execute_api"
+    echo "Example: $0 ../covid-data-public/ ./api-results/"
+    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_model"
+    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_summaries"
+    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_dod"
+    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_api"
     exit 1
   else
     DATA_SOURCES_DIR="$(abs_path $1)"
@@ -136,8 +136,8 @@ execute_zip_folder() {
   #pushd "${API_OUTPUT_DIR}/.."
   ZIP_FOLDER="./zips"
   mkdir -p ${ZIP_FOLDER}
-  API_RESULTS_ZIP="${ZIP_FOLDER}/api_results.zip"
-  zip -r ${API_RESULTS_ZIP} "${API_OUTPUT_DIR}/"
+  api-results_ZIP="${ZIP_FOLDER}/api-results.zip"
+  zip -r ${api-results_ZIP} "${API_OUTPUT_DIR}/"
   #gzip -r ${API_OUTPUT_DIR}
   #popd
 }
