@@ -78,11 +78,7 @@ def _generate_actuals(projection_row, intervention, state):
         Intervention.NO_INTERVENTION: 'limited_action',
         Intervention.FLATTEN: 'stay_at_home',
         Intervention.SOCIAL_DISTANCING: 'social_distancing',
-        0: 'limited_action',
-        1: 'stay_at_home',
-        3: 'social_distancing',
-
-    }[get_can_projection.igors_get_intervention(intervention, state)]
+    }[get_can_projection.get_intervention(intervention, state)]
     return _Actuals(
         population=projection_row[rc.POPULATION],
         intervention=intervention_str,

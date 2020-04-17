@@ -14,18 +14,11 @@ def _get_interventions_for_state(state):
     return interventions[state]
 
 
-def _get_intervention(intervention, state):
+def get_intervention(intervention, state):
     if intervention == Intervention.CURRENT:
         state_intervention = _get_interventions_for_state(state)
         return Intervention.from_str(state_intervention)
     return intervention
-
-def igors_get_intervention(intervention, state):
-    if intervention == Intervention.CURRENT:
-        state_intervention = _get_interventions_for_state(state)
-        return Intervention.from_str(state_intervention).value
-    return intervention
-
 
 def get_can_projection_path(
     input_dir, state_abbrev, fips, aggregation_level, initial_intervention
