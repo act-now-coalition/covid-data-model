@@ -112,7 +112,11 @@ def generate_api_for_state_timeseries(projection_row, intervention, input_dir):
     for data_series in can_dataseries:
         timeseries.append(_generate_timeseries_row(data_series))
     projections = _generate_api_for_projections(projection_row)
+<<<<<<< HEAD
     if len(timeseries) < 1:
+=======
+    if len(timeseries) < 1: 
+>>>>>>> master
         raise Exception(f"State time series empty for {intervention.name}")
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
@@ -134,8 +138,14 @@ def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
     )
     timeseries = []
     for data_series in can_dataseries:
+<<<<<<< HEAD
         timeseries.append(_generate_timeseries_row(data_series))
     if len(timeseries) < 1:
+=======
+        timeseries.append(_generate_timeseries_row(data_series, previous_row))
+        previous_row = data_series
+    if len(timeseries) < 1: 
+>>>>>>> master
         raise Exception(f"County time series empty for {intervention.name}")
     projections = _generate_api_for_projections(projection_row)
     return CovidActNowCountyTimeseries(

@@ -31,8 +31,9 @@ def deploy_dod_projections(disable_validation, input_state_dir, input_county_dir
     """
 
     for intervention in list(Intervention):
-        # TODO(sgoldblatt): remove these once counties support inferrence 
-        if intervention in Intervention.county_supported_interventions(): 
+        # TODO(issues/#259): Split up the dod pipeline to process states/counties since states support inference
+        # TODO(issues/#258): remove check once counties support inferrence
+        if intervention in Intervention.county_supported_interventions():
             logger.info(f"Starting to generate files for {intervention.name}.")
 
             state_result, county_result = dod_pipeline.run_projections(
