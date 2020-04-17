@@ -73,6 +73,7 @@ class EnsembleRunner:
         self.fips = fips
         self.agg_level = AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
 
+        # generates list of times to run model for.
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years))
         self.skip_plots = skip_plots
         self.run_mode = RunMode(run_mode)
@@ -311,7 +312,7 @@ class EnsembleRunner:
             else:
                 parameter_sampler = ParameterEnsembleGenerator(fips=self.fips)
                 parameter_ensemble = parameter_sampler.sample_seir_parameters(
-                    self.N_samples, override_params=self.override_params
+                    self.n_samples, override_params=self.override_params
                 )
                 model_ensemble = [
                     self._run_single_simulation(suppression_policy, parameters)
