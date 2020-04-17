@@ -75,6 +75,11 @@ execute_model() {
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
   rmdir ${API_OUTPUT_DIR}/web_ui/
 
+  echo ">>> Generating pyseir_state_summaries.zip from output/pyseir/state_summaries."
+  pushd output/pyseir
+  zip -r "${API_OUTPUT_DIR}/pyseir_state_summaries.zip" state_summaries/*
+  popd
+
   # Previous method for invoking the original Python SEIR model follows.
   #./run.py model state -o "${API_OUTPUT_DIR}" > /dev/null
   #./run.py model county -o "${COUNTIES_DIR}" > /dev/null
@@ -123,11 +128,6 @@ execute_api() {
 
   echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
   ./run.py deploy-counties-api -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
-
-  echo ">>> Generating pyseir_state_summaries.zip from output/pyseir/state_summaries."
-  pushd output/pyseir
-  zip -r "${API_OUTPUT_DIR}/pyseir_state_summaries.zip" state_summaries/*
-  popd
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
