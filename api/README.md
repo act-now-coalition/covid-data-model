@@ -1,5 +1,7 @@
 # API
 
+Also see [https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md) for new API surface.
+ 
 ## Current Schema Overview
 
 We currently provide 6 file types:
