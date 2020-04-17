@@ -62,7 +62,7 @@ class ModelFitter:
         eps=.4, limit_eps=[.23, 2], error_eps=.005,
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
         test_fraction=.1, limit_test_fraction=[0.02, 1], error_test_fraction=.02,
-        hosp_fraction=1, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
+        hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
         # Let's not fit this to start...
         errordef=.5
     )
