@@ -134,14 +134,8 @@ execute_zip_folder() {
 
   echo ">>> Generating all.zip with all API artifacts."
   #pushd "${API_OUTPUT_DIR}/.."
-  ZIP_FOLDER="../zipped-files"
-  mkdir -p ${ZIP_FOLDER}
-  API_RESULTS_ZIP="${ZIP_FOLDER}/api-results.zip"
-  echo "${ZIP_FOLDER}"
-  echo "${API_RESULTS_ZIP}"
-  echo "${API_OUTPUT_DIR}/"
+  API_RESULTS_ZIP="../api-results.zip"
   zip -r ${API_RESULTS_ZIP} "${API_OUTPUT_DIR}/"
-  #gzip -r ${API_OUTPUT_DIR}
   #popd
 }
 
