@@ -34,15 +34,13 @@ def deploy_counties_api(disable_validation, input_dir, output):
     """The entry function for invocation"""
 
     for intervention in list(Intervention):
-        # TODO(sgoldblatt): remove these once counties support inferrence 
-        if intervention in Intervention.county_supported_interventions(): 
-            county_result = api_pipeline.run_projections(
-                input_dir,
-                AggregationLevel.COUNTY,
-                intervention,
-                run_validation=not disable_validation,
-            )
-            county_results_api = api_pipeline.generate_api(county_result, input_dir)
-            api_pipeline.deploy_results(county_results_api, output)
+        county_result = api_pipeline.run_projections(
+            input_dir,
+            AggregationLevel.COUNTY,
+            intervention,
+            run_validation=not disable_validation,
+        )
+        county_results_api = api_pipeline.generate_api(county_result, input_dir)
+        api_pipeline.deploy_results(county_results_api, output)
 
         logger.info("finished top counties job")
