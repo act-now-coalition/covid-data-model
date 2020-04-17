@@ -1,6 +1,7 @@
 import logging
 import numpy
 import pandas as pd
+import pathlib
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
@@ -163,3 +164,11 @@ class JHUDataset(data_source.DataSource):
     def local(cls) -> "JHUTimeseriesData":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.DATA_FOLDER)
+
+    @classmethod
+    def latest_path(cls) -> pathlib.Path:
+        """Finds the path to the most recent JHU csv."""
+        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        jhu_dir = data_root / cls.DATA_FOLDER
+        latest_date, latest_path = max((path.stem, path) for path in jhu_dir.glob("*.csv"))
+        return latest_path
