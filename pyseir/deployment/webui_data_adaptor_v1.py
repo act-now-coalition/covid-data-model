@@ -196,7 +196,6 @@ class WebUIDataAdaptorV1:
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
 
-            # TODO(igor): hack to get the right policy ids
             output_path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir)
             policy_enum = Intervention.from_webui_data_adaptor(suppression_policy)
             output_path = output_path.replace('__INTERVENTION_IDX__', str(policy_enum.value))
