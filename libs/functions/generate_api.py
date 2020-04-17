@@ -78,7 +78,7 @@ def _generate_actuals(projection_row, intervention, state):
         Intervention.NO_INTERVENTION: 'limited_action',
         Intervention.FLATTEN: 'stay_at_home',
         Intervention.SOCIAL_DISTANCING: 'social_distancing',
-    }[get_can_projection.get_intervention(intervention, state)]
+    }[get_can_projection.igors_get_intervention(intervention, state)]
     return _Actuals(
         population=projection_row[rc.POPULATION],
         intervention=intervention_str,
@@ -135,7 +135,6 @@ def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
     timeseries = []
     for data_series in can_dataseries:
         timeseries.append(_generate_timeseries_row(data_series))
-        previous_row = data_series
     if len(timeseries) < 1:
         raise Exception(f"County time series empty for {intervention.name}")
     projections = _generate_api_for_projections(projection_row)

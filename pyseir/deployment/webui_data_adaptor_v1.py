@@ -200,16 +200,8 @@ class WebUIDataAdaptorV1:
 
             # TODO(igor): hack to get the right policy ids
             output_path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir)
-<<<<<<< HEAD
             policy_enum = Intervention.from_webui_data_adaptor(suppression_policy)
             output_path = output_path.replace('__INTERVENTION_IDX__', str(policy_enum.value))
-=======
-            if is_county and i_policy > 1:
-                output_path = output_path.replace('__INTERVENTION_IDX__', str(i_policy+1))
-            else:
-                output_path = output_path.replace('__INTERVENTION_IDX__', str(i_policy))
-
->>>>>>> Fill out the rest of the API and fix counties
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 
