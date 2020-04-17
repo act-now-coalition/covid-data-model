@@ -58,11 +58,10 @@ execute() {
 
   # Move county output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/county
-  mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_DIR}/county/
+  mv ${API_OUTPUT_DIR}/web_ui/county ${API_OUTPUT_DIR}/
 
   # Clean up original output directories.
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
-  rmdir ${API_OUTPUT_DIR}/web_ui/county/
   rmdir ${API_OUTPUT_DIR}/web_ui/
 
   # Previous method for invoking the original Python SEIR model follows.
