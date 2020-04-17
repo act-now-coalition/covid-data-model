@@ -30,7 +30,7 @@ class _Projections(pydantic.BaseModel):
 
 class _ResourceUtilization(pydantic.BaseModel):
     capacity: int = pydantic.Field(..., description="Total capacity for resource")
-    currentUsage: int = pydantic.Field(
+    currentUsage: Optional[int] = pydantic.Field(
         ..., description="Currently used capacity for resource"
     )
 
@@ -85,7 +85,7 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     date: datetime.date = pydantic.Field(
         ..., descrition="Date of timeseries data point"
     )
-    hospitalBedsInUse: int = pydantic.Field(
+    hospitalBedsRequired: int = pydantic.Field(
         ...,
         description="Number of hospital beds projected to be in-use or that were actually in use (if in the past)",
     )
@@ -101,12 +101,9 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
         ...,
         description="Number of ICU beds projected to be in-use or actually in use (if in the past)",
     )
-    newDeaths: int = pydantic.Field(..., description="Number of new deaths")
-    newConfirmedCases: Optional[int] = pydantic.Field(
-        ..., description="Number of new confirmed cases"
-    )
-    newInfections: Optional[int] = pydantic.Field(
-        ..., description="Number of new infections"
+    cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
+    cumulativeInfected: Optional[int] = pydantic.Field(
+        ..., description="Number of cumulative infections"
     )
 
 
