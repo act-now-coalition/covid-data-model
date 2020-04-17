@@ -108,9 +108,7 @@ class WebUIDataAdaptorV1:
         fips: str
             County FIPS code to map.
         """
-        is_county = False
         if len(fips) == 5:
-            is_county = True
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
