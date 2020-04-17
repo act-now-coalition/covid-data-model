@@ -266,7 +266,7 @@ class EnsembleRunner:
 
         elif self.run_mode is RunMode.DEFAULT:
             for suppression_policy in self.suppression_policy:
-                self.suppression_policies[f'suppression_policy__{suppression_policy}']= generate_empirical_distancing_policy(
+                self.suppression_policies[f'suppression_policy__{suppression_policy}'] = generate_empirical_distancing_policy(
                     t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy)
             self.override_params = dict()
         else:
@@ -278,6 +278,8 @@ class EnsembleRunner:
 
         Parameters
         ----------
+        suppression_policy: scipy.interpolate.interpolate.interp1d
+            Suppression policy to run.
         parameter_set: dict
             Params passed to the SEIR model
 
