@@ -73,10 +73,10 @@ def _generate_api_for_projections(projection_row):
     return projections
 
 def _generate_actuals(projection_row, intervention, state):
-    # TODO(igor): fixme
     intervention_str = {
         Intervention.NO_INTERVENTION: 'limited_action',
         Intervention.FLATTEN: 'stay_at_home',
+        Intervention.INFERRED: 'projected',
         Intervention.SOCIAL_DISTANCING: 'social_distancing',
     }[get_can_projection.get_intervention(intervention, state)]
     return _Actuals(
@@ -112,11 +112,7 @@ def generate_api_for_state_timeseries(projection_row, intervention, input_dir):
     for data_series in can_dataseries:
         timeseries.append(_generate_timeseries_row(data_series))
     projections = _generate_api_for_projections(projection_row)
-<<<<<<< HEAD
     if len(timeseries) < 1:
-=======
-    if len(timeseries) < 1: 
->>>>>>> master
         raise Exception(f"State time series empty for {intervention.name}")
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
@@ -138,14 +134,8 @@ def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
     )
     timeseries = []
     for data_series in can_dataseries:
-<<<<<<< HEAD
         timeseries.append(_generate_timeseries_row(data_series))
     if len(timeseries) < 1:
-=======
-        timeseries.append(_generate_timeseries_row(data_series, previous_row))
-        previous_row = data_series
-    if len(timeseries) < 1: 
->>>>>>> master
         raise Exception(f"County time series empty for {intervention.name}")
     projections = _generate_api_for_projections(projection_row)
     return CovidActNowCountyTimeseries(
