@@ -180,13 +180,16 @@ class EnsembleRunner:
         if self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION:
             self.n_samples = 1
 
+            R0 = 3.6
+            self.override_params['R0'] = R0
+
             for scenario in ['no_intervention', 'flatten_the_curve', 'full_containment', 'social_distancing']:
-                R0 = 3.6
-                self.override_params['R0'] = R0
-                policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
+                policy = generate_covidactnow_scenarios(
+                    t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario
+                )
                 self.suppression_policies[f'suppression_policy__{scenario}'] = policy
-                self.override_params = ParameterEnsembleGenerator(
-                    self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
+
+            self.override_params = ParameterEnsembleGenerator(self.fips).get_average_seir_parameters(500)
 
             self.override_params['mortality_rate_no_general_beds'] = 0.0
             self.override_params['mortality_rate_from_hospital'] = 0.0
@@ -228,16 +231,20 @@ class EnsembleRunner:
         elif self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS:
             self.n_samples = 1
 
+            R0 = 3.6
+            self.override_params['R0'] = R0
             for scenario in ['no_intervention', 'flatten_the_curve', 'inferred', 'social_distancing']:
-                R0 = 3.6
-                self.override_params['R0'] = R0
                 if scenario != 'inferred':
-                    policy = generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
+                    policy = generate_covidactnow_scenarios(
+                        t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario
+                    )
                 else:
                     policy = None
                 self.suppression_policies[f'suppression_policy__{scenario}'] = policy
-                self.override_params = ParameterEnsembleGenerator(
-                    self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
+
+            generator = ParameterEnsembleGenerator(self.fips)
+            average_seir_params = generator.get_average_seir_parameters(N_samples=500)
+            self.override_params = average_seir_params
 
             if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
                 self.t0 = self.covid_data.date.max()
@@ -264,8 +271,7 @@ class EnsembleRunner:
         else:
             raise ValueError('Invalid run mode.')
 
-    @staticmethod
-    def _run_single_simulation(parameter_set):
+    def _run_single_simulation(self, suppression_policy, parameter_set):
         """
         Run a single simulation instance.
 
@@ -279,7 +285,10 @@ class EnsembleRunner:
         model: SEIRModel
             Executed model.
         """
-        model = SEIRModel(**parameter_set)
+        # Explicitly popping non kwargs to make it easier to separate out
+        # some variables from parameter set in the future.
+        N = parameter_set.pop('N')
+        model = SEIRModel(N, self.t_list, suppression_policy, **parameter_set)
         model.run()
         return model
 
@@ -300,18 +309,23 @@ class EnsembleRunner:
                     # County inference not yet implemented.
                     continue
             else:
-                parameter_sampler = ParameterEnsembleGenerator(
-                    fips=self.fips,
-                    N_samples=self.n_samples,
-                    t_list=self.t_list,
-                    suppression_policy=suppression_policy)
-                parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
-                model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
+                parameter_sampler = ParameterEnsembleGenerator(fips=self.fips)
+                parameter_ensemble = parameter_sampler.sample_seir_parameters(
+                    self.N_samples, override_params=self.override_params
+                )
+                model_ensemble = [
+                    self._run_single_simulation(suppression_policy, parameters)
+                    for parameters in parameter_ensemble
+                ]
 
             if self.agg_level is AggregationLevel.COUNTY:
                 self.all_outputs['county_metadata'] = self.county_metadata
-                self.all_outputs['county_metadata']['age_distribution'] = list(self.all_outputs['county_metadata']['age_distribution'])
-                self.all_outputs['county_metadata']['age_bins'] = list(self.all_outputs['county_metadata']['age_distribution'])
+                self.all_outputs['county_metadata']['age_distribution'] = list(
+                    self.all_outputs['county_metadata']['age_distribution']
+                )
+                self.all_outputs['county_metadata']['age_bins'] = list(
+                    self.all_outputs['county_metadata']['age_distribution']
+                )
 
             self.all_outputs[f'{suppression_policy_name}'] = self._generate_output_for_suppression_policy(model_ensemble)
 

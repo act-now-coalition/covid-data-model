@@ -11,7 +11,7 @@ beds_data = None
 population_data = None
 
 
-class ParameterEnsembleGenerator:
+class ParameterEnsembleGenerator(object):
     """
     Generate ensembles of parameters for SEIR modeling.
 
@@ -19,17 +19,10 @@ class ParameterEnsembleGenerator:
     ----------
     fips: str
         County or state fips code.
-    N_samples: int
-        Integer number of samples to generate.
-    t_list: array-like
-        Array of times to integrate against.
     I_initial: int
         Initial infected case count to consider.
-    suppression_policy: callable(t): pyseir.model.suppression_policy
-        Suppression policy to apply.
     """
-    def __init__(self, fips, N_samples, t_list,
-                 I_initial=1, suppression_policy=None):
+    def __init__(self, fips, I_initial=1):
 
         # Caching globally to avoid relatively significant performance overhead
         # of loading for each county.
@@ -40,10 +33,7 @@ class ParameterEnsembleGenerator:
 
         self.fips = fips
         self.agg_level = AggregationLevel.COUNTY if len(self.fips) == 5 else AggregationLevel.STATE
-        self.N_samples = N_samples
         self.I_initial = I_initial
-        self.suppression_policy = suppression_policy
-        self.t_list = t_list
 
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
@@ -58,12 +48,14 @@ class ParameterEnsembleGenerator:
             self.beds = beds_data.get_state_level(self.state_abbr) or 0
             self.icu_beds = beds_data.get_state_level(self.state_abbr, column='icu_beds') or 0
 
-    def sample_seir_parameters(self, override_params=None):
+    def sample_seir_parameters(self, N_samples, override_params=None):
         """
         Generate N_samples of parameter values from the priors listed below.
 
         Parameters
         ----------
+        N_samples: int
+            Integer number of samples to generate.
         override_params: dict()
             Individual parameters can be overridden here.
 
@@ -74,7 +66,7 @@ class ParameterEnsembleGenerator:
         """
         override_params = override_params or dict()
         parameter_sets = []
-        for _ in range(self.N_samples):
+        for _ in range(N_samples):
 
             hospitalization_rate_general = np.random.normal(loc=0.04, scale=0.01)
             # For now we have disabled this bucket and lowered rates of other
@@ -83,7 +75,6 @@ class ParameterEnsembleGenerator:
             fraction_asymptomatic = 0
 
             parameter_sets.append(dict(
-                t_list=self.t_list,
                 N=self.population,
                 A_initial=0.,
                 I_initial=self.I_initial,
@@ -93,7 +84,6 @@ class ParameterEnsembleGenerator:
                 HGen_initial=0,
                 HICU_initial=0,
                 HICUVent_initial=0,
-                suppression_policy=self.suppression_policy,
                 R0=np.random.uniform(low=3.2, high=4),
                 R0_hospital=np.random.uniform(low=3.2 / 6, high=4 / 6),
                 # These parameters produce an IFR ~0.0065 if we had infinite
@@ -109,9 +99,9 @@ class ParameterEnsembleGenerator:
                 # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                 symptoms_to_hospital_days=np.random.normal(loc=6., scale=1.5),
                 symptoms_to_mortality_days=np.random.normal(loc=18.8, scale=.45), # Imperial College
-                    hospitalization_length_of_stay_general=np.random.normal(loc=6, scale=1),
-                    hospitalization_length_of_stay_icu=np.random.normal(loc=14, scale=3),
-                    hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=15, scale=3),
+                hospitalization_length_of_stay_general=np.random.normal(loc=6, scale=1),
+                hospitalization_length_of_stay_icu=np.random.normal(loc=14, scale=3),
+                hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=15, scale=3),
                 # if you assume the ARDS population is the group that would die
                 # w/o ventilation, this would suggest a 20-42% mortality rate
                 # among general hospitalized patients w/o access to ventilators:
@@ -151,16 +141,20 @@ class ParameterEnsembleGenerator:
 
         return parameter_sets
 
-    def get_average_seir_parameters(self):
+    def get_average_seir_parameters(self, N_samples):
         """
         Sample from the ensemble to obtain the average parameter values.
 
+        Parameters
+        ----------
+        N_samples: int
+            Integer number of samples to generate.
         Returns
         -------
         average_parameters: dict
             Average of the parameter ensemble, determined by sampling.
         """
-        df = pd.DataFrame(self.sample_seir_parameters()).drop('t_list', axis=1)
+        sampled_parameters = self.sample_seir_parameters(N_samples)
+        df = pd.DataFrame(sampled_parameters)
         average_parameters = df.mean().to_dict()
-        average_parameters['t_list'] = self.t_list
         return average_parameters

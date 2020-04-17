@@ -175,22 +175,20 @@ class ModelFitter:
     def get_average_seir_parameters(self):
         """
         Generate the additional fitter candidates from the ensemble generator. This
-        has the suppression policy and R0 keys removed.
+        has the R0 key removed.
 
         Returns
         -------
         SEIR_kwargs: dict
             The average ensemble params.
         """
-        SEIR_kwargs = ParameterEnsembleGenerator(
-            fips=self.fips,
-            N_samples=5000,
-            t_list=self.t_list,
-            suppression_policy=None).get_average_seir_parameters()
+        N_samples = 5000
+        ensemble_generator = ParameterEnsembleGenerator(fips=self.fips)
+        SEIR_kwargs = ensemble_generator.get_average_seir_parameters(N_samples)
 
         SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
-        del SEIR_kwargs['suppression_policy']
         del SEIR_kwargs['I_initial']
+
         return SEIR_kwargs
 
     def calculate_observation_errors(self):
@@ -302,10 +300,12 @@ class ModelFitter:
         self.SEIR_kwargs['E_initial'] = self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial
 
         model = SEIRModel(
+            t_list=self.t_list,
             R0=R0,
             suppression_policy=suppression_policy,
             I_initial=10 ** log10_I_initial,
-            **self.SEIR_kwargs)
+            **self.SEIR_kwargs
+        )
         model.run()
         return model
 
