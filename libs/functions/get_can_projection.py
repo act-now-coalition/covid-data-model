@@ -7,19 +7,17 @@ from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.can_model_output_schema import CAN_MODEL_OUTPUT_SCHEMA
 
 
-def _get_interventions_for_state(state):
+def get_intervention_for_state(state):
     # TODO: read this from a dataset class
     interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
     interventions = requests.get(interventions_url).json()
-    return interventions[state]
+    return Intervention.from_str(interventions[state])
 
 
 def _get_intervention(intervention, state):
-    if intervention == Intervention.CURRENT:
-        state_intervention = _get_interventions_for_state(state)
-        return Intervention.from_str(state_intervention)
+    if intervention == Intervention.SELECTED_MITIGATION:
+        return get_intervention_for_state(state)
     return intervention
-
 
 def get_can_projection_path(
     input_dir, state_abbrev, fips, aggregation_level, initial_intervention
@@ -47,7 +45,7 @@ def get_can_raw_data(input_dir, state_abbrev, fips, aggregation_level, intervent
     file_path = get_can_projection_path(
         input_dir, state_abbrev, fips, aggregation_level, intervention
     )
-    if os.path.exists(file_path): 
+    if os.path.exists(file_path):
         with open(file_path) as json_file:
             return standardize_json_data(json.load(json_file), CAN_MODEL_OUTPUT_SCHEMA)
     # TODO : probably error out or log something here
