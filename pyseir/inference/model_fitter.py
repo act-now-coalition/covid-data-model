@@ -1,8 +1,8 @@
 import logging
 import iminuit
-import numpy as np
 import us
-import pickle
+import dill as pickle
+import numpy as np
 from pprint import pformat
 import pandas as pd
 from scipy.stats import gamma, norm
@@ -675,7 +675,7 @@ def run_state(state, states_only=False, with_age_structure=False):
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
 
-    model_fitter = ModelFitter.run_for_fips(state_obj.fips, with_age_structure)
+    model_fitter = ModelFitter.run_for_fips(fips=state_obj.fips, with_age_structure=with_age_structure)
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
