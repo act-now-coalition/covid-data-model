@@ -9,7 +9,6 @@ from multiprocessing import Pool
 from pyseir import load_data
 from pyseir.inference.fit_results import load_inference_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
-from libs.enums import Intervention
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
@@ -119,6 +118,7 @@ class WebUIDataAdaptorV1:
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
 
         all_hospitalized_today = None
+
         for i_policy, suppression_policy in enumerate(policies):
             if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
                 continue
@@ -197,8 +197,7 @@ class WebUIDataAdaptorV1:
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
 
             output_path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir)
-            policy_enum = Intervention.from_webui_data_adaptor(suppression_policy)
-            output_path = output_path.replace('__INTERVENTION_IDX__', str(policy_enum.value))
+            output_path = output_path.replace('__INTERVENTION_IDX__', str(i_policy))
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 

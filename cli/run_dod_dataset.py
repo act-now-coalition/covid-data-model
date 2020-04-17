@@ -31,14 +31,12 @@ def deploy_dod_projections(disable_validation, input_state_dir, input_county_dir
     """
 
     for intervention in list(Intervention):
-        # TODO(sgoldblatt): remove these once counties support inferrence 
-        if intervention in Intervention.county_supported_interventions(): 
-            logger.info(f"Starting to generate files for {intervention.name}.")
+        logger.info(f"Starting to generate files for {intervention.name}.")
 
-            state_result, county_result = dod_pipeline.run_projections(
-                input_state_dir, input_county_dir, intervention, run_validation=not disable_validation
-            )
-            dod_pipeline.deploy_results(state_result, output)
-            dod_pipeline.deploy_results(county_result, output)
+        state_result, county_result = dod_pipeline.run_projections(
+            input_state_dir, input_county_dir, intervention, run_validation=not disable_validation
+        )
+        dod_pipeline.deploy_results(state_result, output)
+        dod_pipeline.deploy_results(county_result, output)
 
     logger.info('finished dod job')

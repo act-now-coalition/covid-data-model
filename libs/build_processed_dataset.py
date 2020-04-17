@@ -134,8 +134,7 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     counties.index.name = "OBJECTID"
     # assert unique key test
 
-    if counties["Combined Key"].value_counts().max() != 1: 
-        raise Exception(f"counties['Combined Key'].value_counts().max() = {counties['Combined Key'].value_counts().max()}, at input_dir {input_dir}.")
+    assert counties["Combined Key"].value_counts().max() == 1
     return counties
 
 
