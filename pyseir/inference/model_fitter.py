@@ -106,6 +106,10 @@ class ModelFitter:
                  hospital_to_deaths_err_factor=.5,
                  percent_error_on_max_observation=0.5):
 
+        # Seed the random state. It is unclear whether this propagates to the
+        # Minuit optimizer.
+        np.random.seed(seed=42)
+
         self.fips = fips
         self.ref_date = ref_date
         self.min_deaths = min_deaths
