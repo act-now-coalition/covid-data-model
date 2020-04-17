@@ -59,10 +59,10 @@ class ModelFitter:
         log10_I_initial=2, limit_log10_I_initial=[0, 5],
         error_log10_I_initial=.2,
         t0=60, limit_t0=[10, 80], error_t0=1.0,
-        eps=.4, limit_eps=[.15, 2], error_eps=.005,
+        eps=.4, limit_eps=[.23, 2], error_eps=.005,
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
         test_fraction=.1, limit_test_fraction=[0.02, 1], error_test_fraction=.02,
-        hosp_fraction=1, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
+        hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
         # Let's not fit this to start...
         errordef=.5
     )
@@ -409,8 +409,9 @@ class ModelFitter:
         # This implements a hard lower limit of 0.98.
         # TODO: As more data comes in, relax this.. Probably just use MCMC..
         prior = gamma.pdf((x - 0.98) / 1.5, 1.1)
-        # prior += 0.00001 * x # Provide a slight derivative below 0.98 to prevent numerical optimization issues.
-        likelihood = norm.pdf(x, R_eff, R_eff_stdev)
+        # Add a tiny amount to the likelihood to prevent zero common support
+        # between the prior and likelihood functions.
+        likelihood = norm.pdf(x, R_eff, R_eff_stdev) + 0.0001
         posterior = prior * likelihood
         posterior = posterior / (posterior.sum() * delta_x)
         posterior_MAP_estimate = x[np.argmax(posterior)] / R0
@@ -439,9 +440,14 @@ class ModelFitter:
         # This just updates chi2 values
         self._fit_seir(**dict(minuit.values))
 
-        if self.fit_results['eps'] < 0.01:
+        if self.fit_results['eps'] < 0.1:
             raise RuntimeError(f'Fit failed for {self.state, self.fips}: '
                                f'Epsilon == 0 which implies lack of convergence.')
+
+        # Sometimes this is estimated to be way to small (incorrectly since we
+        # don't know the true error model). This is a problem for bayesian
+        # updates. Set a lower bound for the error here.
+        self.fit_results['eps_error'] = max(self.fit_results['eps_error'], 0.05)
 
         # TODO: Add confidence intervals here.
         self.fit_results['eps'] = self.get_posterior_estimate_eps(

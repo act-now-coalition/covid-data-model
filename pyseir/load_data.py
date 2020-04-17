@@ -17,9 +17,10 @@ from functools import lru_cache
 from enum import Enum
 
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
+FAULTY_HOSPITAL_DATA_STATES = ('IN',)
 
-FAULTY_HOSPITAL_DATA_STATES = ('WA', 'WV', 'IN')  # Remove after issue 172 resolved.
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
 
 
 class HospitalizationDataType(Enum):
