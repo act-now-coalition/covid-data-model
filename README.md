@@ -71,6 +71,13 @@ python deploy_dod_dataset.py
 BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
 ```
 
+# Sentry
+In order to have sentry run locally and report errors to the dev sentry instance, add the following to your .env
+```
+export SENTRY_DSN=https://<GET_SENTRY_DSN_FOR_DEV_INSTANCE>.ingest.sentry.io/<DEV_INSTANCE>
+```
+
+The gitub action pulls the sentry_dsn for the prod instance from a secrets stored within github. 
 
 # [NEW 4/7] PySEIR Setup
 
