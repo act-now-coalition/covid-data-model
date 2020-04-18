@@ -44,9 +44,10 @@ jobs:
         DEST_DIR: '${{env.LABEL}}/'
     
     - name: Slack notification
+      if: always() # Pick up events even if the job fails or is canceled.
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         SLACK_CHANNEL: api
       uses: Ilshidur/action-slack@fb92a78
       with:
-        args: '{{env.SNAPSHOT_ID}} has been labelled {{env.LABEL}}'
+        args: 'Action to label {{env.SNAPSHOT_ID}} as {{env.LABEL}}. Job status: {{job.status}}'
