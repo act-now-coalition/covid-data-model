@@ -119,6 +119,8 @@ class WebUIDataAdaptorV1:
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
 
         all_hospitalized_today = None
+        fit_results = load_inference_result(fips)
+
         for i_policy, suppression_policy in enumerate(policies):
             if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
                 continue
@@ -126,7 +128,6 @@ class WebUIDataAdaptorV1:
             output_model = pd.DataFrame()
 
             if suppression_policy == 'suppression_policy__inferred':
-                fit_results = load_inference_result(fips)
                 t0 = datetime.fromisoformat(fit_results['t0_date'])
 
                 # Hospitalizations need to be rescaled by the inferred factor to match observations for display.
@@ -169,6 +170,9 @@ class WebUIDataAdaptorV1:
             output_model['beds'] = final_beds
             output_model['cumulative_infected'] = np.interp(t_list_downsampled, t_list, np.cumsum(output_for_policy['total_new_infections']['ci_50']))
 
+            output_model['R_t'] = np.interp(t_list_downsampled, t_list, fit_results['eps'] * fit_results['R0'] * np.ones(len(t_list)))
+            output_model['R_t_stdev'] = np.interp(t_list_downsampled, t_list, fit_results['eps_error'] * fit_results['R0'] * np.ones(len(t_list)))
+
             # Record the current number of hospitalizations in order to rescale the inference results.
             all_hospitalized_today = output_model['all_hospitalized'][0]
 
@@ -183,15 +187,16 @@ class WebUIDataAdaptorV1:
                                         & (output_dates < datetime.today() + timedelta(days=90))]
             output_model = output_model.fillna(0)
 
-            for col in ['j', 'k', 'l']:
+            for col in ['l']:
                 output_model[col] = 0
             output_model['population'] = population
             for col in ['m', 'n']:
                 output_model[col] = 0
 
             # Truncate floats and cast as strings to match data model.
-            int_columns = [col for col in output_model.columns if col not in ('date')]
-            output_model[int_columns] = output_model[int_columns].fillna(0).astype(int).astype(str)
+            int_columns = [col for col in output_model.columns if col not in ('date', 'R_t', 'R_t_stdev')]
+            output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int).astype(str)
+            output_model.loc[:, ['R_t', 'R_t_stdev']] = output_model[['R_t', 'R_t_stdev']].fillna(0).round(decimals=4).astype(str)
 
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
