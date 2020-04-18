@@ -254,6 +254,11 @@ jobs:
       AWS_S3_BUCKET: 'data.covidactnow.org'
 
     steps:
+    - name: make and copy to local tmp directory
+      run: |
+        mkdir -p ./tmp/data/
+        cp -r /data/api-results-90/ ./tmp/data/
+
     - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
       uses: jakejarvis/s3-sync-action@master
       with:
@@ -263,5 +268,9 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SOURCE_DIR: './data/api-results-90/'
         DEST_DIR: 'snapshot/api-results-90/'
+    
+    - name: remove local tmp directory
+      run: |
+        rm -rf ./tmp/data/
 
       # TODO: Upload RedirectRules to AWS to make snapshot/latest pointer work.
