@@ -1,15 +1,20 @@
-# CAN V1 API Draft
+# CAN V1 API
 
 # Available Now
 
 ## V1 API
 
-https://data.covidactnow.org/latest/
+### URL
 
-**Specifying an intervention**
+Files are available for download at: `https://data.covidactnow.org/latest/...`
+
+### Specifying an intervention
+
 Forward projections are available for the following scenarios:
 
     "NO_MITIGATION", "MODERATE_MITIGATION", "HIGH_MITIGATION"
+
+These roughly correlate to the "no intervention", "social distancing", and "stay at home" interventions.
 
 Additionally the most appropriate static scenario based on the per-state intervention is returned by specifying:
 
@@ -19,21 +24,33 @@ To get a dynamic forecast that is based on the actually observed effect of mitig
 
     "OBSERVED_MITIGATION"
 
-“Observer Mitigation” is only available for states, not counties.
+**Note: `OBSERVED_MITIGATION` is only available for states, not counties.**
 
-**State projections available at:**
+### State projections
 
-    /latest/us/states/ca(.intervention).json
-    /latest/us/states/ca(.intervention).timeseries.json
-    eg. /latest/us/states/CA.OBSERVED_MITIGATION.json and /latest/us/states/CA.OBSERVED_MITIGATION.timeseries.json 
+    # Current "actual" information + projected limits
+    /us/states/<ST>.<INTERVENTION>.json
+    # e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.json
+    
+    # Full timeseries data: actuals + projected limits + data for every four days
+    /us/states/<ST>.<INTERVENTION>.timeseries.json
+    # e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.timeseries.json 
 
-County projections available at:
+### County projections
+    
+    # Current "actual" information + projected limits
+    /us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json 
+    # e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.json
+    
+    # Full timeseries data: actuals + projected limits + data for every four days
+    /latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json 
+    # e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.timeseries.json
+    
+**Note: `OBSERVED_MITIGATION` is not available for counties.**
 
-    /latest/us/counties/5-digit-fips(.intervention).json 
-    /latest/us/counties/5-digit-fips(.intervention).timeseries.json 
-    eg. /latest/us/counties/06077.SELECTED_MITIGATION.json and /latest/us/counties/06077.SELECTED_MITIGATION.timeseries.json 
+### Data format:
 
-The format is:
+This is the data format for both states and counties. `timeseries` is only included when requesting `*.timeseries.json`.
 
     {
       country,
@@ -45,7 +62,7 @@ The format is:
       lastUpdatedDate, // ISO 8601 date string
       actuals: {
         population,
-        intervention, // one of (limited_action, social_distancing, stay_at_home)
+        intervention, // one of (NO_MITIGATION, MODERATE_MITIGATION, stay_at_home)
         cumulativeConfirmedCases,
         cumulativeDeaths,
         hospitalBeds: {
@@ -67,41 +84,50 @@ The format is:
         hospitalBedsRequired,
         hospitalBedCapacity,
         ICUBedsInUse,
-        ICUBedCapacity, // Coming soon where availabe, null for now
+        ICUBedCapacity, // Coming soon where availabe, null currently
         cumulativeDeaths,
         cumulativeInfected,
       }],
     };
 
-
-
 # Coming soon
 
 Additional V1 API endpoints containing batch versions of the data
 
-Across all states:
+## State level aggregation
 
-    /latest/us/states(.intervention).json <- everything except timeseries
+Will return information about all states.
+
+    # everything except timeseries
+    /us/states.<INTERVENTION>.json
     [{stateName:'CA', …}, {stateName:'TX',…}, …]
-    /latest/us/states(.intervention).timeseries.json <-  just the timeseries
+    
+    # just the timeseries
+    /us/states.<INTERVENTION>.timeseries.json 
     [{stateName:'CA', timeseries:[…],… }, {stateName:'TX', timeseries:[…], …}, …]
 
-Across all counties in all states:
+## County level aggregation per state
 
-    /latest/us/counties.json <- everything except timeseries
+Will return all the county level data for a given state.
+
+    # everything except timeseries
+    /us/counties.json
     [{stateName:'CA', countyName, fips, …}, …]
-    /latest/us/counties(.intervention).timeseries.json <- just the timeseries
+    
+    # just the timeseries
+    /us/counties(.intervention).timeseries.json
     [{stateName:'CA', countyName, fips, timeseries:[…],… }, …]
 
-Additional endpoints containing additional formats of the batch data:
+## Additional data formats (CSV, Shapefiles)
 
+Will return aggregate information above in different file formats.
 
-    /latest/us/states.(.intervention).csv
-    /latest/us/states.(.intervention).timeseries.csv
-    /latest/us/states.(.intervention).* //shapefiles
-    /latest/us/counties.(.intervention).csv
-    /latest/us/counties.(.intervention).timeseries.csv
-    /latest/us/counties.(.intervention).* //shapefiles
+    /latest/us/states.<INTERVENTION>.csv
+    /latest/us/states.<INTERVENTION>.timeseries.csv
+    /latest/us/states.<INTERVENTION>.{dbf,shp,shx}
+    /latest/us/counties.<INTERVENTION>.csv
+    /latest/us/counties.<INTERVENTION>.timeseries.csv
+    /latest/us/counties.<INTERVENTION>.{dbf,shp,shx}
 
 
 
