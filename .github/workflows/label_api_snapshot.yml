@@ -42,3 +42,11 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SOURCE_DIR: 's3://${{env.AWS_S3_BUCKET}}/snapshot/${{env.SNAPSHOT_ID}}/'
         DEST_DIR: '${{env.LABEL}}/'
+    
+    - name: Slack notification
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_CHANNEL: api
+      uses: Ilshidur/action-slack@fb92a78
+      with:
+        args: '{{env.SNAPSHOT_ID}} has been labelled {{env.LABEL}}'
