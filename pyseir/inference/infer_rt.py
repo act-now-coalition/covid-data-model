@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
+from scipy import signal
 from matplotlib import pyplot as plt
 import us
 from pyseir import load_data
@@ -10,39 +11,47 @@ from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGene
 
 
 class RtInferenceEngine:
+    """
+    This class extends the analysis of Kevin Systrom to include mortality
+    and hospitalization data in a pseudo-non-parametric inference of R_t.
 
+    Parameters
+    ----------
+    fips: str
+        State or County fips code
+    window_size: int
+        Size of the sliding Gaussian window to compute. Note that kernel std
+        sets the width of the kernel weight.
+    kernel_std: int
+        Width of the Gaussian kernel.
+    r_list: array-like
+        Array of R_t to compute posteriors over. Doesn't really need to be
+        configured.
+    process_sigma: float
+        Stdev of the process model. Increasing this allows for larger
+        instant deltas in R_t, shrinking it smooths things, but allows fro
+        less rapid change. Can be interpreted as the std of the allowed
+        shift in R_t day-to-day.
+    ref_date:
+        Reference date to compute from.
+    confidence_intervals: list(float)
+        Confidence interval to compute. 0.95 would be 95% credible
+        intervals.
+    """
     def __init__(self,
                  fips,
                  window_size=7,
                  kernel_std=2,
-                 r_list=np.linspace(0, 10, 1001),
+                 r_list=np.linspace(0, 10, 501),
                  process_sigma=0.15,
-                 serial_period=7,
                  ref_date=datetime(year=2020, month=1, day=1),
-                 confidence_intervals=[0.68, 0.75, 0.95]):
-        """
-
-        Parameters
-        ----------
-        fips
-        window_size
-        kernel_std
-        r_list
-        process_sigma
-        serial_period
-        ref_date
-        output_intervals: float
-            Confidence interval to compute. 0.95 would be 95% credible
-            intervals.
-        """
+                 confidence_intervals=(0.68, 0.75, 0.95)):
 
         self.fips = fips
         self.r_list = r_list
         self.window_size = window_size
         self.kernel_std = kernel_std
         self.process_sigma = process_sigma
-        self.serial_period = serial_period
-        self.gamma = 1 / self.serial_period
         self.ref_date = ref_date
         self.confidence_intervals = confidence_intervals
 
@@ -68,6 +77,7 @@ class RtInferenceEngine:
                 self.display_name = self.county + ', ' + self.state
             else:
                 self.display_name = self.state
+
             # TODO Swap for new data source.
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
@@ -84,6 +94,9 @@ class RtInferenceEngine:
             t_list=np.linspace(0, 365, 366)
         ).get_average_seir_parameters()
 
+        # Serial period = Incubation + 0.5 * Infections
+        self.serial_period = 1 / self.default_parameters['sigma'] + 0.5 * 1 /   self.default_parameters['delta']
+
         # If we only receive current hospitalizations, we need to account for
         # the outflow to reconstruct new admissions.
         if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
@@ -97,6 +110,8 @@ class RtInferenceEngine:
             self.hospitalizations = np.diff(self.hospitalizations) + flow_out_of_hosp
             self.hospital_dates = self.hospital_dates[1:]
             self.hospital_times = self.hospital_times[1:]
+
+        self.log_likelihood = None
 
     def get_timeseries(self, timeseries_type):
         """
@@ -135,6 +150,8 @@ class RtInferenceEngine:
         ----------
         timeseries_type: TimeseriesType
             Which type of time-series to use.
+        plot: bool
+            If True, plot smoothed and original data.
 
         Returns
         -------
@@ -206,6 +223,8 @@ class RtInferenceEngine:
         ----------
         timeseries_type: TimeseriesType
             New X per day (cases, deaths etc).
+        plot: bool
+            If True, plot a cool looking est of posteriors.
 
         Returns
         -------
@@ -221,7 +240,7 @@ class RtInferenceEngine:
         dates, times, timeseries = self.apply_gaussian_smoothing(timeseries_type)
 
         # (1) Calculate Lambda
-        lam = timeseries[:-1].values * np.exp(self.gamma * (self.r_list[:, None] - 1))
+        lam = timeseries[:-1].values * np.exp((self.r_list[:, None] - 1) / self.serial_period)
 
         # (2) Calculate each day's likelihood
         likelihoods = pd.DataFrame(
@@ -283,9 +302,18 @@ class RtInferenceEngine:
         """
         Infer R_t from all available data sources.
 
+        Parameters
+        ----------
+        plot: bool
+            If True, generate a plot of the inference.
+        shift_deaths: int
+            Shift the death time series by this amount with respect to cases
+            (when plotting only, does not shift the returned result).
+
         Returns
         -------
         inference_results: pd.DataFrame
+            Columns containing MAP estimates and confidence intervals.
         """
         df_all = None
         available_timeseries = [TimeseriesType.NEW_CASES, TimeseriesType.NEW_DEATHS]
@@ -344,3 +372,31 @@ class RtInferenceEngine:
             plt.title(self.display_name, fontsize=16)
 
         return df_all
+
+    @staticmethod
+    def align_time_series(series_a, series_b):
+        """
+        Identify the optimal time shift between two data series based on
+        maximal cross-correlation of their derivatives.
+
+        Parameters
+        ----------
+        series_a: pd.Series
+            Reference series to cross-correlate against.
+        series_b: pd.Series
+            Reference series to shift and cross-correlate against.
+
+        Returns
+        -------
+        shift: int
+            A shift period applied to series b that aligns to series a
+        """
+        shifts = range(-20, 20)
+        xcor = []
+        for i in shifts:
+            series_a = np.diff(series_a)
+            series_b = np.diff(series_b.shift(i))
+            valid = (~np.isnan(series_a) & ~np.isnan(series_b))
+            xcor.append(signal.correlate(series_a[valid], series_b[valid]).mean())
+
+        return shifts[np.argmax(xcor)]
