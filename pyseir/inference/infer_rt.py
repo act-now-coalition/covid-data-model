@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
 import numpy as np
+import logging
 import pandas as pd
+from multiprocessing import Pool
 from scipy import stats as sps
 from scipy import signal
 from matplotlib import pyplot as plt
 import us
 from pyseir import load_data
 from pyseir.utils import AggregationLevel, TimeseriesType
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
 
@@ -84,6 +87,8 @@ class RtInferenceEngine:
             self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
                 load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
+        logging.info(f'Running Rt Inference for {self.display_name}')
+
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         if self.hospitalization_data_type:
             self.hospital_dates = [ref_date + timedelta(days=int(t)) for t in self.hospital_times]
@@ -137,7 +142,7 @@ class RtInferenceEngine:
             return self.case_dates, self.times, self.observed_new_cases
         elif timeseries_type is TimeseriesType.NEW_DEATHS:
             return self.case_dates, self.times, self.observed_new_deaths
-        elif timeseries_type in (TimeseriesType.NEW_HOSPITALIZATIONS, TimeseriesType.CURRENT_HOSPITALIZATOINS):
+        elif timeseries_type in (TimeseriesType.NEW_HOSPITALIZATIONS, TimeseriesType.CURRENT_HOSPITALIZATIONS):
             return self.hospital_dates, self.hospital_times, self.hospitalizations
 
     def apply_gaussian_smoothing(self, timeseries_type, plot=False):
@@ -235,9 +240,9 @@ class RtInferenceEngine:
         posteriors: pd.DataFrame
             Posterior estimiates for each timestamp with non-zero data.
         """
-        timeseries_type = TimeseriesType(timeseries_type)
-
         dates, times, timeseries = self.apply_gaussian_smoothing(timeseries_type)
+        if len(timeseries) == 0:
+            return None, None, None
 
         # (1) Calculate Lambda
         lam = timeseries[:-1].values * np.exp((self.r_list[:, None] - 1) / self.serial_period)
@@ -316,9 +321,17 @@ class RtInferenceEngine:
             Columns containing MAP estimates and confidence intervals.
         """
         df_all = None
-        available_timeseries = [TimeseriesType.NEW_CASES, TimeseriesType.NEW_DEATHS]
+        available_timeseries = []
+
+        if len(self.get_timeseries(TimeseriesType.NEW_CASES)) > 0:
+            available_timeseries.append(TimeseriesType.NEW_CASES)
+
+        if len(self.get_timeseries(TimeseriesType.NEW_DEATHS)) > 0:
+            available_timeseries.append(TimeseriesType.NEW_DEATHS)
+
         if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
-            available_timeseries.append(TimeseriesType.CURRENT_HOSPITALIZATIONS)
+            # We have converted this timeseries to new hospitalizations.
+            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
         elif self.hospitalization_data_type is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
@@ -326,32 +339,35 @@ class RtInferenceEngine:
 
             df = pd.DataFrame()
             dates, times, posteriors = self.get_posteriors(timeseries_type)
-            df[f'Rt_MAP__{timeseries_type.value}'] = posteriors.idxmax()
-            for ci in self.confidence_intervals:
-                ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
-                df[f'Rt_ci{int(100 * (1 - ci))}__{timeseries_type.value}'] = ci_low
-                df[f'Rt_ci{int(100 * ci)}__{timeseries_type.value}'] = ci_high
+            if posteriors is not None:
+                df[f'Rt_MAP__{timeseries_type.value}'] = posteriors.idxmax()
+                for ci in self.confidence_intervals:
+                    ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
+                    df[f'Rt_ci{int(100 * (1 - ci))}__{timeseries_type.value}'] = ci_low
+                    df[f'Rt_ci{int(100 * ci)}__{timeseries_type.value}'] = ci_high
 
-            df['date'] = dates
-            df = df.set_index('date')
+                df['date'] = dates
+                df = df.set_index('date')
 
-            if df_all is None:
-                df_all = df
-            else:
-                df_all = df_all.merge(df, left_index=True, right_index=True, how='outer')
+                if df_all is None:
+                    df_all = df
+                else:
+                    df_all = df_all.merge(df, left_index=True, right_index=True, how='outer')
 
         if plot:
             plt.figure(figsize=(10, 6))
 
-            plt.fill_between(df_all.index,  df_all['Rt_ci5__new_deaths'],  df_all['Rt_ci95__new_deaths'],
-                             alpha=.2, color='firebrick')
-            plt.scatter(df_all.index, df_all['Rt_MAP__new_deaths'].shift(periods=shift_deaths),
-                        alpha=1, s=25, color='firebrick', label='New Deaths')
+            if 'Rt_ci5__new_deaths' in df_all:
+                plt.fill_between(df_all.index,  df_all['Rt_ci5__new_deaths'],  df_all['Rt_ci95__new_deaths'],
+                                 alpha=.2, color='firebrick')
+                plt.scatter(df_all.index, df_all['Rt_MAP__new_deaths'].shift(periods=shift_deaths),
+                            alpha=1, s=25, color='firebrick', label='New Deaths')
 
-            plt.fill_between(df_all.index, df_all['Rt_ci5__new_cases'], df_all['Rt_ci95__new_cases'],
-                             alpha=.2, color='steelblue')
-            plt.scatter(df_all.index, df_all['Rt_MAP__new_cases'],
-                        alpha=1, s=25, color='steelblue', label='New Cases', marker='s')
+            if 'Rt_ci5__new_cases' in df_all:
+                plt.fill_between(df_all.index, df_all['Rt_ci5__new_cases'], df_all['Rt_ci95__new_cases'],
+                                 alpha=.2, color='steelblue')
+                plt.scatter(df_all.index, df_all['Rt_MAP__new_cases'],
+                            alpha=1, s=25, color='steelblue', label='New Cases', marker='s')
 
             if self.hospitalization_data_type:
                 plt.fill_between(df_all.index, df_all['Rt_ci5__new_hospitalizations'], df_all['Rt_ci95__new_hospitalizations'],
@@ -370,6 +386,9 @@ class RtInferenceEngine:
             plt.ylabel('$R_t$', fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
+
+            output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
+            plt.savefig(output_path, bbox_inches='tight')
 
         return df_all
 
@@ -400,3 +419,42 @@ class RtInferenceEngine:
             xcor.append(signal.correlate(series_a[valid], series_b[valid]).mean())
 
         return shifts[np.argmax(xcor)]
+
+    @classmethod
+    def run_for_fips(cls, fips):
+        engine = cls(fips)
+        return engine.infer_all()
+
+
+def run_state(state, states_only=False):
+    """
+    Run the R_t inference for each county in a state.
+
+    Parameters
+    ----------
+    state: str
+        State to run against.
+    states_only: bool
+        If True only run the state level.
+    """
+    state_obj = us.states.lookup(state)
+    logging.info(f'Running Rt inference for state {state_obj.name}')
+
+    df = RtInferenceEngine.run_for_fips(state_obj.fips)
+    output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
+    pd.DataFrame(df, index=[state_obj.fips]).to_json(output_path)
+
+    # Run the counties.
+    if not states_only:
+        df = load_data.load_county_metadata()
+        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips.values
+
+        # Something in here doesn't like multiprocessing...
+        # p = Pool(2)
+        rt_inferences = list(map(RtInferenceEngine.run_for_fips, all_fips))
+        # p.close()
+
+        for fips, rt_inference in zip(all_fips, rt_inferences):
+            county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
+            if rt_inference is not None:
+                rt_inference.to_json(county_output_file)
