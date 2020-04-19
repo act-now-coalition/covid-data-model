@@ -11,6 +11,13 @@ WEB_UI_FOLDER = lambda output_dir: os.path.join(output_dir, 'web_ui')
 STATE_SUMMARY_FOLDER = lambda output_dir: os.path.join(output_dir, 'pyseir', 'state_summaries')
 
 
+class TimeseriesType(Enum):
+    NEW_CASES = 'new_cases'
+    NEW_DEATHS = 'new_deaths'
+    NEW_HOSPITALIZATIONS = 'new_hospitalizations'
+    CURRENT_HOSPITALIZATIONS = 'current_hospitalizations'
+
+
 class RunMode(Enum):
     # Read params from the parameter sampler default and use empirical
     # suppression policies.
