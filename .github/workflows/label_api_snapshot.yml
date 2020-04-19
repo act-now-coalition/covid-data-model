@@ -50,4 +50,4 @@ jobs:
         SLACK_CHANNEL: api
       uses: Ilshidur/action-slack@fb92a78
       with:
-        args: 'Action to label {{env.SNAPSHOT_ID}} as {{env.LABEL}}. Job status: {{job.status}}'
+        args: 'Action to label snapshot job ran' # TODO (make these more informative with {{args}}
