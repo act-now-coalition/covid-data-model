@@ -112,10 +112,6 @@ class SEIRModel:
     symptoms_to_hospital_days: float
         Mean number of days elapsing between infection and
         hospital admission.
-    symptoms_to_mortality_days: float
-        Mean number of days for an infected individual to die.
-        Hospitalization to death Needs to be added to time to
-            15.16 [0, 42] - https://arxiv.org/pdf/2003.10047.pdf
     hospitalization_length_of_stay_general: float
         Mean number of days for a hospitalized individual to be discharged.
     hospitalization_length_of_stay_icu
@@ -160,7 +156,6 @@ class SEIRModel:
                  hospitalization_rate_icu=0.025,
                  fraction_icu_requiring_ventilator=0.75, # TBD Tuned...
                  symptoms_to_hospital_days=5,
-                 symptoms_to_mortality_days=13,
                  hospitalization_length_of_stay_general=7,
                  hospitalization_length_of_stay_icu=16,
                  hospitalization_length_of_stay_icu_and_ventilator=17,
@@ -204,7 +199,6 @@ class SEIRModel:
         self.beta_hospital = self.R0_hospital * self.delta_hospital
 
         self.symptoms_to_hospital_days = symptoms_to_hospital_days
-        self.symptoms_to_mortality_days = symptoms_to_mortality_days
 
         # Hospitalization Parameters
         # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-Global-Impact-26-03-2020.pdf
