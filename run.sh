@@ -70,7 +70,7 @@ execute_model() {
   # fi
 
   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
-  parallel --eta -j 5 -a state_commands.txt && echo OK
+  parallel --eta -j 3 -a state_commands.txt && echo OK
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
