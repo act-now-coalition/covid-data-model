@@ -78,6 +78,8 @@ jobs:
         name: model-results-${{env.SNAPSHOT_ID}}
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
         # path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results-${{env.FOR_US_STATE}}.zip
+    - name: County number of counties
+      run: ls -hal /data/api-results-${{env.SNAPSHOT_ID}}/county | wc -l
 
   execute-summaries:
     runs-on: self-hosted
