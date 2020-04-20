@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from datetime import datetime, timedelta
 from multiprocessing import Pool
 from pyseir.models import suppression_policies
-from pyseir import load_data, OUTPUT_DIR
+from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
@@ -555,6 +555,10 @@ class ModelFitter:
                  self.fit_results['hosp_fraction'] * self.mle_model.results['HICU'],
                  label='Estimated ICU Occupancy',
                  linestyle=':', lw=6, color='black')
+        plt.plot(model_dates,
+                 self.fit_results['hosp_fraction'] * self.mle_model.results['HGen'],
+                 label='Estimated General Occupancy',
+                 linestyle=':', lw=4, color='black', alpha=0.4)
 
         plt.yscale('log')
         y_lim = plt.ylim(.8e0)
@@ -685,3 +689,9 @@ def run_state(state, states_only=False):
 
         county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
         pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)
+
+        # Serialize the model results.
+        for fips, fitter in zip(all_fips, fitters):
+            if fitter:
+                with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
+                    pickle.dump(fitter.mle_model, f)
