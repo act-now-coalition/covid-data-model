@@ -22,7 +22,7 @@ TopCountiesPipelineResult = namedtuple("TopCountiesPipelineResult", ["api"])
 def run_projections(
     input_file, run_validation=True
 ) -> TopCountiesPipelineProjectionResult:
-    """Run the projections for the current intervention for counties 
+    """Run the projections for the current intervention for counties
     in order to genereate a list of the 100 counties most affected
 
     Args:
@@ -33,7 +33,7 @@ def run_projections(
     Returns: TopCountiesPipelineProjectionResult objects for county data.
     """
     # Run County level projections
-    intervention = Intervention.CURRENT
+    intervention = Intervention.SELECTED_MITIGATION
 
     counties_key_name = f"counties.{intervention.name}"
     # note i think build_processed_dataset should porbably be renamed?

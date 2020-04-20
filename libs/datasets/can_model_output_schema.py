@@ -1,5 +1,5 @@
 """
-Ouput of the 
+Ouput of the
 """
 DATE = "date"
 TOTAL = "total"
@@ -14,6 +14,7 @@ ALL_INFECTED = "all_infected"
 DEAD = "dead"
 BEDS = "beds"
 POPULATION = "population"
+CUMULATIVE_INFECTED = "cumulative_infected"
 
 CAN_MODEL_OUTPUT_SCHEMA = [
     "day_num",
@@ -22,7 +23,7 @@ CAN_MODEL_OUTPUT_SCHEMA = [
     TOTAL,
     TOTAL_SUSCEPTIBLE,
     EXPOSED,
-    INFECTED, 
+    INFECTED,
     INFECTED_A, # (not hospitalized, but infected)
     INFECTED_B, # infected_b (hospitalized not in icu)
     INFECTED_C, # infected_c (in icu)
@@ -30,7 +31,7 @@ CAN_MODEL_OUTPUT_SCHEMA = [
     ALL_INFECTED, # infected_a + infected_b + infected_c
     DEAD,
     BEDS,
-    "i",
+    CUMULATIVE_INFECTED,
     "j",
     "k",
     "l",
@@ -40,4 +41,4 @@ CAN_MODEL_OUTPUT_SCHEMA = [
 ]
 
 # Exclude the unnamed columns from our data frames until we have a use for them
-CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS = ["i","j","k","l","m","n"]
+CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS = ["j","k","l","m","n"]

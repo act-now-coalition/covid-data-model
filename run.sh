@@ -75,6 +75,13 @@ execute_model() {
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
   rmdir ${API_OUTPUT_DIR}/web_ui/
 
+  # Capture all the PDFs pyseir creates in output/pyseir since they are
+  # extremely helpful for debugging / QA'ing the model results.
+  echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
+  pushd output
+  zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
+  popd
+
   # Previous method for invoking the original Python SEIR model follows.
   #./run.py model state -o "${API_OUTPUT_DIR}" > /dev/null
   #./run.py model county -o "${COUNTIES_DIR}" > /dev/null
@@ -123,11 +130,6 @@ execute_api() {
 
   echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
   ./run.py deploy-counties-api -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
-
-  echo ">>> Generating pyseir_state_summaries.zip from output/pyseir/state_summaries."
-  pushd output/pyseir
-  zip -r "${API_OUTPUT_DIR}/pyseir_state_summaries.zip" state_summaries/*
-  popd
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
