@@ -70,7 +70,7 @@ execute_model() {
   # fi
 
   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
-  cat states.txt | parallel -j 20 pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state ${1}  > /dev/null
+  cat states.txt | parallel -j 20 pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="${1}"  > /dev/null
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
