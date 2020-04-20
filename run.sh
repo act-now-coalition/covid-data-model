@@ -71,11 +71,11 @@ execute_model() {
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_DIR}/
+  cp -r ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_DIR}/
 
   # Move county output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/county
-  mv ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_DIR}/county
+  cp -r ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_DIR}/county
 
   # Clean up original output directories.
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
