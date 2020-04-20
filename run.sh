@@ -75,9 +75,11 @@ execute_model() {
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
   rmdir ${API_OUTPUT_DIR}/web_ui/
 
-  echo ">>> Generating pyseir_state_summaries.zip from output/pyseir/state_summaries."
-  pushd output/pyseir
-  zip -r "${API_OUTPUT_DIR}/pyseir_state_summaries.zip" state_summaries/*
+  # Capture all the PDFs pyseir creates in output/pyseir since they are
+  # extremely helpful for debugging / QA'ing the model results.
+  echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
+  pushd output
+  zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
   popd
 
   # Previous method for invoking the original Python SEIR model follows.
