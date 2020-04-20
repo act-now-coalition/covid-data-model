@@ -41,10 +41,6 @@ Once a snapshot has been vetted, you can "label" it with a friendly name, e.g. p
 ```bash
 export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
 ./tools/label-api.sh v0 123
-
-
-curl -v -L -u octocat:$token -o Rails.zip /
-"https://api.github.com/repos/octo-org/octo-repo/actions/artifacts/30209828/zip"
 ```
 
 # Development
