@@ -155,6 +155,9 @@ def build_states_summary(state_data: List[APIOutput], intervention) -> APIOutput
     state_summaries = [
         output.data
         for output in state_data
+        # Don't love using type here, but CovidActNowStateTimeseries inherits
+        # CovidActNowStateSummary so `isinstance` returns true and fails to
+        # filter out the timeseries records.
         if type(output.data) == CovidActNowStateSummary
     ]
     state_api_data = CovidActNowStatesSummary(data=state_summaries)
@@ -177,6 +180,9 @@ def build_counties_summary(counties_data: List[APIOutput], intervention) -> APIO
     county_summaries = [
         output.data
         for output in counties_data
+        # Don't love using type here, but CovidActNowCountyTimeseries inherits
+        # CovidActNowCountySummary so `isinstance` returns true and fails to
+        # filter out the timeseries records.
         if type(output.data) == CovidActNowCountySummary
     ]
     county_api_data = CovidActNowCountiesSummary(data=county_summaries)
