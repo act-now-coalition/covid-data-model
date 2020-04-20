@@ -60,14 +60,17 @@ execute_model() {
   cd "$(dirname "$0")"
 
   # TODO(#148): We need to clean up the output of these scripts!
-  if [ -z "$FOR_US_STATE" ];
-  then
-    echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
-    pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" > /dev/null
-  else
-    echo ">>> Generating $FOR_US_STATE's state and county models to ${API_OUTPUT_DIR}"
-    pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="$FOR_US_STATE" > /dev/null
-  fi
+  # if [ -z "$FOR_US_STATE" ];
+  # then
+  #   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
+  #   pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" > /dev/null
+  # else
+  #   echo ">>> Generating $FOR_US_STATE's state and county models to ${API_OUTPUT_DIR}"
+  #   pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="$FOR_US_STATE" > /dev/null
+  # fi
+
+  echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
+  cat states.txt | parallel -j 20 pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state ${1}  > /dev/null
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
@@ -78,6 +81,7 @@ execute_model() {
   cp -r ${API_OUTPUT_DIR}/web_ui/county/* ${API_OUTPUT_DIR}/county
 
   # Clean up original output directories.
+  # will need to isolated, in jobs are done in parallel
   rmdir ${API_OUTPUT_DIR}/web_ui/state/
   rmdir ${API_OUTPUT_DIR}/web_ui/
 
