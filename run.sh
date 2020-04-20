@@ -59,7 +59,7 @@ execute_model() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
-  # TODO(#148): We need to clean up the output of these scripts!
+  # TODO(#parallelize by job)
   # if [ -z "$FOR_US_STATE" ];
   # then
   #   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
@@ -69,6 +69,7 @@ execute_model() {
   #   pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="$FOR_US_STATE" > /dev/null
   # fi
 
+  # TODO(#148): We need to clean up the output of these scripts!
   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
   parallel --eta -j 3 -a state_commands.txt && echo OK
 
