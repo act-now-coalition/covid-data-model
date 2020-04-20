@@ -29,7 +29,7 @@ jobs:
       # !!! Change this to your BRANCH if you want to test it
       COVID_DATA_MODEL_REF: 'fridiculous/parallelize-via-github'
       SNAPSHOT_ID: ${{github.run_number}}
-      FOR_STATE: ${{ matrix.us-states }}
+      FOR_US_STATE: ${{ matrix.us-states }}
     steps:
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
@@ -76,7 +76,7 @@ jobs:
       uses: actions/upload-artifact@v2-preview
       with:
         name: model-results-${{env.SNAPSHOT_ID}}
-        path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results-${{env.FOR_STATE}}.zip
+        path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results-${{env.FOR_US_STATE}}.zip
 
   execute-summaries:
     runs-on: self-hosted
