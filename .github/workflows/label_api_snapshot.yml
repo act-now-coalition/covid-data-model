@@ -47,7 +47,8 @@ jobs:
       if: always() # Pick up events even if the job fails or is canceled.
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        SLACK_CHANNEL: api
+        SLACK_CHANNEL: dev-alerts
+        STATUS: ${{job.status}}
       uses: Ilshidur/action-slack@fb92a78
       with:
-        args: 'Action to label snapshot job ran' # TODO (make these more informative with {{args}}
+        args: 'Action to label {{SNAPSHOT_ID}} as {{LABEL}}. Job status: {{STATUS}}'
