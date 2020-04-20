@@ -97,7 +97,7 @@ def _generate_timeseries_row(json_data_row):
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
     )
 
-def generate_api_for_state_timeseries(projection_row, intervention, input_dir):
+def generate_state_timeseries(projection_row, intervention, input_dir) -> CovidActNowStateTimeseries:
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
     fips = projection_row[rc.FIPS]
     can_dataseries = get_can_projection.get_can_raw_data(
@@ -121,7 +121,7 @@ def generate_api_for_state_timeseries(projection_row, intervention, input_dir):
     )
 
 
-def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
+def generate_county_timeseries(projection_row, intervention, input_dir):
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
     fips = projection_row[rc.FIPS]
     can_dataseries = get_can_projection.get_can_raw_data(
@@ -146,7 +146,7 @@ def generate_api_for_county_timeseries(projection_row, intervention, input_dir):
     )
 
 
-def generate_api_for_state_projection_row(projection_row):
+def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSummary:
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
     projections = _generate_api_for_projections(projection_row)
     state_result = CovidActNowStateSummary(
@@ -177,7 +177,7 @@ def generate_api_for_county_projection_row(projection_row):
     return county_result
 
 
-def generate_api_for_county_projection(projection):
+def generate_api_for_county_projection(projection) -> CovidActNowCountiesAPI:
     api_results = []
 
     for index, county_row in projection.iterrows():
