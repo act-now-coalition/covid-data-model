@@ -19,8 +19,8 @@ prepare () {
     echo "Example: $0 ../covid-data-public/ ./api-results/ execute_api"
     exit 1
   else
-    DATA_SOURCES_DIR="$(abs_path $1)"
-    API_OUTPUT_DIR="$(abs_path $2)"
+    export DATA_SOURCES_DIR="$(abs_path $1)"
+    export API_OUTPUT_DIR="$(abs_path $2)"
   fi
 
   if [ $# -eq 2 ]; then
