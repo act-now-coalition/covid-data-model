@@ -293,12 +293,13 @@ class EnsembleRunner:
             logging.info(f'Running simulation ensemble for {self.state_name} {self.fips} {suppression_policy_name}')
 
             if suppression_policy_name == 'suppression_policy__inferred':
-                if self.agg_level is AggregationLevel.STATE:
-                    with open(get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL), 'rb') as f:
+
+                artifact_path = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL)
+                if os.path.exists(artifact_path):
+                    with open(artifact_path, 'rb') as f:
                         model_ensemble = [pickle.load(f)]
                 else:
-                    # County inference not yet implemented.
-                    continue
+                    logging.warning(f'No MLE model found for {self.state_name}: {self.fips}. Skipping.')
             else:
                 parameter_sampler = ParameterEnsembleGenerator(
                     fips=self.fips,

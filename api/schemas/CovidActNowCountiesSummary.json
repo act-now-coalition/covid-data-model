@@ -1,47 +1,17 @@
 {
-  "title": "CovidActNowAreaSummary",
+  "title": "CovidActNowCountiesSummary",
   "type": "object",
   "properties": {
-    "countryName": {
-      "title": "Countryname",
-      "default": "US",
-      "type": "string"
-    },
-    "fips": {
-      "title": "Fips",
-      "description": "Fips for State + County. Five character code",
-      "type": "string"
-    },
-    "lat": {
-      "title": "Lat",
-      "description": "Lattitude of point within the state or county",
-      "type": "number"
-    },
-    "long": {
-      "title": "Long",
-      "description": "Longitude of point within the state or county",
-      "type": "number"
-    },
-    "lastUpdatedDate": {
-      "title": "Lastupdateddate",
-      "description": "Date of latest data",
-      "type": "string",
-      "format": "date"
-    },
-    "projections": {
-      "$ref": "#/definitions/_Projections"
-    },
-    "actuals": {
-      "$ref": "#/definitions/_Actuals"
+    "data": {
+      "title": "Data",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CovidActNowCountySummary"
+      }
     }
   },
   "required": [
-    "fips",
-    "lat",
-    "long",
-    "lastUpdatedDate",
-    "projections",
-    "actuals"
+    "data"
   ],
   "definitions": {
     "_ResourceUsageProjection": {
@@ -158,6 +128,64 @@
         "cumulativeDeaths",
         "hospitalBeds",
         "ICUBeds"
+      ]
+    },
+    "CovidActNowCountySummary": {
+      "title": "CovidActNowCountySummary",
+      "type": "object",
+      "properties": {
+        "countryName": {
+          "title": "Countryname",
+          "default": "US",
+          "type": "string"
+        },
+        "fips": {
+          "title": "Fips",
+          "description": "Fips for State + County. Five character code",
+          "type": "string"
+        },
+        "lat": {
+          "title": "Lat",
+          "description": "Lattitude of point within the state or county",
+          "type": "number"
+        },
+        "long": {
+          "title": "Long",
+          "description": "Longitude of point within the state or county",
+          "type": "number"
+        },
+        "lastUpdatedDate": {
+          "title": "Lastupdateddate",
+          "description": "Date of latest data",
+          "type": "string",
+          "format": "date"
+        },
+        "projections": {
+          "$ref": "#/definitions/_Projections"
+        },
+        "actuals": {
+          "$ref": "#/definitions/_Actuals"
+        },
+        "stateName": {
+          "title": "Statename",
+          "description": "The state name",
+          "type": "string"
+        },
+        "countyName": {
+          "title": "Countyname",
+          "description": "The county name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fips",
+        "lat",
+        "long",
+        "lastUpdatedDate",
+        "projections",
+        "actuals",
+        "stateName",
+        "countyName"
       ]
     }
   }

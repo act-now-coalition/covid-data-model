@@ -108,10 +108,9 @@ class ParameterEnsembleGenerator:
                 gamma=(1-fraction_asymptomatic),
                 # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                 symptoms_to_hospital_days=np.random.normal(loc=6., scale=1.5),
-                symptoms_to_mortality_days=np.random.normal(loc=18.8, scale=.45), # Imperial College
-                    hospitalization_length_of_stay_general=np.random.normal(loc=6, scale=1),
-                    hospitalization_length_of_stay_icu=np.random.normal(loc=14, scale=3),
-                    hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=15, scale=3),
+                hospitalization_length_of_stay_general=np.random.normal(loc=6, scale=1),
+                hospitalization_length_of_stay_icu=np.random.normal(loc=14, scale=3),
+                hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=15, scale=3),
                 # if you assume the ARDS population is the group that would die
                 # w/o ventilation, this would suggest a 20-42% mortality rate
                 # among general hospitalized patients w/o access to ventilators:
@@ -129,7 +128,7 @@ class ParameterEnsembleGenerator:
                 mortality_rate_no_ICU_beds=1.0,
                 beds_general=self.beds * 0.4 * 2.07, # 60% utliization, no scaling...
                 # TODO.. Patch this After Issue 132
-                beds_ICU= (1 - 0.85) * self.icu_beds,  # No scaling, 85% utilization...
+                beds_ICU=(1 - 0.85) * self.icu_beds,  # No scaling, 85% utilization...
                 # hospital_capacity_change_daily_rate=1.05,
                 # max_hospital_capacity_factor=2.07,
                 # initial_hospital_bed_utilization=0.6,

@@ -5,40 +5,39 @@ import enum
 UNKNOWN_FIPS = "99999"
 
 class Intervention(enum.Enum):
-    NO_INTERVENTION = 0
-    FLATTEN = 1 # on the webiste, strictDistancingNow
-    # FULL_CONTAINMENT = 2 # you are cancelled, but reusing this enum value
-    SOCIAL_DISTANCING = 3 # weak distancingNow on the website
-    CURRENT = 4  # look at what the state is and get the file for that
-    # We are using enum 2 for consistency with the website 
-    INFERRED = 2 # given the previous pattern, how do we predict going forward
+    NO_MITIGATION = 0
+    HIGH_MITIGATION = 1 # on the webiste, strictDistancingNow
+    MODERATE_MITIGATION = 3 # weak distancingNow on the website
+    SELECTED_MITIGATION = 4  # look at what the state is and get the file for that
+    # We are using enum 2 for consistency with the website
+    OBSERVED_MITIGATION = 2 # given the previous pattern, how do we predict going forward
 
     @classmethod
-    def county_supported_interventions(cls): 
+    def county_supported_interventions(cls):
         return [
-            Intervention.NO_INTERVENTION,
-            Intervention.FLATTEN,
-            Intervention.SOCIAL_DISTANCING,
-            Intervention.CURRENT
+            Intervention.NO_MITIGATION,
+            Intervention.HIGH_MITIGATION,
+            Intervention.MODERATE_MITIGATION,
+            Intervention.SELECTED_MITIGATION,
         ]
 
     @classmethod
     def from_webui_data_adaptor(cls, label):
-        if label == "suppression_policy__no_intervention": 
-            return cls.NO_INTERVENTION
+        if label == "suppression_policy__no_intervention":
+            return cls.NO_MITIGATION
         elif label == "suppression_policy__flatten_the_curve":
-            return cls.FLATTEN
-        elif label == "suppression_policy__inferred": 
-            return cls.INFERRED
+            return cls.HIGH_MITIGATION
+        elif label == "suppression_policy__inferred":
+            return cls.OBSERVED_MITIGATION
         elif label == "suppression_policy__social_distancing":
-            return cls.SOCIAL_DISTANCING
+            return cls.MODERATE_MITIGATION
         raise Exception(f"Unexpected WebUI Data Adaptor label: {label}")
 
     @classmethod
     def from_str(cls, label):
         if label == "shelter_in_place":
-            return cls.FLATTEN
+            return cls.HIGH_MITIGATION
         elif label == "social_distancing":
-            return cls.SOCIAL_DISTANCING
+            return cls.MODERATE_MITIGATION
         else:
-            return cls.NO_INTERVENTION
+            return cls.NO_MITIGATION
