@@ -36,7 +36,7 @@ class DatasetDeployer(object):
         """Persists specific data onto an s3 bucket.
         This method assumes versioned is handled on the bucket itself.
         """
-        _logger.info(f"persisting {self.key} to local")
+        _logger.info(f"persisting {self.key} {self.output_dir}")
 
         with open(os.path.join(self.output_dir, self.key), "wb") as f:
             # hack to allow the local writer to take either bytes or a string
@@ -67,9 +67,8 @@ def upload_csv(key_name: str, csv: str, output_dir: str):
     _logger.info(f"Generated csv for {key_name}")
 
 
-def upload_json(key_name, json: str, output_dir: str): 
+def upload_json(key_name, json: str, output_dir: str):
     DatasetDeployer(f"{key_name}.json", json, output_dir).persist()
-    _logger.info(f"Generated json for {key_name}")
 
 
 def deploy_shape_files(

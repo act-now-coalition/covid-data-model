@@ -125,3 +125,11 @@ class CovidActNowStatesSummary(pydantic.BaseModel):
 
 class CovidActNowStatesTimeseries(pydantic.BaseModel):
     data: List[CovidActNowStateTimeseries] = pydantic.Field(...)
+
+
+class CovidActNowCountiesSummary(pydantic.BaseModel):
+    data: List[CovidActNowCountySummary] = pydantic.Field(...)
+
+
+class CovidActNowCountiesTimeseries(pydantic.BaseModel):
+    data: List[CovidActNowCountyTimeseries] = pydantic.Field(...)

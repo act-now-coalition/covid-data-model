@@ -2,6 +2,10 @@ from typing import List
 from collections import namedtuple
 import logging
 import pydantic
+from api.can_api_definition import CovidActNowCountySummary
+from api.can_api_definition import CovidActNowCountiesSummary
+from api.can_api_definition import CovidActNowCountiesTimeseries
+from api.can_api_definition import CovidActNowCountyTimeseries
 from api.can_api_definition import CovidActNowStateSummary
 from api.can_api_definition import CovidActNowStatesSummary
 from api.can_api_definition import CovidActNowStatesTimeseries
@@ -151,7 +155,7 @@ def build_states_summary(state_data: List[APIOutput], intervention) -> APIOutput
     state_summaries = [
         output.data
         for output in state_data
-        if isinstance(output.data, CovidActNowStateSummary)
+        if type(output.data) == CovidActNowStateSummary
     ]
     state_api_data = CovidActNowStatesSummary(data=state_summaries)
     key = f"states.{intervention.name}"
@@ -167,6 +171,28 @@ def build_states_timeseries(state_data: List[APIOutput], intervention) -> APIOut
     state_api_data = CovidActNowStatesTimeseries(data=state_summaries)
     key = f"states.{intervention.name}.timeseries"
     return APIOutput(key, state_api_data)
+
+
+def build_counties_summary(counties_data: List[APIOutput], intervention) -> APIOutput:
+    county_summaries = [
+        output.data
+        for output in counties_data
+        if type(output.data) == CovidActNowCountySummary
+    ]
+    county_api_data = CovidActNowCountiesSummary(data=county_summaries)
+    key = f"counties.{intervention.name}"
+    return APIOutput(key, county_api_data)
+
+
+def build_counties_timeseries(counties_data: List[APIOutput], intervention) -> APIOutput:
+    county_summaries = [
+        output.data
+        for output in counties_data
+        if isinstance(output.data, CovidActNowCountyTimeseries)
+    ]
+    county_api_data = CovidActNowCountiesTimeseries(data=county_summaries)
+    key = f"counties.{intervention.name}.timeseries"
+    return APIOutput(key, county_api_data)
 
 
 def deploy_results(results: List[APIOutput], output: str):
