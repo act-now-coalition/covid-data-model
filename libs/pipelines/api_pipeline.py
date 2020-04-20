@@ -23,8 +23,8 @@ from libs.functions import generate_api as api
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
 
-class APIOutput(object):
 
+class APIOutput(object):
     def __init__(self, file_stem: str, data: pydantic.BaseModel):
         """
         Args:
@@ -34,8 +34,6 @@ class APIOutput(object):
         """
         self.file_stem = file_stem
         self.data = data
-
-
 
 
 APIPipelineProjectionResult = namedtuple(
@@ -104,13 +102,9 @@ def run_projections(
 
 def _generate_api_without_ts(projection_result, row, input_dir):
     if projection_result.aggregation_level == AggregationLevel.STATE:
-        generated_data = api.generate_api_for_state_projection_row(
-            row
-        )
+        generated_data = api.generate_api_for_state_projection_row(row)
     elif projection_result.aggregation_level == AggregationLevel.COUNTY:
-        generated_data = api.generate_api_for_county_projection_row(
-            row
-        )
+        generated_data = api.generate_api_for_county_projection_row(row)
     else:
         raise ValueError("Aggregate Level not supported by api generation")
     key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
@@ -190,7 +184,9 @@ def build_counties_summary(counties_data: List[APIOutput], intervention) -> APIO
     return APIOutput(key, county_api_data)
 
 
-def build_counties_timeseries(counties_data: List[APIOutput], intervention) -> APIOutput:
+def build_counties_timeseries(
+    counties_data: List[APIOutput], intervention
+) -> APIOutput:
     county_summaries = [
         output.data
         for output in counties_data
