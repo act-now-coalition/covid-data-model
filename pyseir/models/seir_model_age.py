@@ -530,6 +530,7 @@ class SEIRModelAge:
                                                for i in range(self.num_compartments_by_age)]
 
         R = y[-7]
+
         # TODO: County-by-county affinity matrix terms can be used to describe
         # transmission network effects. ( also known as Multi-Region SEIR)
         # https://arxiv.org/pdf/2003.09875.pdf
@@ -628,11 +629,12 @@ class SEIRModelAge:
         dHAdmissions_ICU = sum(infected_and_in_hospital_icu)  # Ventilators also count as ICU beds.
 
         # Fraction that recover
-        dRdt = (sum(infected_and_recovered_no_hospital)
+        dRdt = (sum(asymptomatic_and_recovered)
+              + sum(infected_and_recovered_no_hospital)
               + sum(recovered_after_hospital_general)
               + sum(recovered_from_icu_vent)
               + sum(recovered_from_icu_no_vent)
-              - self.natural_death_rate)
+              - R * self.natural_death_rate)
 
         # Death among hospitalized.
         dDdt = sum(died_from_icu) + sum(died_from_icu_vent) + sum(died_from_hosp)
