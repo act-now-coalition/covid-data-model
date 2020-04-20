@@ -1,0 +1,51 @@
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Alabama
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Alaska
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Arizona
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Arkansas
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=California
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Colorado
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Connecticut
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Delaware
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=District of Columbia
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Florida
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Georgia
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Hawaii
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Idaho
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Illinois
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Indiana
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Iowa
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Kansas
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Kentucky
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Louisiana
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Maine
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Maryland
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Massachusetts
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Michigan
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Minnesota
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Mississippi
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Missouri
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Montana
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Nebraska
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Nevada
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=New Hampshire
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=New Jersey
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=New Mexico
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=New York
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=North Carolina
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=North Dakota
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Ohio
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Oklahoma
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Oregon
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Pennsylvania
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Rhode Island
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=South Carolina
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=South Dakota
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Tennessee
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Texas
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Utah
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Vermont
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Virginia
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Washington
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=West Virginia
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Wisconsin
+pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state=Wyoming
