@@ -62,6 +62,7 @@ jobs:
     - name: Build Model Results (run.sh .. .. execute_model)
       env:
         COVID_MODEL_CORES: 96
+        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
@@ -118,6 +119,7 @@ jobs:
     - name: Build Summaries (run.sh .. .. execute_summaries)
       env:
         COVID_MODEL_CORES: 96
+        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_summaries
     # - name: Upload Summaries with Model Results
     #   uses: actions/upload-artifact@v1
@@ -172,6 +174,7 @@ jobs:
     - name: Build DoD (run.sh .. .. execute_summaries)
       env:
         COVID_MODEL_CORES: 96
+        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_dod
     # - name: Upload DoD with Model Results
     #   uses: actions/upload-artifact@v1
@@ -226,6 +229,7 @@ jobs:
     - name: Build API (run.sh .. .. execute_api)
       env:
         COVID_MODEL_CORES: 96
+        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
     # - name: Upload API with Model Results
     #   uses: actions/upload-artifact@v1
@@ -249,6 +253,11 @@ jobs:
       AWS_S3_BUCKET: 'data.covidactnow.org'
 
     steps:
+    - name: make and copy to local tmp directory
+      run: |
+        mkdir -p ./tmp/data/
+        cp -r /data/api-results-${{env.SNAPSHOT_ID}}/ ./tmp/data/
+
     - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
       uses: jakejarvis/s3-sync-action@master
       with:
@@ -256,7 +265,11 @@ jobs:
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        SOURCE_DIR: '/data/api-results-${{env.SNAPSHOT_ID}}/'
-        DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}'
+        SOURCE_DIR: './tmp/data/api-results-${{env.SNAPSHOT_ID}}/'
+        DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}/'
+    
+    - name: remove local tmp directory
+      run: |
+        rm -rf ./tmp/data/
 
       # TODO: Upload RedirectRules to AWS to make snapshot/latest pointer work.
