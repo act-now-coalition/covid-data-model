@@ -1,12 +1,18 @@
-# CAN V1 API
+# Covid Act Now V1 API
 
-# Available Now
+## Currently available API functionality
 
-## V1 API
+The Covid Act Now API provides the same data that powers [covidactnow.org](https://covidactnow.org) but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools.
+
+### Update frequency
+
+Data is updated every day, typically around midnight US Pacific Time.
 
 ### URL
 
-Files are available for download at: `https://data.covidactnow.org/latest/...`
+Files are available for download prefixed by: `https://data.covidactnow.org/latest/...`
+
+In order to get data, you must specify the desired intervention, as well as the state or county you wish to get data for. Information on how to specify an intervention and location is available below.
 
 ### Specifying an intervention
 
@@ -25,6 +31,8 @@ To get a dynamic forecast that is based on the actually observed effect of mitig
     "OBSERVED_MITIGATION"
 
 **Note: `OBSERVED_MITIGATION` is only available for states, not counties.**
+
+More information about these interventions, including the definitions, references, and actual values used is [available here](https://data.covidactnow.org/Covid_Act_Now_Model_References_and_Assumptions.pdf).
 
 ### State projections
 
@@ -90,11 +98,11 @@ This is the data format for both states and counties. `timeseries` is only inclu
       }],
     };
 
-# Coming soon
+## Coming soon
 
 Additional V1 API endpoints containing batch versions of the data
 
-## State level aggregation
+### State level aggregation
 
 Will return information about all states.
 
@@ -106,7 +114,7 @@ Will return information about all states.
     /us/states.<INTERVENTION>.timeseries.json 
     [{stateName:'CA', timeseries:[…],… }, {stateName:'TX', timeseries:[…], …}, …]
 
-## County level aggregation per state
+### County level aggregation per state
 
 Will return all the county level data for a given state.
 
@@ -118,7 +126,7 @@ Will return all the county level data for a given state.
     /us/counties(.intervention).timeseries.json
     [{stateName:'CA', countyName, fips, timeseries:[…],… }, …]
 
-## Additional data formats (CSV, Shapefiles)
+### Additional data formats (CSV, Shapefiles)
 
 Will return aggregate information above in different file formats.
 
