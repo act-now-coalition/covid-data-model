@@ -134,13 +134,13 @@ def get_county_projections_df(input_dir, initial_intervention_type, state_interv
 
     # get the state and fips so we can get the files
     missing = 0
+
     for index, fips_row in fips_pd.iterrows():
         state = fips_row["state"]
         fips = fips_row["fips"]
         intervention_type = _get_intervention_type(initial_intervention_type, state, state_interventions_df)
         file_name = f"{state}.{fips}.{intervention_type}.json"
         path = os.path.join(input_dir, file_name)
-        # if the file exists in that directory then process
         projection_data = _calculate_projection_data(path)
         if projection_data:
             results.append([state, fips] + projection_data)
