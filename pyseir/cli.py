@@ -28,6 +28,8 @@ cds_dataset = None
 DEFAULT_RUN_MODE = 'can-before-hospitalization-new-params'
 ALL_STATES = [state_obj.name for state_obj in us.STATES]
 
+API_OUTPUT_DIR=os.getenv('API_OUTPUT_DIR')
+
 
 def _cache_global_datasets():
     global nyt_dataset, cds_dataset
@@ -203,7 +205,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option('--generate-reports', default=False, type=bool, is_flag=True, help='If False, skip pdf report generation.')
 @click.option('--output-interval-days', default=4, type=int, help='Number of days between outputs for the WebUI payload.')
 @click.option('--skip-download', default=False, is_flag=True, type=bool, help='Skip the download phase.')
-@click.option('--output-dir', default=None, type=str, help='Directory to deploy webui output.')
+@click.option('--output-dir', default=API_OUTPUT_DIR, type=str, help='Directory to deploy webui output.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def run_all(state, run_mode, generate_reports, output_interval_days, skip_download, output_dir, states_only):
     _run_all(state, run_mode, generate_reports, output_interval_days, skip_download=skip_download,

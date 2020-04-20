@@ -1,51 +1,51 @@
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Alabama" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Alaska" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Arizona" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Arkansas" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="California" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Colorado" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Connecticut" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Delaware" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="District of Columbia" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Florida" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Georgia" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Hawaii" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Idaho" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Illinois" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Indiana" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Iowa" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Kansas" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Kentucky" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Louisiana" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Maine" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Maryland" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Massachusetts" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Michigan" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Minnesota" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Mississippi" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Missouri" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Montana" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Nebraska" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Nevada" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="New Hampshire" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="New Jersey" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="New Mexico" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="New York" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="North Carolina" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="North Dakota" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Ohio" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Oklahoma" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Oregon" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Pennsylvania" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Rhode Island" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="South Carolina" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="South Dakota" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Tennessee" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Texas" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Utah" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Vermont" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Virginia" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Washington" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="West Virginia" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Wisconsin" > /dev/null
-pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}" --state="Wyoming" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Alabama" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Alaska" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Arizona" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Arkansas" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="California" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Colorado" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Connecticut" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Delaware" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="District of Columbia" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Florida" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Georgia" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Hawaii" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Idaho" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Illinois" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Indiana" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Iowa" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Kansas" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Kentucky" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Louisiana" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Maine" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Maryland" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Massachusetts" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Michigan" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Minnesota" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Mississippi" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Missouri" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Montana" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Nebraska" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Nevada" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="New Hampshire" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="New Jersey" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="New Mexico" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="New York" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="North Carolina" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="North Dakota" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Ohio" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Oklahoma" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Oregon" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Pennsylvania" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Rhode Island" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="South Carolina" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="South Dakota" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Tennessee" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Texas" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Utah" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Vermont" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Virginia" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Washington" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="West Virginia" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Wisconsin" > /dev/null
+pyseir run-all --run-mode=can-before-hospitalization-new-params --state="Wyoming" > /dev/null
