@@ -51,6 +51,7 @@ def deploy_counties_api(disable_validation, input_dir, output, summary_output):
 
             counties_summary = api_pipeline.build_counties_summary(county_results_api, intervention)
             counties_timeseries = api_pipeline.build_counties_timeseries(county_results_api, intervention)
-            api_pipeline.deploy_results([counties_summary, counties_timeseries], summary_output)
+            api_pipeline.deploy_results([counties_summary], summary_output, write_csv=True)
+            api_pipeline.deploy_results([counties_timeseries], summary_output)
 
         logger.info("finished top counties job")

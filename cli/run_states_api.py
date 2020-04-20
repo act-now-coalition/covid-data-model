@@ -45,8 +45,11 @@ def deploy_states_api(disable_validation, input_dir, output, summary_output):
         states_results_api = api_pipeline.generate_api(states_result, input_dir)
         api_pipeline.deploy_results(states_results_api, output)
 
-        states_summary = api_pipeline.build_states_summary(states_results_api, intervention)
+        states_summary = api_pipeline.build_states_summary(
+            states_results_api, intervention
+        )
         states_timeseries = api_pipeline.build_states_timeseries(states_results_api, intervention)
-        api_pipeline.deploy_results([states_summary, states_timeseries], summary_output)
+        api_pipeline.deploy_results([states_summary], summary_output, write_csv=True)
+        api_pipeline.deploy_results([states_timeseries], summary_output)
 
         logger.info("finished states job")

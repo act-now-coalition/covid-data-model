@@ -197,7 +197,7 @@ def build_counties_timeseries(
     return APIOutput(key, county_api_data)
 
 
-def deploy_results(results: List[APIOutput], output: str):
+def deploy_results(results: List[APIOutput], output: str, write_csv=False):
     """Deploys results from the top counties to specified output directory.
 
     Args:
@@ -207,3 +207,13 @@ def deploy_results(results: List[APIOutput], output: str):
     """
     for api_row in results:
         dataset_deployer.upload_json(api_row.file_stem, api_row.data.json(), output)
+        if write_csv:
+            data = api_row.data.dict()
+            if not isinstance(data, list):
+                if not isinstance(data.get('data'), list):
+                    # Most of the API schemas have the lists under the `'data'` key.
+                    logger.warning(f"Missing data field with list of data.")
+                    continue
+                else:
+                    data = data['data']
+            dataset_deployer.write_nested_csv(data, api_row.file_stem, output)

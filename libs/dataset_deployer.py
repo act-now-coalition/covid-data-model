@@ -1,4 +1,7 @@
+from typing import List
 import os
+import pathlib
+import csv
 import io
 import logging
 import boto3
@@ -65,6 +68,52 @@ def upload_csv(key_name: str, csv: str, output_dir: str):
     obj = DatasetDeployer(**blob)
     obj.persist()
     _logger.info(f"Generated csv for {key_name}")
+
+
+def flatten_dict(data: dict, level_separator: str = '.') -> dict:
+    """Flattens a nested dictionary, separating nested keys by separator.
+
+    Args:
+        data: data to flatten
+        level_separator: separator to use when combining keys from nested dictionary.
+    """
+    flattened = {}
+    for key, value in data.items():
+        if not isinstance(value, dict):
+            flattened[key] = value
+            continue
+
+        value = flatten_dict(value)
+        new_data = {
+            f"{key}{level_separator}{nested_key}": nested_value
+            for nested_key, nested_value in value.items()
+        }
+        flattened.update(new_data)
+
+    return flattened
+
+
+def write_nested_csv(data: List[dict], key: str, output_dir: str):
+    """Writes list of data as a nested csv.
+
+    Args:
+        data: list of data to write.
+        key: Stem of file to write
+        output_dir: Output directory to write to.
+    """
+    if not data:
+        raise ValueError("Cannot upload a 0 length list.")
+    header = flatten_dict(data[0]).keys()
+
+    output_path = pathlib.Path(output_dir) / f"{key}.csv"
+    _logger.info(f"Writing {key} to {output_path}")
+    with output_path.open('w') as csvfile:
+        writer = csv.DictWriter(output_path.open('w'), header)
+        writer.writeheader()
+
+        for row in data:
+            flattened_row = flatten_dict(row)
+            writer.writerow(flattened_row)
 
 
 def upload_json(key_name, json: str, output_dir: str):
