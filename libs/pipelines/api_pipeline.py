@@ -1,6 +1,11 @@
+from typing import List
 from collections import namedtuple
 import logging
-
+import pydantic
+from api.can_api_definition import CovidActNowStateSummary
+from api.can_api_definition import CovidActNowStatesSummary
+from api.can_api_definition import CovidActNowStatesTimeseries
+from api.can_api_definition import CovidActNowStateTimeseries
 from libs.enums import Intervention
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import validate_results
@@ -13,6 +18,21 @@ from libs.functions import generate_api as api
 
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
+
+class APIOutput(object):
+
+    def __init__(self, file_stem: str, data: pydantic.BaseModel):
+        """
+        Args:
+            file_stem: Stem of output filename.
+            data: Data
+
+        """
+        self.file_stem = file_stem
+        self.data = data
+
+
+
 
 APIPipelineProjectionResult = namedtuple(
     "APIPipelineProjectionResult",
@@ -37,8 +57,8 @@ def _get_api_prefix(aggregation_level, row):
 def run_projections(
     input_file, aggregation_level, intervention: Intervention, run_validation=True
 ) -> APIPipelineProjectionResult:
-    """Run the projections for the given intervention for states 
-    in order to generate the api. 
+    """Run the projections for the given intervention for states
+    in order to generate the api.
 
     Args:
         input_file: Input file to load model output results from.
@@ -91,43 +111,65 @@ def _generate_api_without_ts(projection_result, row, input_dir):
         raise ValueError("Aggregate Level not supported by api generation")
     key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
     generated_key = f"{key_prefix}.{projection_result.intervention.name}"
-    return APIGenerationRow(generated_key, generated_data)
+    return APIOutput(generated_key, generated_data)
 
 
 def _generate_api_with_ts(projection_result, row, input_dir):
     if projection_result.aggregation_level == AggregationLevel.STATE:
-        generated_data = api.generate_api_for_state_timeseries(
+        generated_data = api.generate_state_timeseries(
             row, projection_result.intervention, input_dir
         )
     elif projection_result.aggregation_level == AggregationLevel.COUNTY:
-        generated_data = api.generate_api_for_county_timeseries(
+        generated_data = api.generate_county_timeseries(
             row, projection_result.intervention, input_dir
         )
     else:
         raise ValueError("Aggregate Level not supported by api generation")
     key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
     generated_key = f"{key_prefix}.{projection_result.intervention.name}.timeseries"
-    return APIGenerationRow(generated_key, generated_data)
+    return APIOutput(generated_key, generated_data)
 
 
 def generate_api(
     projection_result: APIPipelineProjectionResult, input_dir: str
-) -> APIGeneration:
+) -> List[APIOutput]:
     """
     pipethrough the rows of the projection
     if it's a county generate the key for counties:
-        /us/counties/{FIPS_CODE}.{INTERVENTION}.json 
-    if it's a state generate the key for states 
+        /us/counties/{FIPS_CODE}.{INTERVENTION}.json
+    if it's a state generate the key for states
         /us/states/{STATE_ABBREV}.{INTERVENTION}.json
     """
     results = []
     for index, row in projection_result.projection_df.iterrows():
         results.append(_generate_api_without_ts(projection_result, row, input_dir))
         results.append(_generate_api_with_ts(projection_result, row, input_dir))
-    return APIGeneration(results)
+    return results
 
 
-def deploy_results(result: APIGeneration, output: str):
+def build_states_summary(state_data: List[APIOutput], intervention) -> APIOutput:
+    state_summaries = [
+        output.data
+        for output in state_data
+        if isinstance(output.data, CovidActNowStateSummary)
+    ]
+    state_api_data = CovidActNowStatesSummary(data=state_summaries)
+    key = f"states.{intervention.name}"
+    return APIOutput(key, state_api_data)
+
+
+def build_states_timeseries(state_data: List[APIOutput], intervention) -> APIOutput:
+    state_summaries = [
+        output.data
+        for output in state_data
+        if isinstance(output.data, CovidActNowStateTimeseries)
+    ]
+    state_api_data = CovidActNowStatesTimeseries(data=state_summaries)
+    key = f"states.{intervention.name}.timeseries"
+    return APIOutput(key, state_api_data)
+
+
+def deploy_results(results: List[APIOutput], output: str):
     """Deploys results from the top counties to specified output directory.
 
     Args:
@@ -135,5 +177,5 @@ def deploy_results(result: APIGeneration, output: str):
         key: Name for the file to be uploaded
         output: output folder to save results in.
     """
-    for api_row in result.api_rows:
-        dataset_deployer.upload_json(api_row.key, api_row.api.json(), output)
+    for api_row in results:
+        dataset_deployer.upload_json(api_row.file_stem, api_row.data.json(), output)

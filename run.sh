@@ -47,6 +47,7 @@ prepare () {
   # TODO: These should perhaps live in python, near the schemas (defined in api/)?
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
+  API_OUTPUT_US="${API_OUTPUT_DIR}/us"
 
   COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
   CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
@@ -124,7 +125,7 @@ execute_api() {
 
   echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
   mkdir -p "${API_OUTPUT_STATES}"
-  ./run.py deploy-states-api -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_STATES}"
+  ./run.py deploy-states-api -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_STATES}" --summary-output "${API_OUTPUT_US}"
 
   echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
   ./run.py deploy-counties-api -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"

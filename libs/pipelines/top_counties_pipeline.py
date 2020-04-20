@@ -1,5 +1,6 @@
 from collections import namedtuple
 import logging
+from api.can_api_definition import CovidActNowCountiesAPI
 
 from libs.enums import Intervention
 from libs import validate_results
@@ -51,18 +52,19 @@ def run_projections(
 def generate_api(
     projection_result: TopCountiesPipelineProjectionResult,
     sort_fields=[rc.PEAK_HOSPITALIZATION_SHORTFALL],
+    ascending=False,
     length=100,
-) -> TopCountiesPipelineResult:
+) -> CovidActNowCountiesAPI:
     projection = projection_result.projection_df
-    sorted_limited = projection.sort_values(by=sort_fields, ascending=False).head(
-        length
-    )
-    return TopCountiesPipelineResult(
-        api.generate_api_for_county_projection(sorted_limited)
-    )
+    sorted_projections = projection.sort_values(by=sort_fields, ascending=ascending)
+
+    if length:
+        sorted_projections = sorted_projections.head(length)
+
+    return api.generate_api_for_county_projection(sorted_projections)
 
 
-def deploy_results(result: TopCountiesPipelineResult, key: str, output: str):
+def deploy_results(result: CovidActNowCountiesAPI, key: str, output: str):
     """Deploys results from the top counties to specified output directory.
 
     Args:
@@ -70,4 +72,4 @@ def deploy_results(result: TopCountiesPipelineResult, key: str, output: str):
         key: Name for the file to be uploaded
         output: output folder to save results in.
     """
-    dataset_deployer.upload_json(key, result.api.json(), output)
+    dataset_deployer.upload_json(key, result.json(), output)
