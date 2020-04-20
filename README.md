@@ -26,7 +26,7 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 # API Snapshots
 
-We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/) 
+We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/)
 twice a day via a [github action](./.github/workflows/deploy_api.yml).  To manually kick off a new
 snapshot, get a
 [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
@@ -41,6 +41,10 @@ Once a snapshot has been vetted, you can "label" it with a friendly name, e.g. p
 ```bash
 export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
 ./tools/label-api.sh v0 123
+
+
+curl -v -L -u octocat:$token -o Rails.zip /
+"https://api.github.com/repos/octo-org/octo-repo/actions/artifacts/30209828/zip"
 ```
 
 # Development
@@ -100,6 +104,6 @@ Change to into the county_covid_seir_models directory
 Example here. You can remove the `--state` flag to run everything. To run only states, add `--states-only`.
 `pyseir run-all --run-mode='can-before-hospitalization-new-params' --output-interval-days=4 --state="California"`
 
-`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags. 
+`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags.
 
 Check the `output/` folder for results.
