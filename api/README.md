@@ -1,8 +1,12 @@
-# API
+# (DEPRECATED) V0 API
 
-Also see [https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md) for new API surface.
+## V1 API
+
+See [https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md) for most up to date API surface.
  
-## Current Schema Overview
+## V0 Schema Overview
+
+**This API schema is deprecated and we recommend the v1 API schema linked above**
 
 We currently provide 6 file types:
 * Arrays of Arrays, by State & County
@@ -12,9 +16,7 @@ We currently provide 6 file types:
 * County JSON Summaries
 * Versions.json
 
-
 ### Current Structure
-(pre-launch of v0)
 
 ```bash
 ├── /latest/ | /snapshots/<snapshot id>/
