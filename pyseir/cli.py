@@ -12,6 +12,8 @@ from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
+from pyseir.inference.whitelist_generator import WhitelistGenerator
+
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 root = logging.getLogger()
@@ -47,6 +49,11 @@ def entry_point():
 @entry_point.command()
 def download_data():
     cache_all_data()
+
+
+def _generate_whitelist():
+    gen = WhitelistGenerator()
+    gen.generate_whitelist()
 
 
 def _impute_start_dates(state=None, states_only=False):
@@ -117,6 +124,8 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
     if not skip_download:
         cache_all_data()
 
+    _generate_whitelist()
+
     if state:
         # Deprecate temporarily since not needed. Our full model fits have
         # superseded these for now. But we may return to a context where this
@@ -171,6 +180,11 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def impute_start_dates(state, states_only):
     _impute_start_dates(state, states_only)
+
+
+@entry_point.command()
+def generate_whitelist():
+    generate_whitelist()
 
 
 @entry_point.command()

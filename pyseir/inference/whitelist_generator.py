@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import logging
 from pyseir import load_data
 from datetime import datetime
 from pyseir.utils import get_run_artifact_path, RunArtifact
@@ -44,6 +45,8 @@ class WhitelistGenerator:
         -------
         df: whitelist
         """
+        logging.info('Generating county level whitelist...')
+
         whitelist_generator_inputs = []
         for fips in self.county_metadata.fips:
             times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
@@ -65,16 +68,16 @@ class WhitelistGenerator:
         df_candidates = pd.DataFrame(whitelist_generator_inputs)
 
         df_whitelist = df_candidates[['fips', 'state', 'county']]
-
-        df_whitelist['inference_ok'] = (
+        df_whitelist.loc[:, 'inference_ok'] = (
                   (df_candidates.nonzero_case_datapoints >= self.nonzero_case_datapoints)
                 & (df_candidates.nonzero_death_datapoints >= self.nonzero_death_datapoints)
                 & (df_candidates.total_cases >= self.total_cases)
                 & (df_candidates.total_deaths >= self.total_deaths)
         )
 
-        # Dummy fips since not used here...
-        output_path = get_run_artifact_path(fips='06', artifact=RunArtifact.WHITELIST_RESULT)
+        output_path = get_run_artifact_path(
+            fips='06', # Dummy fips since not used here...
+            artifact=RunArtifact.WHITELIST_RESULT)
         df_whitelist.to_json(output_path)
 
         return df_whitelist

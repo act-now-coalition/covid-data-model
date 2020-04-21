@@ -46,6 +46,8 @@ class WebUIDataAdaptorV1:
 
         self.state_timeseries = self.jhu_local.timeseries().state_data
         self.state_timeseries['date'] = self.state_timeseries['date'].dt.normalize()
+        self.df_whitelist = load_data.load_whitelist()
+        self.df_whitelist = self.df_whitelist[self.df_whitelist['inference_ok'] == True]
 
     def backfill_output_model_fips(self, fips, t0, final_beds, output_model):
         """
@@ -128,6 +130,9 @@ class WebUIDataAdaptorV1:
             output_model = pd.DataFrame()
 
             if suppression_policy == 'suppression_policy__inferred':
+                if fips not in self.df_whitelist.fips:
+                    continue
+
                 t0 = datetime.fromisoformat(fit_results['t0_date'])
 
                 # Hospitalizations need to be rescaled by the inferred factor to match observations for display.
