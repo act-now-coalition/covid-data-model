@@ -50,70 +50,82 @@ More information about these interventions, including the definitions, reference
 
 Returns projections for the selected state
 
-    # Current actuals + projections + limits
-    # e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.json
-    /us/states/<ST>.<INTERVENTION>.json
-    
-    # Full timeseries data: actuals + projected limits + data for every four days
-    # e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.timeseries.json 
-    /us/states/<ST>.<INTERVENTION>.timeseries.json
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.json
+/us/states/<ST>.<INTERVENTION>.json
+
+# Full timeseries data: actuals + projected limits + data for every four days
+# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.timeseries.json 
+/us/states/<ST>.<INTERVENTION>.timeseries.json
+```
 
 #### Reading Aggregate Projections for All States
 
 Returns projections for all states
 
-    # Current actuals + projections + limits
-    # e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.json
-    /us/states.<INTERVENTION>.json
-    
-    # Timeseries data
-    # e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.timeseries.json
-    /us/states.<INTERVENTION>.timeseries.json
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.json
+/us/states.<INTERVENTION>.json
+
+# Timeseries data
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.timeseries.json
+/us/states.<INTERVENTION>.timeseries.json
+```
 
 State aggregates are also available as CSV files:
     
-    # Current actuals + projections + limits
-    # e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.csv
-    /latest/us/states.<INTERVENTION>.csv
-    
-    # Timeseries data
-    # E.G. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.timeseries.csv
-    /latest/us/states.<INTERVENTION>.timeseries.csv
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.csv
+/latest/us/states.<INTERVENTION>.csv
+
+# Timeseries data
+# E.G. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.timeseries.csv
+/latest/us/states.<INTERVENTION>.timeseries.csv
+```
 
 ### County Data
 #### Reading a Projection for a Specific County
 
 Returns projections for the selected county
     
-    # Current actuals + projections + limits
-    # e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.json
-    /us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json 
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.json
+/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json 
 
-    # Full timeseries data: actuals + projected limits + data for every four days
-    # e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.timeseries.json
-    /latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json 
+# Full timeseries data: actuals + projected limits + data for every four days
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.timeseries.json
+/latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json 
+```
 
 #### Reading Aggregate Projections for All Counties
 
 Returns projections for all counties
 
-    # Current actuals + projections + limits
-    # e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.json
-    /us/counties.<INTERVENTION>.json
-    
-    # Timeseries data
-    # e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.timeseries.json
-    /us/counties.<INTERVENTION>.timeseries.json
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.json
+/us/counties.<INTERVENTION>.json
+
+# Timeseries data
+# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.timeseries.json
+/us/counties.<INTERVENTION>.timeseries.json
+```
 
 County aggregates are also available as CSV files:
     
-    # Current actuals + projections + limits
-    # e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.csv
-    /latest/us/counties.<INTERVENTION>.csv
-    
-    # Timeseries data
-    # e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.timeseries.csv
-    /latest/us/counties.<INTERVENTION>.timeseries.csv
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.csv
+/latest/us/counties.<INTERVENTION>.csv
+
+# Timeseries data
+# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.timeseries.csv
+/latest/us/counties.<INTERVENTION>.timeseries.csv
+```
 
 ### Data format:
 
