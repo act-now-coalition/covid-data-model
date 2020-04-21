@@ -52,7 +52,7 @@ def _read_json_as_df(path):
     return df
 
 
-def _calculate_projection_data(state, fips, file_path):
+def _calculate_projection_data(state, file_path, fips=None):
     """
     Given a file path, return the calculations we perform for that file.
     Note in the future maybe return a data type to keep type clarity
@@ -89,7 +89,9 @@ def _calculate_projection_data(state, fips, file_path):
         population = df.iloc[0].population
 
         record['State'] = state
-        record['FIPS'] = fips
+        if fips:
+            record['FIPS'] = fips
+
         record['16-day_Hospitalization_Prediction'] = hosp_16_days
         record['32-day_Hospitalization_Prediction'] = hosp_32_days
         record['16-day_Beds_Shortfall'] = short_fall_16_days
@@ -117,23 +119,32 @@ def get_state_projections_df(input_dir, initial_intervention_type, state_interve
     """
     for each state in our data look at the results we generated via run.py
     to create the projections
+
+    columns=CALCULATED_PROJECTION_HEADERS_STATES
     """
 
-    # save results in a list of lists, converted to df later
-    results = []
-    for state in list(US_STATE_ABBREV.values()):
-        intervention_type = _get_intervention_type(initial_intervention_type, state, state_interventions_df)
+    sdf = pd.DataFrame(US_STATE_ABBREV.values(), columns=['state'])
+    sdf.loc[:,'intervention_type'] = sdf.state.parallel_apply(
+        lambda x: _get_intervention_type(initial_intervention_type, x, state_interventions_df)
+        )
+    sdf.loc[:, 'path'] = sdf.parallel_apply(
+        lambda x: get_file_path(input_dir, x.state, x.intervention_type, fips=None),
+        axis=1).values
+    ndf = sdf.parallel_apply(
+        lambda x:_calculate_projection_data(x.state, x.path, fips=None), axis=1)
+
+    num_processed_states = ndf.notnull().sum()['State']
+
+    if (num_processed_states < 51):
+        raise Exception(f"Missing too states! {num_processed_states} states were in input_dir: {input_dir}")
+    return ndf
+
+
+def get_file_path(input_dir, state, intervention_type, fips=None):
+    if fips:
+        file_name = f"{state}.{fips}.{intervention_type}.json"
+    else:
         file_name = f"{state}.{intervention_type}.json"
-        path = os.path.join(input_dir, file_name)
-        # if the file exists in that directory then process
-        projection_data = _calculate_projection_data(path)
-        if projection_data:
-            results.append([state] + projection_data)
-    return pd.DataFrame(results, columns=CALCULATED_PROJECTION_HEADERS_STATES)
-
-
-def get_file_path(input_dir, state, fips, intervention_type):
-    file_name = f"{state}.{fips}.{intervention_type}.json"
     return os.path.join(input_dir, file_name)
 
 
@@ -151,10 +162,10 @@ def get_county_projections_df(input_dir, initial_intervention_type, state_interv
         lambda x: _get_intervention_type(initial_intervention_type, x, state_interventions_df)
         )
     fdf.loc[:, 'path'] = fdf.parallel_apply(
-        lambda x: get_file_path(input_dir, x.state, x.fips, x.intervention_type),
+        lambda x: get_file_path(input_dir, x.state, x.intervention_type, fips=x.fips),
         axis=1).values
     ndf = fdf.parallel_apply(
-        lambda x:_calculate_projection_data(x.state, x.fips, x.path), axis=1)
+        lambda x:_calculate_projection_data(x.state, x.path, fips=x.fips), axis=1)
 
     missing = ndf.isnull().sum()['State']
 
