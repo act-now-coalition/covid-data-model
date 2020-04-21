@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 import numpy as np
 import logging
 import pandas as pd
-from multiprocessing import Pool
 from scipy import stats as sps
 from scipy import signal
 from matplotlib import pyplot as plt
@@ -38,8 +37,8 @@ class RtInferenceEngine:
     ref_date:
         Reference date to compute from.
     confidence_intervals: list(float)
-        Confidence interval to compute. 0.95 would be 95% credible
-        intervals.
+        Confidence interval to compute. 0.90 would be 90% credible
+        intervals from 5% to 95%.
     """
     def __init__(self,
                  fips,
@@ -48,7 +47,7 @@ class RtInferenceEngine:
                  r_list=np.linspace(0, 10, 501),
                  process_sigma=0.15,
                  ref_date=datetime(year=2020, month=1, day=1),
-                 confidence_intervals=(0.68, 0.75, 0.95)):
+                 confidence_intervals=(0.68, 0.75, 0.90)):
 
         self.fips = fips
         self.r_list = r_list
@@ -106,7 +105,7 @@ class RtInferenceEngine:
         # the outflow to reconstruct new admissions.
         if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             los_general = self.default_parameters['hospitalization_length_of_stay_general']
-            los_icu = self.default_parameters['hospitalization_length_of_stay_general']
+            los_icu = self.default_parameters['hospitalization_length_of_stay_icu']
             hosp_rate_general = self.default_parameters['hospitalization_rate_general']
             hosp_rate_icu = self.default_parameters['hospitalization_rate_icu']
             icu_rate = hosp_rate_icu / hosp_rate_general
@@ -213,9 +212,9 @@ class RtInferenceEngine:
         ci_high: np.array
             High confidence intervals.
         """
-        posterior_pdfs = posteriors.values.cumsum(axis=0)
-        low_idx_list = np.argmin(np.abs(posterior_pdfs - (1 - ci)), axis=0)
-        high_idx_list = np.argmin(np.abs(posterior_pdfs - ci), axis=0)
+        posterior_cdfs = posteriors.values.cumsum(axis=0)
+        low_idx_list = np.argmin(np.abs(posterior_cdfs - (1 - ci / 2)), axis=0)
+        high_idx_list = np.argmin(np.abs(posterior_cdfs - ci / 2), axis=0)
         ci_low = self.r_list[low_idx_list]
         ci_high = self.r_list[high_idx_list]
         return ci_low, ci_high
@@ -225,6 +224,7 @@ class RtInferenceEngine:
         Generate posteriors for R_t.
 
         Parameters
+        ----------
         ----------
         timeseries_type: TimeseriesType
             New X per day (cases, deaths etc).
@@ -244,10 +244,11 @@ class RtInferenceEngine:
         if len(timeseries) == 0:
             return None, None, None
 
-        # (1) Calculate Lambda
+        # (1) Calculate Lambda (the Poisson likelihood given the data) based on
+        # the observed increase from t-1 cases to t cases.
         lam = timeseries[:-1].values * np.exp((self.r_list[:, None] - 1) / self.serial_period)
 
-        # (2) Calculate each day's likelihood
+        # (2) Calculate each day's likelihood over R_t
         likelihoods = pd.DataFrame(
             data=sps.poisson.pmf(timeseries[1:].values, lam),
             index=self.r_list,
@@ -259,8 +260,8 @@ class RtInferenceEngine:
         # (3a) Normalize all rows to sum to 1
         process_matrix /= process_matrix.sum(axis=0)
 
-        # (4) Calculate the initial prior
-        prior0 = sps.gamma(a=4).pdf(self.r_list)
+        # (4) Calculate the initial prior. Gamma mean of 3 over Rt
+        prior0 = sps.gamma(a=3).pdf(self.r_list)
         prior0 /= prior0.sum()
 
         # Create a DataFrame that will hold our posteriors for each day
@@ -343,8 +344,8 @@ class RtInferenceEngine:
                 df[f'Rt_MAP__{timeseries_type.value}'] = posteriors.idxmax()
                 for ci in self.confidence_intervals:
                     ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
-                    df[f'Rt_ci{int(100 * (1 - ci))}__{timeseries_type.value}'] = ci_low
-                    df[f'Rt_ci{int(100 * ci)}__{timeseries_type.value}'] = ci_high
+                    df[f'Rt_ci{int(100 * (1 - ci / 2))}__{timeseries_type.value}'] = ci_low
+                    df[f'Rt_ci{int(100 * ci / 2)}__{timeseries_type.value}'] = ci_high
 
                 df['date'] = dates
                 df = df.set_index('date')
@@ -438,11 +439,9 @@ def run_state(state, states_only=False):
         If True only run the state level.
     """
     state_obj = us.states.lookup(state)
-    logging.info(f'Running Rt inference for state {state_obj.name}')
-
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
-    pd.DataFrame(df, index=[state_obj.fips]).to_json(output_path)
+    df.to_json(output_path)
 
     # Run the counties.
     if not states_only:
