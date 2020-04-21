@@ -45,6 +45,8 @@ def _read_json_as_df(path):
     df["beds"] = df["beds"].astype("int")
     df["dead"] = df["dead"].astype("int")
     df["population"] = df["population"].astype("int")
+    df["r_t"] = df["r_t"].astype("float")
+    df["r_t_stdev"] = df["r_t_stdev"].astype("float")
     return df
 
 
@@ -80,6 +82,8 @@ def _calculate_projection_data(file_path):
         peak_hospitalizations_short_falls = df.iloc[df.all_hospitalized.idxmax()].short_fall
         peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
         population = df.iloc[0].population
+        r_t = df.iloc[10].r_t
+        r_t_stdev = df.iloc[10].r_t_stdev
         return [
             hosp_16_days,
             hosp_32_days,
@@ -92,7 +96,9 @@ def _calculate_projection_data(file_path):
             hospitals_shortfall_date,
             peak_hospitalizations_short_falls,
             beds_at_peak_hospitalization_date,
-            population
+            population,
+            r_t,
+            r_t_stdev
         ]
     return None
 
