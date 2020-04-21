@@ -29,7 +29,7 @@ nyt_dataset = None
 cds_dataset = None
 
 DEFAULT_RUN_MODE = 'can-before-hospitalization-new-params'
-ALL_STATES = [state_obj.name for state_obj in us.STATES]
+ALL_STATES = [getattr(state_obj, 'name') for state_obj in us.STATES]
 
 
 def _cache_global_datasets():
