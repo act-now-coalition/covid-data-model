@@ -15,6 +15,8 @@ DEAD = "dead"
 BEDS = "beds"
 POPULATION = "population"
 CUMULATIVE_INFECTED = "cumulative_infected"
+R_T = "r_t"
+R_T_STDEV = "r_t_stdev"
 
 CAN_MODEL_OUTPUT_SCHEMA = [
     "day_num",
@@ -32,8 +34,8 @@ CAN_MODEL_OUTPUT_SCHEMA = [
     DEAD,
     BEDS,
     CUMULATIVE_INFECTED,
-    "j",
-    "k",
+    R_T,
+    R_T_STDEV,
     "l",
     POPULATION,
     "m",
@@ -41,4 +43,4 @@ CAN_MODEL_OUTPUT_SCHEMA = [
 ]
 
 # Exclude the unnamed columns from our data frames until we have a use for them
-CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS = ["j","k","l","m","n"]
+CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS = ["l","m","n"]
