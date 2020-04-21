@@ -110,47 +110,49 @@ County aggregates are also available as CSV files:
 
 **Note: `OBSERVED_MITIGATION` is not available for counties.**
 
-### Data format:
+### Data format
 
-This is the data format for both states and counties. `timeseries` is only included when requesting `*.timeseries.json` or `*.timeseries.csv`.
+This is the data format for both states and counties. 
 
-    {
-      country,
-      stateName,
-      countyName, // null for states
-      fips, // 2 digit for states, 5 digit for counties
-      lat, 
-      long,
-      lastUpdatedDate, // ISO 8601 date string
-      actuals: {
-        population,
-        intervention, // one of (NO_MITIGATION, MODERATE_MITIGATION, stay_at_home)
-        cumulativeConfirmedCases,
-        cumulativeDeaths,
-        hospitalBeds: {
-          capacity,
-          currentUsage, // Coming soon where available, null currently
-        }, 
-        ICUBeds: { same as above }  // Coming soon where available, null currently
-      }, 
-      projections: {
-        totalHospitalBeds: {
-          shortageStartDate, // null if no shortage projected
-          peakDate,
-          peakShortfall
-        },
-        ICUBeds: { same as above }, // Coming soon where available, null currently
-      },
-      timeseries: [{
-        date,
-        hospitalBedsRequired,
-        hospitalBedCapacity,
-        ICUBedsInUse,
-        ICUBedCapacity, // Coming soon where availabe, null currently
-        cumulativeDeaths,
-        cumulativeInfected,
-      }],
-    };
+```js
+{
+  country,
+  stateName,
+  countyName, // null for states
+  fips, // 2 digit for states, 5 digit for counties
+  lat, 
+  long,
+  lastUpdatedDate, // ISO 8601 date string
+  actuals: {
+    population,
+    intervention, // one of (NO_MITIGATION, MODERATE_MITIGATION, stay_at_home)
+    cumulativeConfirmedCases,
+    cumulativeDeaths,
+    hospitalBeds: {
+      capacity,
+      currentUsage, // Coming soon where available, null currently
+    }, 
+    ICUBeds: { same as above }  // Coming soon where available, null currently
+  }, 
+  projections: {
+    totalHospitalBeds: {
+      shortageStartDate, // null if no shortage projected
+      peakDate,
+      peakShortfall
+    },
+    ICUBeds: { same as above }, // Coming soon where available, null currently
+  },
+  timeseries: [{  // Only included when requesting `*.timeseries.json` or `*.timeseries.csv`.
+    date,
+    hospitalBedsRequired,
+    hospitalBedCapacity,
+    ICUBedsInUse,
+    ICUBedCapacity, // Coming soon where availabe, null currently
+    cumulativeDeaths,
+    cumulativeInfected,
+  }],
+};
+```
 
 ## Coming soon
 
