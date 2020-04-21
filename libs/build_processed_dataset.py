@@ -108,9 +108,7 @@ def _get_usa_by_county_df():
 def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     us_only = _get_usa_by_county_df()
     fips_df = FIPSPopulation.local().data  # used to get interventions
-    interventions_df = (
-        _get_interventions_df()
-    )  # used to say what state has what interventions
+    interventions_df = _get_interventions_df()
     projections_df = get_county_projections_df(
         input_dir, intervention_type, interventions_df
     )

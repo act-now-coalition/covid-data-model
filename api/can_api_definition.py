@@ -119,5 +119,17 @@ class CovidActNowCountiesAPI(pydantic.BaseModel):
     data: List[CovidActNowCountySummary] = pydantic.Field(...)
 
 
-class CovidActNowStatesAPI(pydantic.BaseModel):
-    data: List[CovidActNowAreaSummary] = pydantic.Field(...)
+class CovidActNowStatesSummary(pydantic.BaseModel):
+    data: List[CovidActNowStateSummary] = pydantic.Field(...)
+
+
+class CovidActNowStatesTimeseries(pydantic.BaseModel):
+    data: List[CovidActNowStateTimeseries] = pydantic.Field(...)
+
+
+class CovidActNowCountiesSummary(pydantic.BaseModel):
+    data: List[CovidActNowCountySummary] = pydantic.Field(...)
+
+
+class CovidActNowCountiesTimeseries(pydantic.BaseModel):
+    data: List[CovidActNowCountyTimeseries] = pydantic.Field(...)
