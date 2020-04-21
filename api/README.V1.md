@@ -114,8 +114,8 @@ County aggregates are also available as CSV files:
 
 This is the data format for both states and counties. 
 
-```ts
-{
+```js
+({
   country,
   stateName,
   countyName, // null for states
@@ -125,14 +125,14 @@ This is the data format for both states and counties.
   lastUpdatedDate, // ISO 8601 date string
   actuals: {
     population,
-    intervention, // one of (NO_MITIGATION, MODERATE_MITIGATION, stay_at_home)
+    intervention, // one of (NO_MITIGATION, MODERATE_MITIGATION, HIGH_MITIGATION)
     cumulativeConfirmedCases,
     cumulativeDeaths,
     hospitalBeds: {
       capacity,
       currentUsage, // Coming soon where available, null currently
     }, 
-    ICUBeds: { same as above }  // Coming soon where available, null currently
+    ICUBeds: hospitalBedsFormat  // Coming soon where available, null currently
   }, 
   projections: {
     totalHospitalBeds: {
@@ -140,7 +140,7 @@ This is the data format for both states and counties.
       peakDate,
       peakShortfall
     },
-    ICUBeds: { same as above }, // Coming soon where available, null currently
+    ICUBeds: totalHospitalBedsFormat, // Coming soon where available, null currently
   },
   timeseries: [{  // Only included when requesting `*.timeseries.json` or `*.timeseries.csv`.
     date,
@@ -151,7 +151,7 @@ This is the data format for both states and counties.
     cumulativeDeaths,
     cumulativeInfected,
   }],
-};
+})
 ```
 
 ## Coming soon
