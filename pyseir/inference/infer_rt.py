@@ -32,7 +32,7 @@ class RtInferenceEngine:
         configured.
     process_sigma: float
         Stdev of the process model. Increasing this allows for larger
-        instant deltas in R_t, shrinking it smooths things, but allows fro
+        instant deltas in R_t, shrinking it smooths things, but allows for
         less rapid change. Can be interpreted as the std of the allowed
         shift in R_t day-to-day.
     ref_date:
