@@ -11,6 +11,13 @@ WEB_UI_FOLDER = lambda output_dir: os.path.join(output_dir, 'web_ui')
 STATE_SUMMARY_FOLDER = lambda output_dir: os.path.join(output_dir, 'pyseir', 'state_summaries')
 
 
+class TimeseriesType(Enum):
+    NEW_CASES = 'new_cases'
+    NEW_DEATHS = 'new_deaths'
+    NEW_HOSPITALIZATIONS = 'new_hospitalizations'
+    CURRENT_HOSPITALIZATIONS = 'current_hospitalizations'
+
+
 class RunMode(Enum):
     # Read params from the parameter sampler default and use empirical
     # suppression policies.
@@ -23,6 +30,9 @@ class RunMode(Enum):
 
 
 class RunArtifact(Enum):
+    RT_INFERENCE_RESULT = 'rt_inference_result'
+    RT_INFERENCE_REPORT = 'rt_inference_report'
+
     MLE_FIT_RESULT = 'mle_fit_result'
     MLE_FIT_MODEL = 'mle_fit_model'
     MLE_FIT_REPORT = 'mle_fit_report'
@@ -62,7 +72,19 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
 
     output_dir = output_dir or OUTPUT_DIR
 
-    if artifact is RunArtifact.MLE_FIT_REPORT:
+    if artifact is RunArtifact.RT_INFERENCE_REPORT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'Rt_results__{state_obj.name}__{county}__{fips}.pdf')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'reports', f'Rt_results__{state_obj.name}__{fips}.pdf')
+
+    elif artifact is RunArtifact.RT_INFERENCE_RESULT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(DATA_FOLDER(output_dir, state_obj.name), f'Rt_results__{state_obj.name}__{county}__{fips}.json')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'data', f'Rt_results__{state_obj.name}__{fips}.json')
+
+    elif artifact is RunArtifact.MLE_FIT_REPORT:
         if agg_level is AggregationLevel.COUNTY:
             path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'mle_fit_results__{state_obj.name}__{county}__{fips}.pdf')
         else:
