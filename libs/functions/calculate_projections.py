@@ -48,7 +48,7 @@ def _read_json_as_df(path):
     return df
 
 
-def _calculate_projection_data(file_path):
+def _calculate_projection_data(state, fips, file_path):
     """
     Given a file path, return the calculations we perform for that file.
     Note in the future maybe return a data type to keep type clarity
@@ -57,6 +57,9 @@ def _calculate_projection_data(file_path):
     today = datetime.datetime.now()
     sixteen_days = today + datetime.timedelta(days=16)
     thirty_two_days = today + datetime.timedelta(days=32)
+
+    record = {}
+
     if os.path.exists(file_path):
         df = _read_json_as_df(file_path)
         df["short_fall"] = df.apply(_calc_short_fall, axis=1)
@@ -80,21 +83,24 @@ def _calculate_projection_data(file_path):
         peak_hospitalizations_short_falls = df.iloc[df.all_hospitalized.idxmax()].short_fall
         peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
         population = df.iloc[0].population
-        return [
-            hosp_16_days,
-            hosp_32_days,
-            short_fall_16_days,
-            short_fall_32_days,
-            mean_hospitalizations,
-            mean_deaths,
-            peak_hospitalizations_date,
-            peak_deaths_date,
-            hospitals_shortfall_date,
-            peak_hospitalizations_short_falls,
-            beds_at_peak_hospitalization_date,
-            population
-        ]
-    return None
+
+        record['State'] = state
+        record['FIPS'] = fips
+        record['16-day_Hospitalization_Prediction'] = hosp_16_days
+        record['32-day_Hospitalization_Prediction'] = hosp_32_days
+        record['16-day_Beds_Shortfall'] = short_fall_16_days
+        record['32-day_Beds_Shortfall'] = short_fall_32_days
+        record['Mean Hospitalizations'] = mean_hospitalizations
+        record['Mean Deaths'] = mean_deaths
+        record['Peak Hospitalizations On'] = peak_hospitalizations_date
+        record['Peak Deaths On'] = peak_deaths_date
+        record['Hospital Shortfall Date'] = hospitals_shortfall_date
+        record['Peak Hospitlizations Shortfall'] = peak_hospitalizations_short_falls
+        record['Beds at Peak Hospitilization Date'] = beds_at_peak_hospitalization_date
+        record['Population'] = population
+
+        return pd.Series(record)
+    return pd.Series(record)
 
 def _get_intervention_type(intervention_type, state, state_interventions_df):
     if intervention_type == Intervention.SELECTED_MITIGATION.value:
@@ -122,6 +128,15 @@ def get_state_projections_df(input_dir, initial_intervention_type, state_interve
             results.append([state] + projection_data)
     return pd.DataFrame(results, columns=CALCULATED_PROJECTION_HEADERS_STATES)
 
+
+def get_file_path(input_dir, state, fips, intervention_type):
+    file_name = f"{state}.{fips}.{intervention_type}.json"
+    return os.path.join(input_dir, file_name)
+
+from tqdm import tqdm
+tqdm.pandas()
+
+
 def get_county_projections_df(input_dir, initial_intervention_type, state_interventions_df):
     """
     for each state in our data look at the results we generated via run.py
@@ -129,25 +144,21 @@ def get_county_projections_df(input_dir, initial_intervention_type, state_interv
     """
     fips_pd = FIPSPopulation.local().data  # to get the state, county & fips
 
-    # save results in a list of lists, converted to df later
-    results = []
+    fdf = fips_pd[['state' ,'fips']]
+    fdf.loc[:,'intervention_type'] = fdf.state.apply(
+        lambda x: _get_intervention_type(initial_intervention_type, x, state_interventions_df)
+        )
+    fdf.loc[:, 'path'] = fdf.apply(
+        lambda x: get_file_path(input_dir, x.state, x.fips, x.intervention_type),
+        axis=1).values
+    ndf = fdf.progress_apply(
+        lambda x:_calculate_projection_data(x.state, x.fips, x.path), axis=1)
 
-    # get the state and fips so we can get the files
-    missing = 0
-    for index, fips_row in fips_pd.iterrows():
-        state = fips_row["state"]
-        fips = fips_row["fips"]
-        intervention_type = _get_intervention_type(initial_intervention_type, state, state_interventions_df)
-        file_name = f"{state}.{fips}.{intervention_type}.json"
-        path = os.path.join(input_dir, file_name)
-        # if the file exists in that directory then process
-        projection_data = _calculate_projection_data(path)
-        if projection_data:
-            results.append([state, fips] + projection_data)
-        else:
-            missing = missing + 1
+    missing = ndf.isnull().sum()['State']
+
     if (missing > 2000):
         raise Exception(f"Missing a majority of counties from input_dir: {input_dir}")
     print(f"Models missing for {missing} counties")
-    ndf = pd.DataFrame(results, columns=CALCULATED_PROJECTION_HEADERS_COUNTIES)
+
+    #ndf = pd.DataFrame(results, columns=CALCULATED_PROJECTION_HEADERS_COUNTIES)
     return ndf
