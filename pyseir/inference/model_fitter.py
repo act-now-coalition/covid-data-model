@@ -298,7 +298,6 @@ class ModelFitter:
         suppression_policy = suppression_policies.generate_two_step_policy(self.t_list, eps, t_break)
 
         # Load up some number of initial exposed so the initial flow into infected is stable.
-
         self.SEIR_kwargs['E_initial'] = self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial
 
         model = SEIRModel(
@@ -673,6 +672,9 @@ def run_state(state, states_only=False):
 
     model_fitter = ModelFitter.run_for_fips(state_obj.fips)
 
+    df_whitelist = load_data.load_whitelist()
+    df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
+
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
 
@@ -681,8 +683,7 @@ def run_state(state, states_only=False):
 
     # Run the counties.
     if not states_only:
-        df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips.values
+        all_fips = df_whitelist[df_whitelist['state'].str.lower() == state_obj.name.lower()].fips.values
         p = Pool()
         fitters = p.map(ModelFitter.run_for_fips, all_fips)
         p.close()
