@@ -6,11 +6,14 @@ from multiprocessing import Pool
 from functools import partial
 from pyseir.load_data import cache_all_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
+from pyseir.inference import infer_rt as infer_rt_module
 from pyseir.ensembles.ensemble_runner import run_state, RunMode
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
+from pyseir.inference.whitelist_generator import WhitelistGenerator
+
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 root = logging.getLogger()
@@ -26,7 +29,7 @@ nyt_dataset = None
 cds_dataset = None
 
 DEFAULT_RUN_MODE = 'can-before-hospitalization-new-params'
-ALL_STATES = [state_obj.name for state_obj in us.STATES]
+ALL_STATES = [getattr(state_obj, 'name') for state_obj in us.STATES]
 
 
 def _cache_global_datasets():
@@ -48,6 +51,11 @@ def download_data():
     cache_all_data()
 
 
+def _generate_whitelist():
+    gen = WhitelistGenerator()
+    gen.generate_whitelist()
+
+
 def _impute_start_dates(state=None, states_only=False):
     if states_only:
         raise NotImplementedError("Impute start dates does not yet implement support for states_only.")
@@ -57,6 +65,14 @@ def _impute_start_dates(state=None, states_only=False):
     else:
         for state_name in ALL_STATES:
             _impute_start_dates(state_name)
+
+
+def _infer_rt(state=None, states_only=False):
+    if state:
+        infer_rt_module.run_state(state=state, states_only=states_only)
+    else:
+        for state_name in ALL_STATES:
+            _infer_rt(state=state_name, states_only=states_only)
 
 
 def _run_mle_fits(state=None, states_only=False):
@@ -101,12 +117,14 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
 
 
 def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
-             skip_download=False, states_only=False, output_dir=None):
+             skip_download=False, states_only=False, output_dir=None, skip_whitelist=False):
 
     _cache_global_datasets()
 
     if not skip_download:
         cache_all_data()
+
+    _generate_whitelist()
 
     if state:
         # Deprecate temporarily since not needed. Our full model fits have
@@ -114,6 +132,7 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
         # method is used to measure localized Reff.
         # if not states_only:
         #     _impute_start_dates(state)
+        _infer_rt(state, states_only=states_only)
         _run_mle_fits(state, states_only=states_only)
         _run_ensembles(
             state,
@@ -137,7 +156,8 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
                 output_interval_days=output_interval_days,
                 skip_download=True,
                 states_only=True,
-                output_dir=output_dir
+                output_dir=output_dir,
+                skip_whitelist=True
             )
             p = Pool()
             p.map(f, ALL_STATES)
@@ -152,7 +172,8 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
                     output_interval_days,
                     skip_download=True,
                     states_only=False,
-                    output_dir=output_dir
+                    output_dir=output_dir,
+                    skip_whitelist=True
                 )
 
 
@@ -161,6 +182,18 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def impute_start_dates(state, states_only):
     _impute_start_dates(state, states_only)
+
+
+@entry_point.command()
+def generate_whitelist():
+    generate_whitelist()
+
+
+@entry_point.command()
+@click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
+@click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
+def infer_rt(state, states_only):
+    _infer_rt(state, states_only=states_only)
 
 
 @entry_point.command()
