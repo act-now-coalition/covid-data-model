@@ -6,6 +6,7 @@ from multiprocessing import Pool
 from functools import partial
 from pyseir.load_data import cache_all_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
+from pyseir.inference import infer_rt as infer_rt_module
 from pyseir.ensembles.ensemble_runner import run_state, RunMode
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
@@ -57,6 +58,14 @@ def _impute_start_dates(state=None, states_only=False):
     else:
         for state_name in ALL_STATES:
             _impute_start_dates(state_name)
+
+
+def _infer_rt(state=None, states_only=False):
+    if state:
+        infer_rt_module.run_state(state=state, states_only=states_only)
+    else:
+        for state_name in ALL_STATES:
+            _infer_rt(state=state_name, states_only=states_only)
 
 
 def _run_mle_fits(state=None, states_only=False):
@@ -114,6 +123,7 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
         # method is used to measure localized Reff.
         # if not states_only:
         #     _impute_start_dates(state)
+        _infer_rt(state, states_only=states_only)
         _run_mle_fits(state, states_only=states_only)
         _run_ensembles(
             state,
@@ -161,6 +171,13 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def impute_start_dates(state, states_only):
     _impute_start_dates(state, states_only)
+
+
+@entry_point.command()
+@click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
+@click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
+def infer_rt(state, states_only):
+    _infer_rt(state, states_only=states_only)
 
 
 @entry_point.command()
