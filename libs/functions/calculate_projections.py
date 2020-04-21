@@ -16,6 +16,10 @@ from libs.datasets.projections_schema import (
 from libs.enums import Intervention
 from libs.constants import NULL_VALUE
 
+from pandarallel import pandarallel
+pandarallel.initialize(progress_bar=True)
+
+
 def _calc_short_fall(x):
     return abs(x.beds - x.all_hospitalized) if x.all_hospitalized > x.beds else 0
 
@@ -99,7 +103,6 @@ def _calculate_projection_data(state, fips, file_path):
         record['Beds at Peak Hospitilization Date'] = beds_at_peak_hospitalization_date
         record['Population'] = population
 
-        return pd.Series(record)
     return pd.Series(record)
 
 def _get_intervention_type(intervention_type, state, state_interventions_df):
@@ -133,25 +136,24 @@ def get_file_path(input_dir, state, fips, intervention_type):
     file_name = f"{state}.{fips}.{intervention_type}.json"
     return os.path.join(input_dir, file_name)
 
-from tqdm import tqdm
-tqdm.pandas()
-
 
 def get_county_projections_df(input_dir, initial_intervention_type, state_interventions_df):
     """
     for each state in our data look at the results we generated via run.py
     to create the projections
+
+    #columns=CALCULATED_PROJECTION_HEADERS_COUNTIES)
     """
     fips_pd = FIPSPopulation.local().data  # to get the state, county & fips
 
     fdf = fips_pd[['state' ,'fips']]
-    fdf.loc[:,'intervention_type'] = fdf.state.apply(
+    fdf.loc[:,'intervention_type'] = fdf.state.parallel_apply(
         lambda x: _get_intervention_type(initial_intervention_type, x, state_interventions_df)
         )
-    fdf.loc[:, 'path'] = fdf.apply(
+    fdf.loc[:, 'path'] = fdf.parallel_apply(
         lambda x: get_file_path(input_dir, x.state, x.fips, x.intervention_type),
         axis=1).values
-    ndf = fdf.progress_apply(
+    ndf = fdf.parallel_apply(
         lambda x:_calculate_projection_data(x.state, x.fips, x.path), axis=1)
 
     missing = ndf.isnull().sum()['State']
@@ -159,6 +161,4 @@ def get_county_projections_df(input_dir, initial_intervention_type, state_interv
     if (missing > 2000):
         raise Exception(f"Missing a majority of counties from input_dir: {input_dir}")
     print(f"Models missing for {missing} counties")
-
-    #ndf = pd.DataFrame(results, columns=CALCULATED_PROJECTION_HEADERS_COUNTIES)
     return ndf
