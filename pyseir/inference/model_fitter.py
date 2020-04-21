@@ -612,6 +612,7 @@ class ModelFitter:
 
         self.mle_model.plot_results()
         plt.savefig(output_file.replace('mle_fit_results', 'mle_fit_model'), bbox_inches='tight')
+        plt.close()
 
     @classmethod
     def run_for_fips(cls, fips, n_retries=3):
