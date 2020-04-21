@@ -121,7 +121,11 @@ class WebUIDataAdaptorV1:
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
 
         all_hospitalized_today = None
-        fit_results = load_inference_result(fips)
+        try:
+            fit_results = load_inference_result(fips)
+        except ValueError:
+            fit_results = None
+            logging.error(f'Fit result not found for {fips}: Skipping inference elements')
 
         for i_policy, suppression_policy in enumerate(policies):
             if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
@@ -129,7 +133,7 @@ class WebUIDataAdaptorV1:
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
-            if suppression_policy == 'suppression_policy__inferred':
+            if suppression_policy == 'suppression_policy__inferred' and fit_results:
                 if fips not in self.df_whitelist.fips:
                     continue
 
@@ -175,8 +179,12 @@ class WebUIDataAdaptorV1:
             output_model['beds'] = final_beds
             output_model['cumulative_infected'] = np.interp(t_list_downsampled, t_list, np.cumsum(output_for_policy['total_new_infections']['ci_50']))
 
-            output_model['R_t'] = np.interp(t_list_downsampled, t_list, fit_results['eps'] * fit_results['R0'] * np.ones(len(t_list)))
-            output_model['R_t_stdev'] = np.interp(t_list_downsampled, t_list, fit_results['eps_error'] * fit_results['R0'] * np.ones(len(t_list)))
+            if fit_results:
+                output_model['R_t'] = np.interp(t_list_downsampled, t_list, fit_results['eps'] * fit_results['R0'] * np.ones(len(t_list)))
+                output_model['R_t_stdev'] = np.interp(t_list_downsampled, t_list, fit_results['eps_error'] * fit_results['R0'] * np.ones(len(t_list)))
+            else:
+                output_model['R_t'] = 0
+                output_model['R_t_stdev'] = 0
 
             # Record the current number of hospitalizations in order to rescale the inference results.
             all_hospitalized_today = output_model['all_hospitalized'][0]
