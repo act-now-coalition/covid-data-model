@@ -69,10 +69,13 @@ def _generate_api_for_projections(projection_row):
     projections = _Projections(
         totalHospitalBeds=_hospital_beds,
         ICUBeds=None,
+        Rt=_get_or_zero(projection_row[rc.R_T]),
+        RtStdev=_get_or_zero(projection_row[rc.R_T_STDEV]),
     )
     return projections
 
 def _generate_actuals(projection_row, state):
+    print(projection_row)
     intervention_str = get_can_projection.get_intervention_for_state(state).name
     return _Actuals(
         population=projection_row[rc.POPULATION],

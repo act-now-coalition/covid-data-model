@@ -14,7 +14,9 @@ OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
     "Recovered": "Current Recovered",
     "Active": "Current Active",
     "Beds at Peak Hospitilization Date": "Peak Bed Capacity",
-    "Population": "Population"
+    "Population": "Population",
+    "Rt": "Rt",
+    "Rt_stdev": "Rt_stdev"
 }
 
 
@@ -31,6 +33,8 @@ CALCULATED_PROJECTION_HEADERS_SHARED = [
     "Peak Hospitlizations Shortfall",
     "Beds at Peak Hospitilization Date",
     "Population"
+    "Rt"
+    "Rt_stdev"
 ]
 
 CALCULATED_PROJECTION_HEADERS_STATES = ['State'] + CALCULATED_PROJECTION_HEADERS_SHARED
