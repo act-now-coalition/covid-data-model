@@ -24,7 +24,7 @@ Forward projections are available for the following scenarios:
 
     "NO_MITIGATION", "MODERATE_MITIGATION", "HIGH_MITIGATION"
 
-These roughly correlate to the "no intervention", "social distancing", and "stay at home" interventions.
+These are what the website refers to as the "no intervention", "social distancing", and "stay at home" interventions.
 
 Additionally the most appropriate static scenario based on the per-state intervention is returned by specifying:
 
