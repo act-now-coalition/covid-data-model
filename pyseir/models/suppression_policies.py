@@ -182,22 +182,6 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
         fill_value='extrapolate')
 
 
-def generate_rt_inference_policy(t_list, R0, fips, future_suppression,
-                                 case_lag=0,
-                                 hosp_lag=0,
-                                 case_to_mortality_weight=1,
-                                 hosp_to_mortality_weight=1):
-
-    df_rt = fit_results.load_Rt_result(fips)
-
-    #
-    # if 'Rt_MAP__new_deaths' in df_rt:
-    #     'Rt_MAP__new_deaths'
-    #     df_rt
-    #
-    #
-
-
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
                                          reference_start_date=None):
     """
