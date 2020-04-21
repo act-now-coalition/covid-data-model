@@ -117,7 +117,7 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
 
 
 def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
-             skip_download=False, states_only=False, output_dir=None):
+             skip_download=False, states_only=False, output_dir=None, skip_whitelist=False):
 
     _cache_global_datasets()
 
@@ -156,7 +156,8 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
                 output_interval_days=output_interval_days,
                 skip_download=True,
                 states_only=True,
-                output_dir=output_dir
+                output_dir=output_dir,
+                skip_whitelist=True
             )
             p = Pool()
             p.map(f, ALL_STATES)
@@ -171,7 +172,8 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
                     output_interval_days,
                     skip_download=True,
                     states_only=False,
-                    output_dir=output_dir
+                    output_dir=output_dir,
+                    skip_whitelist=True
                 )
 
 
