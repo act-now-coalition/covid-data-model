@@ -147,7 +147,7 @@ This is the data format for both states and counties.
     hospitalBedsRequired,
     hospitalBedCapacity,
     ICUBedsInUse,
-    ICUBedCapacity, // Coming soon where availabe, null currently
+    ICUBedCapacity, // Coming soon where available, null currently
     cumulativeDeaths,
     cumulativeInfected,
   }],
