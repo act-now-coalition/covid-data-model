@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Covid Act Now API provides the same data that powers [covidactnow.org](https://covidactnow.org) but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools.
+The Covid Act Now API provides the same data that powers [CovidActNow.org](https://covidactnow.org) but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools. Read our [blog post](https://blog.covidactnow.org/covidactnow-api-launch/) annoucing the API for more context and background.
 
 ### Update frequency
 
@@ -15,9 +15,16 @@ The data presented in the Covid Act Now API is licensed under [Creative Commons 
 
 ## Using the API
 
-Files are available for download prefixed by: `https://data.covidactnow.org/latest/`
+Data is available by prefixing URLs with `https://data.covidactnow.org/latest/`
 
-In order to read a model from the API, you must specify both the location (state or county) and the intvention level.
+In order to read a model from the API, you must specify both the location (state or county) and the intervention level.
+
+### Location
+
+Specify either:
+
+1. A US State using two letter abbreviation (eg. 'CA' for California)
+2. A US County using it's [FIPS Code](https://en.wikipedia.org/wiki/FIPS_county_code) (For a list of FIPS Codes, see [this page on the USDA site](https://www.nrcs.usda.gov/wps/portal/nrcs/detail/national/home/?cid=nrcs143_013697))
 
 ### Invervention Categories
 
@@ -43,9 +50,9 @@ To get a dynamic forecast that is based on the actually observed effect of mitig
 
 > Note: `OBSERVED_MITIGATION` is only available for states, not counties.
 
-More information about these interventions, including the definitions, references, and actual values used is [available here](https://data.covidactnow.org/Covid_Act_Now_Model_References_and_Assumptions.pdf).
+More information on interventions, including definitions, references, and R0 values used is [available here](https://data.covidactnow.org/Covid_Act_Now_Model_References_and_Assumptions.pdf).
 
-### State Data
+### Fetching State Data
 #### Reading a Projection for a Specific State
 
 Returns projections for the selected state
@@ -86,7 +93,7 @@ State aggregates are also available as CSV files:
 /latest/us/states.<INTERVENTION>.timeseries.csv
 ```
 
-### County Data
+### Fetching County Data
 #### Reading a Projection for a Specific County
 
 Returns projections for the selected county
