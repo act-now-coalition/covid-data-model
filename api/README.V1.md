@@ -36,7 +36,9 @@ More information about these interventions, including the definitions, reference
 
 ### State projections
 
-    # Current "actual" information + projected limits
+Returns projections for the selected state
+
+    # Current actuals + projections + limits
     /us/states/<ST>.<INTERVENTION>.json
     # e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.json
     
@@ -44,17 +46,64 @@ More information about these interventions, including the definitions, reference
     /us/states/<ST>.<INTERVENTION>.timeseries.json
     # e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.timeseries.json 
 
+### State level aggregation
+
+Returns projections for all states
+
+    # Current actuals + projections + limits
+    /us/states.<INTERVENTION>.json
+    # e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.json
+    
+    # Timeseries data
+    /us/states.<INTERVENTION>.timeseries.json
+    # e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.timeseries.json
+
+State aggregates are also available as CSV files:
+    
+    # Current actuals + projections + limits
+    /latest/us/states.<INTERVENTION>.csv
+    https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.csv
+    
+    # Timeseries data
+    /latest/us/states.<INTERVENTION>.timeseries.csv
+    https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.timeseries.csv
+
 ### County projections
+
+Returns projections for the selected county
     
-    # Current "actual" information + projected limits
+    # Current actuals + projections + limits
     /us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json 
+
     # e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.json
-    
+
     # Full timeseries data: actuals + projected limits + data for every four days
     /latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json 
     # e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.timeseries.json
     
 **Note: `OBSERVED_MITIGATION` is not available for counties.**
+
+### County level aggregation
+
+Returns projections for all counties
+
+    # Current actuals + projections + limits
+    /us/counties.<INTERVENTION>.json
+    # e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.json
+    
+    # Timeseries data
+    /us/counties.<INTERVENTION>.timeseries.json
+    # e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.timeseries.json
+    
+County aggregates are also available as CSV files:
+    
+    # Current actuals + projections + limits
+    /latest/us/counties.<INTERVENTION>.csv
+    # e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.csv
+    
+    # Timeseries data
+    /latest/us/counties.<INTERVENTION>.timeseries.csv
+    # e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.timeseries.csv
 
 ### Data format:
 
@@ -102,36 +151,14 @@ This is the data format for both states and counties. `timeseries` is only inclu
 
 Additional V1 API endpoints containing batch versions of the data
 
-### State level aggregation
+### Hospital bed usage (actuals)
 
-Will return information about all states.
+### ICU bed data (capacity, projections, and actuals)
 
-    # everything except timeseries
-    /us/states.<INTERVENTION>.json
-    [{stateName:'CA', …}, {stateName:'TX',…}, …]
-    
-    # just the timeseries
-    /us/states.<INTERVENTION>.timeseries.json 
-    [{stateName:'CA', timeseries:[…],… }, {stateName:'TX', timeseries:[…], …}, …]
-
-### County level aggregation per state
-
-Will return all the county level data for a given state.
-
-    # everything except timeseries
-    /us/counties.json
-    [{stateName:'CA', countyName, fips, …}, …]
-    
-    # just the timeseries
-    /us/counties(.intervention).timeseries.json
-    [{stateName:'CA', countyName, fips, timeseries:[…],… }, …]
-
-### Additional data formats (CSV, Shapefiles)
+### Additional data formats (Shapefiles)
 
 Will return aggregate information above in different file formats.
 
-    /latest/us/states.<INTERVENTION>.csv
-    /latest/us/states.<INTERVENTION>.timeseries.csv
     /latest/us/states.<INTERVENTION>.{dbf,shp,shx}
     /latest/us/counties.<INTERVENTION>.csv
     /latest/us/counties.<INTERVENTION>.timeseries.csv
