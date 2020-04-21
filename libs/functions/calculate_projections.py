@@ -40,7 +40,7 @@ def _read_json_as_df(path):
         exclude=CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS,
     )
 
-    df["date"] = pd.to_datetime(df.date)
+    df["date"] = pd.to_datetime(df.date, format='%m/%d/%y')
     df["all_hospitalized"] = df["all_hospitalized"].astype("int")
     df["beds"] = df["beds"].astype("int")
     df["dead"] = df["dead"].astype("int")
