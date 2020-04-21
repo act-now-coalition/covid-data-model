@@ -114,7 +114,7 @@ County aggregates are also available as CSV files:
 
 This is the data format for both states and counties. 
 
-```js
+```ts
 {
   country,
   stateName,
