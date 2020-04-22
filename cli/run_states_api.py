@@ -36,20 +36,23 @@ def deploy_states_api(disable_validation, input_dir, output, summary_output):
     """The entry function for invocation"""
 
     for intervention in list(Intervention):
+        logger.info(f"Running intervention {intervention.name}")
         states_result = api_pipeline.run_projections(
             input_dir,
             AggregationLevel.STATE,
             intervention,
             run_validation=not disable_validation,
         )
-        states_results_api = api_pipeline.generate_api(states_result, input_dir)
-        api_pipeline.deploy_results(states_results_api, output)
+        state_summaries, state_timeseries = api_pipeline.generate_api(states_result, input_dir)
+        api_pipeline.deploy_results([*state_summaries, *state_timeseries], output)
 
         states_summary = api_pipeline.build_states_summary(
-            states_results_api, intervention
+            state_summaries, intervention
         )
-        states_timeseries = api_pipeline.build_states_timeseries(states_results_api, intervention)
+        states_timeseries = api_pipeline.build_states_timeseries(
+            state_timeseries, intervention
+        )
+        summarized_timeseries = api_pipeline.build_prediction_header_timeseries_data(states_timeseries)
+        api_pipeline.deploy_prediction_timeseries_csvs(summarized_timeseries, summary_output)
         api_pipeline.deploy_results([states_summary], summary_output, write_csv=True)
         api_pipeline.deploy_results([states_timeseries], summary_output)
-
-        logger.info("finished states job")
