@@ -12,6 +12,8 @@ from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
+from pyseir.inference.whitelist_generator import WhitelistGenerator
+
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 root = logging.getLogger()
@@ -27,7 +29,7 @@ nyt_dataset = None
 cds_dataset = None
 
 DEFAULT_RUN_MODE = 'can-before-hospitalization-new-params'
-ALL_STATES = [state_obj.name for state_obj in us.STATES]
+ALL_STATES = [getattr(state_obj, 'name') for state_obj in us.STATES]
 
 
 def _cache_global_datasets():
@@ -47,6 +49,11 @@ def entry_point():
 @entry_point.command()
 def download_data():
     cache_all_data()
+
+
+def _generate_whitelist():
+    gen = WhitelistGenerator()
+    gen.generate_whitelist()
 
 
 def _impute_start_dates(state=None, states_only=False):
@@ -110,12 +117,14 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
 
 
 def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
-             skip_download=False, states_only=False, output_dir=None):
+             skip_download=False, states_only=False, output_dir=None, skip_whitelist=False):
 
     _cache_global_datasets()
 
     if not skip_download:
         cache_all_data()
+
+    _generate_whitelist()
 
     if state:
         # Deprecate temporarily since not needed. Our full model fits have
@@ -147,7 +156,8 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
                 output_interval_days=output_interval_days,
                 skip_download=True,
                 states_only=True,
-                output_dir=output_dir
+                output_dir=output_dir,
+                skip_whitelist=True
             )
             p = Pool()
             p.map(f, ALL_STATES)
@@ -162,7 +172,8 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
                     output_interval_days,
                     skip_download=True,
                     states_only=False,
-                    output_dir=output_dir
+                    output_dir=output_dir,
+                    skip_whitelist=True
                 )
 
 
@@ -171,6 +182,11 @@ def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, outpu
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
 def impute_start_dates(state, states_only):
     _impute_start_dates(state, states_only)
+
+
+@entry_point.command()
+def generate_whitelist():
+    generate_whitelist()
 
 
 @entry_point.command()
