@@ -47,7 +47,7 @@ class CovidTimeseriesModelTest(unittest.TestCase):
         }
       }
     )
-    counties = CovidActNowCountiesAPI(data=[county_summary])
+    counties = CovidActNowCountiesAPI(__root__=[county_summary])
 
 if __name__ == '__main__':
     unittest.main()
