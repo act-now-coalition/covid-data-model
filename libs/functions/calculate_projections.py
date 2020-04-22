@@ -114,7 +114,7 @@ def _calculate_projection_data(state, file_path, fips=None):
 
 
 def _get_intervention_type(intervention_type, state, state_interventions_df):
-    if intervention_type == Intervention.SELECTED_MITIGATION.value:
+    if intervention_type == Intervention.SELECTED_INTERVENTION.value:
         state_intervention_results = state_interventions_df.loc[
             state_interventions_df["state"] == state
         ]["intervention"]
