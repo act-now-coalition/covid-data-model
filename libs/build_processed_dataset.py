@@ -12,11 +12,13 @@ import math, sys
 
 from urllib.parse import urlparse
 from collections import defaultdict
+from functools import lru_cache
 
 from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import US_STATE_ABBREV, us_fips
 from libs.datasets import FIPSPopulation
 from libs.datasets import JHUDataset
+from libs.datasets import CovidTrackingDataSource
 from libs.enums import Intervention
 from libs.functions.calculate_projections import (
     get_state_projections_df,
@@ -32,6 +34,7 @@ from libs.constants import NULL_VALUE
 _logger = logging.getLogger(__name__)
 
 
+@lru_cache(None)
 def _get_interventions_df():
     # TODO: read this from a dataset class
     interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
@@ -44,6 +47,11 @@ def _get_abbrev_df():
     return pd.DataFrame(
         list(US_STATE_ABBREV.items()), columns=["state", "abbreviation"]
     )
+
+
+def _get_testing_df():
+    ctd_df = CovidTrackingDataSource.local().data
+    return ctd_df[CovidTrackingDataSource.TEST_FIELDS]
 
 
 county_replace_with_null = {"Unassigned": NULL_VALUE}
@@ -145,6 +153,8 @@ def get_usa_by_states_df(input_dir, intervention_type):
     projections_df = get_state_projections_df(
         input_dir, intervention_type, interventions_df
     )
+    test_df = _get_testing_df()
+    test_max_df = test_df.groupby('state')['positive','negative'].max().reset_index()
 
     states_group = us_only.groupby(["Province/State"])
     states_agg = states_group.aggregate(
@@ -163,20 +173,34 @@ def get_usa_by_states_df(input_dir, intervention_type):
     )
 
     # basically the states_agg has full state names, the interventions have abbreviation so we need these to be merged
-    states_abbrev = (
-        states_agg.merge(abbrev_df, left_index=True, right_on="state", how="left")
-        .merge(
-            # inner merge to filter to only the 50 states
-            interventions_df,
-            left_on="abbreviation",
-            right_on="state",
-            how="inner",
+    # inner merge to filter to only the 50 states+DC.  (left join to avoid missing data)
+    states_abbrev = states_agg.merge(
+            abbrev_df, # adds 'state', 'abbreviation'
+            left_index=True, right_on="state", how="left"
+        ).merge(
+            test_max_df, # adds state, positive, negative
+            left_on='abbreviation', right_on='state', how='left',
+            suffixes=['', '_dropcol']
+        ).drop(
+            'state_dropcol', axis=1
+        ).merge(
+            interventions_df, # add intervention columns
+            left_on="abbreviation", right_on="state", how="inner",
+            suffixes=['', '_dropcol']
+        ).drop(
+            'state_dropcol', axis=1
+        ).merge(
+            projections_df, # add projection columns
+            left_on="abbreviation", right_on="State", how="left"
+        ).drop(
+            ["abbreviation", "State"], axis=1
         )
-        .merge(projections_df, left_on="state_y", right_on="State", how="left")
-        .drop(["abbreviation", "state_y", "State"], axis=1)
-    )
 
-    states_remapped = states_abbrev.rename(columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA)
+    STATE_COLS_REMAP = OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
+    STATE_COLS_REMAP['positive'] = 'Cumulative Tested Positive'
+    STATE_COLS_REMAP['negative'] = 'Cumulative Tested Negative'
+
+    states_remapped = states_abbrev.rename(columns=STATE_COLS_REMAP)
 
     states_final = pd.DataFrame(states_remapped, columns=RESULT_DATA_COLUMNS_STATES)
     states_final = states_final.fillna(NULL_VALUE)
@@ -184,6 +208,7 @@ def get_usa_by_states_df(input_dir, intervention_type):
     states_final["State/County FIPS Code"] = states_final["Province/State"].map(us_fips)
 
     states_final.index.name = "OBJECTID"
+
     # assert unique key test
     assert states_final["Combined Key"].value_counts().max() == 1
 

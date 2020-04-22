@@ -74,6 +74,7 @@ def _generate_api_for_projections(projection_row):
 
 def _generate_actuals(projection_row, state):
     intervention_str = get_can_projection.get_intervention_for_state(state).name
+    # import ipdb; ipdb.set_trace()
     return _Actuals(
         population=projection_row[rc.POPULATION],
         intervention=intervention_str,
@@ -103,12 +104,16 @@ def generate_state_timeseries(projection_row, intervention, input_dir) -> CovidA
     can_dataseries = get_can_projection.get_can_raw_data(
         input_dir, state_abbrev, fips, AggregationLevel.STATE, intervention
     )
+
     timeseries = []
     for data_series in can_dataseries:
         timeseries.append(_generate_timeseries_row(data_series))
     projections = _generate_api_for_projections(projection_row)
     if len(timeseries) < 1:
         raise Exception(f"State time series empty for {intervention.name}")
+
+    # import ipdb; ipdb.set_trace()
+
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
@@ -149,6 +154,8 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
 def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSummary:
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
     projections = _generate_api_for_projections(projection_row)
+
+    # import ipdb; ipdb.set_trace()
     state_result = CovidActNowStateSummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
