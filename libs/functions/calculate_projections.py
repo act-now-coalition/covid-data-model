@@ -123,21 +123,20 @@ def get_state_projections_df(input_dir, initial_intervention_type, state_interve
     columns=CALCULATED_PROJECTION_HEADERS_STATES
     """
 
-    sdf = pd.DataFrame(US_STATE_ABBREV.values(), columns=['state'])
-    sdf.loc[:,'intervention_type'] = sdf.state.parallel_apply(
+    states_df = pd.DataFrame(US_STATE_ABBREV.values(), columns=['state'])
+    states_df.loc[:,'intervention_type'] = states_df.state.apply(
         lambda x: _get_intervention_type(initial_intervention_type, x, state_interventions_df)
         )
-    sdf.loc[:, 'path'] = sdf.parallel_apply(
+    states_df.loc[:, 'path'] = states_df.apply(
         lambda x: get_file_path(input_dir, x.state, x.intervention_type, fips=None),
         axis=1).values
-    ndf = sdf.parallel_apply(
-        lambda x:_calculate_projection_data(x.state, x.path, fips=None), axis=1)
+    new_df = states_df.parallel_apply(
+        lambda x: _calculate_projection_data(x.state, x.path, fips=None), axis=1)
 
-    num_processed_states = ndf.notnull().sum()['State']
+    num_processed_states = new_df.notnull().sum()['State']
 
-    if (num_processed_states < 51):
-        raise Exception(f"Missing too states! {num_processed_states} states were in input_dir: {input_dir}")
-    return ndf
+    print(f"Missing {num_processed_states} states were in input_dir: {input_dir}")
+    return new_df
 
 
 def get_file_path(input_dir, state, intervention_type, fips=None):
@@ -157,19 +156,19 @@ def get_county_projections_df(input_dir, initial_intervention_type, state_interv
     """
     fips_pd = FIPSPopulation.local().data  # to get the state, county & fips
 
-    fdf = fips_pd[['state' ,'fips']]
-    fdf.loc[:,'intervention_type'] = fdf.state.parallel_apply(
+    county_df = fips_pd[['state' ,'fips']]
+    county_df.loc[:,'intervention_type'] = county_df.state.apply(
         lambda x: _get_intervention_type(initial_intervention_type, x, state_interventions_df)
         )
-    fdf.loc[:, 'path'] = fdf.parallel_apply(
+    county_df.loc[:, 'path'] = county_df.apply(
         lambda x: get_file_path(input_dir, x.state, x.intervention_type, fips=x.fips),
         axis=1).values
-    ndf = fdf.parallel_apply(
-        lambda x:_calculate_projection_data(x.state, x.path, fips=x.fips), axis=1)
+    new_df = county_df.parallel_apply(
+        lambda x: _calculate_projection_data(x.state, x.path, fips=x.fips), axis=1)
 
-    missing = ndf.isnull().sum()['State']
+    missing = new_df.isnull().sum()['State']
 
     if (missing > 2000):
         raise Exception(f"Missing a majority of counties from input_dir: {input_dir}")
     print(f"Models missing for {missing} counties")
-    return ndf
+    return new_df
