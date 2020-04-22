@@ -16,9 +16,7 @@ from libs.datasets.projections_schema import (
 from libs.enums import Intervention
 from libs.constants import NULL_VALUE
 
-from pandarallel import pandarallel
-
-pandarallel.initialize(progress_bar=True)
+from libs import pandarallel
 
 
 def _calc_short_fall(x):
