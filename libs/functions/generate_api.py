@@ -81,8 +81,8 @@ def _generate_actuals(projection_row, state):
         intervention=intervention_str,
         cumulativeConfirmedCases=projection_row[rc.CURRENT_CONFIRMED],
         cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
-        cumulativePosTested=projection_row[rc.CUMULATIVE_POSITIVE_TESTS],
-        cumulativeNegTested=projection_row[rc.CUMULATIVE_NEGATIVE_TESTS],
+        cumulativePositiveTests=projection_row[rc.CUMULATIVE_POSITIVE_TESTS],
+        cumulativeNegativeTests=projection_row[rc.CUMULATIVE_NEGATIVE_TESTS],
         hospitalBeds = {
             "capacity": projection_row[rc.PEAK_BED_CAPACITY],
             "currentUsage": None # TODO(igor): Get from Covidtracking source
@@ -99,8 +99,8 @@ def _generate_timeseries_row(json_data_row):
         ICUBedCapacity=None,
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        cumulativePosTested=int(json_data_row['positive']),
-        cumulativeNegTested=int(json_data_row['negative']),
+        cumulativePositiveTests=int(json_data_row['positive']),
+        cumulativeNegativeTests=int(json_data_row['negative']),
     )
 
 def generate_state_timeseries(projection_row, intervention, input_dir) -> CovidActNowStateTimeseries:

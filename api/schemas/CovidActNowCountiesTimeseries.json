@@ -109,13 +109,13 @@
           "description": "Number of confirmed cases so far",
           "type": "integer"
         },
-        "cumulativePosTested": {
-          "title": "Cumulativepostested",
+        "cumulativePositiveTests": {
+          "title": "Cumulativepositivetests",
           "description": "Number of positive test results to date",
           "type": "integer"
         },
-        "cumulativeNegTested": {
-          "title": "Cumulativenegtested",
+        "cumulativeNegativeTests": {
+          "title": "Cumulativenegativetests",
           "description": "Number of negative test results to date",
           "type": "integer"
         },
@@ -135,8 +135,8 @@
         "population",
         "intervention",
         "cumulativeConfirmedCases",
-        "cumulativePosTested",
-        "cumulativeNegTested",
+        "cumulativePositiveTests",
+        "cumulativeNegativeTests",
         "cumulativeDeaths",
         "hospitalBeds",
         "ICUBeds"
@@ -182,13 +182,13 @@
           "description": "Number of cumulative infections",
           "type": "integer"
         },
-        "cumulativePosTested": {
-          "title": "Cumulativepostested",
+        "cumulativePositiveTests": {
+          "title": "Cumulativepositivetests",
           "description": "Number of positive test results to date",
           "type": "integer"
         },
-        "cumulativeNegTested": {
-          "title": "Cumulativenegtested",
+        "cumulativeNegativeTests": {
+          "title": "Cumulativenegativetests",
           "description": "Number of negative test results to date",
           "type": "integer"
         }
@@ -201,8 +201,8 @@
         "ICUBedCapacity",
         "cumulativeDeaths",
         "cumulativeInfected",
-        "cumulativePosTested",
-        "cumulativeNegTested"
+        "cumulativePositiveTests",
+        "cumulativeNegativeTests"
       ]
     },
     "CovidActNowCountyTimeseries": {
