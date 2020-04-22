@@ -68,7 +68,7 @@ class CovidTrackingDataSource(data_source.DataSource):
     }
 
     TEST_FIELDS = [
-         Fields.DATE_CHECKED,
+         Fields.DATE,
          Fields.STATE,
          Fields.POSITIVE_TESTS,
          Fields.NEGATIVE_TESTS,

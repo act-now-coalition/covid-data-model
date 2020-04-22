@@ -18,6 +18,8 @@ from libs.functions import get_can_projection
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import can_model_output_schema as can_schema
+from libs.build_processed_dataset import get_testing_timeseries_by_state
+import pandas as pd
 
 FRAMES = 32
 DAYS_PER_FRAME = 4
@@ -97,18 +99,23 @@ def _generate_timeseries_row(json_data_row):
         ICUBedCapacity=None,
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        cumulativePosTested=1,
-        cumulativeNegTested=1,
+        cumulativePosTested=int(json_data_row['positive']),
+        cumulativeNegTested=int(json_data_row['negative']),
     )
 
 def generate_state_timeseries(projection_row, intervention, input_dir) -> CovidActNowStateTimeseries:
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
     fips = projection_row[rc.FIPS]
-    can_dataseries = get_can_projection.get_can_raw_data(
+    raw_dataseries = get_can_projection.get_can_raw_data(
         input_dir, state_abbrev, fips, AggregationLevel.STATE, intervention
     )
 
-    # import ipdb; ipdb.set_trace()
+    # join in state testing data
+    test_df = get_testing_timeseries_by_state(projection_row[rc.STATE])
+    new_df = pd.DataFrame(raw_dataseries).merge(test_df, left_on='date', right_on='date', how='left').fillna(0)
+
+    # reformat as dict
+    can_dataseries = new_df.to_dict(orient='records')
 
     timeseries = []
     for data_series in can_dataseries:

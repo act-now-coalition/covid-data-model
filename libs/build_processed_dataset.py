@@ -52,8 +52,33 @@ def _get_abbrev_df():
 
 
 def _get_testing_df():
+    # TODO: read this from a dataset class
+    abbrev_df = _get_abbrev_df()
+
     ctd_df = CovidTrackingDataSource.local().data
-    return ctd_df[CovidTrackingDataSource.TEST_FIELDS]
+    ctd_df = ctd_df[CovidTrackingDataSource.TEST_FIELDS]
+    ctd_df = ctd_df.merge(
+            abbrev_df,
+            left_on='state',
+            right_on='abbreviation',
+            how="inner",
+            suffixes=['_dropcol', '']
+        ).drop("state_dropcol", axis=1)
+
+    return ctd_df
+
+
+def get_testing_timeseries_by_state(state):
+    test_df = _get_testing_df()
+    # use a string for dates
+    test_df['date'] = test_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
+    test_df['positive'] = test_df['positive'].astype(int)
+    test_df['negative'] = test_df['negative'].astype(int)
+
+    state_test_df = test_df[test_df[CovidTrackingDataSource.Fields.STATE] == state]
+    # just select state
+    return state_test_df[['positive', 'negative', 'date']]
+
 
 
 county_replace_with_null = {"Unassigned": NULL_VALUE}
@@ -158,7 +183,7 @@ def get_usa_by_states_df(input_dir, intervention_type):
         input_dir, intervention_type, interventions_df
     )
     test_df = _get_testing_df()
-    test_max_df = test_df.groupby("state")["positive", "negative"].max().reset_index()
+    test_max_df = test_df.groupby("abbreviation")["positive", "negative"].max().reset_index()
 
     states_group = us_only.groupby(["Province/State"])
     states_agg = states_group.aggregate(
@@ -184,30 +209,25 @@ def get_usa_by_states_df(input_dir, intervention_type):
             left_index=True,
             right_on="state",
             how="left",
-        )
-        .merge(
+        ).merge(
             test_max_df,  # adds state, positive, negative
             left_on="abbreviation",
-            right_on="state",
+            right_on="abbreviation",
             how="left",
-            suffixes=["", "_dropcol"],
-        )
-        .drop("state_dropcol", axis=1)
-        .merge(
+        ).merge(
             interventions_df,  # add intervention columns
             left_on="abbreviation",
             right_on="state",
             how="inner",
             suffixes=["", "_dropcol"],
-        )
-        .drop("state_dropcol", axis=1)
-        .merge(
+        ).drop(
+            "state_dropcol", axis=1
+        ).merge(
             projections_df,  # add projection columns
             left_on="abbreviation",
             right_on="State",
             how="left",
-        )
-        .drop(["abbreviation", "State"], axis=1)
+        ).drop(["abbreviation", "State"], axis=1)
     )
 
     STATE_COLS_REMAP = OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
