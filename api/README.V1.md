@@ -10,7 +10,7 @@ Data is updated every day, typically around midnight US Pacific Time.
 
 ### Rate Limits
 
-There are no rate limits, but please be aware of your usage as we're a non-profit and would like this to stay available to everyone.
+There are no rate limits, but please be aware of your usage as we're a non-profit and would like to stay available to everyone.
 
 ### License
 
