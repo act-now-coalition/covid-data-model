@@ -10,6 +10,7 @@ from api.can_api_definition import CovidActNowStateSummary
 from api.can_api_definition import CovidActNowStatesSummary
 from api.can_api_definition import CovidActNowStatesTimeseries
 from api.can_api_definition import CovidActNowStateTimeseries
+from api.can_api_definition import PredictionTimeseriesRowWithHeader
 from libs.enums import Intervention
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import validate_results
@@ -25,7 +26,7 @@ PROD_BUCKET = "data.covidactnow.org"
 
 
 class APIOutput(object):
-    def __init__(self, file_stem: str, data: pydantic.BaseModel):
+    def __init__(self, file_stem: str, data: pydantic.BaseModel, intervention: Intervention):
         """
         Args:
             file_stem: Stem of output filename.
@@ -34,6 +35,7 @@ class APIOutput(object):
         """
         self.file_stem = file_stem
         self.data = data
+        self.intervention = intervention
 
 
 APIPipelineProjectionResult = namedtuple(
@@ -109,7 +111,7 @@ def _generate_api_without_ts(projection_result, row, input_dir):
         raise ValueError("Aggregate Level not supported by api generation")
     key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
     generated_key = f"{key_prefix}.{projection_result.intervention.name}"
-    return APIOutput(generated_key, generated_data)
+    return APIOutput(generated_key, generated_data, projection_result.intervention)
 
 
 def _generate_api_with_ts(projection_result, row, input_dir):
@@ -125,7 +127,7 @@ def _generate_api_with_ts(projection_result, row, input_dir):
         raise ValueError("Aggregate Level not supported by api generation")
     key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
     generated_key = f"{key_prefix}.{projection_result.intervention.name}.timeseries"
-    return APIOutput(generated_key, generated_data)
+    return APIOutput(generated_key, generated_data, projection_result.intervention)
 
 
 def generate_api(
@@ -150,21 +152,21 @@ def build_states_summary(state_data: List[APIOutput], intervention) -> APIOutput
     data = [output.data for output in state_data]
     state_api_data = CovidActNowStatesSummary(data=data)
     key = f"states.{intervention.name}"
-    return APIOutput(key, state_api_data)
+    return APIOutput(key, state_api_data, intervention)
 
 
 def build_states_timeseries(state_data: List[APIOutput], intervention) -> APIOutput:
     data = [output.data for output in state_data]
     state_api_data = CovidActNowStatesTimeseries(data=data)
     key = f"states.{intervention.name}.timeseries"
-    return APIOutput(key, state_api_data)
+    return APIOutput(key, state_api_data, intervention)
 
 
 def build_counties_summary(counties_data: List[APIOutput], intervention) -> APIOutput:
     county_summaries = [output.data for output in counties_data]
     county_api_data = CovidActNowCountiesSummary(data=county_summaries)
     key = f"counties.{intervention.name}"
-    return APIOutput(key, county_api_data)
+    return APIOutput(key, county_api_data, intervention)
 
 
 def build_counties_timeseries(
@@ -173,7 +175,7 @@ def build_counties_timeseries(
     county_summaries = [output.data for output in counties_data]
     county_api_data = CovidActNowCountiesTimeseries(data=county_summaries)
     key = f"counties.{intervention.name}.timeseries"
-    return APIOutput(key, county_api_data)
+    return APIOutput(key, county_api_data, intervention)
 
 
 def deploy_results(results: List[APIOutput], output: str, write_csv=False):
@@ -196,3 +198,40 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
                 else:
                     data = data['data']
             dataset_deployer.write_nested_csv(data, api_row.file_stem, output)
+
+
+def build_prediction_header_timeseries_data(data: APIOutput):
+
+    rows = []
+    api_data = data.data
+    # Iterate through each state or county in data, adding summary data to each
+    # timeseries row.
+    for row in api_data.data:
+        county_name = None
+        if isinstance(row, CovidActNowCountyTimeseries):
+            county_name = row.countyName
+
+        summary_data = {
+            'countryName': row.countryName,
+            'countyName': county_name,
+            'stateName': row.stateName,
+            'fips': row.fips,
+            'lat': row.lat,
+            'long': row.long,
+            'intervention': data.intervention.name,
+            'lastUpdatedDate': row.lastUpdatedDate
+        }
+
+        for timeseries_data in row.timeseries:
+            timeseries_row = PredictionTimeseriesRowWithHeader(
+                **summary_data,
+                **timeseries_data.dict()
+            )
+            rows.append(timeseries_row)
+
+
+    return APIOutput(data.file_stem, rows, data.intervention)
+
+
+def deploy_prediction_timeseries_csvs(data: APIOutput, output):
+    dataset_deployer.write_nested_csv([row.dict() for row in data.data], data.file_stem, output)
