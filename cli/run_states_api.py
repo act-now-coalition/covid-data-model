@@ -42,13 +42,15 @@ def deploy_states_api(disable_validation, input_dir, output, summary_output):
             intervention,
             run_validation=not disable_validation,
         )
-        states_results_api = api_pipeline.generate_api(states_result, input_dir)
-        api_pipeline.deploy_results(states_results_api, output)
+        state_summaries, state_timeseries = api_pipeline.generate_api(states_result, input_dir)
+        api_pipeline.deploy_results([*state_summaries, *state_timeseries], output)
 
         states_summary = api_pipeline.build_states_summary(
-            states_results_api, intervention
+            state_summaries, intervention
         )
-        states_timeseries = api_pipeline.build_states_timeseries(states_results_api, intervention)
+        states_timeseries = api_pipeline.build_states_timeseries(
+            state_timeseries, intervention
+        )
         api_pipeline.deploy_results([states_summary], summary_output, write_csv=True)
         api_pipeline.deploy_results([states_timeseries], summary_output)
 

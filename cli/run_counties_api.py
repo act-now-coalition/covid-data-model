@@ -46,11 +46,13 @@ def deploy_counties_api(disable_validation, input_dir, output, summary_output):
                 intervention,
                 run_validation=not disable_validation,
             )
-            county_results_api = api_pipeline.generate_api(county_result, input_dir)
-            api_pipeline.deploy_results(county_results_api, output)
+            county_summaries, county_timeseries = api_pipeline.generate_api(
+                county_result, input_dir
+            )
+            api_pipeline.deploy_results([*county_summaries, *county_timeseries], output)
 
-            counties_summary = api_pipeline.build_counties_summary(county_results_api, intervention)
-            counties_timeseries = api_pipeline.build_counties_timeseries(county_results_api, intervention)
+            counties_summary = api_pipeline.build_counties_summary(county_summaries, intervention)
+            counties_timeseries = api_pipeline.build_counties_timeseries(county_timeseries, intervention)
             api_pipeline.deploy_results([counties_summary], summary_output, write_csv=True)
             api_pipeline.deploy_results([counties_timeseries], summary_output)
 
