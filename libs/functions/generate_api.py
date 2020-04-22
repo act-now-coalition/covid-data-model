@@ -75,11 +75,14 @@ def _generate_api_for_projections(projection_row):
 def _generate_actuals(projection_row, state):
     intervention_str = get_can_projection.get_intervention_for_state(state).name
     # import ipdb; ipdb.set_trace()
+    print(projection_row)
     return _Actuals(
         population=projection_row[rc.POPULATION],
         intervention=intervention_str,
         cumulativeConfirmedCases=projection_row[rc.CURRENT_CONFIRMED],
         cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
+        cumulativePosTested=projection_row[rc.CUMULATIVE_POSITIVE_TESTS],
+        cumulativeNegTested=projection_row[rc.CUMULATIVE_NEGATIVE_TESTS],
         hospitalBeds = {
             "capacity": projection_row[rc.PEAK_BED_CAPACITY],
             "currentUsage": None # TODO(igor): Get from Covidtracking source

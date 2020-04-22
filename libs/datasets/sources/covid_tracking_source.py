@@ -96,6 +96,18 @@ class CovidTrackingDataSource(data_source.DataSource):
         # assigning the date field as the date floor of that day.
         data[cls.Fields.DATE] = data[cls.Fields.DATE_CHECKED].dt.floor("D")
 
+
+        dtypes = {
+            cls.Fields.POSITIVE_TESTS: 'int32',
+            cls.Fields.NEGATIVE_TESTS: 'int32',
+            cls.Fields.POSITIVE_INCREASE: 'int32',
+            cls.Fields.NEGATIVE_INCREASE: 'int32',
+        }
+        for col in dtypes.keys():
+            data[col] = data[col].fillna(0)
+        # fill nulls and set as int
+        data = data.astype(dtypes)
+
         # Covid Tracking source has the state level fips, however none of the other
         # data sources have state level fips, and the generic code may implicitly assume
         # it doesn't.  I would like to add a state level fips (maybe for example a state fips code

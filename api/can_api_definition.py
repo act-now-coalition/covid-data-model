@@ -45,6 +45,12 @@ class _Actuals(pydantic.BaseModel):
     cumulativeConfirmedCases: int = pydantic.Field(
         ..., description="Number of confirmed cases so far"
     )
+    cumulativePosTested: int = pydantic.Field(
+        ..., description="Number of positive test results so far"
+    )
+    cumulativeNegTested: int = pydantic.Field(
+        ..., description="Number of negative test results so far"
+    )
     cumulativeDeaths: int = pydantic.Field(..., description="Number of deaths so far")
     hospitalBeds: _ResourceUtilization = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
