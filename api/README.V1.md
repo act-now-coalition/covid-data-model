@@ -10,7 +10,7 @@ Data is updated every day, typically around midnight US Pacific Time.
 
 ### Rate Limits
 
-There are no rate limits
+There are no rate limits, but please be aware of your usage as we're a non-profit and would like to stay available to everyone.
 
 ### License
 
@@ -21,7 +21,7 @@ Data is licensed under [Creative Commons 4.0 By Attribution](https://creativecom
 
 Data is available by prefixing URLs with `https://data.covidactnow.org/latest/`
 
-In order to read a model from the API, you must specify both the location (state or county) and the intervention level.
+In order to read a model from the API, you must specify both the location (state or county) and the intervention level. You can optionally specify if you'd like timeseries data.
 
 ### Location
 
@@ -57,8 +57,17 @@ To get a dynamic forecast that is based on the actually observed effect of mitig
 
 More information on interventions, including definitions, references, and R0 values used is [available here](https://data.covidactnow.org/Covid_Act_Now_Model_References_and_Assumptions.pdf).
 
+### Projected Overloads vs Timeseries
+
+An optional parameter `timeseries` can be added before the file format, for example: `*.timeseries.json` or `*.timeseries.csv`.
+
+If ommited, the API will return the date of projected hospital overloads, data of peak hospitalizations, and more.
+
+If included, the API will return the projected hospitalization data every third day for the next 90 days.
+
+## Using the API
 ### Fetching State Data
-#### Reading a Projection for a Specific State
+#### Projections for a Specific State
 
 Returns projections for the selected state
 
@@ -72,7 +81,7 @@ Returns projections for the selected state
 /us/states/<ST>.<INTERVENTION>.timeseries.json
 ```
 
-#### Reading Aggregate Projections for All States
+#### Aggregate Projections for All States
 
 Returns projections for all states
 
@@ -99,7 +108,7 @@ State aggregates are also available as CSV files:
 ```
 
 ### Fetching County Data
-#### Reading a Projection for a Specific County
+#### Projections for a Specific County
 
 Returns projections for the selected county
 
@@ -113,7 +122,7 @@ Returns projections for the selected county
 /latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json
 ```
 
-#### Reading Aggregate Projections for All Counties
+#### Aggregate Projections for All Counties
 
 Returns projections for all counties
 
@@ -184,4 +193,4 @@ This is the data format for both states and counties. `timeseries` is only inclu
 ## Coming soon
 * Hospital bed usage (actuals)
 * ICU bed data (capacity, projections, and actuals)
-* More file forms (dbf,shp,shx)
+* More file forms (dbf, shp, shx)
