@@ -38,6 +38,7 @@ Forward projections are available for the following scenarios:
 "NO_INTERVENTION",          // No Intervention
 "MODERATE_INTERVENTION"     // Social Distancing
 "STRONG_INTERVENTION"       // Stay at Home
+"OBSERVED_INTERVENTION"     // Dynamic forecast based on observations
 ```
 
 Additionally the most appropriate static scenario based on the per-state intervention is returned by specifying:
@@ -104,11 +105,11 @@ Returns projections for the selected county
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_INTERVENTION.json
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.MODERATE_INTERVENTION.json
 /us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json
 
 # Full timeseries data: actuals + projected limits + data for every four days
-# e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_INTERVENTION.timeseries.json
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.MODERATE_INTERVENTION.timeseries.json
 /latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json
 ```
 
@@ -118,11 +119,11 @@ Returns projections for all counties
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_INTERVENTION.json
+# e.g. https://data.covidactnow.org/latest/us/counties.MODERATE_INTERVENTION.json
 /us/counties.<INTERVENTION>.json
 
 # Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_INTERVENTION.timeseries.json
+# e.g. https://data.covidactnow.org/latest/us/counties.MODERATE_INTERVENTION.timeseries.json
 /us/counties.<INTERVENTION>.timeseries.json
 ```
 
@@ -130,11 +131,11 @@ County aggregates are also available as CSV files:
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_INTERVENTION.csv
+# e.g. https://data.covidactnow.org/latest/us/counties.MODERATE_INTERVENTION.csv
 /latest/us/counties.<INTERVENTION>.csv
 
 # Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_INTERVENTION.timeseries.csv
+# e.g. https://data.covidactnow.org/latest/us/counties.MODERATE_INTERVENTION.timeseries.csv
 /latest/us/counties.<INTERVENTION>.timeseries.csv
 ```
 
@@ -152,7 +153,7 @@ This is the data format for both states and counties. `timeseries` is only inclu
   lastUpdatedDate, // ISO 8601 date string
   actuals: {
     population,
-    intervention, // one of (NO_INTERVENTION, MODERATE_INTERVENTION, stay_at_home)
+    intervention, // one of (NO_INTERVENTION, MODERATE_INTERVENTION, OBSERVED_INTERVENTION, SELECTED_INTERVENTION)
     cumulativeConfirmedCases,
     cumulativeDeaths,
     hospitalBeds: {
