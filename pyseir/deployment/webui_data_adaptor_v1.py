@@ -70,7 +70,7 @@ class WebUIDataAdaptorV1:
             Backfill dataframe.
         """
         backfill_to_date = date(2020, 3, 3)   # @TODO: Parameterize
-        hospitalization_rate = 0.04          # @TODO: Parameterize
+        hospitalization_rate = 0.04           # @TODO: Parameterize
         intervals_to_backfill = math.ceil((t0.date() - backfill_to_date).days / self.output_interval_days)
         backfill_offsets = range(-intervals_to_backfill * self.output_interval_days, 0, self.output_interval_days)
 
@@ -134,9 +134,8 @@ class WebUIDataAdaptorV1:
             output_model = pd.DataFrame()
 
             if suppression_policy == 'suppression_policy__inferred' and fit_results:
-                if len(fips) == 5 and fips not in self.df_whitelist.fips:
+                if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
                     continue
-
                 t0 = datetime.fromisoformat(fit_results['t0_date'])
 
                 # Hospitalizations need to be rescaled by the inferred factor to match observations for display.
@@ -150,41 +149,54 @@ class WebUIDataAdaptorV1:
 
             t_list = output_for_policy['t_list']
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
-            # Col 0
+            # Col 0 "index days since simulation start"
             output_model['days'] = t_list_downsampled
-            # Col 1
+            # Col 1  Actual time-series.
             output_model['date'] = [(t0 + timedelta(days=t)).date().strftime('%m/%d/%y') for t in t_list_downsampled]
-            # Col 2
-            output_model['t'] = population
-            # Col 3
-            output_model['b'] = np.interp(t_list_downsampled, t_list, output_for_policy['S']['ci_50'])
-            # Col 4
-            output_model['c'] = np.interp(t_list_downsampled, t_list, output_for_policy['E']['ci_50'])
-            # Col 5
-            output_model['d'] = np.interp(t_list_downsampled, t_list, np.add(output_for_policy['I']['ci_50'], output_for_policy['A']['ci_50'])) # Infected + Asympt.
-            # Col 6
-            output_model['e'] = output_model['d']
-            # Col 7
-            output_model['f'] = np.interp(t_list_downsampled, t_list, output_for_policy['HGen']['ci_50']) # Hosp General
-            # Col 8
-            output_model['g'] = np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
-            # Col 9
-            output_model['all_hospitalized'] = hosp_fraction * np.add(output_model['f'], output_model['g'])
+            # Col 2 "t"
+            output_model['total_population'] = population
+            # Col 3 "b"
+            output_model['susceptible'] = np.interp(t_list_downsampled, t_list, output_for_policy['S']['ci_50'])
+            # Col 4 "c"
+            output_model['exposed'] = np.interp(t_list_downsampled, t_list, output_for_policy['E']['ci_50'])
+            # Col 5 "d"
+            output_model['all_current_infected'] = np.interp(t_list_downsampled, t_list, np.add(output_for_policy['I']['ci_50'], output_for_policy['A']['ci_50'])) # Infected + Asympt.
+            # Col 6 ("e")
+            output_model['all_infected_duplicate'] = output_model['all_current_infected']
+            # Col 7 ("f")
+            output_model['HGen'] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HGen']['ci_50']) # Hosp General
+            # Col 8 ("g")
+            output_model['HICU'] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
+            # Col 9 # Don't include vent here because they are also counted in ICU
+            output_model['all_hospitalized'] = hosp_fraction * np.add(output_model['HGen'], output_model['HICU'])
             # Col 10
-            output_model['all_infected'] = output_model['d']
+            output_model['all_infected'] = output_model['all_current_infected']
             # Col 11
             output_model['dead'] = np.interp(t_list_downsampled, t_list, output_for_policy['total_deaths']['ci_50'])
             # Col 12
             final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
             output_model['beds'] = final_beds
+            # Col 13
             output_model['cumulative_infected'] = np.interp(t_list_downsampled, t_list, np.cumsum(output_for_policy['total_new_infections']['ci_50']))
 
             if fit_results:
+                # Col 14
                 output_model['R_t'] = np.interp(t_list_downsampled, t_list, fit_results['eps'] * fit_results['R0'] * np.ones(len(t_list)))
+                # Col 15
                 output_model['R_t_stdev'] = np.interp(t_list_downsampled, t_list, fit_results['eps_error'] * fit_results['R0'] * np.ones(len(t_list)))
             else:
                 output_model['R_t'] = 0
                 output_model['R_t_stdev'] = 0
+
+            # Col 16
+            output_model['HVent'] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HVent']['ci_50'])
+            # Col 17
+            output_model['population'] = population
+
+            # Col 18 (previously "m")
+            output_model['icu_beds'] = np.mean(output_for_policy['HICU']['capacity'])
+            # Col 19 (previously "n")
+            output_model['ventilators'] = np.mean(output_for_policy['HVent']['capacity'])
 
             # Record the current number of hospitalizations in order to rescale the inference results.
             all_hospitalized_today = output_model['all_hospitalized'][0]
@@ -199,12 +211,6 @@ class WebUIDataAdaptorV1:
             output_model = output_model[ (output_dates > datetime(month=3, day=3, year=2020))
                                         & (output_dates < datetime.today() + timedelta(days=90))]
             output_model = output_model.fillna(0)
-
-            for col in ['l']:
-                output_model[col] = 0
-            output_model['population'] = population
-            for col in ['m', 'n']:
-                output_model[col] = 0
 
             # Truncate floats and cast as strings to match data model.
             int_columns = [col for col in output_model.columns if col not in ('date', 'R_t', 'R_t_stdev')]
