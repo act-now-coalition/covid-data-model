@@ -123,19 +123,20 @@ class WebUIDataAdaptorV1:
         all_hospitalized_today = None
         try:
             fit_results = load_inference_result(fips)
-        except ValueError:
+        except (KeyError, ValueError):
             fit_results = None
             logging.error(f'Fit result not found for {fips}: Skipping inference elements')
 
         for i_policy, suppression_policy in enumerate(policies):
             if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
                 continue
+            if suppression_policy == 'suppression_policy__inferred' and len(fips) == 5 and fips not in self.df_whitelist.fips.values:
+                continue
+
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
             if suppression_policy == 'suppression_policy__inferred' and fit_results:
-                if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
-                    continue
                 t0 = datetime.fromisoformat(fit_results['t0_date'])
 
                 # Hospitalizations need to be rescaled by the inferred factor to match observations for display.
