@@ -13,6 +13,7 @@ from libs.enums import Intervention
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
+import libs.datasets.can_model_output_schema as schema
 
 
 class WebUIDataAdaptorV1:
@@ -70,7 +71,7 @@ class WebUIDataAdaptorV1:
             Backfill dataframe.
         """
         backfill_to_date = date(2020, 3, 3)   # @TODO: Parameterize
-        hospitalization_rate = 0.04          # @TODO: Parameterize
+        hospitalization_rate = 0.04           # @TODO: Parameterize
         intervals_to_backfill = math.ceil((t0.date() - backfill_to_date).days / self.output_interval_days)
         backfill_offsets = range(-intervals_to_backfill * self.output_interval_days, 0, self.output_interval_days)
 
@@ -123,28 +124,31 @@ class WebUIDataAdaptorV1:
         all_hospitalized_today = None
         try:
             fit_results = load_inference_result(fips)
+
+
+        # Fit results not always available if the fit failed, or there are no
+        # inference results.
         except (KeyError, ValueError):
             fit_results = None
             logging.warning(f'Fit result not found for {fips}: Skipping inference elements')
 
         for i_policy, suppression_policy in enumerate(policies):
-            if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
-                continue
-            if suppression_policy == 'suppression_policy__inferred' \
-                    and len(fips) == 5 \
-                    and fips not in self.df_whitelist.fips.values:
+
+            # Don't ship full containment, and only ship inference for
+            # whitelisted counties.
+            if suppression_policy == 'suppression_policy__full_containment' \
+                    or (suppression_policy == 'suppression_policy__inferred'
+                        and len(fips) == 5
+                        and fips not in self.df_whitelist.fips.values):
                 continue
 
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
+            # Hospitalizations need to be rescaled by the inferred factor to
+            # match observations for display purposes.
             if suppression_policy == 'suppression_policy__inferred' and fit_results:
-                if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
-                    continue
-
                 t0 = datetime.fromisoformat(fit_results['t0_date'])
-
-                # Hospitalizations need to be rescaled by the inferred factor to match observations for display.
                 now_idx = int((datetime.today() - datetime.fromisoformat(fit_results['t0_date'])).days)
                 total_hosps = output_for_policy['HGen']['ci_50'][now_idx] + output_for_policy['HICU']['ci_50'][now_idx]
                 hosp_fraction = all_hospitalized_today / total_hosps
@@ -155,44 +159,57 @@ class WebUIDataAdaptorV1:
 
             t_list = output_for_policy['t_list']
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
-            # Col 0
-            output_model['days'] = t_list_downsampled
-            # Col 1
-            output_model['date'] = [(t0 + timedelta(days=t)).date().strftime('%m/%d/%y') for t in t_list_downsampled]
-            # Col 2
-            output_model['t'] = population
-            # Col 3
-            output_model['b'] = np.interp(t_list_downsampled, t_list, output_for_policy['S']['ci_50'])
-            # Col 4
-            output_model['c'] = np.interp(t_list_downsampled, t_list, output_for_policy['E']['ci_50'])
-            # Col 5
-            output_model['d'] = np.interp(t_list_downsampled, t_list, np.add(output_for_policy['I']['ci_50'], output_for_policy['A']['ci_50'])) # Infected + Asympt.
-            # Col 6
-            output_model['e'] = output_model['d']
-            # Col 7
-            output_model['f'] = np.interp(t_list_downsampled, t_list, output_for_policy['HGen']['ci_50']) # Hosp General
-            # Col 8
-            output_model['g'] = np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
-            # Col 9
-            output_model['all_hospitalized'] = hosp_fraction * np.add(output_model['f'], output_model['g'])
+            # Col 0 "index days since simulation start"
+            output_model[schema.DAY_NUM] = t_list_downsampled
+            # Col 1  Actual time-series.
+            output_model[schema.DATE] = [(t0 + timedelta(days=t)).date().strftime('%m/%d/%y') for t in t_list_downsampled]
+            # Col 2 "t"
+            output_model[schema.TOTAL] = population
+            # Col 3 "b"
+            output_model[schema.TOTAL_SUSCEPTIBLE] = np.interp(t_list_downsampled, t_list, output_for_policy['S']['ci_50'])
+            # Col 4 "c"
+            output_model[schema.EXPOSED] = np.interp(t_list_downsampled, t_list, output_for_policy['E']['ci_50'])
+            # Col 5 "d"
+            output_model[schema.INFECTED] = np.interp(t_list_downsampled, t_list, np.add(output_for_policy['I']['ci_50'], output_for_policy['A']['ci_50'])) # Infected + Asympt.
+            # Col 6 ("e")
+            output_model[schema.INFECTED_A] = output_model[schema.INFECTED]
+            # Col 7 ("f")
+            output_model[schema.INFECTED_B] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HGen']['ci_50']) # Hosp General
+            # Col 8 ("g")
+            output_model[schema.INFECTED_C] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
+            # Col 9 # General + ICU beds. don't include vent here because they are also counted in ICU
+            output_model[schema.ALL_HOSPITALIZED] = np.add(output_model[schema.INFECTED_B], output_model[schema.INFECTED_C])
             # Col 10
-            output_model['all_infected'] = output_model['d']
+            output_model[schema.ALL_INFECTED] = output_model[schema.INFECTED]
             # Col 11
-            output_model['dead'] = np.interp(t_list_downsampled, t_list, output_for_policy['total_deaths']['ci_50'])
+            output_model[schema.DEAD] = np.interp(t_list_downsampled, t_list, output_for_policy['total_deaths']['ci_50'])
             # Col 12
-            final_beds = np.mean(output_for_policy['HGen']['capacity']) + np.mean(output_for_policy['HICU']['capacity'])
-            output_model['beds'] = final_beds
-            output_model['cumulative_infected'] = np.interp(t_list_downsampled, t_list, np.cumsum(output_for_policy['total_new_infections']['ci_50']))
+            final_beds = np.mean(output_for_policy['HGen']['capacity'])
+            output_model[schema.BEDS] = final_beds
+            # Col 13
+            output_model[schema.CUMULATIVE_INFECTED] = np.interp(t_list_downsampled, t_list, np.cumsum(output_for_policy['total_new_infections']['ci_50']))
 
             if fit_results:
-                output_model['R_t'] = np.interp(t_list_downsampled, t_list, fit_results['eps'] * fit_results['R0'] * np.ones(len(t_list)))
-                output_model['R_t_stdev'] = np.interp(t_list_downsampled, t_list, fit_results['eps_error'] * fit_results['R0'] * np.ones(len(t_list)))
+                # Col 14
+                output_model[schema.Rt] = np.interp(t_list_downsampled, t_list, fit_results['eps'] * fit_results['R0'] * np.ones(len(t_list)))
+                # Col 15
+                output_model[schema.Rt_ci90] = np.interp(t_list_downsampled, t_list, 2 * fit_results['eps_error'] * fit_results['R0'] * np.ones(len(t_list)))
             else:
-                output_model['R_t'] = 0
-                output_model['R_t_stdev'] = 0
+                output_model[schema.Rt] = 0
+                output_model[schema.Rt_ci90] = 0
+
+            # Col 16
+            output_model[schema.CURRENT_VENTILATED] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HVent']['ci_50'])
+            # Col 17
+            output_model[schema.POPULATION] = population
+
+            # Col 18 (previously "m")
+            output_model[schema.ICU_BED_CAPACITY] = np.mean(output_for_policy['HICU']['capacity'])
+            # Col 19 (previously "n")
+            output_model[schema.VENTILATOR_CAPACITY] = np.mean(output_for_policy['HVent']['capacity'])
 
             # Record the current number of hospitalizations in order to rescale the inference results.
-            all_hospitalized_today = output_model['all_hospitalized'][0]
+            all_hospitalized_today = output_model[schema.ALL_HOSPITALIZED][0]
 
             # Don't backfill inferences
             if suppression_policy != 'suppression_policy__inferred':
@@ -205,16 +222,10 @@ class WebUIDataAdaptorV1:
                                         & (output_dates < datetime.today() + timedelta(days=90))]
             output_model = output_model.fillna(0)
 
-            for col in ['l']:
-                output_model[col] = 0
-            output_model['population'] = population
-            for col in ['m', 'n']:
-                output_model[col] = 0
-
             # Truncate floats and cast as strings to match data model.
-            int_columns = [col for col in output_model.columns if col not in ('date', 'R_t', 'R_t_stdev')]
+            int_columns = [col for col in output_model.columns if col not in (schema.DATE, schema.Rt, schema.Rt_ci90)]
             output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int).astype(str)
-            output_model.loc[:, ['R_t', 'R_t_stdev']] = output_model[['R_t', 'R_t_stdev']].fillna(0).round(decimals=4).astype(str)
+            output_model.loc[:, [schema.Rt, schema.Rt_ci90]] = output_model[[schema.Rt, schema.Rt_ci90]].fillna(0).round(decimals=4).astype(str)
 
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]
