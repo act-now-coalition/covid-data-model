@@ -56,7 +56,7 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
         ..., description="Fips for State + County. Five character code"
     )
     lat: float = pydantic.Field(
-        ..., description="Lattitude of point within the state or county"
+        ..., description="Latitude of point within the state or county"
     )
     long: float = pydantic.Field(
         ..., description="Longitude of point within the state or county"
@@ -104,6 +104,27 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
     cumulativeInfected: Optional[int] = pydantic.Field(
         ..., description="Number of cumulative infections"
+    )
+
+
+class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
+    countryName: str = "US"
+    stateName: str = pydantic.Field(..., description="The state name")
+    countyName: Optional[str] = pydantic.Field(..., description="The county name")
+    intervention: str = pydantic.Field(
+        ..., description="Name of high-level intervention in-place"
+    )
+    fips: str = pydantic.Field(
+        ..., description="Fips for State + County. Five character code"
+    )
+    lat: float = pydantic.Field(
+        ..., description="Latitude of point within the state or county"
+    )
+    long: float = pydantic.Field(
+        ..., description="Longitude of point within the state or county"
+    )
+    lastUpdatedDate: datetime.date = pydantic.Field(
+        ..., description="Date of latest data"
     )
 
 

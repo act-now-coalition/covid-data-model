@@ -147,7 +147,6 @@ def get_state_projections_df(
     new_df = states_df.parallel_apply(
         lambda x: _calculate_projection_data(x.state, x.path, fips=None), axis=1
     )
-
     num_processed_states = new_df.notnull().sum()["State"]
 
     print(f"Missing {num_processed_states} states were in input_dir: {input_dir}")
