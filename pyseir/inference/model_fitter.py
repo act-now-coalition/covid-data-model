@@ -320,6 +320,7 @@ class ModelFitter:
                 suppression_policy=suppression_policy,
                 I_initial=10 ** log10_I_initial * age_distribution,
                 **self.SEIR_kwargs)
+
         model.run()
         return model
 
@@ -626,6 +627,7 @@ class ModelFitter:
 
         self.mle_model.plot_results()
         plt.savefig(output_file.replace('mle_fit_results', 'mle_fit_model'), bbox_inches='tight')
+        plt.close()
 
     @classmethod
     def run_for_fips(cls, fips, n_retries=3, with_age_structure=False):
@@ -691,6 +693,9 @@ def run_state(state, states_only=False, with_age_structure=False):
 
     model_fitter = ModelFitter.run_for_fips(fips=state_obj.fips, with_age_structure=with_age_structure)
 
+    df_whitelist = load_data.load_whitelist()
+    df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
+
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
 
@@ -699,17 +704,18 @@ def run_state(state, states_only=False, with_age_structure=False):
 
     # Run the counties.
     if not states_only:
-        df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips.values
-        p = Pool()
-        fitters = p.map(ModelFitter.run_for_fips, all_fips)
-        p.close()
+        all_fips = df_whitelist[df_whitelist['state'].str.lower() == state_obj.name.lower()].fips.values
 
-        county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
-        pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)
+        if len(all_fips) > 0:
+            p = Pool()
+            fitters = p.map(ModelFitter.run_for_fips, all_fips)
+            p.close()
 
-        # Serialize the model results.
-        for fips, fitter in zip(all_fips, fitters):
-            if fitter:
-                with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
-                    pickle.dump(fitter.mle_model, f)
+            county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
+            pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)
+
+            # Serialize the model results.
+            for fips, fitter in zip(all_fips, fitters):
+                if fitter:
+                    with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
+                        pickle.dump(fitter.mle_model, f)

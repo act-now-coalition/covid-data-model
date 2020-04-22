@@ -56,7 +56,7 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
         ..., description="Fips for State + County. Five character code"
     )
     lat: float = pydantic.Field(
-        ..., description="Lattitude of point within the state or county"
+        ..., description="Latitude of point within the state or county"
     )
     long: float = pydantic.Field(
         ..., description="Longitude of point within the state or county"
@@ -107,6 +107,27 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     )
 
 
+class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
+    countryName: str = "US"
+    stateName: str = pydantic.Field(..., description="The state name")
+    countyName: Optional[str] = pydantic.Field(..., description="The county name")
+    intervention: str = pydantic.Field(
+        ..., description="Name of high-level intervention in-place"
+    )
+    fips: str = pydantic.Field(
+        ..., description="Fips for State + County. Five character code"
+    )
+    lat: float = pydantic.Field(
+        ..., description="Latitude of point within the state or county"
+    )
+    long: float = pydantic.Field(
+        ..., description="Longitude of point within the state or county"
+    )
+    lastUpdatedDate: datetime.date = pydantic.Field(
+        ..., description="Date of latest data"
+    )
+
+
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
 
@@ -119,5 +140,17 @@ class CovidActNowCountiesAPI(pydantic.BaseModel):
     data: List[CovidActNowCountySummary] = pydantic.Field(...)
 
 
-class CovidActNowStatesAPI(pydantic.BaseModel):
-    data: List[CovidActNowAreaSummary] = pydantic.Field(...)
+class CovidActNowStatesSummary(pydantic.BaseModel):
+    data: List[CovidActNowStateSummary] = pydantic.Field(...)
+
+
+class CovidActNowStatesTimeseries(pydantic.BaseModel):
+    data: List[CovidActNowStateTimeseries] = pydantic.Field(...)
+
+
+class CovidActNowCountiesSummary(pydantic.BaseModel):
+    data: List[CovidActNowCountySummary] = pydantic.Field(...)
+
+
+class CovidActNowCountiesTimeseries(pydantic.BaseModel):
+    data: List[CovidActNowCountyTimeseries] = pydantic.Field(...)

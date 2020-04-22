@@ -7,6 +7,8 @@ import os
 import logging
 import click
 import sentry_sdk
+from pandarallel import pandarallel
+
 from cli import run_data
 from cli import run_model
 from cli import run_dod_dataset
@@ -34,9 +36,10 @@ entry_point.add_command(api.main)
 if __name__ == "__main__":
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
     logging.basicConfig(level=logging.INFO)
-    try: 
+    pandarallel.initialize(progress_bar=True)
+    try:
         entry_point()
-    except Exception as e: 
+    except Exception as e:
         # blanket catch excpetions at the entry point and send them to sentry
         sentry_sdk.capture_exception(e)
         raise e

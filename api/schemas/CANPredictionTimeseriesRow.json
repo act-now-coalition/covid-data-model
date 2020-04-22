@@ -8,8 +8,8 @@
       "type": "string",
       "format": "date"
     },
-    "hospitalBedsInUse": {
-      "title": "Hospitalbedsinuse",
+    "hospitalBedsRequired": {
+      "title": "Hospitalbedsrequired",
       "description": "Number of hospital beds projected to be in-use or that were actually in use (if in the past)",
       "type": "integer"
     },
@@ -28,30 +28,24 @@
       "description": "Number of ICU beds projected to be in-use or actually in use (if in the past)",
       "type": "integer"
     },
-    "newDeaths": {
-      "title": "Newdeaths",
-      "description": "Number of new deaths",
+    "cumulativeDeaths": {
+      "title": "Cumulativedeaths",
+      "description": "Number of cumulative deaths",
       "type": "integer"
     },
-    "newConfirmedCases": {
-      "title": "Newconfirmedcases",
-      "description": "Number of new confirmed cases",
-      "type": "integer"
-    },
-    "newInfections": {
-      "title": "Newinfections",
-      "description": "Number of new infections",
+    "cumulativeInfected": {
+      "title": "Cumulativeinfected",
+      "description": "Number of cumulative infections",
       "type": "integer"
     }
   },
   "required": [
     "date",
-    "hospitalBedsInUse",
+    "hospitalBedsRequired",
     "hospitalBedCapacity",
     "ICUBedsInUse",
     "ICUBedCapacity",
-    "newDeaths",
-    "newConfirmedCases",
-    "newInfections"
+    "cumulativeDeaths",
+    "cumulativeInfected"
   ]
 }

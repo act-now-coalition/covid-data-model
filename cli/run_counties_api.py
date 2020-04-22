@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import click
 import logging
 
@@ -30,7 +29,12 @@ PROD_BUCKET = "data.covidactnow.org"
     default="results/output/counties",
     help="Output directory for artifacts",
 )
-def deploy_counties_api(disable_validation, input_dir, output):
+@click.option(
+    "--summary-output",
+    default="results/output",
+    help="Output directory for county summaries.",
+)
+def deploy_counties_api(disable_validation, input_dir, output, summary_output):
     """The entry function for invocation"""
 
     for intervention in list(Intervention):
@@ -42,7 +46,17 @@ def deploy_counties_api(disable_validation, input_dir, output):
                 intervention,
                 run_validation=not disable_validation,
             )
-            county_results_api = api_pipeline.generate_api(county_result, input_dir)
-            api_pipeline.deploy_results(county_results_api, output)
+            county_summaries, county_timeseries = api_pipeline.generate_api(
+                county_result, input_dir
+            )
+            api_pipeline.deploy_results([*county_summaries, *county_timeseries], output)
+
+            counties_summary = api_pipeline.build_counties_summary(county_summaries, intervention)
+            counties_timeseries = api_pipeline.build_counties_timeseries(county_timeseries, intervention)
+            summarized_timeseries = api_pipeline.build_prediction_header_timeseries_data(counties_timeseries)
+            api_pipeline.deploy_prediction_timeseries_csvs(summarized_timeseries, summary_output)
+
+            api_pipeline.deploy_results([counties_summary], summary_output, write_csv=True)
+            api_pipeline.deploy_results([counties_timeseries], summary_output)
 
         logger.info("finished top counties job")

@@ -46,6 +46,8 @@ class WebUIDataAdaptorV1:
 
         self.state_timeseries = self.jhu_local.timeseries().state_data
         self.state_timeseries['date'] = self.state_timeseries['date'].dt.normalize()
+        self.df_whitelist = load_data.load_whitelist()
+        self.df_whitelist = self.df_whitelist[self.df_whitelist['inference_ok'] == True]
 
     def backfill_output_model_fips(self, fips, t0, final_beds, output_model):
         """
@@ -119,15 +121,27 @@ class WebUIDataAdaptorV1:
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
 
         all_hospitalized_today = None
-        fit_results = load_inference_result(fips)
+        try:
+            fit_results = load_inference_result(fips)
+        except (KeyError, ValueError):
+            fit_results = None
+            logging.warning(f'Fit result not found for {fips}: Skipping inference elements')
 
         for i_policy, suppression_policy in enumerate(policies):
             if suppression_policy == 'suppression_policy__full_containment':  # No longer shipping this.
                 continue
+            if suppression_policy == 'suppression_policy__inferred' \
+                    and len(fips) == 5 \
+                    and fips not in self.df_whitelist.fips.values:
+                continue
+
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
-            if suppression_policy == 'suppression_policy__inferred':
+            if suppression_policy == 'suppression_policy__inferred' and fit_results:
+                if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
+                    continue
+
                 t0 = datetime.fromisoformat(fit_results['t0_date'])
 
                 # Hospitalizations need to be rescaled by the inferred factor to match observations for display.
@@ -170,8 +184,12 @@ class WebUIDataAdaptorV1:
             output_model['beds'] = final_beds
             output_model['cumulative_infected'] = np.interp(t_list_downsampled, t_list, np.cumsum(output_for_policy['total_new_infections']['ci_50']))
 
-            output_model['R_t'] = np.interp(t_list_downsampled, t_list, fit_results['eps'] * fit_results['R0'] * np.ones(len(t_list)))
-            output_model['R_t_stdev'] = np.interp(t_list_downsampled, t_list, fit_results['eps_error'] * fit_results['R0'] * np.ones(len(t_list)))
+            if fit_results:
+                output_model['R_t'] = np.interp(t_list_downsampled, t_list, fit_results['eps'] * fit_results['R0'] * np.ones(len(t_list)))
+                output_model['R_t_stdev'] = np.interp(t_list_downsampled, t_list, fit_results['eps_error'] * fit_results['R0'] * np.ones(len(t_list)))
+            else:
+                output_model['R_t'] = 0
+                output_model['R_t_stdev'] = 0
 
             # Record the current number of hospitalizations in order to rescale the inference results.
             all_hospitalized_today = output_model['all_hospitalized'][0]
