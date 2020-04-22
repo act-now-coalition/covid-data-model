@@ -134,7 +134,7 @@ class WebUIDataAdaptorV1:
             output_model = pd.DataFrame()
 
             if suppression_policy == 'suppression_policy__inferred' and fit_results:
-                if len(fips) == 5 and fips not in self.df_whitelist.fips:
+                if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
                     continue
 
                 t0 = datetime.fromisoformat(fit_results['t0_date'])
