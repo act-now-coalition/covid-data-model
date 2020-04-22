@@ -16,7 +16,7 @@ from libs.datasets.projections_schema import (
 from libs.enums import Intervention
 from libs.constants import NULL_VALUE
 
-from libs import pandarallel
+from pandarallel import pandarallel
 
 
 def _calc_short_fall(x):
