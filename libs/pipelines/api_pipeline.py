@@ -151,21 +151,21 @@ def generate_api(
 
 def build_states_summary(state_data: List[APIOutput], intervention) -> APIOutput:
     data = [output.data for output in state_data]
-    state_api_data = CovidActNowStatesSummary(data=data)
+    state_api_data = CovidActNowStatesSummary(__root__=data)
     key = f"states.{intervention.name}"
     return APIOutput(key, state_api_data, intervention)
 
 
 def build_states_timeseries(state_data: List[APIOutput], intervention) -> APIOutput:
     data = [output.data for output in state_data]
-    state_api_data = CovidActNowStatesTimeseries(data=data)
+    state_api_data = CovidActNowStatesTimeseries(__root__=data)
     key = f"states.{intervention.name}.timeseries"
     return APIOutput(key, state_api_data, intervention)
 
 
 def build_counties_summary(counties_data: List[APIOutput], intervention) -> APIOutput:
     county_summaries = [output.data for output in counties_data]
-    county_api_data = CovidActNowCountiesSummary(data=county_summaries)
+    county_api_data = CovidActNowCountiesSummary(__root__=county_summaries)
     key = f"counties.{intervention.name}"
     return APIOutput(key, county_api_data, intervention)
 
@@ -174,7 +174,7 @@ def build_counties_timeseries(
     counties_data: List[APIOutput], intervention
 ) -> APIOutput:
     county_summaries = [output.data for output in counties_data]
-    county_api_data = CovidActNowCountiesTimeseries(data=county_summaries)
+    county_api_data = CovidActNowCountiesTimeseries(__root__=county_summaries)
     key = f"counties.{intervention.name}.timeseries"
     return APIOutput(key, county_api_data, intervention)
 
@@ -207,7 +207,7 @@ def build_prediction_header_timeseries_data(data: APIOutput):
     api_data = data.data
     # Iterate through each state or county in data, adding summary data to each
     # timeseries row.
-    for row in api_data.data:
+    for row in api_data.__root__:
         county_name = None
         if isinstance(row, CovidActNowCountyTimeseries):
             county_name = row.countyName
