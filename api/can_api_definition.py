@@ -56,7 +56,7 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
         ..., description="Fips for State + County. Five character code"
     )
     lat: float = pydantic.Field(
-        ..., description="Lattitude of point within the state or county"
+        ..., description="Latitude of point within the state or county"
     )
     long: float = pydantic.Field(
         ..., description="Longitude of point within the state or county"
@@ -118,7 +118,7 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
         ..., description="Fips for State + County. Five character code"
     )
     lat: float = pydantic.Field(
-        ..., description="Lattitude of point within the state or county"
+        ..., description="Latitude of point within the state or county"
     )
     long: float = pydantic.Field(
         ..., description="Longitude of point within the state or county"

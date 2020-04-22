@@ -223,11 +223,11 @@ def build_prediction_header_timeseries_data(data: APIOutput):
         }
 
         for timeseries_data in row.timeseries:
-            header_row = PredictionTimeseriesRowWithHeader(
+            timeseries_row = PredictionTimeseriesRowWithHeader(
                 **summary_data,
                 **timeseries_data.dict()
             )
-            rows.append(header_row)
+            rows.append(timeseries_row)
 
 
     return APIOutput(data.file_stem, rows, data.intervention)
