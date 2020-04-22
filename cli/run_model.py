@@ -41,28 +41,6 @@ def run_county(
         _logger.info("Skip version file because this is not a full run")
 
 
-@main.command("county-summary")
-@click.option("--state", "-s")
-@click.option(
-    "--output",
-    "-o",
-    help="Output directory",
-    type=pathlib.Path,
-    default=pathlib.Path("results/county_summaries"),
-)
-@data_version.with_git_version_click_option
-def run_county_summary(version: data_version.DataVersion, output, state=None):
-    """Run county level model."""
-    min_date = datetime.datetime(2020, 3, 7)
-    can_model_pipeline.build_county_summary(min_date, output, state=state)
-
-    # only write the version if we saved everything
-    if not state:
-        version.write_file("county_summary", output)
-    else:
-        _logger.info("Skip version file because this is not a full run")
-
-
 @main.command("state")
 @click.option("--state", "-s")
 @click.option(

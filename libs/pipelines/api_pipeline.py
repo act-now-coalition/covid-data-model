@@ -1,7 +1,11 @@
 from typing import List
+import pathlib
 from collections import namedtuple
+from collections import defaultdict
 import logging
+
 import pydantic
+from api.can_api_definition import CountyFipsSummary
 from api.can_api_definition import CovidActNowCountySummary
 from api.can_api_definition import CovidActNowCountiesSummary
 from api.can_api_definition import CovidActNowCountiesTimeseries
@@ -179,6 +183,37 @@ def build_counties_timeseries(
     return APIOutput(key, county_api_data, intervention)
 
 
+def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
+    """Builds lists of counties available from model output.
+
+    Args:
+        input_dir: Input directory.  Should point to county output.
+
+    Returns: List of API Output objects.
+    """
+    found_fips_by_state = defaultdict(set)
+    found_fips = set()
+    for path in pathlib.Path(input_dir).iterdir():
+        if not str(path).endswith('.json'):
+            continue
+
+        state, fips, intervention, _ = path.name.split('.')
+        found_fips_by_state[state].add(fips)
+        found_fips.add(fips)
+
+    results = []
+    for state, data in found_fips_by_state.items():
+        fips_summary = CountyFipsSummary(counties_with_data=sorted(list(data)))
+        output = APIOutput(f"{state}.summary", fips_summary, None)
+        results.append(output)
+
+    fips_summary = CountyFipsSummary(counties_with_data=sorted(list(found_fips)))
+    output = APIOutput(f"fips_summary", fips_summary, None)
+    results.append(output)
+    return results
+
+
+
 def deploy_results(results: List[APIOutput], output: str, write_csv=False):
     """Deploys results from the top counties to specified output directory.
 
@@ -187,6 +222,10 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         key: Name for the file to be uploaded
         output: output folder to save results in.
     """
+    output_path = pathlib.Path(output)
+    if not output_path.exists():
+        output_path.mkdir(parents=True, exist_ok=True)
+
     for api_row in results:
         dataset_deployer.upload_json(api_row.file_stem, api_row.data.json(), output)
         if write_csv:
