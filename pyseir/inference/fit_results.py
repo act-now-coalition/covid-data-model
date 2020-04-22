@@ -63,4 +63,4 @@ def load_Rt_result(fips):
         DataFrame containing the R_t inferences.
     """
     path = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
-    return pd.read_json(path, dtype={'fips': str})
+    return pd.read_json(path)
