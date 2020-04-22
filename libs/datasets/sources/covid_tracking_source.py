@@ -68,13 +68,13 @@ class CovidTrackingDataSource(data_source.DataSource):
     }
 
     TEST_FIELDS = [
-         Fields.DATE,
-         Fields.STATE,
-         Fields.POSITIVE_TESTS,
-         Fields.NEGATIVE_TESTS,
-         Fields.POSITIVE_INCREASE,
-         Fields.NEGATIVE_INCREASE,
-         Fields.AGGREGATE_LEVEL
+        Fields.DATE,
+        Fields.STATE,
+        Fields.POSITIVE_TESTS,
+        Fields.NEGATIVE_TESTS,
+        Fields.POSITIVE_INCREASE,
+        Fields.NEGATIVE_INCREASE,
+        Fields.AGGREGATE_LEVEL,
     ]
 
     def __init__(self, input_path):
@@ -96,12 +96,11 @@ class CovidTrackingDataSource(data_source.DataSource):
         # assigning the date field as the date floor of that day.
         data[cls.Fields.DATE] = data[cls.Fields.DATE_CHECKED].dt.floor("D")
 
-
         dtypes = {
-            cls.Fields.POSITIVE_TESTS: 'int32',
-            cls.Fields.NEGATIVE_TESTS: 'int32',
-            cls.Fields.POSITIVE_INCREASE: 'int32',
-            cls.Fields.NEGATIVE_INCREASE: 'int32',
+            cls.Fields.POSITIVE_TESTS: "int32",
+            cls.Fields.NEGATIVE_TESTS: "int32",
+            cls.Fields.POSITIVE_INCREASE: "int32",
+            cls.Fields.NEGATIVE_INCREASE: "int32",
         }
         for col in dtypes.keys():
             data[col] = data[col].fillna(0)
@@ -116,14 +115,18 @@ class CovidTrackingDataSource(data_source.DataSource):
         data[cls.Fields.FIPS] = None
 
         # must stay true: positive + negative  ==  total
-        assert (data[cls.Fields.POSITIVE_TESTS].fillna(0) +\
-             data[cls.Fields.NEGATIVE_TESTS].fillna(0) ==\
-                  data[cls.Fields.TOTAL_TEST_RESULTS].fillna(0)).all()
+        assert (
+            data[cls.Fields.POSITIVE_TESTS].fillna(0)
+            + data[cls.Fields.NEGATIVE_TESTS].fillna(0)
+            == data[cls.Fields.TOTAL_TEST_RESULTS].fillna(0)
+        ).all()
 
         # must stay true: positive chage + negative change ==  total change
-        assert (data[cls.Fields.POSITIVE_INCREASE].fillna(0) +\
-             data[cls.Fields.NEGATIVE_INCREASE].fillna(0) ==\
-                  data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE].fillna(0)).all()
+        assert (
+            data[cls.Fields.POSITIVE_INCREASE].fillna(0)
+            + data[cls.Fields.NEGATIVE_INCREASE].fillna(0)
+            == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE].fillna(0)
+        ).all()
 
         # TODO implement assertion to check for shift, as sliced by geo
         # df['totalTestResults'] - df['totalTestResultsIncrease']  ==  df['totalTestResults'].shift(-1)
