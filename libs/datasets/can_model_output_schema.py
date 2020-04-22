@@ -1,8 +1,9 @@
 """
-Ouput of the
+One data model ouput of the modeling pipeline to serve to the API.
 """
-DATE = "date"
-TOTAL = "total"
+DAY_NUM = 'day_num'      # Index Column. Generally not the same between simulations.
+DATE = "date"            # Date in the timeseries.
+TOTAL = "total"          # All people in the model. This should always be population.
 TOTAL_SUSCEPTIBLE = "susceptible"
 EXPOSED = "exposed"
 INFECTED = "infected"
@@ -12,12 +13,18 @@ INFECTED_C = "infected_c"
 ALL_HOSPITALIZED = "all_hospitalized"
 ALL_INFECTED = "all_infected"
 DEAD = "dead"
-BEDS = "beds"
-POPULATION = "population"
+BEDS = "beds" # General bed capacity excluding ICU beds.
 CUMULATIVE_INFECTED = "cumulative_infected"
+Rt = 'Rt'             # Effective reproduction number at time t.
+Rt_ci90 = 'Rt_ci90'   # 90% confidence interval at time t.
+CURRENT_VENTILATED = 'current_ventilated'
+POPULATION = "population"
+ICU_BED_CAPACITY = "icu_bed_capacity"
+VENTILATOR_CAPACITY = "ventilator_capacity"
+
 
 CAN_MODEL_OUTPUT_SCHEMA = [
-    "day_num",
+    DAY_NUM,
     # ^ for index column
     DATE,
     TOTAL,
@@ -32,13 +39,13 @@ CAN_MODEL_OUTPUT_SCHEMA = [
     DEAD,
     BEDS,
     CUMULATIVE_INFECTED,
-    "j",
-    "k",
-    "l",
+    Rt,
+    Rt_ci90,
+    CURRENT_VENTILATED,
     POPULATION,
-    "m",
-    "n",
+    ICU_BED_CAPACITY,
+    VENTILATOR_CAPACITY,
 ]
 
 # Exclude the unnamed columns from our data frames until we have a use for them
-CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS = ["j","k","l","m","n"]
+CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS = []
