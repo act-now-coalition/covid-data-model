@@ -45,11 +45,11 @@ class _Actuals(pydantic.BaseModel):
     cumulativeConfirmedCases: int = pydantic.Field(
         ..., description="Number of confirmed cases so far"
     )
-    cumulativePosTested: int = pydantic.Field(
-        ..., description="Number of positive test results so far"
+    cumulativePosTested: Optional[int] = pydantic.Field(
+        ..., description="Number of positive test results to date"
     )
-    cumulativeNegTested: int = pydantic.Field(
-        ..., description="Number of negative test results so far"
+    cumulativeNegTested: Optional[int] = pydantic.Field(
+        ..., description="Number of negative test results to date"
     )
     cumulativeDeaths: int = pydantic.Field(..., description="Number of deaths so far")
     hospitalBeds: _ResourceUtilization = pydantic.Field(...)
@@ -111,7 +111,12 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     cumulativeInfected: Optional[int] = pydantic.Field(
         ..., description="Number of cumulative infections"
     )
-
+    cumulativePosTested: Optional[int] = pydantic.Field(
+        ..., description="Number of positive test results to date"
+    )
+    cumulativeNegTested: Optional[int] = pydantic.Field(
+        ..., description="Number of negative test results to date"
+    )
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
