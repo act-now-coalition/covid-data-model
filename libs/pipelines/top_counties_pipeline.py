@@ -33,7 +33,7 @@ def run_projections(
     Returns: TopCountiesPipelineProjectionResult objects for county data.
     """
     # Run County level projections
-    intervention = Intervention.SELECTED_MITIGATION
+    intervention = Intervention.CURRENT_INTERVENTION
 
     counties_key_name = f"counties.{intervention.name}"
     # note i think build_processed_dataset should porbably be renamed?

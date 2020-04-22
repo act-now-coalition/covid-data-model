@@ -31,6 +31,7 @@ class APIOutput(object):
         Args:
             file_stem: Stem of output filename.
             data: Data
+            intervention: Intervention for this data.
 
         """
         self.file_stem = file_stem
