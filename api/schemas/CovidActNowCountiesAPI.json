@@ -1,18 +1,9 @@
 {
   "title": "CovidActNowCountiesAPI",
-  "type": "object",
-  "properties": {
-    "data": {
-      "title": "Data",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/CovidActNowCountySummary"
-      }
-    }
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/CovidActNowCountySummary"
   },
-  "required": [
-    "data"
-  ],
   "definitions": {
     "_ResourceUsageProjection": {
       "title": "_ResourceUsageProjection",
@@ -158,7 +149,7 @@
         },
         "lat": {
           "title": "Lat",
-          "description": "Lattitude of point within the state or county",
+          "description": "Latitude of point within the state or county",
           "type": "number"
         },
         "long": {
