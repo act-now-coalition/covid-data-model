@@ -67,6 +67,12 @@ class CovidTrackingDataSource(data_source.DataSource):
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
+    TESTS_ONLY_FIELDS = [
+        Fields.DATE,
+        Fields.POSITIVE_TESTS,
+        Fields.NEGATIVE_TESTS,
+    ]
+
     TEST_FIELDS = [
         Fields.DATE,
         Fields.STATE,

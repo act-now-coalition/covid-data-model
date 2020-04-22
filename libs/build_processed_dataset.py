@@ -72,12 +72,13 @@ def get_testing_timeseries_by_state(state):
     test_df = _get_testing_df()
     # use a string for dates
     test_df['date'] = test_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
+    # handle missing data
     test_df['positive'] = test_df['positive'].astype(int)
     test_df['negative'] = test_df['negative'].astype(int)
 
     state_test_df = test_df[test_df[CovidTrackingDataSource.Fields.STATE] == state]
     # just select state
-    return state_test_df[['positive', 'negative', 'date']]
+    return state_test_df[CovidTrackingDataSource.TESTS_ONLY_FIELDS]
 
 
 
@@ -183,7 +184,10 @@ def get_usa_by_states_df(input_dir, intervention_type):
         input_dir, intervention_type, interventions_df
     )
     test_df = _get_testing_df()
-    test_max_df = test_df.groupby("abbreviation")["positive", "negative"].max().reset_index()
+    test_max_df = test_df.groupby("abbreviation")[
+        CovidTrackingDataSource.Fields.POSITIVE_TESTS,
+        CovidTrackingDataSource.Fields.NEGATIVE_TESTS
+    ].max().reset_index()
 
     states_group = us_only.groupby(["Province/State"])
     states_agg = states_group.aggregate(
@@ -230,9 +234,13 @@ def get_usa_by_states_df(input_dir, intervention_type):
         ).drop(["abbreviation", "State"], axis=1)
     )
 
-    STATE_COLS_REMAP = OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
-    STATE_COLS_REMAP["positive"] = CUMULATIVE_POSITIVE_TESTS
-    STATE_COLS_REMAP["negative"] = CUMULATIVE_NEGATIVE_TESTS
+
+
+    STATE_COLS_REMAP = {
+        CovidTrackingDataSource.Fields.POSITIVE_TESTS: CUMULATIVE_POSITIVE_TESTS,
+        CovidTrackingDataSource.Fields.NEGATIVE_TESTS: CUMULATIVE_NEGATIVE_TESTS,
+        **OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
+    }
 
     states_remapped = states_abbrev.rename(columns=STATE_COLS_REMAP)
 

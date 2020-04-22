@@ -18,6 +18,7 @@ from libs.functions import get_can_projection
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import can_model_output_schema as can_schema
+from libs.datasets import CovidTrackingDataSource
 from libs.build_processed_dataset import get_testing_timeseries_by_state
 import pandas as pd
 
@@ -99,8 +100,8 @@ def _generate_timeseries_row(json_data_row):
         ICUBedCapacity=None,
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        cumulativePositiveTests=int(json_data_row['positive']),
-        cumulativeNegativeTests=int(json_data_row['negative']),
+        cumulativePositiveTests=int(json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]),
+        cumulativeNegativeTests=int(json_data_row[CovidTrackingDataSource.Fields.NEGATIVE_TESTS]),
     )
 
 def generate_state_timeseries(projection_row, intervention, input_dir) -> CovidActNowStateTimeseries:
