@@ -43,7 +43,7 @@ Forward projections are available for the following scenarios:
 Additionally the most appropriate static scenario based on the per-state intervention is returned by specifying:
 
 ```js
-"CURRENT_INTERVENTION"
+"SELECTED_INTERVENTION"
 ```
 
 To get a dynamic forecast that is based on the actually observed effect of mitigations and other factors in a given state, use:
@@ -104,11 +104,11 @@ Returns projections for the selected county
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties/06077.CURRENT_INTERVENTION.json
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_INTERVENTION.json
 /us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json
 
 # Full timeseries data: actuals + projected limits + data for every four days
-# e.g. https://data.covidactnow.org/latest/us/counties/06077.CURRENT_INTERVENTION.timeseries.json
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_INTERVENTION.timeseries.json
 /latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json
 ```
 
@@ -118,11 +118,11 @@ Returns projections for all counties
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.CURRENT_INTERVENTION.json
+# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_INTERVENTION.json
 /us/counties.<INTERVENTION>.json
 
 # Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/counties.CURRENT_INTERVENTION.timeseries.json
+# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_INTERVENTION.timeseries.json
 /us/counties.<INTERVENTION>.timeseries.json
 ```
 
@@ -130,11 +130,11 @@ County aggregates are also available as CSV files:
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.CURRENT_INTERVENTION.csv
+# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_INTERVENTION.csv
 /latest/us/counties.<INTERVENTION>.csv
 
 # Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/counties.CURRENT_INTERVENTION.timeseries.csv
+# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_INTERVENTION.timeseries.csv
 /latest/us/counties.<INTERVENTION>.timeseries.csv
 ```
 
