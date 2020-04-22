@@ -168,7 +168,7 @@ class WebUIDataAdaptorV1:
             # Col 8 ("g")
             output_model['HICU'] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
             # Col 9 # Don't include vent here because they are also counted in ICU
-            output_model['all_hospitalized'] = hosp_fraction * np.add(output_model['HGen'], output_model['HICU'])
+            output_model['all_hospitalized'] = np.add(output_model['HGen'], output_model['HICU'])
             # Col 10
             output_model['all_infected'] = output_model['all_current_infected']
             # Col 11
