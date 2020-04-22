@@ -29,7 +29,7 @@ Specify either:
 
 1. A US State using two letter abbreviation (eg. 'CA' for California)
 2. A US County using it's [FIPS Code](https://en.wikipedia.org/wiki/FIPS_county_code) (For a list of FIPS Codes, see [this page on the USDA site](https://www.nrcs.usda.gov/wps/portal/nrcs/detail/national/home/?cid=nrcs143_013697))
-3. `/states/` or `counties` to get aggregate projections for all states or counties
+3. `/states/` or `/counties/` to get aggregate projections for all states or counties
 
 ### Invervention Categories
 
