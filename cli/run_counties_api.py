@@ -1,6 +1,6 @@
 import click
 import logging
-
+import os
 
 from libs.pipelines import api_pipeline
 from libs.datasets.dataset_utils import AggregationLevel
@@ -36,6 +36,11 @@ PROD_BUCKET = "data.covidactnow.org"
 )
 def deploy_counties_api(disable_validation, input_dir, output, summary_output):
     """The entry function for invocation"""
+
+    # check that the dirs exist before starting
+    for directory in [input_dir, output, summary_output]:
+        if not os.path.isdir(directory):
+            raise NotADirectoryError(directory)
 
     for intervention in list(Intervention):
         # TODO(issues/#258): remove check once counties support inferrence

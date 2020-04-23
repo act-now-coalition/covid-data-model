@@ -112,6 +112,16 @@
           "description": "Number of confirmed cases so far",
           "type": "integer"
         },
+        "cumulativePositiveTests": {
+          "title": "Cumulativepositivetests",
+          "description": "Number of positive test results to date",
+          "type": "integer"
+        },
+        "cumulativeNegativeTests": {
+          "title": "Cumulativenegativetests",
+          "description": "Number of negative test results to date",
+          "type": "integer"
+        },
         "cumulativeDeaths": {
           "title": "Cumulativedeaths",
           "description": "Number of deaths so far",
@@ -128,6 +138,8 @@
         "population",
         "intervention",
         "cumulativeConfirmedCases",
+        "cumulativePositiveTests",
+        "cumulativeNegativeTests",
         "cumulativeDeaths",
         "hospitalBeds",
         "ICUBeds"
