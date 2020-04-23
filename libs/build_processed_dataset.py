@@ -65,9 +65,8 @@ def _get_testing_df():
         CovidTrackingDataSource.Fields.NEGATIVE_TESTS
     ].astype(int)
 
-    # add abbrievations to real state names
+    # join abbrievations in order to add real state names
     abbrev_df = _get_abbrev_df()
-
     ctd_df = ctd_df[CovidTrackingDataSource.TEST_FIELDS]
     ctd_df = ctd_df.merge(
         abbrev_df,
