@@ -32,8 +32,8 @@ CALCULATED_PROJECTION_HEADERS_SHARED = [
     "Hospital Shortfall Date",
     "Peak Hospitlizations Shortfall",
     "Beds at Peak Hospitilization Date",
-    "Population"
-    "Rt"
+    "Population",
+    "Rt",
     "Rt_stdev"
 ]
 
