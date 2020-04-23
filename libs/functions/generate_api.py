@@ -144,9 +144,9 @@ def generate_state_timeseries(projection_row, intervention, input_dir) -> CovidA
 
     # join in state testing data onto the timeseries
     # left join '%m/%d/%y', so the left join gracefully handles missing state testing data (i.e. NE)
-    test_df = get_testing_timeseries_by_state(projection_row[rc.STATE])
+    testing_df = get_testing_timeseries_by_state(projection_row[rc.STATE])
     new_df = pd.DataFrame(raw_dataseries).merge(
-        test_df, left_on='date', right_on='date', how='left')
+        testing_df, left_on='date', right_on='date', how='left')
 
     # reformat as dict
     can_dataseries = new_df.to_dict(orient='records')

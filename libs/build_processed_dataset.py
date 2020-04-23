@@ -80,10 +80,10 @@ def _get_testing_df():
 
 
 def get_testing_timeseries_by_state(state):
-    test_df = _get_testing_df()
-    state_test_df = test_df[test_df[CovidTrackingDataSource.Fields.STATE] == state]
+    testing_df = _get_testing_df()
     # just select state
-    return state_test_df[CovidTrackingDataSource.TESTS_ONLY_FIELDS]
+    state_testing_df = testing_df[testing_df[CovidTrackingDataSource.Fields.STATE] == state]
+    return state_testing_df[CovidTrackingDataSource.TESTS_ONLY_FIELDS]
 
 
 county_replace_with_null = {"Unassigned": NULL_VALUE}
@@ -188,9 +188,9 @@ def get_usa_by_states_df(input_dir, intervention_type):
     projections_df = get_state_projections_df(
         input_dir, intervention_type, interventions_df
     )
-    test_df = _get_testing_df()
+    testing_df = _get_testing_df()
     test_max_df = (
-        test_df.groupby("abbreviation")[
+        testing_df.groupby("abbreviation")[
             CovidTrackingDataSource.Fields.POSITIVE_TESTS,
             CovidTrackingDataSource.Fields.NEGATIVE_TESTS,
         ]
