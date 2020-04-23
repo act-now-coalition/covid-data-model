@@ -21,8 +21,8 @@ HOSPITAL_SHORTFALL_DATE = "Hospital Shortfall Date"
 PEAK_HOSPITALIZATION_SHORTFALL = "Peak Hospitlizations Shortfall"
 PEAK_BED_CAPACITY = "Peak Bed Capacity"
 POPULATION = "Population"
-R_T = "Rt"
-R_T_STDEV = "RtStdev"
+RT = "Rt"
+RT_CI90 = "Rt_ci90"
 
 RESULT_DATA_COLUMNS_SHARED = [
     STATE,
@@ -48,8 +48,8 @@ RESULT_DATA_COLUMNS_SHARED = [
     PEAK_HOSPITALIZATION_SHORTFALL,
     PEAK_BED_CAPACITY,
     POPULATION,
-    R_T,
-    R_T_STDEV
+    RT,
+    RT_CI90
 ]
 
 NON_INTEGER_FIELDS = [
@@ -64,8 +64,8 @@ NON_INTEGER_FIELDS = [
     COMBINED_KEY,
     COUNTY,
     FIPS,
-    R_T,
-    R_T_STDEV
+    RT,
+    RT_CI90
 ]
 
 SHAPEFILE_FIELDS = [

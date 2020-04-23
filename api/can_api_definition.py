@@ -30,7 +30,7 @@ class _Projections(pydantic.BaseModel):
     Rt: float = pydantic.Field(
         ..., description="Historical or Inferred Rt"
     )
-    RtStdev: float = pydantic.Field(
+    RtCI90: float = pydantic.Field(
         ..., description="Rt standard deviation"
     )
 
