@@ -540,6 +540,21 @@ def load_public_implementations_data():
     return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl')).set_index('fips')
 
 
+def load_whitelist():
+    """
+    Load the whitelist result.
+
+    Returns
+    -------
+    whitelist: pd.DataFrame
+        DataFrame containing a whitelist of product features for counties.
+    """
+    path = get_run_artifact_path(
+        fips='06', # dummy since not used for whitelist.
+        artifact=RunArtifact.WHITELIST_RESULT)
+    return pd.read_json(path, dtype={'fips': str})
+
+
 def cache_all_data():
     """
     Download all datasets locally.
