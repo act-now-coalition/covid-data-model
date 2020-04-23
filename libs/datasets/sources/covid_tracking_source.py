@@ -103,14 +103,12 @@ class CovidTrackingDataSource(data_source.DataSource):
         data[cls.Fields.DATE] = data[cls.Fields.DATE_CHECKED].dt.floor("D")
 
         dtypes = {
-            cls.Fields.POSITIVE_TESTS: "int32",
-            cls.Fields.NEGATIVE_TESTS: "int32",
-            cls.Fields.POSITIVE_INCREASE: "int32",
-            cls.Fields.NEGATIVE_INCREASE: "int32",
+            cls.Fields.POSITIVE_TESTS: "Int64",
+            cls.Fields.NEGATIVE_TESTS: "Int64",
+            cls.Fields.POSITIVE_INCREASE: "Int64",
+            cls.Fields.NEGATIVE_INCREASE: "Int64",
         }
-        for col in dtypes.keys():
-            data[col] = data[col].fillna(0)
-        # fill nulls and set as int
+
         data = data.astype(dtypes)
 
         # Covid Tracking source has the state level fips, however none of the other
@@ -122,16 +120,15 @@ class CovidTrackingDataSource(data_source.DataSource):
 
         # must stay true: positive + negative  ==  total
         assert (
-            data[cls.Fields.POSITIVE_TESTS].fillna(0)
-            + data[cls.Fields.NEGATIVE_TESTS].fillna(0)
-            == data[cls.Fields.TOTAL_TEST_RESULTS].fillna(0)
+            data[cls.Fields.POSITIVE_TESTS]
+            + data[cls.Fields.NEGATIVE_TESTS] == data[cls.Fields.TOTAL_TEST_RESULTS]
         ).all()
 
         # must stay true: positive chage + negative change ==  total change
         assert (
-            data[cls.Fields.POSITIVE_INCREASE].fillna(0)
-            + data[cls.Fields.NEGATIVE_INCREASE].fillna(0)
-            == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE].fillna(0)
+            data[cls.Fields.POSITIVE_INCREASE]
+            + data[cls.Fields.NEGATIVE_INCREASE]
+            == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
         ).all()
 
         # TODO implement assertion to check for shift, as sliced by geo
