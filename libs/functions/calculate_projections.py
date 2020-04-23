@@ -147,6 +147,7 @@ def get_state_projections_df(
     new_df = states_df.parallel_apply(
         lambda x: _calculate_projection_data(x.state, x.path, fips=None), axis=1
     )
+
     num_processed_states = new_df.notnull().sum()["State"]
 
     print(f"Missing {num_processed_states} states were in input_dir: {input_dir}")
@@ -179,16 +180,14 @@ def get_county_projections_df(
         )
     )
     county_df.loc[:, "path"] = county_df.apply(
-        lambda x: get_file_path(input_dir, x.state, x.intervention_type, fips=x.fips),
-        axis=1,
-    ).values
+        lambda x: get_file_path(input_dir, x.state, x.intervention_type, x.fips), axis=1
+    )
+
     new_df = county_df.parallel_apply(
         lambda x: _calculate_projection_data(x.state, x.path, fips=x.fips), axis=1
     )
-
     missing = new_df.isnull().sum()["State"]
-
-    if missing > 2000:
-        raise Exception(f"Missing a majority of counties from input_dir: {input_dir}")
+    # if missing > 2000:
+    #     raise Exception(f"Missing a majority of counties from input_dir: {input_dir}")
     print(f"Models missing for {missing} counties")
     return new_df

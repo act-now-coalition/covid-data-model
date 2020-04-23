@@ -18,7 +18,6 @@ OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
     "Population": "Population"
 }
 
-
 CALCULATED_PROJECTION_HEADERS_SHARED = [
     '16-day_Hospitalization_Prediction',
     '32-day_Hospitalization_Prediction',

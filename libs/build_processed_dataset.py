@@ -155,15 +155,18 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
             left_on="State/County FIPS Code",
             right_on="FIPS",
             how="inner",
-        )
-        .merge(fips_df[["state", "fips"]], left_on="FIPS", right_on="fips", how="inner")
-        .merge(interventions_df, left_on="state", right_on="state", how="inner")
+        ).merge(
+            fips_df[["state", "fips"]],
+            left_on="FIPS", right_on="fips", how="inner"
+        ).merge(
+            interventions_df, left_on="state", right_on="state", how="inner"
+        ).drop(['State', 'state'], axis=1)
     )
 
     counties_remapped = counties_decorated.rename(
         columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
     )
-    counties = pd.DataFrame(counties_remapped, columns=RESULT_DATA_COLUMNS_COUNTIES)
+    counties = pd.DataFrame(counties_remapped)[RESULT_DATA_COLUMNS_COUNTIES]
     counties = counties.fillna(NULL_VALUE)
     counties.index.name = "OBJECTID"
     # assert unique key test
@@ -233,8 +236,6 @@ def get_usa_by_states_df(input_dir, intervention_type):
             how="left",
         ).drop(["abbreviation", "State"], axis=1)
     )
-
-
 
     STATE_COLS_REMAP = {
         CovidTrackingDataSource.Fields.POSITIVE_TESTS: CUMULATIVE_POSITIVE_TESTS,
