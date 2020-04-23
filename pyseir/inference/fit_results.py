@@ -41,4 +41,26 @@ def load_inference_result(fips):
         Dictionary of fit result information.
     """
     output_file = get_run_artifact_path(fips, RunArtifact.MLE_FIT_RESULT)
-    return pd.read_json(output_file).iloc[0].to_dict()
+    df = pd.read_json(output_file, dtype={'fips': 'str'})
+    if len(fips) == 2:
+        return df.iloc[0].to_dict()
+    else:
+        return df.set_index('fips').loc[fips].to_dict()
+
+
+def load_Rt_result(fips):
+    """
+    Load the Rt inference result.
+
+    Parameters
+    ----------
+    fips: str
+        State or County FIPS code.
+
+    Returns
+    -------
+    results: pd.DataFrame
+        DataFrame containing the R_t inferences.
+    """
+    path = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
+    return pd.read_json(path)

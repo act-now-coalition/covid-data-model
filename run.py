@@ -7,6 +7,8 @@ import os
 import logging
 import click
 import sentry_sdk
+from pandarallel import pandarallel
+
 from cli import run_data
 from cli import run_model
 from cli import run_dod_dataset
@@ -28,12 +30,14 @@ entry_point.add_command(run_model.main)
 entry_point.add_command(run_dod_dataset.deploy_dod_projections)
 entry_point.add_command(run_top_counties_dataset.deploy_top_counties)
 entry_point.add_command(run_counties_api.deploy_counties_api)
+entry_point.add_command(run_counties_api.county_fips_summaries)
 entry_point.add_command(run_states_api.deploy_states_api)
 entry_point.add_command(api.main)
 
 if __name__ == "__main__":
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
     logging.basicConfig(level=logging.INFO)
+    pandarallel.initialize(progress_bar=True)
     try:
         entry_point()
     except Exception as e:
