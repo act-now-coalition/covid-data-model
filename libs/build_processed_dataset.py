@@ -256,14 +256,9 @@ def get_usa_by_states_df(input_dir, intervention_type):
     states_remapped = states_abbrev.rename(columns=STATE_COLS_REMAP)
 
     states_final = pd.DataFrame(states_remapped, columns=RESULT_DATA_COLUMNS_STATES)
-    states_final[CUMULATIVE_POSITIVE_TESTS] = states_final[
-        CUMULATIVE_POSITIVE_TESTS
-    ].fillna(0)
-    states_final[CUMULATIVE_NEGATIVE_TESTS] = states_final[
-        CUMULATIVE_NEGATIVE_TESTS
-    ].fillna(0)
 
-    # states_final = states_final.fillna(NULL_VALUE)
+    # Keep nulls as nulls
+    states_final = states_final.fillna(NULL_VALUE)
     states_final["Combined Key"] = states_final["Province/State"]
     states_final["State/County FIPS Code"] = states_final["Province/State"].map(us_fips)
 

@@ -77,13 +77,14 @@ def _generate_api_for_projections(projection_row):
 
 def _generate_state_actuals(projection_row, state):
     intervention_str = get_can_projection.get_intervention_for_state(state).name
+
     return _Actuals(
         population=projection_row[rc.POPULATION],
         intervention=intervention_str,
         cumulativeConfirmedCases=projection_row[rc.CURRENT_CONFIRMED],
         cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
-        cumulativePositiveTests=projection_row[rc.CUMULATIVE_POSITIVE_TESTS],
-        cumulativeNegativeTests=projection_row[rc.CUMULATIVE_NEGATIVE_TESTS],
+        cumulativePositiveTests=_get_or_none(projection_row[rc.CUMULATIVE_POSITIVE_TESTS]),
+        cumulativeNegativeTests=_get_or_none(projection_row[rc.CUMULATIVE_NEGATIVE_TESTS]),
         hospitalBeds = {
             "capacity": projection_row[rc.PEAK_BED_CAPACITY],
             "currentUsage": None # TODO(igor): Get from Covidtracking source
@@ -116,8 +117,8 @@ def _generate_state_timeseries_row(json_data_row):
         ICUBedCapacity=None,
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        cumulativePositiveTests=int(json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]),
-        cumulativeNegativeTests=int(json_data_row[CovidTrackingDataSource.Fields.NEGATIVE_TESTS]),
+        cumulativePositiveTests=_get_or_none(json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]),
+        cumulativeNegativeTests=_get_or_none(json_data_row[CovidTrackingDataSource.Fields.NEGATIVE_TESTS]),
     )
 
 def _generate_county_timeseries_row(json_data_row):
