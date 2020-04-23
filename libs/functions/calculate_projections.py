@@ -82,8 +82,8 @@ def _calculate_projection_data(file_path):
         peak_hospitalizations_short_falls = df.iloc[df.all_hospitalized.idxmax()].short_fall
         peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
         population = df.iloc[0].population
-        r_t = df.iloc[10].r_t
-        r_t_stdev = df.iloc[10].r_t_stdev
+        r_t = df.iloc[-1].r_t # use the last row until we have a way to get day 0 reliably
+        r_t_stdev = df.iloc[-1].r_t_stdev # ditto
         return [
             hosp_16_days,
             hosp_32_days,
