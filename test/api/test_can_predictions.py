@@ -37,6 +37,8 @@ class CovidTimeseriesModelTest(unittest.TestCase):
         'intervention' : "stay_at_home",
         'cumulativeConfirmedCases' : 10,
         'cumulativeDeaths' : 5,
+        'cumulativePositiveTests': None,
+        'cumulativeNegativeTests': 20,
         'hospitalBeds' : {
           'capacity' : 100,
           'currentUsage' : 3

@@ -159,6 +159,8 @@ This is the data format for both states and counties. `timeseries` is only inclu
   actuals: {
     population,
     intervention, // one of (NO_INTERVENTION, WEAK_INTERVENTION, STRONG_INTERVENTION, OBSERVED_INTERVENTION)
+    cumulativePositiveTests,
+    cumulativeNegativeTests,
     cumulativeConfirmedCases,
     cumulativeDeaths,
     hospitalBeds: {
@@ -181,6 +183,8 @@ This is the data format for both states and counties. `timeseries` is only inclu
     hospitalBedCapacity,
     ICUBedsInUse,
     ICUBedCapacity, // Coming soon where availabe, null currently
+    cumulativePositiveTests,
+    cumulativeNegativeTests,
     cumulativeDeaths,
     cumulativeInfected,
   }],

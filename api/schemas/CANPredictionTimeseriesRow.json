@@ -37,6 +37,16 @@
       "title": "Cumulativeinfected",
       "description": "Number of cumulative infections",
       "type": "integer"
+    },
+    "cumulativePositiveTests": {
+      "title": "Cumulativepositivetests",
+      "description": "Number of positive test results to date",
+      "type": "integer"
+    },
+    "cumulativeNegativeTests": {
+      "title": "Cumulativenegativetests",
+      "description": "Number of negative test results to date",
+      "type": "integer"
     }
   },
   "required": [
@@ -46,6 +56,8 @@
     "ICUBedsInUse",
     "ICUBedCapacity",
     "cumulativeDeaths",
-    "cumulativeInfected"
+    "cumulativeInfected",
+    "cumulativePositiveTests",
+    "cumulativeNegativeTests"
   ]
 }

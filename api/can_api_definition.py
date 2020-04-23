@@ -52,6 +52,12 @@ class _Actuals(pydantic.BaseModel):
     cumulativeConfirmedCases: int = pydantic.Field(
         ..., description="Number of confirmed cases so far"
     )
+    cumulativePositiveTests: Optional[int] = pydantic.Field(
+        ..., description="Number of positive test results to date"
+    )
+    cumulativeNegativeTests: Optional[int] = pydantic.Field(
+        ..., description="Number of negative test results to date"
+    )
     cumulativeDeaths: int = pydantic.Field(..., description="Number of deaths so far")
     hospitalBeds: _ResourceUtilization = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
@@ -112,7 +118,12 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     cumulativeInfected: Optional[int] = pydantic.Field(
         ..., description="Number of cumulative infections"
     )
-
+    cumulativePositiveTests: Optional[int] = pydantic.Field(
+        ..., description="Number of positive test results to date"
+    )
+    cumulativeNegativeTests: Optional[int] = pydantic.Field(
+        ..., description="Number of negative test results to date"
+    )
 
 class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
     countryName: str = "US"
