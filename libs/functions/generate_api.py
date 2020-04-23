@@ -185,4 +185,4 @@ def generate_api_for_county_projection(projection) -> CovidActNowCountiesAPI:
     for index, county_row in projection.iterrows():
         county_result = generate_api_for_county_projection_row(county_row)
         api_results.append(county_result)
-    return CovidActNowCountiesAPI(data=api_results)
+    return CovidActNowCountiesAPI(__root__=api_results)
