@@ -12,11 +12,13 @@ import math, sys
 
 from urllib.parse import urlparse
 from collections import defaultdict
+from functools import lru_cache
 
 from libs.CovidDatasets import get_public_data_base_url
 from libs.us_state_abbrev import US_STATE_ABBREV, us_fips
 from libs.datasets import FIPSPopulation
 from libs.datasets import JHUDataset
+from libs.datasets import CovidTrackingDataSource
 from libs.enums import Intervention
 from libs.functions.calculate_projections import (
     get_state_projections_df,
@@ -26,12 +28,15 @@ from libs.datasets.projections_schema import OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
 from libs.datasets.results_schema import (
     RESULT_DATA_COLUMNS_STATES,
     RESULT_DATA_COLUMNS_COUNTIES,
+    CUMULATIVE_POSITIVE_TESTS,
+    CUMULATIVE_NEGATIVE_TESTS,
 )
 from libs.constants import NULL_VALUE
 
 _logger = logging.getLogger(__name__)
 
 
+@lru_cache(None)
 def _get_interventions_df():
     # TODO: read this from a dataset class
     interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
@@ -44,6 +49,41 @@ def _get_abbrev_df():
     return pd.DataFrame(
         list(US_STATE_ABBREV.items()), columns=["state", "abbreviation"]
     )
+
+
+def _get_testing_df():
+    # TODO: read this from a dataset class
+
+    ctd_df = CovidTrackingDataSource.local().data
+    # use a string for dates
+    ctd_df["date"] = ctd_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
+    # handle missing data
+    ctd_df[CovidTrackingDataSource.Fields.POSITIVE_TESTS] = ctd_df[
+        CovidTrackingDataSource.Fields.POSITIVE_TESTS
+    ].astype(int)
+    ctd_df[CovidTrackingDataSource.Fields.NEGATIVE_TESTS] = ctd_df[
+        CovidTrackingDataSource.Fields.NEGATIVE_TESTS
+    ].astype(int)
+
+    # join abbrievations in order to add real state names
+    abbrev_df = _get_abbrev_df()
+    ctd_df = ctd_df[CovidTrackingDataSource.TEST_FIELDS]
+    ctd_df = ctd_df.merge(
+        abbrev_df,
+        left_on="state",
+        right_on="abbreviation",
+        how="inner",
+        suffixes=["_dropcol", ""],
+    ).drop("state_dropcol", axis=1)
+
+    return ctd_df
+
+
+def get_testing_timeseries_by_state(state):
+    testing_df = _get_testing_df()
+    # just select state
+    state_testing_df = testing_df[testing_df[CovidTrackingDataSource.Fields.STATE] == state]
+    return state_testing_df[CovidTrackingDataSource.TESTS_ONLY_FIELDS]
 
 
 county_replace_with_null = {"Unassigned": NULL_VALUE}
@@ -122,18 +162,21 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
         )
         .merge(fips_df[["state", "fips"]], left_on="FIPS", right_on="fips", how="inner")
         .merge(interventions_df, left_on="state", right_on="state", how="inner")
+        .drop(["State", "state"], axis=1)
     )
 
     counties_remapped = counties_decorated.rename(
         columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
     )
-    counties = pd.DataFrame(counties_remapped, columns=RESULT_DATA_COLUMNS_COUNTIES)
+    counties = pd.DataFrame(counties_remapped)[RESULT_DATA_COLUMNS_COUNTIES]
     counties = counties.fillna(NULL_VALUE)
     counties.index.name = "OBJECTID"
     # assert unique key test
 
     if counties["Combined Key"].value_counts().max() != 1:
-        raise Exception(f"counties['Combined Key'].value_counts().max() = {counties['Combined Key'].value_counts().max()}, at input_dir {input_dir}.")
+        raise Exception(
+            f"counties['Combined Key'].value_counts().max() = {counties['Combined Key'].value_counts().max()}, at input_dir {input_dir}."
+        )
     return counties
 
 
@@ -144,6 +187,15 @@ def get_usa_by_states_df(input_dir, intervention_type):
     interventions_df = _get_interventions_df()
     projections_df = get_state_projections_df(
         input_dir, intervention_type, interventions_df
+    )
+    testing_df = _get_testing_df()
+    test_max_df = (
+        testing_df.groupby("abbreviation")[
+            CovidTrackingDataSource.Fields.POSITIVE_TESTS,
+            CovidTrackingDataSource.Fields.NEGATIVE_TESTS,
+        ]
+        .max()
+        .reset_index()
     )
 
     states_group = us_only.groupby(["Province/State"])
@@ -163,27 +215,54 @@ def get_usa_by_states_df(input_dir, intervention_type):
     )
 
     # basically the states_agg has full state names, the interventions have abbreviation so we need these to be merged
+    # inner merge to filter to only the 50 states+DC.  (left join to avoid missing data)
     states_abbrev = (
-        states_agg.merge(abbrev_df, left_index=True, right_on="state", how="left")
+        states_agg.merge(
+            abbrev_df,  # adds 'state', 'abbreviation'
+            left_index=True,
+            right_on="state",
+            how="left",
+        )
         .merge(
-            # inner merge to filter to only the 50 states
-            interventions_df,
+            test_max_df,  # adds state, positive, negative
+            left_on="abbreviation",
+            right_on="abbreviation",
+            how="left",
+        )
+        .merge(
+            interventions_df,  # add intervention columns
             left_on="abbreviation",
             right_on="state",
             how="inner",
+            suffixes=["", "_dropcol"],
         )
-        .merge(projections_df, left_on="state_y", right_on="State", how="left")
-        .drop(["abbreviation", "state_y", "State"], axis=1)
+        .drop("state_dropcol", axis=1)
+        .merge(
+            projections_df,  # add projection columns
+            left_on="abbreviation",
+            right_on="State",
+            how="left",
+        )
+        .drop(["abbreviation", "State"], axis=1)
     )
 
-    states_remapped = states_abbrev.rename(columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA)
+    STATE_COLS_REMAP = {
+        CovidTrackingDataSource.Fields.POSITIVE_TESTS: CUMULATIVE_POSITIVE_TESTS,
+        CovidTrackingDataSource.Fields.NEGATIVE_TESTS: CUMULATIVE_NEGATIVE_TESTS,
+        **OUTPUT_COLUMN_REMAP_TO_RESULT_DATA,
+    }
+
+    states_remapped = states_abbrev.rename(columns=STATE_COLS_REMAP)
 
     states_final = pd.DataFrame(states_remapped, columns=RESULT_DATA_COLUMNS_STATES)
+
+    # Keep nulls as nulls
     states_final = states_final.fillna(NULL_VALUE)
     states_final["Combined Key"] = states_final["Province/State"]
     states_final["State/County FIPS Code"] = states_final["Province/State"].map(us_fips)
 
     states_final.index.name = "OBJECTID"
+
     # assert unique key test
     assert states_final["Combined Key"].value_counts().max() == 1
 

@@ -67,6 +67,22 @@ class CovidTrackingDataSource(data_source.DataSource):
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
+    TESTS_ONLY_FIELDS = [
+        Fields.DATE,
+        Fields.POSITIVE_TESTS,
+        Fields.NEGATIVE_TESTS,
+    ]
+
+    TEST_FIELDS = [
+        Fields.DATE,
+        Fields.STATE,
+        Fields.POSITIVE_TESTS,
+        Fields.NEGATIVE_TESTS,
+        Fields.POSITIVE_INCREASE,
+        Fields.NEGATIVE_INCREASE,
+        Fields.AGGREGATE_LEVEL,
+    ]
+
     def __init__(self, input_path):
         data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE_CHECKED])
         data = self.standardize_data(data)
@@ -86,12 +102,37 @@ class CovidTrackingDataSource(data_source.DataSource):
         # assigning the date field as the date floor of that day.
         data[cls.Fields.DATE] = data[cls.Fields.DATE_CHECKED].dt.floor("D")
 
+        dtypes = {
+            cls.Fields.POSITIVE_TESTS: "Int64",
+            cls.Fields.NEGATIVE_TESTS: "Int64",
+            cls.Fields.POSITIVE_INCREASE: "Int64",
+            cls.Fields.NEGATIVE_INCREASE: "Int64",
+        }
+
+        data = data.astype(dtypes)
+
         # Covid Tracking source has the state level fips, however none of the other
         # data sources have state level fips, and the generic code may implicitly assume
         # it doesn't.  I would like to add a state level fips (maybe for example a state fips code
         # of 45 being 45000), but it's not there, so in the meantime we're setting fips to null so
         # as not to confuse downstream data.
         data[cls.Fields.FIPS] = None
+
+        # must stay true: positive + negative  ==  total
+        assert (
+            data[cls.Fields.POSITIVE_TESTS]
+            + data[cls.Fields.NEGATIVE_TESTS] == data[cls.Fields.TOTAL_TEST_RESULTS]
+        ).all()
+
+        # must stay true: positive chage + negative change ==  total change
+        assert (
+            data[cls.Fields.POSITIVE_INCREASE]
+            + data[cls.Fields.NEGATIVE_INCREASE]
+            == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
+        ).all()
+
+        # TODO implement assertion to check for shift, as sliced by geo
+        # df['totalTestResults'] - df['totalTestResultsIncrease']  ==  df['totalTestResults'].shift(-1)
 
         # Since we're using this data for hospitalized data only, only returning
         # values with hospitalization data.  I think as the use cases of this data source
