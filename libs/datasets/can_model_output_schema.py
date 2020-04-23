@@ -22,7 +22,6 @@ POPULATION = "population"
 ICU_BED_CAPACITY = "icu_bed_capacity"
 VENTILATOR_CAPACITY = "ventilator_capacity"
 
-
 CAN_MODEL_OUTPUT_SCHEMA = [
     DAY_NUM,
     # ^ for index column
