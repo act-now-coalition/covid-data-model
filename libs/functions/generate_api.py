@@ -69,6 +69,8 @@ def _generate_api_for_projections(projection_row):
     projections = _Projections(
         totalHospitalBeds=_hospital_beds,
         ICUBeds=None,
+        Rt=_get_or_zero(projection_row[rc.RT]),
+        RtCI90=_get_or_zero(projection_row[rc.RT_CI90]),
     )
     return projections
 

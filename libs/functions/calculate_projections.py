@@ -50,6 +50,8 @@ def _read_json_as_df(path):
     df["beds"] = df["beds"].astype("int")
     df["dead"] = df["dead"].astype("int")
     df["population"] = df["population"].astype("int")
+    df["Rt"] = df["Rt"].astype("float")
+    df["Rt_ci90"] = df["Rt_ci90"].astype("float")
     return df
 
 
@@ -92,6 +94,9 @@ def _calculate_projection_data(state, file_path, fips=None):
         ].short_fall
         peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
         population = df.iloc[0].population
+        Rt = df.iloc[-1].Rt # use the last row until we have a way to get day 0 reliably
+        Rt_ci90 = df.iloc[-1].Rt_ci90 # ditto
+
 
         record["State"] = state
         if fips:
@@ -109,6 +114,8 @@ def _calculate_projection_data(state, file_path, fips=None):
         record["Peak Hospitlizations Shortfall"] = peak_hospitalizations_short_falls
         record["Beds at Peak Hospitilization Date"] = beds_at_peak_hospitalization_date
         record["Population"] = population
+        record["Rt"] = Rt
+        record["Rt_ci90"] = Rt_ci90
 
     return pd.Series(record)
 
