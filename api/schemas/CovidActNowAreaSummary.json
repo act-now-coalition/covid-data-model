@@ -93,11 +93,23 @@
               "$ref": "#/definitions/_ResourceUsageProjection"
             }
           ]
+        },
+        "Rt": {
+          "title": "Rt",
+          "description": "Historical or Inferred Rt",
+          "type": "number"
+        },
+        "RtCI90": {
+          "title": "Rtci90",
+          "description": "Rt standard deviation",
+          "type": "number"
         }
       },
       "required": [
         "totalHospitalBeds",
-        "ICUBeds"
+        "ICUBeds",
+        "Rt",
+        "RtCI90"
       ]
     },
     "_ResourceUtilization": {
