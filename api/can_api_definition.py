@@ -27,6 +27,13 @@ class _Projections(pydantic.BaseModel):
     ICUBeds: Optional[_ResourceUsageProjection] = pydantic.Field(
         ..., description="Projection about ICU hospital bed utilization"
     )
+    Rt: float = pydantic.Field(
+        ..., description="Historical or Inferred Rt"
+    )
+    RtStdev: float = pydantic.Field(
+        ..., description="Rt standard deviation"
+    )
+
 
 class _ResourceUtilization(pydantic.BaseModel):
     capacity: int = pydantic.Field(..., description="Total capacity for resource")
