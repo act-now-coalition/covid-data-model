@@ -1,18 +1,9 @@
 {
   "title": "CovidActNowCountiesTimeseries",
-  "type": "object",
-  "properties": {
-    "data": {
-      "title": "Data",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/CovidActNowCountyTimeseries"
-      }
-    }
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/CovidActNowCountyTimeseries"
   },
-  "required": [
-    "data"
-  ],
   "definitions": {
     "_ResourceUsageProjection": {
       "title": "_ResourceUsageProjection",
@@ -63,11 +54,23 @@
               "$ref": "#/definitions/_ResourceUsageProjection"
             }
           ]
+        },
+        "Rt": {
+          "title": "Rt",
+          "description": "Historical or Inferred Rt",
+          "type": "number"
+        },
+        "RtCI90": {
+          "title": "Rtci90",
+          "description": "Rt standard deviation",
+          "type": "number"
         }
       },
       "required": [
         "totalHospitalBeds",
-        "ICUBeds"
+        "ICUBeds",
+        "Rt",
+        "RtCI90"
       ]
     },
     "_ResourceUtilization": {
@@ -197,7 +200,7 @@
         },
         "lat": {
           "title": "Lat",
-          "description": "Lattitude of point within the state or county",
+          "description": "Latitude of point within the state or county",
           "type": "number"
         },
         "long": {

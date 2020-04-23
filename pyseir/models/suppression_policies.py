@@ -2,10 +2,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
-from pyseir.load_data import (load_public_implementations_data,
-                              load_county_metadata,
-                              load_county_case_data)
+from pyseir import load_data
 from pyseir.inference.infer_t0 import infer_t0
+from pyseir.inference import fit_results
 
 
 # Fig 4 of Imperial college.
@@ -214,7 +213,7 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression,
     rho = []
 
     # Check for fips that don't match.
-    public_implementations = load_public_implementations_data()
+    public_implementations = load_data.load_public_implementations_data()
 
     # Not all counties present in this dataset.
     if fips not in public_implementations.index:
@@ -295,7 +294,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t
     """
-    county_metadata = load_county_metadata()
+    county_metadata = load_data.load_county_metadata()
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
     
     if reference_start_date is None:
