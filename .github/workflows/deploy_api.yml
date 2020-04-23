@@ -267,7 +267,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SOURCE_DIR: './tmp/data/api-results-${{env.SNAPSHOT_ID}}/'
         DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}/'
-    
+
     - name: remove local tmp directory
       run: |
         rm -rf ./tmp/data/
