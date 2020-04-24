@@ -41,7 +41,9 @@ def run_projections(
         input_file, intervention.value
     )
     if run_validation:
-        validate_results.validate_counties_df(counties_key_name, counties_df)
+        validate_results.validate_counties_df(
+            counties_key_name, counties_df, intervention
+        )
 
     county_results = TopCountiesPipelineProjectionResult(counties_df)
 

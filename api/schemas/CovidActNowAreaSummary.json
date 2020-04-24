@@ -139,6 +139,7 @@
         "population": {
           "title": "Population",
           "description": "Total population in geographic area",
+          "exclusiveMinimum": 0,
           "type": "integer"
         },
         "intervention": {
@@ -149,6 +150,16 @@
         "cumulativeConfirmedCases": {
           "title": "Cumulativeconfirmedcases",
           "description": "Number of confirmed cases so far",
+          "type": "integer"
+        },
+        "cumulativePositiveTests": {
+          "title": "Cumulativepositivetests",
+          "description": "Number of positive test results to date",
+          "type": "integer"
+        },
+        "cumulativeNegativeTests": {
+          "title": "Cumulativenegativetests",
+          "description": "Number of negative test results to date",
           "type": "integer"
         },
         "cumulativeDeaths": {
@@ -167,6 +178,8 @@
         "population",
         "intervention",
         "cumulativeConfirmedCases",
+        "cumulativePositiveTests",
+        "cumulativeNegativeTests",
         "cumulativeDeaths",
         "hospitalBeds",
         "ICUBeds"

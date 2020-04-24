@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 from libs.CovidDatasets import get_public_data_base_url
 from libs.constants import NULL_VALUE
 from libs.datasets.results_schema import NON_INTEGER_FIELDS, SHAPEFILE_FIELDS
+from libs.datasets.common_fields import CommonFields
+
 
 def _file_uri_to_path(uri: str) -> str:
     return urlparse(uri).path
@@ -70,7 +72,7 @@ def get_usa_state_shapefile(use_state_df) -> Tuple[io.BytesIO, io.BytesIO, io.By
             f"{public_data_path}/data/shapefiles-uscensus/tl_2019_us_state"
         ),
         "STATEFP",
-        "State/County FIPS Code",
+        CommonFields.FIPS,
         shp_writer,
     )
     return shp, shx, dbf
@@ -91,7 +93,7 @@ def get_usa_county_shapefile(county_df) -> Tuple[io.BytesIO, io.BytesIO, io.Byte
             f"{public_data_path}/data/shapefiles-uscensus/tl_2019_us_county"
         ),
         "GEOID",
-        "State/County FIPS Code",
+        CommonFields.FIPS,
         shp_writer,
     )
     return shp, shx, dbf

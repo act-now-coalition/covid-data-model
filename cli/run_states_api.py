@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import click
 import logging
+import os
 
 
 from libs.pipelines import api_pipeline
@@ -34,6 +35,11 @@ PROD_BUCKET = "data.covidactnow.org"
 )
 def deploy_states_api(disable_validation, input_dir, output, summary_output):
     """The entry function for invocation"""
+
+    # check that the dirs exist before starting
+    for directory in [input_dir, output, summary_output]:
+        if not os.path.isdir(directory):
+            raise NotADirectoryError(directory)
 
     for intervention in list(Intervention):
         logger.info(f"Running intervention {intervention.name}")
