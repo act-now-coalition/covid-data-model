@@ -185,6 +185,10 @@ This is the data format for both states and counties. `timeseries` is only inclu
     ICUBedCapacity, // Coming soon where availabe, null currently
     cumulativePositiveTests,
     cumulativeNegativeTests,
+    ventilatorsInUse,
+    ventilatorCapacity,
+    Rt,
+    RtCI90,
     cumulativeDeaths,
     cumulativeInfected,
   }],
