@@ -1,7 +1,7 @@
 from libs.datasets import CommonFields
+from libs.datasets import can_model_output_schema
 
-
-STATE = CommonFields.STATE_FULL_NAME
+STATE_FULL_NAME = CommonFields.STATE_FULL_NAME
 COUNTRY = "Country/Region"
 LAST_UPDATED = "Last Update"
 LATITUDE = "Latitude"
@@ -27,8 +27,9 @@ POPULATION = "Population"
 RT = "Rt"
 RT_CI90 = "Rt_ci90"
 
+
 RESULT_DATA_COLUMNS_SHARED = [
-    STATE,
+    STATE_FULL_NAME,
     COUNTRY,
     LAST_UPDATED,
     LATITUDE,
@@ -52,7 +53,7 @@ RESULT_DATA_COLUMNS_SHARED = [
     PEAK_BED_CAPACITY,
     POPULATION,
     RT,
-    RT_CI90
+    RT_CI90,
 ]
 
 NON_INTEGER_FIELDS = [
@@ -61,7 +62,7 @@ NON_INTEGER_FIELDS = [
     PEAK_DEATHS,
     HOSPITAL_SHORTFALL_DATE,
     PEAK_HOSPITALIZATION_SHORTFALL,
-    STATE,
+    STATE_FULL_NAME,
     COUNTRY,
     LAST_UPDATED,
     COMBINED_KEY,
