@@ -51,7 +51,9 @@ def run_projections(
         county_input_file, intervention.value
     )
     if run_validation:
-        validate_results.validate_counties_df(counties_key_name, counties_df)
+        validate_results.validate_counties_df(
+            counties_key_name, counties_df, intervention
+        )
 
     (
         counties_shp,

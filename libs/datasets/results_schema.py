@@ -101,3 +101,17 @@ EXPECTED_MISSING_STATES = set([
 EXPECTED_MISSING_STATES_FROM_COUNTES = set([
     'District of Columbia'
 ])
+
+# Many counties don't have inference results, including all counties in a few states.
+EXPECTED_MISSING_STATES_FROM_COUNTIES_OBSERVED_INTERVENTION = set(
+    [
+        "Rhode Island",
+        "South Dakota",
+        "Montana",
+        "North Dakota",
+        "Hawaii",
+        "Wyoming",
+        "Alaska",
+        "West Virginia",
+    ]
+)
