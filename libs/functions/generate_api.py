@@ -131,6 +131,8 @@ def _generate_state_timeseries_row(json_data_row):
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
         ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
         ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
+        Rt=json_data_row[can_schema.Rt],
+        RtCI90=json_data_row[can_schema.Rt_ci90],
         cumulativePositiveTests=_get_or_none(
             json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]
         ),
