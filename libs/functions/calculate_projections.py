@@ -103,7 +103,6 @@ def _calculate_projection_data(state, file_path, fips=None):
     Rt = df.iloc[-1].Rt
     Rt_ci90 = df.iloc[-1].Rt_ci90 # ditto
 
-
     record["State"] = state
     if fips:
         record["FIPS"] = fips
@@ -122,7 +121,7 @@ def _calculate_projection_data(state, file_path, fips=None):
     record["Population"] = population
     record["Rt"] = Rt
     record["Rt_ci90"] = Rt_ci90
-
+    return pd.Series(record)
 
 def _get_intervention_type(intervention_type, state, state_interventions_df):
     if intervention_type == Intervention.SELECTED_INTERVENTION.value:
