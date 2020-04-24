@@ -28,6 +28,16 @@
       "description": "Number of ICU beds projected to be in-use or actually in use (if in the past)",
       "type": "integer"
     },
+    "ventilatorsInUse": {
+      "title": "Ventilatorsinuse",
+      "description": "Number of ventilators projected to be in-use.",
+      "type": "integer"
+    },
+    "ventilatorCapacity": {
+      "title": "Ventilatorcapacity",
+      "description": "Total ventilator capacity.",
+      "type": "integer"
+    },
     "cumulativeDeaths": {
       "title": "Cumulativedeaths",
       "description": "Number of cumulative deaths",
@@ -37,6 +47,16 @@
       "title": "Cumulativeinfected",
       "description": "Number of cumulative infections",
       "type": "integer"
+    },
+    "cumulativePositiveTests": {
+      "title": "Cumulativepositivetests",
+      "description": "Number of positive test results to date",
+      "type": "integer"
+    },
+    "cumulativeNegativeTests": {
+      "title": "Cumulativenegativetests",
+      "description": "Number of negative test results to date",
+      "type": "integer"
     }
   },
   "required": [
@@ -45,7 +65,11 @@
     "hospitalBedCapacity",
     "ICUBedsInUse",
     "ICUBedCapacity",
+    "ventilatorsInUse",
+    "ventilatorCapacity",
     "cumulativeDeaths",
-    "cumulativeInfected"
+    "cumulativeInfected",
+    "cumulativePositiveTests",
+    "cumulativeNegativeTests"
   ]
 }
