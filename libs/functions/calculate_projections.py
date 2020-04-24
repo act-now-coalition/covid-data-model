@@ -10,9 +10,7 @@ from libs.datasets.can_model_output_schema import (
     CAN_MODEL_OUTPUT_SCHEMA,
     CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS,
 )
-from libs.datasets.projections_schema import (
-    CALCULATED_PROJECTION_HEADERS_STATES,
-)
+from libs.datasets.projections_schema import CALCULATED_PROJECTION_HEADERS_STATES
 from libs.enums import Intervention
 from libs.constants import NULL_VALUE
 
@@ -73,9 +71,7 @@ def _calculate_projection_data(state, file_path, fips=None):
     df = _read_json_as_df(file_path)
     df["short_fall"] = df.apply(_calc_short_fall, axis=1)
 
-    hosp_16_days, short_fall_16_days = _get_hospitals_and_shortfalls(
-        df, sixteen_days
-    )
+    hosp_16_days, short_fall_16_days = _get_hospitals_and_shortfalls(df, sixteen_days)
     hosp_32_days, short_fall_32_days = _get_hospitals_and_shortfalls(
         df, thirty_two_days
     )
@@ -91,9 +87,7 @@ def _calculate_projection_data(state, file_path, fips=None):
     beds_at_peak_hospitalization_date = _beds_after_given_date(
         df, peak_hospitalizations_date
     )
-    peak_hospitalizations_short_falls = df.iloc[
-        df.all_hospitalized.idxmax()
-    ].short_fall
+    peak_hospitalizations_short_falls = df.iloc[df.all_hospitalized.idxmax()].short_fall
     peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
 
     # A bit hacky, but the non estimated values don't have population, so
@@ -102,7 +96,7 @@ def _calculate_projection_data(state, file_path, fips=None):
 
     # use the last row until we have a way to get day 0 reliably
     Rt = df.iloc[-1].Rt
-    Rt_ci90 = df.iloc[-1].Rt_ci90 # ditto
+    Rt_ci90 = df.iloc[-1].Rt_ci90  # ditto
 
     record[CommonFields.STATE] = state
     if fips:

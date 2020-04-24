@@ -58,7 +58,9 @@ def _get_testing_df():
 def get_testing_timeseries_by_state(state):
     testing_df = _get_testing_df()
     # just select state
-    state_testing_df = testing_df[testing_df[CovidTrackingDataSource.Fields.STATE] == state]
+    state_testing_df = testing_df[
+        testing_df[CovidTrackingDataSource.Fields.STATE] == state
+    ]
     return state_testing_df[CovidTrackingDataSource.TESTS_ONLY_FIELDS]
 
 
@@ -109,7 +111,9 @@ def _get_usa_by_county_df():
     final_df["County"] = final_df["County"].replace(county_replace_with_null)
     final_df["Combined Key"] = final_df["Combined Key"].str.replace("Unassigned, ", "")
 
-    final_df[CommonFields.STATE] = final_df[CommonFields.STATE_FULL_NAME].map(US_STATE_ABBREV)
+    final_df[CommonFields.STATE] = final_df[CommonFields.STATE_FULL_NAME].map(
+        US_STATE_ABBREV
+    )
 
     final_df = final_df.fillna(NULL_VALUE)
     # note this is a hack, 49053 is dupped in JHU data :(
@@ -130,9 +134,12 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
         input_dir, intervention_type, interventions_df
     )
     counties_decorated = (
-        us_only
-        .merge(projections_df, on=CommonFields.FIPS, how="inner")
-        .merge(fips_df[[CommonFields.STATE, CommonFields.FIPS]], on=CommonFields.FIPS, how="inner")
+        us_only.merge(projections_df, on=CommonFields.FIPS, how="inner")
+        .merge(
+            fips_df[[CommonFields.STATE, CommonFields.FIPS]],
+            on=CommonFields.FIPS,
+            how="inner",
+        )
         .merge(interventions_df, on=CommonFields.STATE, how="inner")
     )
     counties_remapped = counties_decorated.rename(
@@ -143,7 +150,7 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     counties.index.name = "OBJECTID"
 
     if counties["Combined Key"].value_counts().max() != 1:
-        combined_key_max = counties['Combined Key'].value_counts().max()
+        combined_key_max = counties["Combined Key"].value_counts().max()
         raise Exception(
             "counties['Combined Key'].value_counts().max() = "
             f"{combined_key_max}, at input_dir {input_dir}."
@@ -183,8 +190,7 @@ def get_usa_by_states_df(input_dir, intervention_type):
     )
 
     states_abbrev = (
-        states_agg
-        .merge(test_max_df, on=CommonFields.STATE, how="left")
+        states_agg.merge(test_max_df, on=CommonFields.STATE, how="left")
         .merge(
             interventions_df,
             on=CommonFields.STATE,
@@ -200,13 +206,17 @@ def get_usa_by_states_df(input_dir, intervention_type):
     }
 
     states_remapped = states_abbrev.rename(columns=STATE_COLS_REMAP)
-    states_remapped[CommonFields.STATE_FULL_NAME] = states_remapped[CommonFields.STATE].map(abbrev_us_state)
+    states_remapped[CommonFields.STATE_FULL_NAME] = states_remapped[
+        CommonFields.STATE
+    ].map(abbrev_us_state)
     states_final = pd.DataFrame(states_remapped, columns=RESULT_DATA_COLUMNS_STATES)
 
     # Keep nulls as nulls
     states_final = states_final.fillna(NULL_VALUE)
     states_final["Combined Key"] = states_final[CommonFields.STATE_FULL_NAME]
-    states_final[CommonFields.FIPS] = states_final[CommonFields.STATE_FULL_NAME].map(us_fips)
+    states_final[CommonFields.FIPS] = states_final[CommonFields.STATE_FULL_NAME].map(
+        us_fips
+    )
 
     states_final.index.name = "OBJECTID"
 

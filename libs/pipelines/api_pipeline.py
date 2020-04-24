@@ -30,7 +30,9 @@ PROD_BUCKET = "data.covidactnow.org"
 
 
 class APIOutput(object):
-    def __init__(self, file_stem: str, data: pydantic.BaseModel, intervention: Intervention):
+    def __init__(
+        self, file_stem: str, data: pydantic.BaseModel, intervention: Intervention
+    ):
         """
         Args:
             file_stem: Stem of output filename.
@@ -194,10 +196,10 @@ def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
     found_fips_by_state = defaultdict(set)
     found_fips = set()
     for path in pathlib.Path(input_dir).iterdir():
-        if not str(path).endswith('.json'):
+        if not str(path).endswith(".json"):
             continue
 
-        state, fips, intervention, _ = path.name.split('.')
+        state, fips, intervention, _ = path.name.split(".")
         found_fips_by_state[state].add(fips)
         found_fips.add(fips)
 
@@ -213,7 +215,6 @@ def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
     return results
 
 
-
 def deploy_results(results: List[APIOutput], output: str, write_csv=False):
     """Deploys results from the top counties to specified output directory.
 
@@ -227,16 +228,14 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         output_path.mkdir(parents=True, exist_ok=True)
 
     for api_row in results:
-        dataset_deployer.upload_json(
-            api_row.file_stem, api_row.data.json(), output
-        )
+        dataset_deployer.upload_json(api_row.file_stem, api_row.data.json(), output)
         if write_csv:
             data = api_row.data.dict()
             if not isinstance(data, list):
-                if not isinstance(data.get('__root__'), list):
+                if not isinstance(data.get("__root__"), list):
                     raise ValueError("Cannot find list data for csv export.")
                 else:
-                    data = data['__root__']
+                    data = data["__root__"]
             dataset_deployer.write_nested_csv(data, api_row.file_stem, output)
 
 
@@ -252,26 +251,26 @@ def build_prediction_header_timeseries_data(data: APIOutput):
             county_name = row.countyName
 
         summary_data = {
-            'countryName': row.countryName,
-            'countyName': county_name,
-            'stateName': row.stateName,
-            'fips': row.fips,
-            'lat': row.lat,
-            'long': row.long,
-            'intervention': data.intervention.name,
-            'lastUpdatedDate': row.lastUpdatedDate
+            "countryName": row.countryName,
+            "countyName": county_name,
+            "stateName": row.stateName,
+            "fips": row.fips,
+            "lat": row.lat,
+            "long": row.long,
+            "intervention": data.intervention.name,
+            "lastUpdatedDate": row.lastUpdatedDate,
         }
 
         for timeseries_data in row.timeseries:
             timeseries_row = PredictionTimeseriesRowWithHeader(
-                **summary_data,
-                **timeseries_data.dict()
+                **summary_data, **timeseries_data.dict()
             )
             rows.append(timeseries_row)
-
 
     return APIOutput(data.file_stem, rows, data.intervention)
 
 
 def deploy_prediction_timeseries_csvs(data: APIOutput, output):
-    dataset_deployer.write_nested_csv([row.dict() for row in data.data], data.file_stem, output)
+    dataset_deployer.write_nested_csv(
+        [row.dict() for row in data.data], data.file_stem, output
+    )
