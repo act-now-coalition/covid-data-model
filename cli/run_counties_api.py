@@ -43,26 +43,32 @@ def deploy_counties_api(disable_validation, input_dir, output, summary_output):
             raise NotADirectoryError(directory)
 
     for intervention in list(Intervention):
-        # TODO(issues/#258): remove check once counties support inferrence
-        if intervention in Intervention.county_supported_interventions():
-            county_result = api_pipeline.run_projections(
-                input_dir,
-                AggregationLevel.COUNTY,
-                intervention,
-                run_validation=not disable_validation,
-            )
-            county_summaries, county_timeseries = api_pipeline.generate_api(
-                county_result, input_dir
-            )
-            api_pipeline.deploy_results([*county_summaries, *county_timeseries], output)
+        county_result = api_pipeline.run_projections(
+            input_dir,
+            AggregationLevel.COUNTY,
+            intervention,
+            run_validation=not disable_validation,
+        )
+        county_summaries, county_timeseries = api_pipeline.generate_api(
+            county_result, input_dir
+        )
+        api_pipeline.deploy_results([*county_summaries, *county_timeseries], output)
 
-            counties_summary = api_pipeline.build_counties_summary(county_summaries, intervention)
-            counties_timeseries = api_pipeline.build_counties_timeseries(county_timeseries, intervention)
-            summarized_timeseries = api_pipeline.build_prediction_header_timeseries_data(counties_timeseries)
-            api_pipeline.deploy_prediction_timeseries_csvs(summarized_timeseries, summary_output)
+        counties_summary = api_pipeline.build_counties_summary(
+            county_summaries, intervention
+        )
+        counties_timeseries = api_pipeline.build_counties_timeseries(
+            county_timeseries, intervention
+        )
+        summarized_timeseries = api_pipeline.build_prediction_header_timeseries_data(
+            counties_timeseries
+        )
+        api_pipeline.deploy_prediction_timeseries_csvs(
+            summarized_timeseries, summary_output
+        )
 
-            api_pipeline.deploy_results([counties_summary], summary_output, write_csv=True)
-            api_pipeline.deploy_results([counties_timeseries], summary_output)
+        api_pipeline.deploy_results([counties_summary], summary_output, write_csv=True)
+        api_pipeline.deploy_results([counties_timeseries], summary_output)
 
         logger.info("finished top counties job")
 

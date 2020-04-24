@@ -8,6 +8,7 @@ from libs.datasets.results_schema import (
     RESULT_DATA_COLUMNS_COUNTIES,
     EXPECTED_MISSING_STATES,
     EXPECTED_MISSING_STATES_FROM_COUNTES,
+    EXPECTED_MISSING_STATES_FROM_COUNTIES_OBSERVED_INTERVENTION,
 )
 
 """
@@ -71,10 +72,15 @@ def validate_counties_df(key, counties_df):
     _raise_error_if_incorrect_headers(key, RESULT_DATA_COLUMNS_COUNTIES, counties_df)
 
     # assert data from each of the states
+    expected_missing = EXPECTED_MISSING_STATES.union(
+        EXPECTED_MISSING_STATES_FROM_COUNTES
+    )
+    if key == "counties.OBSERVED_INTERVENTION":
+        expected_missing = expected_missing.union(
+            EXPECTED_MISSING_STATES_FROM_COUNTIES_OBSERVED_INTERVENTION
+        )
     _raise_error_if_not_data_from_all_states(
-        key,
-        counties_df,
-        EXPECTED_MISSING_STATES.union(EXPECTED_MISSING_STATES_FROM_COUNTES),
+        key, counties_df, expected_missing,
     )
 
     # assert no duplicated counties
@@ -87,7 +93,9 @@ def validate_counties_df(key, counties_df):
         )
 
     # assert that the csv is a certain length
-    if len(counties_df["County"]) < 1800:
+    # Note that most counties don't have inference (observed) projections yet.
+    min_length = 1800 if key != "counties.OBSERVED_INTERVENTION" else 250
+    if len(counties_df["County"]) < min_length:
         raise DataExportException(
             key,
             f"Expected more counties in the output, only found {len(counties_df['County'])}",
