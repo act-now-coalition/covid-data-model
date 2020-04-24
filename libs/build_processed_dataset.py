@@ -19,6 +19,7 @@ from libs.us_state_abbrev import US_STATE_ABBREV, us_fips
 from libs.datasets import FIPSPopulation
 from libs.datasets import JHUDataset
 from libs.datasets import CovidTrackingDataSource
+from libs.datasets.common_fields import CommonFields
 from libs.enums import Intervention
 from libs.functions.calculate_projections import (
     get_state_projections_df,
@@ -104,10 +105,9 @@ def _get_usa_by_county_df():
         "Long_": "Longitude",
         "Combined_Key": "Combined Key",
         "Admin2": "County",
-        "FIPS": "State/County FIPS Code",
+        "FIPS": CommonFields.FIPS,
     }
     remapped_df = raw_df.rename(columns=column_mapping)
-
     # USA only
     us_df = remapped_df[(remapped_df["Country/Region"] == "US")]
     jhu_column_names = [
@@ -121,7 +121,7 @@ def _get_usa_by_county_df():
         "Deaths",
         "Active",
         "County",
-        "State/County FIPS Code",
+        CommonFields.FIPS,
         "Combined Key",
         # Incident rate and people tested do not seem to be available yet
         # "Incident Rate",
@@ -134,13 +134,12 @@ def _get_usa_by_county_df():
     final_df["County"] = final_df["County"].replace(county_replace_with_null)
     final_df["Combined Key"] = final_df["Combined Key"].str.replace("Unassigned, ", "")
     final_df = final_df.fillna(NULL_VALUE)
-    final_df = final_df.drop_duplicates(
-        "State/County FIPS Code"
-    )  # note this is a hack, 49053 is dupped in JHU data :(
+    # note this is a hack, 49053 is dupped in JHU data :(
+    final_df = final_df.drop_duplicates(CommonFields.FIPS)
     final_df.index.name = "OBJECTID"
     # assert unique key test
     assert final_df["Combined Key"].value_counts().max() == 1
-    assert final_df["State/County FIPS Code"].value_counts().max() == 1
+    assert final_df[CommonFields.FIPS].value_counts().max() == 1
 
     return final_df
 
@@ -152,30 +151,29 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     projections_df = get_county_projections_df(
         input_dir, intervention_type, interventions_df
     )
-
     counties_decorated = (
         us_only.merge(
             projections_df,
-            left_on="State/County FIPS Code",
+            left_on=CommonFields.FIPS,
             right_on="FIPS",
             how="inner",
         )
-        .merge(fips_df[["state", "fips"]], left_on="FIPS", right_on="fips", how="inner")
+        .merge(fips_df[["state", "fips"]], on=CommonFields.FIPS, how="inner")
         .merge(interventions_df, left_on="state", right_on="state", how="inner")
         .drop(["State", "state"], axis=1)
     )
-
     counties_remapped = counties_decorated.rename(
         columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
     )
     counties = pd.DataFrame(counties_remapped)[RESULT_DATA_COLUMNS_COUNTIES]
     counties = counties.fillna(NULL_VALUE)
     counties.index.name = "OBJECTID"
-    # assert unique key test
 
     if counties["Combined Key"].value_counts().max() != 1:
+        combined_key_max = counties['Combined Key'].value_counts().max()
         raise Exception(
-            f"counties['Combined Key'].value_counts().max() = {counties['Combined Key'].value_counts().max()}, at input_dir {input_dir}."
+            "counties['Combined Key'].value_counts().max() = "
+            f"{combined_key_max}, at input_dir {input_dir}."
         )
     return counties
 
@@ -259,7 +257,7 @@ def get_usa_by_states_df(input_dir, intervention_type):
     # Keep nulls as nulls
     states_final = states_final.fillna(NULL_VALUE)
     states_final["Combined Key"] = states_final["Province/State"]
-    states_final["State/County FIPS Code"] = states_final["Province/State"].map(us_fips)
+    states_final[CommonFields.FIPS] = states_final["Province/State"].map(us_fips)
 
     states_final.index.name = "OBJECTID"
 
