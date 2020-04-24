@@ -1,6 +1,7 @@
 from libs.datasets import CommonFields
 
-STATE = "Province/State"
+
+STATE = CommonFields.STATE_FULL_NAME
 COUNTRY = "Country/Region"
 LAST_UPDATED = "Last Update"
 LATITUDE = "Latitude"

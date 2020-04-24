@@ -21,7 +21,7 @@ def _raise_error_if_incorrect_headers(key, headers_list, df):
 
 def _raise_error_if_not_data_from_all_states(key, df, expected_missing):
     states = set(US_STATE_ABBREV.keys())
-    states_in_df = set(df['Province/State'].unique())
+    states_in_df = set(df[CommonFields.STATE_FULL_NAME].unique())
 
     missing_states_in_df = states - states_in_df - expected_missing
     extra_states_in_df = states_in_df - states
@@ -36,8 +36,8 @@ def validate_states_df(key, states_df):
     _raise_error_if_not_data_from_all_states(key, states_df, EXPECTED_MISSING_STATES)
 
     # assert no duplicated states
-    if len(states_df['Province/State'].unique()) != len(states_df['Province/State']):
-        raise DataExportException(key, f"Duplicated State Data: {states_df['Province/State'] - states_df['Province/State'].unique()}")
+    if len(states_df[CommonFields.STATE_FULL_NAME].unique()) != len(states_df[CommonFields.STATE_FULL_NAME]):
+        raise DataExportException(key, f"Duplicated State Data: {states_df[CommonFields.STATE_FULL_NAME] - states_df[CommonFields.STATE_FULL_NAME].unique()}")
 
 def validate_counties_df(key, counties_df):
     # assert the headers are what we expect
