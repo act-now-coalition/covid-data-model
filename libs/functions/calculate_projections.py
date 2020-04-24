@@ -11,7 +11,6 @@ from libs.datasets.can_model_output_schema import (
 )
 from libs.datasets.projections_schema import (
     CALCULATED_PROJECTION_HEADERS_STATES,
-    CALCULATED_PROJECTION_HEADERS_COUNTIES,
 )
 from libs.enums import Intervention
 from libs.constants import NULL_VALUE
@@ -156,8 +155,7 @@ def get_state_projections_df(
     )
 
     num_processed_states = new_df.notnull().sum()["State"]
-
-    print(f"Missing {num_processed_states} states were in input_dir: {input_dir}")
+    print(f" {num_processed_states} states were in input_dir: {input_dir}")
     return new_df
 
 
@@ -176,7 +174,6 @@ def get_county_projections_df(
     for each state in our data look at the results we generated via run.py
     to create the projections
 
-    #columns=CALCULATED_PROJECTION_HEADERS_COUNTIES)
     """
     fips_pd = FIPSPopulation.local().data  # to get the state, county & fips
 
