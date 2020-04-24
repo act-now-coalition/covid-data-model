@@ -139,6 +139,7 @@
         "population": {
           "title": "Population",
           "description": "Total population in geographic area",
+          "exclusiveMinimum": 0,
           "type": "integer"
         },
         "intervention": {
