@@ -5,6 +5,7 @@ import simplejson
 
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import FIPSPopulation
+from libs.datasets import CommonFields
 from libs.datasets.can_model_output_schema import (
     CAN_MODEL_OUTPUT_SCHEMA,
     CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS,
@@ -103,9 +104,9 @@ def _calculate_projection_data(state, file_path, fips=None):
     Rt = df.iloc[-1].Rt
     Rt_ci90 = df.iloc[-1].Rt_ci90 # ditto
 
-    record["State"] = state
+    record[CommonFields.STATE] = state
     if fips:
-        record["FIPS"] = fips
+        record[CommonFields.FIPS] = fips
 
     record["16-day_Hospitalization_Prediction"] = hosp_16_days
     record["32-day_Hospitalization_Prediction"] = hosp_32_days
@@ -122,6 +123,7 @@ def _calculate_projection_data(state, file_path, fips=None):
     record["Rt"] = Rt
     record["Rt_ci90"] = Rt_ci90
     return pd.Series(record)
+
 
 def _get_intervention_type(intervention_type, state, state_interventions_df):
     if intervention_type == Intervention.SELECTED_INTERVENTION.value:
@@ -158,7 +160,7 @@ def get_state_projections_df(
         lambda x: _calculate_projection_data(x.state, x.path, fips=None), axis=1
     )
 
-    num_processed_states = new_df.notnull().sum()["State"]
+    num_processed_states = new_df.notnull().sum()[CommonFields.STATE]
     print(f" {num_processed_states} states were in input_dir: {input_dir}")
     return new_df
 
@@ -181,7 +183,7 @@ def get_county_projections_df(
     """
     fips_pd = FIPSPopulation.local().data  # to get the state, county & fips
 
-    county_df = fips_pd[["state", "fips"]]
+    county_df = fips_pd[["state", CommonFields.FIPS]]
     county_df.loc[:, "intervention_type"] = county_df.state.apply(
         lambda x: _get_intervention_type(
             initial_intervention_type, x, state_interventions_df
@@ -194,7 +196,7 @@ def get_county_projections_df(
     new_df = county_df.parallel_apply(
         lambda x: _calculate_projection_data(x.state, x.path, fips=x.fips), axis=1
     )
-    missing = new_df.isnull().sum()["State"]
+    missing = new_df.isnull().sum()[CommonFields.STATE]
     # if missing > 2000:
     #     raise Exception(f"Missing a majority of counties from input_dir: {input_dir}")
     print(f"Models missing for {missing} counties")
