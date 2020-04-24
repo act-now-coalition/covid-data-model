@@ -151,6 +151,8 @@ def _generate_county_timeseries_row(json_data_row):
         ICUBedCapacity=json_data_row[can_schema.ICU_BED_CAPACITY],
         ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
         ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
+        Rt=json_data_row[can_schema.Rt],
+        RtCI90=json_data_row[can_schema.Rt_ci90],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
         cumulativePositiveTests=None,
