@@ -50,6 +50,8 @@ def _get_date_or_none(panda_date_or_none):
 def _get_or_none(value):
     if isinstance(value, str) and value == NULL_VALUE:
         return None
+    elif pd.isna(value):
+        return None
     else:
         return value
 
