@@ -44,7 +44,7 @@ class _ResourceUtilization(pydantic.BaseModel):
 
 class _Actuals(pydantic.BaseModel):
     population: int = pydantic.Field(
-        ..., description="Total population in geographic area"
+        ..., description="Total population in geographic area", gt=0
     )
     intervention: str = pydantic.Field(
         ..., description="Name of high-level intervention in-place"
