@@ -116,7 +116,7 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
                          run_mode=run_mode, output_dir=output_dir)
 
 
-def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
+def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=False, output_interval_days=4,
              skip_download=False, states_only=False, output_dir=None, skip_whitelist=False):
 
     _cache_global_datasets()
