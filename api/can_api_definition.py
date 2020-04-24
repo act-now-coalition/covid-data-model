@@ -114,11 +114,11 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
         ...,
         description="Number of ICU beds projected to be in-use or actually in use (if in the past)",
     )
-    VentilatorsInUse: int = pydantic.Field(
+    ventilatorsInUse: int = pydantic.Field(
         ...,
         description="Number of ventilators projected to be in-use.",
     )
-    VentilatorCapacity: int = pydantic.Field(
+    ventilatorCapacity: int = pydantic.Field(
         ...,
         description="Total ventilator capacity."
     )
@@ -157,6 +157,26 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+
+    @pydantic.validator('timeseries')
+    def check_timeseries_have_cumulative_test_data(cls, rows, values):
+        # Nebraska is missing testing data.
+        state_full_name = values['stateName']
+        if state_full_name == 'Nebraska':
+            return rows
+        total_negative_tests = sum(
+            row.cumulativeNegativeTests or 0 for row in rows
+        )
+        total_positive_tests = sum(
+            row.cumulativePositiveTests or 0 for row in rows
+        )
+
+        if not total_positive_tests or not total_negative_tests:
+            raise ValueError(
+                f'Missing cumulative test data for {state_full_name}.'
+            )
+
+        return rows
 
 
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):

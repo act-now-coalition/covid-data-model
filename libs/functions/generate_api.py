@@ -129,8 +129,8 @@ def _generate_state_timeseries_row(json_data_row):
         ICUBedCapacity=json_data_row[can_schema.ICU_BED_CAPACITY],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        VentilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
-        VentilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
+        ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
+        ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
         cumulativePositiveTests=_get_or_none(
             json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]
         ),
@@ -147,8 +147,8 @@ def _generate_county_timeseries_row(json_data_row):
         hospitalBedCapacity=json_data_row[can_schema.BEDS],
         ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
         ICUBedCapacity=json_data_row[can_schema.ICU_BED_CAPACITY],
-        VentilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
-        VentilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
+        ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
+        ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
         cumulativePositiveTests=None,
@@ -166,7 +166,8 @@ def generate_state_timeseries(
     )
 
     # join in state testing data onto the timeseries
-    # left join '%m/%d/%y', so the left join gracefully handles missing state testing data (i.e. NE)
+    # left join '%m/%d/%y', so the left join gracefully handles
+    # missing state testing data (i.e. NE)
     testing_df = get_testing_timeseries_by_state(state)
     new_df = pd.DataFrame(raw_dataseries).merge(
         testing_df, on="date", how="left"
