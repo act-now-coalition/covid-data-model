@@ -79,6 +79,7 @@ def _generate_api_for_projections(projection_row):
     )
     return projections
 
+
 def _generate_state_actuals(projection_row, state):
     intervention_str = get_can_projection.get_intervention_for_state(state).name
 
@@ -87,14 +88,19 @@ def _generate_state_actuals(projection_row, state):
         intervention=intervention_str,
         cumulativeConfirmedCases=projection_row[rc.CURRENT_CONFIRMED],
         cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
-        cumulativePositiveTests=_get_or_none(projection_row[rc.CUMULATIVE_POSITIVE_TESTS]),
-        cumulativeNegativeTests=_get_or_none(projection_row[rc.CUMULATIVE_NEGATIVE_TESTS]),
+        cumulativePositiveTests=_get_or_none(
+            projection_row[rc.CUMULATIVE_POSITIVE_TESTS]
+        ),
+        cumulativeNegativeTests=_get_or_none(
+            projection_row[rc.CUMULATIVE_NEGATIVE_TESTS]
+        ),
         hospitalBeds={
             "capacity": projection_row[rc.PEAK_BED_CAPACITY],
-            "currentUsage": None # TODO(igor): Get from Covidtracking source
+            "currentUsage": None,  # TODO(igor): Get from Covidtracking source
         },
-        ICUBeds = None
+        ICUBeds=None,
     )
+
 
 def _generate_county_actuals(projection_row, state):
     intervention_str = get_can_projection.get_intervention_for_state(state).name
@@ -105,12 +111,13 @@ def _generate_county_actuals(projection_row, state):
         cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
         cumulativePositiveTests=None,
         cumulativeNegativeTests=None,
-        hospitalBeds = {
+        hospitalBeds={
             "capacity": projection_row[rc.PEAK_BED_CAPACITY],
-            "currentUsage": None # TODO(igor): Get from Covidtracking source
+            "currentUsage": None,  # TODO(igor): Get from Covidtracking source
         },
-        ICUBeds = None
+        ICUBeds=None,
     )
+
 
 def _generate_state_timeseries_row(json_data_row):
 
@@ -122,9 +129,14 @@ def _generate_state_timeseries_row(json_data_row):
         ICUBedCapacity=None,
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        cumulativePositiveTests=_get_or_none(json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]),
-        cumulativeNegativeTests=_get_or_none(json_data_row[CovidTrackingDataSource.Fields.NEGATIVE_TESTS]),
+        cumulativePositiveTests=_get_or_none(
+            json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]
+        ),
+        cumulativeNegativeTests=_get_or_none(
+            json_data_row[CovidTrackingDataSource.Fields.NEGATIVE_TESTS]
+        ),
     )
+
 
 def _generate_county_timeseries_row(json_data_row):
     return CANPredictionTimeseriesRow(
@@ -140,7 +152,9 @@ def _generate_county_timeseries_row(json_data_row):
     )
 
 
-def generate_state_timeseries(projection_row, intervention, input_dir) -> CovidActNowStateTimeseries:
+def generate_state_timeseries(
+    projection_row, intervention, input_dir
+) -> CovidActNowStateTimeseries:
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
     fips = projection_row[rc.FIPS]
     raw_dataseries = get_can_projection.get_can_raw_data(
@@ -151,10 +165,11 @@ def generate_state_timeseries(projection_row, intervention, input_dir) -> CovidA
     # left join '%m/%d/%y', so the left join gracefully handles missing state testing data (i.e. NE)
     testing_df = get_testing_timeseries_by_state(projection_row[rc.STATE])
     new_df = pd.DataFrame(raw_dataseries).merge(
-        testing_df, left_on='date', right_on='date', how='left')
+        testing_df, left_on="date", right_on="date", how="left"
+    )
 
     # reformat as dict
-    can_dataseries = new_df.to_dict(orient='records')
+    can_dataseries = new_df.to_dict(orient="records")
 
     timeseries = []
     for data_series in can_dataseries:
