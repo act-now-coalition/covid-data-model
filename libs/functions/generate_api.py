@@ -126,9 +126,11 @@ def _generate_state_timeseries_row(json_data_row):
         hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
         hospitalBedCapacity=json_data_row[can_schema.BEDS],
         ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
-        ICUBedCapacity=None,
+        ICUBedCapacity=json_data_row[can_schema.ICU_BED_CAPACITY],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
+        ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
+        ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
         cumulativePositiveTests=_get_or_none(
             json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]
         ),
@@ -144,7 +146,9 @@ def _generate_county_timeseries_row(json_data_row):
         hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
         hospitalBedCapacity=json_data_row[can_schema.BEDS],
         ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
-        ICUBedCapacity=None,
+        ICUBedCapacity=json_data_row[can_schema.ICU_BED_CAPACITY],
+        ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
+        ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
         cumulativePositiveTests=None,
@@ -155,20 +159,19 @@ def _generate_county_timeseries_row(json_data_row):
 def generate_state_timeseries(
     projection_row, intervention, input_dir
 ) -> CovidActNowStateTimeseries:
-    state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
+    state = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     fips = projection_row[rc.FIPS]
     raw_dataseries = get_can_projection.get_can_raw_data(
-        input_dir, state_abbrev, fips, AggregationLevel.STATE, intervention
+        input_dir, state, fips, AggregationLevel.STATE, intervention
     )
 
     # join in state testing data onto the timeseries
-    # left join '%m/%d/%y', so the left join gracefully handles missing state testing data (i.e. NE)
-    testing_df = get_testing_timeseries_by_state(projection_row[rc.STATE])
+    # left join '%m/%d/%y', so the left join gracefully handles
+    # missing state testing data (i.e. NE)
+    testing_df = get_testing_timeseries_by_state(state)
     new_df = pd.DataFrame(raw_dataseries).merge(
-        testing_df, left_on="date", right_on="date", how="left"
+        testing_df, on="date", how="left"
     )
-
-    # reformat as dict
     can_dataseries = new_df.to_dict(orient="records")
 
     timeseries = []
@@ -181,8 +184,8 @@ def generate_state_timeseries(
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_state_actuals(projection_row, state_abbrev),
-        stateName=projection_row[rc.STATE],
+        actuals=_generate_state_actuals(projection_row, state),
+        stateName=projection_row[rc.STATE_FULL_NAME],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
         projections=projections,
@@ -191,7 +194,7 @@ def generate_state_timeseries(
 
 
 def generate_county_timeseries(projection_row, intervention, input_dir):
-    state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
+    state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     fips = projection_row[rc.FIPS]
     can_dataseries = get_can_projection.get_can_raw_data(
         input_dir, state_abbrev, fips, AggregationLevel.COUNTY, intervention
@@ -207,7 +210,7 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
         actuals=_generate_county_actuals(projection_row, state_abbrev),
-        stateName=projection_row[rc.STATE],
+        stateName=projection_row[rc.STATE_FULL_NAME],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
@@ -217,14 +220,14 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
 
 
 def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSummary:
-    state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
+    state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     projections = _generate_api_for_projections(projection_row)
 
     state_result = CovidActNowStateSummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
         actuals=_generate_state_actuals(projection_row, state_abbrev),
-        stateName=projection_row[rc.STATE],
+        stateName=projection_row[rc.STATE_FULL_NAME],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
         projections=projections,
@@ -233,14 +236,14 @@ def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSum
 
 
 def generate_api_for_county_projection_row(projection_row):
-    state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE]]
+    state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     projections = _generate_api_for_projections(projection_row)
 
     county_result = CovidActNowCountySummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
         actuals=_generate_county_actuals(projection_row, state_abbrev),
-        stateName=projection_row[rc.STATE],
+        stateName=projection_row[rc.STATE_FULL_NAME],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
