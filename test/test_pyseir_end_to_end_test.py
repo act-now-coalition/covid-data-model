@@ -1,8 +1,8 @@
 import os
 import json
 import numpy as np
-from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.cli import _run_all
+from pyseir.utils import get_run_artifact_path, RunArtifact 
 import libs.datasets.can_model_output_schema as schema
 
 
