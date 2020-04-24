@@ -28,6 +28,7 @@ def _get_intervention(intervention, state):
         return get_intervention_for_state(state)
     return intervention
 
+
 def get_can_projection_path(
     input_dir, state_abbrev, fips, aggregation_level, initial_intervention
 ):

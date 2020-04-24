@@ -59,7 +59,7 @@ def _get_api_prefix(aggregation_level, row):
     if aggregation_level == AggregationLevel.COUNTY:
         return row[rc.FIPS]
     elif aggregation_level == AggregationLevel.STATE:
-        full_state_name = row[rc.STATE]
+        full_state_name = row[rc.STATE_FULL_NAME]
         return US_STATE_ABBREV[full_state_name]
     else:
         raise ValueError("Only County and State Aggregate Levels supported")
