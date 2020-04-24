@@ -6,15 +6,13 @@ import simplejson
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import FIPSPopulation
 from libs.datasets import CommonFields
+from libs.datasets import can_model_output_schema as schema
 from libs.datasets.can_model_output_schema import (
     CAN_MODEL_OUTPUT_SCHEMA,
     CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS,
 )
-from libs.datasets.projections_schema import CALCULATED_PROJECTION_HEADERS_STATES
 from libs.enums import Intervention
 from libs.constants import NULL_VALUE
-
-from pandarallel import pandarallel
 
 
 def _calc_short_fall(x):
@@ -116,6 +114,7 @@ def _calculate_projection_data(state, file_path, fips=None):
     record["Population"] = population
     record["Rt"] = Rt
     record["Rt_ci90"] = Rt_ci90
+
     return pd.Series(record)
 
 

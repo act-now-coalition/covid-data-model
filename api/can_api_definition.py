@@ -110,9 +110,17 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
         ...,
         description="Number of ICU beds projected to be in-use or that were actually in use (if in the past)",
     )
-    ICUBedCapacity: Optional[int] = pydantic.Field(
+    ICUBedCapacity: int = pydantic.Field(
         ...,
         description="Number of ICU beds projected to be in-use or actually in use (if in the past)",
+    )
+    VentilatorsInUse: int = pydantic.Field(
+        ...,
+        description="Number of ventilators projected to be in-use.",
+    )
+    VentilatorCapacity: int = pydantic.Field(
+        ...,
+        description="Total ventilator capacity."
     )
     cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
     cumulativeInfected: Optional[int] = pydantic.Field(
@@ -124,6 +132,7 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     cumulativeNegativeTests: Optional[int] = pydantic.Field(
         ..., description="Number of negative test results to date"
     )
+
 
 class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
     countryName: str = "US"
