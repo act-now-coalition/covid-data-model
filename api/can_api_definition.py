@@ -110,9 +110,17 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
         ...,
         description="Number of ICU beds projected to be in-use or that were actually in use (if in the past)",
     )
-    ICUBedCapacity: Optional[int] = pydantic.Field(
+    ICUBedCapacity: int = pydantic.Field(
         ...,
         description="Number of ICU beds projected to be in-use or actually in use (if in the past)",
+    )
+    ventilatorsInUse: int = pydantic.Field(
+        ...,
+        description="Number of ventilators projected to be in-use.",
+    )
+    ventilatorCapacity: int = pydantic.Field(
+        ...,
+        description="Total ventilator capacity."
     )
     cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
     cumulativeInfected: Optional[int] = pydantic.Field(
@@ -124,6 +132,7 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     cumulativeNegativeTests: Optional[int] = pydantic.Field(
         ..., description="Number of negative test results to date"
     )
+
 
 class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
     countryName: str = "US"
@@ -148,6 +157,27 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+
+    # pylint: disable=no-self-argument
+    @pydantic.validator('timeseries')
+    def check_timeseries_have_cumulative_test_data(cls, rows, values):
+        # Nebraska is missing testing data.
+        state_full_name = values['stateName']
+        if state_full_name == 'Nebraska':
+            return rows
+        total_negative_tests = sum(
+            row.cumulativeNegativeTests or 0 for row in rows
+        )
+        total_positive_tests = sum(
+            row.cumulativePositiveTests or 0 for row in rows
+        )
+
+        if not total_positive_tests or not total_negative_tests:
+            raise ValueError(
+                f'Missing cumulative test data for {state_full_name}.'
+            )
+
+        return rows
 
 
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):
