@@ -66,62 +66,62 @@ def _calculate_projection_data(state, file_path, fips=None):
 
     record = {}
 
-    if os.path.exists(file_path):
-        df = _read_json_as_df(file_path)
-        df["short_fall"] = df.apply(_calc_short_fall, axis=1)
+    if not os.path.exists(file_path):
+        return pd.Series(record)
 
-        hosp_16_days, short_fall_16_days = _get_hospitals_and_shortfalls(
-            df, sixteen_days
-        )
-        hosp_32_days, short_fall_32_days = _get_hospitals_and_shortfalls(
-            df, thirty_two_days
-        )
+    df = _read_json_as_df(file_path)
+    df["short_fall"] = df.apply(_calc_short_fall, axis=1)
 
-        df["new_deaths"] = df.dead - df.dead.shift(1)
-        hospitals_shortfall_date = NULL_VALUE
-        if not df[(df["short_fall"] > 0)].empty:
-            hospitals_shortfall_date = df[(df["short_fall"] > 0)].iloc[0].date
-        mean_hospitalizations = df.all_hospitalized.mean().round(0)
-        mean_deaths = df.new_deaths.mean()
+    hosp_16_days, short_fall_16_days = _get_hospitals_and_shortfalls(
+        df, sixteen_days
+    )
+    hosp_32_days, short_fall_32_days = _get_hospitals_and_shortfalls(
+        df, thirty_two_days
+    )
 
-        peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
-        beds_at_peak_hospitalization_date = _beds_after_given_date(
-            df, peak_hospitalizations_date
-        )
-        peak_hospitalizations_short_falls = df.iloc[
-            df.all_hospitalized.idxmax()
-        ].short_fall
-        peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
+    df["new_deaths"] = df.dead - df.dead.shift(1)
+    hospitals_shortfall_date = NULL_VALUE
+    if not df[(df["short_fall"] > 0)].empty:
+        hospitals_shortfall_date = df[(df["short_fall"] > 0)].iloc[0].date
+    mean_hospitalizations = df.all_hospitalized.mean().round(0)
+    mean_deaths = df.new_deaths.mean()
 
-        # A bit hacky, but the non estimated values don't have population, so
-        # take the highest value (there are two values in the column - 0 and <population>
-        population = df.population.max()
+    peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
+    beds_at_peak_hospitalization_date = _beds_after_given_date(
+        df, peak_hospitalizations_date
+    )
+    peak_hospitalizations_short_falls = df.iloc[
+        df.all_hospitalized.idxmax()
+    ].short_fall
+    peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
 
-        # use the last row until we have a way to get day 0 reliably
-        Rt = df.iloc[-1].Rt
-        Rt_ci90 = df.iloc[-1].Rt_ci90 # ditto
+    # A bit hacky, but the non estimated values don't have population, so
+    # take the highest value (there are two values in the column - 0 and <population>
+    population = df.population.max()
+
+    # use the last row until we have a way to get day 0 reliably
+    Rt = df.iloc[-1].Rt
+    Rt_ci90 = df.iloc[-1].Rt_ci90 # ditto
 
 
-        record["State"] = state
-        if fips:
-            record["FIPS"] = fips
+    record["State"] = state
+    if fips:
+        record["FIPS"] = fips
 
-        record["16-day_Hospitalization_Prediction"] = hosp_16_days
-        record["32-day_Hospitalization_Prediction"] = hosp_32_days
-        record["16-day_Beds_Shortfall"] = short_fall_16_days
-        record["32-day_Beds_Shortfall"] = short_fall_32_days
-        record["Mean Hospitalizations"] = mean_hospitalizations
-        record["Mean Deaths"] = mean_deaths
-        record["Peak Hospitalizations On"] = peak_hospitalizations_date
-        record["Peak Deaths On"] = peak_deaths_date
-        record["Hospital Shortfall Date"] = hospitals_shortfall_date
-        record["Peak Hospitlizations Shortfall"] = peak_hospitalizations_short_falls
-        record["Beds at Peak Hospitilization Date"] = beds_at_peak_hospitalization_date
-        record["Population"] = population
-        record["Rt"] = Rt
-        record["Rt_ci90"] = Rt_ci90
-
-    return pd.Series(record)
+    record["16-day_Hospitalization_Prediction"] = hosp_16_days
+    record["32-day_Hospitalization_Prediction"] = hosp_32_days
+    record["16-day_Beds_Shortfall"] = short_fall_16_days
+    record["32-day_Beds_Shortfall"] = short_fall_32_days
+    record["Mean Hospitalizations"] = mean_hospitalizations
+    record["Mean Deaths"] = mean_deaths
+    record["Peak Hospitalizations On"] = peak_hospitalizations_date
+    record["Peak Deaths On"] = peak_deaths_date
+    record["Hospital Shortfall Date"] = hospitals_shortfall_date
+    record["Peak Hospitlizations Shortfall"] = peak_hospitalizations_short_falls
+    record["Beds at Peak Hospitilization Date"] = beds_at_peak_hospitalization_date
+    record["Population"] = population
+    record["Rt"] = Rt
+    record["Rt_ci90"] = Rt_ci90
 
 
 def _get_intervention_type(intervention_type, state, state_interventions_df):
