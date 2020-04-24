@@ -89,7 +89,7 @@ def _generate_state_actuals(projection_row, state):
         cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
         cumulativePositiveTests=_get_or_none(projection_row[rc.CUMULATIVE_POSITIVE_TESTS]),
         cumulativeNegativeTests=_get_or_none(projection_row[rc.CUMULATIVE_NEGATIVE_TESTS]),
-        hospitalBeds = {
+        hospitalBeds={
             "capacity": projection_row[rc.PEAK_BED_CAPACITY],
             "currentUsage": None # TODO(igor): Get from Covidtracking source
         },

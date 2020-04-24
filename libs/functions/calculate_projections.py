@@ -92,8 +92,13 @@ def _calculate_projection_data(state, file_path, fips=None):
             df.all_hospitalized.idxmax()
         ].short_fall
         peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
-        population = df.iloc[0].population
-        Rt = df.iloc[-1].Rt # use the last row until we have a way to get day 0 reliably
+
+        # A bit hacky, but the non estimated values don't have population, so
+        # take the highest value (there are two values in the column - 0 and <population>
+        population = df.population.max()
+
+        # use the last row until we have a way to get day 0 reliably
+        Rt = df.iloc[-1].Rt
         Rt_ci90 = df.iloc[-1].Rt_ci90 # ditto
 
 
