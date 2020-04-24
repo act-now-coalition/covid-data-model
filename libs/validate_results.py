@@ -2,6 +2,7 @@ import csv
 import sys
 
 from libs.datasets import CommonFields
+from libs.enums import Intervention
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets.results_schema import (
     RESULT_DATA_COLUMNS_STATES,
@@ -67,7 +68,7 @@ def validate_states_df(key, states_df):
         )
 
 
-def validate_counties_df(key, counties_df):
+def validate_counties_df(key, counties_df, intervention):
     # assert the headers are what we expect
     _raise_error_if_incorrect_headers(key, RESULT_DATA_COLUMNS_COUNTIES, counties_df)
 
@@ -75,7 +76,8 @@ def validate_counties_df(key, counties_df):
     expected_missing = EXPECTED_MISSING_STATES.union(
         EXPECTED_MISSING_STATES_FROM_COUNTES
     )
-    if key == "counties.OBSERVED_INTERVENTION":
+    is_observed = intervention is Intervention.OBSERVED_INTERVENTION
+    if is_observed:
         expected_missing = expected_missing.union(
             EXPECTED_MISSING_STATES_FROM_COUNTIES_OBSERVED_INTERVENTION
         )
@@ -94,7 +96,7 @@ def validate_counties_df(key, counties_df):
 
     # assert that the csv is a certain length
     # Note that most counties don't have inference (observed) projections yet.
-    min_length = 1800 if key != "counties.OBSERVED_INTERVENTION" else 250
+    min_length = 250 if is_observed else 1800
     if len(counties_df["County"]) < min_length:
         raise DataExportException(
             key,
