@@ -113,6 +113,7 @@ def _generate_county_actuals(projection_row, state):
     )
 
 def _generate_state_timeseries_row(json_data_row):
+
     return CANPredictionTimeseriesRow(
         date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
         hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],

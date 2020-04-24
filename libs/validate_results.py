@@ -1,6 +1,7 @@
 import csv
 import sys
 
+from libs.datasets import CommonFields
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets.results_schema import RESULT_DATA_COLUMNS_STATES, RESULT_DATA_COLUMNS_COUNTIES, EXPECTED_MISSING_STATES, EXPECTED_MISSING_STATES_FROM_COUNTES
 """
@@ -46,8 +47,8 @@ def validate_counties_df(key, counties_df):
     _raise_error_if_not_data_from_all_states(key, counties_df, EXPECTED_MISSING_STATES.union(EXPECTED_MISSING_STATES_FROM_COUNTES))
 
     # assert no duplicated counties
-    if len(counties_df['State/County FIPS Code'].unique()) != len(counties_df['State/County FIPS Code']):
-        raise DataExportException(key, f"Duplicated County Data: {counties_df[counties_df.duplicated(['State/County FIPS Code'])]['State/County FIPS Code'] }")
+    if len(counties_df[CommonFields.FIPS].unique()) != len(counties_df[CommonFields.FIPS]):
+        raise DataExportException(key, f"Duplicated County Data: {counties_df[counties_df.duplicated(['fips'])]['fips'] }")
 
     # assert that the csv is a certain length
     if len(counties_df['County']) < 1800:

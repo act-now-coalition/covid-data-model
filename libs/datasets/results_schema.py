@@ -1,9 +1,11 @@
+from libs.datasets import CommonFields
+
 STATE = "Province/State"
 COUNTRY = "Country/Region"
 LAST_UPDATED = "Last Update"
 LATITUDE = "Latitude"
 LONGITUDE = "Longitude"
-FIPS = "State/County FIPS Code"
+FIPS = CommonFields.FIPS
 STATE_INTERVENTION = 'State Intervention'
 SIXTEEN_DAY_HOSPITALIZATION = '16d-HSPTLZD'
 THIRTY_TWO_DAY_HOSPITALIZATION = '32d-HSPTLZD'
