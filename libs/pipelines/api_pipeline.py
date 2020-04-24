@@ -227,16 +227,16 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         output_path.mkdir(parents=True, exist_ok=True)
 
     for api_row in results:
-        dataset_deployer.upload_json(api_row.file_stem, api_row.data.json(), output)
+        dataset_deployer.upload_json(
+            api_row.file_stem, api_row.data.json(), output
+        )
         if write_csv:
             data = api_row.data.dict()
             if not isinstance(data, list):
-                if not isinstance(data.get('data'), list):
-                    # Most of the API schemas have the lists under the `'data'` key.
-                    logger.warning(f"Missing data field with list of data.")
-                    continue
+                if not isinstance(data.get('__root__'), list):
+                    raise ValueError("Cannot find list data for csv export.")
                 else:
-                    data = data['data']
+                    data = data['__root__']
             dataset_deployer.write_nested_csv(data, api_row.file_stem, output)
 
 
