@@ -73,7 +73,7 @@ class EnsembleRunner:
         self.fips = fips
         self.agg_level = AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
 
-        self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years))
+        self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.skip_plots = skip_plots
         self.run_mode = RunMode(run_mode)
         self.hospitalizations_for_state = None
@@ -432,6 +432,16 @@ class EnsembleRunner:
         """
         outputs = defaultdict(dict)
         outputs['t_list'] = model_ensemble[0].t_list.tolist()
+
+        param_keys = ParameterEnsembleGenerator(self.fips, N_samples=1, t_list=self.t_list).get_average_seir_parameters().keys()
+        parameters = {k: v for k, v in model_ensemble[0].__dict__.items() if k in param_keys}
+        for k in ('suppression_policy', 't_list'):
+            parameters.pop(k)
+
+        outputs['parameters'] = parameters
+        for k, v in outputs['parameters'].items():
+            if type(v).__module__ == 'numpy':
+                outputs['parameters'][k] = v.item()
 
         # ------------------------------------------
         # Calculate Confidence Intervals and Peaks

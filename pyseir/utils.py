@@ -42,6 +42,8 @@ class RunArtifact(Enum):
     ENSEMBLE_RESULT = 'ensemble_result'
     ENSEMBLE_REPORT = 'ensemble_report'
 
+    MERGED_OUTPUT = 'merged_output'
+
     WEB_UI_RESULT = 'web_ui_result'
 
 
@@ -115,6 +117,12 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
             path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name), f'ensemble_projections__{state_obj.name}__{county}__{fips}.pdf')
         else:
             path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'reports', f'ensemble_projections__{state_obj.name}__{fips}.pdf')
+
+    elif artifact is RunArtifact.MERGED_OUTPUT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(DATA_FOLDER(output_dir, state_obj.name), f'pyseir_merged__{state_obj.name}__{county}__{fips}.json')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'data', f'pyseir_merged__{state_obj.name}__{fips}.json')
 
     elif artifact is RunArtifact.WEB_UI_RESULT:
         if agg_level is AggregationLevel.COUNTY:

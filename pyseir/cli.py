@@ -10,6 +10,7 @@ from pyseir.inference import infer_rt as infer_rt_module
 from pyseir.ensembles.ensemble_runner import run_state, RunMode
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
+from pyseir.deployment.output_integrator import OutputIntegrator
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
 from pyseir.inference.whitelist_generator import WhitelistGenerator
@@ -106,6 +107,8 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
     if state:
+        output_integrator = OutputIntegrator(state, output_dir=output_dir)
+        output_integrator.generate_state(states_only=states_only)
         web_ui_mapper = WebUIDataAdaptorV1(state, output_interval_days=output_interval_days,
                                            run_mode=run_mode, jhu_dataset=nyt_dataset,
                                            cds_dataset=cds_dataset, output_dir=output_dir)
@@ -116,7 +119,7 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
                          run_mode=run_mode, output_dir=output_dir)
 
 
-def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
+def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=False, output_interval_days=4,
              skip_download=False, states_only=False, output_dir=None, skip_whitelist=False):
 
     _cache_global_datasets()
