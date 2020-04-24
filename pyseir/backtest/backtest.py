@@ -235,8 +235,7 @@ def run_backtest(fips,
                             prediction[observation_type].rolling(rolling_window_size,
                                                                  min_periods=1).mean()[-d:][:prediction_window_size],
                             error_type=error_type)
-                    if observation_type == 'new_deaths':
-                        print(observations[observation_type], prediction[observation_type])
+
                     if error_type in ['rmse', 'nrmse']:
                         error = np.array([error])
 
