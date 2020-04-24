@@ -158,6 +158,7 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
 
+    # pylint: disable=no-self-argument
     @pydantic.validator('timeseries')
     def check_timeseries_have_cumulative_test_data(cls, rows, values):
         # Nebraska is missing testing data.
