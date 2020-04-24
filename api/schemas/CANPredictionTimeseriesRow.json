@@ -28,6 +28,16 @@
       "description": "Number of ICU beds projected to be in-use or actually in use (if in the past)",
       "type": "integer"
     },
+    "VentilatorsInUse": {
+      "title": "Ventilatorsinuse",
+      "description": "Number of ventilators projected to be in-use.",
+      "type": "integer"
+    },
+    "VentilatorCapacity": {
+      "title": "Ventilatorcapacity",
+      "description": "Total ventilator capacity.",
+      "type": "integer"
+    },
     "cumulativeDeaths": {
       "title": "Cumulativedeaths",
       "description": "Number of cumulative deaths",
@@ -55,6 +65,8 @@
     "hospitalBedCapacity",
     "ICUBedsInUse",
     "ICUBedCapacity",
+    "VentilatorsInUse",
+    "VentilatorCapacity",
     "cumulativeDeaths",
     "cumulativeInfected",
     "cumulativePositiveTests",
