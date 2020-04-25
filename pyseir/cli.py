@@ -101,7 +101,7 @@ def _generate_state_reports(state=None):
             _generate_state_reports(state_name)
 
 
-def _map_outputs(state=None, output_interval_days=4, states_only=False,
+def _map_outputs(state=None, output_interval_days=1, states_only=False,
                  output_dir=None, run_mode='default'):
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
@@ -116,7 +116,7 @@ def _map_outputs(state=None, output_interval_days=4, states_only=False,
                          run_mode=run_mode, output_dir=output_dir)
 
 
-def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=4,
+def _run_all(state=None, run_mode=DEFAULT_RUN_MODE, generate_reports=True, output_interval_days=1,
              skip_download=False, states_only=False, output_dir=None, skip_whitelist=False):
 
     _cache_global_datasets()
@@ -221,7 +221,7 @@ def generate_state_report(state):
 
 @entry_point.command()
 @click.option('--state', default='', help='State to generate files for. If no state is given, all states are computed.')
-@click.option('--output-interval-days', default=4, type=int, help='Number of days between outputs for the WebUI payload.')
+@click.option('--output-interval-days', default=1, type=int, help='Number of days between outputs for the WebUI payload.')
 @click.option('--run-mode', default=DEFAULT_RUN_MODE, type=click.Choice([run_mode.value for run_mode in RunMode]),
               help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
@@ -234,7 +234,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option('--run-mode', default=DEFAULT_RUN_MODE,type=click.Choice([run_mode.value for run_mode in RunMode]),
               help='State to generate files for. If no state is given, all states are computed.')
 @click.option('--generate-reports', default=False, type=bool, is_flag=True, help='If False, skip pdf report generation.')
-@click.option('--output-interval-days', default=4, type=int, help='Number of days between outputs for the WebUI payload.')
+@click.option('--output-interval-days', default=1, type=int, help='Number of days between outputs for the WebUI payload.')
 @click.option('--skip-download', default=False, is_flag=True, type=bool, help='Skip the download phase.')
 @click.option('--output-dir', default=None, type=str, help='Directory to deploy webui output.')
 @click.option('--states-only', default=False, is_flag=True, type=bool, help='Only model states')
