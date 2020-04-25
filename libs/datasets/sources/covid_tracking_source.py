@@ -126,9 +126,9 @@ class CovidTrackingDataSource(data_source.DataSource):
 
         # must stay true: positive chage + negative change ==  total change
         assert (
-            data[cls.Fields.POSITIVE_INCREASE]
-            + data[cls.Fields.NEGATIVE_INCREASE]
-            == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
+            data.dropna()[cls.Fields.POSITIVE_INCREASE]
+            + data.dropna()[cls.Fields.NEGATIVE_INCREASE]
+            == data.dropna()[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
         ).all()
 
         # TODO implement assertion to check for shift, as sliced by geo
