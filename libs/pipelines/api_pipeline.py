@@ -30,7 +30,9 @@ PROD_BUCKET = "data.covidactnow.org"
 
 
 class APIOutput(object):
-    def __init__(self, file_stem: str, data: pydantic.BaseModel, intervention: Intervention):
+    def __init__(
+        self, file_stem: str, data: pydantic.BaseModel, intervention: Intervention
+    ):
         """
         Args:
             file_stem: Stem of output filename.
@@ -57,7 +59,7 @@ def _get_api_prefix(aggregation_level, row):
     if aggregation_level == AggregationLevel.COUNTY:
         return row[rc.FIPS]
     elif aggregation_level == AggregationLevel.STATE:
-        full_state_name = row[rc.STATE]
+        full_state_name = row[rc.STATE_FULL_NAME]
         return US_STATE_ABBREV[full_state_name]
     else:
         raise ValueError("Only County and State Aggregate Levels supported")
@@ -97,7 +99,9 @@ def run_projections(
             input_file, intervention.value
         )
         if run_validation:
-            validate_results.validate_counties_df(counties_key_name, counties_df)
+            validate_results.validate_counties_df(
+                counties_key_name, counties_df, intervention
+            )
 
         county_results = APIPipelineProjectionResult(
             intervention, AggregationLevel.COUNTY, counties_df
@@ -194,10 +198,10 @@ def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
     found_fips_by_state = defaultdict(set)
     found_fips = set()
     for path in pathlib.Path(input_dir).iterdir():
-        if not str(path).endswith('.json'):
+        if not str(path).endswith(".json"):
             continue
 
-        state, fips, intervention, _ = path.name.split('.')
+        state, fips, intervention, _ = path.name.split(".")
         found_fips_by_state[state].add(fips)
         found_fips.add(fips)
 
@@ -211,7 +215,6 @@ def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
     output = APIOutput(f"fips_summary", fips_summary, None)
     results.append(output)
     return results
-
 
 
 def deploy_results(results: List[APIOutput], output: str, write_csv=False):
@@ -231,12 +234,10 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         if write_csv:
             data = api_row.data.dict()
             if not isinstance(data, list):
-                if not isinstance(data.get('data'), list):
-                    # Most of the API schemas have the lists under the `'data'` key.
-                    logger.warning(f"Missing data field with list of data.")
-                    continue
+                if not isinstance(data.get("__root__"), list):
+                    raise ValueError("Cannot find list data for csv export.")
                 else:
-                    data = data['data']
+                    data = data["__root__"]
             dataset_deployer.write_nested_csv(data, api_row.file_stem, output)
 
 
@@ -252,26 +253,26 @@ def build_prediction_header_timeseries_data(data: APIOutput):
             county_name = row.countyName
 
         summary_data = {
-            'countryName': row.countryName,
-            'countyName': county_name,
-            'stateName': row.stateName,
-            'fips': row.fips,
-            'lat': row.lat,
-            'long': row.long,
-            'intervention': data.intervention.name,
-            'lastUpdatedDate': row.lastUpdatedDate
+            "countryName": row.countryName,
+            "countyName": county_name,
+            "stateName": row.stateName,
+            "fips": row.fips,
+            "lat": row.lat,
+            "long": row.long,
+            "intervention": data.intervention.name,
+            "lastUpdatedDate": row.lastUpdatedDate,
         }
 
         for timeseries_data in row.timeseries:
             timeseries_row = PredictionTimeseriesRowWithHeader(
-                **summary_data,
-                **timeseries_data.dict()
+                **summary_data, **timeseries_data.dict()
             )
             rows.append(timeseries_row)
-
 
     return APIOutput(data.file_stem, rows, data.intervention)
 
 
 def deploy_prediction_timeseries_csvs(data: APIOutput, output):
-    dataset_deployer.write_nested_csv([row.dict() for row in data.data], data.file_stem, output)
+    dataset_deployer.write_nested_csv(
+        [row.dict() for row in data.data], data.file_stem, output
+    )
