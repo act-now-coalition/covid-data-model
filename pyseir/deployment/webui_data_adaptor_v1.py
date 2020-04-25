@@ -243,7 +243,7 @@ class WebUIDataAdaptorV1:
             int_columns = [col for col in output_model.columns if col not in
                            (schema.DATE, schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90)]
             output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int).astype(str)
-            output_model.loc[:, [schema.Rt, schema.Rt_ci90]] = \
+            output_model.loc[:, [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]] = \
                 output_model[[schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]]\
                     .fillna(0).round(decimals=4).astype(str)
 
