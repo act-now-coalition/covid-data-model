@@ -7,7 +7,7 @@ import us
 from datetime import timedelta, datetime, date
 from multiprocessing import Pool
 from pyseir import load_data
-from pyseir.inference.fit_results import load_inference_result
+from pyseir.inference.fit_results import load_inference_result, load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
@@ -218,14 +218,34 @@ class WebUIDataAdaptorV1:
 
             # Truncate date range of output.
             output_dates = pd.to_datetime(output_model['date'])
-            output_model = output_model[ (output_dates > datetime(month=3, day=3, year=2020))
+            output_model = output_model[ (output_dates >= datetime(month=3, day=3, year=2020))
                                         & (output_dates < datetime.today() + timedelta(days=90))]
             output_model = output_model.fillna(0)
 
+            try:
+                rt_results = load_Rt_result(fips)
+                rt_results.index = rt_results['Rt_MAP_composite'].index.strftime('%m/%d/%y')
+
+                merged = output_model.merge(rt_results[['Rt_MAP_composite', 'Rt_ci95_composite']],
+                    right_index=True, left_on='date', how='left')
+
+                output_model[schema.RT_INDICATOR] = merged['Rt_MAP_composite']
+                # With 90% probability the value is between rt_indicator - ci90 to rt_indicator + ci90
+                output_model[schema.RT_INDICATOR_CI90] = merged['Rt_ci95_composite'] - merged['Rt_MAP_composite']
+            except ValueError as e:
+                output_model[schema.RT_INDICATOR] = "NaN"
+                output_model[schema.RT_INDICATOR_CI90] = "NaN"
+
+            output_model[[schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]] = \
+                output_model[[schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]].fillna("NaN")
+
             # Truncate floats and cast as strings to match data model.
-            int_columns = [col for col in output_model.columns if col not in (schema.DATE, schema.Rt, schema.Rt_ci90)]
+            int_columns = [col for col in output_model.columns if col not in
+                           (schema.DATE, schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90)]
             output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int).astype(str)
-            output_model.loc[:, [schema.Rt, schema.Rt_ci90]] = output_model[[schema.Rt, schema.Rt_ci90]].fillna(0).round(decimals=4).astype(str)
+            output_model.loc[:, [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]] = \
+                output_model[[schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]]\
+                    .fillna(0).round(decimals=4).astype(str)
 
             # Convert the records format to just list(list(values))
             output_model = [[val for val in timestep.values()] for timestep in output_model.to_dict(orient='records')]

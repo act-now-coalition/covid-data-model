@@ -140,7 +140,7 @@ def _map_outputs(
 def _run_all(
     state=None,
     run_mode=DEFAULT_RUN_MODE,
-    generate_reports=True,
+    generate_reports=False,
     output_interval_days=1,
     skip_download=False,
     states_only=False,
@@ -153,7 +153,8 @@ def _run_all(
     if not skip_download:
         cache_all_data()
 
-    _generate_whitelist()
+    if not skip_whitelist:
+        _generate_whitelist()
 
     if state:
         # Deprecate temporarily since not needed. Our full model fits have
