@@ -40,6 +40,12 @@ class RtInferenceEngine:
     confidence_intervals: list(float)
         Confidence interval to compute. 0.95 would be 90% credible
         intervals from 5% to 95%.
+    min_cases: int
+        Minimum number of cases required to run case level inference. These are
+        very conservaively weak filters, but prevent cases of basically zero
+        data from introducing pathological results.
+    min_deaths: int
+        Minimum number of deaths required to run death level inference.
     """
     def __init__(self,
                  fips,
@@ -48,7 +54,9 @@ class RtInferenceEngine:
                  r_list=np.linspace(0, 10, 501),
                  process_sigma=0.15,
                  ref_date=datetime(year=2020, month=1, day=1),
-                 confidence_intervals=(0.68, 0.95)):
+                 confidence_intervals=(0.68, 0.95),
+                 min_cases=5,
+                 min_deaths=5):
 
         self.fips = fips
         self.r_list = r_list
@@ -57,6 +65,8 @@ class RtInferenceEngine:
         self.process_sigma = process_sigma
         self.ref_date = ref_date
         self.confidence_intervals = confidence_intervals
+        self.min_cases = min_cases
+        self.min_deaths = min_deaths
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -324,14 +334,14 @@ class RtInferenceEngine:
         """
         df_all = None
         available_timeseries = []
+        IDX_OF_COUNTS = 2
+        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
+        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
 
-        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[2]
-        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[2]
-
-        if np.sum(cases) > 5:
+        if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
 
-        if np.sum(deaths) > 5:
+        if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
         if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
