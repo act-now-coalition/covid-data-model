@@ -21,6 +21,8 @@ CURRENT_VENTILATED = 'current_ventilated'
 POPULATION = "population"
 ICU_BED_CAPACITY = "icu_bed_capacity"
 VENTILATOR_CAPACITY = "ventilator_capacity"
+RT_INDICATOR = 'Rt_indicator'
+RT_INDICATOR_CI90 = 'Rt_indicator_ci90'
 
 CAN_MODEL_OUTPUT_SCHEMA = [
     DAY_NUM,
@@ -44,6 +46,8 @@ CAN_MODEL_OUTPUT_SCHEMA = [
     POPULATION,
     ICU_BED_CAPACITY,
     VENTILATOR_CAPACITY,
+    RT_INDICATOR,
+    RT_INDICATOR_CI90,
 ]
 
 # Exclude the unnamed columns from our data frames until we have a use for them
