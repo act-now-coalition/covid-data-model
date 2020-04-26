@@ -4,7 +4,8 @@ import logging
 from pyseir import load_data
 from datetime import datetime
 from pyseir.utils import get_run_artifact_path, RunArtifact
-
+from pandarallel import pandarallel
+pandarallel.initialize(progress_bar=True)
 
 class WhitelistGenerator:
     """
@@ -47,25 +48,13 @@ class WhitelistGenerator:
         """
         logging.info('Generating county level whitelist...')
 
-        whitelist_generator_inputs = []
-        for fips in self.county_metadata.fips:
-            times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
-                fips, t0=datetime(day=1, month=1, year=2020))
+        # parallel load and compute
+        df_candidates = self.county_metadata.fips.parallel_apply(_whitelist_candidates_per_fips)
 
-            metadata = self.county_metadata[self.county_metadata.fips == fips].iloc[0].to_dict()
-
-            record = dict(
-                fips=fips,
-                state=metadata['state'],
-                county=metadata['county'],
-                total_cases=observed_new_cases.sum(),
-                total_deaths=observed_new_deaths.sum(),
-                nonzero_case_datapoints=np.sum(observed_new_cases > 0),
-                nonzero_death_datapoints=np.sum(observed_new_deaths > 0)
-            )
-            whitelist_generator_inputs.append(record)
-
-        df_candidates = pd.DataFrame(whitelist_generator_inputs)
+        # join extra data
+        df_candidates = df_candidates.merge(
+            self.county_metadata[['fips', 'state','county']],
+            left_on='fips', right_on='fips', how='inner')
 
         df_whitelist = df_candidates[['fips', 'state', 'county']]
         df_whitelist.loc[:, 'inference_ok'] = (
@@ -81,3 +70,17 @@ class WhitelistGenerator:
         df_whitelist.to_json(output_path)
 
         return df_whitelist
+
+
+def _whitelist_candidates_per_fips(fips):
+    times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
+        fips, t0=datetime(day=1, month=1, year=2020))
+
+    record = dict(
+        fips=fips,
+        total_cases=observed_new_cases.sum(),
+        total_deaths=observed_new_deaths.sum(),
+        nonzero_case_datapoints=np.sum(observed_new_cases > 0),
+        nonzero_death_datapoints=np.sum(observed_new_deaths > 0)
+    )
+    return pd.Series(record)
