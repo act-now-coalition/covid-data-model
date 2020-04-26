@@ -136,6 +136,7 @@ def _map_outputs(
                 output_dir=output_dir,
             )
 
+
 def _pipeline(
     state,
     states_only=False,
@@ -175,18 +176,21 @@ def _build_all_for_states(
     output_dir=None,
     skip_whitelist=False,
 ):
-    all_county_fips = []
+    # prepare data
     _cache_global_datasets()
-
     if not skip_download:
         cache_all_data()
+    if not skip_whitelist:
+        _generate_whitelist()
 
-    _generate_whitelist()
-
+    # run states in paralell
+    all_county_fips = []
     for state in states:
         all_county_fips += model_fitter.build_county_list(state)
 
-    # run states in paralell
+    print(states)
+    sys.exit(1)
+    # do everything for just states in paralell
     f = partial(
         _pipeline,
         run_mode=run_mode,
@@ -200,12 +204,15 @@ def _build_all_for_states(
     p.close()
     p.join()
 
+    #calculate culate inference
+    # Todo parallelize
     for state in states:
         _infer_rt(state)
 
+    #calculate ensemble
     print(f"executing model for {len(all_county_fips)} counties")
     p = Pool()
-    p.map(model_fitter._execute_model_for_fips, all_county_fips)
+    # p.map(model_fitter._execute_model_for_fips, all_county_fips)
     p.close()
     p.join()
 
@@ -222,22 +229,13 @@ def _run_all(
     output_dir=None,
     skip_whitelist=False,
 ):
-
-    # _cache_global_datasets()
-
-    # if not skip_download:
-    #     cache_all_data()
-
-    if not skip_whitelist:
-        _generate_whitelist()
-
     if state:
         # Deprecate temporarily since not needed. Our full model fits have
         # superseded these for now. But we may return to a context where this
         # method is used to measure localized Reff.
         # if not states_only:
         #     _impute_start_dates(state)
-        print('deprecated')
+        print("deprecated")
     else:
         if states_only:
             f = partial(
@@ -462,7 +460,7 @@ def run_all(
 )
 @click.option(
     "--output-interval-days",
-    default=4,
+    default=1,
     type=int,
     help="Number of days between outputs for the WebUI payload.",
 )
@@ -474,6 +472,13 @@ def run_all(
     help="Skip the download phase.",
 )
 @click.option(
+    "--skip-whitelist",
+    default=False,
+    is_flag=True,
+    type=bool,
+    help="Skip the whitelist phase.",
+)
+@click.option(
     "--output-dir", default=None, type=str, help="Directory to deploy webui output."
 )
 def build_all(
@@ -483,7 +488,7 @@ def build_all(
     output_interval_days,
     skip_download,
     output_dir,
-    skip_whitelist=False,
+    skip_whitelist,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -495,11 +500,11 @@ def build_all(
     _build_all_for_states(
         states=states,
         run_mode=DEFAULT_RUN_MODE,
-        generate_reports=True,
-        output_interval_days=4,
-        skip_download=False,
-        output_dir=None,
-        skip_whitelist=False,
+        generate_reports=generate_reports,
+        output_interval_days=output_interval_days,
+        skip_download=skip_download,
+        output_dir=output_dir,
+        skip_whitelist=skip_whitelist,
     )
 
 
