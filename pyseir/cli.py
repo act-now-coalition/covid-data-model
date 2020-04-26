@@ -137,7 +137,7 @@ def _map_outputs(
             )
 
 
-def _pipeline(
+def _state_only_pipeline(
     state,
     states_only=False,
     run_mode=DEFAULT_RUN_MODE,
@@ -147,17 +147,17 @@ def _pipeline(
 ):
     _infer_rt(state, states_only=states_only)
     _run_mle_fits(state, states_only=states_only)
-    # _run_ensembles(
-    #     state,
-    #     ensemble_kwargs=dict(
-    #         run_mode=run_mode,
-    #         generate_report=generate_reports,
-    #         covid_timeseries=nyt_dataset,
-    #     ),
-    #     states_only=states_only,
-    # )
-    # if generate_reports:
-    #     _generate_state_reports(state)
+    _run_ensembles(
+        state,
+        ensemble_kwargs=dict(
+            run_mode=run_mode,
+            generate_report=generate_reports,
+            covid_timeseries=nyt_dataset,
+        ),
+        states_only=states_only,
+    )
+    if generate_reports:
+        _generate_state_reports(state)
     # _map_outputs(
     #     state,
     #     output_interval_days,
@@ -190,7 +190,7 @@ def _build_all_for_states(
 
     # do everything for just states in paralell
     states_only_func = partial(
-        _pipeline,
+        _state_only_pipeline,
         run_mode=run_mode,
         generate_reports=generate_reports,
         output_interval_days=output_interval_days,
