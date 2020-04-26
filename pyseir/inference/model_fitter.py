@@ -444,7 +444,7 @@ class ModelFitter:
         """
         minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
 
-        if os.environ.get('FAST_AND_DIRTY'):
+        if os.environ.get('PYSEIR_FAST_AND_DIRTY'):
            minuit.strategy = 0
         minuit.migrad(precision=1e-5)
         # run MIGRAD algorithm for optimization.
