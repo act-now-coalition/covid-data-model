@@ -109,7 +109,7 @@ def _generate_state_reports(state=None):
 
 def _map_outputs(
     state=None,
-    output_interval_days=4,
+    output_interval_days=1,
     states_only=False,
     output_dir=None,
     run_mode="default",
@@ -216,7 +216,7 @@ def _run_all(
     state=None,
     run_mode=DEFAULT_RUN_MODE,
     generate_reports=True,
-    output_interval_days=4,
+    output_interval_days=1,
     skip_download=False,
     states_only=False,
     output_dir=None,
@@ -359,7 +359,7 @@ def generate_state_report(state):
 )
 @click.option(
     "--output-interval-days",
-    default=4,
+    default=1,
     type=int,
     help="Number of days between outputs for the WebUI payload.",
 )
@@ -402,7 +402,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 )
 @click.option(
     "--output-interval-days",
-    default=4,
+    default=1,
     type=int,
     help="Number of days between outputs for the WebUI payload.",
 )
