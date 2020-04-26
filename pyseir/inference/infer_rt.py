@@ -447,12 +447,10 @@ def run_state(state, states_only=False):
     # Run the counties.
     if not states_only:
         df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips.values
+        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
 
         # Something in here doesn't like multiprocessing...
-        # p = Pool(2)
-        rt_inferences = list(map(RtInferenceEngine.run_for_fips, all_fips))
-        # p.close()
+        rt_inferences = all_fips.map(lambda x: RtInferenceEngine.run_for_fips(x)).tolist()
 
         for fips, rt_inference in zip(all_fips, rt_inferences):
             county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
