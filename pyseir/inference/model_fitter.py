@@ -681,6 +681,21 @@ def _execute_model_for_fips(fips):
                 pickle.dump(model_fitter.mle_model, f)
 
 
+def build_county_list(state):
+    """
+    Build the and return the fips list
+    """
+    state_obj = us.states.lookup(state)
+    logging.info(f'Get fips list for state {state_obj.name}')
+
+    df_whitelist = load_data.load_whitelist()
+    df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
+
+    all_fips = df_whitelist[df_whitelist['state'].str.lower() == state_obj.name.lower()].fips.tolist()
+
+    return all_fips
+
+
 def run_state(state, states_only=False):
     """
     Run the fitter for each county in a state.
