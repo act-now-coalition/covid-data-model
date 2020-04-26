@@ -136,7 +136,6 @@ def _map_outputs(
                 output_dir=output_dir,
             )
 
-
 def _pipeline(
     state,
     states_only=False,
