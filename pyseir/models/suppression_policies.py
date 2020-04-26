@@ -156,7 +156,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     return interp1d(t_list, rho, fill_value='extrapolate')
 
 
-def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
+def generate_two_step_policy(t_list, eps, t_break, transition_time=14, t_break_final=None, eps_final=None):
     """
     Produce a suppression policy based a two step policy where the level is
     fixed at 1 until t_break and then it goes to eps linearly over a fied
@@ -170,16 +170,29 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
         Suppression level after t_break
     t_break: float
         Time since simulation start to place a break.
+    transition_time: float
+        Length of time to transition between epsilon states.
+    t_break_final: int
+        Time since simulation start to place a break to a final level.
+    eps_final: float
+        Suppression level after t_break_final.
 
     Returns
     -------
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t.
     """
-    return interp1d(
-        x=[0, t_break, t_break + transition_time, 100000],
-        y=[1, 1, eps, eps],
-        fill_value='extrapolate')
+    if eps_final is None:
+        return interp1d(
+            x=[0, t_break, t_break + transition_time, 100000],
+            y=[1, 1, eps, eps],
+            fill_value='extrapolate')
+
+    else:
+        return interp1d(
+            x=[0, t_break, t_break + transition_time, t_break_final, t_break_final + transition_time, 100000],
+            y=[1, 1, eps, eps, eps_final, eps_final],
+            fill_value='extrapolate')
 
 
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
