@@ -7,7 +7,7 @@ from functools import partial
 from pyseir.load_data import cache_all_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
-from pyseir.ensembles.ensemble_runner import run_state, RunMode
+from pyseir.ensembles.ensemble_runner import run_state, RunMode, _run_county
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
@@ -188,10 +188,8 @@ def _build_all_for_states(
     for state in states:
         all_county_fips += model_fitter.build_county_list(state)
 
-    print(states)
-    sys.exit(1)
     # do everything for just states in paralell
-    f = partial(
+    states_only_func = partial(
         _pipeline,
         run_mode=run_mode,
         generate_reports=generate_reports,
@@ -200,7 +198,7 @@ def _build_all_for_states(
         output_dir=output_dir,
     )
     p = Pool()
-    p.map(f, states)
+    p.map(states_only_func, states)
     p.close()
     p.join()
 
@@ -215,6 +213,13 @@ def _build_all_for_states(
     # p.map(model_fitter._execute_model_for_fips, all_county_fips)
     p.close()
     p.join()
+
+    #calculate ensemble
+    print(f"running model for {len(all_county_fips)} counties")
+    p = Pool()
+    ensemble_func = partial(_run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
+    p.map(ensemble_func, all_county_fips)
+    p.close()
 
     return
 
