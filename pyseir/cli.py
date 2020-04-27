@@ -158,6 +158,7 @@ def _state_only_pipeline(
     )
     if generate_reports:
         _generate_state_reports(state)
+    # remove outputs atm. just output at the end
     # _map_outputs(
     #     state,
     #     output_interval_days,
@@ -210,7 +211,7 @@ def _build_all_for_states(
     #calculate ensemble
     print(f"executing model for {len(all_county_fips)} counties")
     p = Pool()
-    # p.map(model_fitter._execute_model_for_fips, all_county_fips)
+    p.map(model_fitter._execute_model_for_fips, all_county_fips)
     p.close()
     p.join()
 
@@ -220,11 +221,14 @@ def _build_all_for_states(
     ensemble_func = partial(_run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
     p.map(ensemble_func, all_county_fips)
     p.close()
+    p.join()
 
     #output it all
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
+    print(f"outputing web results for states and {len(all_county_fips)} counties")
+    p = Pool()
     for state in states:
         web_ui_mapper = WebUIDataAdaptorV1(
             state,
@@ -234,7 +238,12 @@ def _build_all_for_states(
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(all_fips=all_county_fips)
+        # mapper_list += build_function_with_fips
+        web_ui_mapper.build_own_fips(all_county_fips)
+        web_ui_mapper.execute_own_fips_async(p)
+
+    p.close()
+    p.join()
 
     return
 
