@@ -35,6 +35,38 @@ class Backtester:
     However it is recommended that num_days_per_step <= ts_rolling_args[
     'window'] to ensure a good coverage of the time series.
 
+    Attributes
+    ----------
+    observations: pd.DataFrame
+        Contains observations for given fips codes, with columns:
+            - new_cases: float, observed new cases
+            - new_deaths: float, observed new deaths
+            - hospitalizations: float, observed hospitalizations
+                                and dates of observation as index.
+        and dates of observations as index.
+    backtest_results: pd.DataFrame
+        Contains errors of predictions by days of prediction and type
+        of error. With columns:
+            - observation_type: str, type of observations, should be among:
+                                'new_cases', 'new_deaths', or 'hospitalizations'
+            - error_type: str, type of forecasting errors.
+            - error: float, value of corresponding type of error
+            - days_of_forecast: int, number of days of forecast since latest
+                                available observation.
+            - observation_end_date: Datetime, last day before blinded
+                                    observations.
+    historical_predictions: pd.DataFrame
+        Contains predictions given historial observation timeseries.
+        With columns:
+            - dates: Datatime, dates of prediction
+            - new_cases: float, predicted new cases
+            - new_deaths: float, predicted new deaths
+            - hospitalizations: float, predicted hospitalizations
+            - observation_end_date: Datetime, last day before blinded
+                                    observations.
+            - observation_days_blinded: int, number of days that observations
+                                        are blinded.
+
     Parameters
     ----------
     fips: str
@@ -71,8 +103,7 @@ class Backtester:
                  ts_rolling_args={'window': 3,
                                   'min_periods': 1,
                                   'win_type': 'gaussian',
-                                  'center': True,
-                                  'std': 1},
+                                  'center': True},
                  ts_rolling_kernel_args={'std': 1},
                  num_days_per_step=3,
                  prediction_window_size=14,
@@ -96,6 +127,12 @@ class Backtester:
             logging.warning("num_days_per_step is greater than "
                             "ts_rolling_args['window'] which will make the "
                             "backtest skip part of the time series.")
+
+        self.observations = None
+        self.backtest_results = None
+        self.historical_predictions = None
+
+
     @staticmethod
     def load_observations(fips=None, ref_date=REF_DATE):
         """
@@ -141,7 +178,8 @@ class Backtester:
             observations['hospitalizations'][hospital_times - observations['times'].min()] = hospitalizations
 
         observation_dates = [ref_date + timedelta(int(t)) for t in observations['times']]
-        observations = pd.DataFrame(observations, index=pd.DatetimeIndex(observation_dates)).dropna(axis=1, how='all')
+        observations = pd.DataFrame(observations, index=pd.DatetimeIndex(
+            observation_dates)).dropna(axis=1, how='all')
 
         return observations
 
@@ -162,8 +200,9 @@ class Backtester:
             Contains:
             - new_cases: float, predicted new cases
             - new_deaths: float, predicted new deaths
-            - hospitalizations: float, predicted hospitalizations (if hospitalization
-                            data is available for given fips).
+            - hospitalizations: float, predicted hospitalizations (if
+                                hospitalization data is available for given
+                                fips).
         """
 
         mf = ModelFitter(self.fips)
@@ -225,23 +264,25 @@ class Backtester:
         Returns
         -------
         backtest_results: pd.DataFrame
-            Contains errors of predictions by days of prediction and type of error.
-            With columns:
+            Contains errors of predictions by days of prediction and type of
+            error. With columns:
             - observation_type: str, type of observations, should be among:
                                 'new_cases', 'new_deaths', or 'hospitalizations'
             - error_type: str, type of forecasting errors.
             - error: float, value of corresponding type of error
             - days_of_forecast: int, number of days of forecast since latest
                                 available observation.
-            - observation_end_date: Datetime, last day before blinded observations.
+            - observation_end_date: Datetime, last day before blinded
+                                    observations.
         historical_predictions: pd.DataFrame
             Contains predictions given historial observation timeseries.
             With columns:
             - dates: Datatime, dates of prediction
             - new_cases: float, predicted new cases
             - new_deaths: float, predicted new deaths
-            - curret_hosp: float, predicted hospitalizations
-            - observation_end_date: Datetime, last day before blinded observations.
+            - hospitalizations: float, predicted hospitalizations
+            - observation_end_date: Datetime, last day before blinded
+                                    observations.
             - observation_days_blinded: int, number of days that observations
                                         are blinded.
         """
@@ -298,8 +339,8 @@ class Backtester:
         Parameters
         ----------
         backtest_results: pd.DataFrame
-            Contains errors of predictions by days of prediction and type of error.
-            With columns:
+            Contains errors of predictions by days of prediction and type of
+            error. With columns:
             - observation_type: str, type of observations, should be among:
                                 'new_cases', 'new_deaths', or 'hospitalizations'
             - error_type: str, type of forecasting errors.
@@ -319,8 +360,8 @@ class Backtester:
                 df = backtest_results[(backtest_results.error_type == error_type)
                                     & (backtest_results.observation_type == observation_type)]
                 if error_type not in ['rmse', 'nrmse']:
-                    fig, axes = plt.subplots(nrows=int(np.ceil(df.days_of_forecast.max() / 2)),
-                                             ncols=2,
+                    fig, axes = plt.subplots(nrows=int(np.ceil(df.days_of_forecast.max() / 3)),
+                                             ncols=3,
                                              figsize=(18, 10))
                     for d, ax in list(zip(df.days_of_forecast.unique(), np.ravel(axes))):
                         df[df.days_of_forecast == d].plot('observation_end_date', 'error', ax=ax)
@@ -424,7 +465,15 @@ class Backtester:
             State's or county's FIPS code.
         kwargs: dict
             Parameters passed to Backtester other than 'fips', should be within:
-            - ts_rolling_args: dict, parameters for pandas.DataFrame.rolling
+            - ts_rolling_args: dict, parameters for pandas.Series.rolling,
+              for defails, check
+              https://pandas.pydata.org/pandas-docs/version/0.23.4
+              /generated/pandas.Series.rolling.html
+            - ts_rolling_kernel_args:  dict, parameters for
+              pandas.Series.rolling window kernel, for defails,
+              check description of win_type in:
+              https://pandas.pydata.org/pandas-docs/version/0
+              .23.4/generated/pandas.Series.rolling.html
             - prediction_window_size
             - max_observation_days_blinded
             - error_types
@@ -453,7 +502,13 @@ def run_for_fips_list(fips=['06', '36',
         FIPS codes to run backtest for.
     kwargs: dict
         kwargs passed for backtet, should be within:
-        - ts_rolling_args: dict, parameters for pandas.DataFrame.rolling
+        - ts_rolling_args: dict, parameters for pandas.Series.rolling,
+          for defails, check: https://pandas.pydata.org/pandas-docs/version/0
+          .23.4/generated/pandas.Series.rolling.html
+        - ts_rolling_kernel_args:  dict, parameters for
+          pandas.Series.rolling window kernel, for defails, check description
+          of win_type in: https://pandas.pydata.org/pandas-docs/version/0.23
+          .4/generated/pandas.Series.rolling.html
         - prediction_window_size
         - max_observation_days_blinded
         - num_days_per_step
