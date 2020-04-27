@@ -122,10 +122,10 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
         ...,
         description="Total ventilator capacity."
     )
-    Rt: float = pydantic.Field(
+    RtIndicator: float = pydantic.Field(
         ..., description="Historical or Inferred Rt"
     )
-    RtCI90: float = pydantic.Field(
+    RtIndicatorCI90: float = pydantic.Field(
         ..., description="Rt standard deviation"
     )
     cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
