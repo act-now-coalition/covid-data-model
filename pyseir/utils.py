@@ -24,9 +24,8 @@ class RunMode(Enum):
     DEFAULT = 'default'
     # 4 basic suppression scenarios and specialized parameters to match
     # covidactnow before scenarios.  Uses hospitalization data to fix.
-    CAN_BEFORE_HOSPITALIZATION = 'can-before-hospitalization'
-    # Same as CAN Before but with updated ICU, hosp rates increased.
     CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = 'can-before-hospitalization-new-params'
+    CAN_INFERENCE_DERIVED = 'can-inference-derived'
 
 
 class RunArtifact(Enum):

@@ -125,7 +125,6 @@ class WebUIDataAdaptorV1:
         try:
             fit_results = load_inference_result(fips)
 
-
         # Fit results not always available if the fit failed, or there are no
         # inference results.
         except (KeyError, ValueError):

@@ -22,6 +22,31 @@ distancing_measure_suppression = {
 }
 
 
+def get_future_supression_from_r0(R0, scenario):
+    """
+    Returns the future suppression level for a given R0 and a "future scenario".
+
+    Parameters
+    ----------
+    R0:float
+        Reproduction number
+    scenario: str
+        'no_intervention', 'flatten_the_curve', 'social_distancing'.
+    Returns
+    -------
+    epsilon: float
+        Suppression percentage.
+    """
+    if scenario == 'no_intervention':
+        return 1
+    elif scenario == 'flatten_the_curve':
+        return 0.97 / R0
+    elif scenario == 'social_distancing':
+        return 1.7 / R0
+    else:
+        raise ValueError(f'Suppression {scenario} not valid')
+
+
 def generate_triggered_suppression_model(t_list, lockdown_days, open_days, reduction=0.25, start_on=0):
     """
     Generates a contact reduction model which switches a binary supression
