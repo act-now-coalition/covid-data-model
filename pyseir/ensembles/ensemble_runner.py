@@ -487,11 +487,11 @@ def run_state(state, ensemble_kwargs, states_only=False):
     runner = EnsembleRunner(fips=us.states.lookup(state).fips, **ensemble_kwargs)
     runner.run_ensemble()
 
-    if not states_only:
-        # Run county level
-        df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state.lower()].fips
-        p = Pool()
-        f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
-        p.map(f, all_fips)
-        p.close()
+    # if not states_only:
+    #     # Run county level
+    #     df = load_data.load_county_metadata()
+    #     all_fips = df[df['state'].str.lower() == state.lower()].fips
+    #     p = Pool()
+    #     f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
+    #     p.map(f, all_fips)
+    #     p.close()

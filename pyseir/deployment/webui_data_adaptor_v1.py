@@ -28,7 +28,7 @@ class WebUIDataAdaptorV1:
         If True, map the outputs for imputed counties as well as those with
         no data.
     """
-    def __init__(self, state, output_interval_days=4, run_mode='can-before',
+    def __init__(self, state, output_interval_days=1, run_mode='can-before',
                  output_dir=None, jhu_dataset=None, cds_dataset=None, include_imputed=False):
 
         self.output_interval_days = output_interval_days
@@ -256,7 +256,7 @@ class WebUIDataAdaptorV1:
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 
-    def generate_state(self, states_only=False):
+    def generate_state(self, all_fips=[], states_only=False):
         """
         Generate for each county in a state, the output for the webUI.
 
@@ -269,8 +269,9 @@ class WebUIDataAdaptorV1:
         self.map_fips(state_fips)
 
         if not states_only:
-            df = load_data.load_county_metadata()
-            all_fips = df[df['state'].str.lower() == self.state.lower()].fips
+            if len(all_fips)==0:
+                df = load_data.load_county_metadata()
+                all_fips = df[df['state'].str.lower() == self.state.lower()].fips
 
             if not self.include_imputed:
                 # Filter...

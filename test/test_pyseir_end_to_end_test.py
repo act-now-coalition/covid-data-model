@@ -8,8 +8,10 @@ import libs.datasets.can_model_output_schema as schema
 
 def test__pyseir_end_to_end():
     # This covers a lot of edge cases.
-    cli._run_all(state='idaho')
+    #cli._run_all(state='idaho')
+    cli._build_all_for_states(states=['idaho'], generate_reports=False)
     path = get_run_artifact_path('16001', RunArtifact.WEB_UI_RESULT).replace('__INTERVENTION_IDX__', '2')
+    print(path)
     assert os.path.exists(path)
 
     with open(path) as f:

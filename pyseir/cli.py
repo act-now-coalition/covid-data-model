@@ -142,7 +142,7 @@ def _state_only_pipeline(
     states_only=False,
     run_mode=DEFAULT_RUN_MODE,
     generate_reports=True,
-    output_interval_days=4,
+    output_interval_days=1,
     output_dir=None,
 ):
     _infer_rt(state, states_only=states_only)
@@ -220,6 +220,21 @@ def _build_all_for_states(
     ensemble_func = partial(_run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
     p.map(ensemble_func, all_county_fips)
     p.close()
+
+    #output it all
+    output_interval_days = int(output_interval_days)
+    _cache_global_datasets()
+
+    for state in states:
+        web_ui_mapper = WebUIDataAdaptorV1(
+            state,
+            output_interval_days=output_interval_days,
+            run_mode=run_mode,
+            jhu_dataset=nyt_dataset,
+            cds_dataset=cds_dataset,
+            output_dir=output_dir,
+        )
+        web_ui_mapper.generate_state(all_fips=all_county_fips)
 
     return
 
@@ -498,7 +513,7 @@ def build_all(
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
     states = [state for state in states if state in ALL_STATES]
-
+    print('state')
     if not len(states):
         states = ALL_STATES
 
