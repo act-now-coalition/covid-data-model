@@ -302,7 +302,7 @@ class WebUIDataAdaptorV1:
 
     def execute_own_fips_async(self, pool: Pool):
         for fips in self.own_fips:
-            pool.apply_async(fips)
+            pool.apply_async(self.map_fips, fips)
 
 if __name__ == '__main__':
     mapper = WebUIDataAdaptorV1('California', output_interval_days=4)
