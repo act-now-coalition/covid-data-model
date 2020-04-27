@@ -55,15 +55,14 @@ def load_observations(fips, ref_date=datetime(year=2020, month=1, day=1)):
             load_data.load_hospitalization_data_by_state(state_obj.abbr, t0=ref_date)
         observations['times'] = np.array(observations['times'])
 
+    observations['current_hosp'] = np.full(observations['times'].shape[0], np.nan)
     if hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
-        observations['current_hosp'] = np.full(observations['times'].shape[0], np.nan)
         observations['current_hosp'][hospital_times - observations['times'].min()] = np.diff(hospitalizations)
     elif hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
-        observations['current_hosp'] = np.full(observations['times'].shape[0], np.nan)
         observations['current_hosp'][hospital_times - observations['times'].min()] = hospitalizations
 
     observation_dates = [ref_date + timedelta(int(t)) for t in observations['times']]
-    observations = pd.DataFrame(observations, index=pd.DatetimeIndex(observation_dates))
+    observations = pd.DataFrame(observations, index=pd.DatetimeIndex(observation_dates)).dropna(axis=1, how='all')
 
     return observations
 
@@ -159,7 +158,7 @@ def run_backtest(fips,
     """
     Run backtest for a given fips. Backtest blinds last n days of observations (
     new cases, new deaths or hospitalizations) and calculates error of
-    prediction in prediction_window_size days since the last un-blinded
+    prediction in prediction_window_size days since last un-blinded
     observation. Errors can be calculated for ith day of prediction where 1
     <= i <= prediction_window_size or for the entire prediction time window,
     depending on type of errors.
