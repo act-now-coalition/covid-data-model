@@ -232,7 +232,7 @@ class WebUIDataAdaptorV1:
                 output_model[schema.RT_INDICATOR] = merged['Rt_MAP_composite']
                 # With 90% probability the value is between rt_indicator - ci90 to rt_indicator + ci90
                 output_model[schema.RT_INDICATOR_CI90] = merged['Rt_ci95_composite'] - merged['Rt_MAP_composite']
-            except ValueError as e:
+            except (ValueError, KeyError) as e:
                 output_model[schema.RT_INDICATOR] = "NaN"
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
