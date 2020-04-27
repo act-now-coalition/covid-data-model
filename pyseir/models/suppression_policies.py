@@ -177,8 +177,8 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
         suppression_model(t) returns the current suppression model at time t.
     """
     return interp1d(
-        x=[0, t_break, t_break + transition_time, 100000],
-        y=[1, 1, eps, eps],
+        [0, t_break, t_break + transition_time, 100000],
+        [1, 1, eps, eps],
         fill_value='extrapolate')
 
 
@@ -296,7 +296,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     """
     county_metadata = load_data.load_county_metadata()
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
-    
+
     if reference_start_date is None:
         reference_start_date = min([infer_t0(fips) for fips in counties_fips])
 

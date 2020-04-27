@@ -76,7 +76,7 @@ class ParameterEnsembleGenerator:
         parameter_sets = []
         for _ in range(self.N_samples):
 
-            hospitalization_rate_general = np.random.normal(loc=0.04, scale=0.01)
+            hospitalization_rate_general = np.random.normal(loc=0.02, scale=0.01)
             # For now we have disabled this bucket and lowered rates of other
             # boxes accordingly. Since we were not modeling different contact
             # rates, this has the same result.
@@ -108,9 +108,9 @@ class ParameterEnsembleGenerator:
                 gamma=(1-fraction_asymptomatic),
                 # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                 symptoms_to_hospital_days=np.random.normal(loc=6., scale=1.5),
-                hospitalization_length_of_stay_general=np.random.normal(loc=6, scale=1),
-                hospitalization_length_of_stay_icu=np.random.normal(loc=14, scale=3),
-                hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=15, scale=3),
+                hospitalization_length_of_stay_general=np.random.normal(loc=5, scale=1),
+                hospitalization_length_of_stay_icu=np.random.normal(loc=8, scale=3),
+                hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=10, scale=3),
                 # if you assume the ARDS population is the group that would die
                 # w/o ventilation, this would suggest a 20-42% mortality rate
                 # among general hospitalized patients w/o access to ventilators:
@@ -121,14 +121,14 @@ class ParameterEnsembleGenerator:
                 # 10% Of the population should die at saturation levels. CFR
                 # from Italy is 11.9% right now, Spain 8.9%.  System has to
                 # produce,
-                mortality_rate_no_general_beds=np.random.normal(loc=.05, scale=0.01),
-                mortality_rate_from_hospital=0,
-                mortality_rate_from_ICU=np.random.normal(loc=0.4, scale=0.05),
-                mortality_rate_from_ICUVent=0.60,
+                mortality_rate_no_general_beds=np.random.normal(loc=.10, scale=0.01),
+                mortality_rate_from_hospital=0.05,
+                mortality_rate_from_ICU=np.random.normal(loc=0.5, scale=0.05),
+                mortality_rate_from_ICUVent=0.70,
                 mortality_rate_no_ICU_beds=1.0,
                 beds_general=self.beds * 0.4 * 2.07, # 60% utliization, no scaling...
                 # TODO.. Patch this After Issue 132
-                beds_ICU=(1 - 0.85) * self.icu_beds,  # No scaling, 85% utilization...
+                beds_ICU=(1 - 0.75) * self.icu_beds,  # No scaling, 75% utilization...
                 # hospital_capacity_change_daily_rate=1.05,
                 # max_hospital_capacity_factor=2.07,
                 # initial_hospital_bed_utilization=0.6,
@@ -142,7 +142,7 @@ class ParameterEnsembleGenerator:
                 # Staff expertise may be a limiting factor:
                 # https://sccm.org/getattachment/About-SCCM/Media-Relations/Final-Covid19-Press-Release.pdf?lang=en-US
                 # TODO: Patch after #133
-                ventilators=self.icu_beds * np.random.uniform(low=1.0, high=1.2),
+                ventilators=self.icu_beds * np.random.uniform(low=0.9, high=1.1),
             ))
 
         for parameter_set in parameter_sets:
