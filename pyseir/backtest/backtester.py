@@ -71,6 +71,8 @@ class Backtester:
     ----------
     fips: str
         FIPS code of the state or county to run backtest.
+    model_fitter_args: dict
+        Parameters (other than fips) to pass to model fitter.
     ts_rolling_args: dict
         Parameters that determine the moving average of timeseries of
         observation and prediction. Should follow the naming convention of
@@ -100,6 +102,7 @@ class Backtester:
     """
     def __init__(self,
                  fips,
+                 model_fitter_args=None,
                  ts_rolling_args={'window': 3,
                                   'min_periods': 1,
                                   'win_type': 'gaussian',
@@ -114,6 +117,7 @@ class Backtester:
                  n_retries=3):
 
         self.fips = fips
+        self.model_fitter_args = model_fitter_args or {}
         self.ts_rolling_args = ts_rolling_args
         self.ts_rolling_kernel_args = ts_rolling_kernel_args
         self.prediction_window_size = prediction_window_size
@@ -205,7 +209,7 @@ class Backtester:
                                 fips).
         """
 
-        mf = ModelFitter(self.fips)
+        mf = ModelFitter(fips=self.fips, **self.model_fitter_args)
         mf.times = self.observations['times'][:-observation_days_blinded]
         mf.observed_new_cases = self.observations['new_cases'].values[:-observation_days_blinded]
         mf.observed_new_deaths = self.observations['new_deaths'].values[:-observation_days_blinded]
@@ -362,7 +366,7 @@ class Backtester:
                 if error_type not in ['rmse', 'nrmse']:
                     fig, axes = plt.subplots(nrows=int(np.ceil(df.days_of_forecast.max() / 3)),
                                              ncols=3,
-                                             figsize=(18, 10))
+                                             figsize=(18, 12))
                     for d, ax in list(zip(df.days_of_forecast.unique(), np.ravel(axes))):
                         df[df.days_of_forecast == d].plot('observation_end_date', 'error', ax=ax)
                         ax.xaxis.set_major_formatter(DateFormatter("%m-%d"))
@@ -465,6 +469,7 @@ class Backtester:
             State's or county's FIPS code.
         kwargs: dict
             Parameters passed to Backtester other than 'fips', should be within:
+            - model_fitter_args: dict, parameters passed to model fitter
             - ts_rolling_args: dict, parameters for pandas.Series.rolling,
               for defails, check
               https://pandas.pydata.org/pandas-docs/version/0.23.4
@@ -502,6 +507,7 @@ def run_for_fips_list(fips=['06', '36',
         FIPS codes to run backtest for.
     kwargs: dict
         kwargs passed for backtet, should be within:
+        - model_fitter_args: dict, parameters passed to model fitter
         - ts_rolling_args: dict, parameters for pandas.Series.rolling,
           for defails, check: https://pandas.pydata.org/pandas-docs/version/0
           .23.4/generated/pandas.Series.rolling.html
