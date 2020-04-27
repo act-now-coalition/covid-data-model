@@ -131,8 +131,8 @@ def _generate_state_timeseries_row(json_data_row):
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
         ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
         ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
-        Rt=json_data_row[can_schema.Rt],
-        RtCI90=json_data_row[can_schema.Rt_ci90],
+        RtIndicator=json_data_row[can_schema.RT_INDICATOR],
+        RtIndicatorCI90=json_data_row[can_schema.RT_INDICATOR_CI90],
         cumulativePositiveTests=_get_or_none(
             json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]
         ),
@@ -151,8 +151,8 @@ def _generate_county_timeseries_row(json_data_row):
         ICUBedCapacity=json_data_row[can_schema.ICU_BED_CAPACITY],
         ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
         ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
-        Rt=json_data_row[can_schema.Rt],
-        RtCI90=json_data_row[can_schema.Rt_ci90],
+        RtIndicator=json_data_row[can_schema.RT_INDICATOR],
+        RtIndicatorCI90=json_data_row[can_schema.RT_INDICATOR_CI90],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
         cumulativePositiveTests=None,
