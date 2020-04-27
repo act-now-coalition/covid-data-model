@@ -204,9 +204,12 @@ def _build_all_for_states(
     p.join()
 
     #calculate culate inference
-    # Todo parallelize
+    # parallelize async
+    p = Pool()
     for state in states:
-        _infer_rt(state)
+        p.apply_async(_infer_rt, state)
+    p.close()
+    p.join()
 
     #calculate ensemble
     print(f"executing model for {len(all_county_fips)} counties")
