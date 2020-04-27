@@ -1,7 +1,18 @@
 import numpy as np
+#TODO setup JAX instead of numpy
+#initial trials showed no real improvement, but I remain optimstic
+#from jax.config import config
+#config.update("jax_enable_x64", True)
+#from jax import numpy as np
+# from jax import jit
 from scipy.integrate import odeint
+
 import matplotlib.pyplot as plt
 
+z0 = np.array([0])
+
+def derivative(t):
+    return np.append(z0, (t[1:] - t[:-1]))
 
 class SEIRModel:
     """
@@ -133,6 +144,7 @@ class SEIRModel:
     max_hospital_capacity_factor: float
         Cap the hospital capacity.
     """
+
     def __init__(self,
                  N,
                  t_list,
@@ -343,7 +355,7 @@ class SEIRModel:
             'HICU': HICU,
             'HVent': HICUVent,
             'D': D,
-            'direct_deaths_per_day': np.array([0] + list(D[1:] - D[:-1])), # Derivative...
+            'direct_deaths_per_day': derivative(D), # Derivative...
             # Here we assume that the number of person days above the saturation
             # divided by the mean length of stay approximates the number of
             # deaths from each source.
@@ -361,10 +373,10 @@ class SEIRModel:
         self.results['total_deaths'] = D
 
         # Derivatives of the cumulative give the "new" infections per day.
-        self.results['total_new_infections'] = np.append([0], TotalAllInfections[1:] - TotalAllInfections[:-1])
-        self.results['total_deaths_per_day'] = np.append([0], self.results['total_deaths'][1:] - self.results['total_deaths'][:-1])
-        self.results['general_admissions_per_day'] = np.append([0], HAdmissions_general[1:] - HAdmissions_general[:-1])
-        self.results['icu_admissions_per_day'] = np.append([0], HAdmissions_ICU[1:] - HAdmissions_ICU[:-1])  # Derivative of the cumulative.
+        self.results['total_new_infections'] = derivative(TotalAllInfections)
+        self.results['total_deaths_per_day'] = derivative(self.results['total_deaths'])
+        self.results['general_admissions_per_day'] = derivative(HAdmissions_general)
+        self.results['icu_admissions_per_day'] = derivative(HAdmissions_ICU)  # Derivative of the cumulative.
 
     def plot_results(self, y_scale='log', xlim=None):
         """

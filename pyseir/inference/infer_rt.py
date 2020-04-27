@@ -1,3 +1,4 @@
+import math
 from datetime import datetime, timedelta
 import numpy as np
 import logging
@@ -37,8 +38,14 @@ class RtInferenceEngine:
     ref_date:
         Reference date to compute from.
     confidence_intervals: list(float)
-        Confidence interval to compute. 0.90 would be 90% credible
+        Confidence interval to compute. 0.95 would be 90% credible
         intervals from 5% to 95%.
+    min_cases: int
+        Minimum number of cases required to run case level inference. These are
+        very conservaively weak filters, but prevent cases of basically zero
+        data from introducing pathological results.
+    min_deaths: int
+        Minimum number of deaths required to run death level inference.
     """
     def __init__(self,
                  fips,
@@ -47,7 +54,9 @@ class RtInferenceEngine:
                  r_list=np.linspace(0, 10, 501),
                  process_sigma=0.15,
                  ref_date=datetime(year=2020, month=1, day=1),
-                 confidence_intervals=(0.68, 0.75, 0.90)):
+                 confidence_intervals=(0.68, 0.95),
+                 min_cases=5,
+                 min_deaths=5):
 
         self.fips = fips
         self.r_list = r_list
@@ -56,12 +65,13 @@ class RtInferenceEngine:
         self.process_sigma = process_sigma
         self.ref_date = ref_date
         self.confidence_intervals = confidence_intervals
+        self.min_cases = min_cases
+        self.min_deaths = min_deaths
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
             self.state_obj = us.states.lookup(self.fips)
             self.state = self.state_obj.name
-            self.geo_metadata = load_data.load_county_metadata_by_state(self.state).loc[self.state].to_dict()
 
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_state(self.state, self.ref_date)
@@ -213,8 +223,8 @@ class RtInferenceEngine:
             High confidence intervals.
         """
         posterior_cdfs = posteriors.values.cumsum(axis=0)
-        low_idx_list = np.argmin(np.abs(posterior_cdfs - (1 - ci / 2)), axis=0)
-        high_idx_list = np.argmin(np.abs(posterior_cdfs - ci / 2), axis=0)
+        low_idx_list = np.argmin(np.abs(posterior_cdfs - (1 - ci)), axis=0)
+        high_idx_list = np.argmin(np.abs(posterior_cdfs - ci), axis=0)
         ci_low = self.r_list[low_idx_list]
         ci_high = self.r_list[high_idx_list]
         return ci_low, ci_high
@@ -323,11 +333,14 @@ class RtInferenceEngine:
         """
         df_all = None
         available_timeseries = []
+        IDX_OF_COUNTS = 2
+        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
+        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
 
-        if len(self.get_timeseries(TimeseriesType.NEW_CASES)) > 0:
+        if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
 
-        if len(self.get_timeseries(TimeseriesType.NEW_DEATHS)) > 0:
+        if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
         if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
@@ -344,8 +357,11 @@ class RtInferenceEngine:
                 df[f'Rt_MAP__{timeseries_type.value}'] = posteriors.idxmax()
                 for ci in self.confidence_intervals:
                     ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
-                    df[f'Rt_ci{int(100 * (1 - ci / 2))}__{timeseries_type.value}'] = ci_low
-                    df[f'Rt_ci{int(100 * ci / 2)}__{timeseries_type.value}'] = ci_high
+
+                    low_val = 1 - ci
+                    high_val = ci
+                    df[f'Rt_ci{int(math.floor(100 * low_val))}__{timeseries_type.value}'] = ci_low
+                    df[f'Rt_ci{int(math.floor(100 * high_val))}__{timeseries_type.value}'] = ci_high
 
                 df['date'] = dates
                 df = df.set_index('date')
@@ -354,6 +370,19 @@ class RtInferenceEngine:
                     df_all = df
                 else:
                     df_all = df_all.merge(df, left_index=True, right_index=True, how='outer')
+
+        if df_all is not None and 'Rt_MAP__new_deaths' in df_all and 'Rt_MAP__new_cases' in df_all:
+            df_all['Rt_MAP_composite'] = np.nanmean(df_all[['Rt_MAP__new_cases', 'Rt_MAP__new_deaths']], axis=1)
+            # Just use the Stdev of cases. A correlated quadrature summed error
+            # would be better, but is also more confusing and difficult to fix
+            # discontinuities between death and case errors since deaths are
+            # only available for a subset. Systematic errors are much larger in
+            # any case.
+            df_all['Rt_ci95_composite'] = df_all['Rt_ci95__new_cases']
+
+        elif df_all is not None and 'Rt_MAP__new_cases' in df_all:
+            df_all['Rt_MAP_composite'] = df_all['Rt_MAP__new_cases']
+            df_all['Rt_ci95_composite'] = df_all['Rt_ci95__new_cases']
 
         if plot:
             plt.figure(figsize=(10, 6))
@@ -447,12 +476,10 @@ def run_state(state, states_only=False):
     # Run the counties.
     if not states_only:
         df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips.values
+        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
 
         # Something in here doesn't like multiprocessing...
-        # p = Pool(2)
-        rt_inferences = list(map(RtInferenceEngine.run_for_fips, all_fips))
-        # p.close()
+        rt_inferences = all_fips.map(lambda x: RtInferenceEngine.run_for_fips(x)).tolist()
 
         for fips, rt_inference in zip(all_fips, rt_inferences):
             county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
