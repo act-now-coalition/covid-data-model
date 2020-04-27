@@ -61,7 +61,6 @@ def load_observations(fips, ref_date=datetime(year=2020, month=1, day=1)):
     elif hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
         observations['current_hosp'] = np.full(observations['times'].shape[0], np.nan)
         observations['current_hosp'][hospital_times - observations['times'].min()] = hospitalizations
-    # create list of t_lists to run model fitter
 
     observation_dates = [ref_date + timedelta(int(t)) for t in observations['times']]
     observations = pd.DataFrame(observations, index=pd.DatetimeIndex(observation_dates))
@@ -108,7 +107,7 @@ def run_model_fitter_for_backtest(fips, observations, observation_days_blinded, 
     if mf.hospital_times is not None:
         mf.hospital_times = mf.hospital_times[mf.hospital_times <= mf.times.max()]
         mf.hospitalizations = mf.hospitalizations[:len(mf.hospital_times)]
-        # all hospitalization data has been blinded
+        # when all hospitalization data has been blinded
         if mf.hospital_times.size == 0:
             mf.hospitalization_data_type = None
 
@@ -226,15 +225,19 @@ def run_backtest(fips,
         backtest_record['days_of_forecast'] = list()
         backtest_record['observation_end_date'] = list()
 
+        moving_average = lambda s: s.rolling(
+            rolling_window_size=rolling_window_size,
+            min_periods=1,
+            win_type='gaussian',
+            center=True).mean(std=0.1*rolling_window_size)[-d:][:prediction_window_size]
+
         for observation_type in ['new_cases', 'new_deaths', 'current_hosp']:
             if observation_type in observations:
                 for error_type in error_types:
                     error = tsm.calculate_error(
-                            observations[observation_type].rolling(rolling_window_size,
-                                                                   min_periods=1).mean()[-d:][:prediction_window_size],
-                            prediction[observation_type].rolling(rolling_window_size,
-                                                                 min_periods=1).mean()[-d:][:prediction_window_size],
-                            error_type=error_type)
+                        moving_average(observations[observation_type]),
+                        moving_average(prediction[observation_type]),
+                        error_type=error_type)
 
                     if error_type in ['rmse', 'nrmse']:
                         error = np.array([error])
