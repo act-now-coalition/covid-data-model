@@ -179,8 +179,7 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
     return interp1d(
         [0, t_break, t_break + transition_time, 100000],
         [1, 1, eps, eps],
-        fill_value='extrapolate'
-    )
+        fill_value='extrapolate')
 
 
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
@@ -297,7 +296,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     """
     county_metadata = load_data.load_county_metadata()
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
-    
+
     if reference_start_date is None:
         reference_start_date = min([infer_t0(fips) for fips in counties_fips])
 
@@ -312,7 +311,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
         results.append(suppression_policy(t_list).clip(max=1, min=0))
     results_for_state = (np.vstack(results).T * weight).sum(axis=1)
 
-    return lambda x: np.interp(x, t_list, results_for_state)
+    return interp1d(t_list, results_for_state, fill_value='extrapolate')
 
 
 def piecewise_parametric_policy(x, t_list):
