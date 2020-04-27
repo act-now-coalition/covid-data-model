@@ -652,7 +652,8 @@ class ModelFitter:
                 return None
 
         try:
-            for i in range(n_retries):
+            retry = n_retries
+            while retry > 0:
                 model_fitter = cls(fips)
                 try:
                     model_fitter.fit()
@@ -661,7 +662,8 @@ class ModelFitter:
                         break
                 except RuntimeError as e:
                     logging.warning('No convergence.. Retrying ' + str(e))
-            if model_fitter.mle_model is None:
+                    retry = retry - 1
+            if retry == 0 or model_fitter.mle_model is None:
                 raise RuntimeError(f'Could not converge after {n_retries} for fips {fips}')
         except Exception:
             logging.exception(f"Failed to run {fips}")
@@ -671,7 +673,7 @@ class ModelFitter:
 
 def _execute_model_for_fips(fips):
     if fips:
-        model_fitter = ModelFitter.run_for_fips(fips, n_retries=1)
+        model_fitter = ModelFitter.run_for_fips(fips)
 
         output_path = get_run_artifact_path(fips, RunArtifact.MLE_FIT_RESULT)
         pd.DataFrame(model_fitter.fit_results, index=[fips]).to_json(output_path)
