@@ -302,7 +302,6 @@ class WebUIDataAdaptorV1:
 
     def execute_own_fips_async(self, pool: Pool):
         for fips in self.own_fips:
-            print(fips)
             pool.apply_async(fips)
 
 if __name__ == '__main__':

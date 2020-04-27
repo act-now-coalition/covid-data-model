@@ -67,7 +67,6 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
     if len(fips) == 5:
         agg_level = AggregationLevel.COUNTY
         county = load_data.load_county_metadata_by_fips(fips)['county']
-        print(fips, county)
     else:
         agg_level = AggregationLevel.STATE
 
