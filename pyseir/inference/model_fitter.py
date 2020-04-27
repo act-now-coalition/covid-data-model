@@ -2,6 +2,7 @@ import logging
 import iminuit
 import numpy as np
 import us
+import os
 import pickle
 from pprint import pformat
 import pandas as pd
@@ -644,7 +645,7 @@ class ModelFitter:
                 model_fitter = cls(fips)
                 try:
                     model_fitter.fit()
-                    if model_fitter.mle_model:
+                    if model_fitter.mle_model and os.environ.get('PYSEIR_PLOT_RESULTS') == 'True':
                         model_fitter.plot_fitting_results()
                         break
                 except RuntimeError as e:
