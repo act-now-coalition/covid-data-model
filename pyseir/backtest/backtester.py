@@ -10,11 +10,10 @@ from datetime import datetime, timedelta
 from matplotlib.dates import DateFormatter
 from multiprocessing import Pool
 from functools import partial
-from pyseir.utils import REF_DATE
 from pyseir import load_data
 from pyseir.load_data import HospitalizationDataType
 from pyseir.inference.model_fitter import ModelFitter
-from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import get_run_artifact_path, RunArtifact, REF_DATE
 from pyseir.backtest.timeseries_metrics import TimeSeriesMetrics, error_type_to_meaning
 
 
