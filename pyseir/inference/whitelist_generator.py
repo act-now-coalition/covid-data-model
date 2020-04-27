@@ -5,7 +5,7 @@ from pyseir import load_data
 from datetime import datetime
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pandarallel import pandarallel
-pandarallel.initialize(progress_bar=True)
+pandarallel.initialize(progress_bar=False)
 
 class WhitelistGenerator:
     """
