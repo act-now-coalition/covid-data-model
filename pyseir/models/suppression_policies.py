@@ -263,7 +263,7 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression,
 
     t_list_since_reference_date = t_list + (pd.to_datetime(t0) - pd.to_datetime(reference_start_date)).days
 
-    return interp1d(t_list_since_reference_date, rho)
+    return interp1d(t_list_since_reference_date, rho, fill_value='extrapolate')
 
 
 def generate_empirical_distancing_policy_by_state(t_list, state, future_suppression, reference_start_date=None):
