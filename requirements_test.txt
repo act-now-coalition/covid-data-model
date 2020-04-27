@@ -6,3 +6,4 @@ pytest-pylint==0.14.1
 pytest-mock >= 1.10.4
 black==19.10b0
 nbstripout==0.3.7
+pylint==2.4.4

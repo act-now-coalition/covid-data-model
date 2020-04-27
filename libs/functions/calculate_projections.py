@@ -40,7 +40,6 @@ def _read_json_as_df(path):
         columns=CAN_MODEL_OUTPUT_SCHEMA,
         exclude=CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS,
     )
-
     df["date"] = pd.to_datetime(df.date, format="%m/%d/%y")
     df["all_hospitalized"] = df["all_hospitalized"].astype("int")
     df["beds"] = df["beds"].astype("int")
@@ -48,6 +47,10 @@ def _read_json_as_df(path):
     df["population"] = df["population"].astype("int")
     df["Rt"] = df["Rt"].astype("float")
     df["Rt_ci90"] = df["Rt_ci90"].astype("float")
+    df["Rt_indicator"] = df["Rt_indicator"].astype("float")
+    df["Rt_indicator_ci90"] = df["Rt_indicator_ci90"].astype("float")
+    # Rt_indicator is NaN sometimes
+    df.fillna(0, inplace=True)
     return df
 
 
