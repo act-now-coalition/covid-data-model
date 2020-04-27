@@ -370,7 +370,8 @@ class SEIRModel:
             'HVent_cumulative': np.cumsum(HICUVent) / self.hospitalization_length_of_stay_icu_and_ventilator
         }
 
-        self.results['total_deaths'] = D
+        self.results['total_deaths'] = (D + self.results['deaths_from_hospital_bed_limits']
+                                          + self.results['deaths_from_icu_bed_limits'])
 
         # Derivatives of the cumulative give the "new" infections per day.
         self.results['total_new_infections'] = derivative(TotalAllInfections)
