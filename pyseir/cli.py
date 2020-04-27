@@ -159,13 +159,13 @@ def _state_only_pipeline(
     if generate_reports:
         _generate_state_reports(state)
     # remove outputs atm. just output at the end
-    _map_outputs(
-        state,
-        output_interval_days,
-        states_only=states_only,
-        output_dir=output_dir,
-        run_mode=run_mode,
-    )
+    # _map_outputs(
+    #     state,
+    #     output_interval_days,
+    #     states_only=states_only,
+    #     output_dir=output_dir,
+    #     run_mode=run_mode,
+    # )
 
 
 def _build_all_for_states(
