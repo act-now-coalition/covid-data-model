@@ -1,7 +1,11 @@
 from typing import List
+import pathlib
 from collections import namedtuple
+from collections import defaultdict
 import logging
+
 import pydantic
+from api.can_api_definition import CountyFipsSummary
 from api.can_api_definition import CovidActNowCountySummary
 from api.can_api_definition import CovidActNowCountiesSummary
 from api.can_api_definition import CovidActNowCountiesTimeseries
@@ -26,11 +30,14 @@ PROD_BUCKET = "data.covidactnow.org"
 
 
 class APIOutput(object):
-    def __init__(self, file_stem: str, data: pydantic.BaseModel, intervention: Intervention):
+    def __init__(
+        self, file_stem: str, data: pydantic.BaseModel, intervention: Intervention
+    ):
         """
         Args:
             file_stem: Stem of output filename.
             data: Data
+            intervention: Intervention for this data.
 
         """
         self.file_stem = file_stem
@@ -52,7 +59,7 @@ def _get_api_prefix(aggregation_level, row):
     if aggregation_level == AggregationLevel.COUNTY:
         return row[rc.FIPS]
     elif aggregation_level == AggregationLevel.STATE:
-        full_state_name = row[rc.STATE]
+        full_state_name = row[rc.STATE_FULL_NAME]
         return US_STATE_ABBREV[full_state_name]
     else:
         raise ValueError("Only County and State Aggregate Levels supported")
@@ -92,7 +99,9 @@ def run_projections(
             input_file, intervention.value
         )
         if run_validation:
-            validate_results.validate_counties_df(counties_key_name, counties_df)
+            validate_results.validate_counties_df(
+                counties_key_name, counties_df, intervention
+            )
 
         county_results = APIPipelineProjectionResult(
             intervention, AggregationLevel.COUNTY, counties_df
@@ -150,21 +159,21 @@ def generate_api(
 
 def build_states_summary(state_data: List[APIOutput], intervention) -> APIOutput:
     data = [output.data for output in state_data]
-    state_api_data = CovidActNowStatesSummary(data=data)
+    state_api_data = CovidActNowStatesSummary(__root__=data)
     key = f"states.{intervention.name}"
     return APIOutput(key, state_api_data, intervention)
 
 
 def build_states_timeseries(state_data: List[APIOutput], intervention) -> APIOutput:
     data = [output.data for output in state_data]
-    state_api_data = CovidActNowStatesTimeseries(data=data)
+    state_api_data = CovidActNowStatesTimeseries(__root__=data)
     key = f"states.{intervention.name}.timeseries"
     return APIOutput(key, state_api_data, intervention)
 
 
 def build_counties_summary(counties_data: List[APIOutput], intervention) -> APIOutput:
     county_summaries = [output.data for output in counties_data]
-    county_api_data = CovidActNowCountiesSummary(data=county_summaries)
+    county_api_data = CovidActNowCountiesSummary(__root__=county_summaries)
     key = f"counties.{intervention.name}"
     return APIOutput(key, county_api_data, intervention)
 
@@ -173,9 +182,39 @@ def build_counties_timeseries(
     counties_data: List[APIOutput], intervention
 ) -> APIOutput:
     county_summaries = [output.data for output in counties_data]
-    county_api_data = CovidActNowCountiesTimeseries(data=county_summaries)
+    county_api_data = CovidActNowCountiesTimeseries(__root__=county_summaries)
     key = f"counties.{intervention.name}.timeseries"
     return APIOutput(key, county_api_data, intervention)
+
+
+def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
+    """Builds lists of counties available from model output.
+
+    Args:
+        input_dir: Input directory.  Should point to county output.
+
+    Returns: List of API Output objects.
+    """
+    found_fips_by_state = defaultdict(set)
+    found_fips = set()
+    for path in pathlib.Path(input_dir).iterdir():
+        if not str(path).endswith(".json"):
+            continue
+
+        state, fips, intervention, _ = path.name.split(".")
+        found_fips_by_state[state].add(fips)
+        found_fips.add(fips)
+
+    results = []
+    for state, data in found_fips_by_state.items():
+        fips_summary = CountyFipsSummary(counties_with_data=sorted(list(data)))
+        output = APIOutput(f"{state}.summary", fips_summary, None)
+        results.append(output)
+
+    fips_summary = CountyFipsSummary(counties_with_data=sorted(list(found_fips)))
+    output = APIOutput(f"fips_summary", fips_summary, None)
+    results.append(output)
+    return results
 
 
 def deploy_results(results: List[APIOutput], output: str, write_csv=False):
@@ -186,17 +225,19 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         key: Name for the file to be uploaded
         output: output folder to save results in.
     """
+    output_path = pathlib.Path(output)
+    if not output_path.exists():
+        output_path.mkdir(parents=True, exist_ok=True)
+
     for api_row in results:
         dataset_deployer.upload_json(api_row.file_stem, api_row.data.json(), output)
         if write_csv:
             data = api_row.data.dict()
             if not isinstance(data, list):
-                if not isinstance(data.get('data'), list):
-                    # Most of the API schemas have the lists under the `'data'` key.
-                    logger.warning(f"Missing data field with list of data.")
-                    continue
+                if not isinstance(data.get("__root__"), list):
+                    raise ValueError("Cannot find list data for csv export.")
                 else:
-                    data = data['data']
+                    data = data["__root__"]
             dataset_deployer.write_nested_csv(data, api_row.file_stem, output)
 
 
@@ -206,32 +247,32 @@ def build_prediction_header_timeseries_data(data: APIOutput):
     api_data = data.data
     # Iterate through each state or county in data, adding summary data to each
     # timeseries row.
-    for row in api_data.data:
+    for row in api_data.__root__:
         county_name = None
         if isinstance(row, CovidActNowCountyTimeseries):
             county_name = row.countyName
 
         summary_data = {
-            'countryName': row.countryName,
-            'countyName': county_name,
-            'stateName': row.stateName,
-            'fips': row.fips,
-            'lat': row.lat,
-            'long': row.long,
-            'intervention': data.intervention.name,
-            'lastUpdatedDate': row.lastUpdatedDate
+            "countryName": row.countryName,
+            "countyName": county_name,
+            "stateName": row.stateName,
+            "fips": row.fips,
+            "lat": row.lat,
+            "long": row.long,
+            "intervention": data.intervention.name,
+            "lastUpdatedDate": row.lastUpdatedDate,
         }
 
         for timeseries_data in row.timeseries:
             timeseries_row = PredictionTimeseriesRowWithHeader(
-                **summary_data,
-                **timeseries_data.dict()
+                **summary_data, **timeseries_data.dict()
             )
             rows.append(timeseries_row)
-
 
     return APIOutput(data.file_stem, rows, data.intervention)
 
 
 def deploy_prediction_timeseries_csvs(data: APIOutput, output):
-    dataset_deployer.write_nested_csv([row.dict() for row in data.data], data.file_stem, output)
+    dataset_deployer.write_nested_csv(
+        [row.dict() for row in data.data], data.file_stem, output
+    )

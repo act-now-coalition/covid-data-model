@@ -10,7 +10,7 @@ Data is updated every day, typically around midnight US Pacific Time.
 
 ### Rate Limits
 
-There are no rate limits
+There are no rate limits, but please be aware of your usage as we're a non-profit and would like to stay available to everyone.
 
 ### License
 
@@ -29,30 +29,27 @@ Specify either:
 
 1. A US State using two letter abbreviation (eg. 'CA' for California)
 2. A US County using it's [FIPS Code](https://en.wikipedia.org/wiki/FIPS_county_code) (For a list of FIPS Codes, see [this page on the USDA site](https://www.nrcs.usda.gov/wps/portal/nrcs/detail/national/home/?cid=nrcs143_013697))
+3. `/states/` or `/counties/` to get aggregate projections for all states or counties
 
 ### Invervention Categories
 
 Forward projections are available for the following scenarios:
 
 ```js
-"NO_MITIGATION",          // No Intervention
-"MODERATE_MITIGATION"     // Social Distancing
-"HIGH_MITIGATION"         // Stay at Home
+"NO_INTERVENTION",          // No Intervention
+"WEAK_INTERVENTION"         // Social Distancing
+"STRONG_INTERVENTION"       // Stay at Home
+"OBSERVED_INTERVENTION"     // Dynamic forecast based on observations
 ```
 
-Additionally the most appropriate static scenario based on the per-state intervention is returned by specifying:
-
-```js
-"SELECTED_MITIGATION"
-```
 
 To get a dynamic forecast that is based on the actually observed effect of mitigations and other factors in a given state, use:
 
 ```js
-"OBSERVED_MITIGATION"
+"OBSERVED_INTERVENTION"
 ```
 
-> Note: `OBSERVED_MITIGATION` is only available for states, not counties.
+> Note: `OBSERVED_INTERVENTION` is only available for states, not counties.
 
 More information on interventions, including definitions, references, and R0 values used is [available here](https://data.covidactnow.org/Covid_Act_Now_Model_References_and_Assumptions.pdf).
 
@@ -72,11 +69,11 @@ Returns projections for the selected state
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.json
+# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_INTERVENTION.json
 /us/states/<ST>.<INTERVENTION>.json
 
 # Full timeseries data: actuals + projected limits + data for every four days
-# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_MITIGATION.timeseries.json 
+# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_INTERVENTION.timeseries.json
 /us/states/<ST>.<INTERVENTION>.timeseries.json
 ```
 
@@ -86,23 +83,23 @@ Returns projections for all states
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.json
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.json
 /us/states.<INTERVENTION>.json
 
 # Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.timeseries.json
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.timeseries.json
 /us/states.<INTERVENTION>.timeseries.json
 ```
 
 State aggregates are also available as CSV files:
-    
+
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.csv
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.csv
 /latest/us/states.<INTERVENTION>.csv
 
 # Timeseries data
-# E.G. https://data.covidactnow.org/latest/us/states.OBSERVED_MITIGATION.timeseries.csv
+# E.G. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.timeseries.csv
 /latest/us/states.<INTERVENTION>.timeseries.csv
 ```
 
@@ -110,15 +107,15 @@ State aggregates are also available as CSV files:
 #### Projections for a Specific County
 
 Returns projections for the selected county
-    
+
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.json
-/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json 
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.WEAK_INTERVENTION.json
+/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json
 
 # Full timeseries data: actuals + projected limits + data for every four days
-# e.g. https://data.covidactnow.org/latest/us/counties/06077.SELECTED_MITIGATION.timeseries.json
-/latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json 
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.WEAK_INTERVENTION.timeseries.json
+/latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json
 ```
 
 #### Aggregate Projections for All Counties
@@ -127,23 +124,23 @@ Returns projections for all counties
 
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.json
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.json
 /us/counties.<INTERVENTION>.json
 
 # Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.timeseries.json
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.json
 /us/counties.<INTERVENTION>.timeseries.json
 ```
 
 County aggregates are also available as CSV files:
-    
+
 ```bash
 # Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.csv
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.csv
 /latest/us/counties.<INTERVENTION>.csv
 
 # Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/counties.SELECTED_MITIGATION.timeseries.csv
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.csv
 /latest/us/counties.<INTERVENTION>.timeseries.csv
 ```
 
@@ -156,20 +153,22 @@ This is the data format for both states and counties. `timeseries` is only inclu
   stateName,
   countyName, // null for states
   fips, // 2 digit for states, 5 digit for counties
-  lat, 
+  lat,
   long,
   lastUpdatedDate, // ISO 8601 date string
   actuals: {
     population,
-    intervention, // one of (NO_MITIGATION, MODERATE_MITIGATION, stay_at_home)
+    intervention, // one of (NO_INTERVENTION, WEAK_INTERVENTION, STRONG_INTERVENTION, OBSERVED_INTERVENTION)
+    cumulativePositiveTests,
+    cumulativeNegativeTests,
     cumulativeConfirmedCases,
     cumulativeDeaths,
     hospitalBeds: {
       capacity,
       currentUsage, // Coming soon where available, null currently
-    }, 
+    },
     ICUBeds: { same as above }  // Coming soon where available, null currently
-  }, 
+  },
   projections: {
     totalHospitalBeds: {
       shortageStartDate, // null if no shortage projected
@@ -184,6 +183,8 @@ This is the data format for both states and counties. `timeseries` is only inclu
     hospitalBedCapacity,
     ICUBedsInUse,
     ICUBedCapacity, // Coming soon where availabe, null currently
+    cumulativePositiveTests,
+    cumulativeNegativeTests,
     cumulativeDeaths,
     cumulativeInfected,
   }],
@@ -193,4 +194,3 @@ This is the data format for both states and counties. `timeseries` is only inclu
 * Hospital bed usage (actuals)
 * ICU bed data (capacity, projections, and actuals)
 * More file forms (dbf, shp, shx)
-

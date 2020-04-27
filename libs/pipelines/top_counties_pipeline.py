@@ -33,7 +33,7 @@ def run_projections(
     Returns: TopCountiesPipelineProjectionResult objects for county data.
     """
     # Run County level projections
-    intervention = Intervention.SELECTED_MITIGATION
+    intervention = Intervention.SELECTED_INTERVENTION
 
     counties_key_name = f"counties.{intervention.name}"
     # note i think build_processed_dataset should porbably be renamed?
@@ -41,7 +41,9 @@ def run_projections(
         input_file, intervention.value
     )
     if run_validation:
-        validate_results.validate_counties_df(counties_key_name, counties_df)
+        validate_results.validate_counties_df(
+            counties_key_name, counties_df, intervention
+        )
 
     county_results = TopCountiesPipelineProjectionResult(counties_df)
 

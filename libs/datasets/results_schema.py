@@ -1,9 +1,12 @@
-STATE = "Province/State"
+from libs.datasets import CommonFields
+from libs.datasets import can_model_output_schema
+
+STATE_FULL_NAME = CommonFields.STATE_FULL_NAME
 COUNTRY = "Country/Region"
 LAST_UPDATED = "Last Update"
 LATITUDE = "Latitude"
 LONGITUDE = "Longitude"
-FIPS = "State/County FIPS Code"
+FIPS = CommonFields.FIPS
 STATE_INTERVENTION = 'State Intervention'
 SIXTEEN_DAY_HOSPITALIZATION = '16d-HSPTLZD'
 THIRTY_TWO_DAY_HOSPITALIZATION = '32d-HSPTLZD'
@@ -21,9 +24,12 @@ HOSPITAL_SHORTFALL_DATE = "Hospital Shortfall Date"
 PEAK_HOSPITALIZATION_SHORTFALL = "Peak Hospitlizations Shortfall"
 PEAK_BED_CAPACITY = "Peak Bed Capacity"
 POPULATION = "Population"
+RT = "Rt"
+RT_CI90 = "Rt_ci90"
+
 
 RESULT_DATA_COLUMNS_SHARED = [
-    STATE,
+    STATE_FULL_NAME,
     COUNTRY,
     LAST_UPDATED,
     LATITUDE,
@@ -45,7 +51,9 @@ RESULT_DATA_COLUMNS_SHARED = [
     HOSPITAL_SHORTFALL_DATE,
     PEAK_HOSPITALIZATION_SHORTFALL,
     PEAK_BED_CAPACITY,
-    POPULATION
+    POPULATION,
+    RT,
+    RT_CI90,
 ]
 
 NON_INTEGER_FIELDS = [
@@ -54,12 +62,14 @@ NON_INTEGER_FIELDS = [
     PEAK_DEATHS,
     HOSPITAL_SHORTFALL_DATE,
     PEAK_HOSPITALIZATION_SHORTFALL,
-    STATE,
+    STATE_FULL_NAME,
     COUNTRY,
     LAST_UPDATED,
     COMBINED_KEY,
     COUNTY,
     FIPS,
+    RT,
+    RT_CI90
 ]
 
 SHAPEFILE_FIELDS = [
@@ -79,7 +89,10 @@ SHAPEFILE_FIELDS = [
     PEAK_BED_CAPACITY,
 ]
 
-RESULT_DATA_COLUMNS_STATES = RESULT_DATA_COLUMNS_SHARED + []
+CUMULATIVE_POSITIVE_TESTS = 'Cumulative Tested Positive'
+CUMULATIVE_NEGATIVE_TESTS = 'Cumulative Tested Negative'
+
+RESULT_DATA_COLUMNS_STATES = RESULT_DATA_COLUMNS_SHARED + [CUMULATIVE_POSITIVE_TESTS, CUMULATIVE_NEGATIVE_TESTS]
 RESULT_DATA_COLUMNS_COUNTIES = RESULT_DATA_COLUMNS_SHARED + []
 
 EXPECTED_MISSING_STATES = set([
@@ -89,3 +102,17 @@ EXPECTED_MISSING_STATES = set([
 EXPECTED_MISSING_STATES_FROM_COUNTES = set([
     'District of Columbia'
 ])
+
+# Many counties don't have inference results, including all counties in a few states.
+EXPECTED_MISSING_STATES_FROM_COUNTIES_OBSERVED_INTERVENTION = set(
+    [
+        "Rhode Island",
+        "South Dakota",
+        "Montana",
+        "North Dakota",
+        "Hawaii",
+        "Wyoming",
+        "Alaska",
+        "West Virginia",
+    ]
+)

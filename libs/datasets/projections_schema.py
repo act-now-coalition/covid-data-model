@@ -1,5 +1,6 @@
+from libs.datasets import CommonFields
+
 OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
-    'state_x': 'Province/State',
     'intervention': 'State Intervention',
     '16-day_Hospitalization_Prediction': '16d-HSPTLZD',
     '32-day_Hospitalization_Prediction': '32d-HSPTLZD',
@@ -14,9 +15,10 @@ OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
     "Recovered": "Current Recovered",
     "Active": "Current Active",
     "Beds at Peak Hospitilization Date": "Peak Bed Capacity",
-    "Population": "Population"
+    "Population": "Population",
+    "Rt": "Rt",
+    "Rt_ci90": "Rt_ci90"
 }
-
 
 CALCULATED_PROJECTION_HEADERS_SHARED = [
     '16-day_Hospitalization_Prediction',
@@ -30,8 +32,10 @@ CALCULATED_PROJECTION_HEADERS_SHARED = [
     "Hospital Shortfall Date",
     "Peak Hospitlizations Shortfall",
     "Beds at Peak Hospitilization Date",
-    "Population"
+    "Population",
+    "Rt",
+    "Rt_ci90"
 ]
 
-CALCULATED_PROJECTION_HEADERS_STATES = ['State'] + CALCULATED_PROJECTION_HEADERS_SHARED
-CALCULATED_PROJECTION_HEADERS_COUNTIES = ['State', 'FIPS'] + CALCULATED_PROJECTION_HEADERS_SHARED
+CALCULATED_PROJECTION_HEADERS_STATES = [CommonFields.STATE_FULL_NAME] + CALCULATED_PROJECTION_HEADERS_SHARED
+CALCULATED_PROJECTION_HEADERS_COUNTIES = [CommonFields.STATE_FULL_NAME, CommonFields.FIPS] + CALCULATED_PROJECTION_HEADERS_SHARED
