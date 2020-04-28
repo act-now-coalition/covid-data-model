@@ -8,6 +8,7 @@ import re
 import io
 import us
 import zipfile
+import gzip
 import json
 from libs.datasets import NYTimesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -116,11 +117,15 @@ def cache_hospital_beds():
     url = 'http://opendata.arcgis.com/datasets/f3f76281647f4fbb8a0d20ef13b650ca_0.geojson'
     tmp_file = urllib.request.urlretrieve(url)[0]
 
-    with open(tmp_file) as f:
-        vals = json.load(f)
+    try:
+        with open(tmp_file) as f:
+            vals = json.load(f)
+    except UnicodeDecodeError:
+        with gzip.open(tmp_file, 'r') as f:
+            vals = json.load(f)
     df = pd.DataFrame([val['properties'] for val in vals['features']])
     df.columns = [col.lower() for col in df.columns]
-    df = df.drop(['objectid', 'state_fips', 'cnty_fips'], axis=1)
+    df = df.drop(['state_fips', 'cnty_fips'], axis=1)
     df.to_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
