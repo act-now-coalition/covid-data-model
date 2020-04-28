@@ -284,6 +284,7 @@ class WebUIDataAdaptorV1:
             p = Pool()
             p.map(self.map_fips, all_fips)
             p.close()
+            p.join()
 
     def build_own_fips(self, include_fips):
         state_fips = us.states.lookup(self.state).fips

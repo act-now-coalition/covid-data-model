@@ -231,7 +231,7 @@ def _build_all_for_states(
     _cache_global_datasets()
 
     print(f"outputing web results for states and {len(all_county_fips)} counties")
-    p = Pool()
+    #p = Pool()
     for state in states:
         web_ui_mapper = WebUIDataAdaptorV1(
             state,
@@ -241,12 +241,13 @@ def _build_all_for_states(
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
+        web_ui_mapper.generate_state(state)
         # mapper_list += build_function_with_fips
-        web_ui_mapper.build_own_fips(all_county_fips)
-        web_ui_mapper.execute_own_fips_async(p)
+        #web_ui_mapper.build_own_fips(all_county_fips)
+        #web_ui_mapper.execute_own_fips_async(p)
 
-    p.close()
-    p.join()
+    # p.close()
+    # p.join()
 
     return
 
