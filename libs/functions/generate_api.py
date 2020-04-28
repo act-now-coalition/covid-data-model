@@ -19,8 +19,11 @@ from libs.datasets.dataset_utils import AggregationLevel
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import can_model_output_schema as can_schema
 from libs.datasets import CovidTrackingDataSource
+from libs.datasets import CDSDataset
 from libs.build_processed_dataset import get_testing_timeseries_by_state
+from libs.build_processed_dataset import get_testing_timeseries_by_fips
 import pandas as pd
+
 
 FRAMES = 32
 DAYS_PER_FRAME = 4
@@ -143,6 +146,10 @@ def _generate_state_timeseries_row(json_data_row):
 
 
 def _generate_county_timeseries_row(json_data_row):
+    tested = _get_or_none(json_data_row[CDSDataset.Fields.TESTED])
+    cases = _get_or_none(json_data_row[CDSDataset.Fields.CASES])
+    negative = tested and cases and (tested - cases)
+
     return CANPredictionTimeseriesRow(
         date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
         hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
@@ -155,8 +162,8 @@ def _generate_county_timeseries_row(json_data_row):
         RtIndicatorCI90=json_data_row[can_schema.RT_INDICATOR_CI90],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        cumulativePositiveTests=None,
-        cumulativeNegativeTests=None,
+        cumulativePositiveTests=cases,
+        cumulativeNegativeTests=negative,
     )
 
 
@@ -200,9 +207,18 @@ def generate_state_timeseries(
 def generate_county_timeseries(projection_row, intervention, input_dir):
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     fips = projection_row[rc.FIPS]
-    can_dataseries = get_can_projection.get_can_raw_data(
+    print
+raw_dataseries = get_can_projection.get_can_raw_data(
         input_dir, state_abbrev, fips, AggregationLevel.COUNTY, intervention
     )
+
+    testing_df = get_testing_timeseries_by_fips(fips)
+    print(testing_df)
+    new_df = pd.DataFrame(raw_dataseries).merge(
+        testing_df, on="date", how="left"
+    )
+
+    can_dataseries = new_df.to_dict(orient="records")
 
     timeseries = []
     for data_series in can_dataseries:
