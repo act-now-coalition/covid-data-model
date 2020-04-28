@@ -207,13 +207,12 @@ def generate_state_timeseries(
 def generate_county_timeseries(projection_row, intervention, input_dir):
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     fips = projection_row[rc.FIPS]
-    print
-raw_dataseries = get_can_projection.get_can_raw_data(
+
+    raw_dataseries = get_can_projection.get_can_raw_data(
         input_dir, state_abbrev, fips, AggregationLevel.COUNTY, intervention
     )
 
     testing_df = get_testing_timeseries_by_fips(fips)
-    print(testing_df)
     new_df = pd.DataFrame(raw_dataseries).merge(
         testing_df, on="date", how="left"
     )
