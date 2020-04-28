@@ -363,6 +363,10 @@ def load_new_case_data_by_fips(fips, t0):
 
 def _get_hospitalization_data():
     data = CovidTrackingDataSource.local().timeseries()
+    # Since we're using this data for hospitalized data only, only returning
+    # values with hospitalization data.  I think as the use cases of this data source
+    # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
+    # hospitalization data.
     has_current_hospital = data[cls.Fields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[cls.Fields.TOTAL_HOSPITALIZED].notnull()
     return data[has_current_hospital | has_cumulative_hospital]
