@@ -85,7 +85,7 @@ class CovidTrackingDataSource(data_source.DataSource):
 
     def __init__(self, input_path):
         data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE_CHECKED])
-        data = self.standardize_data(data)
+        #data = self.standardize_data(data)
         super().__init__(data)
 
     @classmethod
@@ -138,6 +138,6 @@ class CovidTrackingDataSource(data_source.DataSource):
         # values with hospitalization data.  I think as the use cases of this data source
         # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
         # hospitalization data.
-        has_current_hospital = data[cls.Fields.CURRENT_HOSPITALIZED].notnull()
-        has_cumulative_hospital = data[cls.Fields.TOTAL_HOSPITALIZED].notnull()
-        return data[has_current_hospital | has_cumulative_hospital]
+        #has_current_hospital = data[cls.Fields.CURRENT_HOSPITALIZED].notnull()
+        #has_cumulative_hospital = data[cls.Fields.TOTAL_HOSPITALIZED].notnull()
+        return data#[has_current_hospital | has_cumulative_hospital]
