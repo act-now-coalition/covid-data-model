@@ -178,7 +178,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
         else:
             raise ValueError(f'Invalid scenario {scenario}')
 
-    return lambda x: np.interp(x, t_list, rho)
+    return interp1d(t_list, rho, fill_value='extrapolate')
 
 
 def generate_two_step_policy(t_list, eps, t_break, transition_time=14, t_break_final=None, eps_final=None):
@@ -208,15 +208,17 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14, t_break_f
         suppression_model(t) returns the current suppression model at time t.
     """
     if eps_final is None:
-        return lambda x: np.interp(
-            x,
+        return interp1d(
             x=[0, t_break, t_break + transition_time, 100000],
-            y=[1, 1, eps, eps])
+            y=[1, 1, eps, eps],
+            fill_value='extrapolate'
+        )
     else:
-        return lambda x: np.interp(
-            x,
+        return interp1d(
             x=[0, t_break, t_break + transition_time, t_break_final, t_break_final + transition_time, 100000],
-            y=[1, 1, eps, eps, eps_final, eps_final])
+            y=[1, 1, eps, eps, eps_final, eps_final],
+            fill_value='extrapolate'
+        )
 
 
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
@@ -299,7 +301,7 @@ def generate_empirical_distancing_policy(t_list, fips, future_suppression,
 
     t_list_since_reference_date = t_list + (pd.to_datetime(t0) - pd.to_datetime(reference_start_date)).days
 
-    return lambda x: np.interp(x, t_list_since_reference_date, rho)
+    return interp1d(t_list_since_reference_date, rho, fill_value='extrapolate')
 
 
 def generate_empirical_distancing_policy_by_state(t_list, state, future_suppression, reference_start_date=None):
@@ -333,7 +335,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     """
     county_metadata = load_data.load_county_metadata()
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
-    
+
     if reference_start_date is None:
         reference_start_date = min([infer_t0(fips) for fips in counties_fips])
 
@@ -348,7 +350,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
         results.append(suppression_policy(t_list).clip(max=1, min=0))
     results_for_state = (np.vstack(results).T * weight).sum(axis=1)
 
-    return lambda x: np.interp(x, t_list, results_for_state)
+    return interp1d(t_list, results_for_state, fill_value='extrapolate')
 
 
 def piecewise_parametric_policy(x, t_list):
