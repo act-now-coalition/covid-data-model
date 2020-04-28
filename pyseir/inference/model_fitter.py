@@ -411,7 +411,7 @@ class ModelFitter:
 
         # This implements a hard lower limit of 0.98.
         # TODO: As more data comes in, relax this.. Probably just use MCMC..
-        prior = gamma.pdf((x - 0.98) / 1.5, 1.1)
+        prior = gamma.pdf((x - 0.85) / 1.5, 1.1)
         # Add a tiny amount to the likelihood to prevent zero common support
         # between the prior and likelihood functions.
         likelihood = norm.pdf(x, R_eff, R_eff_stdev) + 0.0001
