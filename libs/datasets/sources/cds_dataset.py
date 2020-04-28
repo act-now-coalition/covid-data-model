@@ -6,6 +6,7 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.population import PopulationDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.us_state_abbrev import US_STATE_ABBREV
 
 _logger = logging.getLogger(__name__)
 
@@ -64,6 +65,16 @@ class CDSDataset(data_source.DataSource):
         PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
+    TEST_FIELDS = [
+        Fields.COUNTRY,
+        Fields.STATE,
+        Fields.COUNTY,
+        Fields.FIPS,
+        Fields.DATE,
+        Fields.CASES,
+        Fields.TESTED,
+    ]
+
     def __init__(self, input_path):
         data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE])
         data = self.standardize_data(data)
@@ -112,8 +123,17 @@ class CDSDataset(data_source.DataSource):
         data[cls.Fields.AGGREGATE_LEVEL] = county_hits
 
         # Backfilling FIPS data based on county names.
+        # The following abbrev mapping only makes sense for the US
         # TODO: Fix all missing cases
+        data = data[data['country'] == 'United States']
+        data['state_abbr'] = data[cls.Fields.STATE].apply(lambda x: US_STATE_ABBREV[x] if x in US_STATE_ABBREV else x)
+        data['state_tmp'] = data['state']
+        data['state'] = data['state_abbr']
+
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_fips_using_county(data, fips_data)
+
+        # put the state column back
+        data['state'] = data['state_tmp']
 
         return data
