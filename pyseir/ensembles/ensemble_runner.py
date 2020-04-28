@@ -129,46 +129,7 @@ class EnsembleRunner:
 
         self.all_outputs = {}
 
-    # def get_initial_hospitalizations(self, use_cases=False):
-    #     """
-    #     Attempt a two level hierarchy of lookups for hospitalizations.
-    #
-    #     1. Direct hospitalizations if available
-    #     2. Inferred from covid case data.
-    #
-    #     Returns
-    #     -------
-    #     latest_date: date
-    #         Last date of data available.
-    #     hospitalizations_total: int
-    #         Estimated number of current hospitalizations total.
-    #     """
-    #     fips = None if self.agg_level is AggregationLevel.STATE else self.fips
-    #
-    #     hospitalization_data = CovidTrackingDataSource.local()\
-    #         .timeseries()\
-    #         .get_subset(self.agg_level, country='USA', state=self.state_abbr)\
-    #         .get_data(state=self.state_abbr, country='USA', fips=fips)\
-    #         .sort_values('date')
-    #
-    #     # If there are enough hospitalizations, use those to define initial conditions.
-    #     if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in FAULTY_HOSPITAL_DATA_STATES:
-    #         latest_date = hospitalization_data.iloc[-1]['date'].date()
-    #         n_current = hospitalization_data.iloc[-1]['current_hospitalized']
-    #         if n_current > self.min_hospitalization_threshold and not np.isnan(n_current):
-    #             hospitalizations_total = n_current
-    #
-    #         # TODO: We will need a better estimator for current hospitalizations
-    #         # in cases where cumulative is not available. Punting on this until
-    #         # post-release.
-    #         else:
-    #             hospitalizations_total = hospitalization_data.iloc[-1]['cumulative_hospitalized']
-    #
-    #     # Fallback to case data if not.
-    #     else:
-    #         latest_date = self.covid_data.date.max()
-    #         hospitalizations_total = self.covid_data.cases.max() * self.hospitalization_to_confirmed_case_ratio
-    #     return latest_date, hospitalizations_total
+
 
     def init_run_mode(self):
         """
@@ -177,33 +138,6 @@ class EnsembleRunner:
         phases.
         """
         self.suppression_policies = dict()
-
-        # if self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS:
-        #     self.n_samples = 1
-        #
-        #     for scenario in ['no_intervention', 'flatten_the_curve', 'inferred', 'social_distancing']:
-        #         R0 = 3.6
-        #         self.override_params['R0'] = R0
-        #         if scenario != 'inferred':
-        #             policy = sp.generate_covidactnow_scenarios(t_list=self.t_list, R0=R0, t0=datetime.datetime.today(), scenario=scenario)
-        #         else:
-        #             policy = None
-        #         self.suppression_policies[f'suppression_policy__{scenario}'] = policy
-        #         self.override_params = ParameterEnsembleGenerator(
-        #             self.fips, N_samples=500, t_list=self.t_list, suppression_policy=policy).get_average_seir_parameters()
-        #
-        #     if len(self.covid_data) > 0 and self.covid_data.cases.max() > 0:
-        #         self.t0 = self.covid_data.date.max()
-        #         self.t0, hospitalizations_total = self.get_initial_hospitalizations()
-        #
-        #         self.override_params['HGen_initial'] = hospitalizations_total * (1 - self.override_params['hospitalization_rate_icu'])
-        #         self.override_params['HICU_initial'] = hospitalizations_total * self.override_params['hospitalization_rate_icu']
-        #         self.override_params['HICUVent_initial'] = self.override_params['HICU_initial'] * self.override_params['fraction_icu_requiring_ventilator']
-        #         self.override_params['I_initial'] = hospitalizations_total / self.override_params['hospitalization_rate_general']
-        #
-        #         # 1.2 is a ~ steady state for the exposed bucket initialization.
-        #         self.override_params['E_initial'] = 0.6 * (self.override_params['I_initial'] + self.override_params['A_initial'])
-        #         self.override_params['D_initial'] = self.covid_data.deaths.max()
 
         if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
             self.n_samples = 1
@@ -298,24 +232,6 @@ class EnsembleRunner:
         for suppression_policy_name, suppression_policy in self.suppression_policies.items():
 
             _logger.info(f'Running simulation ensemble for {self.state_name} {self.fips} {suppression_policy_name}')
-
-            # if self.run_mode is RunMode.CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS:
-            #     if suppression_policy_name == 'suppression_policy__inferred':
-            #
-            #         artifact_path = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL)
-            #         if os.path.exists(artifact_path):
-            #             with open(artifact_path, 'rb') as f:
-            #                 model_ensemble = [pickle.load(f)]
-            #         else:
-            #             _logger.warning(f'No MLE model found for {self.state_name}: {self.fips}. Skipping.')
-            #     else:
-            #         parameter_sampler = ParameterEnsembleGenerator(
-            #             fips=self.fips,
-            #             N_samples=self.n_samples,
-            #             t_list=self.t_list,
-            #             suppression_policy=suppression_policy)
-            #         parameter_ensemble = parameter_sampler.sample_seir_parameters(override_params=self.override_params)
-            #         model_ensemble = list(map(self._run_single_simulation, parameter_ensemble))
 
             if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
                 model_ensemble = [self._load_model_for_fips(scenario=suppression_policy)]

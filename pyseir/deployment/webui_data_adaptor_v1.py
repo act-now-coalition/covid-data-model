@@ -50,58 +50,6 @@ class WebUIDataAdaptorV1:
         self.df_whitelist = load_data.load_whitelist()
         self.df_whitelist = self.df_whitelist[self.df_whitelist['inference_ok'] == True]
 
-    # def backfill_output_model_fips(self, fips, t0, final_beds, output_model):
-    #     """
-    #     Add backfilled hospitalization, case, amd deaths data.
-    #
-    #     Parameters
-    #     ----------
-    #     fips: str
-    #         State or county fips code.
-    #     t0: datetime
-    #         Start time for the simulation.
-    #     final_beds: total number of beds.
-    #         Number of beds after scaling.
-    #     output_model: dict
-    #         Output model to impute.
-    #
-    #     Returns
-    #     -------
-    #     backfill: str
-    #         Backfill dataframe.
-    #     """
-    #     backfill_to_date = date(2020, 3, 3)   # @TODO: Parameterize
-    #     hospitalization_rate = 0.04           # @TODO: Parameterize
-    #     intervals_to_backfill = math.ceil((t0.date() - backfill_to_date).days / self.output_interval_days)
-    #     backfill_offsets = range(-intervals_to_backfill * self.output_interval_days, 0, self.output_interval_days)
-    #
-    #     backfill = pd.DataFrame()
-    #     backfill['days'] = backfill_offsets
-    #     backfill['date'] = [(t0 + timedelta(days=t)) for t in backfill_offsets]
-    #     backfill['date'] = backfill['date'].dt.normalize()
-    #     backfill['beds'] = final_beds
-    #
-    #     if len(fips) == 5:
-    #         actual_timeseries = self.county_timeseries[(self.county_timeseries['fips'] == fips)]
-    #     else:
-    #         actual_timeseries = self.state_timeseries[(self.state_timeseries['state'] == self.state_abbreviation)]
-    #
-    #     backfill = pd.merge(backfill, actual_timeseries[['date', 'cases', 'deaths']], on='date', how='left')
-    #
-    #     # TODO this is fragile because of the backfill hospitalization date
-    #     #      alignment and/or 4 day discontinuity. Luckily it is also invisible on non-log-scales.
-    #     # Account for two cases
-    #     #   (i) hospital admissions available.
-    #     #   (ii) Not available, so cases are imputed...
-    #     # We can just read the initial conditions infected and hospitalized to rescale the case data to match.
-    #     backfill['all_infected'] =( output_model['all_infected'][0] * backfill['cases'] / backfill['cases'].max()).fillna(0)
-    #     backfill['all_hospitalized'] = np.multiply(backfill['all_infected'], hospitalization_rate).fillna(0)
-    #
-    #     backfill['dead'] = backfill['deaths'].fillna(0)
-    #     backfill['date'] = backfill['date'].dt.strftime('%m/%d/%y')
-    #
-    #     return backfill
-
     def map_fips(self, fips):
         """
         For a given county fips code, generate the CAN UI output format.
@@ -111,61 +59,55 @@ class WebUIDataAdaptorV1:
         fips: str
             County FIPS code to map.
         """
-        if len(fips) == 5:
-            population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
-        else:
-            population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
-
-        #TODO: Normalize model to hospitalization data.
-
         logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
         pyseir_outputs = load_data.load_ensemble_results(fips)
 
-        policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
-
-        #all_hospitalized_today = None
+        # Fit results not always available if the fit failed, or there are no
+        # inference results. These do always exist for states however.
         try:
             fit_results = load_inference_result(fips)
-
-        # Fit results not always available if the fit failed, or there are no
-        # inference results.
+            t0_simulation = datetime.fromisoformat(fit_results['t0_date'])
         except (KeyError, ValueError):
             fit_results = None
-            logging.warning(f'Fit result not found for {fips}: Skipping inference elements')
+            state_fit_results = load_inference_result(fips[:2])
+            t0_simulation = datetime.fromisoformat(state_fit_results['t0_date'])
+            logging.warning(f'Fit result not found for {fips}: Using rescaled state values')
 
+        # TODO: This date alignment currently only works for counties where
+        #  inference succeeds. Need to update for those where state inference was
+        #  down-projected.
+        hosp_times, current_hosp, _ = load_data.load_hospitalization_data_by_state(
+            state=self.state_abbreviation,
+            t0=t0_simulation,
+            convert_cumulative_to_current=True)
+        t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]
+
+        if len(fips) == 5:
+            population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
+            state_population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
+            geo_to_state_population_ratio = population / state_population
+            current_hosp *= geo_to_state_population_ratio
+        else:
+            population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
+
+        policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
+
+        # TODO: Currently this doesn't ship any county results that are not whitelisted.
         for i_policy, suppression_policy in enumerate(policies):
-
-            # Don't ship full containment, and only ship inference for
-            # whitelisted counties.
-            if suppression_policy == 'suppression_policy__full_containment' \
-                    or (suppression_policy == 'suppression_policy__inferred'
-                        and len(fips) == 5
-                        and fips not in self.df_whitelist.fips.values):
+            if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
                 continue
 
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
-            # Hospitalizations need to be rescaled by the inferred factor to
-            # match observations for display purposes.
-            #if suppression_policy == 'suppression_policy__inferred' and fit_results:
-            t0 = datetime.fromisoformat(fit_results['t0_date'])
-            now_idx = int((datetime.today() - datetime.fromisoformat(fit_results['t0_date'])).days)
-            total_hosps = output_for_policy['HGen']['ci_50'][now_idx] + output_for_policy['HICU']['ci_50'][now_idx]
-
-            load_data.load_hospitalization_data_by_state()
-
-            hosp_fraction = all_hospitalized_today / total_hosps
-
-            # else:
-            #     t0 = datetime.today()
-            #     hosp_fraction = 1.
+            total_hosps = output_for_policy['HGen']['ci_50'][t_latest_hosp_data] + output_for_policy['HICU']['ci_50'][t_latest_hosp_data]
+            hosp_fraction = current_hosp / total_hosps
 
             t_list = output_for_policy['t_list']
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
 
             output_model[schema.DAY_NUM] = t_list_downsampled
-            output_model[schema.DATE] = [(t0 + timedelta(days=t)).date().strftime('%m/%d/%y') for t in t_list_downsampled]
+            output_model[schema.DATE] = [(t0_simulation + timedelta(days=t)).date().strftime('%m/%d/%y') for t in t_list_downsampled]
             output_model[schema.TOTAL] = population
             output_model[schema.TOTAL_SUSCEPTIBLE] = np.interp(t_list_downsampled, t_list, output_for_policy['S']['ci_50'])
             output_model[schema.EXPOSED] = np.interp(t_list_downsampled, t_list, output_for_policy['E']['ci_50'])
@@ -190,16 +132,8 @@ class WebUIDataAdaptorV1:
 
             output_model[schema.CURRENT_VENTILATED] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HVent']['ci_50'])
             output_model[schema.POPULATION] = population
-
             output_model[schema.ICU_BED_CAPACITY] = np.mean(output_for_policy['HICU']['capacity'])
             output_model[schema.VENTILATOR_CAPACITY] = np.mean(output_for_policy['HVent']['capacity'])
-
-            # # Record the current number of hospitalizations in order to rescale the inference results.
-            # all_hospitalized_today = output_model[schema.ALL_HOSPITALIZED][0]
-            # Don't backfill inferences
-            # if suppression_policy != 'suppression_policy__inferred':
-            #     backfill = self.backfill_output_model_fips(fips, t0, final_beds, output_model)
-            #     output_model = pd.concat([backfill, output_model])[output_model.columns].reset_index(drop=True)
 
             # Truncate date range of output.
             output_dates = pd.to_datetime(output_model['date'])
