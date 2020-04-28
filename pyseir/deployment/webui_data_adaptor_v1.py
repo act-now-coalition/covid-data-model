@@ -269,9 +269,9 @@ class WebUIDataAdaptorV1:
         self.map_fips(state_fips)
 
         if not states_only:
-            if len(all_fips)==0:
-                df = load_data.load_county_metadata()
-                all_fips = df[df['state'].str.lower() == self.state.lower()].fips
+            # if len(all_fips)==0:
+            df = load_data.load_county_metadata()
+            all_fips = df[df['state'].str.lower() == self.state.lower()].fips
 
             if not self.include_imputed:
                 # Filter...
