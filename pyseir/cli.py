@@ -241,7 +241,7 @@ def _build_all_for_states(
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(state)
+        web_ui_mapper.generate_state(all_fips=all_county_fips)
         # mapper_list += build_function_with_fips
         #web_ui_mapper.build_own_fips(all_county_fips)
         #web_ui_mapper.execute_own_fips_async(p)
