@@ -71,7 +71,7 @@ class WebUIDataAdaptorV1:
             Backfill dataframe.
         """
         backfill_to_date = date(2020, 3, 3)   # @TODO: Parameterize
-        hospitalization_rate = 0.04           # @TODO: Parameterize
+        hospitalization_rate = 0.02           # @TODO: Parameterize
         intervals_to_backfill = math.ceil((t0.date() - backfill_to_date).days / self.output_interval_days)
         backfill_offsets = range(-intervals_to_backfill * self.output_interval_days, 0, self.output_interval_days)
 

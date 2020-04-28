@@ -5,6 +5,7 @@ from collections import defaultdict
 import logging
 
 import pydantic
+import simplejson
 from api.can_api_definition import CountyFipsSummary
 from api.can_api_definition import CovidActNowCountySummary
 from api.can_api_definition import CovidActNowCountiesSummary
@@ -230,7 +231,10 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         output_path.mkdir(parents=True, exist_ok=True)
 
     for api_row in results:
-        dataset_deployer.upload_json(api_row.file_stem, api_row.data.json(), output)
+        # Encoding approach based on Pydantic's implementation of .json():
+        # https://github.com/samuelcolvin/pydantic/pull/210/files
+        data_as_json = simplejson.dumps(api_row.data.dict(), ignore_nan=True, default=pydantic.json.pydantic_encoder)
+        dataset_deployer.upload_json(api_row.file_stem, data_as_json, output)
         if write_csv:
             data = api_row.data.dict()
             if not isinstance(data, list):
