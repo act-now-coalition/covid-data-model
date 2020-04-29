@@ -148,7 +148,8 @@ class EnsembleRunner:
             .sort_values('date')
 
         # If there are enough hospitalizations, use those to define initial conditions.
-        if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in FAULTY_HOSPITAL_DATA_STATES:
+        faulty_hospital = load_data.FAULTY_HOSPITAL_DATA_STATES
+        if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in faulty_hospital:
             latest_date = hospitalization_data.iloc[-1]['date'].date()
             n_current = hospitalization_data.iloc[-1]['current_hospitalized']
             if n_current > self.min_hospitalization_threshold and not np.isnan(n_current):
