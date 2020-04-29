@@ -361,7 +361,7 @@ def load_new_case_data_by_fips(fips, t0):
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
-def _get_hospitalization_data():
+def get_hospitalization_data():
     data = CovidTrackingDataSource.local().timeseries()
     # Since we're using this data for hospitalized data only, only returning
     # values with hospitalization data.  I think as the use cases of this data source
