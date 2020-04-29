@@ -361,7 +361,7 @@ def load_new_case_data_by_fips(fips, t0):
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
-def _get_hospitalization_data():
+def get_hospitalization_data():
     data = CovidTrackingDataSource.local().timeseries()
     # Since we're using this data for hospitalized data only, only returning
     # values with hospitalization data.  I think as the use cases of this data source
@@ -395,7 +395,7 @@ def load_hospitalization_data(fips, t0):
     type: HospitalizationDataType
         Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = _get_hospitalization_data()\
+    hospitalization_data = get_hospitalization_data()\
         .get_subset(AggregationLevel.COUNTY, country='USA', fips=fips) \
         .get_data(country='USA', fips=fips)
 
@@ -571,7 +571,7 @@ def cache_all_data():
     Download all datasets locally.
     """
     cache_county_case_data()
-    cache_hospital_beds()
+    # cache_hospital_beds()
     cache_mobility_data()
     cache_public_implementations_data()
 
