@@ -48,10 +48,10 @@ def _get_testing_df():
     # handle missing data
     ctd_df[CovidTrackingDataSource.Fields.POSITIVE_TESTS] = ctd_df[
         CovidTrackingDataSource.Fields.POSITIVE_TESTS
-    ].fillna(0).astype(int)
+    ].apply(lambda x: x if pd.isna(x) else int(x))
     ctd_df[CovidTrackingDataSource.Fields.NEGATIVE_TESTS] = ctd_df[
         CovidTrackingDataSource.Fields.NEGATIVE_TESTS
-    ].fillna(0).astype(int)
+    ].apply(lambda x: x if pd.isna(x) else int(x))
     ctd_df = ctd_df[CovidTrackingDataSource.TEST_FIELDS]
     return ctd_df
 
