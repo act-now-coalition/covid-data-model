@@ -389,14 +389,15 @@ def load_hospitalization_data(fips, t0):
     if len(hospitalization_data) == 0:
         return None, None, None
 
-    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-
     if (hospitalization_data['current_hospitalized'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
+        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         return times_new, \
                hospitalization_data['current_hospitalized'].values.clip(min=0),\
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-
+        hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
+        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
@@ -436,16 +437,19 @@ def load_hospitalization_data_by_state(state, t0):
         .get_subset(AggregationLevel.STATE, country='USA', state=abbr)
         .get_data(country='USA', state=abbr)
     )
+
     if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
         return None, None, None
 
-    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-
     if (hospitalization_data['current_hospitalized'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
+        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         return times_new, \
                hospitalization_data['current_hospitalized'].values.clip(min=0), \
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
+        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
