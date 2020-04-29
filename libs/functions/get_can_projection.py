@@ -72,3 +72,12 @@ def get_beds():
 def get_bed_data_for_state(state) -> dict:
     data = get_beds().state_data
     return data[data[BedsDataset.Fields.STATE] == state].iloc[0].to_dict()
+
+
+def get_bed_data_for_fips(fips) -> dict:
+    data = get_beds().county_data
+    fips_row = data[data[BedsDataset.Fields.FIPS] == fips]
+    if not len(fips_row):
+        return {}
+
+    return fips_row.iloc[0].to_dict()

@@ -125,8 +125,18 @@ def _generate_state_actuals(
     )
 
 
-def _generate_county_actuals(projection_row, state):
-    intervention_str = get_can_projection.get_intervention_for_state(state).name
+def _generate_county_actuals(projection_row, state_intervention, county_beds_data):
+    intervention_str = state_intervention.name
+
+
+    icu_beds = None
+    if county_beds_data:
+        icu_beds = {
+            "capacity": county_beds_data[BedsDataset.Fields.ICU_BEDS],
+            "currentUsage": None,
+            "typicalUsageRate": county_beds_data[BedsDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE],
+        }
+
     return _Actuals(
         population=projection_row[rc.POPULATION],
         intervention=intervention_str,
@@ -136,9 +146,10 @@ def _generate_county_actuals(projection_row, state):
         cumulativeNegativeTests=None,
         hospitalBeds={
             "capacity": projection_row[rc.PEAK_BED_CAPACITY],
-            "currentUsage": None,  # TODO(igor): Get from Covidtracking source
+            "currentUsage": None,
+            "typicalUsageRate": county_beds_data.get(BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
         },
-        ICUBeds=None,
+        ICUBeds=icu_beds,
     )
 
 
@@ -248,10 +259,12 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
     if len(timeseries) < 1:
         raise Exception(f"County time series empty for {intervention.name}")
     projections = _generate_api_for_projections(projection_row)
+    state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
+    county_bed_data = get_can_projection.get_bed_data_for_fips(fips)
     return CovidActNowCountyTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_county_actuals(projection_row, state_abbrev),
+        actuals=_generate_county_actuals(projection_row, state_intervention, county_bed_data),
         stateName=projection_row[rc.STATE_FULL_NAME],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],
@@ -282,11 +295,14 @@ def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSum
 def generate_api_for_county_projection_row(projection_row):
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     projections = _generate_api_for_projections(projection_row)
+    state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
+    fips = projection_row[rc.FIPS]
+    county_bed_data = get_can_projection.get_bed_data_for_fips(fips)
 
     county_result = CovidActNowCountySummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_county_actuals(projection_row, state_abbrev),
+        actuals=_generate_county_actuals(projection_row, state_intervention, county_bed_data),
         stateName=projection_row[rc.STATE_FULL_NAME],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],

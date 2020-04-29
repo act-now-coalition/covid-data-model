@@ -8,6 +8,4 @@ def test_get_testing_df():
 
 
 def test_get_bed_for_state():
-    print(get_can_projection.get_bed_data_for_state('NV'))
-
-    assert 0
+    assert get_can_projection.get_bed_data_for_state('NV')
