@@ -125,11 +125,17 @@
           "title": "Currentusage",
           "description": "Currently used capacity for resource",
           "type": "integer"
+        },
+        "typicalUsageRate": {
+          "title": "Typicalusagerate",
+          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
+          "type": "number"
         }
       },
       "required": [
         "capacity",
-        "currentUsage"
+        "currentUsage",
+        "typicalUsageRate"
       ]
     },
     "_Actuals": {
