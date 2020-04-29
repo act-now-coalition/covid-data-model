@@ -4,6 +4,8 @@ import requests
 
 from libs.enums import Intervention
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.beds import BedsDataset
+from libs.datasets import CovidCareMapBeds
 from libs.datasets.can_model_output_schema import CAN_MODEL_OUTPUT_SCHEMA
 import functools
 
@@ -60,3 +62,13 @@ def get_can_raw_data(input_dir, state_abbrev, fips, aggregation_level, intervent
             return standardize_json_data(json.load(json_file), CAN_MODEL_OUTPUT_SCHEMA)
     # TODO : probably error out or log something here
     return []
+
+
+@functools.lru_cache(None)
+def get_beds():
+    return CovidCareMapBeds.local().beds()
+
+
+def get_bed_data_for_state(state) -> dict:
+    data = get_beds().state_data
+    return data[data[BedsDataset.Fields.STATE] == state].iloc[0].to_dict()

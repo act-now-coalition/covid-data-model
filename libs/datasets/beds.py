@@ -13,6 +13,9 @@ class BedsDataset(object):
         STAFFED_BEDS = "staffed_beds"
         LICENSED_BEDS = "licensed_beds"
         ICU_BEDS = "icu_beds"
+        ALL_BED_TYPICAL_OCCUPANCY_RATE = "all_beds_occupancy_rate"
+        ICU_TYPICAL_OCCUPANCY_RATE = "icu_occupancy_rate"
+
         AGGREGATE_LEVEL = "aggregate_level"
 
         COUNTY = "county"

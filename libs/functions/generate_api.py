@@ -20,6 +20,7 @@ from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import can_model_output_schema as can_schema
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import CDSDataset
+from libs.datasets.beds import BedsDataset
 from libs.build_processed_dataset import get_testing_timeseries_by_state
 from libs.build_processed_dataset import get_testing_timeseries_by_fips
 import pandas as pd
@@ -83,8 +84,17 @@ def _generate_api_for_projections(projection_row):
     return projections
 
 
-def _generate_state_actuals(projection_row, state):
-    intervention_str = get_can_projection.get_intervention_for_state(state).name
+def _generate_state_actuals(
+    projection_row: pd.Series, state_intervention: Intervention, state_beds_data: dict
+):
+    """Generates Actuals for a state.
+
+    Args:
+        projection_row: Output from projection DataFrame.
+        state_intervention: Intervention for state
+        state_beds_data: Bed data for a specific state.
+    """
+    intervention_str = state_intervention.name
 
     return _Actuals(
         population=projection_row[rc.POPULATION],
@@ -99,9 +109,19 @@ def _generate_state_actuals(projection_row, state):
         ),
         hospitalBeds={
             "capacity": projection_row[rc.PEAK_BED_CAPACITY],
-            "currentUsage": None,  # TODO(igor): Get from Covidtracking source
+            # TODO(chris): Get from assembled sources about current hospitalization data.
+            # i.e. NV data we can manually update.
+            "currentUsage": None,
+            "typicalUsageRate": state_beds_data[BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE],
         },
-        ICUBeds=None,
+        ICUBeds={
+            # Note(Chris): We do not currently pass through ICU Bed capacity calculations
+            # in the projection_row.  This wouldn't be a ton of work to do, but
+            # using the provided beds data for the time being.
+            "capacity": state_beds_data[BedsDataset.Fields.ICU_BEDS],
+            "currentUsage": None,
+            "typicalUsageRate": state_beds_data[BedsDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE],
+        },
     )
 
 
@@ -184,6 +204,7 @@ def generate_state_timeseries(
         testing_df, on="date", how="left"
     )
     can_dataseries = new_df.to_dict(orient="records")
+    state_bed_data = get_can_projection.get_bed_data_for_state(state)
 
     timeseries = []
     for data_series in can_dataseries:
@@ -192,10 +213,12 @@ def generate_state_timeseries(
     if len(timeseries) < 1:
         raise Exception(f"State time series empty for {intervention.name}")
 
+    state_intervention = get_can_projection.get_intervention_for_state(state)
+
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_state_actuals(projection_row, state),
+        actuals=_generate_state_actuals(projection_row, state_intervention, state_bed_data),
         stateName=projection_row[rc.STATE_FULL_NAME],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
@@ -241,11 +264,13 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
 def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSummary:
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     projections = _generate_api_for_projections(projection_row)
+    state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
+    state_bed_data = get_can_projection.get_bed_data_for_state(state_abbrev)
 
     state_result = CovidActNowStateSummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_state_actuals(projection_row, state_abbrev),
+        actuals=_generate_state_actuals(projection_row, state_intervention, state_bed_data),
         stateName=projection_row[rc.STATE_FULL_NAME],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),

@@ -40,6 +40,9 @@ class _ResourceUtilization(pydantic.BaseModel):
     currentUsage: Optional[int] = pydantic.Field(
         ..., description="Currently used capacity for resource"
     )
+    typicalUsageRate: Optional[float] = pydantic.Field(
+        ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
+    )
 
 
 class _Actuals(pydantic.BaseModel):
