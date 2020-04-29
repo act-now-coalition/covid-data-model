@@ -75,18 +75,18 @@ class CDSDataset(data_source.DataSource):
         Fields.TESTED,
     ]
 
-    def __init__(self, input_path):
+    def __init__(self, input_path, fix_fips=False):
         data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE])
-        data = self.standardize_data(data)
+        data = self.standardize_data(data, fix_fips)
         super().__init__(data)
 
     @classmethod
-    def local(cls) -> "CDSTimeseriesData":
+    def local(cls, fix_fips=False) -> "CDSTimeseriesData":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        return cls(data_root / cls.DATA_PATH)
+        return cls(data_root / cls.DATA_PATH, fix_fips)
 
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+    def standardize_data(cls, data: pd.DataFrame, fix_fips=False) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
 
         # Don't want to return city data because it's duplicated in county
@@ -125,15 +125,15 @@ class CDSDataset(data_source.DataSource):
         # Backfilling FIPS data based on county names.
         # The following abbrev mapping only makes sense for the US
         # TODO: Fix all missing cases
-        data = data[data['country'] == 'United States']
-        data['state_abbr'] = data[cls.Fields.STATE].apply(lambda x: US_STATE_ABBREV[x] if x in US_STATE_ABBREV else x)
-        data['state_tmp'] = data['state']
-        data['state'] = data['state_abbr']
+        if fix_fips:
+            data['state_tmp'] = data['state']
+            data['state'] = data['state'].apply(lambda x: US_STATE_ABBREV[x] if x in US_STATE_ABBREV else x)
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_fips_using_county(data, fips_data)
 
-        # put the state column back
-        data['state'] = data['state_tmp']
+        if fix_fips:
+            # put the state column back
+            data['state'] = data['state_tmp']
 
         return data

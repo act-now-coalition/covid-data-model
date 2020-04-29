@@ -56,7 +56,7 @@ def _get_testing_df():
 
 # todo: we probably need the dataset to be a singleton so we're not realoading
 # it every time we want to use it.
-cds_df = CDSDataset.local().data
+cds_df = CDSDataset.local(fix_fips=True).data
 cds_df["date"] = cds_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
 cds_df = cds_df[CDSDataset.TEST_FIELDS]
 
