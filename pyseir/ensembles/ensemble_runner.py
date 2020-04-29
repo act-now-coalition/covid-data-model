@@ -15,9 +15,7 @@ from pyseir.models.suppression_policies import generate_empirical_distancing_pol
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
-from pyseir.load_data import FAULTY_HOSPITAL_DATA_STATES
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets import CovidTrackingDataSource
 from libs.datasets import JHUDataset
 
 
@@ -144,8 +142,7 @@ class EnsembleRunner:
         """
         fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
-        hospitalization_data = CovidTrackingDataSource.local()\
-            .timeseries()\
+        hospitalization_data = load_data._get_hospitalization_data()\
             .get_subset(self.agg_level, country='USA', state=self.state_abbr)\
             .get_data(state=self.state_abbr, country='USA', fips=fips)\
             .sort_values('date')
