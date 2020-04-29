@@ -53,6 +53,10 @@ class DataSource(object):
         return PopulationDataset.from_source(self)
 
     @lru_cache(maxsize=1)
-    def timeseries(self) -> "TimeseriesDataset":
-        """Builds generic beds dataset"""
-        return TimeseriesDataset.from_source(self)
+    def timeseries(self, fill_na: bool = True) -> "TimeseriesDataset":
+        """Builds generic timeseries dataset.
+
+        Args:
+            fill_na: If True, fills all NA values with 0.
+        """
+        return TimeseriesDataset.from_source(self, fill_na=fill_na)
