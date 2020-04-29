@@ -8,6 +8,7 @@ from libs.datasets import data_source
 
 _logger = logging.getLogger(__name__)
 
+
 class CovidCareMapBeds(data_source.DataSource):
     COUNTY_DATA_PATH = "data/covid-care-map/healthcare_capacity_data_county.csv"
     STATE_DATA_PATH = "data/covid-care-map/healthcare_capacity_data_state.csv"
