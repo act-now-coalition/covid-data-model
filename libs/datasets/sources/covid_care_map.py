@@ -10,7 +10,8 @@ _logger = logging.getLogger(__name__)
 
 
 class CovidCareMapBeds(data_source.DataSource):
-    DATA_PATH = "data/covid-care-map/healthcare_capacity_data_county.csv"
+    COUNTY_DATA_PATH = "data/covid-care-map/healthcare_capacity_data_county.csv"
+    STATE_DATA_PATH = "data/covid-care-map/healthcare_capacity_data_state.csv"
 
     SOURCE_NAME = "CCM"
 
@@ -21,6 +22,8 @@ class CovidCareMapBeds(data_source.DataSource):
         STAFFED_ALL_BEDS = "Staffed All Beds"
         STAFFED_ICU_BEDS = "Staffed ICU Beds"
         LICENSED_ALL_BEDS = "Licensed All Beds"
+        ALL_BED_TYPICAL_OCCUPANCY_RATE = "All Bed Occupancy Rate"
+        ICU_TYPICAL_OCCUPANCY_RATE = "ICU Bed Occupancy Rate"
 
         # Added in standardize data.
         AGGREGATE_LEVEL = "aggregate_level"
@@ -34,17 +37,20 @@ class CovidCareMapBeds(data_source.DataSource):
         BedsDataset.Fields.LICENSED_BEDS: Fields.LICENSED_ALL_BEDS,
         BedsDataset.Fields.ICU_BEDS: Fields.STAFFED_ICU_BEDS,
         BedsDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+        BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE: Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+        BedsDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE: Fields.ICU_TYPICAL_OCCUPANCY_RATE,
     }
 
     def __init__(self, data):
-        data = self.standardize_data(data)
         super().__init__(data)
 
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+    def standardize_data(cls, data: pd.DataFrame, aggregate_level: AggregationLevel) -> pd.DataFrame:
         # All DH data is aggregated at the county level
-        data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.COUNTY.value
+        data[cls.Fields.AGGREGATE_LEVEL] = aggregate_level.value
         data[cls.Fields.COUNTRY] = "USA"
+        if cls.Fields.FIPS not in data.columns:
+            data[cls.Fields.FIPS] = None
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.
@@ -54,6 +60,13 @@ class CovidCareMapBeds(data_source.DataSource):
     @classmethod
     def local(cls) -> "CovidCareMapBeds":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        path = data_root / cls.DATA_PATH
+        # Load county_data
+        path = data_root / cls.COUNTY_DATA_PATH
         data = pd.read_csv(path, dtype={cls.Fields.FIPS: str})
-        return cls(data)
+        county_data = cls.standardize_data(data, AggregationLevel.COUNTY)
+
+        # Load
+        path = data_root / cls.STATE_DATA_PATH
+        data = pd.read_csv(path)
+        state_data = cls.standardize_data(data, AggregationLevel.STATE)
+        return cls(pd.concat([county_data, state_data]))
