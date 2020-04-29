@@ -39,8 +39,8 @@ def test_counties_api_output():
             "cumulativeDeaths": 5,
             "cumulativePositiveTests": None,
             "cumulativeNegativeTests": 20,
-            "hospitalBeds": {"capacity": 100, "currentUsage": 3},
-            "ICUBeds": {"capacity": 10, "currentUsage": 2},
+            "hospitalBeds": {"capacity": 100, "currentUsage": 3, "typicalUsageRate": 0.4},
+            "ICUBeds": {"capacity": 10, "currentUsage": 2, "typicalUsageRate": 0.6},
         },
     )
     counties = CovidActNowCountiesAPI(__root__=[county_summary])
