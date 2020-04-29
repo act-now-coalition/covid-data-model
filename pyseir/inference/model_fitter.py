@@ -60,7 +60,7 @@ class ModelFitter:
         log10_I_initial=1, limit_log10_I_initial=[.333, 3],
         error_log10_I_initial=.33,
         t0=60, limit_t0=[10, 80], error_t0=2.0,
-        eps=.3, limit_eps=[.20, 2], error_eps=.005,
+        eps=.3, limit_eps=[.20, 1.2], error_eps=.005,
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
         test_fraction=.1, limit_test_fraction=[0.02, 1], error_test_fraction=.02,
         hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
@@ -610,15 +610,15 @@ class ModelFitter:
         plt.legend(loc=4, fontsize=14)
         plt.grid(which='both', alpha=.5)
         plt.title(self.display_name, fontsize=20)
-        #
-        # for i, (k, v) in enumerate(self.fit_results.items()):
-        #
-        #     fontweight = 'bold' if k in ('R0', 'Reff') else 'normal'
-        #
-        #     if np.isscalar(v) and not isinstance(v, str):
-        #         plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
-        #     else:
-        #         plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
+
+        for i, (k, v) in enumerate(self.fit_results.items()):
+
+            fontweight = 'bold' if k in ('R0', 'Reff') else 'normal'
+
+            if np.isscalar(v) and not isinstance(v, str):
+                plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
+            else:
+                plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
 
         output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
         plt.savefig(output_file, bbox_inches='tight')
