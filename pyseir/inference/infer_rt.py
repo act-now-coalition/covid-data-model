@@ -49,10 +49,10 @@ class RtInferenceEngine:
     """
     def __init__(self,
                  fips,
-                 window_size=7,
-                 kernel_std=2,
+                 window_size=14,
+                 kernel_std=5,
                  r_list=np.linspace(0, 10, 501),
-                 process_sigma=0.15,
+                 process_sigma=0.05,
                  ref_date=datetime(year=2020, month=1, day=1),
                  confidence_intervals=(0.68, 0.95),
                  min_cases=5,
