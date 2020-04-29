@@ -10,6 +10,7 @@ import us
 import zipfile
 import json
 from libs.datasets import NYTimesDataset
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from pyseir.utils import get_run_artifact_path, RunArtifact
@@ -292,8 +293,7 @@ def load_ensemble_results(fips):
 @lru_cache(maxsize=32)
 def load_county_metadata_by_fips(fips):
     """
-    Generate a dictionary for a county which includes county metadata merged
-    with hospital capacity data.
+    Generate a dictionary for a county which includes county metadata.
 
     Parameters
     ----------
@@ -305,23 +305,10 @@ def load_county_metadata_by_fips(fips):
         Dictionary of metadata for the county. The keys are:
 
         ['state', 'county', 'total_population', 'population_density',
-        'housing_density', 'age_distribution', 'age_bin_edges',
-        'num_licensed_beds', 'num_staffed_beds', 'num_icu_beds',
-        'bed_utilization', 'potential_increase_in_bed_capac']
+        'housing_density', 'age_distribution', 'age_bin_edges']
     """
     county_metadata = load_county_metadata()
-    hospital_bed_data = load_hospital_data()
-
-    # Not all counties have hospital data.
-    hospital_bed_data = hospital_bed_data[
-        ['fips',
-         'num_licensed_beds',
-         'num_staffed_beds',
-         'num_icu_beds',
-         'bed_utilization',
-         'potential_increase_in_bed_capac']].groupby('fips').sum()
-
-    county_metadata_merged = county_metadata.merge(hospital_bed_data, on='fips', how='left').set_index('fips').loc[fips].to_dict()
+    county_metadata_merged = county_metadata.set_index('fips').loc[fips].to_dict()
     for key, value in county_metadata_merged.items():
         if np.isscalar(value) and not isinstance(value, str):
             county_metadata_merged[key] = float(value)
@@ -362,14 +349,14 @@ def load_new_case_data_by_fips(fips, t0):
 
 
 def get_hospitalization_data():
-    data = CovidTrackingDataSource.local().timeseries()
+    data = CovidTrackingDataSource.local().timeseries().data
     # Since we're using this data for hospitalized data only, only returning
     # values with hospitalization data.  I think as the use cases of this data source
     # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
     # hospitalization data.
-    has_current_hospital = data[cls.Fields.CURRENT_HOSPITALIZED].notnull()
-    has_cumulative_hospital = data[cls.Fields.TOTAL_HOSPITALIZED].notnull()
-    return data[has_current_hospital | has_cumulative_hospital]
+    has_current_hospital = data[TimeseriesDataset.Fields.CURRENT_HOSPITALIZED].notnull()
+    has_cumulative_hospital = data[TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED].notnull()
+    return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
 
 
 @lru_cache(maxsize=32)

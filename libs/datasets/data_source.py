@@ -28,6 +28,10 @@ class DataSource(object):
     # Name of dataset source
     SOURCE_NAME = None
 
+    # Indicates if NYC data is aggregated into one NYC county or not.
+    HAS_AGGREGATED_NYC_BOROUGH = False
+
+
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
