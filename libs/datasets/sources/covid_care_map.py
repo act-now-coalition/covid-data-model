@@ -8,6 +8,7 @@ from libs.datasets import data_source
 
 _logger = logging.getLogger(__name__)
 
+pd.set_option('display.max_columns', None)
 
 class CovidCareMapBeds(data_source.DataSource):
     COUNTY_DATA_PATH = "data/covid-care-map/healthcare_capacity_data_county.csv"
@@ -51,6 +52,12 @@ class CovidCareMapBeds(data_source.DataSource):
         data[cls.Fields.COUNTRY] = "USA"
         if cls.Fields.FIPS not in data.columns:
             data[cls.Fields.FIPS] = None
+
+        # Override Washoe County ICU capacity with actual numbers.
+        print(data[data[cls.Fields.FIPS] == "32031"].head(100))
+        data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.STAFFED_ICU_BEDS]] = 162
+        data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.35
+        print(data[data[cls.Fields.FIPS] == "32031"].head(100))
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.
