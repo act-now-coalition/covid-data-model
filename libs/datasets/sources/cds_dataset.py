@@ -52,8 +52,6 @@ class CDSDataset(data_source.DataSource):
         TimeseriesDataset.Fields.STATE: Fields.STATE,
         TimeseriesDataset.Fields.FIPS: Fields.FIPS,
         TimeseriesDataset.Fields.CASES: Fields.CASES,
-        TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
-        TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
