@@ -139,8 +139,8 @@ def compare_datasets(
     contains_both = contains_both.reset_index()
     values_matching = contains_both[first_name] == contains_both[other_name]
     not_matching = contains_both[~values_matching]
-    not_matching["delta"] = contains_both[first_name] - contains_both[other_name]
-    not_matching["delta_ratio"] = (
+    not_matching["delta_" + values] = contains_both[first_name] - contains_both[other_name]
+    not_matching["delta_ratio_" + values] = (
         contains_both[first_name] - contains_both[other_name]
     ) / contains_both[first_name]
     matching = contains_both.loc[values_matching, :]
