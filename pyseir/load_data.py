@@ -293,8 +293,7 @@ def load_ensemble_results(fips):
 @lru_cache(maxsize=32)
 def load_county_metadata_by_fips(fips):
     """
-    Generate a dictionary for a county which includes county metadata merged
-    with hospital capacity data.
+    Generate a dictionary for a county which includes county metadata.
 
     Parameters
     ----------
@@ -306,23 +305,10 @@ def load_county_metadata_by_fips(fips):
         Dictionary of metadata for the county. The keys are:
 
         ['state', 'county', 'total_population', 'population_density',
-        'housing_density', 'age_distribution', 'age_bin_edges',
-        'num_licensed_beds', 'num_staffed_beds', 'num_icu_beds',
-        'bed_utilization', 'potential_increase_in_bed_capac']
+        'housing_density', 'age_distribution', 'age_bin_edges']
     """
     county_metadata = load_county_metadata()
-    hospital_bed_data = load_hospital_data()
-
-    # Not all counties have hospital data.
-    hospital_bed_data = hospital_bed_data[
-        ['fips',
-         'num_licensed_beds',
-         'num_staffed_beds',
-         'num_icu_beds',
-         'bed_utilization',
-         'potential_increase_in_bed_capac']].groupby('fips').sum()
-
-    county_metadata_merged = county_metadata.merge(hospital_bed_data, on='fips', how='left').set_index('fips').loc[fips].to_dict()
+    county_metadata_merged = county_metadata.set_index('fips').loc[fips].to_dict()
     for key, value in county_metadata_merged.items():
         if np.isscalar(value) and not isinstance(value, str):
             county_metadata_merged[key] = float(value)
