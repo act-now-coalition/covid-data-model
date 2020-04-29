@@ -85,11 +85,14 @@ def write_nested_csv(data: List[dict], key: str, output_dir: str):
     output_path = pathlib.Path(output_dir) / f"{key}.csv"
     _logger.info(f"Writing {key} to {output_path}")
     with output_path.open('w') as csvfile:
-        writer = csv.DictWriter(output_path.open('w'), header)
+        writer = csv.DictWriter(csvfile, header)
         writer.writeheader()
 
         for row in data:
             flattened_row = flatten_dict(row)
+            # if a nested key is optional (i.e. {a: Optional[dict]}) and there is no
+            # value for a, (i.e. {a: None}), don't write a, as it's not in the header.
+            flattened_row = {k: v for k, v in flattened_row.items() if k in header}
             writer.writerow(flattened_row)
 
 
