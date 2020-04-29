@@ -142,7 +142,7 @@ class EnsembleRunner:
         """
         fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
-        hospitalization_data = load_data._get_hospitalization_data()\
+        hospitalization_data = load_data.get_hospitalization_data()\
             .get_subset(self.agg_level, country='USA', state=self.state_abbr)\
             .get_data(state=self.state_abbr, country='USA', fips=fips)\
             .sort_values('date')

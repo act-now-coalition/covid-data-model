@@ -10,6 +10,7 @@ import us
 import zipfile
 import json
 from libs.datasets import NYTimesDataset
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from pyseir.utils import get_run_artifact_path, RunArtifact
@@ -362,14 +363,14 @@ def load_new_case_data_by_fips(fips, t0):
 
 
 def get_hospitalization_data():
-    data = CovidTrackingDataSource.local().timeseries()
+    data = CovidTrackingDataSource.local().timeseries().data
     # Since we're using this data for hospitalized data only, only returning
     # values with hospitalization data.  I think as the use cases of this data source
     # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
     # hospitalization data.
-    has_current_hospital = data[cls.Fields.CURRENT_HOSPITALIZED].notnull()
-    has_cumulative_hospital = data[cls.Fields.TOTAL_HOSPITALIZED].notnull()
-    return data[has_current_hospital | has_cumulative_hospital]
+    has_current_hospital = data[TimeseriesDataset.Fields.CURRENT_HOSPITALIZED].notnull()
+    has_cumulative_hospital = data[TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED].notnull()
+    return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
 
 
 @lru_cache(maxsize=32)
