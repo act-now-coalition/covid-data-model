@@ -16,7 +16,7 @@ import pandas as pd
 from libs import build_params
 from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
-from libs.datasets import DHBeds
+from libs.datasets import CovidCareMapBeds
 from libs.datasets.dataset_utils import AggregationLevel
 
 _logger = logging.getLogger(__name__)
@@ -246,7 +246,7 @@ def build_county_summary(
     state: str = None,
 ):
     """Builds county summary json files."""
-    beds_data = DHBeds.local().beds()
+    beds_data = CovidCareMapBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
     timeseries = timeseries.get_subset(
@@ -399,7 +399,7 @@ def run_county_level_forecast(
     country: str = "USA",
     state: str = None,
 ):
-    beds_data = DHBeds.local().beds()
+    beds_data = CovidCareMapBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
     timeseries = timeseries.get_subset(
@@ -446,7 +446,7 @@ def run_state_level_forecast(
 ):
     # DH Beds dataset does not have all counties, so using the legacy state
     # level bed data.
-    beds_data = DHBeds.local().beds()
+    beds_data = CovidCareMapBeds.local().beds()
     population_data = FIPSPopulation.local().population()
     timeseries = JHUDataset.local().timeseries()
     timeseries = timeseries.get_subset(
