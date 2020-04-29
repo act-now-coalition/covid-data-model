@@ -3,7 +3,7 @@ import pandas as pd
 import us
 from pyseir import load_data
 from libs.datasets import FIPSPopulation
-from libs.datasets import DHBeds
+from libs.datasets import CovidCareMapBeds
 from libs.datasets.dataset_utils import AggregationLevel
 
 
@@ -35,7 +35,7 @@ class ParameterEnsembleGenerator:
         # of loading for each county.
         global beds_data, population_data
         if not beds_data or not population_data:
-            beds_data = DHBeds.local().beds()
+            beds_data = CovidCareMapBeds.local().beds()
             population_data = FIPSPopulation.local().population()
 
         self.fips = fips
