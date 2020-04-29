@@ -73,7 +73,7 @@ class ParameterEnsembleGenerator:
     @property
     def bed_utilization(self) -> float:
         """Returns the utilization rate if known, otherwise default."""
-        return self._beds_data.get(BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE) or 0.75
+        return self._beds_data.get(BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE) or 0.4
 
     def sample_seir_parameters(self, override_params=None):
         """
