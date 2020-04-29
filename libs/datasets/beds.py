@@ -122,6 +122,35 @@ class BedsDataset(object):
             self.county_data, index=self.COUNTY_GROUP_KEY
         )
 
+    def get_data_for_state(self, state) -> dict:
+        """Gets all data for a given state.
+
+        Args:
+            state: State abbreviation.
+
+        Returns: Dictionary with all data for a given state.
+        """
+        data = self.state_data
+        row = data[data[self.Fields.STATE] == state]
+        if not len(row):
+            return {}
+
+        return row.iloc[0].to_dict()
+
+    def get_data_for_fips(self, fips) -> dict:
+        """Gets all data for a given fips code.
+
+        Args:
+            fips: fips code.
+
+        Returns: Dictionary with all data for a given fips code.
+        """
+        row = self.data[self.data[self.Fields.FIPS] == fips]
+        if not len(row):
+            return {}
+
+        return row.iloc[0].to_dict()
+
     def get_state_level(self, state, column=Fields.MAX_BED_COUNT) -> Optional[int]:
         """Get beds for a specific state.
 

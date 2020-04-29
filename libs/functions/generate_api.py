@@ -215,7 +215,8 @@ def generate_state_timeseries(
         testing_df, on="date", how="left"
     )
     can_dataseries = new_df.to_dict(orient="records")
-    state_bed_data = get_can_projection.get_bed_data_for_state(state)
+    bed_data = get_can_projection.get_beds_data()
+    state_bed_data = bed_data.get_data_for_state(state)
 
     timeseries = []
     for data_series in can_dataseries:
@@ -260,7 +261,8 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
         raise Exception(f"County time series empty for {intervention.name}")
     projections = _generate_api_for_projections(projection_row)
     state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
-    county_bed_data = get_can_projection.get_bed_data_for_fips(fips)
+    bed_data = get_can_projection.get_beds_data()
+    county_bed_data = bed_data.get_data_for_fips(fips)
     return CovidActNowCountyTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
@@ -278,8 +280,8 @@ def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSum
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     projections = _generate_api_for_projections(projection_row)
     state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
-    state_bed_data = get_can_projection.get_bed_data_for_state(state_abbrev)
-
+    bed_data = get_can_projection.get_beds_data()
+    state_bed_data = bed_data.get_data_for_state(state_abbrev)
     state_result = CovidActNowStateSummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
@@ -297,7 +299,8 @@ def generate_api_for_county_projection_row(projection_row):
     projections = _generate_api_for_projections(projection_row)
     state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
     fips = projection_row[rc.FIPS]
-    county_bed_data = get_can_projection.get_bed_data_for_fips(fips)
+    bed_data = get_can_projection.get_beds_data()
+    county_bed_data = bed_data.get_data_for_fips(fips)
 
     county_result = CovidActNowCountySummary(
         lat=projection_row[rc.LATITUDE],
