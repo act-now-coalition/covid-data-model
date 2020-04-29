@@ -107,23 +107,6 @@ def cache_county_case_data():
     county_case_data.to_pickle(os.path.join(DATA_DIR, 'covid_case_timeseries.pkl'))
 
 
-def cache_hospital_beds():
-    """
-    Pulled from "Definitive"
-    See: https://services7.arcgis.com/LXCny1HyhQCUSueu/arcgis/rest/services/Definitive_Healthcare_Hospitals_Beds_Hospitals_Only/FeatureServer/0
-    """
-    logging.info('Downloading ICU capacity data.')
-    url = 'http://opendata.arcgis.com/datasets/f3f76281647f4fbb8a0d20ef13b650ca_0.geojson'
-    tmp_file = urllib.request.urlretrieve(url)[0]
-
-    with open(tmp_file) as f:
-        vals = json.load(f)
-    df = pd.DataFrame([val['properties'] for val in vals['features']])
-    df.columns = [col.lower() for col in df.columns]
-    df = df.drop(['objectid', 'state_fips', 'cnty_fips'], axis=1)
-    df.to_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
-
-
 def cache_mobility_data():
     """
     Pulled from https://github.com/descarteslabs/DL-COVID-19
@@ -310,18 +293,7 @@ def load_county_metadata_by_fips(fips):
         'bed_utilization', 'potential_increase_in_bed_capac']
     """
     county_metadata = load_county_metadata()
-    hospital_bed_data = load_hospital_data()
-
-    # Not all counties have hospital data.
-    hospital_bed_data = hospital_bed_data[
-        ['fips',
-         'num_licensed_beds',
-         'num_staffed_beds',
-         'num_icu_beds',
-         'bed_utilization',
-         'potential_increase_in_bed_capac']].groupby('fips').sum()
-
-    county_metadata_merged = county_metadata.merge(hospital_bed_data, on='fips', how='left').set_index('fips').loc[fips].to_dict()
+    county_metadata_merged = county_metadata.set_index('fips').loc[fips].to_dict()
     for key, value in county_metadata_merged.items():
         if np.isscalar(value) and not isinstance(value, str):
             county_metadata_merged[key] = float(value)
@@ -510,18 +482,6 @@ def load_new_case_data_by_state(state, t0):
     return times_new, np.array(observed_new_cases[keep_idx]).clip(min=0), observed_new_deaths.clip(min=0)[keep_idx]
 
 
-def load_hospital_data():
-    """
-    Return hospital level data. Note that this must be aggregated by stcountyfp
-    to obtain county level estimates.
-
-    Returns
-    -------
-    : pd.DataFrame
-    """
-    return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
-
-
 @lru_cache(maxsize=1)
 def load_mobility_data_m50():
     """
@@ -580,7 +540,6 @@ def cache_all_data():
     Download all datasets locally.
     """
     cache_county_case_data()
-    cache_hospital_beds()
     cache_mobility_data()
     cache_public_implementations_data()
 

@@ -28,9 +28,9 @@ class WhitelistGenerator:
     def __init__(
             self,
             total_cases=20,
-            total_deaths=5,
-            nonzero_case_datapoints=10,
-            nonzero_death_datapoints=1):
+            total_deaths=0,
+            nonzero_case_datapoints=5,
+            nonzero_death_datapoints=0):
         self.county_metadata = load_data.load_county_metadata()
         self.df_whitelist = None
 

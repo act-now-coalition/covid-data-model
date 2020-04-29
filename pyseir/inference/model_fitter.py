@@ -17,6 +17,7 @@ from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.inference.fit_results import load_inference_result
 
 
 class ModelFitter:
@@ -56,10 +57,10 @@ class ModelFitter:
 
     DEFAULT_FIT_PARAMS = dict(
         R0=3.4, limit_R0=[2, 4.5], error_R0=.05,
-        log10_I_initial=2, limit_log10_I_initial=[0, 5],
-        error_log10_I_initial=.2,
-        t0=60, limit_t0=[10, 80], error_t0=1.0,
-        eps=.4, limit_eps=[.20, 2], error_eps=.005,
+        log10_I_initial=1, limit_log10_I_initial=[.333, 3],
+        error_log10_I_initial=.33,
+        t0=60, limit_t0=[10, 80], error_t0=2.0,
+        eps=.3, limit_eps=[.20, 2], error_eps=.005,
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
         test_fraction=.1, limit_test_fraction=[0.02, 1], error_test_fraction=.02,
         hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
@@ -126,8 +127,7 @@ class ModelFitter:
                 load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
-
-
+        self.set_inference_parameters()
 
         self.model_fit_keys = ['R0', 'eps', 't_break', 'log10_I_initial']
 
@@ -157,16 +157,29 @@ class ModelFitter:
         if self.hospitalizations is None:
             self.fit_params['hosp_fraction'] = 1
 
-        min_t0 = self.times[np.argwhere(np.cumsum(self.observed_new_cases) >= 5)[0]]
-        self.fit_params['limit_t0'][0] = min_t0
-
         if len(self.fips) == 5:
+            t0_guess = list(self.times)[np.argwhere(np.cumsum(self.observed_new_cases) >= 3)[0][0]]
+
+            state_fit_result = load_inference_result(fips=self.state_obj.fips)
+
+            self.fit_params['t0'] = t0_guess # state_fit_result['t0']
+
             total_cases = np.sum(self.observed_new_cases)
-            if total_cases < 50:
+            self.fit_params['log10_I_initial'] = np.log10(3 / self.fit_params['test_fraction'])
+            self.fit_params['limit_t0'] = state_fit_result['t0'] - 20, state_fit_result['t0'] + 30
+            self.fit_params['t_break'] = state_fit_result['t_break'] - (t0_guess - state_fit_result['t0'])
+            self.fit_params['R0'] = state_fit_result['R0']
+            self.fit_params['test_fraction'] = state_fit_result['test_fraction']
+            self.fit_params['eps'] = state_fit_result['eps']
+            if total_cases < 100:
+                self.fit_params['t_break'] = 10
                 self.fit_params['fix_test_fraction'] = True
                 self.fit_params['fix_R0'] = True
+                self.fit_params['limit_t0'] = state_fit_result['t0'] - 5, \
+                                              state_fit_result['t0'] + 30
+            if total_cases < 50:
                 self.fit_params['fix_eps'] = True
-
+                self.fit_params['fix_t_break'] = True
 
     def get_average_seir_parameters(self):
         """
@@ -235,6 +248,9 @@ class ModelFitter:
         # add a bit more error in cases with very few deaths. This upweights cases and hospitalizations in this regime.
         deaths_stdev[self.observed_new_deaths <= 4] = deaths_stdev[self.observed_new_deaths <= 4] * 3
 
+        # add a bit more error in cases with very few cases. This prevents a number of outlier issues with cases
+        cases_stdev[self.observed_new_cases <= 4] = cases_stdev[self.observed_new_cases <= 4] * 3
+
         # If cumulative hospitalizations, differentiate.
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(min=0)
@@ -253,8 +269,8 @@ class ModelFitter:
             hosp_stdev = None
 
         # Zero inflated poisson Avoid floating point errors..
-        cases_stdev[cases_stdev == 0] = 1e10
-        deaths_stdev[deaths_stdev == 0] = 1e10
+        cases_stdev[cases_stdev == 0] = 1e2
+        deaths_stdev[deaths_stdev == 0] = 1e2
         if hosp_stdev is not None:
             hosp_stdev[hosp_stdev == 0] = 1e10
 
@@ -341,7 +357,8 @@ class ModelFitter:
         # -----------------------------------
         # Extract the predicted rates from the model.
         predicted_cases = (test_fraction * model.gamma
-                           * np.interp(self.times, self.t_list + t0, model.results['total_new_infections']))
+                           * np.interp(self.times, self.t_list + t0, model.results['total_new_infections'],
+                                       left=0, right=0))
         chi2_cases = np.sum((self.observed_new_cases - predicted_cases) ** 2 / self.cases_stdev ** 2)
 
         # -----------------------------------
@@ -351,7 +368,7 @@ class ModelFitter:
             predicted_hosp = hosp_fraction * np.interp(self.hospital_times,
                                                        self.t_list + t0,
                                                        model.results['HGen'] +
-                                                       model.results['HICU'])
+                                                       model.results['HICU'], left=0, right=0)
             chi2_hosp = np.sum((self.hospitalizations - predicted_hosp) ** 2 / self.hosp_stdev ** 2)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
 
@@ -359,7 +376,7 @@ class ModelFitter:
             # Cumulative, so differentiate the data
             cumulative_hosp_predicted = model.results['HGen_cumulative'] + model.results['HICU_cumulative']
             new_hosp_predicted = cumulative_hosp_predicted[1:] - cumulative_hosp_predicted[:-1]
-            new_hosp_predicted = hosp_fraction * np.interp(self.hospital_times[1:], self.t_list[1:] + t0, new_hosp_predicted)
+            new_hosp_predicted = hosp_fraction * np.interp(self.hospital_times[1:], self.t_list[1:] + t0, new_hosp_predicted, left=0, right=0)
             new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
 
             chi2_hosp = np.sum((new_hosp_observed - new_hosp_predicted) ** 2 / self.hosp_stdev ** 2)
@@ -372,7 +389,7 @@ class ModelFitter:
         # Chi2 Deaths
         # -----------------------------------
         # Only use deaths if there are enough observations..
-        predicted_deaths = np.interp(self.times, self.t_list + t0, model.results['total_deaths_per_day'])
+        predicted_deaths = np.interp(self.times, self.t_list + t0, model.results['total_deaths_per_day'], left=0, right=0)
         if self.observed_new_deaths.sum() > self.min_deaths:
             chi2_deaths = np.sum((self.observed_new_deaths - predicted_deaths) ** 2 / self.deaths_stdev ** 2)
         else:
@@ -432,7 +449,7 @@ class ModelFitter:
 
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
-        minuit.migrad(precision=1e-5)
+        minuit.migrad(precision=1e-6)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
         self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
 
@@ -493,9 +510,9 @@ class ModelFitter:
 
         # Don't display the zero-inflated error bars
         cases_err = np.array(self.cases_stdev)
-        cases_err[cases_err > 1e5] = 0
+        cases_err[self.observed_new_cases == 0] = 0
         death_err = deepcopy(self.deaths_stdev)
-        death_err[death_err > 1e5] = 0
+        death_err[self.observed_new_deaths == 0] = 0
         if self.hosp_stdev is not None:
             hosp_stdev = deepcopy(self.hosp_stdev)
             hosp_stdev[hosp_stdev > 1e5] = 0
@@ -581,9 +598,10 @@ class ModelFitter:
             plt.text(x + (end_time + timedelta(days=2)), y, k.replace('_', ' ').title(), fontsize=14)
             running_total += end_time
 
-        plt.hlines(self.SEIR_kwargs['beds_ICU'], *plt.xlim(), color='k', linestyles='-', linewidths=6, alpha=0.2)
-        plt.text(data_dates[0] + timedelta(days=5), self.SEIR_kwargs['beds_ICU'] * 1.1, 'Available ICU Capacity',
-                 color='k', alpha=0.5, fontsize=15)
+        if self.SEIR_kwargs['beds_ICU'] > 0:
+            plt.hlines(self.SEIR_kwargs['beds_ICU'], *plt.xlim(), color='k', linestyles='-', linewidths=6, alpha=0.2)
+            plt.text(data_dates[0] + timedelta(days=5), self.SEIR_kwargs['beds_ICU'] * 1.1, 'Available ICU Capacity',
+                    color='k', alpha=0.5, fontsize=15)
 
         plt.ylim(*y_lim)
         plt.xlim(data_dates[0], data_dates[-1] + timedelta(days=150))
@@ -592,15 +610,15 @@ class ModelFitter:
         plt.legend(loc=4, fontsize=14)
         plt.grid(which='both', alpha=.5)
         plt.title(self.display_name, fontsize=20)
-
-        for i, (k, v) in enumerate(self.fit_results.items()):
-
-            fontweight = 'bold' if k in ('R0', 'Reff') else 'normal'
-
-            if np.isscalar(v) and not isinstance(v, str):
-                plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
-            else:
-                plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
+        #
+        # for i, (k, v) in enumerate(self.fit_results.items()):
+        #
+        #     fontweight = 'bold' if k in ('R0', 'Reff') else 'normal'
+        #
+        #     if np.isscalar(v) and not isinstance(v, str):
+        #         plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
+        #     else:
+        #         plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
 
         output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
         plt.savefig(output_file, bbox_inches='tight')
@@ -671,6 +689,7 @@ def run_state(state, states_only=False):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
+    print('N_counties', len(df_whitelist))
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
