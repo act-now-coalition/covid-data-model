@@ -1,10 +1,16 @@
 import logging
 import iminuit
+# TODO use JAX for numpy XLA acceleration
+#from jax.config import config
+#config.update("jax_enable_x64", True) # enable float64 precision
 import numpy as np
+# from jax import numpy as np
+import os
 import us
 import pickle
 from pprint import pformat
 import pandas as pd
+#from jax.scipy.stats import gamma, norm
 from scipy.stats import gamma, norm
 from copy import deepcopy
 from matplotlib import pyplot as plt
@@ -17,6 +23,10 @@ from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
+
+
+def calc_chi_sq(obs, predicted, stddev):
+    return np.sum((obs - predicted) ** 2 / stddev ** 2)
 
 
 class ModelFitter:
@@ -346,7 +356,7 @@ class ModelFitter:
         # Extract the predicted rates from the model.
         predicted_cases = (test_fraction * model.gamma
                            * np.interp(self.times, self.t_list + t0, model.results['total_new_infections']))
-        chi2_cases = np.sum((self.observed_new_cases - predicted_cases) ** 2 / self.cases_stdev ** 2)
+        chi2_cases = calc_chi_sq(self.observed_new_cases, predicted_cases, self.cases_stdev)
 
         # -----------------------------------
         # Chi2 Hospitalizations
@@ -356,7 +366,7 @@ class ModelFitter:
                                                        self.t_list + t0,
                                                        model.results['HGen'] +
                                                        model.results['HICU'])
-            chi2_hosp = np.sum((self.hospitalizations - predicted_hosp) ** 2 / self.hosp_stdev ** 2)
+            chi2_hosp = calc_chi_sq(self.hospitalizations, predicted_hosp, self.hosp_stdev)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
 
         elif self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
@@ -366,7 +376,7 @@ class ModelFitter:
             new_hosp_predicted = hosp_fraction * np.interp(self.hospital_times[1:], self.t_list[1:] + t0, new_hosp_predicted)
             new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
 
-            chi2_hosp = np.sum((new_hosp_observed - new_hosp_predicted) ** 2 / self.hosp_stdev ** 2)
+            chi2_hosp = calc_chi_sq(new_hosp_observed, new_hosp_predicted, self.hosp_stdev)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
         else:
             chi2_hosp = 0
@@ -378,7 +388,7 @@ class ModelFitter:
         # Only use deaths if there are enough observations..
         predicted_deaths = np.interp(self.times, self.t_list + t0, model.results['total_deaths_per_day'])
         if self.observed_new_deaths.sum() > self.min_deaths:
-            chi2_deaths = np.sum((self.observed_new_deaths - predicted_deaths) ** 2 / self.deaths_stdev ** 2)
+            chi2_deaths = calc_chi_sq(self.observed_new_deaths, predicted_deaths, self.deaths_stdev)
         else:
             chi2_deaths = 0
 
@@ -434,9 +444,11 @@ class ModelFitter:
         """
         minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
 
+        if os.environ.get('PYSEIR_FAST_AND_DIRTY'):
+           minuit.strategy = 0
+        minuit.migrad(precision=1e-5)
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
-        minuit.migrad(precision=1e-5)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
         self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
 
