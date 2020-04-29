@@ -471,7 +471,7 @@ class ModelFitter:
 
         if np.isnan(self.fit_results['t0']):
             logging.error(f'Could not compute MLE values for {self.display_name}')
-            self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.t0_guess).isoformat()
+            self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.t0_guess)).isoformat()
         else:
             self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.fit_results['t0'])).isoformat()
         self.fit_results['t_today'] = (datetime.today() - self.ref_date).days
