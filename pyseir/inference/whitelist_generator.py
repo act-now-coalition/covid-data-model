@@ -7,6 +7,7 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 from pandarallel import pandarallel
 pandarallel.initialize(progress_bar=True)
 
+
 class WhitelistGenerator:
     """
     This class applies filters to inference results to determine a set of
@@ -26,10 +27,10 @@ class WhitelistGenerator:
     """
     def __init__(
             self,
-            total_cases=100,
-            total_deaths=10,
-            nonzero_case_datapoints=20,
-            nonzero_death_datapoints=2):
+            total_cases=20,
+            total_deaths=5,
+            nonzero_case_datapoints=10,
+            nonzero_death_datapoints=1):
         self.county_metadata = load_data.load_county_metadata()
         self.df_whitelist = None
 

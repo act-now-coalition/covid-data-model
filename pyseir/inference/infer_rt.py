@@ -419,7 +419,7 @@ class RtInferenceEngine:
 
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches='tight')
-            plt.close()
+            #plt.close()
 
         return df_all
 

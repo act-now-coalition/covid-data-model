@@ -59,7 +59,7 @@ class ModelFitter:
         log10_I_initial=2, limit_log10_I_initial=[0, 5],
         error_log10_I_initial=.2,
         t0=60, limit_t0=[10, 80], error_t0=1.0,
-        eps=.4, limit_eps=[.23, 2], error_eps=.005,
+        eps=.4, limit_eps=[.20, 2], error_eps=.005,
         t_break=20, limit_t_break=[5, 40], error_t_break=1,
         test_fraction=.1, limit_test_fraction=[0.02, 1], error_test_fraction=.02,
         hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
@@ -68,31 +68,9 @@ class ModelFitter:
     )
 
     PARAM_SETS = {
-        ('KY', 'KS', 'ID', 'NE', 'VA', 'RI'):  dict(
-            eps=0.4, limit_eps=[0.25, 1],
-            limit_t0=[40, 80]
-        ),
-
-        ('AK'): dict(
-            eps=0.4, limit_eps=[0.25, 1],
-            t0=75, limit_t0=[40, 80],
-            t_break=10
-        ),
-        ('ND'): dict(
-            eps=0.4, limit_eps=[0.25, 1],
-            t0=60, limit_t0=[40, 80],
-            t_break=10
-        ),
-        ('MN'):  dict(
-            eps=0.4, limit_eps=[0.25, 1], t0=20
-        ),
-        ('AL', 'DE'): dict(limit_t_break=[7, 10], t0=70),
-        ('SD', 'NM', 'WV'): dict(
-            # To Be relaxed after more data.
-            eps=0.4, t_break=5, fix_t_break=True
-        ),
-        ('MI'): dict(limit_t_break=[7, 40], t0=70),
-        ('VT', 'NH'):  dict(limit_t_break=[10, 30], t0=45)
+          ('HI',): dict(
+              eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]
+          )
     }
 
     steady_state_exposed_to_infected_ratio = 1.2
@@ -149,15 +127,7 @@ class ModelFitter:
 
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
 
-        self.fit_params = self.DEFAULT_FIT_PARAMS
-        # Update any state specific params.
-        for k, v in self.PARAM_SETS.items():
-            if self.state_obj.abbr in k:
-                self.fit_params.update(v)
 
-        self.fit_params['fix_hosp_fraction'] = self.hospitalizations is None
-        if self.hospitalizations is None:
-            self.fit_params['hosp_fraction'] = 1
 
         self.model_fit_keys = ['R0', 'eps', 't_break', 'log10_I_initial']
 
@@ -171,6 +141,32 @@ class ModelFitter:
         self.dof_deaths = None
         self.dof_cases = None
         self.dof_hosp = None
+
+    def set_inference_parameters(self):
+        """
+        Setup inference parameters based on data availability and manual
+        overrides.
+        """
+        self.fit_params = self.DEFAULT_FIT_PARAMS
+        # Update any state specific params.
+        for k, v in self.PARAM_SETS.items():
+            if self.state_obj.abbr in k:
+                self.fit_params.update(v)
+
+        self.fit_params['fix_hosp_fraction'] = self.hospitalizations is None
+        if self.hospitalizations is None:
+            self.fit_params['hosp_fraction'] = 1
+
+        min_t0 = self.times[np.argwhere(np.cumsum(self.observed_new_cases) >= 5)[0]]
+        self.fit_params['limit_t0'][0] = min_t0
+
+        if len(self.fips) == 5:
+            total_cases = np.sum(self.observed_new_cases)
+            if total_cases < 50:
+                self.fit_params['fix_test_fraction'] = True
+                self.fit_params['fix_R0'] = True
+                self.fit_params['fix_eps'] = True
+
 
     def get_average_seir_parameters(self):
         """
@@ -411,7 +407,7 @@ class ModelFitter:
 
         # This implements a hard lower limit of 0.98.
         # TODO: As more data comes in, relax this.. Probably just use MCMC..
-        prior = gamma.pdf((x - 0.85) / 1.5, 1.1)
+        prior = gamma.pdf((x - 0.80) / 1.5, 1.1)
         # Add a tiny amount to the likelihood to prevent zero common support
         # between the prior and likelihood functions.
         likelihood = norm.pdf(x, R_eff, R_eff_stdev) + 0.0001
