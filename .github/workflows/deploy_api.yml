@@ -25,6 +25,9 @@ env:
   # S3 Bucket (used by s3-sync-action tasks) to store final API snapshot.
   AWS_S3_BUCKET: 'data.covidactnow.org'
 
+  # Use plotting by default on CI
+  PYSEIR_PLOT_RESULTS: 'True'
+
   # The snapshot ID that identifies all of the API artifacts we're generating and ends
   # up in the final /snapshot/{id}/ URL.
   SNAPSHOT_ID: ${{github.run_number}}

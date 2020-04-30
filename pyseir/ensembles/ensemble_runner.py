@@ -142,13 +142,14 @@ class EnsembleRunner:
         """
         fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
-        hospitalization_data = load_data._get_hospitalization_data()\
+        hospitalization_data = load_data.get_hospitalization_data()\
             .get_subset(self.agg_level, country='USA', state=self.state_abbr)\
             .get_data(state=self.state_abbr, country='USA', fips=fips)\
             .sort_values('date')
 
         # If there are enough hospitalizations, use those to define initial conditions.
-        if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in FAULTY_HOSPITAL_DATA_STATES:
+        faulty_hospital = load_data.FAULTY_HOSPITAL_DATA_STATES
+        if not use_cases and len(hospitalization_data) > 0 and self.state_abbr not in faulty_hospital:
             latest_date = hospitalization_data.iloc[-1]['date'].date()
             n_current = hospitalization_data.iloc[-1]['current_hospitalized']
             if n_current > self.min_hospitalization_threshold and not np.isnan(n_current):
