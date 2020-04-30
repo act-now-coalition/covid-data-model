@@ -115,7 +115,7 @@ def test_get_data():
 
 def test_nyc_aggregation():
     beds_data = CovidCareMapBeds.local().beds()
-    data = beds_data.get_data_for_fips(custom_aggregations.NYC_BOROUGH_FIPS)
+    data = beds_data.get_data_for_fips(custom_aggregations.NEW_YORK_COUNTY_FIPS)
     # Check to make sure that beds occupancy rates are below 1,
     # signaling that it is properly combining occupancy rates.
     assert data['all_beds_occupancy_rate'] < 1
