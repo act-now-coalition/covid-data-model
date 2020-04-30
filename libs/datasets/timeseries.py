@@ -30,6 +30,10 @@ class TimeseriesDataset(object):
         CURRENT_HOSPITALIZED = "current_hospitalized"
         CUMULATIVE_HOSPITALIZED = "cumulative_hospitalized"
 
+        # Current values
+        CURRENT_ICU = "current_icu"
+        CURRENT_VENTILATED = "current_ventilated"
+
         # Generated in from_source
         COUNTY = "county"
         SOURCE = "source"
@@ -177,7 +181,7 @@ class TimeseriesDataset(object):
             cls.Fields.GENERATED,
         ]
         data = custom_aggregations.update_with_combined_new_york_counties(
-            data, group, are_boroughs_zero=True
+            data, group, are_boroughs_zero=source.HAS_AGGREGATED_NYC_BOROUGH
         )
 
         if fill_missing_state:

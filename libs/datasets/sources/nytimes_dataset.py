@@ -11,6 +11,8 @@ class NYTimesDataset(data_source.DataSource):
     DATA_URL = "https://github.com/nytimes/covid-19-data/raw/master/us-counties.csv"
     SOURCE_NAME = "NYTimes"
 
+    HAS_AGGREGATED_NYC_BOROUGH = True
+
     class Fields(object):
         DATE = "date"
         COUNTY = "county"

@@ -39,6 +39,7 @@ def _get_interventions_df():
     return pd.DataFrame(list(interventions.items()), columns=columns)
 
 
+@lru_cache(None)
 def _get_testing_df():
     # TODO: read this from a dataset class
     ctd_df = CovidTrackingDataSource.local().data
@@ -47,12 +48,13 @@ def _get_testing_df():
     # handle missing data
     ctd_df[CovidTrackingDataSource.Fields.POSITIVE_TESTS] = ctd_df[
         CovidTrackingDataSource.Fields.POSITIVE_TESTS
-    ].astype(int)
+    ].apply(lambda x: x if pd.isna(x) else int(x))
     ctd_df[CovidTrackingDataSource.Fields.NEGATIVE_TESTS] = ctd_df[
         CovidTrackingDataSource.Fields.NEGATIVE_TESTS
-    ].astype(int)
+    ].apply(lambda x: x if pd.isna(x) else int(x))
     ctd_df = ctd_df[CovidTrackingDataSource.TEST_FIELDS]
     return ctd_df
+
 
 # todo: we probably need the dataset to be a singleton so we're not realoading
 # it every time we want to use it.
@@ -60,8 +62,10 @@ cds_df = CDSDataset.local().data
 cds_df["date"] = cds_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
 cds_df = cds_df[CDSDataset.TEST_FIELDS]
 
+
 def _get_county_testing_df():
     return cds_df
+
 
 def get_testing_timeseries_by_state(state):
     testing_df = _get_testing_df()
@@ -71,6 +75,7 @@ def get_testing_timeseries_by_state(state):
     ]
     return state_testing_df[CovidTrackingDataSource.TESTS_ONLY_FIELDS]
 
+
 def get_testing_timeseries_by_fips(fips):
     testing_df = _get_county_testing_df()
     # select by fips
@@ -78,7 +83,6 @@ def get_testing_timeseries_by_fips(fips):
         testing_df[CDSDataset.Fields.FIPS] == fips
     ]
     return fips_testing_df
-
 
 
 county_replace_with_null = {"Unassigned": NULL_VALUE}

@@ -41,12 +41,12 @@
     "RtIndicator": {
       "title": "Rtindicator",
       "description": "Historical or Inferred Rt",
-      "type": "float"
+      "type": "number"
     },
     "RtIndicatorCI90": {
       "title": "Rtindicatorci90",
       "description": "Rt standard deviation",
-      "type": "float"
+      "type": "number"
     },
     "cumulativeDeaths": {
       "title": "Cumulativedeaths",

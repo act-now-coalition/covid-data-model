@@ -83,7 +83,7 @@ def default_timeseries_row(**updates):
         'aggregate_level': 'county',
         'date': '2020-03-26 00:00:00',
         'country': 'USA',
-        'state': 'LA',
+        'state': 'NY',
         'cases': 10.0,
         'deaths': 1.0,
         'recovered': 0.0,
