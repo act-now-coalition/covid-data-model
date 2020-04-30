@@ -336,6 +336,8 @@ class RtInferenceEngine:
         IDX_OF_COUNTS = 2
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+        if self.hospitalization_data_type:
+            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
@@ -343,16 +345,17 @@ class RtInferenceEngine:
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
-        if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
+        if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS and len(hosps > 3):
             # We have converted this timeseries to new hospitalizations.
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
-        elif self.hospitalization_data_type is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
+        elif self.hospitalization_data_type is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS and len(hosps > 3):
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
         for timeseries_type in available_timeseries:
 
             df = pd.DataFrame()
             dates, times, posteriors = self.get_posteriors(timeseries_type)
+
             if posteriors is not None:
                 df[f'Rt_MAP__{timeseries_type.value}'] = posteriors.idxmax()
                 for ci in self.confidence_intervals:
@@ -370,6 +373,22 @@ class RtInferenceEngine:
                     df_all = df
                 else:
                     df_all = df_all.merge(df, left_index=True, right_index=True, how='outer')
+
+                # Compute the indicator lag using the curvature alignment method.
+                if timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS) \
+                        and TimeseriesType.NEW_CASES in available_timeseries:
+                    # Go back upto 30 days or the max time series length we have if shorter.
+                    last_idx = max(-30, -len(df))
+                    shift_in_days = self.align_time_series(
+                        series_a=df_all[f'Rt_MAP__{TimeseriesType.NEW_CASES.value}'].iloc[-last_idx:],
+                        series_b=df_all[f'Rt_MAP__{timeseries_type.value}'].iloc[-last_idx:]
+                    )
+                    df_all[f'lag_days__{timeseries_type.value}'] = shift_in_days
+
+                    # Shift all the columns.
+                    for col in df_all.columns:
+                        if timeseries_type.value in col:
+                            df_all[col] = df_all[col].shift(shift_in_days)
 
         if df_all is not None and 'Rt_MAP__new_deaths' in df_all and 'Rt_MAP__new_cases' in df_all:
             df_all['Rt_MAP_composite'] = np.nanmean(df_all[['Rt_MAP__new_cases', 'Rt_MAP__new_deaths']], axis=1)
@@ -419,7 +438,7 @@ class RtInferenceEngine:
 
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches='tight')
-            plt.close()
+            #plt.close()
 
         return df_all
 
@@ -441,15 +460,22 @@ class RtInferenceEngine:
         shift: int
             A shift period applied to series b that aligns to series a
         """
-        shifts = range(-20, 20)
+        shifts = range(-30, 5)
+        valid_shifts = []
         xcor = []
-        for i in shifts:
-            series_a = np.diff(series_a)
-            series_b = np.diff(series_b.shift(i))
-            valid = (~np.isnan(series_a) & ~np.isnan(series_b))
-            xcor.append(signal.correlate(series_a[valid], series_b[valid]).mean())
+        np.random.seed(42)  # Xcor has some stochastic FFT elements.
+        _series_a = np.diff(series_a)
 
-        return shifts[np.argmax(xcor)]
+        for i in shifts:
+            series_b_shifted = np.diff(series_b.shift(i))
+            valid = (~np.isnan(_series_a) & ~np.isnan(series_b_shifted))
+            if len(series_b_shifted[valid]) > 0:
+                xcor.append(signal.correlate(_series_a[valid], series_b_shifted[valid]).mean())
+                valid_shifts.append(i)
+        if len(valid_shifts) > 0:
+            return valid_shifts[np.argmax(xcor)]
+        else:
+            return 0
 
     @classmethod
     def run_for_fips(cls, fips):
