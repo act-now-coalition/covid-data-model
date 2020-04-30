@@ -23,7 +23,7 @@ def run_projections(
     input_file, run_validation=True
 ) -> TopCountiesPipelineProjectionResult:
     """Run the projections for the current intervention for counties
-    in order to genereate a list of the 100 counties most affected
+    in order to generate a list of the 100 counties most affected
 
     Args:
         input_file: Input file to load model output results from.

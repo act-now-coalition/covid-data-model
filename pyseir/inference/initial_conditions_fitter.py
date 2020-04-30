@@ -97,7 +97,7 @@ class InitialConditionsFitter:
         return np.sum(chi2) / (len(chi2) - 1)
 
     def exponential_loss(self, norm, t0, scale):
-        """Return the reduced chi2 for an exponential fit to teh data"""
+        """Return the reduced chi2 for an exponential fit to the data"""
         y_pred = self.exponential_model(norm, t0, scale, self.t)
         return self._reduced_chi2(y_pred, self.y)
 

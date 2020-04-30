@@ -9,7 +9,7 @@ from pyseir.inference import fit_results
 
 # Fig 4 of Imperial college.
 # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-Europe-estimates-and-NPI-impact-30-03-2020.pdf
-# These are intended to act indendently, as shown by a multivariate fit from Imp. College.  The exception is lockdown which supercedes everything.
+# These are intended to act indendently, as shown by a multivariate fit from Imp. College.  The exception is lockdown which supersedes everything.
 distancing_measure_suppression = {
     'stay_at_home': .48,
     '50_gatherings': .05,
@@ -24,7 +24,7 @@ distancing_measure_suppression = {
 
 def generate_triggered_suppression_model(t_list, lockdown_days, open_days, reduction=0.25, start_on=0):
     """
-    Generates a contact reduction model which switches a binary supression
+    Generates a contact reduction model which switches a binary suppression
     policy on and off.
 
     Parameters
