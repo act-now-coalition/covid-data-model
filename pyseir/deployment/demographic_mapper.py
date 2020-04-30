@@ -1,48 +1,159 @@
 import logging
 import pandas as pd
 import numpy as np
-from copy import copy
+from collections import defaultdict
 from enum import Enum
-from pyseir import load_data
 from datetime import datetime, timedelta
+
 
 class CovidMeasure(Enum):
     HOSPITALIZATION_GENERAL_INFECTED = 'hospitalization_general_infected'
     HOSPITALIZATION_ICU_INFECTED = 'hospitalization_icu_infected'
     HOSPITALIZATION_INFECTED = 'hospitalization_infected'
-    MORTALITY_INFECTED = 'mortality_infected'
     HOSPITALIZATION_GENERAL = 'hospitalization_general'
     HOSPITALIZATION_ICU = 'hospitalization_icu'
     HOSPITALIZATION = 'hospitalization'
-    MORTALITY = 'mortality'
+    IFR = 'IFR'
 
+class CovidMeasureUnit(Enum):
+    PER_CAPITA = 'per_capita'
+    PER_CAPITA_DAY = 'per_capita_day'
 
 class DemographicMapper:
     """
+    Maps SEIR model inference to customer's population based on customer's
+    employee demographic distribution. Currently supports mapping based on age
+    structure.
+    The mapper calculates following measures by given demographic category (
+    currently supports age groups):
+    - hospitalization_infected: probability an infected person will be
+                                hospitalized ultimately or per day, including
+                                non-ICU and ICU admission.
+    - hospitalization_icu_infected: probability an infected person will be
+                                    admitted ultimately or per day.
+    - hospitalization_general_infected: probability an infected person will be
+                                        admitted to non-ICU ultimately or
+                                        is admitted to non-ICU per day.
+    - hospitalization: probability a person will be hospitalized due to
+                       covid-19 ultimately or per day, including co-occurrence
+                       of infection and admission to hospital.
+    - hospitalization_icu: probability a person gets admitted to to ICU due
+                           to covid-19 ultimately or per day., including
+                          co-occurrence of infection and admission to ICU.
+    - hospitalization_general: probability a person gets admitted to non-ICU
+                               due to covid-19 ultimately or per day.,
+                               including co-occurrence of infection and
+                               admission to non-ICU.
+    - IFR: probability an infected person dies of covid-19 ultimately or
+           per day.
+
+    Whether the measure quantifies the probability of a future outcome or a
+    daily event depends the measure_unit: when measure unit is
+    `per capita`, the measure quantifies the probability of that an future
+    event will ultimately occur; when measure unit is `per capita day`,
+    the measure quantifies the probability of an event per day.
+
+    Attributes
+    ----------
+    predictions: dict
+        Contains time series of SEIR model compartment size summed
+        over age groups. Time series are simulated with MLE parameters.
+        With keys:
+        - 'E': np.array, exposed
+        - 'I': np.array, infected and symptomatic
+        - 'A': np.array, infected and asymptomatic
+        - 'HGen': np.array, admitted to non-ICU
+        - 'HICU': np.array, admitted to ICU
+        - 'HVent': np.array, admitted to ICU with ventilator
+        - 'D': np.array, death during hospitalization
+        - 'R': recovered
+    predictions_by_age: dict
+        Contains time series of SEIR model compartment size by age groups.
+        Time series are simulated with MLE parameters.
+        With keys:
+        - 'E': np.array, exposed by age groups
+        - 'I': np.array, infected and symptomatic by age groups
+        - 'A': np.array, infected and asymptomatic by age groups
+        - 'HGen': np.array, admitted to non-ICU by age groups
+        - 'HICU': np.array, admitted to ICU by age groups
+        - 'HVent': np.array, admitted to ICU with ventilator by age groups
+    parameters: dict
+        Contains MLE model parameters. For full list of parameters,
+        refer description of parameters of SEIRModelAge.
+    measures: list(CovidMeasure)
+        Covid measures.
+    measure_units: list(CovidMeasureUnit)
+        Units of covid measure.
+    hospitalization_rates: dict
+        Rates of hospitalization by age group, type of hospitalization,
+        and unit of rates, with unit as primary key, type of
+        hospitalization as secondary key, and array of corresponding
+        time series of rates as values.
+        For example, hospitalization_rates['per_capita']['HGen'] is the
+        time series of probability of being admitted to non-ICU per
+        capita among infected population (asymptomatic + symptomatic).
+    mortality_rates: dict
+        Rates of mortality by age group, type of hospitalization,
+        and unit of rates, with unit as primary key, type of
+        hospitalization as secondary key, and array of corresponding
+        time series of rates as values.
+        For example, mortality_rates['per_capita']['HICU'] is the time
+        series of probability of death in ICU per capita among infected
+        population (asymptomatic + symptomatic + hospitalized).
+    prevalence: np.array
+        Age-specific prevalence time series simulated with SEIR model
+        with MLE parameters.
+
+
+    Parameters
+    ----------
+    fips: str
+        State of county FIPS code
+    mle_model: SEIRModelAge
+        Model with age structure and MLE model parameters
+    fit_results: dict
+        MLE epi parameters and associated errors. The parameter used is
+        t0_date.
+    measures: str or list(str)
+        Names of covid measures, should be interpretable by CovidMeasure.
+    measure_units: str or list(str)
+        Units of covid measures, should be interpretable by CovidMeasureUnit.
+    target_age_distribution: callable
+        PDF of age of target population.
+    risk_modifier_by_age: callable
+        Returns risk rations by age group that modifies the risk of
+        hospitalization or mortality.
     """
 
     def __init__(self,
                  fips,
                  mle_model,
                  fit_results,
-                 target_variables,
-                 aggregate=False,
+                 measures,
+                 measure_units,
                  target_age_distribution=None,
-                 risk_modifier_by_age_group=None,
-                 start_date=None,
-                 end_date=None):
+                 risk_modifier_by_age=None):
 
         self.fips = fips
         self.predictions = {k: v for k, v in mle_model.results.items() if k != 'by_age'}
         self.predictions_by_age = mle_model.results['by_age']
         self.parameters = {k: v for k, v in mle_model.__dict__.items() if k not in ('by_age', 'results')}
         self.fit_results = fit_results
-        self.aggregate = aggregate
-        self.target_variables = target_variables
-        if target_age_distribution:
-            target_age_distribution = lambda x: 1
+        self.measures = [measures] if not isinstance(measures,list) else measures
+        self.measures = [CovidMeasure(m) for m in self.measures]
+
+        self.measure_units = [measure_units] if not isinstance(measure_units,list) else measure_units
+        self.measure_units = [CovidMeasureUnit(u) for u in self.measure_units]
+
+        if target_age_distribution is None:
+            target_age_distribution = lambda x: np.array([1] * len(self.parameters['age_groups']))
         self.target_age_distribution = target_age_distribution
-        self.risk_modifier_by_age_group = risk_modifier_by_age_group
+        self.risk_modifier_by_age = risk_modifier_by_age
+
+        # get parameters required to calculate covid measures
+        self.hospitalization_rates, self.mortality_rates = self._generate_hospitalization_mortality_rates()
+        self.prevalence = self._age_specific_prevalence()
+
 
     def generate_customer_age_distribution(self):
         """
@@ -50,12 +161,31 @@ class DemographicMapper:
         """
         return
 
-    def reconstruct_age_specific_mortality(self):
+    def _age_specific_prevalence(self):
         """
-        Reconstruct age specific mortality given
+        Calculate age specific prevalence.
+
+        Returns
+        -------
+        prevalence: np.array
+            Trajectory of covid infection prevalence inferred by the MLE
+            model.
+        """
+        prevalence = (self.predictions_by_age['I']
+                    + self.predictions_by_age['A'])/ self.parameters['N'][:, np.newaxis]
+        return prevalence
+
+    def _reconstruct_mortality_rates_trajectory(self):
+        """
+        Reconstruct trajectory of inferred mortality rates through time from
+        MLE model parameters and compartments.
+
+        Returns
+        -------
+        mortality_rate_general: np.array
+            Age specific mortality rate by
         """
 
-        # calculate the derivatives
         mortality_rate_ICU = np.tile(self.parameters['mortality_rate_from_ICU'],
                                      (self.parameters['t_list'].shape[0], 1)).T
         mortality_rate_ICU[:, np.where(self.predictions['HICU'] > self.parameters['beds_ICU'])] = \
@@ -66,90 +196,280 @@ class DemographicMapper:
         mortality_rate_NonICU[:, np.where(self.predictions['HGen'] > self.parameters['beds_general'])] = \
             self.parameters['mortality_rate_no_general_beds']
 
-        died_from_hosp = self.predictions_by_age['HGen'] * mortality_rate_NonICU \
-                         / self.parameters['hospitalization_length_of_stay_general']
-        died_from_icu = self.predictions_by_age['HICU'] * (
-                1 - self.parameters['fraction_icu_requiring_ventilator']) * self.parameters['mortality_rate_ICU'] / \
-                        self.parameters['hospitalization_length_of_stay_icu']
-        died_from_icu_vent = self.predictions_by_age['HVent'] * self.parameters['mortality_rate_from_ICUVent'] / \
-                             self.parameters['hospitalization_length_of_stay_icu_and_ventilator']
-        dDdt = died_from_hosp + died_from_icu + died_from_icu_vent
-        delta_t = np.diff(self.parameters['t_list'])
-        delta_t = np.append(delta_t, delta_t[-1])
-        dD = dDdt * delta_t[:, np.newaxis].T
-        mortality = np.cumsum(dD, axis=1)
-        return mortality
+        mortality_rate_general = mortality_rate_NonICU / self.parameters['hospitalization_length_of_stay_general']
+        mortality_rate_icu = (1 - self.parameters['fraction_icu_requiring_ventilator']) * mortality_rate_ICU / \
+                             self.parameters['hospitalization_length_of_stay_icu']
+        mortality_rate_icu_vent = self.parameters['mortality_rate_from_ICUVent'] / \
+                                  self.parameters['hospitalization_length_of_stay_icu_and_ventilator']
 
-    def calculate_predicted_total_infections(self):
+        return mortality_rate_general, mortality_rate_icu, mortality_rate_icu_vent
+
+    def _reconstruct_hospitalization_rates_trajectory(self):
+        """
+        Reconstruct trajectory of inferred hospitalization rates through time from
+        MLE model parameters and compartments.
+        """
+
+        hospital_rate_general = \
+            (self.parameters['hospitalization_rate_general'] - self.parameters['hospitalization_rate_icu']) / \
+            self.parameters['symptoms_to_hospital_days']
+        hospital_rate_icu = self.parameters['hospitalization_rate_icu'] / self.parameters['symptoms_to_hospital_days']
+        hospital_rate_ventilator = hospital_rate_icu * self.parameters['fraction_icu_requiring_ventilator']
+
+        return hospital_rate_general, hospital_rate_icu, hospital_rate_ventilator
+
+    def _reconstruct_recovery_rates_trajectory(self):
+        mortality_rate_general, mortality_rate_icu, mortality_rate_icu_vent = \
+            self._reconstruct_mortality_rates_trajectory()
+
+        hospital_general_recovery_rate = (1 - mortality_rate_general) / \
+            self.parameters['hospitalization_length_of_stay_general']
+        hospital_icu_recovery_rate = (1 - mortality_rate_icu) * (1 - self.parameters['fraction_icu_requiring_ventilator']) \
+            / self.parameters['hospitalization_length_of_stay_icu']
+        hospital_icu_vent_recovery_rate = \
+            (1 - np.maximum(mortality_rate_icu, self.parameters['mortality_rate_from_ICUVent'])) \
+            / self.parameters['hospitalization_length_of_stay_icu_and_ventilator']
+
+        return hospital_general_recovery_rate, hospital_icu_recovery_rate, hospital_icu_vent_recovery_rate
+
+    def _calculate_age_specific_hospitalization_rates(self, measure_unit):
+        """
+        Calculate age specific hospitalization rates for a given measure unit.
+
+        When unit is per capita, calculates the probability that an infected
+        person (asymptomatic or symptomatic) ultimately get admitted to
+        hospital:
+            probability of being symptomatic * rate of hospitalized / (rate of
+            hospitalized + rate of recovery without hospitalization)
+
+        When unit is per capita day, calculate the probability that an
+        infected person get admitted to hospital per day:
+           new hospitalization / (asymptomatic + symptomatic infections)
+
+        Parameters
+        ----------
+        measure_unit: CovidMeasureUnit
+            Unit of covid measure
+
+        Returns
+        -------
+          : np.array
+            Rates of admission to non-ICU
+          : np.array
+            Rates of admission to ICU
+          : np.array
+            Rates of admission to ICU with Ventilator
+        """
+
+        hospital_rate_general, hospital_rate_icu, hospital_rate_ventilator = \
+            self._reconstruct_hospitalization_rates_trajectory()
+
+        total_rate_out_of_I = self.parameters['delta'] + hospital_rate_general + hospital_rate_icu + hospital_rate_ventilator
+
+        hospital_general_prob = np.tile(hospital_rate_general / total_rate_out_of_I,
+                                        (len(self.parameters['t_list']), 1)).T
+
+        hospital_icu_prob = np.tile(hospital_rate_icu / total_rate_out_of_I,
+                                    (len(self.parameters['t_list']), 1)).T
+        hospital_ventilator_prob = np.tile(hospital_rate_ventilator / total_rate_out_of_I,
+                                           (len(self.parameters['t_list']), 1)).T
+
+        fraction_of_symptomatic = self.predictions_by_age['I'] / (self.predictions_by_age['I']
+                                                                + self.predictions_by_age['A'])
+
+        if measure_unit is CovidMeasureUnit.PER_CAPITA:
+            # calculate probability that infected population will ultimately be hospitalized
+            return (hospital_general_prob * fraction_of_symptomatic,
+                    hospital_icu_prob * fraction_of_symptomatic,
+                    hospital_ventilator_prob * fraction_of_symptomatic)
+
+        elif measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
+            # calculate probability that infected population become hospitalized per day.
+            return (hospital_rate_general[:, np.newaxis] * fraction_of_symptomatic,
+                    hospital_rate_icu[:, np.newaxis] * fraction_of_symptomatic,
+                    hospital_rate_ventilator[:, np.newaxis] * fraction_of_symptomatic)
+
+    def _calculate_age_specific_mortality_rates(self, measure_unit):
+        """
+        Calculates age specific mortality with given unit.
+
+        When unit is per capita, mortality rate is calculated as the
+        probability that an infected person dies of covid-19:
+            probability of hospitalization * mortality rate /
+            (mortality rate + recovery rate)
+
+        When unit is per capita day, mortality rate is calculated as
+        probability of dying of covid-19 per capita per day among infected
+        population:
+            new death / (asymptomatic + symptomatic + hospitalized)
+
+        Parameters
+        ----------
+        measure_unit: CovidMeasureUnit
+            Unit of the covid measure.
+
+        Returns
+        -------
+          : np.array
+            Rates of mortality in non-ICU
+          : np.array
+            Rates of mortality in ICU
+          : np.array
+            Rates of mortality in ICU with Ventilator
+        """
+        mortality_rate_general, mortality_rate_icu, mortality_rate_icu_vent = \
+            self._reconstruct_mortality_rates_trajectory()
+
+        if measure_unit is CovidMeasureUnit.PER_CAPITA:
+            hospital_general_recovery_rate, hospital_icu_recovery_rate, hospital_icu_vent_recovery_rate = \
+                self._reconstruct_recovery_rates_trajectory()
+
+            mortality_prob_general = mortality_rate_general/(mortality_rate_general + hospital_general_recovery_rate)
+            mortality_prob_icu = mortality_rate_icu/(mortality_rate_icu + hospital_icu_recovery_rate)
+            mortality_prob_icu_vent = mortality_rate_icu_vent/(mortality_rate_icu_vent + hospital_icu_vent_recovery_rate)
+
+            return (mortality_prob_general * self.hospitalization_rates[measure_unit.value]['HGen'],
+                    mortality_prob_icu * self.hospitalization_rates[measure_unit.value]['HICU'],
+                    mortality_prob_icu_vent * self.hospitalization_rates[measure_unit.value]['HVent'])
+
+        elif measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
+            total_infections = np.zeros(self.predictions_by_age['I'].shape)
+            for c in ['I', 'A', 'HGen', 'HICU', 'HVent']:
+                total_infections += self.predictions_by_age[c]
+
+            died_from_hosp = mortality_rate_general * self.predictions_by_age['HGen']
+            died_from_icu = mortality_rate_icu * self.predictions_by_age['HICU']
+            died_from_icu_vent = mortality_rate_icu_vent * self.predictions_by_age['HVent']
+
+            return (died_from_hosp/total_infections,
+                    died_from_icu/total_infections,
+                    died_from_icu_vent/total_infections)
+
+    def _generate_hospitalization_mortality_rates(self):
+        """
+        Generates age specific hospitalization rates and mortality rates for
+        given unit (per capita or per capita day).
+
+        Returns
+        -------
+        hospitalization_rates: dict
+            Rates of hospitalization by age group, type of hospitalization,
+            and unit of rates, with unit as primary key, type of
+            hospitalization as secondary key, and array of corresponding
+            time series of rates as values.
+            For example, hospitalization_rates['per_capita']['HGen'] is the
+            time series of probability of being admitted to non-ICU per
+            capita among infected population (asymptomatic + symptomatic).
+        mortality_rates: dict
+            Rates of mortality by age group, type of hospitalization,
+            and unit of rates, with unit as primary key, type of
+            hospitalization as secondary key, and array of corresponding
+            time series of rates as values.
+            For example, mortality_rates['per_capita']['HICU'] is the time
+            series of probability of death in ICU per capita among infected
+            population (asymptomatic + symptomatic + hospitalized).
+        """
+
+        hospitalization_rates = defaultdict(dict)
+        mortality_rates = defaultdict(dict)
+        for measure_unit in self.measure_units:
+            hospitalization_rates[measure_unit.value]['HGen'], \
+            hospitalization_rates[measure_unit.value]['HICU'], \
+            hospitalization_rates[measure_unit.value]['HVent'] =  \
+                self._calculate_age_specific_hospitalization_rates(measure_unit)
+
+            mortality_rates[measure_unit.value]['HGen'], \
+            mortality_rates[measure_unit.value]['HICU'], \
+            mortality_rates[measure_unit.value]['HVent'] = \
+                self._calculate_age_specific_mortality_rates(measure_unit)
+
+        return hospitalization_rates, mortality_rates
+
+    def _calculate_age_specific_HR(self, measure, measure_unit):
+        """
+        Calculates age specific hospitalization rates given the specified
+        covid measure and unit. The measure determines the types of
+        hospitalizations to count and measure unit determines which
+        hospitalization rates to extract.
+
+
+        """
+        if measure is CovidMeasure.HOSPITALIZATION_INFECTED:
+            return (self.hospitalization_rates[measure_unit.value]['HGen']
+                  + self.hospitalization_rates[measure_unit.value]['HICU']
+                  + self.hospitalization_rates[measure_unit.value]['HVent'])
+
+        elif measure is CovidMeasure.HOSPITALIZATION:
+            return self.prevalence * \
+                   (self.hospitalization_rates[measure_unit.value]['HGen']
+                  + self.hospitalization_rates[measure_unit.value]['HICU']
+                  + self.hospitalization_rates[measure_unit.value]['HVent'])
+
+        elif measure is CovidMeasure.HOSPITALIZATION_GENERAL_INFECTED:
+            return self.hospitalization_rates[measure_unit.value]['HGen']
+
+        elif measure is CovidMeasure.HOSPITALIZATION_GENERAL:
+            return self.hospitalization_rates[measure_unit.value]['HGen'] * self.prevalence
+
+        elif measure is CovidMeasure.HOSPITALIZATION_ICU_INFECTED:
+            return (self.hospitalization_rates[measure_unit.value]['HICU']
+                  + self.hospitalization_rates[measure_unit.value]['HVent'])
+
+        elif measure is CovidMeasure.HOSPITALIZATION_ICU:
+            return (self.hospitalization_rates[measure_unit.value]['HICU']
+                  + self.hospitalization_rates[measure_unit.value]['HVent']) * self.prevalence
+
+        else:
+            logging.warnings(f'covid_measure {measure.value} is not relevant to hospitalization rate')
+            return None
+
+    def _calculate_age_specific_IFR(self, measure_unit):
+        """
+        Calculates age specific infection fatality rate (IFR).
+
+        Parameters
+        ----------
+        measure_unit: CovidMeasureUnit
+            Unit of IFR, determines how IFR is calculated.
+
+        Returns
+        -------
+        IFR: np.array
+            Timeseries of age specific infection fatality rate.
+        """
+
+        IFR = 0
+        for key in self.mortality_rates[measure_unit.value]:
+            IFR += self.mortality_rates[measure_unit.value][key]
+
+        return IFR
+
+
+    def generate_predictions(self):
         """
 
         """
+        predictions = defaultdict(dict)
+        t0_date = datetime.strptime(self.fit_results['t0_date'][:10], '%Y-%m-%d')
 
-        total_infected = np.zeros(len(self.parameters['age_groups']))
-        for c in ['E', 'I', 'A', 'HGen', 'HICU', 'HVent']:
-            total_infected += self.predictions_by_age[c]
-        return total_infected
+        for measure in self.measures:
+            for measure_unit in self.measure_units:
+                if measure is CovidMeasure.IFR:
+                    predictions[measure.value][measure_unit.value] = self._calculate_age_specific_IFR(measure_unit)
+                else:
+                    predictions[measure.value][measure_unit.value] = self._calculate_age_specific_HR(measure,
+                                                                                                     measure_unit)
+                predictions[measure.value][measure_unit.value] = \
+                    pd.DataFrame(predictions[measure.value][measure_unit.value].T,
+                                 columns=['-'.join([str(int(tup[0])), str(int(tup[1]))]) for tup in
+                                          self.parameters['age_groups']],
+                                 index=pd.DatetimeIndex([t0_date + timedelta(days=int(t)) for t in
+                                                         self.parameters['t_list']]))
 
-
-    def generate_target_predictions(self, target_variables=None):
-        """
-
-        """
-
-        target_variables = target_variables or self.target_variables
-
-        total_infected = self.calculate_predicted_total_infections()
-
-        mortality = self.reconstruct_age_specific_mortality()
-
-        target_predictions = dict()
-
-        for var_name in target_variables:
-            var = CovidMeasure(var_name)
-            if var is CovidMeasure.HOSPITALIZATION_GENERAL_INFECTED:
-                target_predictions[var_name] = self.predictions_by_age['HGen'] / total_infected
-
-            elif var is CovidMeasure.HOSPITALIZATION_GENERAL:
-                target_predictions[var_name] = self.predictions_by_age['HGen'] / self.parameters['N']
-
-            elif var is CovidMeasure.HOSPITALIZATION_ICU_INFECTED:
-                target_predictions[var_name] = \
-                    self.predictions_by_age['HICU'] + self.predictions_by_age['HVent'] / total_infected
-
-            elif var is CovidMeasure.HOSPITALIZATION_ICU:
-                target_predictions[var_name] = self.predictions_by_age['HICU'] \
-                                           + self.predictions_by_age['HVent'] / self.parameters['N']
-
-            elif var is CovidMeasure.HOSPITALIZATION_INFECTED:
-                target_predictions[var_name] = \
-                    self.predictions_by_age['HGen'] \
-                  + self.predictions_by_age['HICU']\
-                  + self.predictions_by_age['HVent'] / total_infected
-
-            elif var is CovidMeasure.HOSPITALIZATION:
-                target_predictions[var_name] = \
-                    self.predictions_by_age['HGen'] \
-                  + self.predictions_by_age['HICU'] \
-                  + self.predictions_by_age['HVent'] / self.parameters['N']
-
-            elif var is CovidMeasure.MORTALITY_INFECTED:
-                target_variables[var_name] = mortality / (total_infected + mortality)
-
-            elif var is CovidMeasure.MORTALITY:
-                target_variables[var_name] = mortality / self.parameters['N']
-
-        for key in target_predictions:
-            target_predictions[key] = \
-                pd.DataFrame(target_predictions[key],
-                             columns=['-'.join([str(int(tup[0])), str(int(tup[1]))]) for tup in
-                                      self.parameters['age_groups']],
-                             index=pd.DatetimeIndex([self.fit_results.t0 + timedelta(days=t) for t in
-                                                     self.parameters['t_list']]))
-
-        return target_predictions
+        return predictions
 
 
-    def generate_aggregated_target_predictions(self, target_predictions):
+    def map_to_target_population(self, predictions):
         """
 
         """
@@ -157,31 +477,27 @@ class DemographicMapper:
         age_bin_centers = [np.mean(tup) for tup in self.parameters['age_groups']]
         weights = self.target_age_distribution(age_bin_centers)
         
-        if isinstance(weights, float):
-            if weights == 1:
-                logging.warning('no target age distribution is given, measure is aggregated assuming age '
-                                'distrubtion at given FIPS code')
+        if (weights != 1).sum() == 0:
+            logging.warning('no target age distribution is given, measure is aggregated assuming age '
+                            'distrubtion at given FIPS code')
 
-        # aggregate predictions
-        aggregated_target_predictions = {}
+        mapped_predictions = defaultdict(dict)
 
-        for var_name in target_predictions:
-            var = CovidMeasure(var_name)
-            modified_weights = weights
-            if self.risk_modifier_by_age_group is not None:
-                if var_name in self.risk_modifier_by_age_group:
-                    modified_weights = weights * self.risk_ratio_by_age_group[var_name]
-            aggregated_target_predictions[var_name] = target_predictions[var_name].dot(modified_weights)
+        for measure_name in predictions:
+            for measure_unit_name in predictions[measure_name]:
+                modified_weights = weights
+                if self.risk_modifier_by_age is not None:
+                    if measure_name in self.risk_modifier_by_age_group:
+                        modified_weights = weights * self.risk_modifier_by_age[measure_name](age_bin_centers)
+                mapped_predictions[measure_name][measure_unit_name] = \
+                    predictions[measure_name][measure_unit_name].dot(modified_weights) / modified_weights.sum()
 
-        return aggregated_target_predictions
+        return mapped_predictions
 
     def run(self):
         """
         
         """
-        target_predictions = self.generate_target_predictions()
-        if self.aggregate:
-            aggregated_target_predictions = self.generate_aggregated_target_predictions(target_predictions)
-            return aggregated_target_predictions
-        else:
-            return target_predictions
+        predictions = self.generate_predictions()
+        mapped_predictions = self.map_to_target_population(predictions)
+        return mapped_predictions
