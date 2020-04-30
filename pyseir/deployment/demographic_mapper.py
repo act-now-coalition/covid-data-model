@@ -55,11 +55,11 @@ class DemographicMapper:
     ultimately occur; when measure unit is `per capita day`, the measure
     quantifies the probability of an event per day.
 
-    The final results are the time series of measures aggregated (average)
-    through demographic groups weighted by the target demographic distribution.
+    The final results are the time series of measures averaged through
+    demographic groups weighted by the target demographic distribution.
     If risk_modifier_by_age is specified, it will be used as relative risk of
     target population compared to general population risk per age
-    group to further modify the weights.
+    group to further modifies the weights.
 
     Attributes
     ----------
@@ -115,7 +115,9 @@ class DemographicMapper:
         Contains time series of covid measures predicted using the MLE model
         and adjusted by target age distribution and risk modification,
         with name of covid measures as primary key and name of measure unit
-        as secondary key.
+        as secondary key. Each time series is recorded as pd.DataFrame,
+        with dates of prediction as index, age group as columns and
+        corresponding measure as values.
 
 
     Parameters
@@ -510,6 +512,9 @@ class DemographicMapper:
             Contains time series of covid measures predicted using the MLE
             model, with name of covid measures as primary key and name of
             measure unit as secondary key.
+            Each time series is recorded as pd.DataFrame, with dates of
+            prediction as index, age group as columns and corresponding
+            measure as values.
         """
         predictions = defaultdict(dict)
         t0_date = datetime.strptime(self.fit_results['t0_date'][:10], '%Y-%m-%d')
@@ -550,6 +555,9 @@ class DemographicMapper:
             model and adjusted by target age distributiion and risk
             modification, with name of covid measures as primary key and name of
             measure unit as secondary key.
+            Each time series is recorded as pd.DataFrame, with dates of
+            prediction as index, age group as columns and corresponding
+            measure as values.
         """
         # calculate weights
         age_bin_centers = [np.mean(tup) for tup in self.parameters['age_groups']]
@@ -577,7 +585,7 @@ class DemographicMapper:
     def run(self):
         """
         Makes predictions of age-specific covid measures using the MLE model
-        and maps them to the target age distribution. j
+        and maps them to the target age distribution.
 
         Returns
         -------
@@ -586,6 +594,9 @@ class DemographicMapper:
             model and adjusted by target age distributiion and risk
             modification, with name of covid measures as primary key and name of
             measure unit as secondary key.
+            Each time series is recorded as a pd.DataFrame, with dates of
+            prediction as index, age group as columns and corresponding
+            measure as values.
         """
         predictions = self.generate_predictions()
         self.results = self.map_to_target_population(predictions)
