@@ -52,6 +52,11 @@ class CovidCareMapBeds(data_source.DataSource):
         if cls.Fields.FIPS not in data.columns:
             data[cls.Fields.FIPS] = None
 
+        if aggregate_level == AggregationLevel.COUNTY:
+            # Override Washoe County ICU capacity with actual numbers.
+            data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.STAFFED_ICU_BEDS]] = 162
+            data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.35
+
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.
         is_virgin_islands = data[cls.Fields.STATE] == 'VI'
