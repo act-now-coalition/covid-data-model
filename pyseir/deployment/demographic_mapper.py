@@ -49,12 +49,17 @@ class DemographicMapper:
     demographic category (currently supports age groups), depending on the
     measure. For detailed description of measure's meanings, check CovidMeasure.
 
-    The measure unit determines whether the measure quantifies the
-    probability of a future outcome or a daily event depends the
-    measure_unit: when measure unit is `per capita`, the measure quantifies
-    the probability of that an future event will ultimately occur; when
-    measure unit is `per capita day`, the measure quantifies the probability
-    of an event per day.
+    The measure may quantify the probability of a future outcome or a
+    daily event, depending on the measure_unit: when measure unit is `per
+    capita`, the measure quantifies the probability of that an future event will
+    ultimately occur; when measure unit is `per capita day`, the measure
+    quantifies the probability of an event per day.
+
+    The final results are the time series of measures aggregated (average)
+    through demographic groups weighted by the target demographic distribution.
+    If risk_modifier_by_age is specified, it will be used as relative risk of
+    target population compared to general population risk per age
+    group to further modify the weights.
 
     Attributes
     ----------
