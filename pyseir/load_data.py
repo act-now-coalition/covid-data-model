@@ -227,7 +227,7 @@ def load_county_metadata():
 
 
 @lru_cache(maxsize=32)
-def load_county_metadata_by_state(state):
+def load_county_metadata_by_state(state=None):
     """
     Generate a dataframe that contains county metadata aggregated at state
     level.
@@ -245,9 +245,14 @@ def load_county_metadata_by_state(state):
     # aggregate into state level metadata
     state_metadata = load_county_metadata()
 
-    if state:
-        state = [state] if not isinstance(state, list) else state
-        state_metadata = state_metadata[state_metadata.state.isin(state)]
+    if state is not None:
+        state = [state] if isinstance(state, str) else list(state)
+    else:
+        state = state_metadata['state'].unique()
+
+    state = [s.title() for s in state]
+
+    state_metadata = state_metadata[state_metadata.state.isin(state)]
 
     density_measures = ['housing_density', 'population_density']
     for col in density_measures:
@@ -361,17 +366,6 @@ def load_new_case_data_by_fips(fips, t0):
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
-def get_hospitalization_data():
-    data = CovidTrackingDataSource.local().timeseries()
-    # Since we're using this data for hospitalized data only, only returning
-    # values with hospitalization data.  I think as the use cases of this data source
-    # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
-    # hospitalization data.
-    has_current_hospital = data[cls.Fields.CURRENT_HOSPITALIZED].notnull()
-    has_cumulative_hospital = data[cls.Fields.TOTAL_HOSPITALIZED].notnull()
-    return data[has_current_hospital | has_cumulative_hospital]
-
-
 @lru_cache(maxsize=32)
 def load_hospitalization_data(fips, t0):
     """
@@ -395,7 +389,7 @@ def load_hospitalization_data(fips, t0):
     type: HospitalizationDataType
         Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = get_hospitalization_data()\
+    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
         .get_subset(AggregationLevel.COUNTY, country='USA', fips=fips) \
         .get_data(country='USA', fips=fips)
 
@@ -513,6 +507,22 @@ def load_hospital_data():
     return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
+def load_cdc_hospitalization_data():
+    """
+    Return age specific hospitalization rate.
+    Source: https://www.cdc.gov/mmwr/volumes/69/wr/mm6912e2.htm#T1_down
+    Table has columns: lower_age, upper_age, mean_age, lower_{outcome type},
+    upper_{outcome type}, and mean_{outcome type}.
+    Outcome types and their meanings:
+    - hosp: percentage of all hospitalizations among cases
+    - icu: percentage of icu admission among cases
+    - hgen: percentage of general hospitalization (all hospitalizations - icu)
+    - fatality: case fatality rate
+    """
+
+    return pd.read_csv(os.path.join(DATA_DIR, 'cdc_hospitalization_data.csv'))
+
+
 @lru_cache(maxsize=1)
 def load_mobility_data_m50():
     """
@@ -550,6 +560,37 @@ def load_public_implementations_data():
     """
     return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl')).set_index('fips')
 
+def load_contact_matrix_data_by_fips(fips):
+    """
+    Load contact matrix for given fips.
+    Source: polymod survey in UK
+    (https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0050074).
+    Contact matrix at each county has been adjusted by county demographics.
+
+    Parameters
+    ----------
+    fips: str
+         State or county FIPS code.
+
+    Returns
+    -------
+      : dict
+        With fips as keys and values:
+           - 'contact_matrix': list(list)
+              number of contacts made by age group in rows with age groups in
+              columns
+           - 'age_bin_edges': list
+              lower age limits to define age groups
+           - 'age_distribution': list
+             population size of each age group
+    """
+
+    fips = [fips] if isinstance(fips, str) else list(fips)
+    state_abbr = us.states.lookup(fips[0][:2]).abbr
+    path = os.path.join(DATA_DIR, 'contact_matrix', 'contact_matrix_fips_%s.json' % state_abbr)
+    contact_matrix_data = json.loads(open(path).read())
+    return {s: contact_matrix_data[s] for s in fips}
+
 
 def load_whitelist():
     """
@@ -571,7 +612,7 @@ def cache_all_data():
     Download all datasets locally.
     """
     cache_county_case_data()
-    # cache_hospital_beds()
+    cache_hospital_beds()
     cache_mobility_data()
     cache_public_implementations_data()
 
