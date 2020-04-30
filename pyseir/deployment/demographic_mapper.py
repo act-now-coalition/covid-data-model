@@ -41,9 +41,9 @@ class CovidMeasureUnit(Enum):
 
 class DemographicMapper:
     """
-    Maps SEIR model inference to customer's population based on customer's
-    employee demographic distribution. Currently supports mapping based on age
-    structure.
+    Maps SEIR model inference to a target population based on the target
+    population's demographic distribution. Currently supports mapping based
+    on age structure.
 
     The mapper calculates probabilities of hospitalization or death by given
     demographic category (currently supports age groups), depending on the
