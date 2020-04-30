@@ -383,6 +383,8 @@ class RtInferenceEngine:
                         series_a=df_all[f'Rt_MAP__{TimeseriesType.NEW_CASES.value}'].iloc[-last_idx:],
                         series_b=df_all[f'Rt_MAP__{timeseries_type.value}'].iloc[-last_idx:]
                     )
+                    df_all[f'lag_days__{timeseries_type.value}'] = shift_in_days
+
                     # Shift all the columns.
                     for col in df_all.columns:
                         if timeseries_type.value in col:
@@ -468,7 +470,10 @@ class RtInferenceEngine:
             if len(series_b_shifted[valid]) > 0:
                 xcor.append(signal.correlate(_series_a[valid], series_b_shifted[valid]).mean())
                 valid_shifts.append(i)
-        return valid_shifts[np.argmax(xcor)]
+        if len(valid_shifts) > 0:
+            return valid_shifts[np.argmax(xcor)]
+        else:
+            return 0
 
     @classmethod
     def run_for_fips(cls, fips):
