@@ -71,11 +71,8 @@ class WebUIDataAdaptorV1:
             fit_results = None
             state_fit_results = load_inference_result(fips[:2])
             t0_simulation = datetime.fromisoformat(state_fit_results['t0_date'])
-            logging.warning(f'Fit result not found for {fips}: Using rescaled state values')
+            logging.error(f'Fit result not found for {fips}. Skipping...}')
 
-        # TODO: This date alignment currently only works for counties where
-        #  inference succeeds. Need to update for those where state inference was
-        #  down-projected.
         hosp_times, current_hosp, _ = load_data.load_hospitalization_data_by_state(
             state=self.state_abbreviation,
             t0=t0_simulation,
@@ -85,16 +82,16 @@ class WebUIDataAdaptorV1:
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
             state_population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
-            geo_to_state_population_ratio = population / state_population
-            current_hosp *= geo_to_state_population_ratio
+            # Rescale hosps based on the population ratio... Could swap this to infection ratio later?
+            current_hosp *= population / state_population
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
 
-        # TODO: Currently this doesn't ship any county results that are not whitelisted.
+        # Don't ship counties that are not whitelisted.
         for i_policy, suppression_policy in enumerate(policies):
-            if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
+            if (len(fips) == 5 and fips not in self.df_whitelist.fips.values) or fit_results is None:
                 continue
 
             output_for_policy = pyseir_outputs[suppression_policy]
