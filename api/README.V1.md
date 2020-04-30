@@ -59,7 +59,7 @@ An optional parameter `timeseries` can be added before the file format, for exam
 
 If ommited, the API will return the date of projected hospital overloads, data of peak hospitalizations, and more.
 
-If included, the API will return the projected hospitalization data every third day for the next 90 days.
+If included, the API will return the projected hospitalization data every day for the next 90 days.
 
 ## Using the API
 ### Fetching State Data
