@@ -55,7 +55,14 @@ class CovidCareMapBeds(data_source.DataSource):
         if aggregate_level == AggregationLevel.COUNTY:
             # Override Washoe County ICU capacity with actual numbers.
             data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.STAFFED_ICU_BEDS]] = 162
-            data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.35
+            #data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.35
+        if aggregate_level == AggregationLevel.STATE:
+            # Overriding NV ICU capacity numbers with actuals
+            data.loc[data[cls.Fields.STATE] == 'NV', [cls.Fields.STAFFED_ICU_BEDS]] = 844
+            # occupancy calculated by 4/28 NHA data
+            # (icu_beds - (total_icu_beds_used - covid_icu_beds_used)) / icu_beds
+            # (844 - (583 - 158)) / 844 == 0.4964
+            #data.loc[data[cls.Fields.STATE] == 'NV', [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.4964
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.
