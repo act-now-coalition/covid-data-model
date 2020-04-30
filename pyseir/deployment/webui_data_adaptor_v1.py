@@ -118,6 +118,9 @@ class WebUIDataAdaptorV1:
 
         logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
         pyseir_outputs = load_data.load_ensemble_results(fips)
+        if pyseir_outputs is None:
+            logging.warning(f'Fit result not found for {fips}: Skipping county')
+            return None
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
 
