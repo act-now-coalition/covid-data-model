@@ -19,12 +19,9 @@ class TimeseriesType(Enum):
 
 
 class RunMode(Enum):
-    # Read params from the parameter sampler default and use empirical
-    # suppression policies.
     DEFAULT = 'default'
-    # 4 basic suppression scenarios and specialized parameters to match
-    # covidactnow before scenarios.  Uses hospitalization data to fix.
-    CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = 'can-before-hospitalization-new-params'
+
+    # Inference based + future suppression policy.
     CAN_INFERENCE_DERIVED = 'can-inference-derived'
 
 
