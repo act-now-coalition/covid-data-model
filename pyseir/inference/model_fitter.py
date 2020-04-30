@@ -1,10 +1,16 @@
 import logging
 import iminuit
+# TODO use JAX for numpy XLA acceleration
+#from jax.config import config
+#config.update("jax_enable_x64", True) # enable float64 precision
 import numpy as np
+# from jax import numpy as np
+import os
 import us
 import pickle
 from pprint import pformat
 import pandas as pd
+#from jax.scipy.stats import gamma, norm
 from scipy.stats import gamma, norm
 from copy import deepcopy
 from matplotlib import pyplot as plt
@@ -18,6 +24,10 @@ from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGene
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
+
+
+def calc_chi_sq(obs, predicted, stddev):
+    return np.sum((obs - predicted) ** 2 / stddev ** 2)
 
 
 class ModelFitter:
@@ -357,9 +367,8 @@ class ModelFitter:
         # -----------------------------------
         # Extract the predicted rates from the model.
         predicted_cases = (test_fraction * model.gamma
-                           * np.interp(self.times, self.t_list + t0, model.results['total_new_infections'],
-                                       left=0, right=0))
-        chi2_cases = np.sum((self.observed_new_cases - predicted_cases) ** 2 / self.cases_stdev ** 2)
+                           * np.interp(self.times, self.t_list + t0, model.results['total_new_infections'], left=0, right=0))
+        chi2_cases = calc_chi_sq(self.observed_new_cases, predicted_cases, self.cases_stdev)
 
         # -----------------------------------
         # Chi2 Hospitalizations
@@ -367,9 +376,9 @@ class ModelFitter:
         if self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             predicted_hosp = hosp_fraction * np.interp(self.hospital_times,
                                                        self.t_list + t0,
-                                                       model.results['HGen'] +
-                                                       model.results['HICU'], left=0, right=0)
-            chi2_hosp = np.sum((self.hospitalizations - predicted_hosp) ** 2 / self.hosp_stdev ** 2)
+                                                       model.results['HGen'] + model.results['HICU'],
+                                                       left=0, right=0)
+            chi2_hosp = calc_chi_sq(self.hospitalizations, predicted_hosp, self.hosp_stdev)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
 
         elif self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
@@ -379,7 +388,7 @@ class ModelFitter:
             new_hosp_predicted = hosp_fraction * np.interp(self.hospital_times[1:], self.t_list[1:] + t0, new_hosp_predicted, left=0, right=0)
             new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
 
-            chi2_hosp = np.sum((new_hosp_observed - new_hosp_predicted) ** 2 / self.hosp_stdev ** 2)
+            chi2_hosp = calc_chi_sq(new_hosp_observed, new_hosp_predicted, self.hosp_stdev)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
         else:
             chi2_hosp = 0
@@ -391,7 +400,7 @@ class ModelFitter:
         # Only use deaths if there are enough observations..
         predicted_deaths = np.interp(self.times, self.t_list + t0, model.results['total_deaths_per_day'], left=0, right=0)
         if self.observed_new_deaths.sum() > self.min_deaths:
-            chi2_deaths = np.sum((self.observed_new_deaths - predicted_deaths) ** 2 / self.deaths_stdev ** 2)
+            chi2_deaths = calc_chi_sq(self.observed_new_deaths, predicted_deaths, self.deaths_stdev)
         else:
             chi2_deaths = 0
 
@@ -447,6 +456,8 @@ class ModelFitter:
         """
         minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
 
+        if os.environ.get('PYSEIR_FAST_AND_DIRTY'):
+           minuit.strategy = 0
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
@@ -472,7 +483,7 @@ class ModelFitter:
 
         if np.isnan(self.fit_results['t0']):
             logging.error(f'Could not compute MLE values for {self.display_name}')
-            self.fit_results['t0_date'] = self.ref_date + timedelta(days=self.t0_guess).isoformat()
+            self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.t0_guess)).isoformat()
         else:
             self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.fit_results['t0'])).isoformat()
         self.fit_results['t_today'] = (datetime.today() - self.ref_date).days
@@ -654,16 +665,20 @@ class ModelFitter:
                 return None
 
         try:
-            for i in range(n_retries):
+            retries_left = n_retries
+            model_is_empty = True
+            while retries_left > 0 and model_is_empty:
                 model_fitter = cls(fips)
                 try:
                     model_fitter.fit()
-                    if model_fitter.mle_model:
+                    if model_fitter.mle_model and os.environ.get('PYSEIR_PLOT_RESULTS') == 'True':
                         model_fitter.plot_fitting_results()
-                        break
                 except RuntimeError as e:
                     logging.warning('No convergence.. Retrying ' + str(e))
-            if model_fitter.mle_model is None:
+                retries_left = retries_left - 1
+                if model_fitter.mle_model:
+                    model_is_empty = False
+            if retries_left <= 0 and model_is_empty:
                 raise RuntimeError(f'Could not converge after {n_retries} for fips {fips}')
         except Exception:
             logging.exception(f"Failed to run {fips}")

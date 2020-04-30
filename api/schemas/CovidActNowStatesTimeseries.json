@@ -86,11 +86,17 @@
           "title": "Currentusage",
           "description": "Currently used capacity for resource",
           "type": "integer"
+        },
+        "typicalUsageRate": {
+          "title": "Typicalusagerate",
+          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
+          "type": "number"
         }
       },
       "required": [
         "capacity",
-        "currentUsage"
+        "currentUsage",
+        "typicalUsageRate"
       ]
     },
     "_Actuals": {
@@ -186,16 +192,16 @@
           "description": "Total ventilator capacity.",
           "type": "integer"
         },
-	"RtIndicator": {
-	  "title": "Rtindicator",
-	  "description": "Historical or Inferred Rt",
-	  "type": "float"
-	},
-	"RtIndicatorCI90": {
-	  "title": "Rtindicatorci90",
-	  "description": "Rt standard deviation",
-	  "type": "float"
-	},
+        "RtIndicator": {
+          "title": "Rtindicator",
+          "description": "Historical or Inferred Rt",
+          "type": "number"
+        },
+        "RtIndicatorCI90": {
+          "title": "Rtindicatorci90",
+          "description": "Rt standard deviation",
+          "type": "number"
+        },
         "cumulativeDeaths": {
           "title": "Cumulativedeaths",
           "description": "Number of cumulative deaths",

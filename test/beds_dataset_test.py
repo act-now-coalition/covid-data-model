@@ -2,6 +2,7 @@ import pytest
 import pandas as pd
 from libs.datasets import beds
 from libs.datasets import DHBeds
+from libs.datasets import CovidCareMapBeds
 from libs.datasets import dataset_utils
 
 
@@ -100,3 +101,12 @@ def test_duplicate_index_fails(is_county):
 def test_dh_beds_loading():
     beds_data = DHBeds.local().beds()
     assert beds_data
+
+
+def test_get_data():
+    beds_data = CovidCareMapBeds.local().beds()
+    data = beds_data.get_data_for_state('MA')
+    assert data
+
+    data = beds_data.get_data_for_state('NOTSTATE')
+    assert not data

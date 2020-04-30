@@ -10,6 +10,7 @@ import us
 import zipfile
 import json
 from libs.datasets import NYTimesDataset
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from pyseir.utils import get_run_artifact_path, RunArtifact
@@ -275,8 +276,7 @@ def load_ensemble_results(fips):
 @lru_cache(maxsize=32)
 def load_county_metadata_by_fips(fips):
     """
-    Generate a dictionary for a county which includes county metadata merged
-    with hospital capacity data.
+    Generate a dictionary for a county which includes county metadata.
 
     Parameters
     ----------
@@ -288,9 +288,7 @@ def load_county_metadata_by_fips(fips):
         Dictionary of metadata for the county. The keys are:
 
         ['state', 'county', 'total_population', 'population_density',
-        'housing_density', 'age_distribution', 'age_bin_edges',
-        'num_licensed_beds', 'num_staffed_beds', 'num_icu_beds',
-        'bed_utilization', 'potential_increase_in_bed_capac']
+        'housing_density', 'age_distribution', 'age_bin_edges']
     """
     county_metadata = load_county_metadata()
     county_metadata_merged = county_metadata.set_index('fips').loc[fips].to_dict()
@@ -333,6 +331,17 @@ def load_new_case_data_by_fips(fips, t0):
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
+def get_hospitalization_data():
+    data = CovidTrackingDataSource.local().timeseries(fill_na=False).data
+    # Since we're using this data for hospitalized data only, only returning
+    # values with hospitalization data.  I think as the use cases of this data source
+    # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
+    # hospitalization data.
+    has_current_hospital = data[TimeseriesDataset.Fields.CURRENT_HOSPITALIZED].notnull()
+    has_cumulative_hospital = data[TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED].notnull()
+    return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
+
+
 @lru_cache(maxsize=32)
 def load_hospitalization_data(fips, t0):
     """
@@ -349,33 +358,35 @@ def load_hospitalization_data(fips, t0):
 
     Returns
     -------
-    times: array(float)
+    relative_days: array(float)
         List of float days since t0 for the hospitalization data.
     observed_hospitalizations: array(int)
         Array of new cases observed each day.
     type: HospitalizationDataType
         Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
+    hospitalization_data = get_hospitalization_data()\
         .get_subset(AggregationLevel.COUNTY, country='USA', fips=fips) \
         .get_data(country='USA', fips=fips)
 
     if len(hospitalization_data) == 0:
         return None, None, None
 
-    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-
     if (hospitalization_data['current_hospitalized'] > 0).any():
-        return times_new, \
+        hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
+        relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+        return relative_days, \
                hospitalization_data['current_hospitalized'].values.clip(min=0),\
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
+        relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i+1]:
                 cumulative[i] = cumulative[i + 1]
-        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+        return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
     else:
         return None, None, None
 
@@ -407,20 +418,24 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
         Specifies cumulative or current hospitalizations.
     """
     abbr = us.states.lookup(state).abbr
-    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
-        .get_subset(AggregationLevel.STATE, country='USA', state=abbr) \
+    hospitalization_data = (
+        CovidTrackingDataSource.local().timeseries(fill_na=False)
+        .get_subset(AggregationLevel.STATE, country='USA', state=abbr)
         .get_data(country='USA', state=abbr)
+    )
 
     if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
         return None, None, None
 
-    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-
     if (hospitalization_data['current_hospitalized'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
+        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         return times_new, \
                hospitalization_data['current_hospitalized'].values.clip(min=0), \
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
+        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):

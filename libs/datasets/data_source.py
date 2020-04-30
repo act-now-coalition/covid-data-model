@@ -28,6 +28,9 @@ class DataSource(object):
     # Name of dataset source
     SOURCE_NAME = None
 
+    # Indicates if NYC data is aggregated into one NYC county or not.
+    HAS_AGGREGATED_NYC_BOROUGH = False
+
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
@@ -50,6 +53,10 @@ class DataSource(object):
         return PopulationDataset.from_source(self)
 
     @lru_cache(maxsize=1)
-    def timeseries(self) -> "TimeseriesDataset":
-        """Builds generic beds dataset"""
-        return TimeseriesDataset.from_source(self)
+    def timeseries(self, fill_na: bool = True) -> "TimeseriesDataset":
+        """Builds generic timeseries dataset.
+
+        Args:
+            fill_na: If True, fills all NA values with 0.
+        """
+        return TimeseriesDataset.from_source(self, fill_na=fill_na)

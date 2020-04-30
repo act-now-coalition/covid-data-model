@@ -15,10 +15,8 @@ import pyseir.models.suppression_policies as sp
 from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
-from pyseir.load_data import FAULTY_HOSPITAL_DATA_STATES
 from pyseir.inference import fit_results
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets import CovidTrackingDataSource
 from libs.datasets import JHUDataset
 
 
@@ -128,7 +126,6 @@ class EnsembleRunner:
         self.init_run_mode()
 
         self.all_outputs = {}
-
 
 
     def init_run_mode(self):
