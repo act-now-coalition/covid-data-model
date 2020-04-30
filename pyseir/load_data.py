@@ -443,9 +443,9 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
                 cumulative[i] = cumulative[i + 1]
         if convert_cumulative_to_current:
             # Must be here to avoid circular import. This is required to convert
-            # cumulative hosps to current hosps.
+            # cumulative hosps to current hosps. We also just use a dummy fips and t_list.
             from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-            params = ParameterEnsembleGenerator(N_samples=1).get_average_seir_parameters()
+            params = ParameterEnsembleGenerator(fips='06', t_list=[], N_samples=1).get_average_seir_parameters()
             average_length_of_stay = (
                   params['hospitalization_rate_general'] * params['hospitalization_length_of_stay_general']
                 + params['hospitalization_rate_icu'] * (1 - params['fraction_icu_requiring_ventilator']) * params['hospitalization_length_of_stay_icu']
