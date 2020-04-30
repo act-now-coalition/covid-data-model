@@ -92,12 +92,7 @@ class BedsDataset(object):
         columns_to_consider = [cls.Fields.STAFFED_BEDS, cls.Fields.LICENSED_BEDS]
         data[cls.Fields.MAX_BED_COUNT] = data[columns_to_consider].max(axis=1)
 
-        # When grouping nyc data, we don't want to count the generated field
-        # as a value to sum.
-        group = cls.STATE_GROUP_KEY + [cls.Fields.GENERATED]
-        data = custom_aggregations.update_with_combined_new_york_counties(
-            data, group, are_boroughs_zero=False
-        )
+        data = cls._aggregate_new_york_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data,
@@ -113,6 +108,47 @@ class BedsDataset(object):
         data = dataset_utils.add_county_using_fips(data, fips_data)
 
         return cls(data)
+
+    @classmethod
+    def _aggregate_new_york_data(cls, data):
+        # When grouping nyc data, we don't want to count the generated field
+        # as a value to sum.
+        nyc_data = data[data[cls.Fields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
+        if not len(nyc_data):
+            return data
+        group = cls.STATE_GROUP_KEY + [cls.Fields.GENERATED]
+        weighted_all_bed_occupancy = None
+
+        if cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE in data.columns:
+            licensed_beds = nyc_data[cls.Fields.LICENSED_BEDS]
+            occupancy_rates = nyc_data[cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+            weighted_all_bed_occupancy = (
+                (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
+            )
+        weighted_icu_occupancy = None
+        if cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE in data.columns:
+            icu_beds = nyc_data[cls.Fields.ICU_BEDS]
+            occupancy_rates = nyc_data[cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]
+            weighted_icu_occupancy = (
+                (icu_beds * occupancy_rates).sum() / icu_beds.sum()
+            )
+
+        data = custom_aggregations.update_with_combined_new_york_counties(
+            data, group, are_boroughs_zero=False
+        )
+
+        nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
+        if weighted_all_bed_occupancy:
+            data.loc[data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE] = (
+                weighted_all_bed_occupancy
+            )
+
+        if weighted_icu_occupancy:
+            data.loc[data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE] = (
+                weighted_icu_occupancy
+            )
+
+        return data
 
     def validate(self):
         dataset_utils.check_index_values_are_unique(

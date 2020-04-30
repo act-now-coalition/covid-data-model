@@ -10,6 +10,7 @@ NYC_BOROUGH_FIPS = [
     "36005",  # Bronx
     "36085",  # Richmond
 ]
+ALL_NYC_FIPS = NYC_BOROUGH_FIPS + [NEW_YORK_COUNTY_FIPS]
 
 
 def calculate_combined_new_york_counties(
@@ -29,9 +30,7 @@ def calculate_combined_new_york_counties(
 
     Returns: Update numbers.
     """
-    all_fips_to_combine = [NEW_YORK_COUNTY_FIPS] + NYC_BOROUGH_FIPS
-
-    is_nyc_fips = data.fips.isin(all_fips_to_combine)
+    is_nyc_fips = data.fips.isin(ALL_NYC_FIPS)
     new_york_county = data[is_nyc_fips]
 
     # Quick integrity check to make sure we're passing in complete county.
