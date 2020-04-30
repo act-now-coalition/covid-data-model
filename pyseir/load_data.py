@@ -375,7 +375,7 @@ def load_hospitalization_data(fips, t0):
 
     Returns
     -------
-    times: array(float)
+    relative_days: array(float)
         List of float days since t0 for the hospitalization data.
     observed_hospitalizations: array(int)
         Array of new cases observed each day.
@@ -391,19 +391,19 @@ def load_hospitalization_data(fips, t0):
 
     if (hospitalization_data['current_hospitalized'] > 0).any():
         hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
-        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-        return times_new, \
+        relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+        return relative_days, \
                hospitalization_data['current_hospitalized'].values.clip(min=0),\
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
     elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
         hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
-        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+        relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i+1]:
                 cumulative[i] = cumulative[i + 1]
-        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+        return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
     else:
         return None, None, None
 
