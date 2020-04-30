@@ -164,11 +164,6 @@ class DemographicMapper:
 
         self.mapped_predictions = None
 
-    def generate_customer_age_distribution(self):
-        """
-        Generates age distribution function.
-        """
-        return
 
     def _age_specific_prevalence(self):
         """
