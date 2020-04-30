@@ -62,17 +62,21 @@ class WebUIDataAdaptorV1:
         logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
         pyseir_outputs = load_data.load_ensemble_results(fips)
 
-        # Fit results not always available if the fit failed, or there are no
-        # inference results. These do always exist for states however.
+        if (len(fips) == 5 and fips not in self.df_whitelist.fips.values):
+            logging.info(f'Excluding {fips} due to white list...')
+            return
+
         try:
             fit_results = load_inference_result(fips)
             t0_simulation = datetime.fromisoformat(fit_results['t0_date'])
         except (KeyError, ValueError):
-            fit_results = None
-            state_fit_results = load_inference_result(fips[:2])
-            t0_simulation = datetime.fromisoformat(state_fit_results['t0_date'])
-            logging.error(f'Fit result not found for {fips}. Skipping...}')
+            logging.error(f'Fit result not found for {fips}. Skipping...')
+            return
 
+        # ---------------------------------------------------------------------
+        # Rescale hosps based on the population ratio... Could swap this to
+        # infection ratio later?
+        # ---------------------------------------------------------------------
         hosp_times, current_hosp, _ = load_data.load_hospitalization_data_by_state(
             state=self.state_abbreviation,
             t0=t0_simulation,
@@ -82,17 +86,14 @@ class WebUIDataAdaptorV1:
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
             state_population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
-            # Rescale hosps based on the population ratio... Could swap this to infection ratio later?
             current_hosp *= population / state_population
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
 
-        policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
 
-        # Don't ship counties that are not whitelisted.
-        for i_policy, suppression_policy in enumerate(policies):
-            if (len(fips) == 5 and fips not in self.df_whitelist.fips.values) or fit_results is None:
-                continue
+        # Iterate through each suppression policy.
+        # Model output is interpolated to the dates desired for the API.
+        for i_policy, suppression_policy in enumerate([key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]):
 
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
@@ -129,6 +130,7 @@ class WebUIDataAdaptorV1:
 
             output_model[schema.CURRENT_VENTILATED] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HVent']['ci_50'])
             output_model[schema.POPULATION] = population
+            # Average capacity.
             output_model[schema.ICU_BED_CAPACITY] = np.mean(output_for_policy['HICU']['capacity'])
             output_model[schema.VENTILATOR_CAPACITY] = np.mean(output_for_policy['HVent']['capacity'])
 
@@ -138,13 +140,14 @@ class WebUIDataAdaptorV1:
                                         & (output_dates < datetime.today() + timedelta(days=90))]
             output_model = output_model.fillna(0)
 
+            # Fill in results for the Rt indicator.
             try:
                 rt_results = load_Rt_result(fips)
                 rt_results.index = rt_results['Rt_MAP_composite'].index.strftime('%m/%d/%y')
                 merged = output_model.merge(rt_results[['Rt_MAP_composite', 'Rt_ci95_composite']],
                     right_index=True, left_on='date', how='left')
-
                 output_model[schema.RT_INDICATOR] = merged['Rt_MAP_composite']
+
                 # With 90% probability the value is between rt_indicator - ci90 to rt_indicator + ci90
                 output_model[schema.RT_INDICATOR_CI90] = merged['Rt_ci95_composite'] - merged['Rt_MAP_composite']
             except (ValueError, KeyError) as e:
