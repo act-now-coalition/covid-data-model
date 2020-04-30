@@ -1,5 +1,6 @@
 import pytest
 import pandas as pd
+from libs.datasets import custom_aggregations
 from libs.datasets import beds
 from libs.datasets import DHBeds
 from libs.datasets import CovidCareMapBeds
@@ -110,3 +111,12 @@ def test_get_data():
 
     data = beds_data.get_data_for_state('NOTSTATE')
     assert not data
+
+
+def test_nyc_aggregation():
+    beds_data = CovidCareMapBeds.local().beds()
+    data = beds_data.get_data_for_fips(custom_aggregations.NYC_BOROUGH_FIPS)
+    # Check to make sure that beds occupancy rates are below 1,
+    # signaling that it is properly combining occupancy rates.
+    assert data['all_beds_occupancy_rate'] < 1
+    assert data['icu_occupancy_rate'] < 1
