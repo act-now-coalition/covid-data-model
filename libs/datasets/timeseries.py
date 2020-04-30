@@ -30,6 +30,10 @@ class TimeseriesDataset(object):
         CURRENT_HOSPITALIZED = "current_hospitalized"
         CUMULATIVE_HOSPITALIZED = "cumulative_hospitalized"
 
+        # Current values
+        CURRENT_ICU = "current_icu"
+        CURRENT_VENTILATED = "current_ventilated"
+
         # Generated in from_source
         COUNTY = "county"
         SOURCE = "source"
