@@ -438,7 +438,7 @@ class RtInferenceEngine:
 
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches='tight')
-            plt.close()
+            #plt.close()
 
         return df_all
 
@@ -463,8 +463,10 @@ class RtInferenceEngine:
         shifts = range(-30, 5)
         valid_shifts = []
         xcor = []
+        np.random.seed(42)  # Xcor has some stochastic FFT elements.
+        _series_a = np.diff(series_a)
+
         for i in shifts:
-            _series_a = np.diff(series_a)
             series_b_shifted = np.diff(series_b.shift(i))
             valid = (~np.isnan(_series_a) & ~np.isnan(series_b_shifted))
             if len(series_b_shifted[valid]) > 0:
