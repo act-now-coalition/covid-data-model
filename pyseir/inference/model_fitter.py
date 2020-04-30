@@ -155,7 +155,8 @@ class ModelFitter:
     def set_inference_parameters(self):
         """
         Setup inference parameters based on data availability and manual
-        overrides.
+        overrides.  As data becomes more sparse, we further constrain the fit,
+        which improves stability substantially.
         """
         self.fit_params = self.DEFAULT_FIT_PARAMS
         # Update any state specific params.
@@ -255,10 +256,11 @@ class ModelFitter:
         deaths_stdev = self.percent_error_on_max_observation \
                        * self.observed_new_deaths ** 0.5 * self.observed_new_deaths.max() ** 0.5
 
-        # add a bit more error in cases with very few deaths. This upweights cases and hospitalizations in this regime.
+        # Add a bit more error in cases with very few deaths. Specifically, we
+        # inflate error bars for very small numbers of deaths, cases, and hosps
+        # since these clearly reduce the fit accuracy (and individual events are
+        # rife with systematic issues).
         deaths_stdev[self.observed_new_deaths <= 4] = deaths_stdev[self.observed_new_deaths <= 4] * 3
-
-        # add a bit more error in cases with very few cases. This prevents a number of outlier issues with cases
         cases_stdev[self.observed_new_cases <= 4] = cases_stdev[self.observed_new_cases <= 4] * 3
 
         # If cumulative hospitalizations, differentiate.
@@ -278,7 +280,8 @@ class ModelFitter:
         else:
             hosp_stdev = None
 
-        # Zero inflated poisson Avoid floating point errors..
+        # Zero inflated poisson Avoid floating point errors. This is set to a
+        # value that still provides some constraints toward zero.
         cases_stdev[cases_stdev == 0] = 1e2
         deaths_stdev[deaths_stdev == 0] = 1e2
         if hosp_stdev is not None:
@@ -307,16 +310,6 @@ class ModelFitter:
         model: SEIRModel
             The SEIR model that has been run.
         """
-        # Leaving this block since we likely want to switch back shortly.
-        # if by == 'fips':
-        #     suppression_policy = \
-        #         suppression_policies.generate_empirical_distancing_policy(
-        #             fips=fips, future_suppression=eps, **suppression_policy_params)
-        # elif by == 'state':
-        #     # TODO: This takes > 200ms which is 10x the model run time. Can be optimized...
-        #     suppression_policy = \
-        #         suppression_policies.generate_empirical_distancing_policy_by_state(
-        #             state=state, future_suppression=eps, **suppression_policy_params)
         suppression_policy = suppression_policies.generate_two_step_policy(self.t_list, eps, t_break)
 
         # Load up some number of initial exposed so the initial flow into infected is stable.
@@ -431,8 +424,7 @@ class ModelFitter:
         x = np.linspace(0.00, 10, 1001)
         delta_x = x[1] - x[0]
 
-        # This implements a hard lower limit of 0.98.
-        # TODO: As more data comes in, relax this.. Probably just use MCMC..
+        # This implements a hard lower limit of 0.80
         prior = gamma.pdf((x - 0.80) / 1.5, 1.1)
         # Add a tiny amount to the likelihood to prevent zero common support
         # between the prior and likelihood functions.
@@ -458,6 +450,7 @@ class ModelFitter:
 
         if os.environ.get('PYSEIR_FAST_AND_DIRTY'):
            minuit.strategy = 0
+
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
@@ -476,7 +469,6 @@ class ModelFitter:
         # updates. Set a lower bound for the error here.
         self.fit_results['eps_error'] = max(self.fit_results['eps_error'], 0.05)
 
-        # TODO: Add confidence intervals here.
         self.fit_results['eps'] = self.get_posterior_estimate_eps(
             R0=self.fit_results['R0'], eps=self.fit_results['eps'],
             eps_error=self.fit_results['eps_error'])
@@ -704,7 +696,6 @@ def run_state(state, states_only=False):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    print('N_counties', len(df_whitelist))
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
