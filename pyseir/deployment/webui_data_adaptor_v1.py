@@ -112,8 +112,8 @@ class WebUIDataAdaptorV1:
 
             hosp_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
 
-            if current_icu:
-                icu_rescaling_factor = current_icu / state_hosp_icu
+            if current_icu is not None:
+                icu_rescaling_factor = current_icu[-1] / state_hosp_icu
             else:
                 icu_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
         else:
