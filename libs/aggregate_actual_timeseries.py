@@ -156,8 +156,8 @@ class AggregateActualTimeseries(object):
             )
 
         # Get columns that this data source should represent.
-        print(new_data.head())
-        data[columns] = None
+        for column in columns:
+            data[column] = None
         data.loc[data_in_new_data, columns] = new_data.loc[new_data_in_data, :]
 
         # Combine updated data with rows not present in covid tracking data.
