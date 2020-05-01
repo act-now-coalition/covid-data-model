@@ -169,8 +169,8 @@ class ModelFitter:
             self.fit_params['hosp_fraction'] = 1
 
         if len(self.fips) == 5:
-            # Setting
-            idx_enough_cases = np.argwhere(np.cumsum(self.observed_new_cases) >= 2)[0][0]
+            OBSERVED_NEW_CASES_GUESS_THRESHOLD = 2
+            idx_enough_cases = np.argwhere(np.cumsum(self.observed_new_cases) >= OBSERVED_NEW_CASES_GUESS_THRESHOLD)[0][0]
             initial_cases_guess = np.cumsum(self.observed_new_cases)[idx_enough_cases]
             t0_guess = list(self.times)[idx_enough_cases]
 
