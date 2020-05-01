@@ -19,9 +19,6 @@ from functools import lru_cache
 from enum import Enum
 
 
-FAULTY_HOSPITAL_DATA_STATES = ('IN',)
-
-
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
 
 
@@ -425,7 +422,7 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
         .get_data(country='USA', state=abbr)
     )
 
-    if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
+    if len(hospitalization_data) == 0:
         return None, None, None
 
     if (hospitalization_data['current_hospitalized'] > 0).any():
