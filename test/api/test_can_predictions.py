@@ -1,8 +1,9 @@
 from datetime import date
-from api.can_api_definition import (
-    CovidActNowCountiesAPI,
-    CovidActNowCountySummary,
-)
+from api.can_api_definition import CovidActNowCountiesAPI
+from api.can_api_definition import CovidActNowCountiesTimeseries
+from api.can_api_definition import CovidActNowCountySummary
+
+from libs.pipelines import api_pipeline
 
 
 def test_counties_api_output():
@@ -44,3 +45,11 @@ def test_counties_api_output():
         },
     )
     counties = CovidActNowCountiesAPI(__root__=[county_summary])
+    assert counties
+
+
+def test_remove_root():
+    value = CovidActNowCountiesTimeseries(__root__=[]).dict()
+    assert value == {"__root__": []}
+    result = api_pipeline.remove_root_wrapper(value)
+    assert result == []
