@@ -9,6 +9,7 @@ import io
 import us
 import zipfile
 import json
+from datetime import datetime
 from libs.datasets import NYTimesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -557,6 +558,34 @@ def cache_all_data():
     cache_county_case_data()
     cache_mobility_data()
     cache_public_implementations_data()
+
+
+def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None):
+    """
+    Return the value of compartment at a specified date.
+
+    Parameters
+    ----------
+    fips: str
+        State or County fips.
+    compartment: str
+        Name of the compartment to retrieve.
+    date: datetime
+    ensemble_results: NoneType or dict
+        Pass in the pre-loaded simulation data to save time, else load it.
+
+    Returns
+    -------
+    value: float
+        Value of compartment on a given date.
+    """
+    if ensemble_results is None:
+        ensemble_results = load_ensemble_results(fips)
+    # Circular import avoidance
+    from pyseir.inference.fit_results import load_inference_result
+    simulation_start_date = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
+    date_idx = int((date - simulation_start_date).days)
+    return ensemble_results['suppression_policy__inferred'][compartment]['ci_50'][date_idx]
 
 
 if __name__ == '__main__':

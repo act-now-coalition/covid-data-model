@@ -50,32 +50,6 @@ class WebUIDataAdaptorV1:
         self.df_whitelist = load_data.load_whitelist()
         self.df_whitelist = self.df_whitelist[self.df_whitelist['inference_ok'] == True]
 
-    @staticmethod
-    def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None):
-        """
-        Return the value of compartment at a specified date.
-
-        Parameters
-        ----------
-        fips: str
-            State or County fips.
-        compartment: str
-            Name of the compartment to retrieve.
-        date: datetime
-        ensemble_results: NoneType or dict
-            Pass in the pre-loaded simulation data to save time, else load it.
-
-        Returns
-        -------
-        value: float
-            Value of compartment on a given date.
-        """
-        if ensemble_results is None:
-            ensemble_results = load_data.load_ensemble_results(fips)
-        simulation_start_date = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
-        date_idx = int((date - simulation_start_date).days)
-        return ensemble_results['suppression_policy__inferred'][compartment]['ci_50'][date_idx]
-
     def map_fips(self, fips):
         """
         For a given county fips code, generate the CAN UI output format.
@@ -107,18 +81,19 @@ class WebUIDataAdaptorV1:
             t0=t0_simulation,
             convert_cumulative_to_current=True)
         t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]
+        t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
 
-        state_hosp_gen = self.get_compartment_value_on_date(fips=fips[:2], compartment='HGen', date=t_latest_hosp_data)
-        state_hosp_icu = self.get_compartment_value_on_date(fips=fips[:2], compartment='HICU', date=t_latest_hosp_data)
+        state_hosp_gen = load_data.get_compartment_value_on_date(fips=fips[:2], compartment='HGen', date=t_latest_hosp_data_date)
+        state_hosp_icu = load_data.get_compartment_value_on_date(fips=fips[:2], compartment='HICU', date=t_latest_hosp_data_date)
 
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
             # Rescale the county level hospitalizations by the expected ratio of
             # county / state hospitalizations from simulations.
-            county_hosp = self.get_compartment_value_on_date(fips=fips, compartment='HGen',
-                                                             date=t_latest_hosp_data, ensemble_results=pyseir_outputs)
-            county_icu = self.get_compartment_value_on_date(fips=fips, compartment='HICU',
-                                                            date=t_latest_hosp_data, ensemble_results=pyseir_outputs)
+            county_hosp = load_data.get_compartment_value_on_date(fips=fips, compartment='HGen',
+                                                             date=t_latest_hosp_data_date, ensemble_results=pyseir_outputs)
+            county_icu = load_data.get_compartment_value_on_date(fips=fips, compartment='HICU',
+                                                            date=t_latest_hosp_data_date, ensemble_results=pyseir_outputs)
             current_hosp *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
