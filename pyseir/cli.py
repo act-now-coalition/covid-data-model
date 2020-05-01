@@ -213,20 +213,23 @@ def _build_all_for_states(
     p.close()
     p.join()
 
-    #calculate ensemble
+    #calculate model fit
     print(f"executing model for {len(all_county_fips)} counties")
     p = Pool()
     p.map(model_fitter._execute_model_for_fips, all_county_fips)
     p.close()
     p.join()
 
-    #calculate ensemble
-    print(f"running model for {len(all_county_fips)} counties")
+    # _run_mle_fits(state)
+
+    # calculate ensemble
+    print(f"running ensemble for {len(all_county_fips)} counties")
     p = Pool()
     ensemble_func = partial(_run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
     p.map(ensemble_func, all_county_fips)
     p.close()
     p.join()
+
 
     #output it all
     output_interval_days = int(output_interval_days)
@@ -271,6 +274,27 @@ def _run_all(
         # if not states_only:
         #     _impute_start_dates(state)
         print("deprecated")
+        _infer_rt(state, states_only=states_only)
+        _run_mle_fits(state, states_only=states_only)
+        _run_ensembles(
+            state,
+            ensemble_kwargs=dict(
+                run_mode=run_mode,
+                generate_report=generate_reports,
+                covid_timeseries=nyt_dataset,
+            ),
+            states_only=states_only,
+        )
+        if generate_reports:
+            _generate_state_reports(state)
+        # remove outputs atm. just output at the end
+        _map_outputs(
+            state,
+            output_interval_days,
+            states_only=states_only,
+            output_dir=output_dir,
+            run_mode=run_mode,
+        )
     else:
         if states_only:
             f = partial(

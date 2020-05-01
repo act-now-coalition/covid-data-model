@@ -28,7 +28,7 @@ class WebUIDataAdaptorV1:
         If True, map the outputs for imputed counties as well as those with
         no data.
     """
-    def __init__(self, state, output_interval_days=1, run_mode='can-before',
+    def __init__(self, state, output_interval_days=4, run_mode='can-before',
                  output_dir=None, jhu_dataset=None, cds_dataset=None, include_imputed=False):
 
         self.output_interval_days = output_interval_days

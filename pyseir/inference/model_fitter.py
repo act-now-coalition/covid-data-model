@@ -714,7 +714,7 @@ def run_state(state, states_only=False):
     state_obj = us.states.lookup(state)
     logging.info(f'Running MLE fitter for state {state_obj.name}')
 
-    _execute_model_for_fips(_execute_model_for_fips(state_obj.fips))
+    _execute_model_for_fips(state_obj.fips)
 
     # Run the counties.
     if not states_only:
