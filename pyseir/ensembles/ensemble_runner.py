@@ -204,7 +204,7 @@ class EnsembleRunner:
             for key in {'beds_general', 'beds_ICU', 'ventilators'}:
                 setattr(model, key, default_params[key])
 
-        # Determine the appropriate future supression policy based on the
+        # Determine the appropriate future suppression policy based on the
         # scenario of interest.
         if scenario == 'inferred':
             eps_final = inferred_params['eps']
