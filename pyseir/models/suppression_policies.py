@@ -199,7 +199,7 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14, t_break_f
         Length of time to transition between epsilon states.
     t_break_final: int or NoneType
         Time since simulation start to place a break to a final level.
-    eps_final: float
+    eps_final: float or NoneType
         Suppression level after t_break_final.
 
     Returns
