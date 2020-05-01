@@ -217,12 +217,14 @@ def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
     return results
 
 
-def remove_root(obj: dict):
+def remove_root_wrapper(obj: dict):
     """Removes __root__ and replaces with __root__ value.
 
-    When pydantic models with the key __root__ are used to represent
-    json lists are serialized using `pydantic_model.dict()` the "__root__"
-    key is included. This will remove that __root__ key and replace with a list.
+    When pydantic models are used to wrap lists this is done using a property __root__.
+    When this is serialized using `model.json()`, it will return a json list. However,
+    calling `model.dict()` will return a dictionary with a single key `__root__`.
+    This function removes that __root__ key (and all sub pydantic models with a
+    similar structure) to have a similar hierarchy to the json output.
 
     A dictionary {"__root__": []} will return [].
 
@@ -238,7 +240,7 @@ def remove_root(obj: dict):
     results = {}
     for key, value in obj.items():
         if isinstance(value, dict):
-            value = remove_root(value)
+            value = remove_root_wrapper(value)
 
         results[key] = value
 
@@ -258,7 +260,7 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         output_path.mkdir(parents=True, exist_ok=True)
 
     for api_row in results:
-        data = remove_root(api_row.data.dict())
+        data = remove_root_wrapper(api_row.data.dict())
         # Encoding approach based on Pydantic's implementation of .json():
         # https://github.com/samuelcolvin/pydantic/pull/210/files
         data_as_json = simplejson.dumps(
