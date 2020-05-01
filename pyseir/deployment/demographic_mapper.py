@@ -25,6 +25,7 @@ class CovidMeasure(Enum):
                                infection and admission to non-ICU.
     - IFR: probability an infected person dies of covid-19.
     """
+
     HOSPITALIZATION_GENERAL_INFECTED = 'hospitalization_general_infected'
     HOSPITALIZATION_ICU_INFECTED = 'hospitalization_icu_infected'
     HOSPITALIZATION_INFECTED = 'hospitalization_infected'
@@ -45,21 +46,29 @@ class DemographicMapper:
     population's demographic distribution. Currently supports mapping based
     on age structure.
 
-    The mapper calculates probabilities of hospitalization or death by given
-    demographic category (currently supports age groups), depending on the
-    measure. For detailed description of measure's meanings, check CovidMeasure.
+    The mapper calculates:
+    i. size of population at each state of infection (susceptible,
+    exposed, infected etc.) which are predicted by the MLE model and mapped
+    to target demographic distribution (currently supports age groups);
+    ii. probabilities of hospitalization or death by given demographic
+    category, depending on the measure.
+    For detailed description of measure's meanings, check CovidMeasure.
 
     The measure may quantify the probability of a future outcome or a
     daily event, depending on the measure_unit: when measure unit is `per
-    capita`, the measure quantifies the probability of that an future event will
+    capita`, the measure quantifies the probability that an future event will
     ultimately occur; when measure unit is `per capita day`, the measure
     quantifies the probability of an event per day.
 
-    The final results are the time series of measures averaged through
-    demographic groups weighted by the target demographic distribution.
-    If risk_modifier_by_age is specified, it will be used as relative risk of
-    target population compared to general population risk per age
-    group to further modifies the weights.
+    The final results include:
+    i. time series of population size at different states of infection
+       summed over demographic groups and mapped to the target demographic
+       distribution.
+    ii. time series of measures averaged through demographic groups weighted
+        by the target demographic distribution. If risk_modifier_by_age is
+        specified, it will be used as relative risk of target population
+        compared to general population risk per age group to further modifies
+        the weights.
 
     Attributes
     ----------
@@ -94,30 +103,44 @@ class DemographicMapper:
         Units of covid measure.
     hospitalization_rates: dict
         Rates of hospitalization by age group, type of hospitalization,
-        and unit of rates, with unit as primary key, type of
-        hospitalization as secondary key, and array of corresponding
-        time series of rates as values.
-        For example, hospitalization_rates['per_capita']['HGen'] is the
+        and unit of rates, with type of hospitalization as primary key,
+        unit as secondary key, and array of corresponding time series of
+        rates as values.
+        For example, hospitalization_rates['HGen']['per_capita'] is the
         time series of probability of being admitted to non-ICU per
         capita among infected population (asymptomatic + symptomatic).
     mortality_rates: dict
         Rates of mortality by age group, type of hospitalization,
-        and unit of rates, with unit as primary key, type of
-        hospitalization as secondary key, and array of corresponding
-        time series of rates as values.
-        For example, mortality_rates['per_capita']['HICU'] is the time
+        and unit of rates, with type of hospitalization as primary key,
+        unit as secondary key, and array of corresponding time series of
+        rates as values.
+        For example, mortality_rates['HICU']['per_capita'] is the time
         series of probability of death in ICU per capita among infected
         population (asymptomatic + symptomatic + hospitalized).
     prevalence: np.array
         Age-specific prevalence time series simulated with SEIR model
         with MLE parameters.
     results: dict
-        Contains time series of covid measures predicted using the MLE model
-        and adjusted by target age distribution and risk modification,
-        with name of covid measures as primary key and name of measure unit
-        as secondary key. Each time series is recorded as pd.DataFrame,
-        with dates of prediction as index, age group as columns and
-        corresponding measure as values.
+        Contains:
+            - compartments:
+              - <compartment>: time series of population at a specific
+                               infection states (susceptible, infected,
+                               hospitalized, etc.) simulated by MLE model
+                               assuming the population has the demographic
+                               distribution of the target population. Each time
+                               series is recorded as pd.DataFrame, with dates of
+                               prediction as index.
+              name of compartment include: S - susceptible, E - exposed,
+              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU -
+              in ICU, HVent - on ventilator, N - entire population.
+            - <measure>:
+              - <measure_unit>: time series of covid measures predicted using
+                                the MLE model and averaged over target
+                                demographic distribution (adjusted by risk
+                                modification if relative risk is specified).
+                                The time series is recorded as pd.DataFrame,
+                                with dates of prediction as index.
+
 
 
     Parameters
@@ -144,8 +167,8 @@ class DemographicMapper:
                  fips,
                  mle_model,
                  fit_results,
-                 measures,
-                 measure_units,
+                 measures=None,
+                 measure_units=None,
                  target_age_distribution=None,
                  risk_modifier_by_age=None):
 
@@ -154,11 +177,16 @@ class DemographicMapper:
         self.predictions_by_age = mle_model.results['by_age']
         self.parameters = {k: v for k, v in mle_model.__dict__.items() if k not in ('by_age', 'results')}
         self.fit_results = fit_results
-        self.measures = [measures] if not isinstance(measures,list) else measures
-        self.measures = [CovidMeasure(m) for m in self.measures]
 
-        self.measure_units = [measure_units] if not isinstance(measure_units,list) else measure_units
-        self.measure_units = [CovidMeasureUnit(u) for u in self.measure_units]
+        if measures is not None:
+            measures = [measures] if not isinstance(measures,list) else measures
+            measures = [CovidMeasure(m) for m in measures]
+        self.measures = measures
+
+        if measure_units is not None:
+            measure_units = [measure_units] if not isinstance(measure_units,list) else measure_units
+            measure_units = [CovidMeasureUnit(u) for u in measure_units]
+        self.measure_units = measure_units
 
         if target_age_distribution is None:
             target_age_distribution = lambda x: np.array([1] * len(self.parameters['age_groups']))
@@ -166,10 +194,12 @@ class DemographicMapper:
         self.risk_modifier_by_age = risk_modifier_by_age
 
         # get parameters required to calculate covid measures
-        self.hospitalization_rates, self.mortality_rates = self._generate_hospitalization_mortality_rates()
+        hospitalization_rates, mortality_rates = self._generate_hospitalization_mortality_rates()
+        self.hospitalization_rates = hospitalization_rates
+        self.mortality_rates = mortality_rates
         self.prevalence = self._age_specific_prevalence()
 
-        self.mapped_predictions = None
+        self.results = None
 
 
     def _age_specific_prevalence(self):
@@ -272,16 +302,17 @@ class DemographicMapper:
 
     def _age_specific_hospitalization_rates_among_infected(self, measure_unit):
         """
-        Calculate age specific hospitalization rates for a given measure unit.
+        Calculate age specific hospitalization rates among infected
+        population for a given measure unit.
 
         When unit is per capita, calculates the probability that an infected
-        person (asymptomatic or symptomatic) ultimately get admitted to
+        person (asymptomatic or symptomatic) ultimately gets admitted to
         hospital:
             probability of being symptomatic * rate of hospitalized / (rate of
             hospitalized + rate of recovery without hospitalization)
 
         When unit is per capita day, calculate the probability that an
-        infected person get admitted to hospital per day:
+        infected person gets admitted to hospital per day:
            new hospitalization / (asymptomatic + symptomatic infections)
 
         Parameters
@@ -329,7 +360,7 @@ class DemographicMapper:
                     hospital_rate_icu[:, np.newaxis] * fraction_of_symptomatic,
                     hospital_rate_ventilator[:, np.newaxis] * fraction_of_symptomatic)
 
-    def _age_specific_mortality_rates_among_infected(self, measure_unit):
+    def _age_specific_mortality_rates_among_infected(self, measure_unit, hospitalization_rates):
         """
         Calculates age specific mortality with given unit among infected
         population.
@@ -369,9 +400,9 @@ class DemographicMapper:
             mortality_prob_icu = mortality_rate_icu/(mortality_rate_icu + hospital_icu_recovery_rate)
             mortality_prob_icu_vent = mortality_rate_icu_vent/(mortality_rate_icu_vent + hospital_icu_vent_recovery_rate)
 
-            return (mortality_prob_general * self.hospitalization_rates[measure_unit.value]['HGen'],
-                    mortality_prob_icu * self.hospitalization_rates[measure_unit.value]['HICU'],
-                    mortality_prob_icu_vent * self.hospitalization_rates[measure_unit.value]['HVent'])
+            return (mortality_prob_general * hospitalization_rates['HGen'][measure_unit.value],
+                    mortality_prob_icu * hospitalization_rates['HICU'][measure_unit.value],
+                    mortality_prob_icu_vent * hospitalization_rates['HVent'][measure_unit.value])
 
         elif measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
             total_infections = np.zeros(self.predictions_by_age['I'].shape)
@@ -398,15 +429,15 @@ class DemographicMapper:
             and unit of rates, with unit as primary key, type of
             hospitalization as secondary key, and array of corresponding
             time series of rates as values.
-            For example, hospitalization_rates['per_capita']['HGen'] is the
+            For example, hospitalization_rates['HGen']['per_capita'] is the
             time series of probability of being admitted to non-ICU per
             capita among infected population (asymptomatic + symptomatic).
         mortality_rates: dict
             Rates of mortality by age group, type of hospitalization,
-            and unit of rates, with unit as primary key, type of
-            hospitalization as secondary key, and array of corresponding
-            time series of rates as values.
-            For example, mortality_rates['per_capita']['HICU'] is the time
+            and unit of rates, with type of hospitalization as
+            primary key, measure unit as secondary key, and array of
+            corresponding time series of rates as values.
+            For example, mortality_rates['HICU']['per_capita'] is the time
             series of probability of death in ICU per capita among infected
             population (asymptomatic + symptomatic + hospitalized).
         """
@@ -414,15 +445,15 @@ class DemographicMapper:
         hospitalization_rates = defaultdict(dict)
         mortality_rates = defaultdict(dict)
         for measure_unit in self.measure_units:
-            hospitalization_rates[measure_unit.value]['HGen'], \
-            hospitalization_rates[measure_unit.value]['HICU'], \
-            hospitalization_rates[measure_unit.value]['HVent'] =  \
+            hospitalization_rates['HGen'][measure_unit.value], \
+            hospitalization_rates['HICU'][measure_unit.value], \
+            hospitalization_rates['HVent'][measure_unit.value] =  \
                 self._age_specific_hospitalization_rates_among_infected(measure_unit)
 
-            mortality_rates[measure_unit.value]['HGen'], \
-            mortality_rates[measure_unit.value]['HICU'], \
-            mortality_rates[measure_unit.value]['HVent'] = \
-                self._age_specific_mortality_rates_among_infected(measure_unit)
+            mortality_rates['HGen'][measure_unit.value], \
+            mortality_rates['HICU'][measure_unit.value], \
+            mortality_rates['HVent'][measure_unit.value] = \
+                self._age_specific_mortality_rates_among_infected(measure_unit, hospitalization_rates)
 
         return hospitalization_rates, mortality_rates
 
@@ -447,34 +478,34 @@ class DemographicMapper:
             infected population or general population.
         """
         if measure is CovidMeasure.HOSPITALIZATION_INFECTED:
-            return (self.hospitalization_rates[measure_unit.value]['HGen']
-                  + self.hospitalization_rates[measure_unit.value]['HICU']
-                  + self.hospitalization_rates[measure_unit.value]['HVent'])
+            return (self.hospitalization_rates['HGen'][measure_unit.value]
+                  + self.hospitalization_rates['HICU'][measure_unit.value]
+                  + self.hospitalization_rates['HVent'][measure_unit.value])
 
         elif measure is CovidMeasure.HOSPITALIZATION:
             # prevalence is used to count the probability that a person is
             # infected
-            return (self.hospitalization_rates[measure_unit.value]['HGen']
-                  + self.hospitalization_rates[measure_unit.value]['HICU']
-                  + self.hospitalization_rates[measure_unit.value]['HVent']) * self.prevalence
+            return (self.hospitalization_rates['HGen'][measure_unit.value]
+                  + self.hospitalization_rates['HICU'][measure_unit.value]
+                  + self.hospitalization_rates['HVent'][measure_unit.value]) * self.prevalence
 
         elif measure is CovidMeasure.HOSPITALIZATION_GENERAL_INFECTED:
-            return self.hospitalization_rates[measure_unit.value]['HGen']
+            return self.hospitalization_rates['HGen'][measure_unit.value]
 
         elif measure is CovidMeasure.HOSPITALIZATION_GENERAL:
             # prevalence is used to count the probability that a person is
             # infected
-            return self.hospitalization_rates[measure_unit.value]['HGen'] * self.prevalence
+            return self.hospitalization_rates['HGen'][measure_unit.value] * self.prevalence
 
         elif measure is CovidMeasure.HOSPITALIZATION_ICU_INFECTED:
-            return (self.hospitalization_rates[measure_unit.value]['HICU']
-                  + self.hospitalization_rates[measure_unit.value]['HVent'])
+            return (self.hospitalization_rates['HICU'][measure_unit.value]
+                  + self.hospitalization_rates['HVent'][measure_unit.value])
 
         elif measure is CovidMeasure.HOSPITALIZATION_ICU:
             # prevalence is used to count the probability that a person is
             # infected
-            return (self.hospitalization_rates[measure_unit.value]['HICU']
-                  + self.hospitalization_rates[measure_unit.value]['HVent']) * self.prevalence
+            return (self.hospitalization_rates['HICU'][measure_unit.value]
+                  + self.hospitalization_rates['HVent'][measure_unit.value]) * self.prevalence
 
         else:
             logging.warnings(f'covid_measure {measure.value} is not relevant to hospitalization rate')
@@ -496,8 +527,8 @@ class DemographicMapper:
         """
 
         IFR = 0
-        for key in self.mortality_rates[measure_unit.value]:
-            IFR += self.mortality_rates[measure_unit.value][key]
+        for key in self.mortality_rates:
+            IFR += self.mortality_rates[key][measure_unit.value]
 
         return IFR
 
@@ -509,29 +540,52 @@ class DemographicMapper:
         Returns
         -------
         predictions: dict
-            Contains time series of covid measures predicted using the MLE
-            model, with name of covid measures as primary key and name of
-            measure unit as secondary key.
-            Each time series is recorded as pd.DataFrame, with dates of
-            prediction as index, age group as columns and corresponding
-            measure as values.
+            Contains:
+            - compartments:
+              - <compartment>: time series of population at a specific
+                               infection states (susceptible, infected,
+                               hospitalized, etc.) by demographic group
+                               simulated by MLE model. Each time series is
+                               recorded as pd.DataFrame, with dates of
+                               prediction as index.
+              name of compartment include: S - susceptible, E - exposed,
+              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
+              ICU, HVent - on ventilator, N - entire population.
+            - <measure>:
+              - <measure_unit>: time series of covid measures by demographic
+                                group predicted using the MLE model.
+                                The time series is recorded as pd.DataFrame,
+                                with dates of prediction as index.
         """
         predictions = defaultdict(dict)
-        t0_date = datetime.strptime(self.fit_results['t0_date'][:10], '%Y-%m-%d')
+        t0_date = datetime.fromisoformat(self.fit_results['t0_date'])
         dates = [t0_date + timedelta(days=int(t)) for t in self.parameters['t_list']]
         age_groups = ['-'.join([str(int(tup[0])), str(int(tup[1]))]) for tup in
                       self.parameters['age_groups']]
-        for measure in self.measures:
-            for measure_unit in self.measure_units:
-                if measure is CovidMeasure.IFR:
-                    predictions[measure.value][measure_unit.value] = self._calculate_age_specific_IFR(measure_unit)
-                else:
-                    predictions[measure.value][measure_unit.value] = self._calculate_age_specific_HR(measure,
-                                                                                                     measure_unit)
-                predictions[measure.value][measure_unit.value] = \
-                    pd.DataFrame(predictions[measure.value][measure_unit.value].T,
-                                 columns=age_groups,
-                                 index=pd.DatetimeIndex(dates))
+
+        for c in self.predictions_by_age:
+            predictions['compartments'][c] = pd.DataFrame(self.predictions_by_age[c].T,
+                                                          columns=age_groups,
+                                                          index=pd.DatetimeIndex(dates))
+        # assuming a stable demographic distribution through time
+        predictions['compartments']['N'] = \
+            pd.DataFrame(np.tile(self.parameters['N'], (len(self.parameters['t_list']), 1)),
+                         columns=age_groups,
+                         index=pd.DatetimeIndex(dates))
+
+        if self.measures is not None:
+            for measure in self.measures:
+                for measure_unit in self.measure_units:
+                    if measure is CovidMeasure.IFR:
+                        predictions[measure.value][measure_unit.value] = self._calculate_age_specific_IFR(measure_unit)
+                    else:
+                        predictions[measure.value][measure_unit.value] = self._calculate_age_specific_HR(measure,
+                                                                                                         measure_unit)
+                    predictions[measure.value][measure_unit.value] = \
+                        pd.DataFrame(predictions[measure.value][measure_unit.value].T,
+                                     columns=age_groups,
+                                     index=pd.DatetimeIndex(dates))
+
 
         return predictions
 
@@ -544,39 +598,72 @@ class DemographicMapper:
         Parameters
         ----------
         predictions: dict
-            Contains time series of covid measures predicted using the MLE
-            model, with name of covid measures as primary key and name of
-            measure unit as secondary key.
+            Contains:
+            - compartments:
+              - <compartment>: time series of population at a specific
+                               infection states (susceptible, infected,
+                               hospitalized, etc.) by demographic group
+                               simulated by MLE model. Each time series is
+                               recorded as pd.DataFrame, with dates of
+                               prediction as index.
+              name of compartment include: S - susceptible, E - exposed,
+              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
+              ICU, HVent - on ventilator, N - entire population.
+            - <measure>:
+              - <measure_unit>: time series of covid measures by demographic
+                                group predicted using the MLE model.
+                                The time series is recorded as pd.DataFrame,
+                                with dates of prediction as index.
 
         Returns
         -------
           : dict
-            Contains time series of covid measures predicted using the MLE
-            model and adjusted by target age distributiion and risk
-            modification, with name of covid measures as primary key and name of
-            measure unit as secondary key.
-            Each time series is recorded as pd.DataFrame, with dates of
-            prediction as index, age group as columns and corresponding
-            measure as values.
+            Contains:
+            - compartments:
+              - <compartment>: time series of population at a specific
+                               infection states (susceptible, infected,
+                               hospitalized, etc.) simulated by MLE model
+                               assuming the population has the demographic
+                               distribution of the target population. Each time
+                               series is recorded as pd.DataFrame, with dates of
+                               prediction as index.
+              name of compartment include: S - susceptible, E - exposed,
+              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in ICU,
+              HVent - on ventilator, N - entire population.
+            - <measure>:
+              - <measure_unit>: time series of covid measures predicted using
+                                the MLE model and averaged over target
+                                demographic distribution (adjusted by risk
+                                modification if relative risk is specified).
+                                The time series is recorded as pd.DataFrame,
+                                with dates of prediction as index.
         """
         # calculate weights
         age_bin_centers = [np.mean(tup) for tup in self.parameters['age_groups']]
         weights = self.target_age_distribution(age_bin_centers)
-        
         if (weights != 1).sum() == 0:
             logging.warning('no target age distribution is given, measure is aggregated assuming age '
                             'distrubtion at given FIPS code')
 
+        weights /= weights.sum()
+        demographic_group_size_ratio = weights / (self.parameters['N'] / self.parameters['N'].sum())
+
         mapped_predictions = defaultdict(dict)
 
-        for measure_name in predictions:
-            for measure_unit_name in predictions[measure_name]:
-                modified_weights = weights
-                if self.risk_modifier_by_age is not None:
-                    if measure_name in self.risk_modifier_by_age_group:
-                        modified_weights = weights * self.risk_modifier_by_age[measure_name](age_bin_centers)
-                mapped_predictions[measure_name][measure_unit_name] = \
-                    predictions[measure_name][measure_unit_name].dot(modified_weights) / modified_weights.sum()
+        for c in predictions['compartments']:
+            mapped_predictions['compartments'][c] = predictions['compartments'][c].dot(demographic_group_size_ratio)
+
+        measure_names = [k for k in predictions.keys() if k != 'compartments']
+        if len(measure_names) > 0:
+            for measure_name in measure_names:
+                for measure_unit_name in predictions[measure_name]:
+                    modified_weights = weights
+                    if self.risk_modifier_by_age is not None:
+                        if measure_name in self.risk_modifier_by_age_group:
+                            modified_weights = weights * self.risk_modifier_by_age[measure_name](age_bin_centers)
+                            modified_weights /= modified_weights.sum()
+                    mapped_predictions[measure_name][measure_unit_name] = \
+                        predictions[measure_name][measure_unit_name].dot(modified_weights)
 
         self.results = mapped_predictions
 
@@ -584,19 +671,32 @@ class DemographicMapper:
 
     def run(self):
         """
-        Makes predictions of age-specific covid measures using the MLE model
-        and maps them to the target age distribution.
+        Makes predictions of age-specific population size at each state of
+        infection and covid measures using the MLE model and maps them to
+        the target age distribution.
 
         Returns
         -------
           : dict
-            Contains time series of covid measures predicted using the MLE
-            model and adjusted by target age distributiion and risk
-            modification, with name of covid measures as primary key and name of
-            measure unit as secondary key.
-            Each time series is recorded as a pd.DataFrame, with dates of
-            prediction as index, age group as columns and corresponding
-            measure as values.
+            Contains:
+            - compartments:
+              - <compartment>: time series of population at a specific
+                               infection states (susceptible, infected,
+                               hospitalized, etc.) simulated by MLE model
+                               assuming the population has the demographic
+                               distribution of the target population. Each time
+                               series is recorded as pd.DataFrame, with dates of
+                               prediction as index.
+              name of compartment include: S - susceptible, E - exposed,
+              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
+              ICU, HVent - on ventilator, N - entire population.
+            - <measure>:
+              - <measure_unit>: time series of covid measures predicted using
+                                the MLE model and averaged over target
+                                demographic distribution (adjusted by risk
+                                modification if relative risk is specified).
+                                The time series is recorded as pd.DataFrame,
+                                with dates of prediction as index.
         """
         predictions = self.generate_predictions()
         self.results = self.map_to_target_population(predictions)
