@@ -1,7 +1,7 @@
 import pandas as pd
 import requests
 import logging
-
+import sentry_sdk
 from functools import lru_cache
 
 from libs.us_state_abbrev import US_STATE_ABBREV
@@ -14,6 +14,7 @@ from libs.datasets import JHUDataset
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import CDSDataset
 from libs.datasets.common_fields import CommonFields
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.functions.calculate_projections import (
     get_state_projections_df,
     get_county_projections_df,
@@ -56,19 +57,21 @@ def _get_testing_df():
     return ctd_df
 
 
-# todo: we probably need the dataset to be a singleton so we're not realoading
-# it every time we want to use it.
-cds_df = CDSDataset.local().data
-cds_df["date"] = cds_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
-cds_df = cds_df[CDSDataset.TEST_FIELDS]
-
-
-def _get_county_testing_df():
+@lru_cache(None)
+def get_cds():
+    cds_df = CDSDataset.local().data
+    cds_df["date"] = cds_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
+    cds_df = cds_df[CDSDataset.TEST_FIELDS]
     return cds_df
 
 
 def get_testing_timeseries_by_state(state):
     testing_df = _get_testing_df()
+    is_state = (
+        testing_df[CovidTrackingDataSource.Fields.AGGREGATE_LEVEL] ==
+        AggregationLevel.STATE.value
+    )
+    testing_df = testing_df[is_state]
     # just select state
     state_testing_df = testing_df[
         testing_df[CovidTrackingDataSource.Fields.STATE] == state
@@ -77,11 +80,19 @@ def get_testing_timeseries_by_state(state):
 
 
 def get_testing_timeseries_by_fips(fips):
-    testing_df = _get_county_testing_df()
+    testing_df = get_cds()
     # select by fips
     fips_testing_df = testing_df[
         testing_df[CDSDataset.Fields.FIPS] == fips
     ]
+    before = len(fips_testing_df)
+    fips_testing_df = fips_testing_df.set_index([CDSDataset.Fields.FIPS, CDSDataset.Fields.DATE])
+    fips_testing_df = fips_testing_df[~fips_testing_df.index.duplicated(keep='last')]
+    if before != len(fips_testing_df):
+        _logger.warning(
+            f"Testing DF contained duplicate rows for {fips}: {before} -> {len(fips_testing_df)}"
+        )
+        sentry_sdk.capture_message(f"Testing DF contained duplicate rows for {fips}")
     return fips_testing_df
 
 
