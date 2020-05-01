@@ -108,17 +108,22 @@ class WebUIDataAdaptorV1:
             convert_cumulative_to_current=True)
         t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]
 
+        state_hosp_gen = self.get_compartment_value_on_date(fips=fips[:2], compartment='HGen', date=t_latest_hosp_data)
+        state_hosp_icu = self.get_compartment_value_on_date(fips=fips[:2], compartment='HICU', date=t_latest_hosp_data)
+
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
             # Rescale the county level hospitalizations by the expected ratio of
             # county / state hospitalizations from simulations.
-            county_hosp = self.get_compartment_value_on_date(fips=fips, compartment='HGen', date=datetime.today(), ensemble_results=pyseir_outputs)
-            state_hosp = self.get_compartment_value_on_date(fips=fips[:2], compartment='HGen', date=datetime.today())
-            county_icu = self.get_compartment_value_on_date(fips=fips, compartment='HICU', date=datetime.today(), ensemble_results=pyseir_outputs)
-            state_icu = self.get_compartment_value_on_date(fips=fips[:2], compartment='HICU', date=datetime.today())
-            current_hosp *= (county_hosp + county_icu) / (state_hosp + state_icu)
+            county_hosp = self.get_compartment_value_on_date(fips=fips, compartment='HGen',
+                                                             date=t_latest_hosp_data, ensemble_results=pyseir_outputs)
+            county_icu = self.get_compartment_value_on_date(fips=fips, compartment='HICU',
+                                                            date=t_latest_hosp_data, ensemble_results=pyseir_outputs)
+            current_hosp *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
+
+        hosp_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
@@ -126,9 +131,6 @@ class WebUIDataAdaptorV1:
 
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
-
-            total_hosps = output_for_policy['HGen']['ci_50'][t_latest_hosp_data] + output_for_policy['HICU']['ci_50'][t_latest_hosp_data]
-            hosp_fraction = current_hosp / total_hosps
 
             t_list = output_for_policy['t_list']
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
@@ -140,8 +142,8 @@ class WebUIDataAdaptorV1:
             output_model[schema.EXPOSED] = np.interp(t_list_downsampled, t_list, output_for_policy['E']['ci_50'])
             output_model[schema.INFECTED] = np.interp(t_list_downsampled, t_list, np.add(output_for_policy['I']['ci_50'], output_for_policy['A']['ci_50'])) # Infected + Asympt.
             output_model[schema.INFECTED_A] = output_model[schema.INFECTED]
-            output_model[schema.INFECTED_B] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HGen']['ci_50']) # Hosp General
-            output_model[schema.INFECTED_C] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
+            output_model[schema.INFECTED_B] = hosp_rescaling_factor * np.interp(t_list_downsampled, t_list, output_for_policy['HGen']['ci_50']) # Hosp General
+            output_model[schema.INFECTED_C] = hosp_rescaling_factor * np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = np.add(output_model[schema.INFECTED_B], output_model[schema.INFECTED_C])
             output_model[schema.ALL_INFECTED] = output_model[schema.INFECTED]
