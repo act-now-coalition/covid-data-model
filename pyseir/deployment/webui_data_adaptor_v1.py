@@ -80,25 +80,31 @@ class WebUIDataAdaptorV1:
             state=self.state_abbreviation,
             t0=t0_simulation,
             convert_cumulative_to_current=True)
-        t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]
-        t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
-
-        state_hosp_gen = load_data.get_compartment_value_on_date(fips=fips[:2], compartment='HGen', date=t_latest_hosp_data_date)
-        state_hosp_icu = load_data.get_compartment_value_on_date(fips=fips[:2], compartment='HICU', date=t_latest_hosp_data_date)
 
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
-            # Rescale the county level hospitalizations by the expected ratio of
-            # county / state hospitalizations from simulations.
-            county_hosp = load_data.get_compartment_value_on_date(fips=fips, compartment='HGen',
-                                                             date=t_latest_hosp_data_date, ensemble_results=pyseir_outputs)
-            county_icu = load_data.get_compartment_value_on_date(fips=fips, compartment='HICU',
-                                                            date=t_latest_hosp_data_date, ensemble_results=pyseir_outputs)
-            current_hosp *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
 
-        hosp_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
+        if current_hosp is not None:
+            t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]
+            t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
+
+            state_hosp_gen = load_data.get_compartment_value_on_date(fips=fips[:2], compartment='HGen', date=t_latest_hosp_data_date)
+            state_hosp_icu = load_data.get_compartment_value_on_date(fips=fips[:2], compartment='HICU', date=t_latest_hosp_data_date)
+
+            if len(fips) == 5:
+                # Rescale the county level hospitalizations by the expected ratio of
+                # county / state hospitalizations from simulations.
+                county_hosp = load_data.get_compartment_value_on_date(fips=fips, compartment='HGen',
+                                                                 date=t_latest_hosp_data_date, ensemble_results=pyseir_outputs)
+                county_icu = load_data.get_compartment_value_on_date(fips=fips, compartment='HICU',
+                                                                     date=t_latest_hosp_data_date, ensemble_results=pyseir_outputs)
+                current_hosp *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
+
+            hosp_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
+        else:
+            hosp_rescaling_factor = 1.0
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.

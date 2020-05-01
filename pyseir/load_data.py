@@ -568,6 +568,7 @@ def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None
     compartment: str
         Name of the compartment to retrieve.
     date: datetime
+        Date to retrieve values for.
     ensemble_results: NoneType or dict
         Pass in the pre-loaded simulation data to save time, else load it.
 

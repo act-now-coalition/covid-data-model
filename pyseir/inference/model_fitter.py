@@ -169,14 +169,16 @@ class ModelFitter:
             self.fit_params['hosp_fraction'] = 1
 
         if len(self.fips) == 5:
-            t0_guess = list(self.times)[np.argwhere(np.cumsum(self.observed_new_cases) >= 3)[0][0]]
+            # Setting
+            idx_enough_cases = np.argwhere(np.cumsum(self.observed_new_cases) >= 3)[0][0]
+            initial_cases_guess = np.cumsum(self.observed_new_cases)[idx_enough_cases]
+            t0_guess = list(self.times)[idx_enough_cases]
 
             state_fit_result = load_inference_result(fips=self.state_obj.fips)
-
-            self.fit_params['t0'] = t0_guess # state_fit_result['t0']
+            self.fit_params['t0'] = t0_guess
 
             total_cases = np.sum(self.observed_new_cases)
-            self.fit_params['log10_I_initial'] = np.log10(3 / self.fit_params['test_fraction'])
+            self.fit_params['log10_I_initial'] = np.log10(initial_cases_guess / self.fit_params['test_fraction'])
             self.fit_params['limit_t0'] = state_fit_result['t0'] - 20, state_fit_result['t0'] + 30
             self.fit_params['t_break'] = state_fit_result['t_break'] - (t0_guess - state_fit_result['t0'])
             self.fit_params['R0'] = state_fit_result['R0']
@@ -280,12 +282,12 @@ class ModelFitter:
         else:
             hosp_stdev = None
 
-        # Zero inflated poisson Avoid floating point errors. This is set to a
-        # value that still provides some constraints toward zero.
+        # Zero inflated poisson. This is set to a value that still provides some
+        # constraints toward zero.
         cases_stdev[cases_stdev == 0] = 1e2
         deaths_stdev[deaths_stdev == 0] = 1e2
         if hosp_stdev is not None:
-            hosp_stdev[hosp_stdev == 0] = 1e10
+            hosp_stdev[hosp_stdev == 0] = 1e2
 
         return cases_stdev, hosp_stdev, deaths_stdev
 
