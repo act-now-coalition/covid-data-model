@@ -165,7 +165,7 @@ class ModelFitter:
                 self.fit_params.update(v)
 
         self.fit_params['fix_hosp_fraction'] = self.hospitalizations is None
-        if self.hospitalizations is None:
+        if self.fit_params['fix_hosp_fraction']:
             self.fit_params['hosp_fraction'] = 1
 
         if len(self.fips) == 5:
