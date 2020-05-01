@@ -209,7 +209,7 @@ class EnsembleRunner:
         if scenario == 'inferred':
             eps_final = inferred_params['eps']
         else:
-            eps_final = sp.get_future_supression_from_r0(inferred_params['R0'], scenario=scenario)
+            eps_final = sp.get_future_suppression_from_r0(inferred_params['R0'], scenario=scenario)
 
         model.suppression_policy = sp.generate_two_step_policy(
             self.t_list,
