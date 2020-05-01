@@ -14,6 +14,7 @@ from libs.datasets import JHUDataset
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import CDSDataset
 from libs.datasets.common_fields import CommonFields
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.functions.calculate_projections import (
     get_state_projections_df,
     get_county_projections_df,
@@ -66,6 +67,11 @@ def get_cds():
 
 def get_testing_timeseries_by_state(state):
     testing_df = _get_testing_df()
+    is_state = (
+        testing_df[CovidTrackingDataSource.Fields.AGGREGATE_LEVEL] ==
+        AggregationLevel.STATE.value
+    )
+    testing_df = testing_df[is_state]
     # just select state
     state_testing_df = testing_df[
         testing_df[CovidTrackingDataSource.Fields.STATE] == state
