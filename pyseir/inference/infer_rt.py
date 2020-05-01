@@ -376,7 +376,7 @@ class RtInferenceEngine:
 
                 # Compute the indicator lag using the curvature alignment method.
                 if timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS) \
-                        and TimeseriesType.NEW_CASES in available_timeseries:
+                        and f'Rt_MAP__{TimeseriesType.NEW_CASES.value}' in df_all.columns:
                     # Go back upto 30 days or the max time series length we have if shorter.
                     last_idx = max(-30, -len(df))
                     shift_in_days = self.align_time_series(
