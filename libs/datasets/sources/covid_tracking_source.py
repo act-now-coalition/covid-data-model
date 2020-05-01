@@ -65,6 +65,7 @@ class CovidTrackingDataSource(data_source.DataSource):
         TimeseriesDataset.Fields.CURRENT_HOSPITALIZED: Fields.CURRENT_HOSPITALIZED,
         TimeseriesDataset.Fields.CURRENT_ICU: Fields.IN_ICU_CURRENTLY,
         TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED: Fields.TOTAL_HOSPITALIZED,
+        TimeseriesDataset.Fields.CUMULATIVE_ICU: Fields.TOTAL_IN_ICU,
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
