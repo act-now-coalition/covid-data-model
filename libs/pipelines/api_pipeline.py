@@ -3,7 +3,6 @@ import pathlib
 from collections import namedtuple
 from collections import defaultdict
 import logging
-
 import pydantic
 import simplejson
 from api.can_api_definition import CountyFipsSummary
@@ -218,6 +217,34 @@ def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
     return results
 
 
+def remove_root(obj: dict):
+    """Removes __root__ and replaces with __root__ value.
+
+    When pydantic models with the key __root__ are used to represent
+    json lists are serialized using `pydantic_model.dict()` the "__root__"
+    key is included. This will remove that __root__ key and replace with a list.
+
+    A dictionary {"__root__": []} will return [].
+
+    Args:
+        obj: pydantic model as dict.
+
+    Returns: object with __root__ removed.
+    """
+    # Objects with __root__ should have it as the only key.
+    if len(obj) == 1 and '__root__' in obj:
+        return obj['__root__']
+
+    results = {}
+    for key, value in obj.items():
+        if isinstance(value, dict):
+            value = remove_root(value)
+
+        results[key] = value
+
+    return results
+
+
 def deploy_results(results: List[APIOutput], output: str, write_csv=False):
     """Deploys results from the top counties to specified output directory.
 
@@ -231,17 +258,16 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         output_path.mkdir(parents=True, exist_ok=True)
 
     for api_row in results:
+        data = remove_root(api_row.data.dict())
         # Encoding approach based on Pydantic's implementation of .json():
         # https://github.com/samuelcolvin/pydantic/pull/210/files
-        data_as_json = simplejson.dumps(api_row.data.dict(), ignore_nan=True, default=pydantic.json.pydantic_encoder)
+        data_as_json = simplejson.dumps(
+            data, ignore_nan=True, default=pydantic.json.pydantic_encoder
+        )
         dataset_deployer.upload_json(api_row.file_stem, data_as_json, output)
         if write_csv:
-            data = api_row.data.dict()
             if not isinstance(data, list):
-                if not isinstance(data.get("__root__"), list):
-                    raise ValueError("Cannot find list data for csv export.")
-                else:
-                    data = data["__root__"]
+                raise ValueError("Cannot find list data for csv export.")
             dataset_deployer.write_nested_csv(data, api_row.file_stem, output)
 
 
