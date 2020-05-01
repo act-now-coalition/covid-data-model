@@ -188,6 +188,7 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
 
         return rows
 
+    # pylint: disable=no-self-argument
     @pydantic.validator('timeseries')
     def check_timeseries_one_row_per_date(cls, rows, values):
         dates_in_row = len(set(row.date for row in rows))
@@ -204,6 +205,7 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
 
+    # pylint: disable=no-self-argument
     @pydantic.validator('timeseries')
     def check_timeseries_one_row_per_date(cls, rows, values):
         dates_in_row = len(set(row.date for row in rows))
