@@ -237,18 +237,25 @@ class DemographicMapper:
                                      (self.parameters['t_list'].shape[0], 1)).T
         idx_inadequate_icu_bed = np.where(self.predictions['HICU'] > self.parameters['beds_ICU'])
         frac_no_access_to_icu = (self.predictions['HICU'] - self.parameters['beds_ICU']) / self.predictions['HICU']
-        mortality_rate_ICU[:, idx_inadequate_icu_bed] = \
-            np.tile(self.parameters['mortality_rate_no_ICU_beds'] * frac_no_access_to_icu[idx_inadequate_icu_bed],
-                    (1, mortality_rate_ICU.shape[0]))
+        frac_no_access_to_icu = frac_no_access_to_icu[idx_inadequate_icu_bed]
+        if len(frac_no_access_to_icu) > 0:
+            mortality_rate_ICU[:, idx_inadequate_icu_bed] = \
+                np.tile(self.parameters['mortality_rate_from_ICU'] * (1 - frac_no_access_to_icu[:, np.newaxis])
+                      + self.parameters['mortality_rate_no_ICU_beds'] * frac_no_access_to_icu,
+                        (1, mortality_rate_ICU.shape[0]))
 
         # per capita mortality rate from people who need to be hospitalized or in hospital
         mortality_rate_NonICU = np.tile(self.parameters['mortality_rate_from_hospital'],
                                         (self.parameters['t_list'].shape[0], 1)).T
         idx_inadequate_hgen_bed = np.where(self.predictions['HGen'] > self.parameters['beds_general'])
         frac_no_access_to_hgen = (self.predictions['HGen'] - self.parameters['beds_general']) / self.predictions['HGen']
-        mortality_rate_NonICU[:, idx_inadequate_hgen_bed] = \
-            np.tile(self.parameters['mortality_rate_no_general_beds'] * frac_no_access_to_hgen[idx_inadequate_hgen_bed],
-                    (1, mortality_rate_NonICU.shape[0]))
+        frac_no_access_to_hgen = frac_no_access_to_hgen[idx_inadequate_hgen_bed]
+
+        if len(frac_no_access_to_hgen) > 0:
+            mortality_rate_NonICU[:, idx_inadequate_hgen_bed] = \
+                np.tile(self.parameters['mortality_rate_from_hospital'] * (1 - frac_no_access_to_hgen)
+                      + self.parameters['mortality_rate_no_general_beds'] * frac_no_access_to_hgen,
+                        (1, mortality_rate_NonICU.shape[0]))
 
         mortality_inflow_rates = {}
         mortality_inflow_rates['HGen'] = \
