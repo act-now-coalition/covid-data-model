@@ -170,7 +170,7 @@ class EnsembleRunner:
 
     def _load_model_for_fips(self, scenario='inferred'):
         """
-        Try to load a model for the localle, else load the state level model
+        Try to load a model for the locale, else load the state level model
         and update parameters for the county.
         """
         artifact_path = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL)
@@ -204,12 +204,12 @@ class EnsembleRunner:
             for key in {'beds_general', 'beds_ICU', 'ventilators'}:
                 setattr(model, key, default_params[key])
 
-        # Determine the appropriate future supression policy based on the
+        # Determine the appropriate future suppression policy based on the
         # scenario of interest.
         if scenario == 'inferred':
             eps_final = inferred_params['eps']
         else:
-            eps_final = sp.get_future_supression_from_r0(inferred_params['R0'], scenario=scenario)
+            eps_final = sp.get_future_suppression_from_r0(inferred_params['R0'], scenario=scenario)
 
         model.suppression_policy = sp.generate_two_step_policy(
             self.t_list,
