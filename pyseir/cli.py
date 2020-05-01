@@ -139,12 +139,13 @@ def _map_outputs(
 
 def _state_only_pipeline(
     state,
-    states_only=False,
+    states_only=True,
     run_mode=DEFAULT_RUN_MODE,
-    generate_reports=True,
+    generate_reports=False,
     output_interval_days=1,
     output_dir=None,
 ):
+    states_only = True
     _infer_rt(state, states_only=states_only)
     _run_mle_fits(state, states_only=states_only)
     _run_ensembles(
@@ -159,19 +160,19 @@ def _state_only_pipeline(
     if generate_reports:
         _generate_state_reports(state)
     # remove outputs atm. just output at the end
-    # _map_outputs(
-    #     state,
-    #     output_interval_days,
-    #     states_only=states_only,
-    #     output_dir=output_dir,
-    #     run_mode=run_mode,
-    # )
+    _map_outputs(
+        state,
+        output_interval_days,
+        states_only=states_only,
+        output_dir=output_dir,
+        run_mode=run_mode,
+    )
 
 
 def _build_all_for_states(
     states=[],
     run_mode=DEFAULT_RUN_MODE,
-    generate_reports=True,
+    generate_reports=False,
     output_interval_days=4,
     skip_download=False,
     output_dir=None,
@@ -203,8 +204,9 @@ def _build_all_for_states(
     p.close()
     p.join()
 
-    #calculate culate inference
-    # parallelize async
+    # calculate culate inference
+    # parallelize async by state
+    # todo calculate inference per county
     p = Pool()
     for state in states:
         p.apply_async(_infer_rt, state)
