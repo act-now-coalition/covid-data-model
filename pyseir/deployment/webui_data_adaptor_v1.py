@@ -50,6 +50,32 @@ class WebUIDataAdaptorV1:
         self.df_whitelist = load_data.load_whitelist()
         self.df_whitelist = self.df_whitelist[self.df_whitelist['inference_ok'] == True]
 
+    @staticmethod
+    def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None):
+        """
+        Return the value of compartment at a specified date.
+
+        Parameters
+        ----------
+        fips: str
+            State or County fips.
+        compartment: str
+            Name of the compartment to retrieve.
+        date: datetime
+        ensemble_results: NoneType or dict
+            Pass in the pre-loaded simulation data to save time, else load it.
+
+        Returns
+        -------
+        value: float
+            Value of compartment on a given date.
+        """
+        if ensemble_results is None:
+            ensemble_results = load_data.load_ensemble_results(fips)
+        simulation_start_date = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
+        date_idx = int((date - simulation_start_date).days)
+        return ensemble_results['suppression_policy__inferred'][compartment]['ci_50'][date_idx]
+
     def map_fips(self, fips):
         """
         For a given county fips code, generate the CAN UI output format.
@@ -65,7 +91,6 @@ class WebUIDataAdaptorV1:
         if (len(fips) == 5 and fips not in self.df_whitelist.fips.values):
             logging.info(f'Excluding {fips} due to white list...')
             return
-
         try:
             fit_results = load_inference_result(fips)
             t0_simulation = datetime.fromisoformat(fit_results['t0_date'])
@@ -85,11 +110,15 @@ class WebUIDataAdaptorV1:
 
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
-            state_population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
-            current_hosp *= population / state_population
+            # Rescale the county level hospitalizations by the expected ratio of
+            # county / state hospitalizations from simulations.
+            county_hosp = self.get_compartment_value_on_date(fips=fips, compartment='HGen', date=datetime.today(), ensemble_results=pyseir_outputs)
+            state_hosp = self.get_compartment_value_on_date(fips=fips[:2], compartment='HGen', date=datetime.today())
+            county_icu = self.get_compartment_value_on_date(fips=fips, compartment='HICU', date=datetime.today(), ensemble_results=pyseir_outputs)
+            state_icu = self.get_compartment_value_on_date(fips=fips[:2], compartment='HICU', date=datetime.today())
+            current_hosp *= (county_hosp + county_icu) / (state_hosp + state_icu)
         else:
             population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
-
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
