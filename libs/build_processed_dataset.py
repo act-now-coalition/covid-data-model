@@ -56,8 +56,6 @@ def _get_testing_df():
     return ctd_df
 
 
-# todo: we probably need the dataset to be a singleton so we're not realoading
-# it every time we want to use it.
 @lru_cache(None)
 def get_cds():
     cds_df = CDSDataset.local().data
