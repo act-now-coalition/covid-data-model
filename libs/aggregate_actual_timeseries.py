@@ -1,4 +1,7 @@
+from typing import Type
+
 import pandas as pd
+from libs.datasets.data_source import DataSource
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
@@ -28,8 +31,8 @@ class AggregateActualLatest(object):
         Fields.STAFFED_BEDS: CovidCareMapBeds,
         Fields.LICENSED_BEDS: CovidCareMapBeds,
         Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE: CovidCareMapBeds,
-        Fields.DEATHS: JHUDataset,
-        Fields.CASES: JHUDataset,
+        # Fields.DEATHS: JHUDataset,
+        # Fields.CASES: JHUDataset,
     }
 
     @property
@@ -95,27 +98,34 @@ class AggregateActualTimeseries(object):
     @classmethod
     def initialize(cls):
         # Some initial data frame
-        data = pd.DataFrame()
+        data = pd.DataFrame({})
         classes = set(cls.DATA_SOURCE_MAP.values())
 
-        data_sources = [
-            (source_cls.local().timeseries(), source_cls) for source_cls in classes
+        loaded_data_with_cls = [
+            (source_cls.local().timeseries(), source_cls)
+            for source_cls in classes
         ]
-        for data_source, source_cls in data_sources:
+        for data_source, source_cls in loaded_data_with_cls:
             data = cls._add_columns_to_data(data, data_source, source_cls)
 
         return cls(data)
 
     @classmethod
-    def _add_columns_to_data(cls, data: pd.DataFrame, data_source: TimeseriesDataset):
-        """Adds nevada data, replacing any state or county level values that match index.
-
-        Args:
-            data: Covid tracking data
-            nevada_data: Nevada specific override data.
+    def _add_columns_to_data(
+        cls,
+        data: pd.DataFrame,
+        data_source: TimeseriesDataset,
+        data_source_cls: Type[DataSource]
+    ):
+        """Adds columns from data source to aggregate data
 
         Returns: Updated dataframe with
         """
+        columns = [
+            key
+            for key, value in cls.DATA_SOURCE_MAP.items()
+            if value == data_source_cls
+        ]
         matching_index_group = [
             cls.Fields.DATE,
             cls.Fields.AGGREGATE_LEVEL,
@@ -124,6 +134,13 @@ class AggregateActualTimeseries(object):
             cls.Fields.FIPS,
         ]
         new_data = data_source.data.set_index(matching_index_group)
+
+        # If no data exists, return all rows from new data with just the requested columns.
+        if not len(data):
+            for column in columns:
+                if column not in new_data.columns:
+                    new_data[column] = None
+            return new_data[columns].reset_index()
         data = data.set_index(matching_index_group)
 
         # Sort indices so that we have chunks of equal length in the
@@ -138,12 +155,9 @@ class AggregateActualTimeseries(object):
                 "Number of rows should be the for data to replace"
             )
 
-        # Fill in values with data that matches index in nevada data.
-        columns = [
-            key
-            for key, value in cls.DATA_SOURCE_MAP.items()
-            if value == data_source.__class__
-        ]
+        # Get columns that this data source should represent.
+        print(new_data.head())
+        data[columns] = None
         data.loc[data_in_new_data, columns] = new_data.loc[new_data_in_data, :]
 
         # Combine updated data with rows not present in covid tracking data.
