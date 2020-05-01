@@ -256,7 +256,7 @@ class ModelFitter:
         deaths_stdev = self.percent_error_on_max_observation \
                        * self.observed_new_deaths ** 0.5 * self.observed_new_deaths.max() ** 0.5
 
-        # Add a bit more error in cases with very few deaths. Specifically, we
+        # Add a bit more error in cases with very few deaths, cases, or hosps. Specifically, we
         # inflate error bars for very small numbers of deaths, cases, and hosps
         # since these clearly reduce the fit accuracy (and individual events are
         # rife with systematic issues).
