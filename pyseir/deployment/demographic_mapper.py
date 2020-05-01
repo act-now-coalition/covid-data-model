@@ -287,9 +287,9 @@ class DemographicMapper:
 
         return hospitalization_inflow_rates
 
-    def _reconstruct_recovery_inflow_rates(self):
+    def _reconstruct_hospital_recovery_inflow_rates(self):
         """
-        Reconstruct trajectory of inferred per-capita rates of recovery
+        Reconstruct trajectory of inferred per capita rates of recovery
         during hospitalization through time from MLE model parameters and
         compartments.
 
@@ -412,11 +412,12 @@ class DemographicMapper:
         """
         mortality_inflow_rates = self._reconstruct_mortality_inflow_rates()
 
-        hospital_inflow_recovery_rates = self._reconstruct_recovery_inflow_rates()
+        hospital_recovery_inflow_rates = self._reconstruct_hospital_recovery_inflow_rates()
+
         mortality_probs = {}
-        for key in hospital_inflow_recovery_rates:
+        for key in hospital_recovery_inflow_rates:
             mortality_probs[key] = \
-                mortality_inflow_rates[key] / (mortality_inflow_rates[key] + hospital_inflow_recovery_rates[key])
+                mortality_inflow_rates[key] / (mortality_inflow_rates[key] + hospital_recovery_inflow_rates[key])
 
         IFR = defaultdict(dict)
 
