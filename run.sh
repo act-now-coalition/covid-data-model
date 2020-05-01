@@ -61,7 +61,7 @@ execute_model() {
   cd "$(dirname "$0")"
 
   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
-  pyseir run-all --run-mode=can-before-hospitalization-new-params --output-dir="${API_OUTPUT_DIR}"
+  pyseir run-all --output-dir="${API_OUTPUT_DIR}"
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
