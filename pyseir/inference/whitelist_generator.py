@@ -27,7 +27,7 @@ class WhitelistGenerator:
     """
     def __init__(
             self,
-            total_cases=20,
+            total_cases=50,
             total_deaths=0,
             nonzero_case_datapoints=5,
             nonzero_death_datapoints=0):
