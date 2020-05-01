@@ -204,18 +204,6 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
 
-    @pydantic.validator('timeseries')
-    def check_timeseries_one_row_per_date(cls, rows, values):
-        dates_in_row = len(set(row.date for row in rows))
-        if len(rows) != dates_in_row:
-
-            raise ValueError(
-                "Number of rows does not match number of dates: "
-                f"{len(rows)} vs. {dates_in_row}"
-            )
-        return rows
-
-
 class CovidActNowCountiesAPI(pydantic.BaseModel):
     __root__: List[CovidActNowCountySummary] = pydantic.Field(...)
 
