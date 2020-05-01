@@ -1,7 +1,7 @@
 import pandas as pd
 import requests
 import logging
-
+import sentry_sdk
 from functools import lru_cache
 
 from libs.us_state_abbrev import US_STATE_ABBREV
@@ -85,6 +85,14 @@ def get_testing_timeseries_by_fips(fips):
     fips_testing_df = testing_df[
         testing_df[CDSDataset.Fields.FIPS] == fips
     ]
+    before = len(fips_testing_df)
+    fips_testing_df = fips_testing_df.set_index([CDSDataset.Fields.FIPS, CDSDataset.Fields.DATE])
+    fips_testing_df = fips_testing_df[~fips_testing_df.index.duplicated(keep='last')]
+    if before != len(fips_testing_df):
+        _logger.warning(
+            f"Testing DF contained duplicate rows for {fips}: {before} -> {len(fips_testing_df)}"
+        )
+        sentry_sdk.capture_message(f"Testing DF contained duplicate rows for {fips}")
     return fips_testing_df
 
 
