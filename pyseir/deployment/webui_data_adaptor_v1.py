@@ -159,7 +159,7 @@ class WebUIDataAdaptorV1:
                 output_model[schema.Rt] = 0
                 output_model[schema.Rt_ci90] = 0
 
-            output_model[schema.CURRENT_VENTILATED] = hosp_fraction * np.interp(t_list_downsampled, t_list, output_for_policy['HVent']['ci_50'])
+            output_model[schema.CURRENT_VENTILATED] = hosp_rescaling_factor * np.interp(t_list_downsampled, t_list, output_for_policy['HVent']['ci_50'])
             output_model[schema.POPULATION] = population
             # Average capacity.
             output_model[schema.ICU_BED_CAPACITY] = np.mean(output_for_policy['HICU']['capacity'])
