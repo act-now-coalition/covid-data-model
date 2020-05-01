@@ -79,7 +79,14 @@ class WebUIDataAdaptorV1:
         hosp_times, current_hosp, _ = load_data.load_hospitalization_data_by_state(
             state=self.state_abbreviation,
             t0=t0_simulation,
-            convert_cumulative_to_current=True)
+            convert_cumulative_to_current=True,
+            category='hospitalized')
+
+        _, current_icu, _ = load_data.load_hospitalization_data_by_state(
+            state=self.state_abbreviation,
+            t0=t0_simulation,
+            convert_cumulative_to_current=True,
+            category='icu')
 
         if len(fips) == 5:
             population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
@@ -94,8 +101,9 @@ class WebUIDataAdaptorV1:
             state_hosp_icu = load_data.get_compartment_value_on_date(fips=fips[:2], compartment='HICU', date=t_latest_hosp_data_date)
 
             if len(fips) == 5:
-                # Rescale the county level hospitalizations by the expected ratio of
-                # county / state hospitalizations from simulations.
+                # Rescale the county level hospitalizations by the expected
+                # ratio of county / state hospitalizations from simulations.
+                # We use ICU data if available too.
                 county_hosp = load_data.get_compartment_value_on_date(fips=fips, compartment='HGen',
                                                                  date=t_latest_hosp_data_date, ensemble_results=pyseir_outputs)
                 county_icu = load_data.get_compartment_value_on_date(fips=fips, compartment='HICU',
@@ -103,8 +111,14 @@ class WebUIDataAdaptorV1:
                 current_hosp *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
 
             hosp_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
+
+            if current_icu is not None:
+                icu_rescaling_factor = current_icu[-1] / state_hosp_icu
+            else:
+                icu_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
         else:
             hosp_rescaling_factor = 1.0
+            icu_rescaling_factor = 1.0
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
@@ -124,7 +138,7 @@ class WebUIDataAdaptorV1:
             output_model[schema.INFECTED] = np.interp(t_list_downsampled, t_list, np.add(output_for_policy['I']['ci_50'], output_for_policy['A']['ci_50'])) # Infected + Asympt.
             output_model[schema.INFECTED_A] = output_model[schema.INFECTED]
             output_model[schema.INFECTED_B] = hosp_rescaling_factor * np.interp(t_list_downsampled, t_list, output_for_policy['HGen']['ci_50']) # Hosp General
-            output_model[schema.INFECTED_C] = hosp_rescaling_factor * np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
+            output_model[schema.INFECTED_C] = icu_rescaling_factor * np.interp(t_list_downsampled, t_list, output_for_policy['HICU']['ci_50']) # Hosp ICU
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = np.add(output_model[schema.INFECTED_B], output_model[schema.INFECTED_C])
             output_model[schema.ALL_INFECTED] = output_model[schema.INFECTED]
@@ -140,7 +154,7 @@ class WebUIDataAdaptorV1:
                 output_model[schema.Rt] = 0
                 output_model[schema.Rt_ci90] = 0
 
-            output_model[schema.CURRENT_VENTILATED] = hosp_rescaling_factor * np.interp(t_list_downsampled, t_list, output_for_policy['HVent']['ci_50'])
+            output_model[schema.CURRENT_VENTILATED] = icu_rescaling_factor * np.interp(t_list_downsampled, t_list, output_for_policy['HVent']['ci_50'])
             output_model[schema.POPULATION] = population
             # Average capacity.
             output_model[schema.ICU_BED_CAPACITY] = np.mean(output_for_policy['HICU']['capacity'])
