@@ -67,7 +67,7 @@ class ModelFitter:
 
     DEFAULT_FIT_PARAMS = dict(
         R0=3.4, limit_R0=[2, 4.5], error_R0=.05,
-        log10_I_initial=1, limit_log10_I_initial=[.333, 3],
+        log10_I_initial=1, limit_log10_I_initial=[.333, 2],
         error_log10_I_initial=.33,
         t0=60, limit_t0=[10, 80], error_t0=2.0,
         eps=.3, limit_eps=[.20, 1.2], error_eps=.005,
@@ -170,7 +170,7 @@ class ModelFitter:
 
         if len(self.fips) == 5:
             # Setting
-            idx_enough_cases = np.argwhere(np.cumsum(self.observed_new_cases) >= 3)[0][0]
+            idx_enough_cases = np.argwhere(np.cumsum(self.observed_new_cases) >= 2)[0][0]
             initial_cases_guess = np.cumsum(self.observed_new_cases)[idx_enough_cases]
             t0_guess = list(self.times)[idx_enough_cases]
 
@@ -609,7 +609,7 @@ class ModelFitter:
                     color='k', alpha=0.5, fontsize=15)
 
         plt.ylim(*y_lim)
-        plt.xlim(data_dates[0], data_dates[-1] + timedelta(days=150))
+        plt.xlim(min(model_dates[0], data_dates[0]), data_dates[-1] + timedelta(days=150))
         plt.xticks(rotation=30, fontsize=14)
         plt.yticks(fontsize=14)
         plt.legend(loc=4, fontsize=14)
