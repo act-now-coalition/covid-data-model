@@ -194,9 +194,7 @@ class DemographicMapper:
         self.risk_modifier_by_age = risk_modifier_by_age
 
         # get parameters required to calculate covid measures
-        hospitalization_rates, mortality_rates = self._generate_hospitalization_mortality_rates()
-        self.hospitalization_rates = hospitalization_rates
-        self.mortality_rates = mortality_rates
+        self.hospitalization_rates, self.mortality_rates = self._generate_hospitalization_mortality_rates()
         self.prevalence = self._age_specific_prevalence()
 
         self.results = None
@@ -379,6 +377,14 @@ class DemographicMapper:
         ----------
         measure_unit: CovidMeasureUnit
             Unit of the covid measure.
+        hospitalization_rates: dict
+            Rates of hospitalization by age group, type of hospitalization,
+            and unit of rates, with type of hospitalization as primary key,
+            unit as secondary key, and array of corresponding time series of
+            rates as values.
+            For example, hospitalization_rates['HGen']['per_capita'] is the
+            time series of probability of being admitted to non-ICU per
+            capita among infected population (asymptomatic + symptomatic).
 
         Returns
         -------
