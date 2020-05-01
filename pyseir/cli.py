@@ -13,6 +13,8 @@ from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
 from pyseir.inference.whitelist_generator import WhitelistGenerator
+import pandas as pd
+
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
@@ -186,9 +188,13 @@ def _build_all_for_states(
         _generate_whitelist()
 
     # run states in paralell
-    all_county_fips = []
+    #all_county_fips = []
+    all_county_fips = {}
     for state in states:
-        all_county_fips += model_fitter.build_county_list(state)
+        # all_county_fips +=
+        state_county_fips = model_fitter.build_county_list(state)
+        county_fips_per_state = dict(zip(state_county_fips, [state]*len(state_county_fips)))
+        all_county_fips.update(county_fips_per_state)
 
     # do everything for just states in paralell
     states_only_func = partial(
@@ -216,9 +222,19 @@ def _build_all_for_states(
     #calculate model fit
     print(f"executing model for {len(all_county_fips)} counties")
     p = Pool()
-    p.map(model_fitter._execute_model_for_fips, all_county_fips)
+    fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
     p.close()
     p.join()
+
+    df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+    df['state'] = df.fips.replace(all_county_fips)
+    df['mle_model'] = [fit.mle_model for fit in fitters if fit]
+    df.index = df.fips
+
+    # import ipdb; ipdb.set_trace()
+
+    for name, state_df in df.groupby('state'):
+        model_fitter._persist_results_per_state(state_df)
 
     # _run_mle_fits(state)
 
@@ -226,7 +242,7 @@ def _build_all_for_states(
     print(f"running ensemble for {len(all_county_fips)} counties")
     p = Pool()
     ensemble_func = partial(_run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
-    p.map(ensemble_func, all_county_fips)
+    p.map(ensemble_func, all_county_fips.keys())
     p.close()
     p.join()
 
@@ -246,7 +262,7 @@ def _build_all_for_states(
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(all_fips=all_county_fips)
+        web_ui_mapper.generate_state(all_fips=all_county_fips.keys())
         # mapper_list += build_function_with_fips
         #web_ui_mapper.build_own_fips(all_county_fips)
         #web_ui_mapper.execute_own_fips_async(p)
