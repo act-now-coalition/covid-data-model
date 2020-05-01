@@ -170,7 +170,7 @@ class EnsembleRunner:
 
     def _load_model_for_fips(self, scenario='inferred'):
         """
-        Try to load a model for the localle, else load the state level model
+        Try to load a model for the locale, else load the state level model
         and update parameters for the county.
         """
         artifact_path = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL)
