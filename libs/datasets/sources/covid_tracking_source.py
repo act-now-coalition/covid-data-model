@@ -64,9 +64,12 @@ class CovidTrackingDataSource(data_source.DataSource):
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
         TimeseriesDataset.Fields.CURRENT_HOSPITALIZED: Fields.CURRENT_HOSPITALIZED,
         TimeseriesDataset.Fields.CURRENT_ICU: Fields.IN_ICU_CURRENTLY,
+        TimeseriesDataset.Fields.CURRENT_VENTILATED: Fields.ON_VENTILATOR_CURRENTLY,
         TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED: Fields.TOTAL_HOSPITALIZED,
         TimeseriesDataset.Fields.CUMULATIVE_ICU: Fields.TOTAL_IN_ICU,
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+        TimeseriesDataset.Fields.POSITIVE_TESTS: Fields.POSITIVE_TESTS,
+        TimeseriesDataset.Fields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS
     }
 
     TESTS_ONLY_FIELDS = [
@@ -130,60 +133,6 @@ class CovidTrackingDataSource(data_source.DataSource):
             == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
         ).all()
 
-        nevada_data = cls._load_nevada_override_data()
-        data = cls._add_nevada_data(data, nevada_data)
-
         # TODO implement assertion to check for shift, as sliced by geo
         # df['totalTestResults'] - df['totalTestResultsIncrease']  ==  df['totalTestResults'].shift(-1)
         return data
-
-    @classmethod
-    def _load_nevada_override_data(cls):
-        from libs.datasets import NevadaHospitalAssociationData
-
-        data = NevadaHospitalAssociationData.local().timeseries(fill_na=False).data
-        columns_to_include = []
-        for timeseries_column, ct_column in cls.TIMESERIES_FIELD_MAP.items():
-            if timeseries_column in data.columns:
-                columns_to_include.append(ct_column)
-
-        data = data.rename(cls.TIMESERIES_FIELD_MAP, axis=1)
-        return data[columns_to_include]
-
-    @classmethod
-    def _add_nevada_data(cls, data, nevada_data):
-        """Adds nevada data, replacing any state or county level values that match index.
-
-        Args:
-            data: Covid tracking data
-            nevada_data: Nevada specific override data.
-
-        Returns: Updated dataframe with
-        """
-        # NOTE(chris): This logic will most likely work as we have more hospitalization data
-        # numbers that will override covid tracking data.
-        matching_index_group = [
-            cls.Fields.DATE,
-            cls.Fields.AGGREGATE_LEVEL,
-            cls.Fields.COUNTRY,
-            cls.Fields.STATE,
-            cls.Fields.FIPS,
-        ]
-        data = data.set_index(matching_index_group)
-        nevada_data = nevada_data.set_index(matching_index_group)
-        # Sort indices so that we have chunks of equal length in the
-        # correct order so that we can splice in values from nevada data.
-        data = data.sort_index()
-        nevada_data = nevada_data.sort_index()
-        data_in_nevada = data.index.isin(nevada_data.index)
-        nevada_in_data = nevada_data.index.isin(data.index)
-        if not sum(data_in_nevada) == sum(nevada_in_data):
-            raise ValueError("Number of rows should be the for data to replace")
-
-        # Fill in values with data that matches index in nevada data.
-        data.loc[data_in_nevada, nevada_data.columns] = nevada_data.loc[nevada_in_data, :]
-        # Combine updated data with rows not present in covid tracking data.
-        return pd.concat([
-            data,
-            nevada_data[~nevada_in_data]
-        ]).reset_index()

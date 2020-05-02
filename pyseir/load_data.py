@@ -330,7 +330,7 @@ def load_new_case_data_by_fips(fips, t0):
 
 
 def get_hospitalization_data():
-    data = CovidTrackingDataSource.local().timeseries(fill_na=False).data
+    data = CovidTrackingDataSource.local().timeseries().data
     # Since we're using this data for hospitalized data only, only returning
     # values with hospitalization data.  I think as the use cases of this data source
     # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
@@ -417,7 +417,7 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
     """
     abbr = us.states.lookup(state).abbr
     hospitalization_data = (
-        CovidTrackingDataSource.local().timeseries(fill_na=False)
+        CovidTrackingDataSource.local().timeseries()
         .get_subset(AggregationLevel.STATE, country='USA', state=abbr)
         .get_data(country='USA', state=abbr)
     )

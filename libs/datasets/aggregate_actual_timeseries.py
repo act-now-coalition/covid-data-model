@@ -5,8 +5,10 @@ from libs.datasets import dataset_utils
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.location_metadata import MetadataDataset
 from libs.datasets.sources.jhu_dataset import JHUDataset
+from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
+from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 
 
@@ -22,31 +24,44 @@ class CombinedLatestValues(object):
         Fields.POPULATION: FIPSPopulation,
         Fields.DEATHS: JHUDataset,
         Fields.CASES: JHUDataset,
-        Fields.CURRENT_ICU: CovidTrackingDataSource,
-        Fields.CURRENT_HOSPITALIZED: CovidTrackingDataSource,
+        Fields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
+        Fields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData],
+        Fields.POSITIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
+        Fields.NEGATIVE_TESTS: [CDSDataset, CovidTrackingDataSource]
     }
 
     @classmethod
     def initialize(cls) -> MetadataDataset:
         # Some initial data frame
         data = pd.DataFrame({})
-        classes = set(cls.DATA_SOURCE_MAP.values())
         index_fields = [
             cls.Fields.AGGREGATE_LEVEL,
             cls.Fields.COUNTRY,
             cls.Fields.STATE,
             cls.Fields.FIPS,
         ]
-        loaded_data_with_cls = [
-            (source_cls.local().metadata(), source_cls) for source_cls in classes
-        ]
-        for data_source, source_cls in loaded_data_with_cls:
-            columns_to_fill = [
-                key for key, value in cls.DATA_SOURCE_MAP.items() if value == source_cls
-            ]
-            data = dataset_utils.fill_fields_with_data_source(
-                data, data_source.data, index_fields, columns_to_fill
-            )
+        loaded_data_sources = {}
+
+        for key, data_source_classes in cls.DATA_SOURCE_MAP.items():
+
+            if not isinstance(data_source_classes, list):
+                data_source_classes = [data_source_classes]
+
+            for data_source_cls in data_source_classes:
+                # only load data source once
+                if data_source_cls not in loaded_data_sources:
+                    loaded_data_sources[data_source_cls] = data_source_cls.local().metadata()
+
+        for field, data_source_classes in cls.DATA_SOURCE_MAP.items():
+            columns_to_fill = [field]
+            if not isinstance(data_source_classes, list):
+                data_source_classes = [data_source_classes]
+
+            for data_source_cls in data_source_classes:
+                data_source = loaded_data_sources[data_source_cls]
+                data = dataset_utils.fill_fields_with_data_source(
+                    data, data_source.data, index_fields, columns_to_fill
+                )
 
         return MetadataDataset(data)
 
@@ -55,20 +70,28 @@ class AggregateActualTimeseries(object):
 
     Fields = TimeseriesDataset.Fields
 
+    # Data source map takes field from data source specified.
+    # If data sources is a list, will start with left most data source and overwrite with
+    # values from other datasets.
+    # so: Fields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData]
+    # will load all icu data from covid tracking and then overwrite matching fiels in NHA data.
     DATA_SOURCE_MAP = {
         Fields.CASES: JHUDataset,
         Fields.DEATHS: JHUDataset,
-        Fields.CURRENT_HOSPITALIZED: CovidTrackingDataSource,
+        Fields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData],
+        Fields.CURRENT_VENTILATED: [CovidTrackingDataSource, NevadaHospitalAssociationData],
         Fields.CUMULATIVE_ICU: CovidTrackingDataSource,
-        Fields.CURRENT_ICU: CovidTrackingDataSource,
+        Fields.CUMULATIVE_HOSPITALIZED: CovidTrackingDataSource,
+        Fields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
+        Fields.POSITIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
+        Fields.NEGATIVE_TESTS: [CDSDataset, CovidTrackingDataSource]
     }
 
-    @classmethod
-    def initialize(cls) -> TimeseriesDataset:
-        # Some initial data frame
 
+    @classmethod
+    def initialize(cls) -> MetadataDataset:
+        # Some initial data frame
         data = pd.DataFrame({})
-        classes = set(cls.DATA_SOURCE_MAP.values())
         index_fields = [
             cls.Fields.DATE,
             cls.Fields.AGGREGATE_LEVEL,
@@ -76,17 +99,27 @@ class AggregateActualTimeseries(object):
             cls.Fields.STATE,
             cls.Fields.FIPS,
         ]
-        loaded_data_with_cls = [
-            (source_cls.local().timeseries(), source_cls)
-            for source_cls in classes
-        ]
-        for data_source, source_cls in loaded_data_with_cls:
-            columns_to_fill = [
-                key for key, value in cls.DATA_SOURCE_MAP.items() if value == source_cls
-            ]
+        loaded_data_sources = {}
 
-            data = dataset_utils.fill_fields_with_data_source(
-                data, data_source.data, index_fields, columns_to_fill
-            )
+        for key, data_source_classes in cls.DATA_SOURCE_MAP.items():
+
+            if not isinstance(data_source_classes, list):
+                data_source_classes = [data_source_classes]
+
+            for data_source_cls in data_source_classes:
+                # only load data source once
+                if data_source_cls not in loaded_data_sources:
+                    loaded_data_sources[data_source_cls] = data_source_cls.local().timeseries()
+
+        for field, data_source_classes in cls.DATA_SOURCE_MAP.items():
+            columns_to_fill = [field]
+            if not isinstance(data_source_classes, list):
+                data_source_classes = [data_source_classes]
+
+            for data_source_cls in data_source_classes:
+                data_source = loaded_data_sources[data_source_cls]
+                data = dataset_utils.fill_fields_with_data_source(
+                    data, data_source.data, index_fields, columns_to_fill
+                )
 
         return TimeseriesDataset(data)

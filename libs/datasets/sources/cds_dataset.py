@@ -46,6 +46,8 @@ class CDSDataset(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         FIPS = "fips"
 
+        NEGATIVE_TESTS = "negative_tests"
+
     TIMESERIES_FIELD_MAP = {
         TimeseriesDataset.Fields.DATE: Fields.DATE,
         TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
@@ -53,6 +55,8 @@ class CDSDataset(data_source.DataSource):
         TimeseriesDataset.Fields.FIPS: Fields.FIPS,
         TimeseriesDataset.Fields.CASES: Fields.CASES,
         TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+        TimeseriesDataset.Fields.POSITIVE_TESTS: Fields.CASES,
+        TimeseriesDataset.Fields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS,
     }
 
     POPULATION_FIELD_MAP = {
@@ -130,6 +134,9 @@ class CDSDataset(data_source.DataSource):
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_fips_using_county(data, fips_data)
+
+        # ADD Negative tests
+        data[cls.Fields.NEGATIVE_TESTS] = data[cls.Fields.TESTED] - data[cls.Fields.CASES]
 
         # put the state column back
         data['state'] = data['state_tmp']

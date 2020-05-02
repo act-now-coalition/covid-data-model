@@ -34,6 +34,9 @@ class MetadataDataset(object):
         CURRENT_ICU = "current_icu"
         CURRENT_VENTILATED = "current_ventilated"
 
+        POSITIVE_TESTS = "positive_tests"
+        NEGATIVE_TESTS = "negative_tests"
+
         # Combined beds are the max of staffed and licensed beds.
         # The need for this may be dataset specific, but there are cases in the
         # DH Beds dataset where a source only has either staffed or licensed.

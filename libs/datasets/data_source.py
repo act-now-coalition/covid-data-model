@@ -76,11 +76,8 @@ class DataSource(object):
             return MetadataDataset(data)
         return MetadataDataset.from_source(self)
 
-    def timeseries(self, fill_na: bool = True) -> "TimeseriesDataset":
+    def timeseries(self) -> "TimeseriesDataset":
         """Builds generic timeseries dataset.
-
-        Args:
-            fill_na: If True, fills all NA values with 0.
         """
 
-        return TimeseriesDataset.from_source(self, fill_na=fill_na)
+        return TimeseriesDataset.from_source(self)

@@ -7,7 +7,7 @@ from libs.datasets.dataset_utils import AggregationLevel
 
 
 class TimeseriesDataset(object):
-    """Represents timeseries Case data.
+    """Represents timeseries dataset.
 
     To make a data source compatible with the timeseries, it must have the required
     fields in the Fields class below + metrics. The other fields are generated
@@ -22,23 +22,24 @@ class TimeseriesDataset(object):
         FIPS = "fips"
         AGGREGATE_LEVEL = "aggregate_level"
 
+        # Generated in from_source
+        COUNTY = "county"
+        SOURCE = "source"
+
         # Target metrics
         CASES = "cases"
         DEATHS = "deaths"
         RECOVERED = "recovered"
-        CURRENT_HOSPITALIZED = "current_hospitalized"
         CUMULATIVE_HOSPITALIZED = "cumulative_hospitalized"
         CUMULATIVE_ICU = "cumulative_icu"
 
+        POSITIVE_TESTS = "positive_tests"
+        NEGATIVE_TESTS = "negative_tests"
+
         # Current values
         CURRENT_ICU = "current_icu"
+        CURRENT_HOSPITALIZED = "current_hospitalized"
         CURRENT_VENTILATED = "current_ventilated"
-
-        # Generated in from_source
-        COUNTY = "county"
-        SOURCE = "source"
-        IS_SYNTHETIC = "is_synthetic"
-        GENERATED = "generated"
 
         @classmethod
         def metrics(cls) -> List[str]:
@@ -160,7 +161,7 @@ class TimeseriesDataset(object):
 
     @classmethod
     def from_source(
-        cls, source: "DataSource", fill_missing_state: bool = True, fill_na: bool = True
+        cls, source: "DataSource", fill_missing_state: bool = True
     ) -> "Timeseries":
         """Loads data from a specific datasource.
 
@@ -168,7 +169,6 @@ class TimeseriesDataset(object):
             source: DataSource to standardize for timeseries dataset
             fill_missing_state: If True, backfills missing state data by
                 calculating county level aggregates.
-            fill_na: If True, fills in all NaN values for metrics columns.
 
         Returns: Timeseries object.
         """
@@ -182,7 +182,6 @@ class TimeseriesDataset(object):
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
-        data[cls.Fields.GENERATED] = False
 
         group = [
             cls.Fields.DATE,
@@ -190,7 +189,6 @@ class TimeseriesDataset(object):
             cls.Fields.COUNTRY,
             cls.Fields.AGGREGATE_LEVEL,
             cls.Fields.STATE,
-            cls.Fields.GENERATED,
         ]
         data = custom_aggregations.update_with_combined_new_york_counties(
             data, group, are_boroughs_zero=source.HAS_AGGREGATED_NYC_BOROUGH
@@ -209,17 +207,7 @@ class TimeseriesDataset(object):
                 AggregationLevel.COUNTY,
                 AggregationLevel.STATE,
             ).reset_index()
-            non_matching[cls.Fields.GENERATED] = True
             data = pd.concat([data, non_matching])
-
-        if fill_na:
-            # Filtering out metric columns that don't exist in the dataset.
-            # It might be that we all timeseries datasets to have all of the metric
-            # columns. If so, initialization of the missing columns should come earlier.
-            metric_columns = [
-                field for field in cls.Fields.metrics() if field in data.columns
-            ]
-            data[metric_columns] = data[metric_columns].fillna(0.0)
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
