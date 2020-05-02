@@ -25,6 +25,8 @@ jobs:
       with:
         repository: covid-projections/covid-data-model
         path: covid-data-model
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v2
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
