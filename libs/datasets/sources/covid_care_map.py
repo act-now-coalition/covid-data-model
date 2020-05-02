@@ -2,6 +2,7 @@ import logging
 from libs import enums
 import pandas as pd
 from libs.datasets.beds import BedsDataset
+from libs.datasets.location_metadata import MetadataDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
@@ -39,6 +40,18 @@ class CovidCareMapBeds(data_source.DataSource):
         BedsDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
         BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE: Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
         BedsDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE: Fields.ICU_TYPICAL_OCCUPANCY_RATE,
+    }
+
+    METADATA_FIELD_MAP = {
+        MetadataDataset.Fields.COUNTRY: Fields.COUNTRY,
+        MetadataDataset.Fields.STATE: Fields.STATE,
+        MetadataDataset.Fields.FIPS: Fields.FIPS,
+        MetadataDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+        MetadataDataset.Fields.STAFFED_BEDS: Fields.STAFFED_ALL_BEDS,
+        MetadataDataset.Fields.LICENSED_BEDS: Fields.LICENSED_ALL_BEDS,
+        MetadataDataset.Fields.ICU_BEDS: Fields.STAFFED_ICU_BEDS,
+        MetadataDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE: Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+        MetadataDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE: Fields.ICU_TYPICAL_OCCUPANCY_RATE,
     }
 
     def __init__(self, data):

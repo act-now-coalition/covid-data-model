@@ -86,8 +86,13 @@ class TimeseriesDataset(object):
         values = set(data.index.to_list())
         return sorted(values)
 
-    def latest_values(self, aggregation_level):
+    def latest_values(self, aggregation_level=None):
         """Gets the most recent values for index in array."""
+        if not aggregation_level:
+            county = self.latest_values(aggregation_level=AggregationLevel.COUNTY)
+            state = self.latest_values(aggregation_level=AggregationLevel.STATE)
+            return pd.concat([county, state])
+
         if aggregation_level == AggregationLevel.COUNTY:
             group = [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS]
         if aggregation_level == AggregationLevel.STATE:
