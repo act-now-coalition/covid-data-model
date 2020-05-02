@@ -13,6 +13,15 @@ class Intervention(enum.Enum):
     OBSERVED_INTERVENTION = 2 # given the previous pattern, how do we predict going forward
 
     @classmethod
+    def inferred_interventions(cls):
+        return [
+            Intervention.NO_INTERVENTION,
+            Intervention.STRONG_INTERVENTION,
+            Intervention.WEAK_INTERVENTION,
+            Intervention.SELECTED_INTERVENTION,
+        ]
+
+    @classmethod
     def county_supported_interventions(cls):
         return [
             Intervention.NO_INTERVENTION,

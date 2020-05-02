@@ -76,7 +76,7 @@ def validate_counties_df(key, counties_df, intervention):
     expected_missing = EXPECTED_MISSING_STATES.union(
         EXPECTED_MISSING_STATES_FROM_COUNTES
     )
-    is_observed = intervention is Intervention.OBSERVED_INTERVENTION
+    is_observed = intervention in Intervention.inferred_interventions()
     if is_observed:
         expected_missing = expected_missing.union(
             EXPECTED_MISSING_STATES_FROM_COUNTIES_OBSERVED_INTERVENTION
