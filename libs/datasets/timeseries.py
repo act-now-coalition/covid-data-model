@@ -29,6 +29,7 @@ class TimeseriesDataset(object):
         RECOVERED = "recovered"
         CURRENT_HOSPITALIZED = "current_hospitalized"
         CUMULATIVE_HOSPITALIZED = "cumulative_hospitalized"
+        CUMULATIVE_ICU = "cumulative_icu"
 
         # Current values
         CURRENT_ICU = "current_icu"

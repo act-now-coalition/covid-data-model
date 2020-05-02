@@ -9,6 +9,7 @@ import io
 import us
 import zipfile
 import json
+from datetime import datetime
 from libs.datasets import NYTimesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -16,9 +17,6 @@ from libs.datasets import CovidTrackingDataSource
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from functools import lru_cache
 from enum import Enum
-
-
-FAULTY_HOSPITAL_DATA_STATES = ('IN',)
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
@@ -106,23 +104,6 @@ def cache_county_case_data():
     county_case_data[['cases', 'deaths']] = county_case_data[['cases', 'deaths']].astype(int)
     county_case_data = county_case_data[county_case_data['fips'].notnull()]
     county_case_data.to_pickle(os.path.join(DATA_DIR, 'covid_case_timeseries.pkl'))
-
-
-def cache_hospital_beds():
-    """
-    Pulled from "Definitive"
-    See: https://services7.arcgis.com/LXCny1HyhQCUSueu/arcgis/rest/services/Definitive_Healthcare_Hospitals_Beds_Hospitals_Only/FeatureServer/0
-    """
-    logging.info('Downloading ICU capacity data.')
-    url = 'http://opendata.arcgis.com/datasets/f3f76281647f4fbb8a0d20ef13b650ca_0.geojson'
-    tmp_file = urllib.request.urlretrieve(url)[0]
-
-    with open(tmp_file) as f:
-        vals = json.load(f)
-    df = pd.DataFrame([val['properties'] for val in vals['features']])
-    df.columns = [col.lower() for col in df.columns]
-    df = df.drop(['objectid', 'state_fips', 'cnty_fips'], axis=1)
-    df.to_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
 def cache_mobility_data():
@@ -362,7 +343,7 @@ def get_hospitalization_data():
 
 
 @lru_cache(maxsize=32)
-def load_hospitalization_data(fips, t0):
+def load_hospitalization_data(fips, t0, category='hospitalized'):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
@@ -374,6 +355,8 @@ def load_hospitalization_data(fips, t0):
         County fips to lookup.
     t0: datetime
         Datetime to offset by.
+    category: str
+        'icu' or 'hospitalized'
 
     Returns
     -------
@@ -391,16 +374,16 @@ def load_hospitalization_data(fips, t0):
     if len(hospitalization_data) == 0:
         return None, None, None
 
-    if (hospitalization_data['current_hospitalized'] > 0).any():
-        hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
+    if (hospitalization_data[f'current_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'current_{category}'].notnull()]
         relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         return relative_days, \
-               hospitalization_data['current_hospitalized'].values.clip(min=0),\
+               hospitalization_data[f'current_{category}'].values.clip(min=0),\
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
+    elif (hospitalization_data[f'cumulative_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'cumulative_{category}'].notnull()]
         relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+        cumulative = hospitalization_data[f'cumulative_{category}'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i+1]:
@@ -411,7 +394,7 @@ def load_hospitalization_data(fips, t0):
 
 
 @lru_cache(maxsize=32)
-def load_hospitalization_data_by_state(state, t0):
+def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=False, category='hospitalized'):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
@@ -423,6 +406,11 @@ def load_hospitalization_data_by_state(state, t0):
         State to lookup.
     t0: datetime
         Datetime to offset by.
+    convert_cumulative_to_current: bool
+        If True, and only cumulative hospitalizations are available, convert the
+        current hospitalizations to the current value.
+    category: str
+        'icu' for just ICU or 'hospitalized' for all ICU + Acute.
 
     Returns
     -------
@@ -440,24 +428,52 @@ def load_hospitalization_data_by_state(state, t0):
         .get_data(country='USA', state=abbr)
     )
 
-    if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
+    categories = ['icu', 'hospitalized']
+    if category not in categories:
+        raise ValueError(f'Hospitalization category {category} is not in {categories}')
+
+    if len(hospitalization_data) == 0:
         return None, None, None
 
-    if (hospitalization_data['current_hospitalized'] > 0).any():
-        hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
+    if (hospitalization_data[f'current_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'current_{category}'].notnull()]
         times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         return times_new, \
-               hospitalization_data['current_hospitalized'].values.clip(min=0), \
+               hospitalization_data[f'current_{category}'].values.clip(min=0), \
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
+    elif (hospitalization_data[f'cumulative_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'cumulative_{category}'].notnull()]
         times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+        cumulative = hospitalization_data[f'cumulative_{category}'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
-        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+
+        if convert_cumulative_to_current:
+            # Must be here to avoid circular import. This is required to convert
+            # cumulative hosps to current hosps. We also just use a dummy fips and t_list.
+            from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
+            params = ParameterEnsembleGenerator(fips='06', t_list=[], N_samples=1).get_average_seir_parameters()
+            if category == 'hospitalized':
+                average_length_of_stay = (
+                      params['hospitalization_rate_general'] * params['hospitalization_length_of_stay_general']
+                    + params['hospitalization_rate_icu'] * (1 - params['fraction_icu_requiring_ventilator']) * params['hospitalization_length_of_stay_icu']
+                    + params['hospitalization_rate_icu'] * params['fraction_icu_requiring_ventilator'] * params['hospitalization_length_of_stay_icu_and_ventilator']
+                ) / (params['hospitalization_rate_general'] + params['hospitalization_rate_icu'])
+            else:
+                average_length_of_stay = (
+                    (1 - params['fraction_icu_requiring_ventilator']) * params['hospitalization_length_of_stay_icu']
+                    + params['fraction_icu_requiring_ventilator'] * params['hospitalization_length_of_stay_icu_and_ventilator'])
+
+            # Now compute a cumulative sum, but at each day, subtract the discharges from the previous count.
+            new_hospitalizations = np.append([0], np.diff(cumulative))
+            current = [0]
+            for i, new_hosps in enumerate(new_hospitalizations[1:]):
+                current.append(current[i] + new_hosps - current[i] / average_length_of_stay)
+            return times_new, current, HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+        else:
+            return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
     else:
         return None, None, None
 
@@ -493,18 +509,6 @@ def load_new_case_data_by_state(state, t0):
     keep_idx = np.array([i for i in range(len(times_new)) if i not in list(filter_idx)])
     times_new = [int(list(times_new)[idx]) for idx in keep_idx]
     return times_new, np.array(observed_new_cases[keep_idx]).clip(min=0), observed_new_deaths.clip(min=0)[keep_idx]
-
-
-def load_hospital_data():
-    """
-    Return hospital level data. Note that this must be aggregated by stcountyfp
-    to obtain county level estimates.
-
-    Returns
-    -------
-    : pd.DataFrame
-    """
-    return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
 @lru_cache(maxsize=1)
@@ -565,9 +569,37 @@ def cache_all_data():
     Download all datasets locally.
     """
     cache_county_case_data()
-    # cache_hospital_beds()
     cache_mobility_data()
     cache_public_implementations_data()
+
+
+def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None):
+    """
+    Return the value of compartment at a specified date.
+
+    Parameters
+    ----------
+    fips: str
+        State or County fips.
+    compartment: str
+        Name of the compartment to retrieve.
+    date: datetime
+        Date to retrieve values for.
+    ensemble_results: NoneType or dict
+        Pass in the pre-loaded simulation data to save time, else load it.
+
+    Returns
+    -------
+    value: float
+        Value of compartment on a given date.
+    """
+    if ensemble_results is None:
+        ensemble_results = load_ensemble_results(fips)
+    # Circular import avoidance
+    from pyseir.inference.fit_results import load_inference_result
+    simulation_start_date = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
+    date_idx = int((date - simulation_start_date).days)
+    return ensemble_results['suppression_policy__inferred'][compartment]['ci_50'][date_idx]
 
 
 if __name__ == '__main__':

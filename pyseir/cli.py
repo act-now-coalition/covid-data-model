@@ -32,7 +32,7 @@ root.addHandler(handler)
 nyt_dataset = None
 cds_dataset = None
 
-DEFAULT_RUN_MODE = "can-before-hospitalization-new-params"
+DEFAULT_RUN_MODE = "can-inference-derived"
 ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
 
 
