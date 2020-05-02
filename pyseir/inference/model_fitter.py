@@ -757,31 +757,3 @@ def run_state(state, states_only=False):
                 if fitter:
                     with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
                         pickle.dump(fitter.mle_model, f)
-
-
-def run_new_counties(state, states_only=False):
-    """
-    """
-    state_obj = us.states.lookup(state)
-    logging.info(f'Running MLE fitter for county {state_obj.name}')
-
-    model_fitter = ModelFitter.run_for_fips(fips)
-
-    # Run the counties.
-    if not states_only:
-        df_whitelist = load_data.load_whitelist()
-        df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-
-        all_fips = df_whitelist[df_whitelist['state'].str.lower() == state_obj.name.lower()].fips.values
-
-        if len(all_fips) > 0:
-            p = Pool()
-            fitters = p.map(_execute_model_for_fips, all_fips)
-            p.close()
-
-            for fips, fitter in zip(all_fips, fitters):
-                if fitter:
-                    with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
-                        pickle.dump(fitter.mle_model, f)
-
-
