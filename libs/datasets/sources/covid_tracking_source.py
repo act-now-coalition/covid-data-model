@@ -86,7 +86,11 @@ class CovidTrackingDataSource(data_source.DataSource):
     ]
 
     def __init__(self, input_path):
-        data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE_CHECKED])
+        data = pd.read_csv(
+            input_path,
+            parse_dates=[self.Fields.DATE_CHECKED],
+            dtype={self.Fields.FIPS: str}
+        )
         data = self.standardize_data(data)
         super().__init__(data)
 
@@ -112,13 +116,6 @@ class CovidTrackingDataSource(data_source.DataSource):
         }
 
         data = data.astype(dtypes)
-
-        # Covid Tracking source has the state level fips, however none of the other
-        # data sources have state level fips, and the generic code may implicitly assume
-        # it doesn't.  I would like to add a state level fips (maybe for example a state fips code
-        # of 45 being 45000), but it's not there, so in the meantime we're setting fips to null so
-        # as not to confuse downstream data.
-        data[cls.Fields.FIPS] = None
 
         # must stay true: positive + negative  ==  total
         assert (
@@ -180,13 +177,11 @@ class CovidTrackingDataSource(data_source.DataSource):
         nevada_data = nevada_data.sort_index()
         data_in_nevada = data.index.isin(nevada_data.index)
         nevada_in_data = nevada_data.index.isin(data.index)
-
         if not sum(data_in_nevada) == sum(nevada_in_data):
             raise ValueError("Number of rows should be the for data to replace")
 
         # Fill in values with data that matches index in nevada data.
         data.loc[data_in_nevada, nevada_data.columns] = nevada_data.loc[nevada_in_data, :]
-
         # Combine updated data with rows not present in covid tracking data.
         return pd.concat([
             data,

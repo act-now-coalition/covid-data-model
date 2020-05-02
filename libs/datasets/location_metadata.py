@@ -1,5 +1,6 @@
 from typing import Type, List
 
+from libs import us_state_abbrev
 import pandas as pd
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import dataset_utils
@@ -89,6 +90,11 @@ class MetadataDataset(object):
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
+
+        # Add state fips
+        is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
+        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
+        data.loc[is_state, cls.Fields.FIPS] = state_fips
 
         return cls(data)
 

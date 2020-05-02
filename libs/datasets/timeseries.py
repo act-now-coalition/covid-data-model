@@ -1,7 +1,6 @@
-from typing import List, Iterator
-import enum
+from typing import List
 import pandas as pd
-import datetime
+from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
 from libs.datasets.dataset_utils import AggregationLevel
@@ -86,8 +85,15 @@ class TimeseriesDataset(object):
         values = set(data.index.to_list())
         return sorted(values)
 
-    def latest_values(self, aggregation_level=None):
-        """Gets the most recent values for index in array."""
+    def latest_values(self, aggregation_level=None) -> pd.DataFrame:
+        """Gets the most recent values.
+
+        Args:
+            aggregation_level: If specified, only gets latest values for that aggregation,
+                otherwise returns values for entire aggretation.
+
+        Return: DataFrame
+        """
         if not aggregation_level:
             county = self.latest_values(aggregation_level=AggregationLevel.COUNTY)
             state = self.latest_values(aggregation_level=AggregationLevel.STATE)
@@ -217,6 +223,9 @@ class TimeseriesDataset(object):
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
+        is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
+        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
+        data.loc[is_state, cls.Fields.FIPS] = state_fips
 
         # Choosing to sort by date
         data = data.sort_values(cls.Fields.DATE)
