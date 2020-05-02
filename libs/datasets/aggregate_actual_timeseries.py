@@ -131,7 +131,7 @@ class AggregateActualTimeseries(object):
         Fields.DEATHS: JHUDataset,
         Fields.CURRENT_HOSPITALIZED: CovidTrackingDataSource,
         Fields.CUMULATIVE_ICU: CovidTrackingDataSource,
-        # Fields.CUMULATIVE_ICU:
+        Fields.CURRENT_ICU: CovidTrackingDataSource,
     }
 
     @classmethod
