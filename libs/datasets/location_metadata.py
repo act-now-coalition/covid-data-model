@@ -101,6 +101,29 @@ class MetadataDataset(object):
 
         return cls(data)
 
+    def get_subset(
+        self,
+        aggregation_level,
+        country=None,
+        state=None,
+        county=None,
+        fips=None,
+    ) -> "MetadataDataset":
+        data = self.data
+
+        if aggregation_level:
+            data = data[data.aggregate_level == aggregation_level.value]
+        if country:
+            data = data[data.country == country]
+        if state:
+            data = data[data.state == state]
+        if county:
+            data = data[data.county == county]
+        if fips:
+            data = data[data.fips == fips]
+
+        return self.__class__(data)
+
     @classmethod
     def _aggregate_new_york_data(cls, data):
         # When grouping nyc data, we don't want to count the generated field
