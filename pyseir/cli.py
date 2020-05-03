@@ -197,6 +197,7 @@ def _build_all_for_states(
         all_county_fips.update(county_fips_per_state)
 
     # do everything for just states in paralell
+    p = Pool()
     states_only_func = partial(
         _state_only_pipeline,
         run_mode=run_mode,
@@ -205,24 +206,15 @@ def _build_all_for_states(
         states_only=True,
         output_dir=output_dir,
     )
-    p = Pool()
     p.map(states_only_func, states)
-    p.close()
-    p.join()
 
     # calculate calculate county inference
     # for fips in all_county_fips.keys():
-    p = Pool()
     p.map(infer_rt_module.run_county, all_county_fips.keys())
-    p.close()
-    p.join()
 
     #calculate model fit
     root.info(f"executing model for {len(all_county_fips)} counties")
-    p = Pool()
     fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
-    p.close()
-    p.join()
 
     df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
     df['state'] = df.fips.replace(all_county_fips)
@@ -230,18 +222,12 @@ def _build_all_for_states(
     df.index = df.fips
 
     state_dfs = [state_df for name, state_df in df.groupby('state')]
-    p = Pool()
     p.map(model_fitter._persist_results_per_state, state_dfs)
-    p.close()
-    p.join()
 
     # calculate ensemble
     root.info(f"running ensemble for {len(all_county_fips)} counties")
     ensemble_func = partial(_run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
-    p = Pool()
     p.map(ensemble_func, all_county_fips.keys())
-    p.close()
-    p.join()
 
     #output it all
     output_interval_days = int(output_interval_days)
@@ -257,13 +243,13 @@ def _build_all_for_states(
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(all_fips=all_county_fips.keys())
+        # web_ui_mapper.generate_state(all_fips=all_county_fips.keys())
         # mapper_list += build_function_with_fips
-        #web_ui_mapper.build_own_fips(all_county_fips)
-        #web_ui_mapper.execute_own_fips_async(p)
+        web_ui_mapper.build_own_fips(all_county_fips)
+        web_ui_mapper.execute_own_fips_async(p)
 
-    # p.close()
-    # p.join()
+    p.close()
+    p.join()
 
     return
 
