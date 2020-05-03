@@ -229,13 +229,10 @@ def _build_all_for_states(
     df['mle_model'] = [fit.mle_model for fit in fitters if fit]
     df.index = df.fips
 
-    # import ipdb; ipdb.set_trace()
-
     for name, state_df in df.groupby('state'):
         model_fitter._persist_results_per_state(state_df)
 
     # _run_mle_fits(state)
-
     # calculate ensemble
     print(f"running ensemble for {len(all_county_fips)} counties")
     p = Pool()
@@ -243,7 +240,6 @@ def _build_all_for_states(
     p.map(ensemble_func, all_county_fips.keys())
     p.close()
     p.join()
-
 
     #output it all
     output_interval_days = int(output_interval_days)

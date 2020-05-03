@@ -689,7 +689,7 @@ def _execute_model_for_fips(fips):
 def _persist_results_per_state(state_df):
         county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
         data = state_df.drop(['state', 'mle_model'], axis=1)
-        with county_output_file as buf:
+        with open(county_output_file, 'w') as buf:
             data.to_json(buf)
 
         for fips, county_series in state_df.iterrows():
