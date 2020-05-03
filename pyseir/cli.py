@@ -215,7 +215,8 @@ def _build_all_for_states(
     # todo calculate inference per county
     p = Pool()
     for state in states:
-        p.apply_async(_infer_rt, state)
+        # p.apply_async(
+        _infer_rt(state)
     p.close()
     p.join()
 
