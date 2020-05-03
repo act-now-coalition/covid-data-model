@@ -129,6 +129,7 @@ us_fips = {
 
 
 ABBREV_US_FIPS = {US_STATE_ABBREV[state]: fips for state, fips in us_fips.items()}
+
 # thank you to @kinghelix and @trevormarburger for this idea
 abbrev_us_state = dict(map(reversed, US_STATE_ABBREV.items()))
 

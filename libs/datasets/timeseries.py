@@ -2,13 +2,14 @@ from typing import List
 import pandas as pd
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
+from libs.datasets import dataset_base
 from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 
 
-class TimeseriesDataset(object):
+class TimeseriesDataset(dataset_base.DatasetBase):
     """Represents timeseries dataset.
 
     To make a data source compatible with the timeseries, it must have the required
@@ -31,7 +32,7 @@ class TimeseriesDataset(object):
         CommonIndexFields.FIPS,
     ]
 
-    def __init__(self, data: pd.DataFrame, source_data=None):
+    def __init__(self, data: pd.DataFrame):
         self.data = data
 
     @property
@@ -101,6 +102,7 @@ class TimeseriesDataset(object):
         state=None,
         county=None,
         fips=None,
+        states=None
     ) -> "TimeseriesDataset":
         data = self.data
 
@@ -114,6 +116,8 @@ class TimeseriesDataset(object):
             data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
+        if states:
+            data = data[data[self.Fields.STATE].isin(states)]
 
         if on:
             data = data[data.date == on]
@@ -125,7 +129,7 @@ class TimeseriesDataset(object):
         return self.__class__(data)
 
     def get_data(
-        self, country=None, state=None, county=None, fips=None
+        self, country=None, state=None, county=None, fips=None, states=None
     ) -> pd.DataFrame:
         data = self.data
         if country:
@@ -136,12 +140,15 @@ class TimeseriesDataset(object):
             data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
+        if states:
+            data = data[data[self.Fields.STATE].isin(states)]
+
         return data
 
     @classmethod
     def from_source(
         cls, source: "DataSource", fill_missing_state: bool = True
-    ) -> "Timeseries":
+    ) -> "TimeseriesDataset":
         """Loads data from a specific datasource.
 
         Args:
@@ -157,7 +164,6 @@ class TimeseriesDataset(object):
         }
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
-
         group = [
             cls.Fields.DATE,
             cls.Fields.COUNTRY,
@@ -194,6 +200,7 @@ class TimeseriesDataset(object):
 
     @classmethod
     def build_from_data_source(cls, source):
+        """Build TimeseriesDataset from a data source."""
         if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
             raise ValueError("Index fields must match")
 

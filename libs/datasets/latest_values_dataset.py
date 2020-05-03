@@ -5,11 +5,12 @@ import pandas as pd
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
+from libs.datasets import dataset_base
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 
 
-class LatestValuesDataset(object):
+class LatestValuesDataset(dataset_base.DatasetBase):
 
     INDEX_FIELDS = [
         CommonIndexFields.AGGREGATE_LEVEL,

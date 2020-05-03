@@ -1,7 +1,5 @@
 import pandas as pd
-from libs.datasets.beds import BedsDataset
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.population import PopulationDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from functools import lru_cache
@@ -55,14 +53,17 @@ class DataSource(object):
         """
         raise NotImplementedError("Subclass must implement")
 
-    def beds(self) -> "BedsDataset":
+    @lru_cache(None)
+    def beds(self) -> LatestValuesDataset:
         """Builds generic beds dataset"""
         return LatestValuesDataset.build_from_data_source(self)
 
-    def population(self) -> "PopulationDataset":
+    @lru_cache(None)
+    def population(self) -> LatestValuesDataset:
         """Builds generic beds dataset"""
         return LatestValuesDataset.build_from_data_source(self)
 
-    def timeseries(self) -> "PopulationDataset":
+    @lru_cache(None)
+    def timeseries(self) -> TimeseriesDataset:
         """Builds generic beds dataset"""
         return TimeseriesDataset.build_from_data_source(self)

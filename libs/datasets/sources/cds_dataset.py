@@ -1,9 +1,6 @@
-from typing import List
 import logging
 import numpy
 import pandas as pd
-from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.population import PopulationDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.us_state_abbrev import US_STATE_ABBREV

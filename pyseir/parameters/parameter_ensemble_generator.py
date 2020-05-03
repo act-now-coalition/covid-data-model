@@ -3,7 +3,6 @@ import pandas as pd
 import us
 from pyseir import load_data
 from libs.datasets import FIPSPopulation
-from libs.datasets.beds import BedsDataset
 from libs.datasets import CovidCareMapBeds
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
@@ -60,21 +59,21 @@ class ParameterEnsembleGenerator:
 
     @property
     def beds(self) -> int:
-        return self._beds_data.get(BedsDataset.Fields.MAX_BED_COUNT) or 0
+        return self._beds_data.get(CommonFields.MAX_BED_COUNT) or 0
 
     @property
     def icu_beds(self) -> int:
-        return self._beds_data.get(BedsDataset.Fields.ICU_BEDS) or 0
+        return self._beds_data.get(CommonFields.ICU_BEDS) or 0
 
     @property
     def icu_utilization(self) -> float:
         """Returns the ICU utilization rate if known, otherwise default."""
-        return self._beds_data.get(BedsDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE) or 0.75
+        return self._beds_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE) or 0.75
 
     @property
     def bed_utilization(self) -> float:
         """Returns the utilization rate if known, otherwise default."""
-        return self._beds_data.get(BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE) or 0.4
+        return self._beds_data.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE) or 0.4
 
     def sample_seir_parameters(self, override_params=None):
         """
