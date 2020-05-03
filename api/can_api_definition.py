@@ -44,15 +44,15 @@ class _ResourceUtilization(pydantic.BaseModel):
         ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
     )
 
-
+    
 class _Actuals(pydantic.BaseModel):
-    population: int = pydantic.Field(
-        ..., description="Total population in geographic area", gt=0
+    population: Optional[int] = pydantic.Field(
+        ..., description="Total population in geographic area [Should be moved to the summary]", gt=0
     )
     intervention: str = pydantic.Field(
         ..., description="Name of high-level intervention in-place"
     )
-    cumulativeConfirmedCases: int = pydantic.Field(
+    cumulativeConfirmedCases: Optional[int] = pydantic.Field(
         ..., description="Number of confirmed cases so far"
     )
     cumulativePositiveTests: Optional[int] = pydantic.Field(
@@ -61,8 +61,8 @@ class _Actuals(pydantic.BaseModel):
     cumulativeNegativeTests: Optional[int] = pydantic.Field(
         ..., description="Number of negative test results to date"
     )
-    cumulativeDeaths: int = pydantic.Field(..., description="Number of deaths so far")
-    hospitalBeds: _ResourceUtilization = pydantic.Field(...)
+    cumulativeDeaths: Optional[int] = pydantic.Field(..., description="Number of deaths so far")
+    hospitalBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
 
 
@@ -170,7 +170,7 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
-    # actuals_timeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
+    actuals_timeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 
     # pylint: disable=no-self-argument
     @pydantic.validator('timeseries')

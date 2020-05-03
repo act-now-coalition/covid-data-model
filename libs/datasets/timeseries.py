@@ -124,6 +124,13 @@ class TimeseriesDataset(object):
 
         return self.__class__(data)
 
+    def get_data_for_fips(self, fips): 
+        return self.get_subset(aggregation_level=AggregationLevel.COUNTY, fips=fips).data.to_dict(orient="records")
+
+    def get_data_for_state(self, state): 
+        """ state abbrev here """
+        return self.get_subset(aggregation_level=AggregationLevel.STATE, state=state).data.to_dict(orient="records")
+
     def get_data(
         self, country=None, state=None, county=None, fips=None
     ) -> pd.DataFrame:

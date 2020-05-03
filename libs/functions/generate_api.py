@@ -15,7 +15,7 @@ from api.can_api_definition import (
 from libs.constants import NULL_VALUE
 from libs.datasets import results_schema as rc
 from libs.datasets.common_fields import CommonFields
-from libs.datasets.combined_datasets import build_latest_with_all_fields
+from libs.datasets.combined_datasets import build_latest_with_all_fields, build_timeseries_with_all_fields
 from libs.enums import Intervention
 from libs.functions import get_can_projection
 from libs.datasets.dataset_utils import AggregationLevel
@@ -62,7 +62,6 @@ def _get_or_none(value):
     else:
         return value
 
-
 def _get_or_zero(value):
     if isinstance(value, str) and value == NULL_VALUE:
         return 0
@@ -86,9 +85,48 @@ def _generate_api_for_projections(projection_row):
     )
     return projections
 
+def _generate_actuals(actual_data, intervention_str): 
+    hospital_beds = None
+    if CommonFields.MAX_BED_COUNT in actual_data and _get_or_none(actual_data[CommonFields.MAX_BED_COUNT]):
+        hospital_beds = {
+            "capacity": actual_data[CommonFields.MAX_BED_COUNT],
+            # TODO(chris): Get from assembled sources about current hospitalization data.
+            # i.e. NV data we can manually update.
+            "currentUsage": None,
+            "typicalUsageRate": actual_data.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
+        }
+    icu_beds = None
+    if CommonFields.ICU_BEDS in actual_data and _get_or_none(actual_data[CommonFields.ICU_BEDS]): 
+        icu_beds = {
+            # Note(Chris): We do not currently pass through ICU Bed capacity calculations
+            # in the projection_row.  This wouldn't be a ton of work to do, but
+            # using the provided beds data for the time being.
+            "capacity": actual_data[CommonFields.ICU_BEDS],
+            "currentUsage": None,
+            "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
+        }
+
+    return _Actuals(
+        population= actual_data.get(CommonFields.POPULATION),
+        intervention=intervention_str,
+        cumulativeConfirmedCases=_get_or_none(actual_data[CommonFields.CASES]),
+        cumulativeDeaths=_get_or_none(actual_data[CommonFields.DEATHS]),
+        cumulativePositiveTests=_get_or_none(actual_data.get(CommonFields.POSITIVE_TESTS)),
+        cumulativeNegativeTests=_get_or_none(actual_data.get(CommonFields.NEGATIVE_TESTS)),
+        hospitalBeds=hospital_beds,
+        ICUBeds=icu_beds,
+    )
+
+def _generate_actuals_timeseries( actuals_timeseries_dataset, intervention): 
+    actual_timeseries_api_response = []
+    for row in actuals_timeseries_dataset: 
+        actual = _generate_actuals(row, intervention.name)
+        timeseries_actual = CANActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
+        actual_timeseries_api_response.append(timeseries_actual)
+    return actual_timeseries_api_response
 
 def _generate_state_actuals(
-    projection_row: pd.Series, state_intervention: Intervention, state_beds_data: dict
+    projection_row: pd.Series, state_intervention: Intervention
 ):
     """Generates Actuals for a state.
 
@@ -102,59 +140,13 @@ def _generate_state_actuals(
     latest_actuals = latest_values_dataset.get_data_for_state(state)
     intervention_str = state_intervention.name
 
-    return _Actuals(
-        population=latest_actuals[CommonFields.POPULATION],
-        intervention=intervention_str,
-        cumulativeConfirmedCases=latest_actuals[CommonFields.CASES],
-        cumulativeDeaths=latest_actuals[CommonFields.DEATHS],
-        cumulativePositiveTests=latest_actuals[CommonFields.POSITIVE_TESTS],
-        cumulativeNegativeTests=latest_actuals[CommonFields.NEGATIVE_TESTS],
-        hospitalBeds={
-            "capacity": latest_actuals[CommonFields.MAX_BED_COUNT] or 0,
-            # TODO(chris): Get from assembled sources about current hospitalization data.
-            # i.e. NV data we can manually update.
-            "currentUsage": None,
-            "typicalUsageRate": latest_actuals.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
-        },
-        ICUBeds={
-            # Note(Chris): We do not currently pass through ICU Bed capacity calculations
-            # in the projection_row.  This wouldn't be a ton of work to do, but
-            # using the provided beds data for the time being.
-            "capacity": latest_actuals[CommonFields.ICU_BEDS],
-            "currentUsage": None,
-            "typicalUsageRate": latest_actuals[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE],
-        },
-    )
+    return _generate_actuals(latest_actuals, intervention_str)
 
-
-def _generate_county_actuals(projection_row, state_intervention, county_beds_data):
-    intervention_str = state_intervention.name
+def _generate_county_actuals(projection_row: pd.Series, state_intervention):
     latest_values_dataset = build_latest_with_all_fields()
     latest_actuals = latest_values_dataset.get_data_for_fips(projection_row[rc.FIPS])
-
-    icu_beds = None
-    if county_beds_data:
-        icu_beds = {
-            "capacity": latest_actuals[CommonFields.ICU_BEDS],
-            "currentUsage": None,
-            "typicalUsageRate": latest_actuals[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE],
-        }
-
-    return _Actuals(
-        population=latest_actuals[CommonFields.POPULATION],
-        intervention=intervention_str,
-        cumulativeConfirmedCases=latest_actuals[CommonFields.CASES],
-        cumulativeDeaths=latest_actuals[CommonFields.DEATHS],
-        cumulativePositiveTests=latest_actuals[CommonFields.POSITIVE_TESTS],
-        cumulativeNegativeTests=latest_actuals[CommonFields.NEGATIVE_TESTS],
-        hospitalBeds={
-            "capacity": latest_actuals[CommonFields.MAX_BED_COUNT] or 0,
-            "currentUsage": None,
-            "typicalUsageRate": latest_actuals.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
-        },
-        ICUBeds=icu_beds,
-    )
-
+    intervention_str = state_intervention.name
+    return _generate_actuals(latest_actuals, intervention_str)
 
 def _generate_state_timeseries_row(json_data_row):
 
@@ -177,10 +169,6 @@ def _generate_state_timeseries_row(json_data_row):
             json_data_row[CovidTrackingDataSource.Fields.NEGATIVE_TESTS]
         ),
     )
-
-def _generate_county_actuals_timeseries_row(json_data_row): 
-    county_actuals = _generate_county_actuals(json_data_row, state_intervention, )
-    return CANActualsTimeseriesRow(json_data_row)
 
 def _generate_county_timeseries_row(json_data_row):
     tested = _get_or_none(json_data_row[CDSDataset.Fields.TESTED])
@@ -232,16 +220,18 @@ def generate_state_timeseries(
         raise Exception(f"State time series empty for {intervention.name}")
 
     state_intervention = get_can_projection.get_intervention_for_state(state)
+    actual_data = build_timeseries_with_all_fields().get_data_for_state(state)
 
     return CovidActNowStateTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_state_actuals(projection_row, state_intervention, state_bed_data),
+        actuals=_generate_state_actuals(projection_row, state_intervention),
         stateName=projection_row[rc.STATE_FULL_NAME],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
         projections=projections,
         timeseries=timeseries,
+        actuals_timeseries=_generate_actuals_timeseries(actual_data, state_intervention)
     )
 
 
@@ -269,16 +259,18 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
     state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
     bed_data = get_can_projection.get_beds_data()
     county_bed_data = bed_data.get_data_for_fips(fips)
+    county_actuals_timeseries = build_timeseries_with_all_fields().get_data_for_fips(fips)
     return CovidActNowCountyTimeseries(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_county_actuals(projection_row, state_intervention, county_bed_data),
+        actuals=_generate_county_actuals(projection_row, state_intervention),
         stateName=projection_row[rc.STATE_FULL_NAME],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
         projections=projections,
         timeseries=timeseries,
+        actuals_timeseries=_generate_actuals_timeseries(county_actuals_timeseries, state_intervention)
     )
 
 
@@ -291,7 +283,7 @@ def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSum
     state_result = CovidActNowStateSummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_state_actuals(projection_row, state_intervention, state_bed_data),
+        actuals=_generate_state_actuals(projection_row, state_intervention),
         stateName=projection_row[rc.STATE_FULL_NAME],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
@@ -311,7 +303,7 @@ def generate_api_for_county_projection_row(projection_row):
     county_result = CovidActNowCountySummary(
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_county_actuals(projection_row, state_intervention, county_bed_data),
+        actuals=_generate_county_actuals(projection_row, state_intervention),
         stateName=projection_row[rc.STATE_FULL_NAME],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],
