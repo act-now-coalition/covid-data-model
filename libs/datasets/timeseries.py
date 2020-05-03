@@ -200,7 +200,7 @@ class TimeseriesDataset(object):
         return cls.from_source(source)
 
     def to_latest_values_dataset(self):
-        from libs.datasets.location_metadata import LatestValuesDataset
+        from libs.datasets.latest_values_dataset import LatestValuesDataset
 
         return LatestValuesDataset(self.latest_values())
 

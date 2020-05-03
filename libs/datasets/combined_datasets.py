@@ -1,10 +1,10 @@
-from typing import List, Dict, Type
+from typing import Dict, Type
 import functools
 import pandas as pd
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.location_metadata import LatestValuesDataset
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset

@@ -2,7 +2,7 @@ import pandas as pd
 from libs.datasets.beds import BedsDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.population import PopulationDataset
-from libs.datasets.location_metadata import LatestValuesDataset
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from functools import lru_cache
 
