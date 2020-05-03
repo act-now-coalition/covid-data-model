@@ -178,6 +178,11 @@ class RtInferenceEngine:
         """
         timeseries_type = TimeseriesType(timeseries_type)
         dates, times, timeseries = self.get_timeseries(timeseries_type)
+
+        # Hospitalizations have a strange effect in the first few data points across many states. Let's just drop those..
+        if timeseries_type in (TimeseriesType.CURRENT_HOSPITALIZATIONS, TimeseriesType.NEW_HOSPITALIZATIONS):
+            dates, times, timeseries = dates[2:], times[:2], timeseries[2:]
+
         timeseries = pd.Series(timeseries)
         smoothed = timeseries.rolling(self.window_size, win_type='gaussian',
                                      min_periods=self.kernel_std, center=True)\
@@ -271,7 +276,7 @@ class RtInferenceEngine:
         process_matrix /= process_matrix.sum(axis=0)
 
         # (4) Calculate the initial prior. Gamma mean of 3 over Rt
-        prior0 = sps.gamma(a=3).pdf(self.r_list)
+        prior0 = sps.gamma(a=2.5).pdf(self.r_list)
         prior0 /= prior0.sum()
 
         # Create a DataFrame that will hold our posteriors for each day
@@ -312,6 +317,7 @@ class RtInferenceEngine:
             plt.xlabel('$R_t$', fontsize=16)
             plt.title('Posteriors', fontsize=18)
         start_idx = -len(posteriors.columns)
+
         return dates[start_idx:], times[start_idx:], posteriors
 
     def infer_all(self, plot=False, shift_deaths=0):
@@ -355,7 +361,6 @@ class RtInferenceEngine:
 
             df = pd.DataFrame()
             dates, times, posteriors = self.get_posteriors(timeseries_type)
-
             if posteriors is not None:
                 df[f'Rt_MAP__{timeseries_type.value}'] = posteriors.idxmax()
                 for ci in self.confidence_intervals:
@@ -378,7 +383,7 @@ class RtInferenceEngine:
                 if timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS) \
                         and f'Rt_MAP__{TimeseriesType.NEW_CASES.value}' in df_all.columns:
                     # Go back upto 30 days or the max time series length we have if shorter.
-                    last_idx = max(-30, -len(df))
+                    last_idx = max(-21, -len(df))
                     shift_in_days = self.align_time_series(
                         series_a=df_all[f'Rt_MAP__{TimeseriesType.NEW_CASES.value}'].iloc[-last_idx:],
                         series_b=df_all[f'Rt_MAP__{timeseries_type.value}'].iloc[-last_idx:]
@@ -418,7 +423,7 @@ class RtInferenceEngine:
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_cases'],
                             alpha=1, s=25, color='steelblue', label='New Cases', marker='s')
 
-            if self.hospitalization_data_type:
+            if 'Rt_ci5__new_hospitalizations' in df_all:
                 plt.fill_between(df_all.index, df_all['Rt_ci5__new_hospitalizations'], df_all['Rt_ci95__new_hospitalizations'],
                                  alpha=.4, color='darkseagreen')
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_hospitalizations'],
