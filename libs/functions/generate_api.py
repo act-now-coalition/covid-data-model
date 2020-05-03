@@ -7,6 +7,7 @@ from api.can_api_definition import (
     CovidActNowCountyTimeseries,
     CovidActNowStateTimeseries,
     CANPredictionTimeseriesRow,
+    CANActualsTimeseriesRow,
     _Projections,
     _Actuals,
     _ResourceUsageProjection,
@@ -175,6 +176,9 @@ def _generate_state_timeseries_row(json_data_row):
         ),
     )
 
+def _generate_county_actuals_timeseries_row(json_data_row): 
+    county_actuals = _generate_county_actuals(json_data_row, state_intervention, )
+    return CANActualsTimeseriesRow(json_data_row)
 
 def _generate_county_timeseries_row(json_data_row):
     tested = _get_or_none(json_data_row[CDSDataset.Fields.TESTED])

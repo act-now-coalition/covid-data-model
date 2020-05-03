@@ -16,7 +16,7 @@ prepare () {
     SNAPSHOT_ID=$2
   fi
 
-  if ! [[ $SNAPSHOT_ID =~ ^[0-9]+$ ]] ; then
+  if ! [[ $SNAPSHOT_ID =~ ^[0-9]+$ ]] ; t hen
     echo "Error: Specified Snapshot ID ($SNAPSHOT_ID) should be a plain number."
     echo
     exit_with_usage
