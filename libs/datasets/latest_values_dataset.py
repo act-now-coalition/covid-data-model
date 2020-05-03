@@ -95,6 +95,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         state=None,
         county=None,
         fips=None,
+        states=None,
     ) -> "LatestValuesDataset":
         data = self.data
 
@@ -108,6 +109,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
+        if states:
+            data = data[data[cls.Fields.STATE].isin(states)]
 
         return self.__class__(data)
 
