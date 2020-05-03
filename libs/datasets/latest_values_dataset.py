@@ -110,7 +110,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         if fips:
             data = data[data.fips == fips]
         if states:
-            data = data[data[cls.Fields.STATE].isin(states)]
+            data = data[data[self.Fields.STATE].isin(states)]
 
         return self.__class__(data)
 
