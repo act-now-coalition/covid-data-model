@@ -24,6 +24,8 @@ class CommonFields(object):
 
     COUNTRY= "country"
 
+    COUNTY= "county"
+
     AGGREGATE_LEVEL = "aggregate_level"
 
     DATE = "date"

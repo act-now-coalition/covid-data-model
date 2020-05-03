@@ -5,6 +5,7 @@ from libs.datasets.population import PopulationDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from functools import lru_cache
+from libs.datasets.common_fields import CommonFields
 
 
 class DataSource(object):
@@ -34,7 +35,7 @@ class DataSource(object):
     def state_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only state data."""
         is_state = (
-            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
+            self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         )
         return self.data[is_state]
 
@@ -42,7 +43,7 @@ class DataSource(object):
     def county_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only county data."""
         is_county = (
-            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+            self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         )
         return self.data[is_county]
 
