@@ -10,6 +10,7 @@ from pyseir import load_data
 from pyseir.inference.fit_results import load_inference_result, load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
+from libs.datasets import CommonFields
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
@@ -82,9 +83,9 @@ class WebUIDataAdaptorV1:
             convert_cumulative_to_current=True)
 
         if len(fips) == 5:
-            population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
+            population = self.population_data.get_data_for_fips(fips)[CommonFields.POPULATION]
         else:
-            population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
+            population = self.population_data.get_data_for_state(self.state_abbreviation)[CommonFields.POPULATION]
 
         if current_hosp is not None:
             t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]

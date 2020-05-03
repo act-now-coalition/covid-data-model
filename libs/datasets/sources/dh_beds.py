@@ -2,10 +2,11 @@ import logging
 from collections import defaultdict
 from libs import enums
 import pandas as pd
-from libs.datasets.beds import BedsDataset
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import data_source
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 _logger = logging.getLogger(__name__)
 
@@ -125,14 +126,17 @@ class DHBeds(data_source.DataSource):
         FIPS = "fips"
         COUNTRY = "country"
 
-    BEDS_FIELD_MAP = {
-        BedsDataset.Fields.COUNTRY: Fields.COUNTRY,
-        BedsDataset.Fields.STATE: Fields.STATE,
-        BedsDataset.Fields.FIPS: Fields.FIPS,
-        BedsDataset.Fields.STAFFED_BEDS: Fields.STAFFED_BEDS,
-        BedsDataset.Fields.LICENSED_BEDS: Fields.LICENSED_BEDS,
-        BedsDataset.Fields.ICU_BEDS: Fields.ICU_BEDS,
-        BedsDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    }
+
+    COMMON_FIELD_MAP = {
+        CommonFields.STAFFED_BEDS: Fields.STAFFED_BEDS,
+        CommonFields.LICENSED_BEDS: Fields.LICENSED_BEDS,
+        CommonFields.ICU_BEDS: Fields.ICU_BEDS,
     }
 
     def __init__(self, path):

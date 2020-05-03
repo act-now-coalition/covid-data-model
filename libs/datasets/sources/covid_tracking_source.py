@@ -1,9 +1,10 @@
 import logging
 import pandas as pd
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 _logger = logging.getLogger(__name__)
 
@@ -56,20 +57,23 @@ class CovidTrackingDataSource(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         FIPS = "fips"
 
-    TIMESERIES_FIELD_MAP = {
-        TimeseriesDataset.Fields.DATE: Fields.DATE,
-        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
-        TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
-        TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
-        TimeseriesDataset.Fields.CURRENT_HOSPITALIZED: Fields.CURRENT_HOSPITALIZED,
-        TimeseriesDataset.Fields.CURRENT_ICU: Fields.IN_ICU_CURRENTLY,
-        TimeseriesDataset.Fields.CURRENT_VENTILATED: Fields.ON_VENTILATOR_CURRENTLY,
-        TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED: Fields.TOTAL_HOSPITALIZED,
-        TimeseriesDataset.Fields.CUMULATIVE_ICU: Fields.TOTAL_IN_ICU,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-        TimeseriesDataset.Fields.POSITIVE_TESTS: Fields.POSITIVE_TESTS,
-        TimeseriesDataset.Fields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.DATE: Fields.DATE,
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    }
+
+    COMMON_FIELD_MAP = {
+        CommonFields.DEATHS: Fields.DEATHS,
+        CommonFields.CURRENT_HOSPITALIZED: Fields.CURRENT_HOSPITALIZED,
+        CommonFields.CURRENT_ICU: Fields.IN_ICU_CURRENTLY,
+        CommonFields.CURRENT_VENTILATED: Fields.ON_VENTILATOR_CURRENTLY,
+        CommonFields.CUMULATIVE_HOSPITALIZED: Fields.TOTAL_HOSPITALIZED,
+        CommonFields.CUMULATIVE_ICU: Fields.TOTAL_IN_ICU,
+        CommonFields.POSITIVE_TESTS: Fields.POSITIVE_TESTS,
+        CommonFields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS
     }
 
     TESTS_ONLY_FIELDS = [

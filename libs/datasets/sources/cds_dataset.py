@@ -7,6 +7,8 @@ from libs.datasets.population import PopulationDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.us_state_abbrev import US_STATE_ABBREV
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 _logger = logging.getLogger(__name__)
 
@@ -45,26 +47,21 @@ class CDSDataset(data_source.DataSource):
         DATE = "date"
         AGGREGATE_LEVEL = "aggregate_level"
         FIPS = "fips"
-
         NEGATIVE_TESTS = "negative_tests"
 
-    TIMESERIES_FIELD_MAP = {
-        TimeseriesDataset.Fields.DATE: Fields.DATE,
-        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
-        TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
-        TimeseriesDataset.Fields.CASES: Fields.CASES,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-        TimeseriesDataset.Fields.POSITIVE_TESTS: Fields.CASES,
-        TimeseriesDataset.Fields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS,
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.DATE: Fields.DATE,
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
-    POPULATION_FIELD_MAP = {
-        PopulationDataset.Fields.COUNTRY: Fields.COUNTRY,
-        PopulationDataset.Fields.STATE: Fields.STATE,
-        PopulationDataset.Fields.FIPS: Fields.FIPS,
-        PopulationDataset.Fields.POPULATION: Fields.POPULATION,
-        PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    COMMON_FIELD_MAP = {
+        CommonFields.CASES: Fields.CASES,
+        CommonFields.POSITIVE_TESTS: Fields.CASES,
+        CommonFields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS,
+        CommonFields.POPULATION: Fields.POPULATION,
     }
 
     TEST_FIELDS = [
@@ -83,7 +80,7 @@ class CDSDataset(data_source.DataSource):
         super().__init__(data)
 
     @classmethod
-    def local(cls) -> "CDSTimeseriesData":
+    def local(cls) -> "CDSDataset":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.DATA_PATH)
 

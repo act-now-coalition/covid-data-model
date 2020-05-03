@@ -5,56 +5,29 @@ import pandas as pd
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 
-class MetadataDataset(object):
+class LatestValuesDataset(object):
 
-    class Fields(object):
-        COUNTRY = "country"
-        STATE = "state"
-        FIPS = "fips"
-        AGGREGATE_LEVEL = "aggregate_level"
-
-        POPULATION = "population"
-
-        STAFFED_BEDS = "staffed_beds"
-        LICENSED_BEDS = "licensed_beds"
-        ICU_BEDS = "icu_beds"
-        ALL_BED_TYPICAL_OCCUPANCY_RATE = "all_beds_occupancy_rate"
-        ICU_TYPICAL_OCCUPANCY_RATE = "icu_occupancy_rate"
-
-        CASES = "cases"
-        DEATHS = "deaths"
-        RECOVERED = "recovered"
-        CURRENT_HOSPITALIZED = "current_hospitalized"
-        CUMULATIVE_HOSPITALIZED = "cumulative_hospitalized"
-        CUMULATIVE_ICU = "cumulative_icu"
-
-        # Current values
-        CURRENT_ICU = "current_icu"
-        CURRENT_VENTILATED = "current_ventilated"
-
-        POSITIVE_TESTS = "positive_tests"
-        NEGATIVE_TESTS = "negative_tests"
-
-        # Combined beds are the max of staffed and licensed beds.
-        # The need for this may be dataset specific, but there are cases in the
-        # DH Beds dataset where a source only has either staffed or licensed.
-        # To provide a better best guess, we take the max of the two in `from_source`.
-        MAX_BED_COUNT = "max_bed_count"
-
+    INDEX_FIELDS = [
+        CommonIndexFields.AGGREGATE_LEVEL,
+        CommonIndexFields.COUNTRY,
+        CommonIndexFields.STATE,
+        CommonIndexFields.FIPS,
+    ]
     STATE_GROUP_KEY = [
-        Fields.AGGREGATE_LEVEL,
-        Fields.COUNTRY,
-        Fields.STATE,
+        CommonIndexFields.AGGREGATE_LEVEL,
+        CommonIndexFields.COUNTRY,
+        CommonIndexFields.STATE,
     ]
 
-    COUNTY_GROUP_KEY = [
-        Fields.AGGREGATE_LEVEL,
-        Fields.COUNTRY,
-        Fields.STATE,
-        Fields.FIPS,
-    ]
+    class Fields(CommonFields):
+        COUNTRY = CommonIndexFields.COUNTRY
+        STATE = CommonIndexFields.STATE
+        AGGREGATE_LEVEL = CommonIndexFields.AGGREGATE_LEVEL
+        FIPS = CommonIndexFields.FIPS
 
     def __init__(self, data):
         self.data = data
@@ -71,12 +44,12 @@ class MetadataDataset(object):
             fill_missing_state: If True, fills in missing state level data by
                 aggregating county level for a given state.
         """
-        if not source.METADATA_FIELD_MAP:
+        if not source.COMMON_FIELD_MAP and not source.INDEX_FIELD_MAP:
             raise ValueError("Source must have metadata field map.")
 
         data = source.data
-
-        to_common_fields = {value: key for key, value in source.METADATA_FIELD_MAP.items()}
+        fields = source.all_fields_map().items()
+        to_common_fields = {value: key for key, value in fields}
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
 
@@ -101,6 +74,19 @@ class MetadataDataset(object):
 
         return cls(data)
 
+    @classmethod
+    def build_from_data_source(cls, source):
+        from libs.datasets.timeseries import TimeseriesDataset
+
+        if set(source.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
+            timeseries = TimeseriesDataset.build_from_data_source(source)
+            return timeseries.to_latest_values_dataset()
+
+        if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
+            raise ValueError("Index fields must match")
+
+        return cls.from_source(source)
+
     def get_subset(
         self,
         aggregation_level,
@@ -108,7 +94,7 @@ class MetadataDataset(object):
         state=None,
         county=None,
         fips=None,
-    ) -> "MetadataDataset":
+    ) -> "LatestValuesDataset":
         data = self.data
 
         if aggregation_level:
@@ -168,7 +154,7 @@ class MetadataDataset(object):
     @property
     def state_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only state data."""
-        print("HI")
+
         is_state = (
             self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         )

@@ -3,6 +3,8 @@ import pandas as pd
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 
 
@@ -14,43 +16,20 @@ class TimeseriesDataset(object):
     in the `from_source` method.
     """
 
-    class Fields(object):
-        # Required Fields
-        DATE = "date"
-        COUNTRY = "country"
-        STATE = "state"
-        FIPS = "fips"
-        AGGREGATE_LEVEL = "aggregate_level"
+    class Fields(CommonFields):
+        COUNTRY = CommonIndexFields.COUNTRY
+        STATE = CommonIndexFields.STATE
+        AGGREGATE_LEVEL = CommonIndexFields.AGGREGATE_LEVEL
+        FIPS = CommonIndexFields.FIPS
+        DATE = CommonIndexFields.DATE
 
-        # Generated in from_source
-        COUNTY = "county"
-        SOURCE = "source"
-
-        # Target metrics
-        CASES = "cases"
-        DEATHS = "deaths"
-        RECOVERED = "recovered"
-        CUMULATIVE_HOSPITALIZED = "cumulative_hospitalized"
-        CUMULATIVE_ICU = "cumulative_icu"
-
-        POSITIVE_TESTS = "positive_tests"
-        NEGATIVE_TESTS = "negative_tests"
-
-        # Current values
-        CURRENT_ICU = "current_icu"
-        CURRENT_HOSPITALIZED = "current_hospitalized"
-        CURRENT_VENTILATED = "current_ventilated"
-
-        @classmethod
-        def metrics(cls) -> List[str]:
-            """Fields that contain metrics and can be aggregated."""
-            return [
-                cls.CASES,
-                cls.DEATHS,
-                cls.RECOVERED,
-                cls.CURRENT_HOSPITALIZED,
-                cls.CUMULATIVE_HOSPITALIZED
-            ]
+    INDEX_FIELDS = [
+        CommonIndexFields.DATE,
+        CommonIndexFields.AGGREGATE_LEVEL,
+        CommonIndexFields.COUNTRY,
+        CommonIndexFields.STATE,
+        CommonIndexFields.FIPS,
+    ]
 
     def __init__(self, data: pd.DataFrame, source_data=None):
         self.data = data
@@ -172,20 +151,15 @@ class TimeseriesDataset(object):
 
         Returns: Timeseries object.
         """
-        if not source.TIMESERIES_FIELD_MAP:
-            raise ValueError("Source must have field timeseries field map.")
-
         data = source.data
         to_common_fields = {
-            value: key for key, value in source.TIMESERIES_FIELD_MAP.items()
+            value: key for key, value in source.all_fields_map().items()
         }
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
-        data[cls.Fields.SOURCE] = source.SOURCE_NAME
 
         group = [
             cls.Fields.DATE,
-            cls.Fields.SOURCE,
             cls.Fields.COUNTRY,
             cls.Fields.AGGREGATE_LEVEL,
             cls.Fields.STATE,
@@ -197,7 +171,6 @@ class TimeseriesDataset(object):
         if fill_missing_state:
             state_groupby_fields = [
                 cls.Fields.DATE,
-                cls.Fields.SOURCE,
                 cls.Fields.COUNTRY,
                 cls.Fields.STATE,
             ]
@@ -218,6 +191,18 @@ class TimeseriesDataset(object):
         # Choosing to sort by date
         data = data.sort_values(cls.Fields.DATE)
         return cls(data)
+
+    @classmethod
+    def build_from_data_source(cls, source):
+        if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
+            raise ValueError("Index fields must match")
+
+        return cls.from_source(source)
+
+    def to_latest_values_dataset(self):
+        from libs.datasets.location_metadata import LatestValuesDataset
+
+        return LatestValuesDataset(self.latest_values())
 
     def summarize(self):
         dataset_utils.summarize(

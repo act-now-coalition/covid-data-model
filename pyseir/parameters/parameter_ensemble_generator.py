@@ -5,6 +5,7 @@ from pyseir import load_data
 from libs.datasets import FIPSPopulation
 from libs.datasets.beds import BedsDataset
 from libs.datasets import CovidCareMapBeds
+from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 
 
@@ -49,12 +50,12 @@ class ParameterEnsembleGenerator:
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
-            self.population = population_data.get_county_level('USA', state=self.state_abbr, fips=self.fips)
+            self.population = population_data.get_data_for_fips(fips=self.fips)[CommonFields.POPULATION]
             # TODO: Some counties do not have hospitals. Likely need to go to HRR level..
             self._beds_data = beds_data.get_data_for_fips(fips)
         else:
             self.state_abbr = us.states.lookup(fips).abbr
-            self.population = population_data.get_state_level('USA', state=self.state_abbr)
+            self.population = population_data.get_data_for_state(self.state_abbr)[CommonFields.POPULATION]
             self._beds_data = beds_data.get_data_for_state(self.state_abbr)
 
     @property

@@ -2,7 +2,7 @@ import pandas as pd
 from libs.datasets.beds import BedsDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.population import PopulationDataset
-from libs.datasets.location_metadata import MetadataDataset
+from libs.datasets.location_metadata import LatestValuesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from functools import lru_cache
 
@@ -14,20 +14,9 @@ class DataSource(object):
     class Fields(object):
         pass
 
-    # Subclasses must define mapping from Timeseries fields.
-    # eg: {TimseriesDataset.Fields.DATE: Fields.Date}
-    # Optional if dataset does not support timeseries data.
-    TIMESERIES_FIELD_MAP = None
+    INDEX_FIELD_MAP = None
 
-    # Map of field names from BedsDataset.Fields to dataset source fields.
-    # Optional if dataset does not support converting to beds data.
-    BEDS_FIELD_MAP = None
-
-    # Map of field names from PopulationDataset.Fields to dataset source fields.
-    # Optional if dataset does not support population data.
-    POPULATION_FIELD_MAP = None
-
-    METADATA_FIELD_MAP = None
+    COMMON_FIELD_MAP = None
 
     # Name of dataset source
     SOURCE_NAME = None
@@ -37,6 +26,9 @@ class DataSource(object):
 
     def __init__(self, data: pd.DataFrame):
         self.data = data
+
+    def all_fields_map(self):
+        return {**self.COMMON_FIELD_MAP, **self.INDEX_FIELD_MAP}
 
     @property
     def state_data(self) -> pd.DataFrame:
@@ -55,7 +47,7 @@ class DataSource(object):
         return self.data[is_county]
 
     @classmethod
-    def local(cls) -> "cls":
+    def local(cls) -> "DataSource":
         """Builds data from local covid-public-data github repo.
 
         Returns: Instantiated class with data loaded.
@@ -64,20 +56,12 @@ class DataSource(object):
 
     def beds(self) -> "BedsDataset":
         """Builds generic beds dataset"""
-        return BedsDataset.from_source(self)
+        return LatestValuesDataset.build_from_data_source(self)
 
     def population(self) -> "PopulationDataset":
         """Builds generic beds dataset"""
-        return PopulationDataset.from_source(self)
+        return LatestValuesDataset.build_from_data_source(self)
 
-    def metadata(self) -> MetadataDataset:
-        if not self.METADATA_FIELD_MAP and self.TIMESERIES_FIELD_MAP:
-            data = TimeseriesDataset.from_source(self).latest_values()
-            return MetadataDataset(data)
-        return MetadataDataset.from_source(self)
-
-    def timeseries(self) -> "TimeseriesDataset":
-        """Builds generic timeseries dataset.
-        """
-
-        return TimeseriesDataset.from_source(self)
+    def timeseries(self) -> "PopulationDataset":
+        """Builds generic beds dataset"""
+        return TimeseriesDataset.build_from_data_source(self)
