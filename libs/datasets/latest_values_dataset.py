@@ -55,7 +55,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data = data.rename(columns=to_common_fields)[final_columns]
 
         data = cls._aggregate_new_york_data(data)
-        if fill_missing_state:
+        has_county_data = sum(data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value)
+        if fill_missing_state and has_county_data:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data,
                 cls.STATE_GROUP_KEY,

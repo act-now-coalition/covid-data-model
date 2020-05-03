@@ -6,6 +6,7 @@ from libs.datasets import dataset_base
 from libs.datasets import data_source
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.sources.state_interventions import StateInterventions
 from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
@@ -43,6 +44,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CURRENT_VENTILATED: [
         CovidTrackingDataSource, NevadaHospitalAssociationData
     ],
+    CommonFields.INTERVENTION: [StateInterventions],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
