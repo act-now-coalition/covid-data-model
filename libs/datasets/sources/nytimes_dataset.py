@@ -1,12 +1,9 @@
-from typing import List
-import logging
-import numpy
+import functools
 import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
 
 
 class NYTimesDataset(data_source.DataSource):
@@ -43,7 +40,8 @@ class NYTimesDataset(data_source.DataSource):
         super().__init__(data)
 
     @classmethod
-    def load(cls) -> "NYTimesDataset":
+    @functools.lru_cache(None)
+    def local(cls) -> "NYTimesDataset":
         return cls(cls.DATA_URL)
 
     @classmethod

@@ -1,13 +1,14 @@
-
 import pytest
 
 from libs.datasets import combined_datasets
 
 from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets import JHUDataset
 from libs.datasets import CDSDataset
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import NevadaHospitalAssociationData
+from libs.datasets.sources.state_interventions import StateInterventions
 
 
 # Tests to make sure that combined datasets are building data with unique indexes
@@ -27,13 +28,15 @@ def test_unique_index_values_us_latest():
     assert not sum(duplicates)
 
 
-@pytest.mark.parametrize("data_source_cls", [
-    JHUDataset,
-    CDSDataset,
-    CovidTrackingDataSource,
-    NevadaHospitalAssociationData,
-
-])
+@pytest.mark.parametrize(
+    "data_source_cls",
+    [
+        JHUDataset,
+        CDSDataset,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
+)
 def test_unique_timeseries(data_source_cls):
 
     data_source = data_source_cls.local()
@@ -41,4 +44,22 @@ def test_unique_timeseries(data_source_cls):
     timeseries = combined_datasets.US_STATES_FILTER.apply(timeseries)
     timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS)
     duplicates = timeseries_data.index.duplicated()
+    assert not sum(duplicates)
+
+
+@pytest.mark.parametrize(
+    "data_source_cls",
+    [
+        JHUDataset,
+        CDSDataset,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        StateInterventions,
+    ],
+)
+def test_unique_latest(data_source_cls):
+    data_source = data_source_cls.local()
+    latest = LatestValuesDataset.build_from_data_source(data_source)
+    latest_data = latest.data.set_index(latest.INDEX_FIELDS)
+    duplicates = latest_data.index.duplicated()
     assert not sum(duplicates)

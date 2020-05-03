@@ -1,4 +1,5 @@
 import logging
+import functools
 import numpy
 import pandas as pd
 import pathlib
@@ -164,6 +165,7 @@ class JHUDataset(data_source.DataSource):
         ])
 
     @classmethod
+    @functools.lru_cache(None)
     def local(cls) -> "JHUDataset":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.DATA_FOLDER)

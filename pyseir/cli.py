@@ -39,7 +39,7 @@ def _cache_global_datasets():
     if cds_dataset is None:
         cds_dataset = CDSDataset.local()
     if nyt_dataset is None:
-        nyt_dataset = NYTimesDataset.load()
+        nyt_dataset = NYTimesDataset.local()
 
 
 @click.group()

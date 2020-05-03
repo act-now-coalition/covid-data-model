@@ -1,5 +1,8 @@
+import functools
+
 import pandas as pd
 import requests
+
 from libs.datasets import data_source
 from libs.datasets import AggregationLevel
 from libs.datasets import CommonFields
@@ -38,6 +41,7 @@ class StateInterventions(data_source.DataSource):
         return data
 
     @classmethod
+    @functools.lru_cache(None)
     def local(cls):
         interventions = requests.get(cls.INTERVENTIONS_URL).json()
 
@@ -45,5 +49,4 @@ class StateInterventions(data_source.DataSource):
 
         data = pd.DataFrame(list(interventions.items()), columns=columns)
         data = cls.standardize_data(data)
-        print(data)
         return cls(data)
