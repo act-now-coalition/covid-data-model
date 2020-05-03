@@ -35,6 +35,7 @@ ALL_FIELDS_FEATURE_DEFINITION = {
     CommonFields.ICU_BEDS: [CovidCareMapBeds, NevadaHospitalAssociationData],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
+    CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POSITIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
 }
@@ -56,6 +57,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION = {
     ],
     CommonFields.STAFFED_BEDS: [],
     CommonFields.LICENSED_BEDS: [],
+    CommonFields.MAX_BED_COUNT: [],
     CommonFields.ICU_BEDS: [NevadaHospitalAssociationData],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],

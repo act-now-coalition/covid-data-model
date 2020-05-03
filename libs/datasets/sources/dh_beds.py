@@ -125,6 +125,7 @@ class DHBeds(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         FIPS = "fips"
         COUNTRY = "country"
+        MAX_BED_COUNT = "max_bed_count"
 
     INDEX_FIELD_MAP = {
         CommonIndexFields.COUNTRY: Fields.COUNTRY,
@@ -137,6 +138,7 @@ class DHBeds(data_source.DataSource):
         CommonFields.STAFFED_BEDS: Fields.STAFFED_BEDS,
         CommonFields.LICENSED_BEDS: Fields.LICENSED_BEDS,
         CommonFields.ICU_BEDS: Fields.ICU_BEDS,
+        CommonFields.MAX_BED_COUNT: Fields.MAX_BED_COUNT,
     }
 
     def __init__(self, path):
@@ -154,6 +156,8 @@ class DHBeds(data_source.DataSource):
         fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
         fips_data = fips_data[fips_data.fips != '99999']
         data = match_county_to_fips(data, fips_data)
+
+        data[cls.Fields.MAX_BED_COUNT] = data[[cls.Fields.STAFFED_BEDS, cls.Fields.LICENSED_BEDS]].max(axis=1)
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.

@@ -268,7 +268,7 @@ def build_county_summary(
         data = {"counties_with_data": []}
         for county, fips in counties:
             cases = timeseries.get_data(state=state, country=country, fips=fips)
-            beds = beds_data.get_data_for_fips(fips)[CommonFields.LICENSED_BEDS]
+            beds = beds_data.get_data_for_fips(fips)[CommonFields.MAX_BEDS]
             population = population_data.get_data_for_fips(fips)[CommonFields.POPULATION]
             if population and beds and sum(cases.cases):
                 data["counties_with_data"].append(fips)
@@ -336,7 +336,7 @@ def forecast_each_state(
 ):
     _logger.info(f"Generating data for state: {state}")
     cases = timeseries.get_data(state=state)
-    beds = beds_data.get_data_for_state(state)[CommonFields.LICENSED_BEDS]
+    beds = beds_data.get_data_for_state(state)[CommonFields.MAX_BEDS]
     if not beds:
         _logger.error(f"Failed to get beds data for {state}")
         return

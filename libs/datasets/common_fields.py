@@ -1,19 +1,4 @@
 
-class CommonIndexFields(object):
-    # Column for FIPS code. Right now a column containing fips data may be
-    # county fips (a length 5 string) or state fips (a length 2 string).
-    FIPS = "fips"
-
-    # 2 letter state abbreviation, i.e. MA
-    STATE = "state"
-
-    COUNTRY= "country"
-
-    AGGREGATE_LEVEL = "aggregate_level"
-
-    DATE = "date"
-
-
 class CommonFields(object):
     """Common field names shared across different sources of data"""
 
@@ -22,9 +7,9 @@ class CommonFields(object):
     # 2 letter state abbreviation, i.e. MA
     STATE = "state"
 
-    COUNTRY= "country"
+    COUNTRY = "country"
 
-    COUNTY= "county"
+    COUNTY = "county"
 
     AGGREGATE_LEVEL = "aggregate_level"
 
@@ -55,3 +40,18 @@ class CommonFields(object):
     ALL_BED_TYPICAL_OCCUPANCY_RATE = "all_beds_occupancy_rate"
     ICU_TYPICAL_OCCUPANCY_RATE = "icu_occupancy_rate"
     MAX_BED_COUNT = "max_bed_count"
+
+
+class CommonIndexFields(object):
+    # Column for FIPS code. Right now a column containing fips data may be
+    # county fips (a length 5 string) or state fips (a length 2 string).
+    FIPS = CommonFields.FIPS
+
+    # 2 letter state abbreviation, i.e. MA
+    STATE = CommonFields.STATE
+
+    COUNTRY = CommonFields.COUNTRY
+
+    AGGREGATE_LEVEL = CommonFields.AGGREGATE_LEVEL
+
+    DATE = CommonFields.DATE
