@@ -211,14 +211,14 @@ def _build_all_for_states(
     p.join()
 
     # calculate calculate county inference
-    p = Pool()
     # for fips in all_county_fips.keys():
+    p = Pool()
     p.map(infer_rt_module.run_county, all_county_fips.keys())
     p.close()
     p.join()
 
     #calculate model fit
-    print(f"executing model for {len(all_county_fips)} counties")
+    root.info(f"executing model for {len(all_county_fips)} counties")
     p = Pool()
     fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
     p.close()
@@ -229,14 +229,16 @@ def _build_all_for_states(
     df['mle_model'] = [fit.mle_model for fit in fitters if fit]
     df.index = df.fips
 
-    for name, state_df in df.groupby('state'):
-        model_fitter._persist_results_per_state(state_df)
-
-    # _run_mle_fits(state)
-    # calculate ensemble
-    print(f"running ensemble for {len(all_county_fips)} counties")
+    state_dfs = [state_df for name, state_df in df.groupby('state')]
     p = Pool()
+    p.map(model_fitter._persist_results_per_state, state_dfs)
+    p.close()
+    p.join()
+
+    # calculate ensemble
+    root.info(f"running ensemble for {len(all_county_fips)} counties")
     ensemble_func = partial(_run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
+    p = Pool()
     p.map(ensemble_func, all_county_fips.keys())
     p.close()
     p.join()
@@ -245,8 +247,7 @@ def _build_all_for_states(
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
-    print(f"outputing web results for states and {len(all_county_fips)} counties")
-    #p = Pool()
+    root.info(f"outputing web results for states and {len(all_county_fips)} counties")
     for state in states:
         web_ui_mapper = WebUIDataAdaptorV1(
             state,
@@ -283,7 +284,7 @@ def _run_all(
         # method is used to measure localized Reff.
         # if not states_only:
         #     _impute_start_dates(state)
-        print("deprecated")
+        root.warn("running deprecated method")
         _infer_rt(state, states_only=states_only)
         _run_mle_fits(state, states_only=states_only)
         _run_ensembles(
@@ -562,7 +563,6 @@ def build_all(
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
     states = [state for state in states if state in ALL_STATES]
-    print('state')
     if not len(states):
         states = ALL_STATES
 

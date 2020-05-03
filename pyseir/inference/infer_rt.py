@@ -534,7 +534,6 @@ def run_county(fips):
     """
     if fips:
         df = RtInferenceEngine.run_for_fips(fips)
-        print(df)
         county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
         if df is not None and not df.empty:
             with open(county_output_file, 'w') as buf:
