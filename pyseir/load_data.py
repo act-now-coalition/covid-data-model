@@ -341,7 +341,7 @@ def get_hospitalization_data():
 
 
 @lru_cache(maxsize=32)
-def load_hospitalization_data(fips, t0):
+def load_hospitalization_data(fips, t0, category='hospitalized'):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
@@ -353,6 +353,8 @@ def load_hospitalization_data(fips, t0):
         County fips to lookup.
     t0: datetime
         Datetime to offset by.
+    category: str
+        'icu' or 'hospitalized'
 
     Returns
     -------
@@ -370,16 +372,16 @@ def load_hospitalization_data(fips, t0):
     if len(hospitalization_data) == 0:
         return None, None, None
 
-    if (hospitalization_data['current_hospitalized'] > 0).any():
-        hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
+    if (hospitalization_data[f'current_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'current_{category}'].notnull()]
         relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         return relative_days, \
-               hospitalization_data['current_hospitalized'].values.clip(min=0),\
+               hospitalization_data[f'current_{category}'].values.clip(min=0),\
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
+    elif (hospitalization_data[f'cumulative_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'cumulative_{category}'].notnull()]
         relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+        cumulative = hospitalization_data[f'cumulative_{category}'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i+1]:
@@ -390,7 +392,7 @@ def load_hospitalization_data(fips, t0):
 
 
 @lru_cache(maxsize=32)
-def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=False):
+def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=False, category='hospitalized'):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
@@ -405,6 +407,8 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
     convert_cumulative_to_current: bool
         If True, and only cumulative hospitalizations are available, convert the
         current hospitalizations to the current value.
+    category: str
+        'icu' for just ICU or 'hospitalized' for all ICU + Acute.
 
     Returns
     -------
@@ -422,33 +426,43 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
         .get_data(country='USA', state=abbr)
     )
 
+    categories = ['icu', 'hospitalized']
+    if category not in categories:
+        raise ValueError(f'Hospitalization category {category} is not in {categories}')
+
     if len(hospitalization_data) == 0:
         return None, None, None
 
-    if (hospitalization_data['current_hospitalized'] > 0).any():
-        hospitalization_data = hospitalization_data[hospitalization_data['current_hospitalized'].notnull()]
+    if (hospitalization_data[f'current_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'current_{category}'].notnull()]
         times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         return times_new, \
-               hospitalization_data['current_hospitalized'].values.clip(min=0), \
+               hospitalization_data[f'current_{category}'].values.clip(min=0), \
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        hospitalization_data = hospitalization_data[hospitalization_data['cumulative_hospitalized'].notnull()]
+    elif (hospitalization_data[f'cumulative_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'cumulative_{category}'].notnull()]
         times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+        cumulative = hospitalization_data[f'cumulative_{category}'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
+
         if convert_cumulative_to_current:
             # Must be here to avoid circular import. This is required to convert
             # cumulative hosps to current hosps. We also just use a dummy fips and t_list.
             from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
             params = ParameterEnsembleGenerator(fips='06', t_list=[], N_samples=1).get_average_seir_parameters()
-            average_length_of_stay = (
-                  params['hospitalization_rate_general'] * params['hospitalization_length_of_stay_general']
-                + params['hospitalization_rate_icu'] * (1 - params['fraction_icu_requiring_ventilator']) * params['hospitalization_length_of_stay_icu']
-                + params['hospitalization_rate_icu'] * params['fraction_icu_requiring_ventilator'] * params['hospitalization_length_of_stay_icu_and_ventilator']
-            ) / (params['hospitalization_rate_general'] + params['hospitalization_rate_icu'])
+            if category == 'hospitalized':
+                average_length_of_stay = (
+                      params['hospitalization_rate_general'] * params['hospitalization_length_of_stay_general']
+                    + params['hospitalization_rate_icu'] * (1 - params['fraction_icu_requiring_ventilator']) * params['hospitalization_length_of_stay_icu']
+                    + params['hospitalization_rate_icu'] * params['fraction_icu_requiring_ventilator'] * params['hospitalization_length_of_stay_icu_and_ventilator']
+                ) / (params['hospitalization_rate_general'] + params['hospitalization_rate_icu'])
+            else:
+                average_length_of_stay = (
+                    (1 - params['fraction_icu_requiring_ventilator']) * params['hospitalization_length_of_stay_icu']
+                    + params['fraction_icu_requiring_ventilator'] * params['hospitalization_length_of_stay_icu_and_ventilator'])
 
             # Now compute a cumulative sum, but at each day, subtract the discharges from the previous count.
             new_hospitalizations = np.append([0], np.diff(cumulative))
