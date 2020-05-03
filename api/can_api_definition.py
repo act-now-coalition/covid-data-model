@@ -170,7 +170,7 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
-    actuals: List[CANActualsTimeseriesRow] = pydantic.Field(...)
+    # actuals_timeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 
     # pylint: disable=no-self-argument
     @pydantic.validator('timeseries')
@@ -208,7 +208,7 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
 
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
-    actuals: List[CANActualsTimeseriesRow] = pydantic.Field(...)
+    actuals_timeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 
 class CovidActNowCountiesAPI(pydantic.BaseModel):
     __root__: List[CovidActNowCountySummary] = pydantic.Field(...)

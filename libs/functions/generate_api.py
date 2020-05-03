@@ -14,6 +14,8 @@ from api.can_api_definition import (
 )
 from libs.constants import NULL_VALUE
 from libs.datasets import results_schema as rc
+from libs.datasets.common_fields import CommonFields
+from libs.datasets.combined_datasets import build_latest_with_all_fields
 from libs.enums import Intervention
 from libs.functions import get_can_projection
 from libs.datasets.dataset_utils import AggregationLevel
@@ -95,60 +97,60 @@ def _generate_state_actuals(
         state_intervention: Intervention for state
         state_beds_data: Bed data for a specific state.
     """
+    latest_values_dataset = build_latest_with_all_fields()
+    state = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
+    latest_actuals = latest_values_dataset.get_data_for_state(state)
     intervention_str = state_intervention.name
 
     return _Actuals(
-        population=projection_row[rc.POPULATION],
+        population=latest_actuals[CommonFields.POPULATION],
         intervention=intervention_str,
-        cumulativeConfirmedCases=projection_row[rc.CURRENT_CONFIRMED],
-        cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
-        cumulativePositiveTests=_get_or_none(
-            projection_row[rc.CUMULATIVE_POSITIVE_TESTS]
-        ),
-        cumulativeNegativeTests=_get_or_none(
-            projection_row[rc.CUMULATIVE_NEGATIVE_TESTS]
-        ),
+        cumulativeConfirmedCases=latest_actuals[CommonFields.CASES],
+        cumulativeDeaths=latest_actuals[CommonFields.DEATHS],
+        cumulativePositiveTests=latest_actuals[CommonFields.POSITIVE_TESTS],
+        cumulativeNegativeTests=latest_actuals[CommonFields.NEGATIVE_TESTS],
         hospitalBeds={
-            "capacity": projection_row[rc.PEAK_BED_CAPACITY],
+            "capacity": latest_actuals[CommonFields.MAX_BED_COUNT] or 0,
             # TODO(chris): Get from assembled sources about current hospitalization data.
             # i.e. NV data we can manually update.
             "currentUsage": None,
-            "typicalUsageRate": state_beds_data[BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE],
+            "typicalUsageRate": latest_actuals.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
         },
         ICUBeds={
             # Note(Chris): We do not currently pass through ICU Bed capacity calculations
             # in the projection_row.  This wouldn't be a ton of work to do, but
             # using the provided beds data for the time being.
-            "capacity": state_beds_data[BedsDataset.Fields.ICU_BEDS],
+            "capacity": latest_actuals[CommonFields.ICU_BEDS],
             "currentUsage": None,
-            "typicalUsageRate": state_beds_data[BedsDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE],
+            "typicalUsageRate": latest_actuals[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE],
         },
     )
 
 
 def _generate_county_actuals(projection_row, state_intervention, county_beds_data):
     intervention_str = state_intervention.name
-
+    latest_values_dataset = build_latest_with_all_fields()
+    latest_actuals = latest_values_dataset.get_data_for_fips(projection_row[rc.FIPS])
 
     icu_beds = None
     if county_beds_data:
         icu_beds = {
-            "capacity": county_beds_data[BedsDataset.Fields.ICU_BEDS],
+            "capacity": latest_actuals[CommonFields.ICU_BEDS],
             "currentUsage": None,
-            "typicalUsageRate": county_beds_data[BedsDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE],
+            "typicalUsageRate": latest_actuals[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE],
         }
 
     return _Actuals(
-        population=projection_row[rc.POPULATION],
+        population=latest_actuals[CommonFields.POPULATION],
         intervention=intervention_str,
-        cumulativeConfirmedCases=projection_row[rc.CURRENT_CONFIRMED],
-        cumulativeDeaths=projection_row[rc.CURRENT_DEATHS],
-        cumulativePositiveTests=None,
-        cumulativeNegativeTests=None,
+        cumulativeConfirmedCases=latest_actuals[CommonFields.CASES],
+        cumulativeDeaths=latest_actuals[CommonFields.DEATHS],
+        cumulativePositiveTests=latest_actuals[CommonFields.POSITIVE_TESTS],
+        cumulativeNegativeTests=latest_actuals[CommonFields.NEGATIVE_TESTS],
         hospitalBeds={
-            "capacity": projection_row[rc.PEAK_BED_CAPACITY],
+            "capacity": latest_actuals[CommonFields.MAX_BED_COUNT] or 0,
             "currentUsage": None,
-            "typicalUsageRate": county_beds_data.get(BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
+            "typicalUsageRate": latest_actuals.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
         },
         ICUBeds=icu_beds,
     )
