@@ -688,7 +688,9 @@ def _execute_model_for_fips(fips):
 
 def _persist_results_per_state(state_df):
         county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
-        state_df.drop(['state', 'mle_model'], axis=1).to_json(county_output_file)
+        data = state_df.drop(['state', 'mle_model'], axis=1)
+        with county_output_file as buf:
+            data.to_json(buf)
 
         for fips, county_series in state_df.iterrows():
             with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
@@ -732,7 +734,9 @@ def run_state(state, states_only=False):
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
-    pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
+    data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
+    with open(output_path, 'w') as buf:
+        data.to_json(buf)
 
     with open(get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
         pickle.dump(model_fitter.mle_model, f)
@@ -750,7 +754,9 @@ def run_state(state, states_only=False):
             p.close()
 
             county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
-            pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)
+            data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+            with open(county_output_file, 'w') as buf:
+                data.to_json(buf)
 
             # Serialize the model results.
             for fips, fitter in zip(all_fips, fitters):

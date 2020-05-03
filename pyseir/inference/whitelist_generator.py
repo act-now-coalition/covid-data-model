@@ -68,7 +68,8 @@ class WhitelistGenerator:
         output_path = get_run_artifact_path(
             fips='06', # Dummy fips since not used here...
             artifact=RunArtifact.WHITELIST_RESULT)
-        df_whitelist.to_json(output_path)
+        with open(output_path, 'w') as buf:
+            df_whitelist.to_json(buf)
 
         return df_whitelist
 
