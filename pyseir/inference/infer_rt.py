@@ -80,21 +80,25 @@ class RtInferenceEngine:
                 load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
             self.display_name = self.state
         else:
-            self.agg_level = AggregationLevel.COUNTY
-            self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
-            self.state = self.geo_metadata['state']
-            self.state_obj = us.states.lookup(self.state)
-            self.county = self.geo_metadata['county']
-            if self.county:
-                self.display_name = self.county + ', ' + self.state
-            else:
-                self.display_name = self.state
+            try:
+                self.agg_level = AggregationLevel.COUNTY
+                self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+                self.state = self.geo_metadata['state']
+                self.state_obj = us.states.lookup(self.state)
+                self.county = self.geo_metadata['county']
+                if self.county:
+                    self.display_name = self.county + ', ' + self.state
+                else:
+                    self.display_name = self.state
 
-            # TODO Swap for new data source.
-            self.times, self.observed_new_cases, self.observed_new_deaths = \
-                load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
-            self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
-                load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
+                # TODO Swap for new data source.
+                self.times, self.observed_new_cases, self.observed_new_deaths = \
+                    load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
+                self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
+                    load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
+            except Exception:
+                logging.warn(f'Failed to init inference for {self.display_name}')
+                return None
 
         logging.info(f'Running Rt Inference for {self.display_name}')
 
@@ -508,6 +512,27 @@ def run_state(state, states_only=False):
         rt_inferences = all_fips.map(lambda x: RtInferenceEngine.run_for_fips(x)).tolist()
 
         for fips, rt_inference in zip(all_fips, rt_inferences):
+            # if fips=="16001":
+            #     import ipdb; ipdb.set_trace()
             county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
             if rt_inference is not None:
                 rt_inference.to_json(county_output_file)
+
+
+def run_county(fips):
+    """
+    Run the R_t inference for each county in a state.
+
+    Parameters
+    ----------
+    state: str
+        State to run against.
+    states_only: bool
+        If True only run the state level.
+    """
+    if fips:
+        df = RtInferenceEngine.run_for_fips(fips)
+        print(df)
+        county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
+        if df is not None and not df.empty:
+            df.to_json(county_output_file)

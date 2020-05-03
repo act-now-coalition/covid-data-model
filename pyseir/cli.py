@@ -210,13 +210,10 @@ def _build_all_for_states(
     p.close()
     p.join()
 
-    # calculate culate inference
-    # parallelize async by state
-    # todo calculate inference per county
+    # calculate calculate county inference
     p = Pool()
-    for state in states:
-        # p.apply_async(
-        _infer_rt(state)
+    # for fips in all_county_fips.keys():
+    p.map(infer_rt_module.run_county, all_county_fips.keys())
     p.close()
     p.join()
 
