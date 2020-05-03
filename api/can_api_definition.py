@@ -144,10 +144,10 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
         ...,
         description="Total ventilator capacity."
     )
-    RtIndicator: float = pydantic.Field(
+    RtIndicator: Optional[float] = pydantic.Field(
         ..., description="Historical or Inferred Rt"
     )
-    RtIndicatorCI90: float = pydantic.Field(
+    RtIndicatorCI90: Optional[float] = pydantic.Field(
         ..., description="Rt standard deviation"
     )
     cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
@@ -224,6 +224,7 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
     actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
+
 
 class CovidActNowCountiesAPI(pydantic.BaseModel):
     __root__: List[CovidActNowCountySummary] = pydantic.Field(...)
