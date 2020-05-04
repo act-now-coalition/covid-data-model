@@ -202,7 +202,6 @@ def _build_all_for_states(
         run_mode=run_mode,
         generate_reports=generate_reports,
         output_interval_days=output_interval_days,
-        states_only=True,
         output_dir=output_dir,
     )
     p.map(states_only_func, states)
