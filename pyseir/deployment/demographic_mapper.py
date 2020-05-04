@@ -533,7 +533,7 @@ class DemographicMapper:
                   + self.IHR['HVent'][measure_unit.value]) * self.prevalence
 
         else:
-            logging.warnings(f'covid_measure {measure.value} is not relevant to hospitalization rate')
+            logging.warning(f'covid_measure {measure.value} is not relevant to hospitalization rate')
             return None
 
     def _calculate_age_specific_IFR(self, measure_unit):
@@ -685,7 +685,7 @@ class DemographicMapper:
                 for measure_unit_name in predictions[measure_name]:
                     modified_weights = weights
                     if self.risk_modifier_by_age is not None:
-                        if measure_name in self.risk_modifier_by_age_group:
+                        if measure_name in self.risk_modifier_by_age:
                             modified_weights = weights * self.risk_modifier_by_age[measure_name](age_bin_centers)
                             modified_weights /= modified_weights.sum()
                     mapped_predictions[measure_name][measure_unit_name] = \
