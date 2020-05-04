@@ -465,7 +465,7 @@ class RtInferenceEngine:
         shift: int
             A shift period applied to series b that aligns to series a
         """
-        shifts = range(-30, 5)
+        shifts = range(-21, 5)
         valid_shifts = []
         xcor = []
         np.random.seed(42)  # Xcor has some stochastic FFT elements.
