@@ -124,7 +124,7 @@ class DemographicMapper:
         Contains:
             - compartments:
               - <compartment>: time series of population at a specific
-                               infection states (susceptible, infected,
+                               infection state (susceptible, infected,
                                hospitalized, etc.) simulated by MLE model
                                assuming the population has the demographic
                                distribution of the target population. Each time
@@ -627,7 +627,7 @@ class DemographicMapper:
             Contains:
             - compartments:
               - <compartment>: time series of population at a specific
-                               infection states (susceptible, infected,
+                               infection state (susceptible, infected,
                                hospitalized, etc.) by demographic group
                                simulated by MLE model. Each time series is
                                recorded as pd.DataFrame, with dates of
@@ -647,7 +647,7 @@ class DemographicMapper:
             Contains:
             - compartments:
               - <compartment>: time series of population at a specific
-                               infection states (susceptible, infected,
+                               infection state (susceptible, infected,
                                hospitalized, etc.) simulated by MLE model
                                assuming the population has the demographic
                                distribution of the target population. Each time
@@ -707,7 +707,7 @@ class DemographicMapper:
             Contains:
             - compartments:
               - <compartment>: time series of population at a specific
-                               infection states (susceptible, infected,
+                               infection state (susceptible, infected,
                                hospitalized, etc.) simulated by MLE model
                                assuming the population has the demographic
                                distribution of the target population. Each time
