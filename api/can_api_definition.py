@@ -36,7 +36,7 @@ class _Projections(pydantic.BaseModel):
 
 
 class _ResourceUtilization(pydantic.BaseModel):
-    capacity: int = pydantic.Field(..., description="Total capacity for resource")
+    capacity: Optional[int] = pydantic.Field(..., description="Total capacity for resource")
     currentUsage: Optional[int] = pydantic.Field(
         ..., description="Currently used capacity for resource"
     )
@@ -44,7 +44,7 @@ class _ResourceUtilization(pydantic.BaseModel):
         ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
     )
 
-    
+
 class _Actuals(pydantic.BaseModel):
     population: Optional[int] = pydantic.Field(
         ..., description="Total population in geographic area [Should be moved to the summary]", gt=0

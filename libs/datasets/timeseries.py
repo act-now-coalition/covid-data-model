@@ -124,12 +124,14 @@ class TimeseriesDataset(object):
 
         return self.__class__(data)
 
-    def get_data_for_fips(self, fips): 
-        return self.get_subset(aggregation_level=AggregationLevel.COUNTY, fips=fips).data.to_dict(orient="records")
+    def get_data_for_fips(self, fips) -> List[dict]: 
+        pd_data = self.get_subset(fips=fips).data
+        return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
 
-    def get_data_for_state(self, state): 
+    def get_data_for_state(self, state) -> List[dict]: 
         """ state abbrev here """
-        return self.get_subset(aggregation_level=AggregationLevel.STATE, state=state).data.to_dict(orient="records")
+        pd_data = self.get_subset(aggregation_level=AggregationLevel.STATE, state=state).data
+        return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
 
     def get_data(
         self, country=None, state=None, county=None, fips=None

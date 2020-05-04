@@ -176,7 +176,8 @@ class LatestValuesDataset(object):
 
         Returns: Dictionary with all data for a given state.
         """
-        data = self.state_data
+        # we map NaNs to none here so that they can be generated via the API easier
+        data = self.state_data.where(pd.notnull(self.state_data), None)
         row = data[data[self.Fields.STATE] == state]
         if not len(row):
             return {}
@@ -191,7 +192,8 @@ class LatestValuesDataset(object):
 
         Returns: Dictionary with all data for a given fips code.
         """
-        row = self.data[self.data[self.Fields.FIPS] == fips]
+        # we map NaNs to none here so that they can be generated via the API easier
+        row = self.data[self.data[self.Fields.FIPS] == fips].where(pd.notnull(self.data), None)
         if not len(row):
             return {}
 
