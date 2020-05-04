@@ -9,6 +9,7 @@ import io
 import us
 import zipfile
 import json
+import pickle
 from datetime import datetime
 from libs.datasets import NYTimesDataset
 from libs.datasets.timeseries import TimeseriesDataset
@@ -598,6 +599,65 @@ def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None
     simulation_start_date = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
     date_idx = int((date - simulation_start_date).days)
     return ensemble_results['suppression_policy__inferred'][compartment]['ci_50'][date_idx]
+
+
+def load_inference_results(fips, model_path=None, fit_results_path=None):
+    """
+    Load inference results, including SEIR model objec and fit results that
+    contain inferred MLE parameters, obtained by fitting the SEIR model
+    predictions to observed new cases, deaths w/o hospitalization data.
+    Returns None for either when no valid path is given or found.
+
+    Parameters
+    ----------
+    model_path: str
+        Path of mle model object.
+    fit_results_path: str
+        Path of fit results file.
+
+    Returns
+    -------
+    model: pyseir.models.seir_model.SEIRModel
+        SEIR model with MLE parameter setting and forecasts of size
+        of compartments at different states of infection (susceptible,
+        exposed, infected, etc.). None when no valid path is given or found.
+    fit_results: dict
+        Contains MLE inference of epi parameters. None when no valid path is
+        given or found. Some of the parameters it contains:
+        - R0: inferred basic reproduction number
+        - t0: inferred number of days of first infection since the reference
+              date
+        - t0_date: inferred date of first infection
+        - eps: inferred level of suppression
+        - test_fraction: inferred coverage of test of infected population.
+        - hosp_fraction: inferred fraction of hospitalization reported.
+    """
+    model = None
+    model_path = model_path or get_run_artifact_path(fips,
+                                                     RunArtifact.MLE_FIT_MODEL)
+    if model_path is not None:
+        try:
+            model = pickle.loads(open(model_path, 'rb').read())
+        except FileNotFoundError:
+            logging.warning(f'no model object is found at {model_path} for fips {fips}')
+    else:
+        logging.warning(f'no valid model path is given or found for fips {fips}')
+
+
+    fit_results = None
+    fit_results_path = fit_results_path or \
+                       get_run_artifact_path(fips, RunArtifact.MLE_FIT_RESULT)
+    if fit_results_path is not None:
+        try:
+            with open(fit_results_path) as f:
+                fit_results = json.load(f)
+            fit_results = pd.DataFrame(fit_results).set_index('fips').loc[fips].to_dict()
+        except FileNotFoundError:
+            logging.warning(f'no model object is found at {fit_results_path} for fips {fips}')
+    else:
+        logging.warning(f'no valid fit results path is given or found for fips {fips}')
+
+    return model, fit_results
 
 
 if __name__ == '__main__':
