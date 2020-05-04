@@ -687,14 +687,14 @@ def _execute_model_for_fips(fips):
     return None
 
 def _persist_results_per_state(state_df):
-        county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
-        data = state_df.drop(['state', 'mle_model'], axis=1)
-        with open(county_output_file, 'w') as buf:
-            data.to_json(buf)
+    county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
+    data = state_df.drop(['state', 'mle_model'], axis=1)
+    with open(county_output_file, 'w') as buf:
+        data.to_json(buf)
 
-        for fips, county_series in state_df.iterrows():
-            with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
-                pickle.dump(county_series.mle_model, f)
+    for fips, county_series in state_df.iterrows():
+        with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
+            pickle.dump(county_series.mle_model, f)
 
 
 def build_county_list(state):
@@ -708,8 +708,6 @@ def build_county_list(state):
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
 
     all_fips = df_whitelist[df_whitelist['state'].str.lower() == state_obj.name.lower()].fips.tolist()
-
-    # county_fips_per_state = dict(zip(state_county_fips, [state]*len(state_county_fips)))
 
     return all_fips
 

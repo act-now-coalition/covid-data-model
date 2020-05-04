@@ -141,7 +141,6 @@ def _map_outputs(
 
 def _state_only_pipeline(
     state,
-    states_only=True,
     run_mode=DEFAULT_RUN_MODE,
     generate_reports=False,
     output_interval_days=1,
@@ -193,7 +192,7 @@ def _build_all_for_states(
     for state in states:
         # all_county_fips +=
         state_county_fips = model_fitter.build_county_list(state)
-        county_fips_per_state = dict(zip(state_county_fips, [state]*len(state_county_fips)))
+        county_fips_per_state = {fips: state for fips in state_county_fips}
         all_county_fips.update(county_fips_per_state)
 
     # do everything for just states in paralell
@@ -234,6 +233,9 @@ def _build_all_for_states(
     _cache_global_datasets()
 
     root.info(f"outputing web results for states and {len(all_county_fips)} counties")
+    # does not parallelize well, because web_ui mapper doesn't serialize efficiently
+    # TODO: Remove intermediate artifacts and paralellize artifacts creation better
+    # Approximately 40% of the processing time is taken on this step
     for state in states:
         web_ui_mapper = WebUIDataAdaptorV1(
             state,
@@ -244,9 +246,7 @@ def _build_all_for_states(
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(all_fips=all_county_fips.keys())
-        # mapper_list += build_function_with_fips
-        # web_ui_mapper.build_own_fips(all_county_fips)
-        # web_ui_mapper.execute_own_fips_async(p)
+
 
     p.close()
     p.join()

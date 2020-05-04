@@ -220,9 +220,7 @@ class WebUIDataAdaptorV1:
         self.map_fips(state_fips)
 
         if not states_only:
-            # if len(all_fips)==0:
-            df = load_data.load_county_metadata()
-            all_fips = df[df['state'].str.lower() == self.state.lower()].fips
+            all_fips = load_data.get_all_fips_codes_for_a_state(self.state)
 
             if not self.include_imputed:
                 # Filter...
@@ -237,24 +235,6 @@ class WebUIDataAdaptorV1:
             p.close()
             p.join()
 
-    def build_own_fips(self, include_fips):
-        state_fips = us.states.lookup(self.state).fips
-
-        df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == self.state.lower()].fips
-
-        if not self.include_imputed:
-            fips_with_cases = self.jhu_local.timeseries() \
-                .get_subset(AggregationLevel.COUNTY, country='USA') \
-                .get_data(country='USA', state=self.state_abbreviation)
-            fips_with_cases = fips_with_cases[fips_with_cases.cases > 0].fips.unique().tolist()
-            all_fips = [fips for fips in all_fips if fips in fips_with_cases]
-
-        self.own_fips = [state_fips] + [fips for fips in all_fips if fips in include_fips]
-
-    def execute_own_fips_async(self, pool: Pool):
-        for fips in self.own_fips:
-            pool.apply_async(self.map_fips, fips)
 
 if __name__ == '__main__':
     mapper = WebUIDataAdaptorV1('California', output_interval_days=4)

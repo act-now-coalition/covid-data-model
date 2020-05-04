@@ -97,6 +97,7 @@ class RtInferenceEngine:
                 self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
                     load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
             except Exception:
+                # TODO: Remove unneeded fips from the equation
                 logging.warn(f'Failed to init inference for {self.display_name}')
                 return None
 
@@ -511,15 +512,12 @@ def run_state(state, states_only=False):
 
     # Run the counties.
     if not states_only:
-        df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
+        all_fips = load_data.get_all_fips_codes_for_a_state(state)
 
         # Something in here doesn't like multiprocessing...
         rt_inferences = all_fips.map(lambda x: RtInferenceEngine.run_for_fips(x)).tolist()
 
         for fips, rt_inference in zip(all_fips, rt_inferences):
-            # if fips=="16001":
-            #     import ipdb; ipdb.set_trace()
             county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
             if rt_inference is not None:
                 with open(county_output_file, 'w') as buf:
@@ -537,9 +535,11 @@ def run_county(fips):
     states_only: bool
         If True only run the state level.
     """
-    if fips:
-        df = RtInferenceEngine.run_for_fips(fips)
-        county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
-        if df is not None and not df.empty:
-            with open(county_output_file, 'w') as buf:
-                df.to_json(buf)
+    if not fips:
+        return None
+
+    df = RtInferenceEngine.run_for_fips(fips)
+    county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
+    if df is not None and not df.empty:
+        with open(county_output_file, 'w') as buf:
+            df.to_json(buf)

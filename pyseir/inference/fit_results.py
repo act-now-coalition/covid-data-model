@@ -46,9 +46,9 @@ def convert_fips_to_str(record):
     d = {}
     for col, vdict in record.items():
         if col=='fips':
-            d.update({col: {k:str(v) for k,v in vdict.items()}})
+            d[col] = {k: str(v) for k, v in vdict.items()}
         else:
-            d.update({col:vdict})
+            d[col] = vdict
     return d
 
 
