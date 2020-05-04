@@ -1,4 +1,5 @@
 import os
+import pickle
 from pyseir.load_data import load_county_metadata
 from pyseir import OUTPUT_DIR
 import pandas as pd
@@ -26,6 +27,23 @@ def load_t0(fips):
     return datetime.fromtimestamp(pd.read_pickle(fit_results).set_index('fips').loc[fips]['t0_date'].timestamp())
 
 
+def load_mle_model(fips):
+    """
+    Load SEIR model object with inferred MLE parameters.
+
+    Returns
+    -------
+    model: pyseir.models.seir_model.SEIRModel
+        SEIR model with MLE parameter setting and forecasts of size
+        of compartments at different states of infection (susceptible,
+        exposed, infected, etc.). None when no valid path is given or found.
+    """
+    model_path = get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL)
+    model = pickle.loads(open(model_path, 'rb').read())
+
+    return model
+
+
 def load_inference_result(fips):
     """
     Load fit results by state or county fips code.
@@ -41,6 +59,7 @@ def load_inference_result(fips):
         Dictionary of fit result information.
     """
     output_file = get_run_artifact_path(fips, RunArtifact.MLE_FIT_RESULT)
+
     df = pd.read_json(output_file, dtype={'fips': 'str'})
     if len(fips) == 2:
         return df.iloc[0].to_dict()
