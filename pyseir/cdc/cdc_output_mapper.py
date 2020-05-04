@@ -1,9 +1,10 @@
 import json
 import pickle
 from enum import Enum
+import numpy as np
 import pandas as pd
 from pyseir.utils import get_run_artifact_path, RunArtifact
-from pyseir.load_data import load_inference_results
+from pyseir.inference.fit_results import load_inference_result, load_mle_model
 
 
 """
@@ -20,8 +21,14 @@ output file should have columns:
 - value
 """
 
-FORECAST_TIME_LIMITS = {'day': 130,
-                        'wk': 20}
+TARGETS = ['cum death']
+FORECAST_TIME_UNITS = ['day', 'wk']
+QUANTILES = np.concatenate([[0.01, 0.025],
+                            np.arange(0.05, 0.95, 0.05),
+                            [0.975, 0.99]])
+
+FORECAST_TIME_LIMITS = {'day': 130, 'wk': 20}
+
 
 class Target(Enum):
     CUM_DEATH = 'cum death'
@@ -47,20 +54,28 @@ def target_column_name(n, target, time_unit):
 class CDCOutputMapper:
     def __init__(self,
                  fips,
-                 targets,
-                 forecast_time_units,
-                 ):
+                 targets=TARGETS,
+                 forecast_time_units=FORECAST_TIME_UNITS,
+                 quantiles=QUANTILES,
+                 type='quantile'):
         self.fips = fips
         self.targets = targets
         self.forecast_time_units = forecast_time_units
-        self.model, self.fit_results = load_inference_results(self.fips)
+        self.quantiles = quantiles
+        self.type = type
+        self.model = load_mle_model(self.fips)
+        self.fit_results = load_inference_result(self.fips)
+
+    def calculate_posteriors(self):
+        """
+
+        """
+        return
 
     def forecast(self, target):
-
         return
 
     def generate_metadata(self):
-
         return
 
 
