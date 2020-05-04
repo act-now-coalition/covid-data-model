@@ -1,5 +1,5 @@
 """
-One data model ouput of the modeling pipeline to serve to the API.
+One data model output of the modeling pipeline to serve to the API.
 """
 DAY_NUM = 'day_num'      # Index Column. Generally not the same between simulations.
 DATE = "date"            # Date in the timeseries.

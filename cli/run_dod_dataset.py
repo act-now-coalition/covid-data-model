@@ -20,13 +20,13 @@ def deploy_dod_projections(disable_validation, input_state_dir, input_county_dir
 
     Used for manual trigger
 
-    # triggering persistance to s3
+    # triggering persistence to s3
     AWS_PROFILE=covidactnow BUCKET_NAME=covidactnow-deleteme python run.py deploy-dod-projections
 
     # deploy to the data bucket
     AWS_PROFILE=covidactnow BUCKET_NAME=data.covidactnow.org python run.py deploy-dod-projections
 
-    # triggering persistance to local
+    # triggering persistence to local
     python run.py deploy-dod-projections
     """
 
