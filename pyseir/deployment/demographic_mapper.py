@@ -229,7 +229,7 @@ class DemographicMapper:
             Contains:
             - <hospitalization>: np.array
               Age-specific per capita mortality rate in given type of hospitalization.
-            hospitalization inlcude: HGen, HICU, HVent.
+            hospitalization include: HGen, HICU, HVent.
         """
 
         # per capit mortality rate from people who need ICU or in ICU
@@ -281,7 +281,7 @@ class DemographicMapper:
             - <hospitalization>: : np.array
               Age specific per-capita rate of admission to corresponding
               hospitalization.
-            hospitalization inlcude: HGen, HICU, HVent.
+            hospitalization include: HGen, HICU, HVent.
         """
         hospitalization_inflow_rates = {}
         hospitalization_inflow_rates['HGen'] = \
@@ -306,7 +306,7 @@ class DemographicMapper:
             Contains:
             - <hospitalization>: np.array, age-specific rate of recovery
                                  from the corresponding hospitalization.
-              hospitalization inlcude: HGen, HICU, HVent.
+              hospitalization include: HGen, HICU, HVent.
         """
         mortality_inflow_rates = self._reconstruct_mortality_inflow_rates()
 
@@ -352,7 +352,7 @@ class DemographicMapper:
               - <measure_unit>:  np.array
                 Rates of admission to hospital of infected population
                 by types of hospitalization.
-              hospitalization inlcude: HGen, HICU, HVent.
+              hospitalization include: HGen, HICU, HVent.
         """
 
         hospital_inflow_rates = self._reconstruct_hospitalization_inflow_rates()
