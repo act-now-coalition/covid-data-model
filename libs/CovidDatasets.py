@@ -161,13 +161,13 @@ class Dataset:
         return self._TIME_SERIES_DATA
 
     def get_raw_timeseries(self):
-        raise NotImplementedError('The \'get_raw_timeseries\' method must be overriden by the child class')
+        raise NotImplementedError('The \'get_raw_timeseries\' method must be overridden by the child class')
 
     def get_all_population(self):
-        raise NotImplementedError('The \'get_all_population\' method must be overriden by the child class')
+        raise NotImplementedError('The \'get_all_population\' method must be overridden by the child class')
 
     def get_all_beds(self):
-        raise NotImplementedError('The \'get_all_beds\' method must be overriden by the child class')
+        raise NotImplementedError('The \'get_all_beds\' method must be overridden by the child class')
 
     def combine_state_county_data(self, country, state):
         # Create a single dataset from state and county data, using state data preferentially.
