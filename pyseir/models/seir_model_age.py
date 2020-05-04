@@ -325,7 +325,7 @@ class SEIRModelAge:
             S_fracs = self.N / self.N.sum()
 
         beta = beta or 1
-        age_group_num = self.N.shape[0]
+        age_group_num = len(self.age_groups)
         # contact with susceptible at disease-free equilibrium
         # [C_11 * P_1, C_12 * P_1, ... C_1n * P_n]
         # ...
