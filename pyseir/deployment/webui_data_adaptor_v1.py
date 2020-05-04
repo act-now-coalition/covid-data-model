@@ -119,7 +119,9 @@ class WebUIDataAdaptorV1:
 
             hosp_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
 
-            if current_icu is not None:
+            # Some states have covidtracking issues. We shouldn't ground ICU cases
+            # to zero since so far these have all been bad reporting.
+            if current_icu is not None and current_icu[-1] > 0:
                 icu_rescaling_factor = current_icu[-1] / state_hosp_icu
             else:
                 icu_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)

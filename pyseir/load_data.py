@@ -21,8 +21,6 @@ from enum import Enum
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
 
-BAD_ICU_DATA_STATES = ['AR']
-
 
 class HospitalizationDataType(Enum):
     CUMULATIVE_HOSPITALIZATIONS = 'cumulative_hospitalizations'
@@ -450,7 +448,7 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
     if category not in categories:
         raise ValueError(f'Hospitalization category {category} is not in {categories}')
 
-    if len(hospitalization_data) == 0 or (category == 'icu' and abbr in BAD_ICU_DATA_STATES):
+    if len(hospitalization_data) == 0:
         return None, None, None
 
     if (hospitalization_data[f'current_{category}'] > 0).any():
