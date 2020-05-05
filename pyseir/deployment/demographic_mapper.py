@@ -354,15 +354,15 @@ class DemographicMapper:
         hospital_inflow_rates = self._reconstruct_hospitalization_inflow_rates()
 
         fraction_of_symptomatic = self.predictions_by_age['I'] / (self.predictions_by_age['I']
-                                                                  + self.predictions_by_age['A'])
+                                                                + self.predictions_by_age['A'])
         IHR = defaultdict(dict)
-        if measure_unit is CovidMeasureUnit.PER_CAPITA:
+        if measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
             HR = hospital_inflow_rates
 
             for key in HR:
                 IHR[key][measure_unit.value] = HR[key][:, np.newaxis] * fraction_of_symptomatic
 
-        elif measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
+        elif measure_unit is CovidMeasureUnit.PER_CAPITA:
             total_rate_out_of_I = self.parameters['delta']
             for key in hospital_inflow_rates:
                 total_rate_out_of_I += hospital_inflow_rates[key]
