@@ -142,7 +142,7 @@ class DemographicMapper:
     Parameters
     ----------
     fips: str
-        State of county FIPS code
+        State or county FIPS code
     mle_model: SEIRModelAge
         Model with age structure and MLE model parameters
     fit_results: dict
