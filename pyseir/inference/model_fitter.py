@@ -677,14 +677,10 @@ class ModelFitter:
                 return None
 
         try:
-            for i in range(n_retries):
-                model_fitter = cls(fips=fips,
-                                   with_age_structure=with_age_structure)
             retries_left = n_retries
             model_is_empty = True
             while retries_left > 0 and model_is_empty:
-                model_fitter = cls(fips=fips,
-                                   with_age_structure=with_age_structure)
+                model_fitter = cls(fips=fips, with_age_structure=with_age_structure)
                 try:
                     model_fitter.fit()
                     if model_fitter.mle_model and os.environ.get('PYSEIR_PLOT_RESULTS') == 'True':
