@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result, load_mle_model
+from pyseir.ensembles.ensemble_runner import EnsembleRunner
 
 
 """
@@ -57,7 +58,8 @@ class CDCOutputMapper:
                  targets=TARGETS,
                  forecast_time_units=FORECAST_TIME_UNITS,
                  quantiles=QUANTILES,
-                 type='quantile'):
+                 type='quantile',
+                 ensemble=True):
         self.fips = fips
         self.targets = targets
         self.forecast_time_units = forecast_time_units
@@ -65,6 +67,14 @@ class CDCOutputMapper:
         self.type = type
         self.model = load_mle_model(self.fips)
         self.fit_results = load_inference_result(self.fips)
+        self.ensemble = ensemble
+
+
+    def load_inference_results(self):
+        model = load_mle_model
+        fit_results = load_inference_result
+        return model, fit_results
+
 
     def calculate_posteriors(self):
         """

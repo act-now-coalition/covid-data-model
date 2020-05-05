@@ -16,6 +16,7 @@ from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from pyseir.inference import fit_results
+from pyseir.inference.model_fitter import ModelFitter
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import JHUDataset
 
@@ -168,6 +169,7 @@ class EnsembleRunner:
         model.run()
         return model
 
+
     def _load_model_for_fips(self, scenario='inferred'):
         """
         Try to load a model for the locale, else load the state level model
@@ -221,6 +223,21 @@ class EnsembleRunner:
         model.run()
         return model
 
+
+    def _collect_ensemble_models(self, model_ensemble):
+        SEIR_kwargs = ParameterEnsembleGenerator(
+            fips=self.fips,
+            N_samples=self.n_samples,
+            t_list=self.t_list,
+            suppression_policy=None).sample_seir_parameters()
+
+        for parameter_set in SEIR_kwargs:
+            model = self._run_single_simulation(parameter_set)
+            log_likelihoods = self._fit_single_model(model)
+
+        return
+
+
     def run_ensemble(self):
         """
         Run an ensemble of models for each suppression policy nad generate the
@@ -234,7 +251,9 @@ class EnsembleRunner:
                 model_ensemble = [self._load_model_for_fips(scenario=suppression_policy)]
 
             else:
+                model_ensemble = self._collect_ensemble_models()
                 raise ValueError(f'Run mode {self.run_mode.value} not supported.')
+
 
             if self.agg_level is AggregationLevel.COUNTY:
                 self.all_outputs['county_metadata'] = self.county_metadata
@@ -368,7 +387,8 @@ class EnsembleRunner:
 
             # Compute percentiles over the ensemble
             for percentile in self.output_percentiles:
-                outputs[compartment]['ci_%i' % percentile] = np.percentile(value_stack, percentile, axis=0).tolist()
+                outputs[compartment]['ci_%.2f' % percentile] = np.percentile(
+                    value_stack, percentile, axis=0).tolist()
 
             if compartment in compartment_to_capacity_attr_map:
                 compartment_output['surge_start'], compartment_output['surge_start'] = self._get_surge_window(model_ensemble, compartment)
