@@ -578,7 +578,7 @@ class DemographicMapper:
         """
         predictions = defaultdict(dict)
         t0_date = datetime.fromisoformat(self.fit_results['t0_date'])
-        dates = [t0_date + timedelta(days=int(t)) for t in self.parameters['t_list']]
+        dates = [(t0_date + timedelta(days=int(t))).strftime("%Y-%m-%d") for t in self.parameters['t_list']]
         age_groups = ['-'.join([str(int(tup[0])), str(int(tup[1]))]) for tup in
                       self.parameters['age_groups']]
 
@@ -671,7 +671,8 @@ class DemographicMapper:
         mapped_predictions = defaultdict(dict)
 
         for c in predictions['compartments']:
-            mapped_predictions['compartments'][c] = predictions['compartments'][c].dot(demographic_group_size_ratio)
+            mapped_predictions['compartments'][c] = predictions['compartments'][c].dot(demographic_group_size_ratio) \
+                                                                                  .rename(c)
 
         measure_names = [k for k in predictions.keys() if k != 'compartments']
         if len(measure_names) > 0:
@@ -684,6 +685,9 @@ class DemographicMapper:
                             modified_weights /= modified_weights.sum()
                     mapped_predictions[measure_name][measure_unit_name] = \
                         predictions[measure_name][measure_unit_name].dot(modified_weights)
+
+        mapped_predictions['compartments'] = pd.concat(list(mapped_predictions['compartments'].values()),
+                                                       axis=1)
 
         self.results = mapped_predictions
 
