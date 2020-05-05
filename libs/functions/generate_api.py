@@ -202,8 +202,8 @@ def generate_state_timeseries(
         raise Exception(f"State time series empty for {intervention.name}")
 
     state_intervention = get_can_projection.get_intervention_for_state(state)
-    actuals_ts = combined_datasets.build_timeseries_with_all_fields()
-    actual_latest = combined_datasets.build_latest_with_all_fields()
+    actuals_ts = combined_datasets.build_us_timeseries_with_all_fields()
+    actual_latest = combined_datasets.build_us_latest_with_all_fields()
     state_latest = actual_latest.get_data_for_state(state)
 
     return CovidActNowStateTimeseries(
@@ -245,8 +245,8 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
 
     projections = _generate_api_for_projections(projection_row)
     state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
-    actuals_ts = combined_datasets.build_timeseries_with_all_fields()
-    actual_latest = combined_datasets.build_latest_with_all_fields()
+    actuals_ts = combined_datasets.build_us_timeseries_with_all_fields()
+    actual_latest = combined_datasets.build_us_latest_with_all_fields()
     fips_latest = actual_latest.get_data_for_fips(fips)
 
     return CovidActNowCountyTimeseries(
@@ -272,7 +272,7 @@ def generate_api_for_state_projection_row(projection_row) -> CovidActNowStateSum
     state_abbrev = US_STATE_ABBREV[projection_row[rc.STATE_FULL_NAME]]
     projections = _generate_api_for_projections(projection_row)
     state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
-    state_actuals = combined_datasets.build_latest_with_all_fields().get_data_for_state(state_abbrev)
+    state_actuals = combined_datasets.build_us_latest_with_all_fields().get_data_for_state(state_abbrev)
 
     state_result = CovidActNowStateSummary(
         population=state_actuals[CommonFields.POPULATION],
@@ -292,7 +292,7 @@ def generate_api_for_county_projection_row(projection_row):
     projections = _generate_api_for_projections(projection_row)
     state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
     fips = projection_row[rc.FIPS]
-    fips_actuals = combined_datasets.build_latest_with_all_fields().get_data_for_fips(fips)
+    fips_actuals = combined_datasets.build_us_latest_with_all_fields().get_data_for_fips(fips)
 
     county_result = CovidActNowCountySummary(
         population=fips_actuals[CommonFields.POPULATION],
