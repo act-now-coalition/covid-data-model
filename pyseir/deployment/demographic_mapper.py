@@ -179,7 +179,7 @@ class DemographicMapper:
         self.fit_results = fit_results
 
         if measures is not None:
-            measures = [measures] if not isinstance(measures,list) else measures
+            measures = [measures] if not isinstance(measures, list) else measures
             measures = [CovidMeasure(m) for m in measures]
         self.measures = measures
 
