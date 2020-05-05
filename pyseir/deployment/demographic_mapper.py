@@ -52,7 +52,7 @@ class DemographicMapper:
 
     The measure may quantify the probability of a future outcome or a
     daily event, depending on the measure_unit: when measure unit is `per
-    capita`, the measure quantifies the probability that an future event will
+    capita`, the measure quantifies the probability that a future event will
     ultimately occur; when measure unit is `per capita day`, the measure
     quantifies the probability of an event per day.
 
