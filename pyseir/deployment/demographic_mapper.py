@@ -184,7 +184,7 @@ class DemographicMapper:
         self.measures = measures
 
         if measure_units is not None:
-            measure_units = [measure_units] if not isinstance(measure_units,list) else measure_units
+            measure_units = [measure_units] if not isinstance(measure_units, list) else measure_units
             measure_units = [CovidMeasureUnit(u) for u in measure_units]
         self.measure_units = measure_units
 
