@@ -569,7 +569,7 @@ class DemographicMapper:
                                simulated by MLE model. Each time series is
                                recorded as pd.DataFrame, with dates of
                                prediction as index.
-              name of compartment include: S - susceptible, E - exposed,
+              name of compartments include: S - susceptible, E - exposed,
               A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
               ICU, HVent - on ventilator, N - entire population.
             - <measure>:
