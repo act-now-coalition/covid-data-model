@@ -8,21 +8,17 @@ from datetime import datetime, timedelta
 
 class CovidMeasure(Enum):
     """
-    - IHR_infected: probability an infected person is hospitalized,
-                                including non-ICU and ICU admission.
-    - IHR_icu: probability an infected person is
-                                    admitted to ICU.
-    - IHR_general: probability an infected person is
-                                        admitted to non-ICU.
-    - HR: probability a person gets hospitalized due to
-                       covid-19, including co-occurrence of infection and
-                       admission to hospital.
-    - HR_icu: probability a person gets admitted to ICU due
-                           to covid-19, including co-occurrence of infection
-                           and admission to ICU.
-    - HR_general: probability a person gets admitted to non-ICU
-                               due to covid-19, including co-occurrence of
-                               infection and admission to non-ICU.
+    - IHR: probability an infected person is hospitalized, including non-ICU
+           and ICU admission.
+    - IHR_icu: probability an infected person is admitted to ICU.
+    - IHR_general: probability an infected person is admitted to non-ICU.
+    - HR: probability a person gets hospitalized due to covid-19, including
+          co-occurrence of infection and admission to hospital.
+    - HR_icu: probability a person gets admitted to ICU due to covid-19,
+              including co-occurrence of infection and admission to ICU.
+    - HR_general: probability a person gets admitted to non-ICU due to
+                  covid-19, including co-occurrence of infection and
+                  admission to non-ICU.
     - IFR: probability an infected person dies of covid-19.
     """
 
