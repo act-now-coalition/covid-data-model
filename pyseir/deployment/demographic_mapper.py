@@ -189,7 +189,7 @@ class DemographicMapper:
         self.measure_units = measure_units
 
         if target_age_distribution_pdf is None:
-            target_age_distribution_pdf = lambda x: np.array([1] * len(self.parameters['age_groups']))
+            target_age_distribution_pdf = lambda x: np.ones(len(self.parameters['age_groups']))
         self.target_age_distribution_pdf = target_age_distribution_pdf
         self.risk_modifier_by_age = risk_modifier_by_age
 
