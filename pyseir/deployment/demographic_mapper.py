@@ -378,6 +378,9 @@ class DemographicMapper:
             for key in HR:
                 IHR[key][measure_unit.value] = HR[key] * fraction_of_symptomatic
 
+        else:
+            raise ValueError('given measure_unit is not implemented')
+
         return IHR
 
     def _age_specific_IFR_by_hospitalization(self, measure_unit, IHR):
@@ -427,11 +430,11 @@ class DemographicMapper:
                 mortality_inflow_rates[key] / (mortality_inflow_rates[key] + hospital_recovery_inflow_rates[key])
 
         IFR = defaultdict(dict)
+        if measure_unit is CovidMeasureUnit.PER_CAPITA:
+            for key in mortality_probs:
+                IFR[key][measure_unit.value] = mortality_probs[key] * IHR[key][measure_unit.value]
 
-        for key in mortality_probs:
-            IFR[key][measure_unit.value] = mortality_probs[key] * IHR[key][measure_unit.value]
-
-        if measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
+        elif measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
             total_infections = np.zeros(self.predictions_by_age['I'].shape)
             for c in ['I', 'A', 'HGen', 'HICU', 'HVent']:
                 total_infections += self.predictions_by_age[c]
@@ -439,6 +442,9 @@ class DemographicMapper:
             for key in mortality_inflow_rates:
                 IFR[key][measure_unit.value] = \
                     mortality_inflow_rates[key] * self.predictions_by_age[key] / total_infections
+
+        else:
+            raise ValueError('given measure_unit is not implemented')
 
         return IFR
 
