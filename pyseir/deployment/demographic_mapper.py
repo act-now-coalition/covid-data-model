@@ -118,24 +118,22 @@ class DemographicMapper:
         with MLE parameters.
     results: dict
         Contains:
-            - compartments:
-              - <compartment>: time series of population at a specific
-                               infection state (susceptible, infected,
-                               hospitalized, etc.) simulated by MLE model
-                               assuming the population has the demographic
-                               distribution of the target population. Each time
-                               series is recorded as pd.DataFrame, with dates of
-                               prediction as index.
-              name of compartments include: S - susceptible, E - exposed,
-              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU -
-              in ICU, HVent - on ventilator, N - entire population.
-            - <measure>:
-              - <measure_unit>: time series of covid measures predicted using
-                                the MLE model and averaged over target
-                                demographic distribution (adjusted by risk
-                                modification if relative risk is specified).
-                                The time series is recorded as pd.DataFrame,
-                                with dates of prediction as index.
+        - compartments: pd.DataFrame
+          Time series of population at a specific infection state (
+          susceptible, infected, hospitalized, etc.) simulated by MLE
+          model assuming the population has the demographic distribution
+          of the target population, with dates of prediction as index.
+          Name of columns (compartments) include: S - susceptible,
+          E - exposed, A - asymptomatic, I - symptomatic, HGen - in
+          non-ICU, HICU - in ICU, HVent - on ventilator, N - entire
+          population.
+        - <measure>:
+          - <measure_unit>: time series of covid measures predicted using
+                            the MLE model and averaged over target
+                            demographic distribution (adjusted by risk
+                            modification if relative risk is specified).
+                            The time series is recorded as pd.DataFrame,
+                            with dates of prediction as index.
 
 
 
@@ -703,17 +701,15 @@ class DemographicMapper:
         -------
           : dict
             Contains:
-            - compartments:
-              - <compartment>: time series of population at a specific
-                               infection state (susceptible, infected,
-                               hospitalized, etc.) simulated by MLE model
-                               assuming the population has the demographic
-                               distribution of the target population. Each time
-                               series is recorded as pd.DataFrame, with dates of
-                               prediction as index.
-              name of compartments include: S - susceptible, E - exposed,
-              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
-              ICU, HVent - on ventilator, N - entire population.
+            - compartments: pd.DataFrame
+              Time series of population at a specific infection state (
+              susceptible, infected, hospitalized, etc.) simulated by MLE
+              model assuming the population has the demographic distribution
+              of the target population, with dates of prediction as index.
+              Name of columns (compartments) include: S - susceptible,
+              E - exposed, A - asymptomatic, I - symptomatic, HGen - in
+              non-ICU, HICU - in ICU, HVent - on ventilator, N - entire
+              population.
             - <measure>:
               - <measure_unit>: time series of covid measures predicted using
                                 the MLE model and averaged over target
