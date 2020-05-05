@@ -211,7 +211,7 @@ class DemographicMapper:
             model.
         """
         prevalence = (self.predictions_by_age['I']
-                    + self.predictions_by_age['A'])/ self.parameters['N'][:, np.newaxis]
+                    + self.predictions_by_age['A']) / self.parameters['N'][:, np.newaxis]
         return prevalence
 
     def _reconstruct_mortality_inflow_rates(self):
