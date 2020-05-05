@@ -228,7 +228,7 @@ class DemographicMapper:
             hospitalization include: HGen, HICU, HVent.
         """
 
-        # per capit mortality rate from people who need ICU or in ICU
+        # per capita mortality rate from people who need ICU or are in ICU
         mortality_rate_ICU = np.tile(self.parameters['mortality_rate_from_ICU'],
                                      (self.parameters['t_list'].shape[0], 1)).T
         idx_inadequate_icu_bed = np.where(self.predictions['HICU'] > self.parameters['beds_ICU'])
