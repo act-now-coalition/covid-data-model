@@ -370,7 +370,7 @@ def load_hospitalization_data(fips, t0, category='hospitalized'):
     type: HospitalizationDataType
         Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
+    hospitalization_data = get_hospitalization_data()\
         .get_subset(AggregationLevel.COUNTY, country='USA', fips=fips) \
         .get_data(country='USA', fips=fips)
 
