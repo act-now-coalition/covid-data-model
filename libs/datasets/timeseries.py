@@ -128,6 +128,30 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         return self.__class__(data)
 
+    def get_data_for_fips(self, fips) -> List[dict]:
+        """Get data for FIPS code.
+
+        Args:
+            fips: FIPS code.
+
+        Returns: List of dictionary records with NA values replaced to be None
+        """
+
+        pd_data = self.get_subset(None, fips=fips).data
+        pd_data = pd_data.where(pd.notnull(pd_data), None)
+        return pd_data.to_dict(orient="records")
+
+    def get_data_for_state(self, state) -> List[dict]:
+        """Get data for state.
+
+        Args:
+            state: 2 letter state abbrev.
+
+        Returns: List of dictionary records with NA values replaced to be None.
+        """
+        pd_data = self.get_subset(AggregationLevel.STATE, state=state).data
+        return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
+
     def get_data(
         self, country=None, state=None, county=None, fips=None, states=None
     ) -> pd.DataFrame:

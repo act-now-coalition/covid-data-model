@@ -247,12 +247,12 @@ def add_fips_using_county(data, fips_data) -> pd.Series:
     if len(data) != original_rows:
         raise Exception("Non-unique join, check for duplicate fips data.")
 
-    non_matching = data[data.county.notnull() & data.fips.isnull()]
+    non_matching = data.loc[data.county.notnull() & data.fips.isnull(), :]
 
     # Not all datasources have country.  If the dataset doesn't have country,
     # assuming that data is from the us.
     if "country" in non_matching.columns:
-        non_matching = non_matching[data.country == "USA"]
+        non_matching = non_matching.loc[data.country == "USA", :]
 
     if len(non_matching):
         unique_counties = sorted(non_matching.county.unique())
