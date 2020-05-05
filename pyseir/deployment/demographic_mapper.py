@@ -547,11 +547,7 @@ class DemographicMapper:
             Array of time series of age-specific infection fatality rate.
         """
 
-        IFR = 0
-        for key in self.IFR:
-            IFR += self.IFR[key][measure_unit.value]
-
-        return IFR
+        return sum(self.IFR[key][measure_unit.value] for key in self.IFR)
 
 
     def generate_predictions(self):
