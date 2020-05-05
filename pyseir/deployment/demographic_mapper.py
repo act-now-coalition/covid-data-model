@@ -665,7 +665,7 @@ class DemographicMapper:
         weights = self.target_age_distribution_pdf(age_bin_centers)
         if (weights != 1).sum() == 0:
             logging.warning('no target age distribution is given, measure is aggregated assuming age '
-                            'distrubtion at given FIPS code')
+                            'distribution at given FIPS code')
 
         weights /= weights.sum()
         demographic_group_size_ratio = weights / (self.parameters['N'] / self.parameters['N'].sum())
@@ -695,7 +695,7 @@ class DemographicMapper:
         """
         Makes predictions of age-specific population size at each state of
         infection and covid measures using the MLE model and maps them to
-        the target age distribution.
+        the target demographic distribution.
 
         Returns
         -------
