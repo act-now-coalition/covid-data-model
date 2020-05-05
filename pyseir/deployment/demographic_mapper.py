@@ -126,7 +126,7 @@ class DemographicMapper:
                                distribution of the target population. Each time
                                series is recorded as pd.DataFrame, with dates of
                                prediction as index.
-              name of compartment include: S - susceptible, E - exposed,
+              name of compartments include: S - susceptible, E - exposed,
               A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU -
               in ICU, HVent - on ventilator, N - entire population.
             - <measure>:
@@ -628,7 +628,7 @@ class DemographicMapper:
                                simulated by MLE model. Each time series is
                                recorded as pd.DataFrame, with dates of
                                prediction as index.
-              name of compartment include: S - susceptible, E - exposed,
+              name of compartments include: S - susceptible, E - exposed,
               A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
               ICU, HVent - on ventilator, N - entire population.
             - <measure>:
@@ -649,7 +649,7 @@ class DemographicMapper:
                                distribution of the target population. Each time
                                series is recorded as pd.DataFrame, with dates of
                                prediction as index.
-              name of compartment include: S - susceptible, E - exposed,
+              name of compartments include: S - susceptible, E - exposed,
               A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in ICU,
               HVent - on ventilator, N - entire population.
             - <measure>:
@@ -693,9 +693,9 @@ class DemographicMapper:
 
     def run(self):
         """
-        Makes predictions of age-specific population size at each state of
-        infection and covid measures using the MLE model and maps them to
-        the target demographic distribution.
+        Makes predictions of population size at each state of infection by
+        demographic group and covid measures by demographic group using the
+        MLE model and maps them to the target demographic distribution.
 
         Returns
         -------
@@ -709,7 +709,7 @@ class DemographicMapper:
                                distribution of the target population. Each time
                                series is recorded as pd.DataFrame, with dates of
                                prediction as index.
-              name of compartment include: S - susceptible, E - exposed,
+              name of compartments include: S - susceptible, E - exposed,
               A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
               ICU, HVent - on ventilator, N - entire population.
             - <measure>:
