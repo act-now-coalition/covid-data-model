@@ -31,3 +31,4 @@ us==1.0.0
 adtk==0.6.0
 -e .
 pydantic==1.4
+dill
