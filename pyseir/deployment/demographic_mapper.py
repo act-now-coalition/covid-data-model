@@ -199,7 +199,6 @@ class DemographicMapper:
 
         self.results = None
 
-
     def _age_specific_prevalence(self):
         """
         Calculate age specific prevalence.
@@ -358,7 +357,6 @@ class DemographicMapper:
         IHR = defaultdict(dict)
         if measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
             HR = hospital_inflow_rates
-
             for key in HR:
                 IHR[key][measure_unit.value] = HR[key][:, np.newaxis] * fraction_of_symptomatic
 
