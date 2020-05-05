@@ -559,7 +559,7 @@ class DemographicMapper:
         predictions: dict
             Contains:
             - compartments:
-              - <compartment>: time series of population at a specific
+              - <compartment>: time series of population at specific
                                infection states (susceptible, infected,
                                hospitalized, etc.) by demographic group
                                simulated by MLE model. Each time series is
