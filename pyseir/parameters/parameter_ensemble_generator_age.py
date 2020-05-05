@@ -4,7 +4,7 @@ import pandas as pd
 from pyseir import load_data
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
-hosp_data = None
+hosp_rate_data = None
 
 class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
     """
@@ -38,9 +38,9 @@ class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
         # Caching globally to avoid relatively significant performance overhead
         # of loading for each county.
         super().__init__(fips, N_samples, t_list, I_initial, suppression_policy)
-        global hosp_data
-        if hosp_data is None:
-            hosp_data = load_data.load_cdc_hospitalization_data()
+        global hosp_rate_data
+        if hosp_rate_data is None:
+            hosp_rate_data = load_data.load_cdc_hospitalization_data()
         self.contact_matrix_data = load_data.load_contact_matrix_data_by_fips(fips)
         self.population = np.array(self.contact_matrix_data[fips]['age_distribution'])
 
@@ -64,8 +64,8 @@ class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
 
         for suffix in ['_hgen', '_icu', '_fatility']:
             f = scipy.interpolate.interp1d(
-                hosp_data['lower_age'].tolist() + hosp_data['mean_age'].tolist(),
-                hosp_data['lower%s' % suffix].tolist() + hosp_data['mean%s' % suffix].tolist())
+                hosp_rate_data['lower_age'].tolist() + hosp_rate_data['mean_age'].tolist(),
+                hosp_rate_data['lower%s' % suffix].tolist() + hosp_rate_data['mean%s' % suffix].tolist())
             yield f(age_bin_centers).clip(min=0)
 
 
