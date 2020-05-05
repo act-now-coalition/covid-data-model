@@ -66,6 +66,7 @@ class DemographicMapper:
         compared to general population risk per age group to further modify
         the weights.
 
+
     Attributes
     ----------
     predictions: dict
@@ -151,8 +152,16 @@ class DemographicMapper:
     measure_units: str or list(str)
         Units of covid measures, should be interpretable by CovidMeasureUnit.
     target_age_distribution_pdf: callable
-        Function that takes an array of age as input returns PDF of the age
-        based on the age distribution of target population.
+        Function that takes an array of age as input and returns probability
+        of density of the age based on the age distribution of target
+        population, e.g. scipy.interpolate.interp1d.
+        This function should cover age 0-120 years old. To ensure
+        flexibility, the pdf should also be adaptive to different age values
+        (in years), including integer and float ages (15, 30.5 etc.).
+        If not, it should at least be able to return probability density of the
+        age bin centers used in the SEIR model: [
+        2.5, 7.5, 12.5, 17.5, 22.5, 27.5, 32.5, 37.5, 42.5, 47.5, 52.5, 57.5,
+        62.5, 67.5, 72.5, 97.5].
     risk_modifier_by_age: dict(callable)
         Contains:
         - <measure>: Function that returns risk ratios by age group that
