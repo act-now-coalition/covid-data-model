@@ -128,7 +128,7 @@ class TimeseriesDataset(object):
         """Get data for FIPS code.
 
         Args:
-            fips: 2 letter state abbrev.
+            fips: FIPS code.
 
         Returns: List of dictionary records with NA values replaced to be None
         """
