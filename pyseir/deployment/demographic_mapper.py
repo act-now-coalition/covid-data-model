@@ -63,7 +63,7 @@ class DemographicMapper:
     ii. time series of measures averaged through demographic groups weighted
         by the target demographic distribution. If risk_modifier_by_age is
         specified, it will be used as relative risk of target population
-        compared to general population risk per age group to further modifies
+        compared to general population risk per age group to further modify
         the weights.
 
     Attributes
