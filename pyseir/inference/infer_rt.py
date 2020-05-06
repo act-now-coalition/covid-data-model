@@ -512,8 +512,7 @@ def run_state(state, states_only=False):
     state_obj = us.states.lookup(state)
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
-    with open(output_path, 'w') as buf:
-        df.to_json(buf)
+    df.to_json(output_path)
 
     # Run the counties.
     if not states_only:
@@ -525,8 +524,7 @@ def run_state(state, states_only=False):
         for fips, rt_inference in zip(all_fips, rt_inferences):
             county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
             if rt_inference is not None:
-                with open(county_output_file, 'w') as buf:
-                    rt_inference.to_json(buf)
+                rt_inference.to_json(county_output_file)
 
 
 def run_county(fips):
@@ -546,5 +544,4 @@ def run_county(fips):
     df = RtInferenceEngine.run_for_fips(fips)
     county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is not None and not df.empty:
-        with open(county_output_file, 'w') as buf:
-            df.to_json(buf)
+        df.to_json(county_output_file)
