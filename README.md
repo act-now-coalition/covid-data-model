@@ -105,3 +105,11 @@ Check the `output/` folder for results.
 
 The flag `--states-only` will skip counties and the flat `--state` will only run
 a single state. These can be combined if you want to run things quickly.
+
+### Model Output
+
+There are a variety of output artifacts to paths described in pyseir/utils.py.
+The main artifact is the ensemble_result which contains the output information
+for each `suppression policy -> model compartment` as well as capacity
+information. It is described in 
+[this running document](https://docs.google.com/document/d/1U0zTP_jjwp8i-hCj3jPosfeyj74vKqTy6ERFYzYgcvE/edit?usp=sharing).
