@@ -516,7 +516,7 @@ def load_new_case_data_by_state(state, t0):
 
 
 @lru_cache(maxsize=32)
-def load_new_test_data_by_fips(fips, t0):
+def load_new_test_data_by_fips(fips, t0, get_positivity_rate=False):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
@@ -528,6 +528,9 @@ def load_new_test_data_by_fips(fips, t0):
         State or county fips code
     t0: datetime
         Reference datetime to use.
+    get_positivity_rate:
+        If False, returns a total tests timeseries. If True, returns the
+        positivity rate.
 
     Returns
     -------
@@ -536,19 +539,33 @@ def load_new_test_data_by_fips(fips, t0):
     new_tests: array(str)
         Number of new tests for this day.
     """
+    df_new = pd.DataFrame()
     if len(fips) == 2:
-        df = test_data.get_testing_timeseries_by_state(
-            us.states.lookup(fips).abbr)
-        df['tested'] = df['positive'] + df['negative']
-        df = df[['date', 'tested']].fillna(0)
+        df = test_data.get_testing_timeseries_by_state(us.states.lookup(fips).abbr)
+        if get_positivity_rate:
+            df_new['tested'] = np.diff(df['positive']) / (np.diff(df['positive'] + df['negative'])).clip(min=1)
+            df_new['date'] = df['date'].iloc[:-1]
+        else:
+            df_new['tested'] = np.diff(df['positive']) + np.diff(df['negative'])
+            df_new['date'] = df['date'].iloc[:-1]
+            df_new = df_new[['date', 'tested']].fillna(0)
     else:
         df = test_data.get_testing_timeseries_by_fips(fips)
-        df = df.reset_index()[['date', 'tested']].fillna(0)
+
+        # This doesn't work.
+        if get_positivity_rate:
+            df = df.reset_index()[['date', 'tested', 'cases']].fillna(0)
+            df_new['tested'] = np.diff(df['cases']) / np.diff(df['tested'])
+            df_new['date'] = df['date'].iloc[1:]
+        else:
+            df = df.reset_index()[['date', 'tested']].fillna(0)
+            df_new['tested'] = np.diff(df['tested'])
+            df_new['date'] = df['date'].iloc[1:]
 
     dates = pd.to_datetime(df['date'].iloc[1:].values).to_pydatetime()
     times = [int((date - t0).days) for date in dates]
 
-    return times, np.diff(df['tested'])
+    return times, df_new['tested']
 
 
 def load_cdc_hospitalization_data():
