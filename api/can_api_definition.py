@@ -36,9 +36,19 @@ class _Projections(pydantic.BaseModel):
 
 
 class _ResourceUtilization(pydantic.BaseModel):
-    capacity: int = pydantic.Field(..., description="Total capacity for resource")
-    currentUsage: Optional[int] = pydantic.Field(
-        ..., description="Currently used capacity for resource"
+    capacity: Optional[int] = pydantic.Field(
+        ..., description=(
+            "*deprecated*: Capacity for resource. In the case of ICUs, "
+            "this refers to total capacity. For hospitalization this refers to free capacity for "
+            "COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07"
+        )
+    )
+
+    totalCapacity: Optional[int] = pydantic.Field(
+        ..., description="Total capacity for resource."
+    )
+    currentUsageCovid: Optional[int] = pydantic.Field(
+        ..., description="Currently used capacity for resource by COVID "
     )
     typicalUsageRate: Optional[float] = pydantic.Field(
         ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
@@ -46,13 +56,13 @@ class _ResourceUtilization(pydantic.BaseModel):
 
 
 class _Actuals(pydantic.BaseModel):
-    population: int = pydantic.Field(
-        ..., description="Total population in geographic area", gt=0
+    population: Optional[int] = pydantic.Field(
+        ..., description="Total population in geographic area [*deprecated*: refer to summary for this]", gt=0
     )
     intervention: str = pydantic.Field(
         ..., description="Name of high-level intervention in-place"
     )
-    cumulativeConfirmedCases: int = pydantic.Field(
+    cumulativeConfirmedCases: Optional[int] = pydantic.Field(
         ..., description="Number of confirmed cases so far"
     )
     cumulativePositiveTests: Optional[int] = pydantic.Field(
@@ -61,8 +71,8 @@ class _Actuals(pydantic.BaseModel):
     cumulativeNegativeTests: Optional[int] = pydantic.Field(
         ..., description="Number of negative test results to date"
     )
-    cumulativeDeaths: int = pydantic.Field(..., description="Number of deaths so far")
-    hospitalBeds: _ResourceUtilization = pydantic.Field(...)
+    cumulativeDeaths: Optional[int] = pydantic.Field(..., description="Number of deaths so far")
+    hospitalBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
 
 
@@ -82,6 +92,9 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
     )
     projections: Optional[_Projections] = pydantic.Field(...)
     actuals: Optional[_Actuals] = pydantic.Field(...)
+    population: int = pydantic.Field(
+        ..., description="Total Population in geographic area.", gt=0
+    )
 
 
 # TODO(igor): countyName *must* be None
@@ -95,6 +108,12 @@ class CovidActNowStateSummary(CovidActNowAreaSummary):
 class CovidActNowCountySummary(CovidActNowAreaSummary):
     stateName: str = pydantic.Field(..., description="The state name")
     countyName: str = pydantic.Field(..., description="The county name")
+
+
+class CANActualsTimeseriesRow(_Actuals):
+    date: datetime.date = pydantic.Field(
+        ..., descrition="Date of timeseries data point"
+    )
 
 
 class CANPredictionTimeseriesRow(pydantic.BaseModel):
@@ -166,6 +185,7 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+    actuals_timeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 
     # pylint: disable=no-self-argument
     @pydantic.validator('timeseries')
@@ -203,6 +223,7 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
 
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+    actuals_timeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 
 class CovidActNowCountiesAPI(pydantic.BaseModel):
     __root__: List[CovidActNowCountySummary] = pydantic.Field(...)
