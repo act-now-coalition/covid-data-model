@@ -172,7 +172,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         )
         return self.data[is_county]
 
-    def get_data_for_state(self, state) -> dict:
+    def get_record_for_state(self, state) -> dict:
         """Gets all data for a given state.
 
         Args:
@@ -188,7 +188,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
         return row.iloc[0].to_dict()
 
-    def get_data_for_fips(self, fips) -> dict:
+    def get_record_for_fips(self, fips) -> dict:
         """Gets all data for a given fips code.
 
         Args:

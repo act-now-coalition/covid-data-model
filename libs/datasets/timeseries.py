@@ -128,7 +128,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         return self.__class__(data)
 
-    def get_data_for_fips(self, fips) -> List[dict]:
+    def get_records_for_fips(self, fips) -> List[dict]:
         """Get data for FIPS code.
 
         Args:
@@ -141,7 +141,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         pd_data = pd_data.where(pd.notnull(pd_data), None)
         return pd_data.to_dict(orient="records")
 
-    def get_data_for_state(self, state) -> List[dict]:
+    def get_records_for_state(self, state) -> List[dict]:
         """Get data for state.
 
         Args:

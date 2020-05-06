@@ -90,9 +90,9 @@ class WebUIDataAdaptorV1:
             category='icu')
 
         if len(fips) == 5:
-            population = self.population_data.get_data_for_fips(fips)[CommonFields.POPULATION]
+            population = self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
         else:
-            population = self.population_data.get_data_for_state(self.state_abbreviation)[CommonFields.POPULATION]
+            population = self.population_data.get_record_for_state(self.state_abbreviation)[CommonFields.POPULATION]
 
         if current_hosp is not None:
             t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]

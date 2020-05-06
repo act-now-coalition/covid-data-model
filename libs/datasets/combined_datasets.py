@@ -28,6 +28,10 @@ FeatureDataSourceMap = NewType(
 # From CovidTracking.
 # This is just a start to this sort of definition - in the future, we may want more advanced
 # capabilities around what data to apply and how to apply it.
+# This structure still hides a lot of what is done under the hood and it's not
+# immediately obvious as to the transformations that are or are not applied.
+# One way of dealing with this is going from showcasing datasets dependencies
+# to showingcasing a dependency graph of transformations.
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [JHUDataset],
     CommonFields.DEATHS: [JHUDataset],
