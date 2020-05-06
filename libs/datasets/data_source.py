@@ -1,9 +1,8 @@
 import pandas as pd
+from libs.datasets.beds import BedsDataset
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.population import PopulationDataset
 from functools import lru_cache
-from libs.datasets.common_fields import CommonFields
 
 
 class DataSource(object):
@@ -13,9 +12,18 @@ class DataSource(object):
     class Fields(object):
         pass
 
-    INDEX_FIELD_MAP = None
+    # Subclasses must define mapping from Timeseries fields.
+    # eg: {TimseriesDataset.Fields.DATE: Fields.Date}
+    # Optional if dataset does not support timeseries data.
+    TIMESERIES_FIELD_MAP = None
 
-    COMMON_FIELD_MAP = None
+    # Map of field names from BedsDataset.Fields to dataset source fields.
+    # Optional if dataset does not support converting to beds data.
+    BEDS_FIELD_MAP = None
+
+    # Map of field names from PopulationDataset.Fields to dataset source fields.
+    # Optional if dataset does not support population data.
+    POPULATION_FIELD_MAP = None
 
     # Name of dataset source
     SOURCE_NAME = None
@@ -26,44 +34,29 @@ class DataSource(object):
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
-    def all_fields_map(self):
-        return {**self.COMMON_FIELD_MAP, **self.INDEX_FIELD_MAP}
-
-    @property
-    def state_data(self) -> pd.DataFrame:
-        """Returns a new BedsDataset containing only state data."""
-        is_state = (
-            self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        )
-        return self.data[is_state]
-
-    @property
-    def county_data(self) -> pd.DataFrame:
-        """Returns a new BedsDataset containing only county data."""
-        is_county = (
-            self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        )
-        return self.data[is_county]
-
     @classmethod
-    def local(cls) -> "DataSource":
+    def local(cls) -> "cls":
         """Builds data from local covid-public-data github repo.
 
         Returns: Instantiated class with data loaded.
         """
         raise NotImplementedError("Subclass must implement")
 
-    @lru_cache(None)
-    def beds(self) -> LatestValuesDataset:
+    @lru_cache(maxsize=1)
+    def beds(self) -> "BedsDataset":
         """Builds generic beds dataset"""
-        return LatestValuesDataset.build_from_data_source(self)
+        return BedsDataset.from_source(self)
 
-    @lru_cache(None)
-    def population(self) -> LatestValuesDataset:
+    @lru_cache(maxsize=1)
+    def population(self) -> "PopulationDataset":
         """Builds generic beds dataset"""
-        return LatestValuesDataset.build_from_data_source(self)
+        return PopulationDataset.from_source(self)
 
-    @lru_cache(None)
-    def timeseries(self) -> TimeseriesDataset:
-        """Builds generic beds dataset"""
-        return TimeseriesDataset.build_from_data_source(self)
+    @lru_cache(maxsize=1)
+    def timeseries(self, fill_na: bool = True) -> "TimeseriesDataset":
+        """Builds generic timeseries dataset.
+
+        Args:
+            fill_na: If True, fills all NA values with 0.
+        """
+        return TimeseriesDataset.from_source(self, fill_na=fill_na)

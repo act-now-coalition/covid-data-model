@@ -5,7 +5,7 @@ setup-dev: requirements.txt requirements_test.txt
 	nbstripout --install
 
 unittest:
-	pytest -n 2 test/
+	pytest test/
 
 lint:
 	pytest --pylint -m pylint --pylint-error-types=EF .

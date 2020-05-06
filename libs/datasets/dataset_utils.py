@@ -1,4 +1,3 @@
-from typing import List
 import os
 import enum
 import logging
@@ -247,12 +246,12 @@ def add_fips_using_county(data, fips_data) -> pd.Series:
     if len(data) != original_rows:
         raise Exception("Non-unique join, check for duplicate fips data.")
 
-    non_matching = data.loc[data.county.notnull() & data.fips.isnull(), :]
+    non_matching = data[data.county.notnull() & data.fips.isnull()]
 
     # Not all datasources have country.  If the dataset doesn't have country,
     # assuming that data is from the us.
     if "country" in non_matching.columns:
-        non_matching = non_matching.loc[data.country == "USA", :]
+        non_matching = non_matching[data.country == "USA"]
 
     if len(non_matching):
         unique_counties = sorted(non_matching.county.unique())
@@ -280,97 +279,3 @@ def summarize(data, aggregate_level, groupby):
     print(key_fmt.format("Missing Fips Code:", missing_fips))
     print(key_fmt.format("Num non unique rows:", num_non_unique))
     print(index_size[index_size > 1])
-
-
-def fill_fields_with_data_source(
-    existing_df: pd.DataFrame,
-    data_source: pd.DataFrame,
-    index_fields: List[str],
-    columns_to_fill: List[str],
-) -> pd.DataFrame:
-    """Pull columns from an existing data source into an existing data frame.
-
-    Example:
-
-        existing_df:
-        ----------------
-        | date | cases |
-        | 4/2  | 1     |
-        | 4/3  | 2     |
-        | 4/4  | 3     |
-        ----------------
-
-        data_source:
-        ----------------------
-        | date | current_icu |
-        | 4/3  | 4           |
-        | 4/5  | 5           |
-        ----------------------
-
-        index_fields: ['date']
-
-        columns_to_fill: ['current_icu']
-
-        output:
-        ------------------------------
-        | date | cases | current_icu |
-        | 4/2  | 1     | Na          |
-        | 4/3  | 2     | 4           |
-        | 4/4  | 3     | Na          |
-        | 4/5  | Na    | 5           |
-        ------------------------------
-
-    Args:
-        existing_df: Existing data frame
-        data_source: Data used to fill existing df columns
-        index_fields: List of columns to use as common index.
-        columns_to_fill: List of columns to add into existing_df from data_source
-
-    Returns: Updated dataframe with requested columns filled from data_source data.
-    """
-    new_data = data_source.set_index(index_fields)
-
-    # If no data exists, return all rows from new data with just the requested columns.
-    if not len(existing_df):
-        for column in columns_to_fill:
-            if column not in new_data.columns:
-                new_data[column] = None
-        return new_data[columns_to_fill].reset_index()
-    existing_df = existing_df.set_index(index_fields)
-
-    # Sort indices so that we have chunks of equal length in the
-    # correct order so that we can splice in values.
-    existing_df = existing_df.sort_index()
-    new_data = new_data.sort_index()
-
-    # Build series that point to rows that match in each data frame.
-    existing_df_in_new_data = existing_df.index.isin(new_data.index)
-    new_data_in_existing_df = new_data.index.isin(existing_df.index)
-
-    if not sum(existing_df_in_new_data) == sum(new_data_in_existing_df):
-        print(new_data.loc[new_data_in_existing_df, columns_to_fill])
-        existing_in_new = sum(existing_df_in_new_data)
-        new_in_existing = sum(new_data_in_existing_df)
-        raise ValueError(f"Number of rows should be the for data to replace: {existing_in_new} -> {new_in_existing}: {columns_to_fill}")
-
-    # If a column doesn't exist in the existing data, add it (throws an error)
-    # otherwise.
-    for column in columns_to_fill:
-        if column not in existing_df.columns:
-            existing_df[column] = None
-
-    # Fill in values for rows that match in both data frames.
-    existing_df.loc[existing_df_in_new_data, columns_to_fill] = new_data.loc[
-        new_data_in_existing_df, columns_to_fill
-    ]
-    # Get rows that do not exist in the existing data frame
-    missing_new_data = new_data[~new_data_in_existing_df]
-
-    data = pd.concat(
-        [
-            existing_df.reset_index(),
-            missing_new_data[columns_to_fill].reset_index(),
-        ]
-    )
-
-    return data
