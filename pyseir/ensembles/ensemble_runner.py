@@ -6,7 +6,7 @@ from multiprocessing import Pool
 from functools import partial
 import us
 import pickle
-import ujson as json
+import json
 import copy
 from collections import defaultdict
 from pyseir.models.seir_model import SEIRModel

@@ -8,7 +8,7 @@ import re
 import io
 import us
 import zipfile
-import ujson as json
+import json
 from datetime import datetime
 from libs.datasets import NYTimesDataset
 from libs.datasets.timeseries import TimeseriesDataset
