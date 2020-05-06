@@ -91,7 +91,7 @@ Recommend virtualenv or miniconda python 3.7 from here
 Execute
 `pip install -r requirements.txt -r requirements_test.txt`
 
-If using condat, activate the environment here..
+If using conda, activate the environment here..
 `conda activate pyseir`
 
 
