@@ -208,24 +208,27 @@ def _build_all_for_states(
     # calculate calculate county inference
     p.map(infer_rt_module.run_county, all_county_fips.keys())
 
-    #calculate model fit
+    # calculate model fit
     root.info(f"executing model for {len(all_county_fips)} counties")
     fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
 
     df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-    df['state'] = df.fips.replace(all_county_fips)
-    df['mle_model'] = [fit.mle_model for fit in fitters if fit]
+    df["state"] = df.fips.replace(all_county_fips)
+    df["mle_model"] = [fit.mle_model for fit in fitters if fit]
     df.index = df.fips
 
-    state_dfs = [state_df for name, state_df in df.groupby('state')]
+    state_dfs = [state_df for name, state_df in df.groupby("state")]
     p.map(model_fitter._persist_results_per_state, state_dfs)
 
     # calculate ensemble
     root.info(f"running ensemble for {len(all_county_fips)} counties")
-    ensemble_func = partial(_run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports))
+    ensemble_func = partial(
+        _run_county,
+        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+    )
     p.map(ensemble_func, all_county_fips.keys())
 
-    #output it all
+    # output it all
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
@@ -243,8 +246,6 @@ def _build_all_for_states(
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(all_fips=all_county_fips.keys())
-
-
     p.close()
     p.join()
 

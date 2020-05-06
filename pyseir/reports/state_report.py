@@ -195,7 +195,7 @@ class StateReport:
 
         """
         df = load_data.load_county_metadata()
-        all_fips =  load_data.get_all_fips_codes_for_a_state(self.state)
+        all_fips = load_data.get_all_fips_codes_for_a_state(self.state)
         all_data = {fips: load_data.load_ensemble_results(fips) for fips in all_fips}
         df = df.set_index('fips')
 
