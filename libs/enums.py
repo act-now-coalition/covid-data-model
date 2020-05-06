@@ -4,6 +4,7 @@ import enum
 # TODO: This should maybe be unique per state.
 UNKNOWN_FIPS = "99999"
 
+
 class Intervention(enum.Enum):
     NO_INTERVENTION = 0
     STRONG_INTERVENTION = 1 # on the webiste, strictDistancingNow
