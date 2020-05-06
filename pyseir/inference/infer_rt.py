@@ -1,6 +1,7 @@
 import math
 from datetime import datetime, timedelta
 import numpy as np
+import sentry_sdk
 import logging
 import pandas as pd
 from scipy import stats as sps
@@ -484,8 +485,12 @@ class RtInferenceEngine:
 
     @classmethod
     def run_for_fips(cls, fips):
-        engine = cls(fips)
-        return engine.infer_all()
+        try:
+            engine = cls(fips)
+            return engine.infer_all()
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            return None
 
 
 def run_state(state, states_only=False):
