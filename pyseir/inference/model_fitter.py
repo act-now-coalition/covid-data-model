@@ -120,7 +120,6 @@ class ModelFitter:
             self.agg_level = AggregationLevel.STATE
             self.state_obj = us.states.lookup(self.fips)
             self.state = self.state_obj.name
-            self.geo_metadata = load_data.load_county_metadata_by_state(self.state).loc[self.state].to_dict()
 
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_state(self.state, self.ref_date)
@@ -130,14 +129,14 @@ class ModelFitter:
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
-            self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
-            self.state = self.geo_metadata['state']
-            self.state_obj = us.states.lookup(self.state)
-            self.county = self.geo_metadata['county']
-            if self.county:
-                self.display_name = self.county + ', ' + self.state
+            geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+            state = geo_metadata['state']
+            self.state_obj = us.states.lookup(state)
+            county = geo_metadata['county']
+            if county:
+                self.display_name = county + ', ' + state
             else:
-                self.display_name = self.state
+                self.display_name = state
             # TODO Swap for new data source.
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
