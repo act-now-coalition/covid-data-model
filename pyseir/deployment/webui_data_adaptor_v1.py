@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import pandas as pd
-import simplejson as json
+import ujson as json
 import logging
 import us
 from datetime import timedelta, datetime, date

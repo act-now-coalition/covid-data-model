@@ -1,6 +1,6 @@
 import os
 from pyseir.load_data import load_county_metadata
-import simplejson
+import ujson
 from pyseir import OUTPUT_DIR
 import pandas as pd
 from datetime import datetime
@@ -69,7 +69,7 @@ def load_inference_result(fips):
     """
     output_file = get_run_artifact_path(fips, RunArtifact.MLE_FIT_RESULT)
     json_file = open(output_file, 'r')
-    d = simplejson.load(json_file, object_hook=lambda x: convert_fips_to_str(x))
+    d = ujson.load(json_file, object_hook=lambda x: convert_fips_to_str(x))
     df = pd.DataFrame.from_dict(d)
     if len(fips) == 2:
         return df.iloc[0].to_dict()
