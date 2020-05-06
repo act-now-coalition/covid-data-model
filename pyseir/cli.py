@@ -2,6 +2,7 @@ import sys, os
 import click
 import us
 import logging
+import sentry_sdk
 from multiprocessing import Pool
 from functools import partial
 from pyseir.load_data import cache_all_data
@@ -47,7 +48,7 @@ def _cache_global_datasets():
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
-    pass
+    sentry_sdk.init(os.getenv("SENTRY_DSN"))
 
 
 @entry_point.command()

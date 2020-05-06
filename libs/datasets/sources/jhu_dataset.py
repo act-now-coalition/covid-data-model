@@ -2,9 +2,10 @@ import logging
 import numpy
 import pandas as pd
 import pathlib
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import enums
 _logger = logging.getLogger(__name__)
@@ -46,16 +47,17 @@ class JHUDataset(data_source.DataSource):
         "Long_": Fields.LONGITUDE,
         "Last Update": Fields.LAST_UPDATE,
     }
-
-    TIMESERIES_FIELD_MAP = {
-        TimeseriesDataset.Fields.DATE: Fields.DATE,
-        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
-        TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
-        TimeseriesDataset.Fields.CASES: Fields.CONFIRMED,
-        TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
-        TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.DATE: Fields.DATE,
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    }
+    COMMON_FIELD_MAP = {
+        CommonFields.CASES: Fields.CONFIRMED,
+        CommonFields.DEATHS: Fields.DEATHS,
+        CommonFields.RECOVERED: Fields.RECOVERED,
     }
 
     def __init__(self, input_dir):
@@ -162,7 +164,7 @@ class JHUDataset(data_source.DataSource):
         ])
 
     @classmethod
-    def local(cls) -> "JHUTimeseriesData":
+    def local(cls) -> "JHUDataset":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.DATA_FOLDER)
 

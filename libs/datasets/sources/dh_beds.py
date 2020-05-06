@@ -2,10 +2,11 @@ import logging
 from collections import defaultdict
 from libs import enums
 import pandas as pd
-from libs.datasets.beds import BedsDataset
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import data_source
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 _logger = logging.getLogger(__name__)
 
@@ -124,15 +125,20 @@ class DHBeds(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         FIPS = "fips"
         COUNTRY = "country"
+        MAX_BED_COUNT = "max_bed_count"
 
-    BEDS_FIELD_MAP = {
-        BedsDataset.Fields.COUNTRY: Fields.COUNTRY,
-        BedsDataset.Fields.STATE: Fields.STATE,
-        BedsDataset.Fields.FIPS: Fields.FIPS,
-        BedsDataset.Fields.STAFFED_BEDS: Fields.STAFFED_BEDS,
-        BedsDataset.Fields.LICENSED_BEDS: Fields.LICENSED_BEDS,
-        BedsDataset.Fields.ICU_BEDS: Fields.ICU_BEDS,
-        BedsDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    }
+
+    COMMON_FIELD_MAP = {
+        CommonFields.STAFFED_BEDS: Fields.STAFFED_BEDS,
+        CommonFields.LICENSED_BEDS: Fields.LICENSED_BEDS,
+        CommonFields.ICU_BEDS: Fields.ICU_BEDS,
+        CommonFields.MAX_BED_COUNT: Fields.MAX_BED_COUNT,
     }
 
     def __init__(self, path):
@@ -150,6 +156,8 @@ class DHBeds(data_source.DataSource):
         fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
         fips_data = fips_data[fips_data.fips != '99999']
         data = match_county_to_fips(data, fips_data)
+
+        data[cls.Fields.MAX_BED_COUNT] = data[[cls.Fields.STAFFED_BEDS, cls.Fields.LICENSED_BEDS]].max(axis=1)
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.

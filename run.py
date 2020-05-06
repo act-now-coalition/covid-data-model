@@ -41,6 +41,6 @@ if __name__ == "__main__":
     try:
         entry_point()
     except Exception as e:
-        # blanket catch excpetions at the entry point and send them to sentry
+        # blanket catch exceptions at the entry point and send them to sentry
         sentry_sdk.capture_exception(e)
         raise e
