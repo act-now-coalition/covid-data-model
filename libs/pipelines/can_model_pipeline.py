@@ -18,6 +18,7 @@ from libs.datasets import JHUDataset
 from libs.datasets import FIPSPopulation
 from libs.datasets import CovidCareMapBeds
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import CommonFields
 
 _logger = logging.getLogger(__name__)
 
@@ -162,9 +163,6 @@ def write_results(data, directory, name):
 
 def model_state(timeseries, starting_beds, population, interventions=None):
 
-    # we should cut this, only used by the get_timeseries function, but probably not needed
-    MODEL_INTERVAL = 4
-
     # Pack all of the assumptions and parameters into a dict that can be passed into the model
     DATA_PARAMETERS = {
         "timeseries": timeseries,
@@ -267,8 +265,8 @@ def build_county_summary(
         data = {"counties_with_data": []}
         for county, fips in counties:
             cases = timeseries.get_data(state=state, country=country, fips=fips)
-            beds = beds_data.get_county_level(state, fips=fips)
-            population = population_data.get_county_level(country, state, fips=fips)
+            beds = beds_data.get_data_for_fips(fips)[CommonFields.MAX_BED_COUNT]
+            population = population_data.get_data_for_fips(fips)[CommonFields.POPULATION]
             if population and beds and sum(cases.cases):
                 data["counties_with_data"].append(fips)
                 all_data["counties_with_data"].append(fips)
@@ -335,11 +333,11 @@ def forecast_each_state(
 ):
     _logger.info(f"Generating data for state: {state}")
     cases = timeseries.get_data(state=state)
-    beds = beds_data.get_state_level(state)
+    beds = beds_data.get_data_for_state(state)[CommonFields.MAX_BED_COUNT]
     if not beds:
         _logger.error(f"Failed to get beds data for {state}")
         return
-    population = population_data.get_state_level(country, state)
+    population = population_data.get_data_for_state(state)[CommonFields.POPULATION]
     if not population:
         _logger.warning(f"Missing population for {state}")
         return
@@ -369,8 +367,8 @@ def forecast_each_county(
 ):
     _logger.info(f"Running model for county: {county}, {state} - {fips}")
     cases = timeseries.get_data(state=state, country=country, fips=fips)
-    beds = beds_data.get_county_level(state, fips=fips)
-    population = population_data.get_county_level(country, state, fips=fips)
+    beds = beds_data.get_data_for_fips(fips=fips)[CommonFields.LICENSED_BEDS]
+    population = population_data.get_data_for_fips(fips)[CommonFields.POPULATION]
     total_cases = sum(cases.cases)
     if not population or not beds or not total_cases:
         _logger.debug(
