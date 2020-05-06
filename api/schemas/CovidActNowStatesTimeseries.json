@@ -79,12 +79,17 @@
       "properties": {
         "capacity": {
           "title": "Capacity",
-          "description": "Total capacity for resource",
+          "description": "*deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07",
           "type": "integer"
         },
-        "currentUsage": {
-          "title": "Currentusage",
-          "description": "Currently used capacity for resource",
+        "totalCapacity": {
+          "title": "Totalcapacity",
+          "description": "Total capacity for resource.",
+          "type": "integer"
+        },
+        "currentUsageCovid": {
+          "title": "Currentusagecovid",
+          "description": "Currently used capacity for resource by COVID ",
           "type": "integer"
         },
         "typicalUsageRate": {
@@ -95,7 +100,8 @@
       },
       "required": [
         "capacity",
-        "currentUsage",
+        "totalCapacity",
+        "currentUsageCovid",
         "typicalUsageRate"
       ]
     },
@@ -105,7 +111,7 @@
       "properties": {
         "population": {
           "title": "Population",
-          "description": "Total population in geographic area",
+          "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
           "exclusiveMinimum": 0,
           "type": "integer"
         },
@@ -239,6 +245,66 @@
         "cumulativeNegativeTests"
       ]
     },
+    "CANActualsTimeseriesRow": {
+      "title": "CANActualsTimeseriesRow",
+      "type": "object",
+      "properties": {
+        "population": {
+          "title": "Population",
+          "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "intervention": {
+          "title": "Intervention",
+          "description": "Name of high-level intervention in-place",
+          "type": "string"
+        },
+        "cumulativeConfirmedCases": {
+          "title": "Cumulativeconfirmedcases",
+          "description": "Number of confirmed cases so far",
+          "type": "integer"
+        },
+        "cumulativePositiveTests": {
+          "title": "Cumulativepositivetests",
+          "description": "Number of positive test results to date",
+          "type": "integer"
+        },
+        "cumulativeNegativeTests": {
+          "title": "Cumulativenegativetests",
+          "description": "Number of negative test results to date",
+          "type": "integer"
+        },
+        "cumulativeDeaths": {
+          "title": "Cumulativedeaths",
+          "description": "Number of deaths so far",
+          "type": "integer"
+        },
+        "hospitalBeds": {
+          "$ref": "#/definitions/_ResourceUtilization"
+        },
+        "ICUBeds": {
+          "$ref": "#/definitions/_ResourceUtilization"
+        },
+        "date": {
+          "title": "Date",
+          "descrition": "Date of timeseries data point",
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "population",
+        "intervention",
+        "cumulativeConfirmedCases",
+        "cumulativePositiveTests",
+        "cumulativeNegativeTests",
+        "cumulativeDeaths",
+        "hospitalBeds",
+        "ICUBeds",
+        "date"
+      ]
+    },
     "CovidActNowStateTimeseries": {
       "title": "CovidActNowStateTimeseries",
       "type": "object",
@@ -275,6 +341,12 @@
         "actuals": {
           "$ref": "#/definitions/_Actuals"
         },
+        "population": {
+          "title": "Population",
+          "description": "Total Population in geographic area.",
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
         "stateName": {
           "title": "Statename",
           "description": "The state name",
@@ -291,6 +363,13 @@
           "items": {
             "$ref": "#/definitions/CANPredictionTimeseriesRow"
           }
+        },
+        "actuals_timeseries": {
+          "title": "Actuals Timeseries",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CANActualsTimeseriesRow"
+          }
         }
       },
       "required": [
@@ -300,8 +379,10 @@
         "lastUpdatedDate",
         "projections",
         "actuals",
+        "population",
         "stateName",
-        "timeseries"
+        "timeseries",
+        "actuals_timeseries"
       ]
     }
   }
