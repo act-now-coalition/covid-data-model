@@ -303,20 +303,19 @@ def load_county_metadata_by_fips(fips):
     return county_metadata_merged
 
 
-
+@lru_cache(maxsize=32)
 def get_all_fips_codes_for_a_state(state: str):
-        """Returns a list of fips codes for a state
+    """Returns a list of fips codes for a state
 
-        Arguments:
-            state {str} -- the full state name
+    Arguments:
+        state {str} -- the full state name
 
-        Returns:
-            fips [list] -- a list of fips codes for a state
-        """
-        df = load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state.lower()].fips
-        return all_fips
-
+    Returns:
+        fips [list] -- a list of fips codes for a state
+    """
+    df = load_county_metadata()
+    all_fips = df[df['state'].str.lower() == state.lower()].fips
+    return all_fips
 
 
 @lru_cache(maxsize=32)

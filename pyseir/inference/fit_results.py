@@ -27,31 +27,6 @@ def load_t0(fips):
     return datetime.fromtimestamp(pd.read_pickle(fit_results).set_index('fips').loc[fips]['t0_date'].timestamp())
 
 
-def convert_fips_to_str(record):
-    """
-    Returns the same record with a stringified fips key.
-    Intended to run on a single json record
-
-    Arguments:
-        record {dict} -- {'fips': {'01': 101},
-                    'R0': {'01': 3.4387109255},
-                    ... }
-
-    Returns:
-        record {dict} -- {'fips': {'01': '101'},
-                    'R0': {'01': 3.4387109255},
-                    ... }
-
-    """
-    d = {}
-    for col, vdict in record.items():
-        if col=='fips':
-            d[col] = {k: str(v) for k, v in vdict.items()}
-        else:
-            d[col] = vdict
-    return d
-
-
 
 def load_inference_result(fips):
     """
@@ -68,9 +43,7 @@ def load_inference_result(fips):
         Dictionary of fit result information.
     """
     output_file = get_run_artifact_path(fips, RunArtifact.MLE_FIT_RESULT)
-    json_file = open(output_file, 'r')
-    d = ujson.load(json_file, object_hook=lambda x: convert_fips_to_str(x))
-    df = pd.DataFrame.from_dict(d)
+    df = pd.read_json(output_file, dtype={'fips': 'str'})
     if len(fips) == 2:
         return df.iloc[0].to_dict()
     else:

@@ -188,10 +188,8 @@ def _build_all_for_states(
         _generate_whitelist()
 
     # run states in paralell
-    #all_county_fips = []
     all_county_fips = {}
     for state in states:
-        # all_county_fips +=
         state_county_fips = model_fitter.build_county_list(state)
         county_fips_per_state = {fips: state for fips in state_county_fips}
         all_county_fips.update(county_fips_per_state)
@@ -208,7 +206,6 @@ def _build_all_for_states(
     p.map(states_only_func, states)
 
     # calculate calculate county inference
-    # for fips in all_county_fips.keys():
     p.map(infer_rt_module.run_county, all_county_fips.keys())
 
     #calculate model fit
