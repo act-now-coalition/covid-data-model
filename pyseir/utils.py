@@ -12,7 +12,6 @@ WEB_UI_FOLDER = lambda output_dir: os.path.join(output_dir, 'web_ui')
 STATE_SUMMARY_FOLDER = lambda output_dir: os.path.join(output_dir, 'pyseir', 'state_summaries')
 REF_DATE = datetime(year=2020, month=1, day=1)
 
-
 class TimeseriesType(Enum):
     NEW_CASES = 'new_cases'
     NEW_DEATHS = 'new_deaths'

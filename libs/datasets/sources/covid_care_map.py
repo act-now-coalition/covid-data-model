@@ -1,11 +1,10 @@
 import logging
 from libs import enums
 import pandas as pd
+from libs.datasets.beds import BedsDataset
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
-from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
-from libs.datasets.dataset_utils import AggregationLevel
 
 _logger = logging.getLogger(__name__)
 
@@ -29,22 +28,17 @@ class CovidCareMapBeds(data_source.DataSource):
         # Added in standardize data.
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
-        MAX_BED_COUNT = "max_bed_count"
 
-    INDEX_FIELD_MAP = {
-        CommonIndexFields.COUNTRY: Fields.COUNTRY,
-        CommonIndexFields.STATE: Fields.STATE,
-        CommonIndexFields.FIPS: Fields.FIPS,
-        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-    }
-
-    COMMON_FIELD_MAP = {
-        CommonFields.STAFFED_BEDS: Fields.STAFFED_ALL_BEDS,
-        CommonFields.LICENSED_BEDS: Fields.LICENSED_ALL_BEDS,
-        CommonFields.ICU_BEDS: Fields.STAFFED_ICU_BEDS,
-        CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
-        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: Fields.ICU_TYPICAL_OCCUPANCY_RATE,
-        CommonFields.MAX_BED_COUNT: Fields.MAX_BED_COUNT,
+    BEDS_FIELD_MAP = {
+        BedsDataset.Fields.COUNTRY: Fields.COUNTRY,
+        BedsDataset.Fields.STATE: Fields.STATE,
+        BedsDataset.Fields.FIPS: Fields.FIPS,
+        BedsDataset.Fields.STAFFED_BEDS: Fields.STAFFED_ALL_BEDS,
+        BedsDataset.Fields.LICENSED_BEDS: Fields.LICENSED_ALL_BEDS,
+        BedsDataset.Fields.ICU_BEDS: Fields.STAFFED_ICU_BEDS,
+        BedsDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+        BedsDataset.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE: Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+        BedsDataset.Fields.ICU_TYPICAL_OCCUPANCY_RATE: Fields.ICU_TYPICAL_OCCUPANCY_RATE,
     }
 
     def __init__(self, data):
@@ -69,8 +63,6 @@ class CovidCareMapBeds(data_source.DataSource):
             # (icu_beds - (total_icu_beds_used - covid_icu_beds_used)) / icu_beds
             # (844 - (583 - 158)) / 844 == 0.4964
             #data.loc[data[cls.Fields.STATE] == 'NV', [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.4964
-
-        data[cls.Fields.MAX_BED_COUNT] = data[[cls.Fields.STAFFED_ALL_BEDS, cls.Fields.LICENSED_ALL_BEDS]].max(axis=1)
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.
