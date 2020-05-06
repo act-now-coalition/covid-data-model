@@ -33,12 +33,6 @@
     },
     "actuals": {
       "$ref": "#/definitions/_Actuals"
-    },
-    "population": {
-      "title": "Population",
-      "description": "Total Population in geographic area.",
-      "exclusiveMinimum": 0,
-      "type": "integer"
     }
   },
   "required": [
@@ -47,8 +41,7 @@
     "long",
     "lastUpdatedDate",
     "projections",
-    "actuals",
-    "population"
+    "actuals"
   ],
   "definitions": {
     "_ResourceUsageProjection": {
@@ -125,17 +118,12 @@
       "properties": {
         "capacity": {
           "title": "Capacity",
-          "description": "*deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07",
+          "description": "Total capacity for resource",
           "type": "integer"
         },
-        "totalCapacity": {
-          "title": "Totalcapacity",
-          "description": "Total capacity for resource.",
-          "type": "integer"
-        },
-        "currentUsageCovid": {
-          "title": "Currentusagecovid",
-          "description": "Currently used capacity for resource by COVID ",
+        "currentUsage": {
+          "title": "Currentusage",
+          "description": "Currently used capacity for resource",
           "type": "integer"
         },
         "typicalUsageRate": {
@@ -146,8 +134,7 @@
       },
       "required": [
         "capacity",
-        "totalCapacity",
-        "currentUsageCovid",
+        "currentUsage",
         "typicalUsageRate"
       ]
     },
@@ -157,7 +144,7 @@
       "properties": {
         "population": {
           "title": "Population",
-          "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
+          "description": "Total population in geographic area",
           "exclusiveMinimum": 0,
           "type": "integer"
         },

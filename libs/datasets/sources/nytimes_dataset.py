@@ -5,8 +5,6 @@ import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
-from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
 
 
 class NYTimesDataset(data_source.DataSource):
@@ -20,21 +18,20 @@ class NYTimesDataset(data_source.DataSource):
         COUNTY = "county"
         STATE = "state"
         FIPS = "fips"
-        COUNTRY = "country"
-        AGGREGATE_LEVEL = "aggregate_level"
         CASES = "cases"
         DEATHS = "deaths"
 
-    INDEX_FIELD_MAP = {
-        CommonIndexFields.DATE: Fields.DATE,
-        CommonIndexFields.COUNTRY: Fields.COUNTRY,
-        CommonIndexFields.STATE: Fields.STATE,
-        CommonIndexFields.FIPS: Fields.FIPS,
-        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-    }
-    COMMON_FIELD_MAP = {
+        COUNTRY = "country"
+        AGGREGATE_LEVEL = "aggregate_level"
+
+    TIMESERIES_FIELD_MAP = {
+        TimeseriesDataset.Fields.DATE: Fields.DATE,
+        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
+        TimeseriesDataset.Fields.STATE: Fields.STATE,
+        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
         TimeseriesDataset.Fields.CASES: Fields.CASES,
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
+        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     def __init__(self, input_path):
@@ -43,7 +40,7 @@ class NYTimesDataset(data_source.DataSource):
         super().__init__(data)
 
     @classmethod
-    def load(cls) -> "NYTimesDataset":
+    def load(cls) -> "CDSTimeseriesData":
         return cls(cls.DATA_URL)
 
     @classmethod

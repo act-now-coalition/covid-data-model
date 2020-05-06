@@ -1,12 +1,12 @@
 import pathlib
+import numpy
 import pandas as pd
+from libs.datasets.population import PopulationDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS
 from libs import enums
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
 
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 
@@ -32,15 +32,12 @@ class FIPSPopulation(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    INDEX_FIELD_MAP = {
-        CommonIndexFields.COUNTRY: Fields.COUNTRY,
-        CommonIndexFields.STATE: Fields.STATE,
-        CommonIndexFields.FIPS: Fields.FIPS,
-        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-    }
-
-    COMMON_FIELD_MAP = {
-        CommonFields.POPULATION: Fields.POPULATION,
+    POPULATION_FIELD_MAP = {
+        PopulationDataset.Fields.COUNTRY: Fields.COUNTRY,
+        PopulationDataset.Fields.STATE: Fields.STATE,
+        PopulationDataset.Fields.FIPS: Fields.FIPS,
+        PopulationDataset.Fields.POPULATION: Fields.POPULATION,
+        PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     def __init__(self, path):

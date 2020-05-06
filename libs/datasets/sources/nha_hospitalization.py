@@ -3,8 +3,6 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
 
 
 class NevadaHospitalAssociationData(data_source.DataSource):
@@ -30,19 +28,15 @@ class NevadaHospitalAssociationData(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    INDEX_FIELD_MAP = {
-        CommonIndexFields.DATE: Fields.DATE,
-        CommonIndexFields.COUNTRY: Fields.COUNTRY,
-        CommonIndexFields.STATE: Fields.STATE,
-        CommonIndexFields.FIPS: Fields.FIPS,
-        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-    }
-
-    COMMON_FIELD_MAP = {
-        CommonFields.CURRENT_HOSPITALIZED: Fields.COVID_CONFIRMED,
-        CommonFields.CURRENT_ICU: Fields.COVID_ICU_OCCUPIED,
-        CommonFields.CURRENT_VENTILATED: Fields.COVID_VENTILATOR,
-        CommonFields.ICU_BEDS: Fields.ICU_STAFFED,
+    TIMESERIES_FIELD_MAP = {
+        TimeseriesDataset.Fields.DATE: Fields.DATE,
+        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
+        TimeseriesDataset.Fields.STATE: Fields.STATE,
+        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
+        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+        TimeseriesDataset.Fields.CURRENT_HOSPITALIZED: Fields.COVID_CONFIRMED,
+        TimeseriesDataset.Fields.CURRENT_ICU: Fields.COVID_ICU_OCCUPIED,
+        TimeseriesDataset.Fields.CURRENT_VENTILATED: Fields.COVID_VENTILATOR,
     }
 
     @classmethod
