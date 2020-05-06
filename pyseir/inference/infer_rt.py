@@ -259,7 +259,7 @@ class RtInferenceEngine:
         times: array-like
             Output integers since the reference date.
         posteriors: pd.DataFrame
-            Posterior estimiates for each timestamp with non-zero data.
+            Posterior estimates for each timestamp with non-zero data.
         """
         dates, times, timeseries = self.apply_gaussian_smoothing(timeseries_type)
         if len(timeseries) == 0:
@@ -389,7 +389,33 @@ class RtInferenceEngine:
                 else:
                     df_all = df_all.merge(df, left_index=True, right_index=True, how='outer')
 
-                # Compute the indicator lag using the curvature alignment method.
+                # ------------------------------------------------
+                # Convert the new cases growth rate to an adjustment by finding
+                # the difference between the growth rate of new cases and new
+                # tests. Thus if tests are growing quickly and cases growth is
+                # staying the same, this will reduce Rt for new cases. This is
+                # effectively adjusting for test growth based on the positivity
+                # rate.
+                #
+                # As far as Eric can tell, IHME seems to doing the absolute
+                # simplest thing by assuming a constant increase in cases per
+                # test increase. Our method should be far superior by taking
+                # into account relative growth between cases and tests.
+                # ------------------------------------------------
+                if 'Rt_MAP__new_cases' in df_all and 'Rt_MAP__new_tests' in df_all and timeseries_type is TimeseriesType.NEW_TESTS:
+                    df_all['new_tests_adjustment'] = (df_all['Rt_MAP__new_cases'] - df_all['Rt_MAP__new_tests']).fillna(0)
+                    df_all['Rt_MAP__new_cases'] = df_all['Rt_MAP__new_cases'] + df_all['new_tests_adjustment']
+
+                    for ci in self.confidence_intervals:
+                        low_val = 1 - ci
+                        high_val = ci
+                        df_all[f'Rt_ci{int(math.floor(100 * low_val))}__new_cases'] += df_all['new_tests_adjustment']
+                        df_all[f'Rt_ci{int(math.floor(100 * high_val))}__new_cases'] += df_all['new_tests_adjustment']
+
+                # ------------------------------------------------
+                # Compute the indicator lag using the curvature
+                # alignment method.
+                # ------------------------------------------------
                 if timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS) \
                         and f'Rt_MAP__{TimeseriesType.NEW_CASES.value}' in df_all.columns:
                     # Go back upto 30 days or the max time series length we have if shorter.
@@ -418,6 +444,9 @@ class RtInferenceEngine:
             df_all['Rt_MAP_composite'] = df_all['Rt_MAP__new_cases']
             df_all['Rt_ci95_composite'] = df_all['Rt_ci95__new_cases']
 
+
+
+
         if plot:
             plt.figure(figsize=(10, 6))
 
@@ -439,9 +468,12 @@ class RtInferenceEngine:
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_hospitalizations'],
                             alpha=1, s=25, color='darkseagreen', label='New Hospitalizations', marker='d')
 
-            if 'Rt_ci5__new_tests' in df_all:
+            if 'new_tests_adjustment' in df_all:
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_tests'],
-                            alpha=1, s=25, color='goldenrod', label='New Tests', marker='>')
+                            alpha=1, s=25, color='goldenrod',
+                            label='New Tests', marker='>')
+                plt.scatter(df_all.index, df_all['new_tests_adjustment'],
+                            alpha=1, s=25, color='k', label='New Tests Adjustment', marker='<')
 
             plt.hlines([1.0], *plt.xlim(), alpha=1, color='g')
             plt.hlines([1.1], *plt.xlim(), alpha=1, color='gold')
@@ -450,7 +482,7 @@ class RtInferenceEngine:
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(0, 5)
+            plt.ylim(-1, 4)
             plt.ylabel('$R_t$', fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
