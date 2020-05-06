@@ -10,6 +10,7 @@ import us
 import zipfile
 import json
 from datetime import datetime
+from libs import build_processed_dataset as test_data
 from libs.datasets import NYTimesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -512,6 +513,42 @@ def load_new_case_data_by_state(state, t0):
     keep_idx = np.array([i for i in range(len(times_new)) if i not in list(filter_idx)])
     times_new = [int(list(times_new)[idx]) for idx in keep_idx]
     return times_new, np.array(observed_new_cases[keep_idx]).clip(min=0), observed_new_deaths.clip(min=0)[keep_idx]
+
+
+@lru_cache(maxsize=32)
+def load_new_test_data_by_fips(fips, t0):
+    """
+    Return a timeseries of new tests for a geography. Note that due to reporting
+    discrepancies county to county, and state-to-state, these often do not go
+    back as far as case data.
+
+    Parameters
+    ----------
+    fips: str
+        State or county fips code
+    t0: datetime
+        Reference datetime to use.
+
+    Returns
+    -------
+    times: array(int)
+        Array of integers days w.r.t. the reference datetime.
+    new_tests: array(str)
+        Number of new tests for this day.
+    """
+    if len(fips) == 2:
+        df = test_data.get_testing_timeseries_by_state(
+            us.states.lookup(fips).abbr)
+        df['tested'] = df['positive'] + df['negative']
+        df = df[['date', 'tested']].fillna(0)
+    else:
+        df = test_data.get_testing_timeseries_by_fips(fips)
+        df = df.reset_index()[['date', 'tested']].fillna(0)
+
+    dates = pd.to_datetime(df['date'].iloc[1:].values).to_pydatetime()
+    times = [int((date - t0).days) for date in dates]
+
+    return times, np.diff(df['tested'])
 
 
 def load_cdc_hospitalization_data():
