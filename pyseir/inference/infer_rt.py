@@ -8,6 +8,7 @@ from scipy import signal
 from matplotlib import pyplot as plt
 import us
 from pyseir import load_data
+from libs import build_processed_dataset as test_data
 from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
@@ -96,6 +97,9 @@ class RtInferenceEngine:
             self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
                 load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
+        self.new_test_times, self.new_tests = load_data.load_new_test_data_by_fips(fips, t0=self.ref_date)
+        self.new_test_dates = [self.ref_date + timedelta(days=t) for t in self.new_test_times]
+
         logging.info(f'Running Rt Inference for {self.display_name}')
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
@@ -153,6 +157,8 @@ class RtInferenceEngine:
             return self.case_dates, self.times, self.observed_new_deaths
         elif timeseries_type in (TimeseriesType.NEW_HOSPITALIZATIONS, TimeseriesType.CURRENT_HOSPITALIZATIONS):
             return self.hospital_dates, self.hospital_times, self.hospitalizations
+        elif timeseries_type is TimeseriesType.NEW_TESTS:
+            return self.new_test_dates, self.new_test_times, self.new_tests
 
     def apply_gaussian_smoothing(self, timeseries_type, plot=False):
         """
@@ -342,11 +348,15 @@ class RtInferenceEngine:
         IDX_OF_COUNTS = 2
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+        tests = self.get_timeseries(TimeseriesType.NEW_TESTS.value)[IDX_OF_COUNTS]
         if self.hospitalization_data_type:
             hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
+
+        if np.sum(tests) > self.min_cases:
+            available_timeseries.append(TimeseriesType.NEW_TESTS)
 
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
@@ -428,6 +438,10 @@ class RtInferenceEngine:
                                  alpha=.4, color='darkseagreen')
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_hospitalizations'],
                             alpha=1, s=25, color='darkseagreen', label='New Hospitalizations', marker='d')
+
+            if 'Rt_ci5__new_tests' in df_all:
+                plt.scatter(df_all.index, df_all['Rt_MAP__new_tests'],
+                            alpha=1, s=25, color='goldenrod', label='New Tests', marker='>')
 
             plt.hlines([1.0], *plt.xlim(), alpha=1, color='g')
             plt.hlines([1.1], *plt.xlim(), alpha=1, color='gold')
