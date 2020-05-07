@@ -271,9 +271,11 @@ def load_ensemble_results(fips):
     ensemble_results: dict
     """
     output_filename = get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT)
-    with open(output_filename) as f:
-        fit_results = json.load(f)
-    return fit_results
+    if os.path.exists(output_filename):
+        with open(output_filename) as f:
+            fit_results = json.load(f)
+        return fit_results
+    return None
 
 
 @lru_cache(maxsize=32)
@@ -299,6 +301,21 @@ def load_county_metadata_by_fips(fips):
         if np.isscalar(value) and not isinstance(value, str):
             county_metadata_merged[key] = float(value)
     return county_metadata_merged
+
+
+@lru_cache(maxsize=32)
+def get_all_fips_codes_for_a_state(state: str):
+    """Returns a list of fips codes for a state
+
+    Arguments:
+        state {str} -- the full state name
+
+    Returns:
+        fips [list] -- a list of fips codes for a state
+    """
+    df = load_county_metadata()
+    all_fips = df[df['state'].str.lower() == state.lower()].fips
+    return all_fips
 
 
 @lru_cache(maxsize=32)

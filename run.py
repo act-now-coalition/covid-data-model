@@ -37,7 +37,7 @@ entry_point.add_command(api.main)
 if __name__ == "__main__":
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
     logging.basicConfig(level=logging.INFO)
-    pandarallel.initialize(progress_bar=True)
+    pandarallel.initialize(progress_bar=False)
     try:
         entry_point()
     except Exception as e:
