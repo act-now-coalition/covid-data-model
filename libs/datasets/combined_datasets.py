@@ -114,21 +114,6 @@ def build_us_latest_with_all_fields() -> LatestValuesDataset:
     )
 
 
-def get_us_latest(state=None, fips=None) -> dict:
-    """Gets latest values from from either a fips code or state."""
-    if state and fips:
-        raise ValueError("Must specify only state or fips")
-
-    if not (state or fips):
-        raise ValueError("Must specify either state or fips")
-
-    us_latest = build_us_latest_with_all_fields()
-    if state:
-        return us_latest.get_record_for_state(state)
-
-    return us_latest.get_record_for_fips(fips)
-
-
 def get_us_latest_for_state(state) -> dict:
     """Gets latest values for a given state."""
     us_latest = build_us_latest_with_all_fields()
