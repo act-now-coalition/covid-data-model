@@ -1,10 +1,10 @@
-team_name: CovidActNow
+team_name: $team_name
 team_abbr: CAN
 institution_affil:
 team_funding: ~
 team_experience: Mathematical modeling of covid transmission at state/county level and UI report since Apr. 2020.
 
-model_name: SEIR_CovidActNow
+model_name: $model_name
 model_abbr: SEIR_CAN
 model_output: https://covidactnow.org/
 model_repo: https://github.com/covid-projections/covid-data-model
