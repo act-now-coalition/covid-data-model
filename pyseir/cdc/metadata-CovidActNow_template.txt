@@ -1,31 +1,37 @@
-team_name: ~
-team_abbr: ~
-institution_affil: ~
+team_name: CovidActNow
+team_abbr: CAN
+institution_affil:
 team_funding: ~
-team_experience: ~
+team_experience: Mathematical modeling of covid transmission at state/county level and UI report since Apr. 2020.
 
-model_name: ~
-model_abbr: ~
-model_output: ~
-model_repo: ~
+model_name: SEIR_CovidActNow
+model_abbr: SEIR_CAN
+model_output: https://covidactnow.org/
+model_repo: https://github.com/covid-projections/covid-data-model
 
-model_contributors:
-Model_targets:
-    - wk ahead cumulative deaths
+model_contributors: Eric Carlson <eric.carlson@grandrounds.com> Max Henderson <max@maxhenderson.com>
+Chris Kelly <ghop02@gmail.com> Igor Kofman <kofman@gmail.com> Xinyu Zhang <xinyu.zhang@grandrounds.com>
 
-Target_loc: US, some states
+Model_targets: $Model_targets
+
+Target_loc: some states
 time_horizon: ~
 Data_format: all requested quantiles
-forecast_startdate: ~
+forecast_startdate: $forecast_startdate
 forecast_frequency: weekly
 
-data_inputs_known: expert elicitation
-data_source_known: ~
+data_inputs_known: expert elicitation and literature review
+data_source_known: JHU
 
 this_model_is_an_ensemble: FALSE
 this_model_is_unconditional: TRUE
 
 methods: >-
-
+    Forecast based on experts opinion in public health and epidemiology of infectious disease, thorough literature
+    review and daily feed data in cases, deaths and hostpitalizations.
 
 methods_long: >-
+    The SEIR Model makes forecast of incident deaths, cumulative deaths, incident hospitalizations, and cumulative
+    hospitalizations by fitting prediction cases, deaths and hospitalizations to the observations. Quantiles of the
+    forecast are derived by generate random parameter ensemble from the parameters' prior distribution, and
+    simulating the MLE SEIR model with parameter sets from the parameter ensemble.
