@@ -218,7 +218,7 @@ def generate_state_timeseries(
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
         projections=projections,
         timeseries=timeseries,
-        actuals_timeseries=_generate_actuals_timeseries(
+        actualsTimeseries=_generate_actuals_timeseries(
             actuals_ts.get_records_for_state(state), state_intervention
         ),
     )
@@ -262,7 +262,7 @@ def generate_county_timeseries(projection_row, intervention, input_dir):
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
         projections=projections,
         timeseries=timeseries,
-        actuals_timeseries=_generate_actuals_timeseries(
+        actualsTimeseries=_generate_actuals_timeseries(
             actuals_ts.get_records_for_fips(fips), state_intervention
         ),
     )

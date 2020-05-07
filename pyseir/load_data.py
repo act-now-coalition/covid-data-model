@@ -11,6 +11,7 @@ import zipfile
 import json
 from datetime import datetime
 from libs.datasets import NYTimesDataset
+from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
@@ -352,7 +353,7 @@ def load_new_case_data_by_fips(fips, t0):
 
 
 def get_hospitalization_data():
-    data = CovidTrackingDataSource.local().timeseries().data
+    data = combined_datasets.build_us_timeseries_with_all_fields().data
     # Since we're using this data for hospitalized data only, only returning
     # values with hospitalization data.  I think as the use cases of this data source
     # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
@@ -443,7 +444,7 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
     """
     abbr = us.states.lookup(state).abbr
     hospitalization_data = (
-        CovidTrackingDataSource.local().timeseries()
+        combined_datasets.build_us_timeseries_with_all_fields()
         .get_subset(AggregationLevel.STATE, country='USA', state=abbr)
         .get_data(country='USA', state=abbr)
     )
