@@ -1,7 +1,9 @@
+import inspect
 import datetime
 import logging
 import os
 import numpy as np
+from collections import defaultdict
 from multiprocessing import Pool
 from functools import partial
 import us
@@ -223,20 +225,25 @@ class EnsembleRunner:
         model.run()
         return model
 
+    # generate chi square using parameter ensemble for
+    # the MLE model
+    def _model_ensemble(self, override_params=None, N_samples=5000):
+        """
 
-    def _collect_ensemble_models(self, model_ensemble):
-        SEIR_kwargs = ParameterEnsembleGenerator(
-            fips=self.fips,
-            N_samples=self.n_samples,
-            t_list=self.t_list,
-            suppression_policy=None).sample_seir_parameters()
+        """
+        model_ensemble = list()
+        parameter_sets = ParameterEnsembleGenerator(self.fips,
+                                                    N_samples=N_samples,
+                                                    t_list=self.t_list,
+                                                    suppression_policy=self.suppression_policy)\
+                          .sample_seir_parameters(override_params=override_params)
 
-        for parameter_set in SEIR_kwargs:
+        # get mle eps and t_break from suppression policy
+        for parameter_set in parameter_sets:
             model = self._run_single_simulation(parameter_set)
-            log_likelihoods = self._fit_single_model(model)
+            model_ensemble.append(model)
 
-        return
-
+        return model_ensemble
 
     def run_ensemble(self):
         """
@@ -251,7 +258,6 @@ class EnsembleRunner:
                 model_ensemble = [self._load_model_for_fips(scenario=suppression_policy)]
 
             else:
-                model_ensemble = self._collect_ensemble_models()
                 raise ValueError(f'Run mode {self.run_mode.value} not supported.')
 
 
