@@ -225,11 +225,23 @@ class EnsembleRunner:
         model.run()
         return model
 
-    # generate chi square using parameter ensemble for
-    # the MLE model
     def _model_ensemble(self, override_params=None, N_samples=5000):
         """
+        Run SEIR model with parameter sets sampled by parameter ensemble
+        generator.
 
+        Parameters
+        ----------
+        override_params: dict
+            Parameters and their values to override in the parameter sets.
+        N_samples: int
+            Number of sample of parameter sets.
+
+        Returns
+        -------
+        model_ensemble: list(SEIRModel)
+            SEIR model that runs with parameter sets sampled by parameter
+            ensemble generator.
         """
         model_ensemble = list()
         parameter_sets = ParameterEnsembleGenerator(self.fips,
