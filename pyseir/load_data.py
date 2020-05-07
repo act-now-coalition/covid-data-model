@@ -9,7 +9,6 @@ import io
 import us
 import zipfile
 import json
-import pickle
 from datetime import datetime
 from libs.datasets import NYTimesDataset
 from libs.datasets.timeseries import TimeseriesDataset
