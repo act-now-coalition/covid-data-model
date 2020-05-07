@@ -58,7 +58,6 @@ class NevadaHospitalAssociationData(data_source.DataSource):
         input_path = data_root / cls.DATA_PATH
         data = pd.read_csv(
             input_path,
-            skiprows=1,
             parse_dates=[cls.Fields.DATE],
             dtype={cls.Fields.FIPS: str}
         )
