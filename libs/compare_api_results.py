@@ -10,6 +10,8 @@ from libs import us_state_abbrev
 from api.can_api_definition import CovidActNowStateSummary
 from api.can_api_definition import CovidActNowCountySummary
 from api.can_api_definition import CovidActNowStateTimeseries
+from api.can_api_definition import CovidActNowStatesTimeseries
+from api.can_api_definition import CovidActNowCountiesTimeseries
 from api.can_api_definition import CovidActNowCountyTimeseries
 
 
@@ -43,6 +45,24 @@ class APISnapshot(object):
     def from_latest(cls):
         path = os.path.join(CAN_API_BASE_URL, f"latest")
         return cls(path)
+
+    def all_states_timeseries(self, intervention):
+        path = os.path.join(
+            self.root, f"us/states.{intervention.name}.timeseries.json"
+        )
+        data = self._load_path(path)
+        if not data:
+            return None
+        return CovidActNowStatesTimeseries(__root__=data)
+
+    def all_counties_timeseries(self, intervention):
+        path = os.path.join(
+            self.root, f"us/counties.{intervention.name}.timeseries.json"
+        )
+        data = self._load_path(path)
+        if not data:
+            return None
+        return CovidActNowCountiesTimeseries(__root__=data)
 
     def state_summary(self, state, intervention) -> Optional[CovidActNowStateSummary]:
         path = os.path.join(self.root, f"us/states/{state}.{intervention.name}.json")
@@ -135,27 +155,46 @@ def build_comparison_for_states(api_snapshot: APISnapshot, deduplicate=True) -> 
     """
     all_comparisons = []
 
-    states = us_state_abbrev.abbrev_us_state.keys()
-    interventions = list(Intervention)
-    states_and_interventions = list(itertools.product(states, interventions))
-
-    def get_results(state, intervention):
-        # intervention is not included in the summary result, so we need to
-        # pass back which intervention this is for.
-        result = api_snapshot.state_timeseries(state, intervention)
-        return state, intervention, result
-
     summaries = [
-        get_results(state, intervention)
-        for state, intervention in states_and_interventions
+        (api_snapshot.all_states_timeseries(intervention), intervention)
+        for intervention in Intervention
     ]
 
-    for state, intervention, summary in summaries:
-        if not summary:
-            continue
+    for summary, intervention in summaries:
+        for state_summary in summary.__root__:
+            values = get_actual_projection_deltas(state_summary, intervention)
+            all_comparisons.extend(values)
 
-        values = get_actual_projection_deltas(summary, intervention)
-        all_comparisons.extend(values)
+    data = pd.DataFrame(all_comparisons)
+    if deduplicate:
+        data = data.set_index(['date', 'state', 'field'])
+        data = data[~data.index.duplicated(keep='last')].drop(columns=['intervention'], axis=1)
+
+    data = add_comparisons(data)
+    return data
+
+
+
+def build_comparison_for_states(api_snapshot: APISnapshot, deduplicate=True) -> pd.DataFrame:
+    """Loads all state timeseries summaries and builds comparison of actuals to predictions.
+
+    Args:
+        api_snapshot: API Snapshot object
+        deduplicate: If true deduplicates data
+
+    Returns: Pandas comparison data frame.
+    """
+    all_comparisons = []
+
+    summaries = [
+        (api_snapshot.all_states_timeseries(intervention), intervention)
+        for intervention in Intervention
+    ]
+
+    for summary, intervention in summaries:
+        for state_summary in summary.__root__:
+            values = get_actual_projection_deltas(state_summary, intervention)
+            all_comparisons.extend(values)
 
     data = pd.DataFrame(all_comparisons)
     if deduplicate:
