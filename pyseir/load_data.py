@@ -653,6 +653,5 @@ def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None
     return ensemble_results['suppression_policy__inferred'][compartment]['ci_50'][date_idx]
 
 
-
 if __name__ == '__main__':
     cache_all_data()
