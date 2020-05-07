@@ -31,7 +31,6 @@ methods: >-
     review and daily feed data in cases, deaths and hostpitalizations.
 
 methods_long: >-
-    The SEIR Model makes forecast of incident deaths, cumulative deaths, incident hospitalizations, and cumulative
-    hospitalizations by fitting prediction cases, deaths and hospitalizations to the observations. Quantiles of the
-    forecast are derived by generate random parameter ensemble from the parameters' prior distribution, and
-    simulating the MLE SEIR model with parameter sets from the parameter ensemble.
+    The SEIR Model makes forecast of $Model_target_names by fitting prediction cases, deaths and hospitalizations to
+    the observations. Quantiles of the forecast are derived by generate random parameter ensemble from the parameters'
+    prior distribution, and simulating the MLE SEIR model with parameter sets from the parameter ensemble.
