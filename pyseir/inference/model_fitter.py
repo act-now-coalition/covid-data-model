@@ -701,6 +701,7 @@ def _execute_model_for_fips(fips):
     if fips:
         model_fitter = ModelFitter.run_for_fips(fips)
         return model_fitter
+    logging.warning(f'Not funning model run for ${fips}')
     return None
 
 def _persist_results_per_state(state_df):

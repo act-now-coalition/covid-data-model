@@ -81,26 +81,21 @@ class RtInferenceEngine:
                 load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
             self.display_name = self.state
         else:
-            try:
-                self.agg_level = AggregationLevel.COUNTY
-                self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
-                self.state = self.geo_metadata['state']
-                self.state_obj = us.states.lookup(self.state)
-                self.county = self.geo_metadata['county']
-                if self.county:
-                    self.display_name = self.county + ', ' + self.state
-                else:
-                    self.display_name = self.state
+            self.agg_level = AggregationLevel.COUNTY
+            self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
+            self.state = self.geo_metadata['state']
+            self.state_obj = us.states.lookup(self.state)
+            self.county = self.geo_metadata['county']
+            if self.county:
+                self.display_name = self.county + ', ' + self.state
+            else:
+                self.display_name = self.state
 
-                # TODO Swap for new data source.
-                self.times, self.observed_new_cases, self.observed_new_deaths = \
-                    load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
-                self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
-                    load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-            except Exception:
-                # TODO: Remove unneeded fips from the equation
-                logging.warn(f'Failed to init inference for {self.display_name}')
-                return None
+            # TODO Swap for new data source.
+            self.times, self.observed_new_cases, self.observed_new_deaths = \
+                load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
+            self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
+                load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         logging.info(f'Running Rt Inference for {self.display_name}')
 
