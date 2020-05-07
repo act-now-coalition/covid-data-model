@@ -372,7 +372,7 @@ class OutputMapper:
 
         return quantile_result
 
-    def generate_point_output(self):
+    def generate_point_result(self):
         """
         Generates result that contains the point estimate of the forecast with
         format required for CDC model ensemble submission.
