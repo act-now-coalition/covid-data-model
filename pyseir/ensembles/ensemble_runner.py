@@ -4,6 +4,7 @@ import os
 import numpy as np
 from multiprocessing import Pool
 from functools import partial
+import sentry_sdk
 import us
 import pickle
 import simplejson as json
@@ -393,8 +394,12 @@ def _run_county(fips, ensemble_kwargs):
     ensemble_kwargs: dict
         Kwargs passed to the EnsembleRunner object.
     """
-    runner = EnsembleRunner(fips=fips, **ensemble_kwargs)
-    runner.run_ensemble()
+    try:
+        runner = EnsembleRunner(fips=fips, **ensemble_kwargs)
+        runner.run_ensemble()
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        return None
 
 
 def run_state(state, ensemble_kwargs, states_only=False):
