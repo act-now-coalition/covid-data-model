@@ -48,6 +48,19 @@ or:
 pip install -r requirements.txt -r requirements_test.txt
 ```
 
+### Setup auto-formatting
+
+We use [black](https://github.com/psf/black) to automatically format python code.
+One way we keep this maintainable is by using a pre-commit step that automatically
+reformats modified files on commit.
+
+Steps to install this:
+```
+1. pip install -r requirements_test.txt
+2. pre-commit install
+```
+
+
 ## Configuration
 
 If you've cloned the covid-data-public repo to a local, set and environment variable to enable caching
