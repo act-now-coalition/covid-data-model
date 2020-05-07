@@ -11,9 +11,9 @@ class ForecastTimeUnit(Enum):
     DAY = 'day'
     WK = 'wk'
 
-class ForecastAccuracy(Enum):
-    NO_ADJUST = 'no_adjust'
+class ForecastUncertainty(Enum):
     DEFAULT = 'default'
+    NAIVE = 'native'
 
 def target_column_name(num, target, time_unit):
     """
