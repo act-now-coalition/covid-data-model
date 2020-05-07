@@ -697,6 +697,38 @@ class ModelFitter:
         return model_fitter
 
 
+def _execute_model_for_fips(fips):
+    if fips:
+        model_fitter = ModelFitter.run_for_fips(fips)
+        return model_fitter
+    logging.warning(f'Not funning model run for ${fips}')
+    return None
+
+def _persist_results_per_state(state_df):
+    county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
+    data = state_df.drop(['state', 'mle_model'], axis=1)
+    data.to_json(county_output_file)
+
+    for fips, county_series in state_df.iterrows():
+        with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
+            pickle.dump(county_series.mle_model, f)
+
+
+def build_county_list(state):
+    """
+    Build the and return the fips list
+    """
+    state_obj = us.states.lookup(state)
+    logging.info(f'Get fips list for state {state_obj.name}')
+
+    df_whitelist = load_data.load_whitelist()
+    df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
+
+    all_fips = df_whitelist[df_whitelist['state'].str.lower() == state_obj.name.lower()].fips.tolist()
+
+    return all_fips
+
+
 def run_state(state, states_only=False, with_age_structure=False):
     """
     Run the fitter for each county in a state.
@@ -719,13 +751,17 @@ def run_state(state, states_only=False, with_age_structure=False):
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
-    pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
+    data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
+    data.to_json(output_path)
 
     with open(get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
         pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
     if not states_only:
+        df_whitelist = load_data.load_whitelist()
+        df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
+
         all_fips = df_whitelist[df_whitelist['state'].str.lower() == state_obj.name.lower()].fips.values
 
         if len(all_fips) > 0:
@@ -734,7 +770,8 @@ def run_state(state, states_only=False, with_age_structure=False):
             p.close()
 
             county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
-            pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)
+            data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+            data.to_json(county_output_file)
 
             # Serialize the model results.
             for fips, fitter in zip(all_fips, fitters):

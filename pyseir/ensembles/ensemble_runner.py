@@ -6,7 +6,7 @@ from multiprocessing import Pool
 from functools import partial
 import us
 import pickle
-import simplejson as json
+import json
 import copy
 from collections import defaultdict
 from pyseir.models.seir_model import SEIRModel
@@ -416,8 +416,7 @@ def run_state(state, ensemble_kwargs, states_only=False):
 
     if not states_only:
         # Run county level
-        df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state.lower()].fips
+        all_fips = load_data.get_all_fips_codes_for_a_state(state)
         p = Pool()
         f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
         p.map(f, all_fips)
