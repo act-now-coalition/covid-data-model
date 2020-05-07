@@ -7,8 +7,8 @@ from api.state_actuals_summary import StateCaseSummary
 
 _logger = logging.getLogger(__name__)
 
-STATE_EXPORT_FIELDS = ["state", "cases", "deaths", "source", "date"]
-COUNTY_EXPORT_FIELDS = ["fips", "cases", "deaths", "source", "date"]
+STATE_EXPORT_FIELDS = ["state", "cases", "deaths", "date"]
+COUNTY_EXPORT_FIELDS = ["fips", "cases", "deaths", "date"]
 
 
 def latest_case_summaries_by_state(dataset: TimeseriesDataset) -> Iterator[StateCaseSummary]:
