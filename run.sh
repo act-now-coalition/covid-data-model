@@ -61,7 +61,8 @@ execute_model() {
   cd "$(dirname "$0")"
 
   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
-  pyseir run-all --output-dir="${API_OUTPUT_DIR}"
+  # TODO(#148): We need to clean up the output of these scripts!
+  pyseir build-all --output-dir="${API_OUTPUT_DIR}" > "${API_OUTPUT_DIR}/stdout.log"
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/

@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import logging
@@ -5,7 +6,9 @@ from pyseir import load_data
 from datetime import datetime
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pandarallel import pandarallel
-pandarallel.initialize(progress_bar=True)
+
+VISIBIBLE_PROGRESS_BAR = os.environ.get('PYSEIR_VERBOSITY')=='True'
+pandarallel.initialize(progress_bar=VISIBIBLE_PROGRESS_BAR)
 
 
 class WhitelistGenerator:
