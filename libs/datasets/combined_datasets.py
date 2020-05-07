@@ -129,6 +129,18 @@ def get_us_latest(state=None, fips=None) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
+def get_us_latest_for_state(state) -> dict:
+    """Gets latest values for a given state."""
+    us_latest = build_us_latest_with_all_fields()
+    return us_latest.get_record_for_state(state)
+
+
+def get_us_latest_for_fips(fips) -> dict:
+    """Gets latest values for a given fips code."""
+    us_latest = build_us_latest_with_all_fields()
+    return us_latest.get_record_for_fips(fips)
+
+
 def load_data_sources(
     feature_definition_config
 ) -> Dict[Type[data_source.DataSource], data_source.DataSource]:
