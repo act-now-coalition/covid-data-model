@@ -101,7 +101,7 @@ def get_actual_projection_deltas(summary_with_timeseries, intervention):
     beds_in_use = {
         **common,
         "field": "hospital_beds",
-        "actual": actuals.hospitalBeds.currentUsage,
+        "actual": actuals.hospitalBeds.currentUsageCovid,
         "projection": projection_row.hospitalBedsRequired,
     }
     icu_in_use = {
@@ -110,16 +110,26 @@ def get_actual_projection_deltas(summary_with_timeseries, intervention):
         "projection": projection_row.ICUBedsInUse,
     }
     if actuals.ICUBeds:
-        icu_in_use["actual"] = actuals.ICUBeds.currentUsage
+        icu_in_use["actual"] = actuals.ICUBeds.currentUsageCovid
 
     return [beds_in_use, icu_in_use]
 
 
-def build_comparison_for_states(api_snapshot: APISnapshot) -> pd.DataFrame:
+def add_comparisons(comparisons):
+    # Hacky lets set this
+    comparisons['actual'] = comparisons['actual'].astype(float)
+    comparisons['projection'] = comparisons['projection'].astype(float)
+    comparisons['delta'] = comparisons['projection'] - comparisons['actual']
+    comparisons['delta_ratio'] = comparisons['delta'] / comparisons['actual']
+    return comparisons
+
+
+def build_comparison_for_states(api_snapshot: APISnapshot, deduplicate=True) -> pd.DataFrame:
     """Loads all state timeseries summaries and builds comparison of actuals to predictions.
 
     Args:
         api_snapshot: API Snapshot object
+        deduplicate: If true deduplicates data
 
     Returns: Pandas comparison data frame.
     """
@@ -147,4 +157,10 @@ def build_comparison_for_states(api_snapshot: APISnapshot) -> pd.DataFrame:
         values = get_actual_projection_deltas(summary, intervention)
         all_comparisons.extend(values)
 
-    return pd.DataFrame(all_comparisons)
+    data = pd.DataFrame(all_comparisons)
+    if deduplicate:
+        data = data.set_index(['date', 'state', 'field'])
+        data = data[~data.index.duplicated(keep='last')].drop(columns=['intervention'], axis=1)
+
+    data = add_comparisons(data)
+    return data
