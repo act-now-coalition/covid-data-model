@@ -168,7 +168,7 @@ class OutputMapper:
     """
     def __init__(self,
                  fips,
-                 N_samples=100,
+                 N_samples=5000,
                  targets=TARGETS,
                  forecast_date=FORECAST_DATE,
                  next_epi_week=NEXT_EPI_WEEK,
