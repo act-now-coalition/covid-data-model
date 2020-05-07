@@ -63,7 +63,7 @@ def update_with_combined_new_york_counties(
         # No county level data, skipping county aggregation.
         return data
 
-    if not len(data[(data.state == 'NY') & is_county]):
+    if not len(data[(data.state == "NY") & is_county]):
         # No NY data, don't apply aggregation.
         return data
 

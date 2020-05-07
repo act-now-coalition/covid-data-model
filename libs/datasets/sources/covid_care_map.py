@@ -51,7 +51,9 @@ class CovidCareMapBeds(data_source.DataSource):
         super().__init__(data)
 
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame, aggregate_level: AggregationLevel) -> pd.DataFrame:
+    def standardize_data(
+        cls, data: pd.DataFrame, aggregate_level: AggregationLevel
+    ) -> pd.DataFrame:
         # All DH data is aggregated at the county level
         data[cls.Fields.AGGREGATE_LEVEL] = aggregate_level.value
         data[cls.Fields.COUNTRY] = "USA"
@@ -60,21 +62,27 @@ class CovidCareMapBeds(data_source.DataSource):
 
         if aggregate_level == AggregationLevel.COUNTY:
             # Override Washoe County ICU capacity with actual numbers.
-            data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.STAFFED_ICU_BEDS]] = 162
-            #data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.35
+            data.loc[
+                data[cls.Fields.FIPS] == "32031", [cls.Fields.STAFFED_ICU_BEDS]
+            ] = 162
+            # data.loc[data[cls.Fields.FIPS] == "32031", [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.35
         if aggregate_level == AggregationLevel.STATE:
             # Overriding NV ICU capacity numbers with actuals
-            data.loc[data[cls.Fields.STATE] == 'NV', [cls.Fields.STAFFED_ICU_BEDS]] = 844
+            data.loc[
+                data[cls.Fields.STATE] == "NV", [cls.Fields.STAFFED_ICU_BEDS]
+            ] = 844
             # occupancy calculated by 4/28 NHA data
             # (icu_beds - (total_icu_beds_used - covid_icu_beds_used)) / icu_beds
             # (844 - (583 - 158)) / 844 == 0.4964
-            #data.loc[data[cls.Fields.STATE] == 'NV', [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.4964
+            # data.loc[data[cls.Fields.STATE] == 'NV', [cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]] = 0.4964
 
-        data[cls.Fields.MAX_BED_COUNT] = data[[cls.Fields.STAFFED_ALL_BEDS, cls.Fields.LICENSED_ALL_BEDS]].max(axis=1)
+        data[cls.Fields.MAX_BED_COUNT] = data[
+            [cls.Fields.STAFFED_ALL_BEDS, cls.Fields.LICENSED_ALL_BEDS]
+        ].max(axis=1)
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.
-        is_virgin_islands = data[cls.Fields.STATE] == 'VI'
+        is_virgin_islands = data[cls.Fields.STATE] == "VI"
         return data[~is_virgin_islands]
 
     @classmethod

@@ -70,7 +70,9 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
         # Add state fips
         is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
+        state_fips = data.loc[is_state, cls.Fields.STATE].map(
+            us_state_abbrev.ABBREV_US_FIPS
+        )
         data.loc[is_state, cls.Fields.FIPS] = state_fips
 
         return cls(data)
@@ -128,15 +130,13 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             licensed_beds = nyc_data[cls.Fields.LICENSED_BEDS]
             occupancy_rates = nyc_data[cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
             weighted_all_bed_occupancy = (
-                (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
-            )
+                licensed_beds * occupancy_rates
+            ).sum() / licensed_beds.sum()
         weighted_icu_occupancy = None
         if cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE in data.columns:
             icu_beds = nyc_data[cls.Fields.ICU_BEDS]
             occupancy_rates = nyc_data[cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]
-            weighted_icu_occupancy = (
-                (icu_beds * occupancy_rates).sum() / icu_beds.sum()
-            )
+            weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
 
         data = custom_aggregations.update_with_combined_new_york_counties(
             data, group, are_boroughs_zero=False
@@ -144,14 +144,15 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
         nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
         if weighted_all_bed_occupancy:
-            data.loc[data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE] = (
-                weighted_all_bed_occupancy
-            )
+            data.loc[
+                data[cls.Fields.FIPS] == nyc_fips,
+                cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+            ] = weighted_all_bed_occupancy
 
         if weighted_icu_occupancy:
-            data.loc[data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE] = (
-                weighted_icu_occupancy
-            )
+            data.loc[
+                data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE
+            ] = weighted_icu_occupancy
 
         return data
 
@@ -197,7 +198,9 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         Returns: Dictionary with all data for a given fips code.
         """
         # we map NaNs to none here so that they can be generated via the API easier
-        row = self.data[self.data[self.Fields.FIPS] == fips].where(pd.notnull(self.data), None)
+        row = self.data[self.data[self.Fields.FIPS] == fips].where(
+            pd.notnull(self.data), None
+        )
         if not len(row):
             return {}
 

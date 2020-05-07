@@ -234,8 +234,8 @@ def remove_root_wrapper(obj: dict):
     Returns: object with __root__ removed.
     """
     # Objects with __root__ should have it as the only key.
-    if len(obj) == 1 and '__root__' in obj:
-        return obj['__root__']
+    if len(obj) == 1 and "__root__" in obj:
+        return obj["__root__"]
 
     results = {}
     for key, value in obj.items():
