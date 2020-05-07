@@ -2,14 +2,9 @@ import numpy as np
 import pandas as pd
 import us
 from pyseir import load_data
-from libs.datasets import FIPSPopulation
-from libs.datasets import CovidCareMapBeds
+from libs.datasets import combined_datasets
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
-
-
-beds_data = None
-population_data = None
 
 
 class ParameterEnsembleGenerator:
@@ -31,14 +26,6 @@ class ParameterEnsembleGenerator:
     """
     def __init__(self, fips, N_samples, t_list,
                  I_initial=1, suppression_policy=None):
-
-        # Caching globally to avoid relatively significant performance overhead
-        # of loading for each county.
-        global beds_data, population_data
-        if not beds_data or not population_data:
-            beds_data = CovidCareMapBeds.local().beds()
-            population_data = FIPSPopulation.local().population()
-
         self.fips = fips
         self.agg_level = AggregationLevel.COUNTY if len(self.fips) == 5 else AggregationLevel.STATE
         self.N_samples = N_samples
@@ -49,31 +36,32 @@ class ParameterEnsembleGenerator:
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
-            self.population = population_data.get_record_for_fips(fips=self.fips)[CommonFields.POPULATION]
-            # TODO: Some counties do not have hospitals. Likely need to go to HRR level..
-            self._beds_data = beds_data.get_record_for_fips(fips)
+            self._latest = combined_datasets.get_us_latest_for_fips(self.fips)
         else:
             self.state_abbr = us.states.lookup(fips).abbr
-            self.population = population_data.get_record_for_state(self.state_abbr)[CommonFields.POPULATION]
-            self._beds_data = beds_data.get_record_for_state(self.state_abbr)
+            self._latest = combined_datasets.get_us_latest_for_state(self.state_abbr)
+
+    @property
+    def population(self) -> int:
+        return self._latest[CommonFields.POPULATION]
 
     @property
     def beds(self) -> int:
-        return self._beds_data.get(CommonFields.MAX_BED_COUNT) or 0
+        return self._latest[CommonFields.MAX_BED_COUNT] or 0
 
     @property
     def icu_beds(self) -> int:
-        return self._beds_data.get(CommonFields.ICU_BEDS) or 0
+        return self._latest[CommonFields.ICU_BEDS] or 0
 
     @property
     def icu_utilization(self) -> float:
         """Returns the ICU utilization rate if known, otherwise default."""
-        return self._beds_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE) or 0.75
+        return self._latest[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE] or 0.75
 
     @property
     def bed_utilization(self) -> float:
         """Returns the utilization rate if known, otherwise default."""
-        return self._beds_data.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE) or 0.4
+        return self._latest[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE] or 0.4
 
     def sample_seir_parameters(self, override_params=None):
         """
