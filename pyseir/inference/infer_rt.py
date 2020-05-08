@@ -1,6 +1,7 @@
 import math
 from datetime import datetime, timedelta
 import numpy as np
+import sentry_sdk
 import logging
 import pandas as pd
 from scipy import stats as sps
@@ -49,10 +50,10 @@ class RtInferenceEngine:
     """
     def __init__(self,
                  fips,
-                 window_size=7,
-                 kernel_std=2,
+                 window_size=14,
+                 kernel_std=5,
                  r_list=np.linspace(0, 10, 501),
-                 process_sigma=0.15,
+                 process_sigma=0.05,
                  ref_date=datetime(year=2020, month=1, day=1),
                  confidence_intervals=(0.68, 0.95),
                  min_cases=5,
@@ -72,7 +73,6 @@ class RtInferenceEngine:
             self.agg_level = AggregationLevel.STATE
             self.state_obj = us.states.lookup(self.fips)
             self.state = self.state_obj.name
-            self.geo_metadata = load_data.load_county_metadata_by_state(self.state).loc[self.state].to_dict()
 
             self.times, self.observed_new_cases, self.observed_new_deaths = \
                 load_data.load_new_case_data_by_state(self.state, self.ref_date)
@@ -179,6 +179,11 @@ class RtInferenceEngine:
         """
         timeseries_type = TimeseriesType(timeseries_type)
         dates, times, timeseries = self.get_timeseries(timeseries_type)
+
+        # Hospitalizations have a strange effect in the first few data points across many states. Let's just drop those..
+        if timeseries_type in (TimeseriesType.CURRENT_HOSPITALIZATIONS, TimeseriesType.NEW_HOSPITALIZATIONS):
+            dates, times, timeseries = dates[2:], times[:2], timeseries[2:]
+
         timeseries = pd.Series(timeseries)
         smoothed = timeseries.rolling(self.window_size, win_type='gaussian',
                                      min_periods=self.kernel_std, center=True)\
@@ -272,7 +277,7 @@ class RtInferenceEngine:
         process_matrix /= process_matrix.sum(axis=0)
 
         # (4) Calculate the initial prior. Gamma mean of 3 over Rt
-        prior0 = sps.gamma(a=3).pdf(self.r_list)
+        prior0 = sps.gamma(a=2.5).pdf(self.r_list)
         prior0 /= prior0.sum()
 
         # Create a DataFrame that will hold our posteriors for each day
@@ -313,6 +318,7 @@ class RtInferenceEngine:
             plt.xlabel('$R_t$', fontsize=16)
             plt.title('Posteriors', fontsize=18)
         start_idx = -len(posteriors.columns)
+
         return dates[start_idx:], times[start_idx:], posteriors
 
     def infer_all(self, plot=False, shift_deaths=0):
@@ -337,6 +343,8 @@ class RtInferenceEngine:
         IDX_OF_COUNTS = 2
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+        if self.hospitalization_data_type:
+            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
@@ -344,10 +352,10 @@ class RtInferenceEngine:
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
-        if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
+        if self.hospitalization_data_type is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS and len(hosps > 3):
             # We have converted this timeseries to new hospitalizations.
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
-        elif self.hospitalization_data_type is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
+        elif self.hospitalization_data_type is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS and len(hosps > 3):
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
         for timeseries_type in available_timeseries:
@@ -371,6 +379,22 @@ class RtInferenceEngine:
                     df_all = df
                 else:
                     df_all = df_all.merge(df, left_index=True, right_index=True, how='outer')
+
+                # Compute the indicator lag using the curvature alignment method.
+                if timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS) \
+                        and f'Rt_MAP__{TimeseriesType.NEW_CASES.value}' in df_all.columns:
+                    # Go back upto 30 days or the max time series length we have if shorter.
+                    last_idx = max(-21, -len(df))
+                    shift_in_days = self.align_time_series(
+                        series_a=df_all[f'Rt_MAP__{TimeseriesType.NEW_CASES.value}'].iloc[-last_idx:],
+                        series_b=df_all[f'Rt_MAP__{timeseries_type.value}'].iloc[-last_idx:]
+                    )
+                    df_all[f'lag_days__{timeseries_type.value}'] = shift_in_days
+
+                    # Shift all the columns.
+                    for col in df_all.columns:
+                        if timeseries_type.value in col:
+                            df_all[col] = df_all[col].shift(shift_in_days)
 
         if df_all is not None and 'Rt_MAP__new_deaths' in df_all and 'Rt_MAP__new_cases' in df_all:
             df_all['Rt_MAP_composite'] = np.nanmean(df_all[['Rt_MAP__new_cases', 'Rt_MAP__new_deaths']], axis=1)
@@ -400,7 +424,7 @@ class RtInferenceEngine:
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_cases'],
                             alpha=1, s=25, color='steelblue', label='New Cases', marker='s')
 
-            if self.hospitalization_data_type:
+            if 'Rt_ci5__new_hospitalizations' in df_all:
                 plt.fill_between(df_all.index, df_all['Rt_ci5__new_hospitalizations'], df_all['Rt_ci95__new_hospitalizations'],
                                  alpha=.4, color='darkseagreen')
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_hospitalizations'],
@@ -420,7 +444,7 @@ class RtInferenceEngine:
 
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches='tight')
-            plt.close()
+            #plt.close()
 
         return df_all
 
@@ -442,20 +466,31 @@ class RtInferenceEngine:
         shift: int
             A shift period applied to series b that aligns to series a
         """
-        shifts = range(-20, 20)
+        shifts = range(-21, 5)
+        valid_shifts = []
         xcor = []
-        for i in shifts:
-            series_a = np.diff(series_a)
-            series_b = np.diff(series_b.shift(i))
-            valid = (~np.isnan(series_a) & ~np.isnan(series_b))
-            xcor.append(signal.correlate(series_a[valid], series_b[valid]).mean())
+        np.random.seed(42)  # Xcor has some stochastic FFT elements.
+        _series_a = np.diff(series_a)
 
-        return shifts[np.argmax(xcor)]
+        for i in shifts:
+            series_b_shifted = np.diff(series_b.shift(i))
+            valid = (~np.isnan(_series_a) & ~np.isnan(series_b_shifted))
+            if len(series_b_shifted[valid]) > 0:
+                xcor.append(signal.correlate(_series_a[valid], series_b_shifted[valid]).mean())
+                valid_shifts.append(i)
+        if len(valid_shifts) > 0:
+            return valid_shifts[np.argmax(xcor)]
+        else:
+            return 0
 
     @classmethod
     def run_for_fips(cls, fips):
-        engine = cls(fips)
-        return engine.infer_all()
+        try:
+            engine = cls(fips)
+            return engine.infer_all()
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            return None
 
 
 def run_state(state, states_only=False):
@@ -476,8 +511,7 @@ def run_state(state, states_only=False):
 
     # Run the counties.
     if not states_only:
-        df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == state_obj.name.lower()].fips
+        all_fips = load_data.get_all_fips_codes_for_a_state(state)
 
         # Something in here doesn't like multiprocessing...
         rt_inferences = all_fips.map(lambda x: RtInferenceEngine.run_for_fips(x)).tolist()
@@ -486,3 +520,23 @@ def run_state(state, states_only=False):
             county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
             if rt_inference is not None:
                 rt_inference.to_json(county_output_file)
+
+
+def run_county(fips):
+    """
+    Run the R_t inference for each county in a state.
+
+    Parameters
+    ----------
+    state: str
+        State to run against.
+    states_only: bool
+        If True only run the state level.
+    """
+    if not fips:
+        return None
+
+    df = RtInferenceEngine.run_for_fips(fips)
+    county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
+    if df is not None and not df.empty:
+        df.to_json(county_output_file)

@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import logging
@@ -5,7 +6,10 @@ from pyseir import load_data
 from datetime import datetime
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pandarallel import pandarallel
-pandarallel.initialize(progress_bar=True)
+
+VISIBIBLE_PROGRESS_BAR = os.environ.get('PYSEIR_VERBOSITY')=='True'
+pandarallel.initialize(progress_bar=VISIBIBLE_PROGRESS_BAR)
+
 
 class WhitelistGenerator:
     """
@@ -26,10 +30,10 @@ class WhitelistGenerator:
     """
     def __init__(
             self,
-            total_cases=100,
-            total_deaths=10,
-            nonzero_case_datapoints=20,
-            nonzero_death_datapoints=2):
+            total_cases=50,
+            total_deaths=0,
+            nonzero_case_datapoints=5,
+            nonzero_death_datapoints=0):
         self.county_metadata = load_data.load_county_metadata()
         self.df_whitelist = None
 

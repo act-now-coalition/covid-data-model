@@ -72,7 +72,9 @@ BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
 ```
 
 # Sentry
-In order to have sentry run locally and report errors to the dev sentry instance, add the following to your .env
+In order to have sentry run locally and report errors to the dev sentry
+instance, add the following to your .env
+
 ```
 export SENTRY_DSN=https://<GET_SENTRY_DSN_FOR_DEV_INSTANCE>.ingest.sentry.io/<DEV_INSTANCE>
 ```
@@ -83,23 +85,31 @@ The gitub action pulls the sentry_dsn for the prod instance from a secrets store
 
 ## Installation
 
-Install miniconda python 3.7 from here [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
+Recommend virtualenv or miniconda python 3.7 from here
+[https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
 
 Execute
-`conda env create -f environment.yaml`
+`pip install -r requirements.txt -r requirements_test.txt`
 
-Activate the environment here..
+If using conda, activate the environment here..
 `conda activate pyseir`
-
-### Installing pyseir
-Change to into the county_covid_seir_models directory
-`pip install -e .`
 
 
 ### Running Models
-Example here. You can remove the `--state` flag to run everything. To run only states, add `--states-only`.
-`pyseir run-all --run-mode='can-before-hospitalization-new-params' --output-interval-days=4 --state="California"`
+Example here. You can remove the `--state` flag to run everything. To run only
+states, add `--states-only`. `pyseir run-all --state="California"`
 
 `pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags. 
 
 Check the `output/` folder for results.
+
+The flag `--states-only` will skip counties and the flat `--state` will only run
+a single state. These can be combined if you want to run things quickly.
+
+### Model Output
+
+There are a variety of output artifacts to paths described in pyseir/utils.py.
+The main artifact is the ensemble_result which contains the output information
+for each `suppression policy -> model compartment` as well as capacity
+information. It is described in 
+[this running document](https://docs.google.com/document/d/1U0zTP_jjwp8i-hCj3jPosfeyj74vKqTy6ERFYzYgcvE/edit?usp=sharing).

@@ -38,15 +38,15 @@
       "description": "Total ventilator capacity.",
       "type": "integer"
     },
-    "Rt": {
-      "title": "Rt",
+    "RtIndicator": {
+      "title": "Rtindicator",
       "description": "Historical or Inferred Rt",
-      "type": "float"
+      "type": "number"
     },
-    "RtCI90": {
-      "title": "Rtci90",
+    "RtIndicatorCI90": {
+      "title": "Rtindicatorci90",
       "description": "Rt standard deviation",
-      "type": "float"
+      "type": "number"
     },
     "cumulativeDeaths": {
       "title": "Cumulativedeaths",
@@ -77,8 +77,8 @@
     "ICUBedCapacity",
     "ventilatorsInUse",
     "ventilatorCapacity",
-    "Rt",
-    "RtCI90",
+    "RtIndicator",
+    "RtIndicatorCI90",
     "cumulativeDeaths",
     "cumulativeInfected",
     "cumulativePositiveTests",

@@ -1,5 +1,6 @@
 import os
 import us
+from datetime import datetime
 from enum import Enum
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
@@ -9,6 +10,7 @@ REPORTS_FOLDER = lambda output_dir, state_name: os.path.join(output_dir, 'pyseir
 DATA_FOLDER = lambda output_dir, state_name: os.path.join(output_dir, 'pyseir', state_name, 'data')
 WEB_UI_FOLDER = lambda output_dir: os.path.join(output_dir, 'web_ui')
 STATE_SUMMARY_FOLDER = lambda output_dir: os.path.join(output_dir, 'pyseir', 'state_summaries')
+REF_DATE = datetime(year=2020, month=1, day=1)
 
 
 class TimeseriesType(Enum):
@@ -19,14 +21,10 @@ class TimeseriesType(Enum):
 
 
 class RunMode(Enum):
-    # Read params from the parameter sampler default and use empirical
-    # suppression policies.
     DEFAULT = 'default'
-    # 4 basic suppression scenarios and specialized parameters to match
-    # covidactnow before scenarios.  Uses hospitalization data to fix.
-    CAN_BEFORE_HOSPITALIZATION = 'can-before-hospitalization'
-    # Same as CAN Before but with updated ICU, hosp rates increased.
-    CAN_BEFORE_HOSPITALIZATION_NEW_PARAMS = 'can-before-hospitalization-new-params'
+
+    # Inference based + future suppression policy.
+    CAN_INFERENCE_DERIVED = 'can-inference-derived'
 
 
 class RunArtifact(Enum):
@@ -43,6 +41,8 @@ class RunArtifact(Enum):
     ENSEMBLE_REPORT = 'ensemble_report'
 
     WEB_UI_RESULT = 'web_ui_result'
+
+    BACKTEST_RESULT = 'backtest_result'
 
 
 def get_run_artifact_path(fips, artifact, output_dir=None):
@@ -125,6 +125,14 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
 
     elif artifact is RunArtifact.WHITELIST_RESULT:
         path = os.path.join(output_dir, 'api_whitelist.json')
+
+    elif artifact is RunArtifact.BACKTEST_RESULT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(REPORTS_FOLDER(output_dir, state_obj.name),
+                                f'backtest_results__{state_obj.name}__{county}__{fips}.pdf')
+        else:
+            path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), 'reports',
+                                f'backtest_results__{state_obj.name}__{fips}.pdf')
 
     else:
         raise ValueError(f'No paths available for artifact {RunArtifact}')

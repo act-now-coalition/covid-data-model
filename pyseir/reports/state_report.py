@@ -146,7 +146,7 @@ class StateReport:
             may be artificially biased to peak sooner. Suppression values below
             ~0.25 (not shown) drive R0 < 1 and decay over time though it is
             unlikely this is achievable.
-            
+
             Error bars represent (68%, 95%) CL based on en ensemble of
             parameters sampled in the appendix for a "best-guess" suppression
             model. Dashed lines indicate the state-wide median. Notably, the
@@ -195,7 +195,7 @@ class StateReport:
 
         """
         df = load_data.load_county_metadata()
-        all_fips = df[df['state'].str.lower() == self.state.lower()].fips
+        all_fips = load_data.get_all_fips_codes_for_a_state(self.state)
         all_data = {fips: load_data.load_ensemble_results(fips) for fips in all_fips}
         df = df.set_index('fips')
 

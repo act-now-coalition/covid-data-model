@@ -10,6 +10,7 @@ NYC_BOROUGH_FIPS = [
     "36005",  # Bronx
     "36085",  # Richmond
 ]
+ALL_NYC_FIPS = NYC_BOROUGH_FIPS + [NEW_YORK_COUNTY_FIPS]
 
 
 def calculate_combined_new_york_counties(
@@ -29,9 +30,7 @@ def calculate_combined_new_york_counties(
 
     Returns: Update numbers.
     """
-    all_fips_to_combine = [NEW_YORK_COUNTY_FIPS] + NYC_BOROUGH_FIPS
-
-    is_nyc_fips = data.fips.isin(all_fips_to_combine)
+    is_nyc_fips = data.fips.isin(ALL_NYC_FIPS)
     new_york_county = data[is_nyc_fips]
 
     # Quick integrity check to make sure we're passing in complete county.
@@ -39,11 +38,11 @@ def calculate_combined_new_york_counties(
     if are_boroughs_zero:
         grouped = non_ny_county.groupby(group).sum()
         for column in grouped.columns:
-            assert sum(grouped[column]) == 0, f"{column} is unexpectedly zero."
+            assert sum(grouped[column]) == 0, f"{column} is unexpectedly not zero."
     else:
         grouped = non_ny_county.groupby(group).sum()
         for column in grouped.columns:
-            assert sum(grouped[column]) != 0, f"{column} is unexpectedly not zero."
+            assert sum(grouped[column]) != 0, f"{column} is unexpectedly zero."
 
     aggregated = new_york_county.groupby(group).sum().reset_index()
     aggregated["fips"] = NEW_YORK_COUNTY_FIPS
@@ -59,9 +58,15 @@ def update_with_combined_new_york_counties(
     """Updates data replacing all new york county data with one number.
 
     """
-    if not sum(data.aggregate_level == AggregationLevel.COUNTY.value):
+    is_county = data.aggregate_level == AggregationLevel.COUNTY.value
+    if not sum(is_county):
         # No county level data, skipping county aggregation.
         return data
+
+    if not len(data[(data.state == "NY") & is_county]):
+        # No NY data, don't apply aggregation.
+        return data
+
     data = data.set_index(["aggregate_level"])
     county = data.loc[AggregationLevel.COUNTY.value].reset_index()
     county = calculate_combined_new_york_counties(

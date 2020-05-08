@@ -57,9 +57,9 @@ More information on interventions, including definitions, references, and R0 val
 
 An optional parameter `timeseries` can be added before the file format, for example: `*.timeseries.json` or `*.timeseries.csv`.
 
-If ommited, the API will return the date of projected hospital overloads, data of peak hospitalizations, and more.
+If omitted, the API will return the date of projected hospital overloads, data of peak hospitalizations, and more.
 
-If included, the API will return the projected hospitalization data every third day for the next 90 days.
+If included, the API will return the projected hospitalization data every day for the next 90 days.
 
 ## Using the API
 ### Fetching State Data
@@ -182,7 +182,7 @@ This is the data format for both states and counties. `timeseries` is only inclu
     hospitalBedsRequired,
     hospitalBedCapacity,
     ICUBedsInUse,
-    ICUBedCapacity, // Coming soon where availabe, null currently
+    ICUBedCapacity, // Coming soon where available, null currently
     cumulativePositiveTests,
     cumulativeNegativeTests,
     cumulativeDeaths,

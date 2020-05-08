@@ -9,7 +9,7 @@ from pyseir.inference import fit_results
 
 # Fig 4 of Imperial college.
 # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-Europe-estimates-and-NPI-impact-30-03-2020.pdf
-# These are intended to act indendently, as shown by a multivariate fit from Imp. College.  The exception is lockdown which supercedes everything.
+# These are intended to act indendently, as shown by a multivariate fit from Imp. College.  The exception is lockdown which supersedes everything.
 distancing_measure_suppression = {
     'stay_at_home': .48,
     '50_gatherings': .05,
@@ -22,9 +22,35 @@ distancing_measure_suppression = {
 }
 
 
+def get_future_suppression_from_r0(R0, scenario):
+    """
+    Returns the future suppression level for a given R0 and a "future scenario".
+
+    Parameters
+    ----------
+    R0:float
+        Reproduction number
+    scenario: str
+        'no_intervention', 'flatten_the_curve', 'social_distancing'.
+
+    Returns
+    -------
+    epsilon: float
+        Suppression percentage.
+    """
+    if scenario == 'no_intervention':
+        return 1
+    elif scenario == 'flatten_the_curve':
+        return 0.97 / R0
+    elif scenario == 'social_distancing':
+        return 1.7 / R0
+    else:
+        raise ValueError(f'Suppression {scenario} not valid')
+
+
 def generate_triggered_suppression_model(t_list, lockdown_days, open_days, reduction=0.25, start_on=0):
     """
-    Generates a contact reduction model which switches a binary supression
+    Generates a contact reduction model which switches a binary suppression
     policy on and off.
 
     Parameters
@@ -156,7 +182,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     return interp1d(t_list, rho, fill_value='extrapolate')
 
 
-def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
+def generate_two_step_policy(t_list, eps, t_break, transition_time=14, t_break_final=None, eps_final=None):
     """
     Produce a suppression policy based a two step policy where the level is
     fixed at 1 until t_break and then it goes to eps linearly over a fied
@@ -170,16 +196,30 @@ def generate_two_step_policy(t_list, eps, t_break, transition_time=14):
         Suppression level after t_break
     t_break: float
         Time since simulation start to place a break.
+    transition_time: float
+        Length of time to transition between epsilon states.
+    t_break_final: int or NoneType
+        Time since simulation start to place a break to a final level.
+    eps_final: float
+        Suppression level after t_break_final. If None, then eps is used.
 
     Returns
     -------
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t.
     """
-    return interp1d(
-        x=[0, t_break, t_break + transition_time, 100000],
-        y=[1, 1, eps, eps],
-        fill_value='extrapolate')
+    if eps_final is None:
+        return interp1d(
+            x=[0, t_break, t_break + transition_time, 100000],
+            y=[1, 1, eps, eps],
+            fill_value='extrapolate'
+        )
+    else:
+        return interp1d(
+            x=[0, t_break, t_break + transition_time, t_break_final, t_break_final + transition_time, 100000],
+            y=[1, 1, eps, eps, eps_final, eps_final],
+            fill_value='extrapolate'
+        )
 
 
 def generate_empirical_distancing_policy(t_list, fips, future_suppression,
@@ -296,7 +336,7 @@ def generate_empirical_distancing_policy_by_state(t_list, state, future_suppress
     """
     county_metadata = load_data.load_county_metadata()
     counties_fips = county_metadata[county_metadata.state == state].fips.unique()
-    
+
     if reference_start_date is None:
         reference_start_date = min([infer_t0(fips) for fips in counties_fips])
 
@@ -373,5 +413,10 @@ def fourier_parametric_policy(x, t_list, suppression_bounds=(0.5, 1.5)):
     frequency_domain[1:len(x)] = x[1:]
     time_domain = np.fft.ifft(frequency_domain).real + np.fft.ifft(frequency_domain).imag
 
-    return interp1d(t_list, time_domain.clip(min=suppression_bounds[0], max=suppression_bounds[1]),
-                    fill_value='extrapolate')
+    return interp1d(
+        t_list,
+        time_domain.clip(
+            min=suppression_bounds[0],
+            max=suppression_bounds[1]),
+            fill_value='extrapolate'
+    )

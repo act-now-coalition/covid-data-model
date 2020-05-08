@@ -9,15 +9,15 @@ import io
 import us
 import zipfile
 import json
+from datetime import datetime
 from libs.datasets import NYTimesDataset
+from libs.datasets import combined_datasets
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from functools import lru_cache
 from enum import Enum
-
-
-FAULTY_HOSPITAL_DATA_STATES = ('IN',)
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pyseir_data')
@@ -105,23 +105,6 @@ def cache_county_case_data():
     county_case_data[['cases', 'deaths']] = county_case_data[['cases', 'deaths']].astype(int)
     county_case_data = county_case_data[county_case_data['fips'].notnull()]
     county_case_data.to_pickle(os.path.join(DATA_DIR, 'covid_case_timeseries.pkl'))
-
-
-def cache_hospital_beds():
-    """
-    Pulled from "Definitive"
-    See: https://services7.arcgis.com/LXCny1HyhQCUSueu/arcgis/rest/services/Definitive_Healthcare_Hospitals_Beds_Hospitals_Only/FeatureServer/0
-    """
-    logging.info('Downloading ICU capacity data.')
-    url = 'http://opendata.arcgis.com/datasets/f3f76281647f4fbb8a0d20ef13b650ca_0.geojson'
-    tmp_file = urllib.request.urlretrieve(url)[0]
-
-    with open(tmp_file) as f:
-        vals = json.load(f)
-    df = pd.DataFrame([val['properties'] for val in vals['features']])
-    df.columns = [col.lower() for col in df.columns]
-    df = df.drop(['objectid', 'state_fips', 'cnty_fips'], axis=1)
-    df.to_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
 
 
 def cache_mobility_data():
@@ -227,7 +210,7 @@ def load_county_metadata():
 
 
 @lru_cache(maxsize=32)
-def load_county_metadata_by_state(state):
+def load_county_metadata_by_state(state=None):
     """
     Generate a dataframe that contains county metadata aggregated at state
     level.
@@ -245,9 +228,14 @@ def load_county_metadata_by_state(state):
     # aggregate into state level metadata
     state_metadata = load_county_metadata()
 
-    if state:
-        state = [state] if not isinstance(state, list) else state
-        state_metadata = state_metadata[state_metadata.state.isin(state)]
+    if state is not None:
+        state = [state] if isinstance(state, str) else list(state)
+    else:
+        state = state_metadata['state'].unique()
+
+    state = [s.title() for s in state]
+
+    state_metadata = state_metadata[state_metadata.state.isin(state)]
 
     density_measures = ['housing_density', 'population_density']
     for col in density_measures:
@@ -284,16 +272,17 @@ def load_ensemble_results(fips):
     ensemble_results: dict
     """
     output_filename = get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT)
-    with open(output_filename) as f:
-        fit_results = json.load(f)
-    return fit_results
+    if os.path.exists(output_filename):
+        with open(output_filename) as f:
+            fit_results = json.load(f)
+        return fit_results
+    return None
 
 
 @lru_cache(maxsize=32)
 def load_county_metadata_by_fips(fips):
     """
-    Generate a dictionary for a county which includes county metadata merged
-    with hospital capacity data.
+    Generate a dictionary for a county which includes county metadata.
 
     Parameters
     ----------
@@ -305,27 +294,29 @@ def load_county_metadata_by_fips(fips):
         Dictionary of metadata for the county. The keys are:
 
         ['state', 'county', 'total_population', 'population_density',
-        'housing_density', 'age_distribution', 'age_bin_edges',
-        'num_licensed_beds', 'num_staffed_beds', 'num_icu_beds',
-        'bed_utilization', 'potential_increase_in_bed_capac']
+        'housing_density', 'age_distribution', 'age_bin_edges']
     """
     county_metadata = load_county_metadata()
-    hospital_bed_data = load_hospital_data()
-
-    # Not all counties have hospital data.
-    hospital_bed_data = hospital_bed_data[
-        ['fips',
-         'num_licensed_beds',
-         'num_staffed_beds',
-         'num_icu_beds',
-         'bed_utilization',
-         'potential_increase_in_bed_capac']].groupby('fips').sum()
-
-    county_metadata_merged = county_metadata.merge(hospital_bed_data, on='fips', how='left').set_index('fips').loc[fips].to_dict()
+    county_metadata_merged = county_metadata.set_index('fips').loc[fips].to_dict()
     for key, value in county_metadata_merged.items():
         if np.isscalar(value) and not isinstance(value, str):
             county_metadata_merged[key] = float(value)
     return county_metadata_merged
+
+
+@lru_cache(maxsize=32)
+def get_all_fips_codes_for_a_state(state: str):
+    """Returns a list of fips codes for a state
+
+    Arguments:
+        state {str} -- the full state name
+
+    Returns:
+        fips [list] -- a list of fips codes for a state
+    """
+    df = load_county_metadata()
+    all_fips = df[df['state'].str.lower() == state.lower()].fips
+    return all_fips
 
 
 @lru_cache(maxsize=32)
@@ -361,8 +352,19 @@ def load_new_case_data_by_fips(fips, t0):
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
+def get_hospitalization_data():
+    data = combined_datasets.build_us_timeseries_with_all_fields().data
+    # Since we're using this data for hospitalized data only, only returning
+    # values with hospitalization data.  I think as the use cases of this data source
+    # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
+    # hospitalization data.
+    has_current_hospital = data[TimeseriesDataset.Fields.CURRENT_HOSPITALIZED].notnull()
+    has_cumulative_hospital = data[TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED].notnull()
+    return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
+
+
 @lru_cache(maxsize=32)
-def load_hospitalization_data(fips, t0):
+def load_hospitalization_data(fips, t0, category='hospitalized'):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
@@ -374,43 +376,46 @@ def load_hospitalization_data(fips, t0):
         County fips to lookup.
     t0: datetime
         Datetime to offset by.
+    category: str
+        'icu' or 'hospitalized'
 
     Returns
     -------
-    times: array(float)
+    relative_days: array(float)
         List of float days since t0 for the hospitalization data.
     observed_hospitalizations: array(int)
         Array of new cases observed each day.
     type: HospitalizationDataType
         Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
+    hospitalization_data = get_hospitalization_data()\
         .get_subset(AggregationLevel.COUNTY, country='USA', fips=fips) \
         .get_data(country='USA', fips=fips)
 
     if len(hospitalization_data) == 0:
         return None, None, None
 
-    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-
-    if (hospitalization_data['current_hospitalized'] > 0).any():
-        return times_new, \
-               hospitalization_data['current_hospitalized'].values.clip(min=0),\
+    if (hospitalization_data[f'current_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'current_{category}'].notnull()]
+        relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+        return relative_days, \
+               hospitalization_data[f'current_{category}'].values.clip(min=0),\
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-
-        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+    elif (hospitalization_data[f'cumulative_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'cumulative_{category}'].notnull()]
+        relative_days = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+        cumulative = hospitalization_data[f'cumulative_{category}'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i+1]:
                 cumulative[i] = cumulative[i + 1]
-        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+        return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
     else:
         return None, None, None
 
 
 @lru_cache(maxsize=32)
-def load_hospitalization_data_by_state(state, t0):
+def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=False, category='hospitalized'):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
@@ -422,6 +427,11 @@ def load_hospitalization_data_by_state(state, t0):
         State to lookup.
     t0: datetime
         Datetime to offset by.
+    convert_cumulative_to_current: bool
+        If True, and only cumulative hospitalizations are available, convert the
+        current hospitalizations to the current value.
+    category: str
+        'icu' for just ICU or 'hospitalized' for all ICU + Acute.
 
     Returns
     -------
@@ -433,26 +443,58 @@ def load_hospitalization_data_by_state(state, t0):
         Specifies cumulative or current hospitalizations.
     """
     abbr = us.states.lookup(state).abbr
-    hospitalization_data = CovidTrackingDataSource.local().timeseries()\
-        .get_subset(AggregationLevel.STATE, country='USA', state=abbr) \
+    hospitalization_data = (
+        combined_datasets.build_us_timeseries_with_all_fields()
+        .get_subset(AggregationLevel.STATE, country='USA', state=abbr)
         .get_data(country='USA', state=abbr)
+    )
 
-    if len(hospitalization_data) == 0 or abbr in FAULTY_HOSPITAL_DATA_STATES:
+    categories = ['icu', 'hospitalized']
+    if category not in categories:
+        raise ValueError(f'Hospitalization category {category} is not in {categories}')
+
+    if len(hospitalization_data) == 0:
         return None, None, None
 
-    times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
-
-    if (hospitalization_data['current_hospitalized'] > 0).any():
+    if (hospitalization_data[f'current_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'current_{category}'].notnull()]
+        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
         return times_new, \
-               hospitalization_data['current_hospitalized'].values.clip(min=0), \
+               hospitalization_data[f'current_{category}'].values.clip(min=0), \
                HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-    elif (hospitalization_data['cumulative_hospitalized'] > 0).any():
-        cumulative = hospitalization_data['cumulative_hospitalized'].values.clip(min=0)
+    elif (hospitalization_data[f'cumulative_{category}'] > 0).any():
+        hospitalization_data = hospitalization_data[hospitalization_data[f'cumulative_{category}'].notnull()]
+        times_new = (hospitalization_data['date'].dt.date - t0.date()).dt.days.values
+        cumulative = hospitalization_data[f'cumulative_{category}'].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
-        return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+
+        if convert_cumulative_to_current:
+            # Must be here to avoid circular import. This is required to convert
+            # cumulative hosps to current hosps. We also just use a dummy fips and t_list.
+            from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
+            params = ParameterEnsembleGenerator(fips='06', t_list=[], N_samples=1).get_average_seir_parameters()
+            if category == 'hospitalized':
+                average_length_of_stay = (
+                      params['hospitalization_rate_general'] * params['hospitalization_length_of_stay_general']
+                    + params['hospitalization_rate_icu'] * (1 - params['fraction_icu_requiring_ventilator']) * params['hospitalization_length_of_stay_icu']
+                    + params['hospitalization_rate_icu'] * params['fraction_icu_requiring_ventilator'] * params['hospitalization_length_of_stay_icu_and_ventilator']
+                ) / (params['hospitalization_rate_general'] + params['hospitalization_rate_icu'])
+            else:
+                average_length_of_stay = (
+                    (1 - params['fraction_icu_requiring_ventilator']) * params['hospitalization_length_of_stay_icu']
+                    + params['fraction_icu_requiring_ventilator'] * params['hospitalization_length_of_stay_icu_and_ventilator'])
+
+            # Now compute a cumulative sum, but at each day, subtract the discharges from the previous count.
+            new_hospitalizations = np.append([0], np.diff(cumulative))
+            current = [0]
+            for i, new_hosps in enumerate(new_hospitalizations[1:]):
+                current.append(current[i] + new_hosps - current[i] / average_length_of_stay)
+            return times_new, current, HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+        else:
+            return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
     else:
         return None, None, None
 
@@ -490,16 +532,20 @@ def load_new_case_data_by_state(state, t0):
     return times_new, np.array(observed_new_cases[keep_idx]).clip(min=0), observed_new_deaths.clip(min=0)[keep_idx]
 
 
-def load_hospital_data():
+def load_cdc_hospitalization_data():
     """
-    Return hospital level data. Note that this must be aggregated by stcountyfp
-    to obtain county level estimates.
+    Return age specific hospitalization rate.
+    Source: https://www.cdc.gov/mmwr/volumes/69/wr/mm6912e2.htm#T1_down
+    Table has columns: lower_age, upper_age, mean_age, lower_{outcome type},
+    upper_{outcome type}, and mean_{outcome type}.
+    Outcome types and their meanings:
+    - hosp: percentage of all hospitalizations among cases
+    - icu: percentage of icu admission among cases
+    - hgen: percentage of general hospitalization (all hospitalizations - icu)
+    - fatality: case fatality rate
+    """
 
-    Returns
-    -------
-    : pd.DataFrame
-    """
-    return pd.read_pickle(os.path.join(DATA_DIR, 'icu_capacity.pkl'))
+    return pd.read_csv(os.path.join(DATA_DIR, 'cdc_hospitalization_data.csv'))
 
 
 @lru_cache(maxsize=1)
@@ -539,6 +585,37 @@ def load_public_implementations_data():
     """
     return pd.read_pickle(os.path.join(DATA_DIR, 'public_implementations_data.pkl')).set_index('fips')
 
+def load_contact_matrix_data_by_fips(fips):
+    """
+    Load contact matrix for given fips.
+    Source: polymod survey in UK
+    (https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0050074).
+    Contact matrix at each county has been adjusted by county demographics.
+
+    Parameters
+    ----------
+    fips: str
+         State or county FIPS code.
+
+    Returns
+    -------
+      : dict
+        With fips as keys and values:
+           - 'contact_matrix': list(list)
+              number of contacts made by age group in rows with age groups in
+              columns
+           - 'age_bin_edges': list
+              lower age limits to define age groups
+           - 'age_distribution': list
+             population size of each age group
+    """
+
+    fips = [fips] if isinstance(fips, str) else list(fips)
+    state_abbr = us.states.lookup(fips[0][:2]).abbr
+    path = os.path.join(DATA_DIR, 'contact_matrix', 'contact_matrix_fips_%s.json' % state_abbr)
+    contact_matrix_data = json.loads(open(path).read())
+    return {s: contact_matrix_data[s] for s in fips}
+
 
 def load_whitelist():
     """
@@ -560,9 +637,37 @@ def cache_all_data():
     Download all datasets locally.
     """
     cache_county_case_data()
-    cache_hospital_beds()
     cache_mobility_data()
     cache_public_implementations_data()
+
+
+def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None):
+    """
+    Return the value of compartment at a specified date.
+
+    Parameters
+    ----------
+    fips: str
+        State or County fips.
+    compartment: str
+        Name of the compartment to retrieve.
+    date: datetime
+        Date to retrieve values for.
+    ensemble_results: NoneType or dict
+        Pass in the pre-loaded simulation data to save time, else load it.
+
+    Returns
+    -------
+    value: float
+        Value of compartment on a given date.
+    """
+    if ensemble_results is None:
+        ensemble_results = load_ensemble_results(fips)
+    # Circular import avoidance
+    from pyseir.inference.fit_results import load_inference_result
+    simulation_start_date = datetime.fromisoformat(load_inference_result(fips)['t0_date'])
+    date_idx = int((date - simulation_start_date).days)
+    return ensemble_results['suppression_policy__inferred'][compartment]['ci_50'][date_idx]
 
 
 if __name__ == '__main__':

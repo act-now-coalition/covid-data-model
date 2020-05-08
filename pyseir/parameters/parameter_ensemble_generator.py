@@ -2,13 +2,9 @@ import numpy as np
 import pandas as pd
 import us
 from pyseir import load_data
-from libs.datasets import FIPSPopulation
-from libs.datasets import DHBeds
+from libs.datasets import combined_datasets
+from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
-
-
-beds_data = None
-population_data = None
 
 
 class ParameterEnsembleGenerator:
@@ -30,14 +26,6 @@ class ParameterEnsembleGenerator:
     """
     def __init__(self, fips, N_samples, t_list,
                  I_initial=1, suppression_policy=None):
-
-        # Caching globally to avoid relatively significant performance overhead
-        # of loading for each county.
-        global beds_data, population_data
-        if not beds_data or not population_data:
-            beds_data = DHBeds.local().beds()
-            population_data = FIPSPopulation.local().population()
-
         self.fips = fips
         self.agg_level = AggregationLevel.COUNTY if len(self.fips) == 5 else AggregationLevel.STATE
         self.N_samples = N_samples
@@ -48,15 +36,32 @@ class ParameterEnsembleGenerator:
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
             self.state_abbr = us.states.lookup(self.county_metadata['state']).abbr
-            self.population = population_data.get_county_level('USA', state=self.state_abbr, fips=self.fips)
-            # TODO: Some counties do not have hospitals. Likely need to go to HRR level..
-            self.beds = beds_data.get_county_level(self.state_abbr, fips=self.fips) or 0
-            self.icu_beds = beds_data.get_county_level(self.state_abbr, fips=self.fips, column='icu_beds') or 0
+            self._latest = combined_datasets.get_us_latest_for_fips(self.fips)
         else:
             self.state_abbr = us.states.lookup(fips).abbr
-            self.population = population_data.get_state_level('USA', state=self.state_abbr)
-            self.beds = beds_data.get_state_level(self.state_abbr) or 0
-            self.icu_beds = beds_data.get_state_level(self.state_abbr, column='icu_beds') or 0
+            self._latest = combined_datasets.get_us_latest_for_state(self.state_abbr)
+
+    @property
+    def population(self) -> int:
+        return self._latest[CommonFields.POPULATION]
+
+    @property
+    def beds(self) -> int:
+        return self._latest[CommonFields.MAX_BED_COUNT] or 0
+
+    @property
+    def icu_beds(self) -> int:
+        return self._latest[CommonFields.ICU_BEDS] or 0
+
+    @property
+    def icu_utilization(self) -> float:
+        """Returns the ICU utilization rate if known, otherwise default."""
+        return self._latest[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE] or 0.75
+
+    @property
+    def bed_utilization(self) -> float:
+        """Returns the utilization rate if known, otherwise default."""
+        return self._latest[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE] or 0.4
 
     def sample_seir_parameters(self, override_params=None):
         """
@@ -74,6 +79,7 @@ class ParameterEnsembleGenerator:
         """
         override_params = override_params or dict()
         parameter_sets = []
+
         for _ in range(self.N_samples):
 
             hospitalization_rate_general = np.random.normal(loc=0.02, scale=0.01)
@@ -108,9 +114,9 @@ class ParameterEnsembleGenerator:
                 gamma=(1-fraction_asymptomatic),
                 # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                 symptoms_to_hospital_days=np.random.normal(loc=6., scale=1.5),
-                hospitalization_length_of_stay_general=np.random.normal(loc=5, scale=1),
+                hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=1),
                 hospitalization_length_of_stay_icu=np.random.normal(loc=8, scale=3),
-                hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=10, scale=3),
+                hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(loc=9, scale=3),
                 # if you assume the ARDS population is the group that would die
                 # w/o ventilation, this would suggest a 20-42% mortality rate
                 # among general hospitalized patients w/o access to ventilators:
@@ -126,9 +132,9 @@ class ParameterEnsembleGenerator:
                 mortality_rate_from_ICU=np.random.normal(loc=0.5, scale=0.05),
                 mortality_rate_from_ICUVent=0.70,
                 mortality_rate_no_ICU_beds=1.0,
-                beds_general=self.beds * 0.4 * 2.07, # 60% utliization, no scaling...
+                beds_general=self.beds * (1 - self.bed_utilization) * 2.07, # 60% utliization, no scaling...
                 # TODO.. Patch this After Issue 132
-                beds_ICU=(1 - 0.75) * self.icu_beds,  # No scaling, 75% utilization...
+                beds_ICU=(1 - self.icu_utilization) * self.icu_beds,  # No scaling, 75% utilization...
                 # hospital_capacity_change_daily_rate=1.05,
                 # max_hospital_capacity_factor=2.07,
                 # initial_hospital_bed_utilization=0.6,

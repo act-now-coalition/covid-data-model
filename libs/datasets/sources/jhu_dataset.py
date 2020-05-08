@@ -2,11 +2,13 @@ import logging
 import numpy
 import pandas as pd
 import pathlib
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import enums
+
 _logger = logging.getLogger(__name__)
 
 
@@ -19,6 +21,7 @@ class JHUDataset(data_source.DataSource):
 
     DATA_FOLDER = "data/cases-jhu/csse_covid_19_daily_reports"
     SOURCE_NAME = "JHU"
+    HAS_AGGREGATED_NYC_BOROUGH = True
 
     class Fields(object):
         FIPS = "FIPS"
@@ -45,16 +48,17 @@ class JHUDataset(data_source.DataSource):
         "Long_": Fields.LONGITUDE,
         "Last Update": Fields.LAST_UPDATE,
     }
-
-    TIMESERIES_FIELD_MAP = {
-        TimeseriesDataset.Fields.DATE: Fields.DATE,
-        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
-        TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
-        TimeseriesDataset.Fields.CASES: Fields.CONFIRMED,
-        TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
-        TimeseriesDataset.Fields.RECOVERED: Fields.RECOVERED,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.DATE: Fields.DATE,
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    }
+    COMMON_FIELD_MAP = {
+        CommonFields.CASES: Fields.CONFIRMED,
+        CommonFields.DEATHS: Fields.DEATHS,
+        CommonFields.RECOVERED: Fields.RECOVERED,
     }
 
     def __init__(self, input_dir):
@@ -124,7 +128,7 @@ class JHUDataset(data_source.DataSource):
         """
         overrides = {
             # Assigning nantucket county to dukes and nantucket
-            ('MA', 'Dukes and Nantucket'): '25019'
+            ("MA", "Dukes and Nantucket"): "25019"
         }
         for (state, county), fips in overrides.items():
             matches_state = data[cls.Fields.STATE] == state
@@ -138,7 +142,9 @@ class JHUDataset(data_source.DataSource):
 
     @classmethod
     def _aggregate_fips_data(cls, data):
-        is_county_level = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        is_county_level = (
+            data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        )
         has_fips = data[cls.Fields.FIPS].notnull()
         county_data = data[is_county_level & has_fips]
 
@@ -155,13 +161,10 @@ class JHUDataset(data_source.DataSource):
         ]
         result = county_data.groupby(group_key).sum().reset_index()
 
-        return pd.concat([
-            data[~(is_county_level & has_fips)],
-            result
-        ])
+        return pd.concat([data[~(is_county_level & has_fips)], result])
 
     @classmethod
-    def local(cls) -> "JHUTimeseriesData":
+    def local(cls) -> "JHUDataset":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.DATA_FOLDER)
 
@@ -170,5 +173,7 @@ class JHUDataset(data_source.DataSource):
         """Finds the path to the most recent JHU csv."""
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         jhu_dir = data_root / cls.DATA_FOLDER
-        latest_date, latest_path = max((path.stem, path) for path in jhu_dir.glob("*.csv"))
+        latest_date, latest_path = max(
+            (path.stem, path) for path in jhu_dir.glob("*.csv")
+        )
         return latest_path

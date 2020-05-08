@@ -3,8 +3,8 @@ import pathlib
 from collections import namedtuple
 from collections import defaultdict
 import logging
-
 import pydantic
+import simplejson
 from api.can_api_definition import CountyFipsSummary
 from api.can_api_definition import CovidActNowCountySummary
 from api.can_api_definition import CovidActNowCountiesSummary
@@ -217,6 +217,36 @@ def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
     return results
 
 
+def remove_root_wrapper(obj: dict):
+    """Removes __root__ and replaces with __root__ value.
+
+    When pydantic models are used to wrap lists this is done using a property __root__.
+    When this is serialized using `model.json()`, it will return a json list. However,
+    calling `model.dict()` will return a dictionary with a single key `__root__`.
+    This function removes that __root__ key (and all sub pydantic models with a
+    similar structure) to have a similar hierarchy to the json output.
+
+    A dictionary {"__root__": []} will return [].
+
+    Args:
+        obj: pydantic model as dict.
+
+    Returns: object with __root__ removed.
+    """
+    # Objects with __root__ should have it as the only key.
+    if len(obj) == 1 and "__root__" in obj:
+        return obj["__root__"]
+
+    results = {}
+    for key, value in obj.items():
+        if isinstance(value, dict):
+            value = remove_root_wrapper(value)
+
+        results[key] = value
+
+    return results
+
+
 def deploy_results(results: List[APIOutput], output: str, write_csv=False):
     """Deploys results from the top counties to specified output directory.
 
@@ -230,14 +260,16 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         output_path.mkdir(parents=True, exist_ok=True)
 
     for api_row in results:
-        dataset_deployer.upload_json(api_row.file_stem, api_row.data.json(), output)
+        data = remove_root_wrapper(api_row.data.dict())
+        # Encoding approach based on Pydantic's implementation of .json():
+        # https://github.com/samuelcolvin/pydantic/pull/210/files
+        data_as_json = simplejson.dumps(
+            data, ignore_nan=True, default=pydantic.json.pydantic_encoder
+        )
+        dataset_deployer.upload_json(api_row.file_stem, data_as_json, output)
         if write_csv:
-            data = api_row.data.dict()
             if not isinstance(data, list):
-                if not isinstance(data.get("__root__"), list):
-                    raise ValueError("Cannot find list data for csv export.")
-                else:
-                    data = data["__root__"]
+                raise ValueError("Cannot find list data for csv export.")
             dataset_deployer.write_nested_csv(data, api_row.file_stem, output)
 
 

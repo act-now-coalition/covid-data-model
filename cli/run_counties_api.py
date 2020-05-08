@@ -87,6 +87,6 @@ def deploy_counties_api(disable_validation, input_dir, output, summary_output):
     help="Output directory for artifacts",
 )
 def county_fips_summaries(input_dir, output):
-    """Generates sumary files by state and globally of counties with model output data."""
+    """Generates summary files by state and globally of counties with model output data."""
     county_summaries = api_pipeline.build_county_summary_from_model_output(input_dir)
     api_pipeline.deploy_results(county_summaries, output)
