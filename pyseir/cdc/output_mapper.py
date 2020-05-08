@@ -79,7 +79,7 @@ class OutputMapper:
     most up-to-date MLE inference (mle model + fit_results json file), and runs
     the model ensemble when fixing the parameters varied for model fitting at
     their MLE estimate, aiming to obtain the uncertainty associated with
-    prior distribution of the parameters not varied during model fitting.
+    the prior distribution of the parameters not varied during model fitting.
     This for sure will underestimate the level of uncertainty of the forecast
     since it does not take into account the parameters varied for MLE
     inference or the model's likelihood profile. However, neither is included
