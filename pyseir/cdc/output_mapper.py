@@ -180,7 +180,7 @@ class OutputMapper:
         self.N_samples = N_samples
         self.targets = [Target(t) for t in targets]
         self.forecast_time_units = [ForecastTimeUnit(u) for u in forecast_time_units]
-        self.forecast_date=forecast_date
+        self.forecast_date = forecast_date
         self.forecast_time_range = [datetime.fromordinal(next_epi_week.startdate().toordinal()) + timedelta(n)
                                     for n in range(FORECAST_WEEKS_NUM * 7)]
 
