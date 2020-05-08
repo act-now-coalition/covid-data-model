@@ -41,7 +41,13 @@ class PopulationDataset(object):
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
 
         data[cls.Fields.GENERATED] = False
-        group = [cls.Fields.SOURCE, cls.Fields.AGGREGATE_LEVEL, cls.Fields.STATE, cls.Fields.COUNTRY, cls.Fields.GENERATED]
+        group = [
+            cls.Fields.SOURCE,
+            cls.Fields.AGGREGATE_LEVEL,
+            cls.Fields.STATE,
+            cls.Fields.COUNTRY,
+            cls.Fields.GENERATED,
+        ]
         data = custom_aggregations.update_with_combined_new_york_counties(
             data, group, are_boroughs_zero=False
         )

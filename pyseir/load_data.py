@@ -11,6 +11,7 @@ import zipfile
 import json
 from datetime import datetime
 from libs.datasets import NYTimesDataset
+from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import CovidTrackingDataSource
@@ -271,9 +272,11 @@ def load_ensemble_results(fips):
     ensemble_results: dict
     """
     output_filename = get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT)
-    with open(output_filename) as f:
-        fit_results = json.load(f)
-    return fit_results
+    if os.path.exists(output_filename):
+        with open(output_filename) as f:
+            fit_results = json.load(f)
+        return fit_results
+    return None
 
 
 @lru_cache(maxsize=32)
@@ -299,6 +302,21 @@ def load_county_metadata_by_fips(fips):
         if np.isscalar(value) and not isinstance(value, str):
             county_metadata_merged[key] = float(value)
     return county_metadata_merged
+
+
+@lru_cache(maxsize=32)
+def get_all_fips_codes_for_a_state(state: str):
+    """Returns a list of fips codes for a state
+
+    Arguments:
+        state {str} -- the full state name
+
+    Returns:
+        fips [list] -- a list of fips codes for a state
+    """
+    df = load_county_metadata()
+    all_fips = df[df['state'].str.lower() == state.lower()].fips
+    return all_fips
 
 
 @lru_cache(maxsize=32)
@@ -335,7 +353,7 @@ def load_new_case_data_by_fips(fips, t0):
 
 
 def get_hospitalization_data():
-    data = CovidTrackingDataSource.local().timeseries(fill_na=False).data
+    data = combined_datasets.build_us_timeseries_with_all_fields().data
     # Since we're using this data for hospitalized data only, only returning
     # values with hospitalization data.  I think as the use cases of this data source
     # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
@@ -426,7 +444,7 @@ def load_hospitalization_data_by_state(state, t0, convert_cumulative_to_current=
     """
     abbr = us.states.lookup(state).abbr
     hospitalization_data = (
-        CovidTrackingDataSource.local().timeseries(fill_na=False)
+        combined_datasets.build_us_timeseries_with_all_fields()
         .get_subset(AggregationLevel.STATE, country='USA', state=abbr)
         .get_data(country='USA', state=abbr)
     )

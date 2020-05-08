@@ -27,32 +27,45 @@ class _Projections(pydantic.BaseModel):
     ICUBeds: Optional[_ResourceUsageProjection] = pydantic.Field(
         ..., description="Projection about ICU hospital bed utilization"
     )
-    Rt: float = pydantic.Field(
-        ..., description="Historical or Inferred Rt"
-    )
-    RtCI90: float = pydantic.Field(
-        ..., description="Rt standard deviation"
-    )
+    Rt: float = pydantic.Field(..., description="Historical or Inferred Rt")
+    RtCI90: float = pydantic.Field(..., description="Rt standard deviation")
 
 
 class _ResourceUtilization(pydantic.BaseModel):
-    capacity: int = pydantic.Field(..., description="Total capacity for resource")
-    currentUsage: Optional[int] = pydantic.Field(
-        ..., description="Currently used capacity for resource"
+    capacity: Optional[int] = pydantic.Field(
+        ...,
+        description=(
+            "*deprecated*: Capacity for resource. In the case of ICUs, "
+            "this refers to total capacity. For hospitalization this refers to free capacity for "
+            "COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07"
+        ),
+    )
+    totalCapacity: Optional[int] = pydantic.Field(
+        ..., description="Total capacity for resource."
+    )
+    currentUsageCovid: Optional[int] = pydantic.Field(
+        ..., description="Currently used capacity for resource by COVID "
+    )
+    currentUsageTotal: Optional[int] = pydantic.Field(
+        ...,
+        description="Currently used capacity for resource by all patients (COVID + Non-COVID)",
     )
     typicalUsageRate: Optional[float] = pydantic.Field(
-        ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
+        ...,
+        description="Typical used capacity rate for resource. This excludes any COVID usage.",
     )
 
 
 class _Actuals(pydantic.BaseModel):
-    population: int = pydantic.Field(
-        ..., description="Total population in geographic area", gt=0
+    population: Optional[int] = pydantic.Field(
+        ...,
+        description="Total population in geographic area [*deprecated*: refer to summary for this]",
+        gt=0,
     )
     intervention: str = pydantic.Field(
         ..., description="Name of high-level intervention in-place"
     )
-    cumulativeConfirmedCases: int = pydantic.Field(
+    cumulativeConfirmedCases: Optional[int] = pydantic.Field(
         ..., description="Number of confirmed cases so far"
     )
     cumulativePositiveTests: Optional[int] = pydantic.Field(
@@ -61,8 +74,10 @@ class _Actuals(pydantic.BaseModel):
     cumulativeNegativeTests: Optional[int] = pydantic.Field(
         ..., description="Number of negative test results to date"
     )
-    cumulativeDeaths: int = pydantic.Field(..., description="Number of deaths so far")
-    hospitalBeds: _ResourceUtilization = pydantic.Field(...)
+    cumulativeDeaths: Optional[int] = pydantic.Field(
+        ..., description="Number of deaths so far"
+    )
+    hospitalBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
 
 
@@ -82,6 +97,9 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
     )
     projections: Optional[_Projections] = pydantic.Field(...)
     actuals: Optional[_Actuals] = pydantic.Field(...)
+    population: int = pydantic.Field(
+        ..., description="Total Population in geographic area.", gt=0
+    )
 
 
 # TODO(igor): countyName *must* be None
@@ -95,6 +113,12 @@ class CovidActNowStateSummary(CovidActNowAreaSummary):
 class CovidActNowCountySummary(CovidActNowAreaSummary):
     stateName: str = pydantic.Field(..., description="The state name")
     countyName: str = pydantic.Field(..., description="The county name")
+
+
+class CANActualsTimeseriesRow(_Actuals):
+    date: datetime.date = pydantic.Field(
+        ..., descrition="Date of timeseries data point"
+    )
 
 
 class CANPredictionTimeseriesRow(pydantic.BaseModel):
@@ -118,20 +142,16 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
         description="Number of ICU beds projected to be in-use or actually in use (if in the past)",
     )
     ventilatorsInUse: int = pydantic.Field(
-        ...,
-        description="Number of ventilators projected to be in-use.",
+        ..., description="Number of ventilators projected to be in-use.",
     )
     ventilatorCapacity: int = pydantic.Field(
-        ...,
-        description="Total ventilator capacity."
+        ..., description="Total ventilator capacity."
     )
-    RtIndicator: float = pydantic.Field(
-        ..., description="Historical or Inferred Rt"
+    RtIndicator: float = pydantic.Field(..., description="Historical or Inferred Rt")
+    RtIndicatorCI90: float = pydantic.Field(..., description="Rt standard deviation")
+    cumulativeDeaths: int = pydantic.Field(
+        ..., description="Number of cumulative deaths"
     )
-    RtIndicatorCI90: float = pydantic.Field(
-        ..., description="Rt standard deviation"
-    )
-    cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
     cumulativeInfected: Optional[int] = pydantic.Field(
         ..., description="Number of cumulative infections"
     )
@@ -166,29 +186,24 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+    actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 
     # pylint: disable=no-self-argument
-    @pydantic.validator('timeseries')
+    @pydantic.validator("timeseries")
     def check_timeseries_have_cumulative_test_data(cls, rows, values):
         # Nebraska is missing testing data.
-        state_full_name = values['stateName']
-        if state_full_name == 'Nebraska':
+        state_full_name = values["stateName"]
+        if state_full_name == "Nebraska":
             return rows
-        total_negative_tests = sum(
-            row.cumulativeNegativeTests or 0 for row in rows
-        )
-        total_positive_tests = sum(
-            row.cumulativePositiveTests or 0 for row in rows
-        )
+        total_negative_tests = sum(row.cumulativeNegativeTests or 0 for row in rows)
+        total_positive_tests = sum(row.cumulativePositiveTests or 0 for row in rows)
 
         if not total_positive_tests or not total_negative_tests:
-            raise ValueError(
-                f'Missing cumulative test data for {state_full_name}.'
-            )
+            raise ValueError(f"Missing cumulative test data for {state_full_name}.")
 
         return rows
 
-    @pydantic.validator('timeseries')
+    @pydantic.validator("timeseries")
     def check_timeseries_one_row_per_date(cls, rows, values):
         dates_in_row = len(set(row.date for row in rows))
         if len(rows) != dates_in_row:
@@ -203,6 +218,8 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
 
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+    actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
+
 
 class CovidActNowCountiesAPI(pydantic.BaseModel):
     __root__: List[CovidActNowCountySummary] = pydantic.Field(...)

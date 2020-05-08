@@ -110,6 +110,7 @@ def validate_counties_df(key, counties_df, intervention):
 def __validate_shape_file(key, shp, shp_limit, shx, shx_limit, dbf, dbf_limit):
     # rudimentary check for this. pls tell me something better.
     shp_size = sys.getsizeof(shp)
+
     if shp_size < shp_limit:
         raise DataExportException(
             key, f"Expected the states shape file to be larger for {key}"
@@ -128,6 +129,7 @@ def validate_states_shapefile(key, shp, shx, dbf):
     # shapefile state sizes 15434374 693 21064, from a run on April 6, 2020
     # __validate_shape_file(key, shp, 15000000, shx, 500, dbf, 20000)
     return True
+
 
 def validate_counties_shapefile(key, shp, shx, dbf):
     # shapefile county sizes 90230184 17176 1097564 on April 6, 2020

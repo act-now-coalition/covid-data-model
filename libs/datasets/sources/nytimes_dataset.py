@@ -5,6 +5,8 @@ import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 
 class NYTimesDataset(data_source.DataSource):
@@ -18,29 +20,32 @@ class NYTimesDataset(data_source.DataSource):
         COUNTY = "county"
         STATE = "state"
         FIPS = "fips"
+        COUNTRY = "country"
+        AGGREGATE_LEVEL = "aggregate_level"
         CASES = "cases"
         DEATHS = "deaths"
 
-        COUNTRY = "country"
-        AGGREGATE_LEVEL = "aggregate_level"
-
-    TIMESERIES_FIELD_MAP = {
-        TimeseriesDataset.Fields.DATE: Fields.DATE,
-        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
-        TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.DATE: Fields.DATE,
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    }
+    COMMON_FIELD_MAP = {
         TimeseriesDataset.Fields.CASES: Fields.CASES,
         TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     def __init__(self, input_path):
-        data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE], dtype={"fips": str})
+        data = pd.read_csv(
+            input_path, parse_dates=[self.Fields.DATE], dtype={"fips": str}
+        )
         data = self.standardize_data(data)
         super().__init__(data)
 
     @classmethod
-    def load(cls) -> "CDSTimeseriesData":
+    def load(cls) -> "NYTimesDataset":
         return cls(cls.DATA_URL)
 
     @classmethod
@@ -49,7 +54,9 @@ class NYTimesDataset(data_source.DataSource):
         data = dataset_utils.strip_whitespace(data)
         data[cls.Fields.STATE] = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
         # Super hacky way of filling in new york.
-        data.loc[data[cls.Fields.COUNTY] == 'New York City', 'county'] = 'New York County'
-        data.loc[data[cls.Fields.COUNTY] == 'New York County', 'fips'] = '36061'
+        data.loc[
+            data[cls.Fields.COUNTY] == "New York City", "county"
+        ] = "New York County"
+        data.loc[data[cls.Fields.COUNTY] == "New York County", "fips"] = "36061"
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
         return data

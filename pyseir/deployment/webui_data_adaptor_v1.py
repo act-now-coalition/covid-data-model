@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import pandas as pd
-import simplejson as json
+import ujson as json
 import logging
 import us
 from datetime import timedelta, datetime, date
@@ -10,6 +10,7 @@ from pyseir import load_data
 from pyseir.inference.fit_results import load_inference_result, load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
+from libs.datasets import CommonFields
 from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
@@ -89,10 +90,17 @@ class WebUIDataAdaptorV1:
             category='icu')
 
         if len(fips) == 5:
-            population = self.population_data.get_county_level('USA', state=self.state_abbreviation, fips=fips)
+            population = self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
         else:
-            population = self.population_data.get_state_level('USA', state=self.state_abbreviation)
+            population = self.population_data.get_record_for_state(self.state_abbreviation)[CommonFields.POPULATION]
 
+        # logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
+        # pyseir_outputs = load_data.load_ensemble_results(fips)
+        # if pyseir_outputs is None:
+        #     logging.warning(f'Fit result not found for {fips}: Skipping county')
+        #     return None
+
+        policies = [key for key in pyseir_outputs.keys() if key.startswith('suppression_policy')]
         if current_hosp is not None:
             t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]
             t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
@@ -202,7 +210,7 @@ class WebUIDataAdaptorV1:
             with open(output_path, 'w') as f:
                 json.dump(output_model, f)
 
-    def generate_state(self, states_only=False):
+    def generate_state(self, all_fips=[], states_only=False):
         """
         Generate for each county in a state, the output for the webUI.
 
@@ -215,8 +223,7 @@ class WebUIDataAdaptorV1:
         self.map_fips(state_fips)
 
         if not states_only:
-            df = load_data.load_county_metadata()
-            all_fips = df[df['state'].str.lower() == self.state.lower()].fips
+            all_fips = load_data.get_all_fips_codes_for_a_state(self.state)
 
             if not self.include_imputed:
                 # Filter...
@@ -229,6 +236,7 @@ class WebUIDataAdaptorV1:
             p = Pool()
             p.map(self.map_fips, all_fips)
             p.close()
+            p.join()
 
 
 if __name__ == '__main__':
