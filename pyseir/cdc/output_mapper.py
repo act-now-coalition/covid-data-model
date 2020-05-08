@@ -275,7 +275,7 @@ class OutputMapper:
         return target_forecast
     def generate_forecast_ensemble(self, model_ensemble=None):
         """
-        Generates forecast ensemble given the model ensemble.
+        Generates a forecast ensemble given the model ensemble.
 
         Parameters
         ----------
