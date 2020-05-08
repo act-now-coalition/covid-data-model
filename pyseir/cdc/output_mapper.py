@@ -104,7 +104,7 @@ class OutputMapper:
     forecast_time_units: list(ForecastTimeUnit)
         List of ForecastTimeUnit objects, determines whether forecast target
         is aggregated by day or week. Currently the mapper only supports
-        daily forecast.
+        daily forecasts.
     forecast_uncertainty: ForecastUncertainty
         Determines how forecast uncertainty is adjusted based on number of
         days the forecast is made ahead and total days of observations.
