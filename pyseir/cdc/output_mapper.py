@@ -21,7 +21,7 @@ This mapper maps current pyseir model output to match cdc format.
 
 Output file should have columns:
 - forecast_date: the date on which the submitted forecast data was made available in YYYY-MM-DD format
-- target: Values in the target column must be a character (string) and has format "<day_num> day ahead <target_measure>"
+- target: Values in the target column must be a character (string) and have format "<day_num> day ahead <target_measure>"
           where day_num is number of days since forecast_ate to each date in forecast time range. 
 - target_end_date: last date of forecast in YYYY-MM-DD format, will always be Saturday as defined by epi weeks.
 - location: 2 digit FIPS code
