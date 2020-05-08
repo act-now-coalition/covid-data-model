@@ -206,7 +206,7 @@ class OutputMapper:
         Parameters
         ----------
         override_param_names: list(str)
-            Names of model parameters to override. Default list include the
+            Names of model parameters to override. Default list includes the
             parameters varied for MLE inference.
 
         Returns
