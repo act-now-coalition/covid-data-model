@@ -92,6 +92,11 @@
           "description": "Currently used capacity for resource by COVID ",
           "type": "integer"
         },
+        "currentUsageTotal": {
+          "title": "Currentusagetotal",
+          "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
+          "type": "integer"
+        },
         "typicalUsageRate": {
           "title": "Typicalusagerate",
           "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
@@ -102,6 +107,7 @@
         "capacity",
         "totalCapacity",
         "currentUsageCovid",
+        "currentUsageTotal",
         "typicalUsageRate"
       ]
     },
@@ -364,8 +370,8 @@
             "$ref": "#/definitions/CANPredictionTimeseriesRow"
           }
         },
-        "actuals_timeseries": {
-          "title": "Actuals Timeseries",
+        "actualsTimeseries": {
+          "title": "Actualstimeseries",
           "type": "array",
           "items": {
             "$ref": "#/definitions/CANActualsTimeseriesRow"
@@ -382,7 +388,7 @@
         "population",
         "stateName",
         "timeseries",
-        "actuals_timeseries"
+        "actualsTimeseries"
       ]
     }
   }

@@ -27,6 +27,7 @@ class NevadaHospitalAssociationData(data_source.DataSource):
         COVID_ICU_OCCUPIED = "covid_icu"
         COVID_VENTILATOR = "covid_ventilator"
 
+        CURRENT_HOSPITALIZED_TOTAL = "current_hospitalized_total"
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
@@ -43,13 +44,15 @@ class NevadaHospitalAssociationData(data_source.DataSource):
         CommonFields.CURRENT_ICU: Fields.COVID_ICU_OCCUPIED,
         CommonFields.CURRENT_VENTILATED: Fields.COVID_VENTILATOR,
         CommonFields.ICU_BEDS: Fields.ICU_STAFFED,
+        CommonFields.CURRENT_ICU_TOTAL: Fields.ICU_OCCUPIED,
+        CommonFields.CURRENT_HOSPITALIZED_TOTAL: Fields.CURRENT_HOSPITALIZED_TOTAL,
     }
 
     @classmethod
     def standardize_data(cls, data):
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.COUNTY.value
-
+        data[cls.Fields.CURRENT_HOSPITALIZED_TOTAL] = data[cls.Fields.ACCUTE_OCCUPIED] + data[cls.Fields.ICU_OCCUPIED]
         return data
 
     @classmethod

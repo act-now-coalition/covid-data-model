@@ -40,6 +40,9 @@ class CommonFields(object):
     ICU_TYPICAL_OCCUPANCY_RATE = "icu_occupancy_rate"
     MAX_BED_COUNT = "max_bed_count"
 
+    CURRENT_HOSPITALIZED_TOTAL = "current_hospitalized_total"
+    CURRENT_ICU_TOTAL = "current_icu_total"
+
 
 class CommonIndexFields(object):
     # Column for FIPS code. Right now a column containing fips data may be
