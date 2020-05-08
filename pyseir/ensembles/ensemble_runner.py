@@ -225,7 +225,7 @@ class EnsembleRunner:
         model.run()
         return model
 
-    def _model_ensemble(self, override_params=None, N_samples=5000):
+    def model_ensemble(self, override_params=None, N_samples=5000):
         """
         Run SEIR model with parameter sets sampled by parameter ensemble
         generator.
