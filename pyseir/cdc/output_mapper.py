@@ -154,7 +154,7 @@ class OutputMapper:
         window begins.
     forecast_time_units: list(str)
         Time units of the forecast target, should be interpretable by
-        ForecastTimeUnit, currently the mapper only supports unit 'day'.
+        ForecastTimeUnit. Currently the mapper only supports unit 'day'.
     quantiles: list(float)
         Values between 0-1, which are the quantiles of the forecast target
         to collect. For default value check QUANTILES.
