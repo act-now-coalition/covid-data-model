@@ -28,7 +28,7 @@ this_model_is_unconditional: TRUE
 
 methods: >-
     Forecast based on expert opinions in public health and epidemiology of infectious disease, thorough literature
-    review and daily feed data in cases, deaths and hostpitalizations.
+    review and daily feed data in cases, deaths, and hostpitalizations.
 
 methods_long: >-
     The SEIR Model makes forecast of $Model_target_names by fitting prediction cases, deaths and hospitalizations to
