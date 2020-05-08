@@ -32,5 +32,5 @@ methods: >-
 
 methods_long: >-
     The SEIR Model makes forecast of $Model_target_names by fitting predicted cases, deaths, and hospitalizations to
-    the observations. Quantiles of the forecast are derived by generate random parameter ensemble from the parameters'
+    the observations. Quantiles of the forecast are derived by generating a random parameter ensemble from the parameters'
     prior distribution, and simulating the MLE SEIR model with parameter sets from the parameter ensemble.
