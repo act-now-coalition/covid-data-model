@@ -1,6 +1,6 @@
 team_name: $team_name
 team_abbr: CAN
-institution_affil:
+institution_affil: covidactnow.org
 team_funding: ~
 team_experience: Mathematical modeling of covid transmission at state/county level and UI report since Apr. 2020.
 
