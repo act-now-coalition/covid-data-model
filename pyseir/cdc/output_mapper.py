@@ -407,7 +407,7 @@ class OutputMapper:
 
     def generate_point_result(self):
         """
-        Generates result that contains the point estimate of the forecast with
+        Generates results that contain the point estimate of the forecast with
         format required for CDC model ensemble submission.
 
         Parameters
