@@ -269,11 +269,10 @@ class OutputMapper:
                                                                   self.forecast_time_range],
                                                                   target, unit))
 
-            return target_forecast
         else:
             raise ValueError(f'Forecast time unit {unit} is not supported')
 
-
+        return target_forecast
     def generate_forecast_ensemble(self, model_ensemble=None):
         """
         Generates forecast ensemble given the model ensemble.
