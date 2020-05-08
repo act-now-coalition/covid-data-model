@@ -34,7 +34,7 @@ and optional:
 For details on formatting, check:
 https://github.com/reichlab/covid19-forecast-hub/blob/master/data-processed/README.md
 
-The output include:
+The output includes:
 - <forecast_date>_<team>_<model>_<fips>.csv
   File that contain the output with above columns for a specific fips.
 - <forecast_date>_<team>_<model>.csv
