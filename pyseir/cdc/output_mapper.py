@@ -17,7 +17,7 @@ from pyseir.ensembles.ensemble_runner import EnsembleRunner
 
 
 """
-This class maps current pyseir model output to match cdc format.
+This mapper maps current pyseir model output to match cdc format.
 
 output file should have columns:
 - forecast_date: the date on which the submitted forecast data was made available in YYYY-MM-DD format
@@ -168,7 +168,7 @@ class OutputMapper:
     """
     def __init__(self,
                  fips,
-                 N_samples=5000,
+                 N_samples=1000,
                  targets=TARGETS,
                  forecast_date=FORECAST_DATE,
                  next_epi_week=NEXT_EPI_WEEK,
@@ -189,11 +189,11 @@ class OutputMapper:
 
         self.model = load_mle_model(self.fips)
 
-        fit_results = load_inference_result(self.fips)
+        self.fit_results = load_inference_result(self.fips)
         forecast_days_since_ref_date = [(t - REF_DATE).days for t in self.forecast_time_range]
         self.forecast_given_time_range = \
             lambda forecast, t_list: np.interp(forecast_days_since_ref_date,
-                                               [fit_results['t0'] + t for t in t_list],
+                                               [self.fit_results['t0'] + t for t in t_list],
                                                forecast)
 
         self.result = None
@@ -211,15 +211,22 @@ class OutputMapper:
 
         Returns
         -------
-        model_ensemble: list(SEIRModel)
-            List of SEIR models ran under parameter sets randomly generated
+        model_ensemble: np.array(SEIRModel)
+            SEIR models ran under parameter sets randomly generated
             from the parameter prior distributions.
+        chi_squares: np.array(float)
+            Chi squares when fitting each model in model_ensemble to
+            to observed cases, deaths w/o hospitalizations.
         """
 
         override_params = {k: v for k, v in self.model.__dict__.items() if k in override_param_names}
+        override_params.update({k: v for k, v in self.fit_results.items() if k in ['eps', 't_break', 'test_fraction']})
         er = EnsembleRunner(fips=self.fips)
-        model_ensemble = er._model_ensemble(override_params=override_params, N_samples=self.N_samples)
-        return model_ensemble
+        model_ensemble, chi_squares = er.model_ensemble(
+            override_params=override_params, N_samples=self.N_samples, chi_square=True)
+
+        return model_ensemble, chi_squares
+
 
     def forecast_target(self, model, target, unit):
         """
@@ -328,8 +335,30 @@ class OutputMapper:
         else:
             raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
 
+    def _weighted_quantiles(self, quantile, data, weights):
+        """
+        Calculate quantile of data with given weights.
 
-    def generate_quantile_result(self, forecast_ensemble=None):
+        Parameters
+        ----------
+        quantile: np.array of list
+            Quantile to find corresponding data value.
+        data: np.array or list
+            Data sample
+        weights: np.array
+            Weight of each data point.
+
+        Returns
+        -------
+          :  np.array
+            Value of data at given quantile.
+        """
+        sorted_idx = np.argsort(data)
+        cdf = weights[sorted_idx].cumsum() / weights[sorted_idx].cumsum().max()
+
+        return np.interp(quantile, cdf, data[sorted_idx])
+
+    def generate_quantile_result(self, forecast_ensemble, chi_squares):
         """
         Generates result that contains the quantiles of the forecast with
         format required for CDC model ensemble submission.
@@ -341,6 +370,11 @@ class OutputMapper:
             each model from the model ensemble. With "<day_num> day ahead
             <target_measure>" as index, and corresponding value from each model
             as columns.
+        chi_squares: np.array(float)
+            Chi squares obtains by fitting each model (which makes the
+            forecast in forecast ensemble) to observed cases, deaths w/o
+            hospitalizations.
+
 
         Returns
         -------
@@ -349,16 +383,16 @@ class OutputMapper:
             CDC model ensemble submission. For info on columns,
             check description of self.results.
         """
-        if forecast_ensemble is None:
-            forecast_ensemble = self.generate_forecast_ensemble()
 
         quantile_result = list()
         for target_name in forecast_ensemble:
             target_output = \
                 forecast_ensemble[target_name].apply(
-                    lambda l: np.quantile(self._adjust_forecast_dist(l, int(l.name.split(' ')[0]),
-                                                                     (self.forecast_date - REF_DATE).days),
-                                          self.quantiles), axis=1).rename('value')
+                    lambda l: self._weighted_quantiles(self.quantiles,
+                                                       self._adjust_forecast_dist(l, int(l.name.split(' ')[0]),
+                                                                                 (self.forecast_date - REF_DATE).days),
+                                                       1 / (1 + chi_squares - chi_squares.min())),
+                    axis=1).rename('value')
             target_output = target_output.explode().reset_index().rename(columns={'index': 'target'})
             target_output['quantile'] = np.tile(['%.3f' % q for q in self.quantiles],
                                                 forecast_ensemble[target_name].shape[0])
@@ -441,7 +475,9 @@ class OutputMapper:
             - location_name: str
               Name of the state.
         """
-        quantile_result = self.generate_quantile_result()
+        models, chi_squares = self.run_model_ensemble()
+        forecast_ensemble = self.generate_forecast_ensemble(models)
+        quantile_result = self.generate_quantile_result(forecast_ensemble, chi_squares)
         point_result = self.generate_point_result()
         self.result = pd.concat([quantile_result, point_result])
         for col in ['location', 'quantile']:
@@ -503,7 +539,8 @@ def run_all(parallel=False):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    fips_list = list(df_whitelist['fips'].str[:2].unique())
+    #fips_list = list(df_whitelist['fips'].str[:2].unique())
+    fips_list = ['06']
 
     if parallel:
         p = Pool()
@@ -518,8 +555,6 @@ def run_all(parallel=False):
     forecast_date = FORECAST_DATE.strftime('%Y-%m-%d')
 
     results = pd.concat(results)
-    for col in ['location', 'quantile']:
-        results[col] = results[col].apply('="{}"'.format)
     results.to_csv(os.path.join(OUTPUT_FOLDER, f'{forecast_date}_{TEAM}_{MODEL}.csv'),
                    index=False)
 
