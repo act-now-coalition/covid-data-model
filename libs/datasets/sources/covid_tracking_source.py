@@ -73,7 +73,7 @@ class CovidTrackingDataSource(data_source.DataSource):
         CommonFields.CUMULATIVE_HOSPITALIZED: Fields.TOTAL_HOSPITALIZED,
         CommonFields.CUMULATIVE_ICU: Fields.TOTAL_IN_ICU,
         CommonFields.POSITIVE_TESTS: Fields.POSITIVE_TESTS,
-        CommonFields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS
+        CommonFields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS,
     }
 
     TESTS_ONLY_FIELDS = [
@@ -96,7 +96,7 @@ class CovidTrackingDataSource(data_source.DataSource):
         data = pd.read_csv(
             input_path,
             parse_dates=[self.Fields.DATE_CHECKED],
-            dtype={self.Fields.FIPS: str}
+            dtype={self.Fields.FIPS: str},
         )
         data = self.standardize_data(data)
         super().__init__(data)
@@ -113,7 +113,9 @@ class CovidTrackingDataSource(data_source.DataSource):
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
         # Date checked is the time that the data is actually updated.
         # assigning the date field as the date floor of that day.
-        data[cls.Fields.DATE] = data[cls.Fields.DATE_CHECKED].dt.tz_localize(None).dt.floor("D")
+        data[cls.Fields.DATE] = (
+            data[cls.Fields.DATE_CHECKED].dt.tz_localize(None).dt.floor("D")
+        )
 
         dtypes = {
             cls.Fields.POSITIVE_TESTS: "Int64",
@@ -126,18 +128,17 @@ class CovidTrackingDataSource(data_source.DataSource):
 
         # Dropping PR because of bad data
         # TODO(chris): Handle this in a more sane way.
-        data = data.loc[data.state != 'PR', :]
+        data = data.loc[data.state != "PR", :]
 
         # must stay true: positive + negative  ==  total
         assert (
-            data[cls.Fields.POSITIVE_TESTS]
-            + data[cls.Fields.NEGATIVE_TESTS] == data[cls.Fields.TOTAL_TEST_RESULTS]
+            data[cls.Fields.POSITIVE_TESTS] + data[cls.Fields.NEGATIVE_TESTS]
+            == data[cls.Fields.TOTAL_TEST_RESULTS]
         ).all()
 
         # must stay true: positive chage + negative change ==  total change
         assert (
-            data[cls.Fields.POSITIVE_INCREASE]
-            + data[cls.Fields.NEGATIVE_INCREASE]
+            data[cls.Fields.POSITIVE_INCREASE] + data[cls.Fields.NEGATIVE_INCREASE]
             == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
         ).all()
 

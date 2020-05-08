@@ -47,7 +47,7 @@ def upload_csv(key_name: str, csv: str, output_dir: str):
     _logger.info(f"Generated csv for {key_name}")
 
 
-def flatten_dict(data: dict, level_separator: str = '.') -> dict:
+def flatten_dict(data: dict, level_separator: str = ".") -> dict:
     """Flattens a nested dictionary, separating nested keys by separator.
 
     Args:
@@ -84,7 +84,7 @@ def write_nested_csv(data: List[dict], key: str, output_dir: str):
 
     output_path = pathlib.Path(output_dir) / f"{key}.csv"
     _logger.info(f"Writing {key} to {output_path}")
-    with output_path.open('w') as csvfile:
+    with output_path.open("w") as csvfile:
         writer = csv.DictWriter(csvfile, header)
         writer.writeheader()
 

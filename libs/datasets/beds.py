@@ -123,15 +123,13 @@ class BedsDataset(object):
             licensed_beds = nyc_data[cls.Fields.LICENSED_BEDS]
             occupancy_rates = nyc_data[cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
             weighted_all_bed_occupancy = (
-                (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
-            )
+                licensed_beds * occupancy_rates
+            ).sum() / licensed_beds.sum()
         weighted_icu_occupancy = None
         if cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE in data.columns:
             icu_beds = nyc_data[cls.Fields.ICU_BEDS]
             occupancy_rates = nyc_data[cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]
-            weighted_icu_occupancy = (
-                (icu_beds * occupancy_rates).sum() / icu_beds.sum()
-            )
+            weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
 
         data = custom_aggregations.update_with_combined_new_york_counties(
             data, group, are_boroughs_zero=False
@@ -139,14 +137,15 @@ class BedsDataset(object):
 
         nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
         if weighted_all_bed_occupancy:
-            data.loc[data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE] = (
-                weighted_all_bed_occupancy
-            )
+            data.loc[
+                data[cls.Fields.FIPS] == nyc_fips,
+                cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+            ] = weighted_all_bed_occupancy
 
         if weighted_icu_occupancy:
-            data.loc[data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE] = (
-                weighted_icu_occupancy
-            )
+            data.loc[
+                data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE
+            ] = weighted_icu_occupancy
 
         return data
 
@@ -204,7 +203,7 @@ class BedsDataset(object):
         return None
 
     def get_county_level(
-            self, state, county=None, fips=None, column=Fields.MAX_BED_COUNT
+        self, state, county=None, fips=None, column=Fields.MAX_BED_COUNT
     ) -> Optional[int]:
         """Get beds for a specific county (from fips code or county).
 

@@ -6,6 +6,7 @@ from libs.datasets.latest_values_dataset import LatestValuesDataset
 
 class DatasetFilter(object):
     """Defines a filter to apply to a dataset."""
+
     def __init__(self, aggregation_level: AggregationLevel = None, **filters):
         """
         Args:

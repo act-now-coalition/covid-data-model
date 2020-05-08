@@ -7,11 +7,13 @@ UNKNOWN_FIPS = "99999"
 
 class Intervention(enum.Enum):
     NO_INTERVENTION = 0
-    STRONG_INTERVENTION = 1 # on the webiste, strictDistancingNow
-    WEAK_INTERVENTION = 3 # weak distancingNow on the website
+    STRONG_INTERVENTION = 1  # on the webiste, strictDistancingNow
+    WEAK_INTERVENTION = 3  # weak distancingNow on the website
     SELECTED_INTERVENTION = 4  # look at what the state is and get the file for that
     # We are using enum 2 for consistency with the website
-    OBSERVED_INTERVENTION = 2 # given the previous pattern, how do we predict going forward
+    OBSERVED_INTERVENTION = (
+        2  # given the previous pattern, how do we predict going forward
+    )
 
     @classmethod
     def county_supported_interventions(cls):
