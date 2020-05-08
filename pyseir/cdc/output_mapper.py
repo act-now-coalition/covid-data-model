@@ -459,7 +459,7 @@ class OutputMapper:
             - target: str
               Name of the forecast target, with format "<day_num> day ahead
               <target_measure>" where day_num is number of days since
-              forecast_ate to each date in forecast time range.
+              forecast_date to each date in forecast time range.
             - target_end_date: datetime.datetime
               last date of forecast in YYYY-MM-DD format.
             - location: str
