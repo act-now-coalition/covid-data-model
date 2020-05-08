@@ -40,7 +40,7 @@ The output includes:
 - <forecast_date>_<team>_<model>.csv
   File that contain the output with above columns for all US states fips.
 - metadata-CovidActNow.txt
-  Metadata with most uptodate forecast date.
+  Metadata with most up-to-date forecast date.
   
 Where default value of forecast_date, team and model can be found from corresponding global variables.
 """
