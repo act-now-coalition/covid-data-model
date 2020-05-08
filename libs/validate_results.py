@@ -130,6 +130,7 @@ def validate_states_shapefile(key, shp, shx, dbf):
     # __validate_shape_file(key, shp, 15000000, shx, 500, dbf, 20000)
     return True
 
+
 def validate_counties_shapefile(key, shp, shx, dbf):
     # shapefile county sizes 90230184 17176 1097564 on April 6, 2020
     # __validate_shape_file(key, shp, 90230000, shx, 15000, dbf, 1000000)

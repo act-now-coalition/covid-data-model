@@ -121,18 +121,22 @@ class CDSDataset(data_source.DataSource):
         # Backfilling FIPS data based on county names.
         # The following abbrev mapping only makes sense for the US
         # TODO: Fix all missing cases
-        data = data[data['country'] == 'United States']
-        data['state_abbr'] = data[cls.Fields.STATE].apply(lambda x: US_STATE_ABBREV[x] if x in US_STATE_ABBREV else x)
-        data['state_tmp'] = data['state']
-        data['state'] = data['state_abbr']
+        data = data[data["country"] == "United States"]
+        data["state_abbr"] = data[cls.Fields.STATE].apply(
+            lambda x: US_STATE_ABBREV[x] if x in US_STATE_ABBREV else x
+        )
+        data["state_tmp"] = data["state"]
+        data["state"] = data["state_abbr"]
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_fips_using_county(data, fips_data)
 
         # ADD Negative tests
-        data[cls.Fields.NEGATIVE_TESTS] = data[cls.Fields.TESTED] - data[cls.Fields.CASES]
+        data[cls.Fields.NEGATIVE_TESTS] = (
+            data[cls.Fields.TESTED] - data[cls.Fields.CASES]
+        )
 
         # put the state column back
-        data['state'] = data['state_tmp']
+        data["state"] = data["state_tmp"]
 
         return data

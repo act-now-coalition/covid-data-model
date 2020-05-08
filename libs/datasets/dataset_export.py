@@ -11,7 +11,9 @@ STATE_EXPORT_FIELDS = ["state", "cases", "deaths", "date"]
 COUNTY_EXPORT_FIELDS = ["fips", "cases", "deaths", "date"]
 
 
-def latest_case_summaries_by_state(dataset: TimeseriesDataset) -> Iterator[StateCaseSummary]:
+def latest_case_summaries_by_state(
+    dataset: TimeseriesDataset,
+) -> Iterator[StateCaseSummary]:
     """Builds summary of latest case data by state and county.
 
     Data is generated for the embeds which expects a list of records in this format:

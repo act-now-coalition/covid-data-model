@@ -32,7 +32,7 @@ def test_counties_api_output():
             "peakDeathsDate": date(2020, 5, 15),
             "endDate": date(2020, 10, 1),
             "Rt": 1.1,
-            "RtCI90": 0.1
+            "RtCI90": 0.1,
         },
         actuals={
             "population": 883305,
@@ -42,10 +42,16 @@ def test_counties_api_output():
             "cumulativePositiveTests": None,
             "cumulativeNegativeTests": 20,
             "hospitalBeds": {
-                "capacity": 100, "totalCapacity": 100, "currentUsageCovid": 3, "typicalUsageRate": 0.4
+                "capacity": 100,
+                "totalCapacity": 100,
+                "currentUsageCovid": 3,
+                "typicalUsageRate": 0.4,
             },
             "ICUBeds": {
-                "capacity": 10, "totalCapacity": 10, "currentUsageCovid": 2, "typicalUsageRate": 0.6
+                "capacity": 10,
+                "totalCapacity": 10,
+                "currentUsageCovid": 2,
+                "typicalUsageRate": 0.6,
             },
         },
     )

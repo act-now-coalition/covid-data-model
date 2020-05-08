@@ -2,6 +2,7 @@
 
 setup-dev: requirements.txt requirements_test.txt
 	pip install -r requirements.txt -r requirements_test.txt
+	pre-commit install
 	nbstripout --install
 
 unittest:

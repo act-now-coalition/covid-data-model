@@ -1,4 +1,3 @@
-
 class CommonFields(object):
     """Common field names shared across different sources of data"""
 
