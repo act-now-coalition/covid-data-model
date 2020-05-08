@@ -27,7 +27,7 @@ this_model_is_an_ensemble: FALSE
 this_model_is_unconditional: TRUE
 
 methods: >-
-    Forecast based on experts opinion in public health and epidemiology of infectious disease, thorough literature
+    Forecast based on expert opinions in public health and epidemiology of infectious disease, thorough literature
     review and daily feed data in cases, deaths and hostpitalizations.
 
 methods_long: >-
