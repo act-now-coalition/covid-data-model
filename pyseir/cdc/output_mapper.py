@@ -474,7 +474,7 @@ class OutputMapper:
 
         combined_target_names = list(itertools.product([u.value for u in om.forecast_time_units],
                                      [t.value for t in om.targets]))
-        metadata= \
+        metadata = \
             Template(metadata).substitute(
             dict(Model_targets=', '.join([' ahead '.join(tup) for tup in combined_target_names]),
                  forecast_startdate=om.forecast_time_range[0].strftime('%Y-%m-%d'),
