@@ -43,12 +43,14 @@ class _ResourceUtilization(pydantic.BaseModel):
             "COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07"
         )
     )
-
     totalCapacity: Optional[int] = pydantic.Field(
         ..., description="Total capacity for resource."
     )
     currentUsageCovid: Optional[int] = pydantic.Field(
         ..., description="Currently used capacity for resource by COVID "
+    )
+    currentUsageTotal: Optional[int] = pydantic.Field(
+        ..., description="Currently used capacity for resource by all patients (COVID + Non-COVID)"
     )
     typicalUsageRate: Optional[float] = pydantic.Field(
         ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
