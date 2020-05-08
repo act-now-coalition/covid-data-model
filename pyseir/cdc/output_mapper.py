@@ -88,7 +88,7 @@ class OutputMapper:
     small, so their variations are also relatively small.
 
     The output has the columns required for CDC model ensemble
-    submission (check description of result). It currently supports daily
+    submission (check description of results). It currently supports daily
     forecast.
 
     Attributes
