@@ -359,7 +359,7 @@ class OutputMapper:
 
     def generate_quantile_result(self, forecast_ensemble, chi_squares):
         """
-        Generates result that contains the quantiles of the forecast with
+        Generates results that contain the quantiles of the forecast with
         format required for CDC model ensemble submission.
 
         Parameters
