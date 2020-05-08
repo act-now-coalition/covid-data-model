@@ -3,7 +3,6 @@ import datetime
 import logging
 import os
 import numpy as np
-from collections import defaultdict
 from multiprocessing import Pool
 from functools import partial
 import us
@@ -225,7 +224,8 @@ class EnsembleRunner:
         model.run()
         return model
 
-    def model_ensemble(self, override_params=None, N_samples=5000):
+    def model_ensemble(self, override_params=None, N_samples=5000,
+                       chi_square=False):
         """
         Run SEIR model with parameter sets sampled by parameter ensemble
         generator.
@@ -236,26 +236,61 @@ class EnsembleRunner:
             Parameters and their values to override in the parameter sets.
         N_samples: int
             Number of sample of parameter sets.
+        chi_square: bool
+            Whether returns chi squares obtained by fitting each model in
+            model ensemble to observed cases, deaths w/o hospitalizations.
 
         Returns
         -------
-        model_ensemble: list(SEIRModel)
-            SEIR model that runs with parameter sets sampled by parameter
+        model_ensemble: np.array(SEIRModel)
+            SEIR models that run with parameter sets sampled by parameter
             ensemble generator.
+        chi_squares: np.array
+            Chi squares by fitting each model in model ensemble to
+            observed cases, deaths w/o hospitalizations.
         """
         model_ensemble = list()
         parameter_sets = ParameterEnsembleGenerator(self.fips,
                                                     N_samples=N_samples,
                                                     t_list=self.t_list,
-                                                    suppression_policy=self.suppression_policy)\
-                          .sample_seir_parameters(override_params=override_params)
+                                                    suppression_policy=self.suppression_policy) \
+            .sample_seir_parameters(override_params=override_params)
 
         # get mle eps and t_break from suppression policy
         for parameter_set in parameter_sets:
-            model = self._run_single_simulation(parameter_set)
+            model = self._run_single_simulation({k: v for k, v in parameter_set.items() if k in
+                                                 inspect.getfullargspec(SEIRModel.__init__).args})
             model_ensemble.append(model)
+        model_ensemble = np.array(model_ensemble)
 
-        return model_ensemble
+        if not chi_square:
+            return model_ensemble, None
+        else:
+            #TODO @Xinyu: simplify this to avoid duplicated model simulation.
+            chi_squares = np.zeros(model_ensemble.shape[0])
+            fitting_args = dict(eps=1,
+                                t0=60,
+                                t_break=15,
+                                test_fraction=0.06,
+                                hosp_fraction=1,
+                                log10_I_initial=0)
+            mf = ModelFitter(fips=self.fips)
+            for n, parameter_set in enumerate(parameter_sets):
+                try:
+                    fitting_args.update(parameter_set)
+                    mf.SEIR_kwargs = {k: v for k, v in fitting_args.items() if k in mf.SEIR_kwargs.keys()}
+                    mf.t_list = self.t_list
+                    if 'suppression_policy' in mf.SEIR_kwargs.keys():
+                        del mf.SEIR_kwargs['suppression_policy']
+                    if 'I_initial' in mf.SEIR_kwargs.keys():
+                        del mf.SEIR_kwargs['I_initial']
+
+                    arg_names = ['R0', 't0', 'eps', 't_break', 'log10_I_initial', 'test_fraction', 'hosp_fraction']
+                    chi_squares[n] += mf._fit_seir(**{k: fitting_args[k] for k in arg_names})
+                except OverflowError:
+                    next
+
+            return model_ensemble[chi_squares > 0], chi_squares[chi_squares > 0]
 
     def run_ensemble(self):
         """
@@ -405,7 +440,7 @@ class EnsembleRunner:
 
             # Compute percentiles over the ensemble
             for percentile in self.output_percentiles:
-                outputs[compartment]['ci_%.2f' % percentile] = np.percentile(
+                outputs[compartment]['ci_%i' % percentile] = np.percentile(
                     value_stack, percentile, axis=0).tolist()
 
             if compartment in compartment_to_capacity_attr_map:
