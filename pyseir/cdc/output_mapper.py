@@ -307,7 +307,7 @@ class OutputMapper:
     def _adjust_forecast_dist(self, data, h, T):
         """
         Rescale forecast standard deviation by streching/shrinking the forecast
-        distribution around the mean. Currently supports two approach:
+        distribution around the mean. Currently supports two approaches:
         - default: no adjustment
         - naive: rescale the standard deviation by factor (1 + days_ahead  **
                  0.5)
