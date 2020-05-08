@@ -4,8 +4,7 @@ import us
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from datetime import date, datetime, timedelta
-from enum import Enum
+from datetime import datetime, timedelta
 from multiprocessing import Pool
 from epiweeks import Week, Year
 from string import Template
@@ -76,16 +75,18 @@ class OutputMapper:
     """
     This mapper maps CAN SEIR model inference results to the format required
     for CDC model submission. For the given State FIPS code, it reads in the
-    most up-to-date MLE inference (mle model + fit_results json file), and runs
-    the model ensemble when fixing the parameters varied for model fitting at
-    their MLE estimate, aiming to obtain the uncertainty associated with
-    the prior distribution of the parameters not varied during model fitting.
-    This for sure will underestimate the level of uncertainty of the forecast
-    since it does not take into account the parameters varied for MLE
-    inference or the model's likelihood profile. However, neither is included
-    for two reasons: 1) the likelihood function of the forecast is unknown;
-    2) The error associated with the parameters for inference is generally
-    small, so their variations are also relatively small.
+    most up-to-date MLE inference (mle model + fit_results json file),
+    and runs the model ensemble when fixing the parameters varied for model
+    fitting at their MLE estimate. Quantile of forecast is then derived from
+    the forecast ensemble weighted by the chi square obtained by fitting
+    corresponding model to observed cases, deaths w/o hospitalizations,
+    aiming to obtain the uncertainty associated with the prior distribution
+    of the parameters not varied during model fitting and the (
+    unknown) likelihood function (L(y_1:t|theta)). This for sure will
+    underestimate the level of uncertainty of the forecast since it does not
+    take into account the parameters varied for MLE inference.
+    However, the error associated with the parameters for inference is
+    generally small, so their variations are also relatively small.
 
     The output has the columns required for CDC model ensemble
     submission (check description of results). It currently supports daily
@@ -198,14 +199,16 @@ class OutputMapper:
 
         self.result = None
 
-    def run_model_ensemble(self, override_param_names=['R0', 'I_initial', 'E_initial', 'suppression_policy']):
+    def run_model_ensemble(self, override_param_names=('R0', 'I_initial',
+                                                       'E_initial',
+                                                       'suppression_policy')):
         """
         Get model ensemble by running models under different parameter sets
         sampled from parameter prior distributions.
 
         Parameters
         ----------
-        override_param_names: list(str)
+        override_param_names: tuple(str)
             Names of model parameters to override. Default list includes the
             parameters varied for MLE inference.
 
@@ -273,7 +276,7 @@ class OutputMapper:
             raise ValueError(f'Forecast time unit {unit} is not supported')
 
         return target_forecast
-    def generate_forecast_ensemble(self, model_ensemble=None):
+    def generate_forecast_ensemble(self, model_ensemble):
         """
         Generates a forecast ensemble given the model ensemble.
 
@@ -291,8 +294,6 @@ class OutputMapper:
             <target_measure>" as index, and corresponding value from each model
             as columns.
         """
-        if model_ensemble is None:
-            model_ensemble = self.run_model_ensemble()
 
         forecast_ensemble = defaultdict(list)
         for target in self.targets:
@@ -492,6 +493,18 @@ class OutputMapper:
     def run_for_fips(cls, fips):
         """
         Run OutputMapper for given State FIPS code.
+
+        Parameters
+        ----------
+        fips: str
+            State FIPS code
+
+        Returns
+        -------
+        results: pd.DataFrame
+            Output that meets requirement for CDC model ensemble submission for
+            given FIPS code. For details on columns, refer description of
+            self.results.
         """
         om = cls(fips)
         result = om.run()
@@ -503,9 +516,8 @@ class OutputMapper:
         Generates metadata file based on the template.
         """
         om = cls(fips='06')
-        with open(os.path.join(DIR_PATH, 'metadata-CovidActNow_template.txt'), 'r') as f:
+        with open(os.path.join(DIR_PATH, 'metadata-CovidActNow_template.txt'),  'r') as f:
             metadata = f.read()
-        f.close()
 
         combined_target_names = list(itertools.product([u.value for u in om.forecast_time_units],
                                      [t.value for t in om.targets]))
@@ -518,8 +530,8 @@ class OutputMapper:
                  team_name=TEAM)
         )
 
-        with open(os.path.join(OUTPUT_FOLDER, 'metadata-CovidActNow.txt'), 'w') as output_f:
-            output_f.write(metadata)
+        output_f = open(os.path.join(OUTPUT_FOLDER, 'metadata-CovidActNow.txt'), 'w')
+        output_f.write(metadata)
         output_f.close()
 
 
@@ -538,8 +550,7 @@ def run_all(parallel=False):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    #fips_list = list(df_whitelist['fips'].str[:2].unique())
-    fips_list = ['06']
+    fips_list = list(df_whitelist['fips'].str[:2].unique())
 
     if parallel:
         p = Pool()
