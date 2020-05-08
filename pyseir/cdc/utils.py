@@ -17,7 +17,22 @@ class ForecastUncertainty(Enum):
 
 def target_column_name(num, target, time_unit):
     """
+    Concatenate number of time units ahead for forecast, name of target and
+    the forecast time unit as column name.
 
+    Parameters
+    ----------
+    num: int
+        Number of time units ahead for forecast.
+    target: Target
+        The target measure.
+    time_unit: ForecastTimeUnit
+        The time unit of forecast.
+
+    Yields
+    ------
+      : str
+        generated column name.
     """
     num = list(num)
     for n in num:
