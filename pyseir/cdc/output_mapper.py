@@ -299,7 +299,7 @@ class OutputMapper:
             for unit in self.forecast_time_units:
                 for model in model_ensemble:
                     target_forecast = self.forecast_target(model, target, unit).fillna(0)
-                    target_forecast[target_forecast<0] = 0
+                    target_forecast[target_forecast < 0] = 0
                     forecast_ensemble[target.value].append(target_forecast)
             forecast_ensemble[target.value] = pd.concat(forecast_ensemble[target.value], axis=1)
         return forecast_ensemble
