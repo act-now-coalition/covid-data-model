@@ -102,7 +102,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         state=None,
         county=None,
         fips=None,
-        states=None
+        states=None,
     ) -> "TimeseriesDataset":
         data = self.data
 
@@ -215,7 +215,9 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
         is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
+        state_fips = data.loc[is_state, cls.Fields.STATE].map(
+            us_state_abbrev.ABBREV_US_FIPS
+        )
         data.loc[is_state, cls.Fields.FIPS] = state_fips
 
         # Choosing to sort by date

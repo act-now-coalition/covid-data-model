@@ -68,8 +68,8 @@ def get_cds():
 def get_testing_timeseries_by_state(state):
     testing_df = _get_testing_df()
     is_state = (
-        testing_df[CovidTrackingDataSource.Fields.AGGREGATE_LEVEL] ==
-        AggregationLevel.STATE.value
+        testing_df[CovidTrackingDataSource.Fields.AGGREGATE_LEVEL]
+        == AggregationLevel.STATE.value
     )
     testing_df = testing_df[is_state]
     # just select state
@@ -82,12 +82,12 @@ def get_testing_timeseries_by_state(state):
 def get_testing_timeseries_by_fips(fips):
     testing_df = get_cds()
     # select by fips
-    fips_testing_df = testing_df[
-        testing_df[CDSDataset.Fields.FIPS] == fips
-    ]
+    fips_testing_df = testing_df[testing_df[CDSDataset.Fields.FIPS] == fips]
     before = len(fips_testing_df)
-    fips_testing_df = fips_testing_df.set_index([CDSDataset.Fields.FIPS, CDSDataset.Fields.DATE])
-    fips_testing_df = fips_testing_df[~fips_testing_df.index.duplicated(keep='last')]
+    fips_testing_df = fips_testing_df.set_index(
+        [CDSDataset.Fields.FIPS, CDSDataset.Fields.DATE]
+    )
+    fips_testing_df = fips_testing_df[~fips_testing_df.index.duplicated(keep="last")]
     if before != len(fips_testing_df):
         _logger.warning(
             f"Testing DF contained duplicate rows for {fips}: {before} -> {len(fips_testing_df)}"

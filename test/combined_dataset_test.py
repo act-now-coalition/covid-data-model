@@ -1,4 +1,3 @@
-
 import pytest
 
 from libs.datasets import combined_datasets
@@ -27,13 +26,10 @@ def test_unique_index_values_us_latest():
     assert not sum(duplicates)
 
 
-@pytest.mark.parametrize("data_source_cls", [
-    JHUDataset,
-    CDSDataset,
-    CovidTrackingDataSource,
-    NevadaHospitalAssociationData,
-
-])
+@pytest.mark.parametrize(
+    "data_source_cls",
+    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+)
 def test_unique_timeseries(data_source_cls):
 
     data_source = data_source_cls.local()

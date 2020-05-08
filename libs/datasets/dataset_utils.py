@@ -140,7 +140,9 @@ def compare_datasets(
     contains_both = contains_both.reset_index()
     values_matching = contains_both[first_name] == contains_both[other_name]
     not_matching = contains_both[~values_matching]
-    not_matching["delta_" + values] = contains_both[first_name] - contains_both[other_name]
+    not_matching["delta_" + values] = (
+        contains_both[first_name] - contains_both[other_name]
+    )
     not_matching["delta_ratio_" + values] = (
         contains_both[first_name] - contains_both[other_name]
     ) / contains_both[first_name]
@@ -351,7 +353,9 @@ def fill_fields_with_data_source(
         print(new_data.loc[new_data_in_existing_df, columns_to_fill])
         existing_in_new = sum(existing_df_in_new_data)
         new_in_existing = sum(new_data_in_existing_df)
-        raise ValueError(f"Number of rows should be the for data to replace: {existing_in_new} -> {new_in_existing}: {columns_to_fill}")
+        raise ValueError(
+            f"Number of rows should be the for data to replace: {existing_in_new} -> {new_in_existing}: {columns_to_fill}"
+        )
 
     # If a column doesn't exist in the existing data, add it (throws an error)
     # otherwise.
@@ -367,10 +371,7 @@ def fill_fields_with_data_source(
     missing_new_data = new_data[~new_data_in_existing_df]
 
     data = pd.concat(
-        [
-            existing_df.reset_index(),
-            missing_new_data[columns_to_fill].reset_index(),
-        ]
+        [existing_df.reset_index(), missing_new_data[columns_to_fill].reset_index(),]
     )
 
     return data

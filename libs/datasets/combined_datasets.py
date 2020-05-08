@@ -17,7 +17,7 @@ from libs.datasets import dataset_filter
 from libs import us_state_abbrev
 
 FeatureDataSourceMap = NewType(
-    'FeatureDataSourceMap', Dict[str, List[Type[data_source.DataSource]]]
+    "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
 
 # Below are two instances of feature definitions. These define
@@ -38,14 +38,14 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [
-        CovidTrackingDataSource, NevadaHospitalAssociationData
-    ],
+    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [
-        CovidTrackingDataSource, NevadaHospitalAssociationData
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
     ],
     CommonFields.CURRENT_VENTILATED: [
-        CovidTrackingDataSource, NevadaHospitalAssociationData
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
     ],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
@@ -64,14 +64,14 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [
-        CovidTrackingDataSource, NevadaHospitalAssociationData
-    ],
+    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [
-        CovidTrackingDataSource, NevadaHospitalAssociationData
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
     ],
     CommonFields.CURRENT_VENTILATED: [
-        CovidTrackingDataSource, NevadaHospitalAssociationData
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
     ],
     CommonFields.STAFFED_BEDS: [],
     CommonFields.LICENSED_BEDS: [],
@@ -91,26 +91,21 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 @functools.lru_cache(None)
 def build_timeseries_with_all_fields() -> TimeseriesDataset:
     return build_combined_dataset_from_sources(
-        TimeseriesDataset,
-        ALL_TIMESERIES_FEATURE_DEFINITION,
+        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION,
     )
 
 
 @functools.lru_cache(None)
 def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
     return build_combined_dataset_from_sources(
-        TimeseriesDataset,
-        ALL_TIMESERIES_FEATURE_DEFINITION,
-        filters=[US_STATES_FILTER]
+        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
     )
 
 
 @functools.lru_cache(None)
 def build_us_latest_with_all_fields() -> LatestValuesDataset:
     return build_combined_dataset_from_sources(
-        LatestValuesDataset,
-        ALL_FIELDS_FEATURE_DEFINITION,
-        filters=[US_STATES_FILTER]
+        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
     )
 
 
@@ -127,7 +122,7 @@ def get_us_latest_for_fips(fips) -> dict:
 
 
 def load_data_sources(
-    feature_definition_config
+    feature_definition_config,
 ) -> Dict[Type[data_source.DataSource], data_source.DataSource]:
 
     data_source_classes = []
@@ -147,7 +142,7 @@ def load_data_sources(
 def build_combined_dataset_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
     feature_definition_config: FeatureDataSourceMap,
-    filters: List[dataset_filter.DatasetFilter] = None
+    filters: List[dataset_filter.DatasetFilter] = None,
 ):
     """Builds a combined dataset from a feature definition.
 
@@ -180,10 +175,7 @@ def build_combined_dataset_from_sources(
             dataset = intermediate_datasets[data_source_cls]
 
             data = dataset_utils.fill_fields_with_data_source(
-                data,
-                dataset.data,
-                target_dataset_cls.INDEX_FIELDS,
-                [field]
+                data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field]
             )
 
     return target_dataset_cls(data)
