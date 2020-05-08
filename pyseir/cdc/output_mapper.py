@@ -280,7 +280,7 @@ class OutputMapper:
         Parameters
         ----------
         model_ensemble: list(SEIRModel)
-            List of SEIR models ran under parameter sets randomly generated
+            List of SEIR models run under parameter sets randomly generated
             from the parameter prior distributions.
 
         Returns
