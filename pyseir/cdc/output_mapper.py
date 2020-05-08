@@ -446,7 +446,7 @@ class OutputMapper:
     def run(self):
         """
         Runs forecast ensemble. Results contain quantiles and point of
-        the forecast targets and save results to csv file.
+        the forecast targets and saves results to csv file.
 
         Returns
         -------
