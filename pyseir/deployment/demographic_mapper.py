@@ -22,18 +22,18 @@ class CovidMeasure(Enum):
     - IFR: probability an infected person dies of covid-19.
     """
 
-    IHR_GENERAL = 'IHR_general'
-    IHR_ICU = 'IHR_icu'
-    IHR = 'IHR'
-    HR_GENERAL = 'HR_general'
-    HR_ICU = 'HR_icu'
-    HR = 'HR'
-    IFR = 'IFR'
+    IHR_GENERAL = "IHR_general"
+    IHR_ICU = "IHR_icu"
+    IHR = "IHR"
+    HR_GENERAL = "HR_general"
+    HR_ICU = "HR_icu"
+    HR = "HR"
+    IFR = "IFR"
 
 
 class CovidMeasureUnit(Enum):
-    PER_CAPITA = 'per_capita'
-    PER_CAPITA_DAY = 'per_capita_day'
+    PER_CAPITA = "per_capita"
+    PER_CAPITA_DAY = "per_capita_day"
 
 
 class DemographicMapper:
@@ -169,19 +169,25 @@ class DemographicMapper:
         measure should be interpretable by CovidMeasure.
     """
 
-    def __init__(self,
-                 fips,
-                 mle_model,
-                 fit_results,
-                 measures=None,
-                 measure_units=None,
-                 target_age_distribution_pdf=None,
-                 risk_modifier_by_age=None):
+    def __init__(
+        self,
+        fips,
+        mle_model,
+        fit_results,
+        measures=None,
+        measure_units=None,
+        target_age_distribution_pdf=None,
+        risk_modifier_by_age=None,
+    ):
 
         self.fips = fips
-        self.predictions = {k: v for k, v in mle_model.results.items() if k != 'by_age'}
-        self.predictions_by_age = mle_model.results['by_age']
-        self.parameters = {k: v for k, v in mle_model.__dict__.items() if k not in ('by_age', 'results')}
+        self.predictions = {k: v for k, v in mle_model.results.items() if k != "by_age"}
+        self.predictions_by_age = mle_model.results["by_age"]
+        self.parameters = {
+            k: v
+            for k, v in mle_model.__dict__.items()
+            if k not in ("by_age", "results")
+        }
         self.fit_results = fit_results
 
         if measures is not None:
@@ -190,12 +196,18 @@ class DemographicMapper:
         self.measures = measures
 
         if measure_units is not None:
-            measure_units = [measure_units] if not isinstance(measure_units, list) else measure_units
+            measure_units = (
+                [measure_units]
+                if not isinstance(measure_units, list)
+                else measure_units
+            )
             measure_units = [CovidMeasureUnit(u) for u in measure_units]
         self.measure_units = measure_units
 
         if target_age_distribution_pdf is None:
-            target_age_distribution_pdf = lambda x: np.ones(len(self.parameters['age_groups']))
+            target_age_distribution_pdf = lambda x: np.ones(
+                len(self.parameters["age_groups"])
+            )
         self.target_age_distribution_pdf = target_age_distribution_pdf
         self.risk_modifier_by_age = risk_modifier_by_age
 
@@ -215,8 +227,9 @@ class DemographicMapper:
             Trajectory of covid infection prevalence inferred by the MLE
             model.
         """
-        prevalence = (self.predictions_by_age['I']
-                    + self.predictions_by_age['A']) / self.parameters['N'][:, np.newaxis]
+        prevalence = (
+            self.predictions_by_age["I"] + self.predictions_by_age["A"]
+        ) / self.parameters["N"][:, np.newaxis]
         return prevalence
 
     def _reconstruct_mortality_inflow_rates(self):
@@ -234,38 +247,61 @@ class DemographicMapper:
         """
 
         # per capita mortality rate from people who need ICU or are in ICU
-        mortality_rate_ICU = np.tile(self.parameters['mortality_rate_from_ICU'],
-                                     (self.parameters['t_list'].shape[0], 1)).T
-        idx_inadequate_icu_bed = np.where(self.predictions['HICU'] > self.parameters['beds_ICU'])
-        frac_no_access_to_icu = (self.predictions['HICU'] - self.parameters['beds_ICU']) / self.predictions['HICU']
+        mortality_rate_ICU = np.tile(
+            self.parameters["mortality_rate_from_ICU"],
+            (self.parameters["t_list"].shape[0], 1),
+        ).T
+        idx_inadequate_icu_bed = np.where(
+            self.predictions["HICU"] > self.parameters["beds_ICU"]
+        )
+        frac_no_access_to_icu = (
+            self.predictions["HICU"] - self.parameters["beds_ICU"]
+        ) / self.predictions["HICU"]
         frac_no_access_to_icu = frac_no_access_to_icu[idx_inadequate_icu_bed]
         if len(frac_no_access_to_icu) > 0:
-            mortality_rate_ICU[:, idx_inadequate_icu_bed] = \
-                np.tile(self.parameters['mortality_rate_from_ICU'] * (1 - frac_no_access_to_icu[:, np.newaxis])
-                      + self.parameters['mortality_rate_no_ICU_beds'] * frac_no_access_to_icu,
-                        (1, mortality_rate_ICU.shape[0]))
+            mortality_rate_ICU[:, idx_inadequate_icu_bed] = np.tile(
+                self.parameters["mortality_rate_from_ICU"]
+                * (1 - frac_no_access_to_icu[:, np.newaxis])
+                + self.parameters["mortality_rate_no_ICU_beds"] * frac_no_access_to_icu,
+                (1, mortality_rate_ICU.shape[0]),
+            )
 
         # per capita mortality rate from people who need to be hospitalized or in hospital
-        mortality_rate_NonICU = np.tile(self.parameters['mortality_rate_from_hospital'],
-                                        (self.parameters['t_list'].shape[0], 1)).T
-        idx_inadequate_hgen_bed = np.where(self.predictions['HGen'] > self.parameters['beds_general'])
-        frac_no_access_to_hgen = (self.predictions['HGen'] - self.parameters['beds_general']) / self.predictions['HGen']
+        mortality_rate_NonICU = np.tile(
+            self.parameters["mortality_rate_from_hospital"],
+            (self.parameters["t_list"].shape[0], 1),
+        ).T
+        idx_inadequate_hgen_bed = np.where(
+            self.predictions["HGen"] > self.parameters["beds_general"]
+        )
+        frac_no_access_to_hgen = (
+            self.predictions["HGen"] - self.parameters["beds_general"]
+        ) / self.predictions["HGen"]
         frac_no_access_to_hgen = frac_no_access_to_hgen[idx_inadequate_hgen_bed]
 
         if len(frac_no_access_to_hgen) > 0:
-            mortality_rate_NonICU[:, idx_inadequate_hgen_bed] = \
-                np.tile(self.parameters['mortality_rate_from_hospital'] * (1 - frac_no_access_to_hgen)
-                      + self.parameters['mortality_rate_no_general_beds'] * frac_no_access_to_hgen,
-                        (1, mortality_rate_NonICU.shape[0]))
+            mortality_rate_NonICU[:, idx_inadequate_hgen_bed] = np.tile(
+                self.parameters["mortality_rate_from_hospital"]
+                * (1 - frac_no_access_to_hgen)
+                + self.parameters["mortality_rate_no_general_beds"]
+                * frac_no_access_to_hgen,
+                (1, mortality_rate_NonICU.shape[0]),
+            )
 
         mortality_inflow_rates = {}
-        mortality_inflow_rates['HGen'] = \
-            mortality_rate_NonICU / self.parameters['hospitalization_length_of_stay_general']
-        mortality_inflow_rates['HICU'] = \
-            (1 - self.parameters['fraction_icu_requiring_ventilator']) * mortality_rate_ICU / \
-                             self.parameters['hospitalization_length_of_stay_icu']
-        mortality_inflow_rates['HVent'] = self.parameters['mortality_rate_from_ICUVent'] / \
-                                  self.parameters['hospitalization_length_of_stay_icu_and_ventilator']
+        mortality_inflow_rates["HGen"] = (
+            mortality_rate_NonICU
+            / self.parameters["hospitalization_length_of_stay_general"]
+        )
+        mortality_inflow_rates["HICU"] = (
+            (1 - self.parameters["fraction_icu_requiring_ventilator"])
+            * mortality_rate_ICU
+            / self.parameters["hospitalization_length_of_stay_icu"]
+        )
+        mortality_inflow_rates["HVent"] = (
+            self.parameters["mortality_rate_from_ICUVent"]
+            / self.parameters["hospitalization_length_of_stay_icu_and_ventilator"]
+        )
 
         return mortality_inflow_rates
 
@@ -285,13 +321,18 @@ class DemographicMapper:
             hospitalization include: HGen, HICU, HVent.
         """
         hospitalization_inflow_rates = {}
-        hospitalization_inflow_rates['HGen'] = \
-            (self.parameters['hospitalization_rate_general']
-           - self.parameters['hospitalization_rate_icu']) / self.parameters['symptoms_to_hospital_days']
-        hospitalization_inflow_rates['HICU'] = self.parameters['hospitalization_rate_icu'] / self.parameters[
-            'symptoms_to_hospital_days']
-        hospitalization_inflow_rates['HVent'] = \
-            hospitalization_inflow_rates['HICU'] * self.parameters['fraction_icu_requiring_ventilator']
+        hospitalization_inflow_rates["HGen"] = (
+            self.parameters["hospitalization_rate_general"]
+            - self.parameters["hospitalization_rate_icu"]
+        ) / self.parameters["symptoms_to_hospital_days"]
+        hospitalization_inflow_rates["HICU"] = (
+            self.parameters["hospitalization_rate_icu"]
+            / self.parameters["symptoms_to_hospital_days"]
+        )
+        hospitalization_inflow_rates["HVent"] = (
+            hospitalization_inflow_rates["HICU"]
+            * self.parameters["fraction_icu_requiring_ventilator"]
+        )
 
         return hospitalization_inflow_rates
 
@@ -312,15 +353,21 @@ class DemographicMapper:
         mortality_inflow_rates = self._reconstruct_mortality_inflow_rates()
 
         hospital_recovery_inflow_rates = {}
-        hospital_recovery_inflow_rates['HGen'] = (1 - mortality_inflow_rates['HGen']) / \
-            self.parameters['hospitalization_length_of_stay_general']
-        hospital_recovery_inflow_rates['HICU'] = (1 - mortality_inflow_rates['HICU']) * (1 - self.parameters[
-            'fraction_icu_requiring_ventilator']) \
-            / self.parameters['hospitalization_length_of_stay_icu']
-        hospital_recovery_inflow_rates['HVent'] = \
-            (1 - np.maximum(mortality_inflow_rates['HVent'],
-                            self.parameters['mortality_rate_from_ICUVent'])) \
-            / self.parameters['hospitalization_length_of_stay_icu_and_ventilator']
+        hospital_recovery_inflow_rates["HGen"] = (
+            1 - mortality_inflow_rates["HGen"]
+        ) / self.parameters["hospitalization_length_of_stay_general"]
+        hospital_recovery_inflow_rates["HICU"] = (
+            (1 - mortality_inflow_rates["HICU"])
+            * (1 - self.parameters["fraction_icu_requiring_ventilator"])
+            / self.parameters["hospitalization_length_of_stay_icu"]
+        )
+        hospital_recovery_inflow_rates["HVent"] = (
+            1
+            - np.maximum(
+                mortality_inflow_rates["HVent"],
+                self.parameters["mortality_rate_from_ICUVent"],
+            )
+        ) / self.parameters["hospitalization_length_of_stay_icu_and_ventilator"]
 
         return hospital_recovery_inflow_rates
 
@@ -358,28 +405,33 @@ class DemographicMapper:
 
         hospital_inflow_rates = self._reconstruct_hospitalization_inflow_rates()
 
-        fraction_of_symptomatic = self.predictions_by_age['I'] / (self.predictions_by_age['I']
-                                                                + self.predictions_by_age['A'])
+        fraction_of_symptomatic = self.predictions_by_age["I"] / (
+            self.predictions_by_age["I"] + self.predictions_by_age["A"]
+        )
         IHR = defaultdict(dict)
         if measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
             HR = hospital_inflow_rates
             for key in HR:
-                IHR[key][measure_unit.value] = HR[key][:, np.newaxis] * fraction_of_symptomatic
+                IHR[key][measure_unit.value] = (
+                    HR[key][:, np.newaxis] * fraction_of_symptomatic
+                )
 
         elif measure_unit is CovidMeasureUnit.PER_CAPITA:
-            total_rate_out_of_I = self.parameters['delta']
+            total_rate_out_of_I = self.parameters["delta"]
             for key in hospital_inflow_rates:
                 total_rate_out_of_I += hospital_inflow_rates[key]
 
             HR = {}
             for key in hospital_inflow_rates:
-                HR[key] = np.tile(hospital_inflow_rates[key] / total_rate_out_of_I,
-                                  (len(self.parameters['t_list']), 1)).T
+                HR[key] = np.tile(
+                    hospital_inflow_rates[key] / total_rate_out_of_I,
+                    (len(self.parameters["t_list"]), 1),
+                ).T
             for key in HR:
                 IHR[key][measure_unit.value] = HR[key] * fraction_of_symptomatic
 
         else:
-            raise ValueError('given measure_unit is not implemented')
+            raise ValueError("given measure_unit is not implemented")
 
         return IHR
 
@@ -422,29 +474,37 @@ class DemographicMapper:
         """
         mortality_inflow_rates = self._reconstruct_mortality_inflow_rates()
 
-        hospital_recovery_inflow_rates = self._reconstruct_hospital_recovery_inflow_rates()
+        hospital_recovery_inflow_rates = (
+            self._reconstruct_hospital_recovery_inflow_rates()
+        )
 
         mortality_probs = {}
         for key in hospital_recovery_inflow_rates:
-            mortality_probs[key] = \
-                mortality_inflow_rates[key] / (mortality_inflow_rates[key] + hospital_recovery_inflow_rates[key])
+            mortality_probs[key] = mortality_inflow_rates[key] / (
+                mortality_inflow_rates[key] + hospital_recovery_inflow_rates[key]
+            )
 
         IFR = defaultdict(dict)
         if measure_unit is CovidMeasureUnit.PER_CAPITA:
             for key in mortality_probs:
-                IFR[key][measure_unit.value] = mortality_probs[key] * IHR[key][measure_unit.value]
+                IFR[key][measure_unit.value] = (
+                    mortality_probs[key] * IHR[key][measure_unit.value]
+                )
 
         elif measure_unit is CovidMeasureUnit.PER_CAPITA_DAY:
-            total_infections = np.zeros(self.predictions_by_age['I'].shape)
-            for c in ['I', 'A', 'HGen', 'HICU', 'HVent']:
+            total_infections = np.zeros(self.predictions_by_age["I"].shape)
+            for c in ["I", "A", "HGen", "HICU", "HVent"]:
                 total_infections += self.predictions_by_age[c]
 
             for key in mortality_inflow_rates:
-                IFR[key][measure_unit.value] = \
-                    mortality_inflow_rates[key] * self.predictions_by_age[key] / total_infections
+                IFR[key][measure_unit.value] = (
+                    mortality_inflow_rates[key]
+                    * self.predictions_by_age[key]
+                    / total_infections
+                )
 
         else:
-            raise ValueError('given measure_unit is not implemented')
+            raise ValueError("given measure_unit is not implemented")
 
         return IFR
 
@@ -475,7 +535,7 @@ class DemographicMapper:
 
         IHR = defaultdict(dict)
         IFR = defaultdict(dict)
-        keys = ['HGen', 'HICU', 'HVent']
+        keys = ["HGen", "HICU", "HVent"]
         for measure_unit in self.measure_units:
             IHR_by_unit = self._age_specific_IHR_by_hospitalization(measure_unit)
             for key in keys:
@@ -509,37 +569,47 @@ class DemographicMapper:
             infected population or general population.
         """
         if measure is CovidMeasure.IHR:
-            return (self.IHR['HGen'][measure_unit.value]
-                  + self.IHR['HICU'][measure_unit.value]
-                  + self.IHR['HVent'][measure_unit.value])
+            return (
+                self.IHR["HGen"][measure_unit.value]
+                + self.IHR["HICU"][measure_unit.value]
+                + self.IHR["HVent"][measure_unit.value]
+            )
 
         elif measure is CovidMeasure.HR:
             # prevalence is used to count the probability that a person is
             # infected
-            return (self.IHR['HGen'][measure_unit.value]
-                  + self.IHR['HICU'][measure_unit.value]
-                  + self.IHR['HVent'][measure_unit.value]) * self.prevalence
+            return (
+                self.IHR["HGen"][measure_unit.value]
+                + self.IHR["HICU"][measure_unit.value]
+                + self.IHR["HVent"][measure_unit.value]
+            ) * self.prevalence
 
         elif measure is CovidMeasure.IHR_GENERAL:
-            return self.IHR['HGen'][measure_unit.value]
+            return self.IHR["HGen"][measure_unit.value]
 
         elif measure is CovidMeasure.HR_GENERAL:
             # prevalence is used to count the probability that a person is
             # infected
-            return self.IHR['HGen'][measure_unit.value] * self.prevalence
+            return self.IHR["HGen"][measure_unit.value] * self.prevalence
 
         elif measure is CovidMeasure.IHR_ICU:
-            return (self.IHR['HICU'][measure_unit.value]
-                  + self.IHR['HVent'][measure_unit.value])
+            return (
+                self.IHR["HICU"][measure_unit.value]
+                + self.IHR["HVent"][measure_unit.value]
+            )
 
         elif measure is CovidMeasure.HR_ICU:
             # prevalence is used to count the probability that a person is
             # infected
-            return (self.IHR['HICU'][measure_unit.value]
-                  + self.IHR['HVent'][measure_unit.value]) * self.prevalence
+            return (
+                self.IHR["HICU"][measure_unit.value]
+                + self.IHR["HVent"][measure_unit.value]
+            ) * self.prevalence
 
         else:
-            logging.warning(f'covid_measure {measure.value} is not relevant to hospitalization rate')
+            logging.warning(
+                f"covid_measure {measure.value} is not relevant to hospitalization rate"
+            )
             return None
 
     def _calculate_age_specific_IFR(self, measure_unit):
@@ -558,7 +628,6 @@ class DemographicMapper:
         """
 
         return sum(self.IFR[key][measure_unit.value] for key in self.IFR)
-
 
     def generate_predictions(self):
         """
@@ -585,38 +654,48 @@ class DemographicMapper:
                                 with dates of prediction as index.
         """
         predictions = defaultdict(dict)
-        t0_date = datetime.fromisoformat(self.fit_results['t0_date'])
-        dates = [(t0_date + timedelta(days=int(t))).strftime("%Y-%m-%d") for t in self.parameters['t_list']]
-        age_groups = ['-'.join([str(int(tup[0])), str(int(tup[1]))]) for tup in
-                      self.parameters['age_groups']]
+        t0_date = datetime.fromisoformat(self.fit_results["t0_date"])
+        dates = [
+            (t0_date + timedelta(days=int(t))).strftime("%Y-%m-%d")
+            for t in self.parameters["t_list"]
+        ]
+        age_groups = [
+            "-".join([str(int(tup[0])), str(int(tup[1]))])
+            for tup in self.parameters["age_groups"]
+        ]
 
         for c in self.predictions_by_age:
-            predictions['compartments'][c] = pd.DataFrame(self.predictions_by_age[c].T,
-                                                          columns=age_groups,
-                                                          index=pd.DatetimeIndex(dates))
+            predictions["compartments"][c] = pd.DataFrame(
+                self.predictions_by_age[c].T,
+                columns=age_groups,
+                index=pd.DatetimeIndex(dates),
+            )
         # assuming a stable demographic distribution through time
-        predictions['compartments']['N'] = \
-            pd.DataFrame(np.tile(self.parameters['N'], (len(self.parameters['t_list']), 1)),
-                         columns=age_groups,
-                         index=pd.DatetimeIndex(dates))
+        predictions["compartments"]["N"] = pd.DataFrame(
+            np.tile(self.parameters["N"], (len(self.parameters["t_list"]), 1)),
+            columns=age_groups,
+            index=pd.DatetimeIndex(dates),
+        )
 
         if self.measures is not None:
             for measure in self.measures:
                 for measure_unit in self.measure_units:
                     if measure is CovidMeasure.IFR:
-                        predictions[measure.value][measure_unit.value] = self._calculate_age_specific_IFR(measure_unit)
+                        predictions[measure.value][
+                            measure_unit.value
+                        ] = self._calculate_age_specific_IFR(measure_unit)
                     else:
-                        predictions[measure.value][measure_unit.value] = self._calculate_age_specific_HR(measure,
-                                                                                                         measure_unit)
+                        predictions[measure.value][
+                            measure_unit.value
+                        ] = self._calculate_age_specific_HR(measure, measure_unit)
 
-                    predictions[measure.value][measure_unit.value] = \
-                        pd.DataFrame(predictions[measure.value][measure_unit.value].T,
-                                     columns=age_groups,
-                                     index=pd.DatetimeIndex(dates))
-
+                    predictions[measure.value][measure_unit.value] = pd.DataFrame(
+                        predictions[measure.value][measure_unit.value].T,
+                        columns=age_groups,
+                        index=pd.DatetimeIndex(dates),
+                    )
 
         return predictions
-
 
     def map_to_target_population(self, predictions):
         """
@@ -667,35 +746,46 @@ class DemographicMapper:
                                 with dates of prediction as index.
         """
         # calculate weights
-        age_bin_centers = [np.mean(tup) for tup in self.parameters['age_groups']]
+        age_bin_centers = [np.mean(tup) for tup in self.parameters["age_groups"]]
         weights = self.target_age_distribution_pdf(age_bin_centers)
         if (weights != 1).sum() == 0:
-            logging.warning('no target age distribution is given, measure is aggregated assuming age '
-                            'distribution at given FIPS code')
+            logging.warning(
+                "no target age distribution is given, measure is aggregated assuming age "
+                "distribution at given FIPS code"
+            )
 
         weights /= weights.sum()
-        demographic_group_size_ratio = weights / (self.parameters['N'] / self.parameters['N'].sum())
+        demographic_group_size_ratio = weights / (
+            self.parameters["N"] / self.parameters["N"].sum()
+        )
 
         mapped_predictions = defaultdict(dict)
 
-        for c in predictions['compartments']:
-            mapped_predictions['compartments'][c] = predictions['compartments'][c].dot(demographic_group_size_ratio) \
-                                                                                  .rename(c)
+        for c in predictions["compartments"]:
+            mapped_predictions["compartments"][c] = (
+                predictions["compartments"][c]
+                .dot(demographic_group_size_ratio)
+                .rename(c)
+            )
 
-        measure_names = [k for k in predictions.keys() if k != 'compartments']
+        measure_names = [k for k in predictions.keys() if k != "compartments"]
         if len(measure_names) > 0:
             for measure_name in measure_names:
                 for measure_unit_name in predictions[measure_name]:
                     modified_weights = weights
                     if self.risk_modifier_by_age is not None:
                         if measure_name in self.risk_modifier_by_age:
-                            modified_weights = weights * self.risk_modifier_by_age[measure_name](age_bin_centers)
+                            modified_weights = weights * self.risk_modifier_by_age[
+                                measure_name
+                            ](age_bin_centers)
                             modified_weights /= modified_weights.sum()
-                    mapped_predictions[measure_name][measure_unit_name] = \
-                        predictions[measure_name][measure_unit_name].dot(modified_weights)
+                    mapped_predictions[measure_name][measure_unit_name] = predictions[
+                        measure_name
+                    ][measure_unit_name].dot(modified_weights)
 
-        mapped_predictions['compartments'] = pd.concat(list(mapped_predictions['compartments'].values()),
-                                                       axis=1)
+        mapped_predictions["compartments"] = pd.concat(
+            list(mapped_predictions["compartments"].values()), axis=1
+        )
 
         self.results = mapped_predictions
 
