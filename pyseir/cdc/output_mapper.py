@@ -169,7 +169,7 @@ class OutputMapper:
     """
     def __init__(self,
                  fips,
-                 N_samples=1000,
+                 N_samples=5000,
                  targets=TARGETS,
                  forecast_date=FORECAST_DATE,
                  next_epi_week=NEXT_EPI_WEEK,
@@ -227,6 +227,10 @@ class OutputMapper:
         er = EnsembleRunner(fips=self.fips)
         model_ensemble, chi_squares = er.model_ensemble(
             override_params=override_params, N_samples=self.N_samples, chi_square=True)
+        model_ensemble = np.append([self.model], model_ensemble)
+        chi_squares = np.append([self.fit_results['chi2_hosps']
+                              + self.fit_results['chi2_deaths']
+                              + self.fit_results['chi2_cases']], chi_squares)
 
         return model_ensemble, chi_squares
 
@@ -276,6 +280,7 @@ class OutputMapper:
             raise ValueError(f'Forecast time unit {unit} is not supported')
 
         return target_forecast
+
     def generate_forecast_ensemble(self, model_ensemble):
         """
         Generates a forecast ensemble given the model ensemble.
@@ -353,12 +358,18 @@ class OutputMapper:
           :  np.array
             Value of data at given quantile.
         """
+        # remove lower 10% and upper 10% quantile to increase stability.
+        lower = np.quantile(data, 0.1)
+        upper = np.quantile(data, 0.9)
+        not_outlier = (data > lower) & (data < upper)
+        data = data[not_outlier]
+        weights = weights[not_outlier]
         sorted_idx = np.argsort(data)
         cdf = weights[sorted_idx].cumsum() / weights[sorted_idx].cumsum().max()
 
         return np.interp(quantile, cdf, data[sorted_idx])
 
-    def generate_quantile_result(self, forecast_ensemble, chi_squares):
+    def generate_quantile_result(self, forecast_ensemble, chi_squares=None):
         """
         Generates results that contain the quantiles of the forecast with
         format required for CDC model ensemble submission.
@@ -391,8 +402,8 @@ class OutputMapper:
                     lambda l: self._weighted_quantiles(self.quantiles,
                                                        self._adjust_forecast_dist(l, int(l.name.split(' ')[0]),
                                                                                  (self.forecast_date - REF_DATE).days),
-                                                       1 / (1 + chi_squares - chi_squares.min())),
-                    axis=1).rename('value')
+                                                       chi_squares.max() - chi_squares), axis=1).rename('value')
+
             target_output = target_output.explode().reset_index().rename(columns={'index': 'target'})
             target_output['quantile'] = np.tile(['%.3f' % q for q in self.quantiles],
                                                 forecast_ensemble[target_name].shape[0])
@@ -550,7 +561,7 @@ def run_all(parallel=False):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    fips_list = list(df_whitelist['fips'].str[:2].unique())
+    fips_list = list(df_whitelist['fips'].str[:2].unique())[:2]
 
     if parallel:
         p = Pool()
