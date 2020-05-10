@@ -143,7 +143,7 @@ def cache_public_implementations_data():
     logging.info('Downloading public implementations data')
     url = 'https://raw.githubusercontent.com/JieYingWu/COVID-19_US_County-level_Summaries/master/raw_data/national/public_implementations_fips.csv'
 
-    data = requests.get(url, verify=False).content.decode('utf-8')
+    data = requests.get(url, verify=True).content.decode('utf-8')
     data = re.sub(r',(\d+)-(\w+)', r',\1-\2-2020', data)  # NOTE: This assumes the year 2020
 
     date_cols = [

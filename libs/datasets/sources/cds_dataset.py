@@ -72,7 +72,7 @@ class CDSDataset(data_source.DataSource):
     ]
 
     def __init__(self, input_path):
-        data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE])
+        data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE], low_memory=False)
         data = self.standardize_data(data)
         super().__init__(data)
 
@@ -88,13 +88,10 @@ class CDSDataset(data_source.DataSource):
         # Don't want to return city data because it's duplicated in county
         # City data before 3-23 was not duplicated.
         # data = data[data[cls.Fields.CITY].isnull()]
-        pre_march_23 = data[data.date < "2020-03-23"]
-        pre_march_23.county = pre_march_23.apply(fill_missing_county_with_city, axis=1)
-        split_data = [
-            pre_march_23,
-            data[(data.date >= "2020-03-23") & data[cls.Fields.CITY].isnull()],
-        ]
-        data = pd.concat(split_data)
+        select_pre_march_23 = data.date < "2020-03-23"
+        data.loc[select_pre_march_23, cls.Fields.COUNTY] = data.loc[
+            select_pre_march_23
+        ].apply(fill_missing_county_with_city, axis=1)
 
         # CDS state level aggregates are identifiable by not having a city or county.
         only_county = (

@@ -61,6 +61,8 @@ class WhitelistGenerator:
             left_on='fips', right_on='fips', how='inner')
 
         df_whitelist = df_candidates[['fips', 'state', 'county']]
+        # pandas.core.common.SettingWithCopyWarning: A value is trying to be set on a copy of a slice from a DataFrame.
+        # Not sure what this is doing. How come inference_ok is accessed from df with only 3 columns above?
         df_whitelist.loc[:, 'inference_ok'] = (
                   (df_candidates.nonzero_case_datapoints >= self.nonzero_case_datapoints)
                 & (df_candidates.nonzero_death_datapoints >= self.nonzero_death_datapoints)
