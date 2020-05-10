@@ -96,6 +96,39 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 )
 
 
+@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
+def build_timeseries_with_all_fields() -> TimeseriesDataset:
+    return build_combined_dataset_from_sources(
+        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION,
+    )
+
+
+@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
+def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
+    return build_combined_dataset_from_sources(
+        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
+    )
+
+
+@dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
+def build_us_latest_with_all_fields() -> LatestValuesDataset:
+    return build_combined_dataset_from_sources(
+        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
+    )
+
+
+def get_us_latest_for_state(state) -> dict:
+    """Gets latest values for a given state."""
+    us_latest = build_us_latest_with_all_fields()
+    return us_latest.get_record_for_state(state)
+
+
+def get_us_latest_for_fips(fips) -> dict:
+    """Gets latest values for a given fips code."""
+    us_latest = build_us_latest_with_all_fields()
+    return us_latest.get_record_for_fips(fips)
+
+
 def load_data_sources(
     feature_definition_config,
 ) -> Dict[Type[data_source.DataSource], data_source.DataSource]:
@@ -154,36 +187,3 @@ def build_combined_dataset_from_sources(
             )
 
     return target_dataset_cls(data)
-
-
-@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_timeseries_with_all_fields() -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION,
-    )
-
-
-@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
-    )
-
-
-@dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
-def build_us_latest_with_all_fields() -> LatestValuesDataset:
-    return build_combined_dataset_from_sources(
-        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
-    )
-
-
-def get_us_latest_for_state(state) -> dict:
-    """Gets latest values for a given state."""
-    us_latest = build_us_latest_with_all_fields()
-    return us_latest.get_record_for_state(state)
-
-
-def get_us_latest_for_fips(fips) -> dict:
-    """Gets latest values for a given fips code."""
-    us_latest = build_us_latest_with_all_fields()
-    return us_latest.get_record_for_fips(fips)
