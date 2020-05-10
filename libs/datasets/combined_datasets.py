@@ -1,4 +1,5 @@
 from typing import Dict, Type, List, NewType
+import logging
 import functools
 import pandas as pd
 from libs.datasets import dataset_utils
@@ -16,8 +17,11 @@ from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets import CommonFields
 from libs.datasets import dataset_filter
+from libs.datasets import dataset_cache
 from libs import us_state_abbrev
 
+
+_logger = logging.getLogger(__name__)
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
@@ -92,39 +96,6 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 )
 
 
-@functools.lru_cache(None)
-def build_timeseries_with_all_fields() -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION,
-    )
-
-
-@functools.lru_cache(None)
-def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
-    )
-
-
-@functools.lru_cache(None)
-def build_us_latest_with_all_fields() -> LatestValuesDataset:
-    return build_combined_dataset_from_sources(
-        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
-    )
-
-
-def get_us_latest_for_state(state) -> dict:
-    """Gets latest values for a given state."""
-    us_latest = build_us_latest_with_all_fields()
-    return us_latest.get_record_for_state(state)
-
-
-def get_us_latest_for_fips(fips) -> dict:
-    """Gets latest values for a given fips code."""
-    us_latest = build_us_latest_with_all_fields()
-    return us_latest.get_record_for_fips(fips)
-
-
 def load_data_sources(
     feature_definition_config,
 ) -> Dict[Type[data_source.DataSource], data_source.DataSource]:
@@ -183,3 +154,36 @@ def build_combined_dataset_from_sources(
             )
 
     return target_dataset_cls(data)
+
+
+@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
+def build_timeseries_with_all_fields() -> TimeseriesDataset:
+    return build_combined_dataset_from_sources(
+        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION,
+    )
+
+
+@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
+def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
+    return build_combined_dataset_from_sources(
+        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
+    )
+
+
+@dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
+def build_us_latest_with_all_fields() -> LatestValuesDataset:
+    return build_combined_dataset_from_sources(
+        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
+    )
+
+
+def get_us_latest_for_state(state) -> dict:
+    """Gets latest values for a given state."""
+    us_latest = build_us_latest_with_all_fields()
+    return us_latest.get_record_for_state(state)
+
+
+def get_us_latest_for_fips(fips) -> dict:
+    """Gets latest values for a given fips code."""
+    us_latest = build_us_latest_with_all_fields()
+    return us_latest.get_record_for_fips(fips)
