@@ -52,25 +52,6 @@ This will run all models and generate data needed for the website, outputting to
 ./deploy_website.sh
 ```
 
-### Run DoD dataset deploy
-Run all models, generate DoD datasets, output to `./dod_results/` folder:
-```bash
-./deploy_dod.sh
-```
-
-Run all models, generate DoD datasets, upload the files to S3 bucket specified by `BUCKET_NAME`.
-```bash
-BUCKET_NAME=<bucket name> ./deploy_dod.sh
-```
-
-If you've previously ran the full model, you can just re-run the DoD dataset part via:
-```
-# Output artifacts locally to dod_results/:
-python deploy_dod_dataset.py
-# Upload artifacts to S3 bucket:
-BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
-```
-
 # Sentry
 In order to have sentry run locally and report errors to the dev sentry
 instance, add the following to your .env
@@ -79,7 +60,7 @@ instance, add the following to your .env
 export SENTRY_DSN=https://<GET_SENTRY_DSN_FOR_DEV_INSTANCE>.ingest.sentry.io/<DEV_INSTANCE>
 ```
 
-The gitub action pulls the sentry_dsn for the prod instance from a secrets stored within github. 
+The gitub action pulls the sentry_dsn for the prod instance from a secrets stored within github.
 
 # [NEW 4/7] PySEIR Setup
 
