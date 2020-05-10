@@ -16,11 +16,21 @@ _EXISTING_CACHE_KEYS = set()
 _logger = logging.getLogger(__name__)
 
 
-def set_pickle_cache_tempdir() -> str:
+def set_pickle_cache_tempdir(force=False) -> str:
     """Sets the cache dir to a temporary directory.
 
     Note that the directory does not clean up after itself.
+
+    Args:
+        force: If True, will force a cache key to be a new tempdir
+            if key already exists.
     """
+
+    if os.getenv(PICKLE_CACHE_ENV_KEY) and not force:
+        directory = os.getenv(PICKLE_CACHE_ENV_KEY)
+        _logger.info(f"Using existing pickle cache tmpdir to {directory}")
+        return directory
+
     tempdir = tempfile.mkdtemp()
     os.environ[PICKLE_CACHE_ENV_KEY] = tempdir
     _logger.info(f"Setting pickle cache tmpdir to {tempdir}")
