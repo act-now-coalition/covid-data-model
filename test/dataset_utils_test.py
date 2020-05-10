@@ -32,11 +32,15 @@ class NoNanDict(dict):
             return v
 
     def __new__(cls, a):
+        # Recursively apply creation of value as a NoNanDict because pandas to_dict doesn't do it for you.
         return {k: NoNanDict.make_value(v) for k, v in a if not NoNanDict.is_nan(v)}
 
 
 def to_dict(keys: List[str], df: pd.DataFrame):
-    """Transforms df into a dict mapping columns `keys` to a dict of the record/row in df"""
+    """Transforms df into a dict mapping columns `keys` to a dict of the record/row in df.
+
+    Use this to extract the values from a DataFrame for easier comparisons in assert statements.
+    """
     if any(df.index.names):
         df = df.reset_index()
     df = df.set_index(keys)
