@@ -52,8 +52,6 @@ prepare () {
   COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
   CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
 
-  # TODO: Move DoD onto a more general-purpose schema rather than treat them custom.
-  DOD_DIR="${API_OUTPUT_DIR}/custom1"
 }
 
 execute_model() {
@@ -95,14 +93,6 @@ execute_summaries() {
   ./run.py data latest -o "${CASE_SUMMARIES_DIR}"
 }
 
-execute_dod() {
-  # Go to repo root (where run.sh lives).
-  cd "$(dirname "$0")"
-
-  echo ">>> Generating DoD artifacts to ${DOD_DIR}"
-  mkdir -p "${DOD_DIR}"
-  ./run.py deploy-dod -ic "${API_OUTPUT_DIR}/county" -is "${API_OUTPUT_DIR}" -o "${DOD_DIR}"
-}
 
 execute_api() {
   # Go to repo root (where run.sh lives).
@@ -139,7 +129,6 @@ execute_zip_folder() {
 
 execute() {
   execute_model
-  execute_dod
   execute_summaries
   execute_api
   execute_zip_folder
@@ -223,10 +212,6 @@ case $EXECUTE_FUNC in
   execute_summaries)
     echo "Executing Sumaries"
     execute_summaries
-    ;;
-  execute_dod)
-    echo "Executing DoD Pipeline"
-    execute_dod
     ;;
   execute_api)
     echo "Executing Api"
