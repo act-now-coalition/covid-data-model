@@ -1,17 +1,17 @@
-from typing import List
-import logging
-import numpy
 import pandas as pd
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
+
 
 
 class NYTimesDataset(data_source.DataSource):
     DATA_URL = "https://github.com/nytimes/covid-19-data/raw/master/us-counties.csv"
     SOURCE_NAME = "NYTimes"
+
+    DATA_FOLDER = "data/cases-nytimes"
+    COUNTIES_DATA_FILE = "us-counties.csv"
 
     HAS_AGGREGATED_NYC_BOROUGH = True
 
@@ -46,7 +46,8 @@ class NYTimesDataset(data_source.DataSource):
 
     @classmethod
     def load(cls) -> "NYTimesDataset":
-        return cls(cls.DATA_URL)
+        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        return cls(data_root / cls.DATA_FOLDER / cls.COUNTIES_DATA_FILE)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
