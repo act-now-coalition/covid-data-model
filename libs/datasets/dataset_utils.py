@@ -334,6 +334,7 @@ def fill_fields_and_timeseries_from_column(
 
     if date_field:
         _clear_common_values(existing_df, new_df, index_fields, column_to_fill)
+        # From here down treat the date as part of the index label for joining rows of existing_df and new_df
         index_fields.append(date_field)
 
     new_df.set_index(index_fields, inplace=True)
@@ -341,6 +342,7 @@ def fill_fields_and_timeseries_from_column(
         existing_df.set_index(index_fields, inplace=True)
         common_labels = existing_df.index.intersection(new_df.index)
     else:
+        # Treat an empty existing_df the same as one that has no rows in common with new_df
         common_labels = []
 
     if len(common_labels):
@@ -353,6 +355,8 @@ def fill_fields_and_timeseries_from_column(
         existing_df.sort_index(inplace=True, sort_remaining=True)
         new_df.sort_index(inplace=True, sort_remaining=True)
 
+        # TODO(tombrown): I have a hunch that this is mostly copying NaN values. Check and consider optimizing by
+        # ignoring rows without a real value in column_to_fill.
         existing_df.loc[common_labels.values, column_to_fill] = new_df.loc[
             common_labels.values, column_to_fill
         ]
