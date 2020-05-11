@@ -22,7 +22,7 @@ Output file should have columns:
 - forecast_date: the date on which the submitted forecast data was made available in YYYY-MM-DD format
 - target: Values in the target column must be a character (string) and have format "<day_num> day ahead <target_measure>"
           where day_num is number of days since forecast_date to each date in forecast time range. 
-- target_end_date: last date of forecast in YYYY-MM-DD format, will always be Saturday as defined by epi weeks.
+- target_end_date: end date of forecast in YYYY-MM-DD format.
 - location: 2 digit FIPS code
 - type: "quantile" or "point"
 - quantile: quantiles of forecast target measure, with format 0.###.
@@ -56,16 +56,23 @@ TARGETS_TO_NAMES = {'cum death': 'cumulative deaths',
                     'inc death': 'incident deaths',
                     'inc hosp': 'incident hospitalizations'}
 
-# units of forecast target, currently only supporting daily forecast.
-FORECAST_TIME_UNITS = ['day']
+# units of forecast target.
+FORECAST_TIME_UNITS = ['day', 'wk']
 # number of weeks ahead for forecast.
-FORECAST_WEEKS_NUM = 2
+FORECAST_WEEKS_NUM = 4
 # Default quantiles required by CDC.
 QUANTILES = np.concatenate([[0.01, 0.025], np.arange(0.05, 0.95, 0.05), [0.975, 0.99]])
-# Next epi week. Epi weeks starts from Sunday and ends on Saturday.
-NEXT_EPI_WEEK = Week(Year.thisyear().year, Week.thisweek().week + 1)
 # Time of forecast, default date when this runs.
 FORECAST_DATE = datetime.today()
+# Next epi week. Epi weeks starts from Sunday and ends on Saturday.
+#if forecast date is Sunday or Monday, next epi week is the week that starts
+#with the latest Sunday.
+if FORECAST_DATE.weekday() in (0, 6):
+    NEXT_EPI_WEEK = Week(Year.thisyear().year, Week.thisweek().week)
+else:
+    NEXT_EPI_WEEK = Week(Year.thisyear().year, Week.thisweek().week + 1)
+COLUMNS = ['forecast_date', 'location', 'location_name', 'target',
+           'target_end_date', 'quantile', 'value']
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 OUTPUT_FOLDER = os.path.join(OUTPUT_DIR, 'pyseir', 'cdc')
@@ -90,7 +97,7 @@ class OutputMapper:
 
     The output has the columns required for CDC model ensemble
     submission (check description of results). It currently supports daily
-    forecast.
+    and weekly forecast.
 
     Attributes
     ----------
@@ -121,15 +128,16 @@ class OutputMapper:
           the date on which the submitted forecast data was made available in
           YYYY-MM-DD format
         - target: str
-          Name of the forecast target, with format "<day_num> day ahead
-          <target_measure>" where day_num is number of days since
-          forecast_ate to each date in forecast time range.
+          Name of the forecast target, with format "<day_num> <unit>
+          ahead <target_measure>" where day_num is number of days/weeks since
+          forecast_date to each date in forecast time range, and unit is the
+          time unit of the forecast, i.e. day or wk.
         - target_end_date: datetime.datetime
           last date of forecast in YYYY-MM-DD format.
         - location: str
           2 digit FIPS code.
         - type: str
-          "quantile" or "point"
+          "quantile"
         - quantile: str
           quantiles of forecast target measure, with format 0.###.
         - value: float
@@ -147,15 +155,15 @@ class OutputMapper:
         Number SEIR model parameter sets of sample.
     targets: list(str)
         Names of the targets to forecast, should be interpretable by Target.
+    forecast_time_units: list(str)
+        Names of the time unit of forecast, should be interpretable by
+        ForecastTimeUnit.
     forecast_date: datetime.date
         Date when the forecast is done, default the same day when the mapper
         runs.
     next_epi_week: epiweeks.week
         The coming epi weeks, with the start date of which the forecast time
         window begins.
-    forecast_time_units: list(str)
-        Time units of the forecast target, should be interpretable by
-        ForecastTimeUnit. Currently the mapper only supports unit 'day'.
     quantiles: list(float)
         Values between 0-1, which are the quantiles of the forecast target
         to collect. For default value check QUANTILES.
@@ -171,9 +179,9 @@ class OutputMapper:
                  fips,
                  N_samples=5000,
                  targets=TARGETS,
+                 forecast_time_units=FORECAST_TIME_UNITS,
                  forecast_date=FORECAST_DATE,
                  next_epi_week=NEXT_EPI_WEEK,
-                 forecast_time_units=FORECAST_TIME_UNITS,
                  quantiles=QUANTILES,
                  forecast_uncertainty='default'):
 
@@ -184,7 +192,9 @@ class OutputMapper:
         self.forecast_date = forecast_date
         self.forecast_time_range = [datetime.fromordinal(next_epi_week.startdate().toordinal()) + timedelta(n)
                                     for n in range(FORECAST_WEEKS_NUM * 7)]
-
+        # remove past predictions
+        self.forecast_time_range = [t for t in self.forecast_time_range if datetime.date(t) >
+                                    datetime.date(self.forecast_date)]
         self.quantiles = quantiles
         self.forecast_uncertainty = ForecastUncertainty(forecast_uncertainty)
 
@@ -228,9 +238,8 @@ class OutputMapper:
         model_ensemble, chi_squares = er.model_ensemble(
             override_params=override_params, N_samples=self.N_samples, chi_square=True)
         model_ensemble = np.append([self.model], model_ensemble)
-        chi_squares = np.append([self.fit_results['chi2_hosps']
-                              + self.fit_results['chi2_deaths']
-                              + self.fit_results['chi2_cases']], chi_squares)
+        chi_squares = np.append(sum([self.fit_results[k] for k in self.fit_results if k.startswith('chi2_')]),
+                                chi_squares)
 
         return model_ensemble, chi_squares
 
@@ -246,38 +255,47 @@ class OutputMapper:
         target: Target
             The target to forecast.
         unit: ForecastTimeUnit
-            Time unit to aggregate the forecast. Currently supports
-            ForecastTimeUnit.DAY
+            Time unit to aggregate the forecast.
 
         Returns
         -------
         target_forecast: np.array
-            Forecast of target at given unit (currently only supports daily
-            forecast), with shape (len(self.forecast_time_range),)
+            Forecast of target at given unit (daily or weekly), with shape (
+            len(self.forecast_time_range),)
         """
-        if unit is ForecastTimeUnit.DAY:
-            if target is Target.INC_DEATH:
-                target_forecast = self.forecast_given_time_range(model.results['total_deaths_per_day'], model.t_list)
 
-            elif target is Target.INC_HOSP:
-                target_forecast = self.forecast_given_time_range(np.append([0],
-                                                                 np.diff(model.results['HGen_cumulative']
-                                                                       + model.results['HICU_cumulative'])),
-                                                                 model.t_list)
+        if target is Target.INC_DEATH:
+            target_forecast = self.forecast_given_time_range(model.results['total_deaths_per_day'], model.t_list)
 
-            elif target is Target.CUM_DEATH:
-                target_forecast = self.forecast_given_time_range(model.results['D'], model.t_list)
+        elif target is Target.INC_HOSP:
+            target_forecast = self.forecast_given_time_range(np.append([0],
+                                                             np.diff(model.results['HGen_cumulative']
+                                                                   + model.results['HICU_cumulative'])),
+                                                             model.t_list)
 
-            else:
-                raise ValueError(f'Target {target} is not implemented')
-
-            target_forecast = pd.Series(target_forecast,
-                                        index=target_column_name([(t - self.forecast_date).days for t in
-                                                                  self.forecast_time_range],
-                                                                  target, unit))
+        elif target is Target.CUM_DEATH:
+            target_forecast = self.forecast_given_time_range(model.results['D'], model.t_list)
 
         else:
-            raise ValueError(f'Forecast time unit {unit} is not supported')
+            raise ValueError(f'Target {target} is not implemented')
+
+        if unit is ForecastTimeUnit.DAY:
+            num_of_units = [(datetime.date(t) - datetime.date(self.forecast_date)).days for t in
+                            self.forecast_time_range]
+            target_end_date = self.forecast_time_range
+        elif unit is ForecastTimeUnit.WK:
+            # n wk forecast are forecast for future Saturdays.
+            saturdays = np.where([t.weekday() == 5 for t in self.forecast_time_range])[0]
+            num_of_units = list(range(1, saturdays.shape[0] + 1))
+            target_forecast = target_forecast[saturdays,]
+            target_end_date = [self.forecast_time_range[n] for n in saturdays]
+        else:
+            raise ValueError(f'Forecast time unit {unit} is not implemented')
+
+        target_forecast = pd.DataFrame(target_forecast,
+                                       index=list(target_column_name(num_of_units, target, unit)))
+        target_forecast['target_end_date'] = target_end_date
+        target_forecast = target_forecast.set_index('target_end_date', append=True)
 
         return target_forecast
 
@@ -295,19 +313,23 @@ class OutputMapper:
         -------
         forecast_ensemble: dict(pd.DataFrame)
             Contains forecast of target within the forecast time window run by
-            each model from the model ensemble. With "<day_num> day ahead
+            each model from the model ensemble. With "<num> <unit> ahead
             <target_measure>" as index, and corresponding value from each model
-            as columns.
+            as columns, where unit can be 'day' or 'wk' depending on the
+            forecast_time_units.
         """
 
-        forecast_ensemble = defaultdict(list)
+        forecast_ensemble = defaultdict(dict)
         for target in self.targets:
             for unit in self.forecast_time_units:
+                forecast_ensemble[target.value][unit.value] = list()
                 for model in model_ensemble:
                     target_forecast = self.forecast_target(model, target, unit).fillna(0)
-                    target_forecast[target_forecast < 0] = 0
-                    forecast_ensemble[target.value].append(target_forecast)
-            forecast_ensemble[target.value] = pd.concat(forecast_ensemble[target.value], axis=1)
+                    forecast_ensemble[target.value][unit.value].append(target_forecast)
+                forecast_ensemble[target.value][unit.value] = pd.concat(forecast_ensemble[target.value][unit.value],
+                                                                        axis=1)
+                # set all negative compartment size to zero
+                forecast_ensemble[target.value][unit.value][forecast_ensemble[target.value][unit.value] < 0] = 0
         return forecast_ensemble
 
     def _adjust_forecast_dist(self, data, h, T):
@@ -358,9 +380,9 @@ class OutputMapper:
           :  np.array
             Value of data at given quantile.
         """
-        # remove lower 10% and upper 10% quantile to increase stability.
-        lower = np.quantile(data, 0.1)
-        upper = np.quantile(data, 0.9)
+        # remove lower 10% and upper 10% percentile to increase stability.
+        data = np.array(data)
+        lower, upper = np.quantile(data, (0.1, 0.9))
         not_outlier = (data > lower) & (data < upper)
         data = data[not_outlier]
         weights = weights[not_outlier]
@@ -397,67 +419,30 @@ class OutputMapper:
 
         quantile_result = list()
         for target_name in forecast_ensemble:
-            target_output = \
-                forecast_ensemble[target_name].apply(
-                    lambda l: self._weighted_quantiles(self.quantiles,
-                                                       self._adjust_forecast_dist(l, int(l.name.split(' ')[0]),
-                                                                                 (self.forecast_date - REF_DATE).days),
-                                                       chi_squares.max() - chi_squares), axis=1).rename('value')
+            for unit_name in forecast_ensemble[target_name]:
+                target_output = \
+                    forecast_ensemble[target_name][unit_name].apply(
+                        lambda l: self._weighted_quantiles(self.quantiles, l,
+                                                           chi_squares.max() - chi_squares), axis=1)\
+                                                             .rename('value')
 
-            target_output = target_output.explode().reset_index().rename(columns={'index': 'target'})
-            target_output['quantile'] = np.tile(['%.3f' % q for q in self.quantiles],
-                                                forecast_ensemble[target_name].shape[0])
-            quantile_result.append(target_output)
+                target_output = target_output.explode().reset_index().rename(columns={'level_0': 'target'})
+                target_output['quantile'] = np.tile(['%.3f' % q for q in self.quantiles],
+                                                    forecast_ensemble[target_name][unit_name].shape[0])
+                quantile_result.append(target_output)
 
         quantile_result = pd.concat(quantile_result, axis=0)
         quantile_result['location'] = str(self.fips)
         quantile_result['location_name'] = us.states.lookup(self.fips).name
-        quantile_result['target_end_date'] = self.forecast_time_range[-1]
         quantile_result['type'] = 'quantile'
+        quantile_result['forecast_date'] = self.forecast_date
+        quantile_result['forecast_date'] = quantile_result['forecast_date'].dt.strftime('%Y-%m-%d')
 
         return quantile_result
 
-    def generate_point_result(self):
-        """
-        Generates results that contain the point estimate of the forecast with
-        format required for CDC model ensemble submission.
-
-        Parameters
-        ----------
-        forecast_ensemble: dict
-            Contains forecast of target within the forecast time window run by
-            each model from the model ensemble. With "<day_num> day ahead
-            <target_measure>" as index, and corresponding value from each model
-            as columns.
-
-        Returns
-        -------
-        point_result: pd.DataFrame
-            Contains the MLE point estimate of forecast with format
-            required for CDC model ensemble submission. For info on columns,
-            check description of self.results.
-
-        """
-        point_result = defaultdict(list)
-        for target in self.targets:
-            for unit in self.forecast_time_units:
-                target_forecast = self.forecast_target(self.model, target, unit)
-                point_result['value'].extend(target_forecast)
-                point_result['target'].extend(target_column_name([(t - self.forecast_date).days for t in
-                                                                  self.forecast_time_range],
-                                                                  target, unit))
-
-        point_result= pd.DataFrame(point_result)
-        point_result['location'] = str(self.fips)
-        point_result['location_name'] = us.states.lookup(self.fips).name
-        point_result['target_end_date'] = self.forecast_time_range[-1]
-        point_result['type'] = 'point'
-
-        return point_result
-
     def run(self):
         """
-        Runs forecast ensemble. Results contain quantiles and point of
+        Runs forecast ensemble. Results contain quantiles of
         the forecast targets and saves results to csv file.
 
         Returns
@@ -469,15 +454,16 @@ class OutputMapper:
               the date on which the submitted forecast data was made available in
               YYYY-MM-DD format
             - target: str
-              Name of the forecast target, with format "<day_num> day ahead
-              <target_measure>" where day_num is number of days since
-              forecast_date to each date in forecast time range.
+              Name of the forecast target, with format "<day_num> <unit> ahead
+              <target_measure>" where day_num is number of days/weeks since
+              forecast_date to each date in forecast time range, and unit is
+              the time unit of the forecast, i.e. day or wk.
             - target_end_date: datetime.datetime
-              last date of forecast in YYYY-MM-DD format.
+              Date of forecast target in YYYY-MM-DD format.
             - location: str
               2 digit FIPS code.
             - type: str
-              "quantile" or "point"
+              "quantile"
             - quantile: str
               quantiles of forecast target measure, with format 0.###.
             - value: float
@@ -488,15 +474,11 @@ class OutputMapper:
         """
         models, chi_squares = self.run_model_ensemble()
         forecast_ensemble = self.generate_forecast_ensemble(models)
-        quantile_result = self.generate_quantile_result(forecast_ensemble, chi_squares)
-        point_result = self.generate_point_result()
-        self.result = pd.concat([quantile_result, point_result])
-        for col in ['location', 'quantile']:
-            self.result[col] = self.result[col].apply('="{}"'.format)
+        self.result = self.generate_quantile_result(forecast_ensemble, chi_squares)
         forecast_date = self.forecast_date.strftime('%Y-%m-%d')
         self.result.to_csv(os.path.join(OUTPUT_FOLDER,
                                         f'{forecast_date}_{TEAM}_{MODEL}_{self.fips}.csv'),
-                           index=False)
+                                        index=False)
 
         return self.result
 
@@ -541,7 +523,7 @@ class OutputMapper:
                  team_name=TEAM)
         )
 
-        output_f = open(os.path.join(OUTPUT_FOLDER, 'metadata-CovidActNow.txt'), 'w')
+        output_f = open(os.path.join(OUTPUT_FOLDER, f'metadata-{TEAM}-{MODEL}.txt'), 'w')
         output_f.write(metadata)
         output_f.close()
 
@@ -561,7 +543,7 @@ def run_all(parallel=False):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    fips_list = list(df_whitelist['fips'].str[:2].unique())[:2]
+    fips_list = list(df_whitelist['fips'].str[:2].unique())
 
     if parallel:
         p = Pool()
@@ -576,7 +558,8 @@ def run_all(parallel=False):
     forecast_date = FORECAST_DATE.strftime('%Y-%m-%d')
 
     results = pd.concat(results)
-    results.to_csv(os.path.join(OUTPUT_FOLDER, f'{forecast_date}_{TEAM}_{MODEL}.csv'),
+    results = results[COLUMNS].sort_values(COLUMNS)
+    results.to_csv(os.path.join(OUTPUT_FOLDER, f'{forecast_date}-{TEAM}-{MODEL}.csv'),
                    index=False)
 
     OutputMapper.generate_metadata()
