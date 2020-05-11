@@ -21,16 +21,16 @@ forecast_startdate: $forecast_startdate
 forecast_frequency: weekly
 
 data_inputs_known: expert elicitation and literature review
-data_source_known: JHU
+data_source_known: NYTimes for case and death data
 
 this_model_is_an_ensemble: FALSE
 this_model_is_unconditional: TRUE
 
 methods: >-
-    Forecast based on expert opinions in public health and epidemiology of infectious disease, thorough literature
-    review and daily feed data in cases, deaths, and hostpitalizations.
+    Forecast by model built by PhDs in epidemiology and physics, based on expert opinions in public health and
+    epidemiology of infectious disease, and updated based on daily feed data in cases, deaths, and hostpitalizations.
 
 methods_long: >-
     The SEIR Model makes forecast of $Model_target_names by fitting predicted cases, deaths, and hospitalizations to
-    the observations. Quantiles of the forecast are derived by generating a random parameter ensemble from the parameters'
-    prior distribution, and simulating the MLE SEIR model with parameter sets from the parameter ensemble.
+    the observations. Quantiles of the forecast are derived by combining model parameters' prior distribution and
+    chi squares of fitting the SEIR models to the observations.
