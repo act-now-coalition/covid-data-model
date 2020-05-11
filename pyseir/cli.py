@@ -13,6 +13,7 @@ from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
+from libs.datasets import combined_datasets
 from pyseir.inference.whitelist_generator import WhitelistGenerator
 import pandas as pd
 
@@ -38,6 +39,9 @@ ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
 
 
 def _cache_global_datasets():
+    combined_datasets.build_us_latest_with_all_fields()
+    combined_datasets.build_us_timeseries_with_all_fields()
+
     global nyt_dataset, cds_dataset
     if cds_dataset is None:
         cds_dataset = CDSDataset.local()
