@@ -39,6 +39,9 @@ ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
 
 
 def _cache_global_datasets():
+    # Populate cache for combined latest and timeseries.  Caching pre-fork
+    # will make sure cache is populated for subprocesses.  Return value
+    # is not needed as the only goal is to populate the cache.
     combined_datasets.build_us_latest_with_all_fields()
     combined_datasets.build_us_timeseries_with_all_fields()
 
