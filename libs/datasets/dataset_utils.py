@@ -327,6 +327,10 @@ def fill_fields_and_timeseries_from_column(
 
     Returns: Updated DataFrame with requested column filled from data_source data.
     """
+    # Here is a nice tutorial on indexing:
+    # https://jakevdp.github.io/PythonDataScienceHandbook/03.05-hierarchical-indexing.html
+
+    # Copy so this code can work on the data inplace without modifying the inputs.
     existing_df = existing_df.copy()
     new_df = new_df.copy()
     if column_to_fill not in existing_df.columns:
