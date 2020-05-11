@@ -1,9 +1,9 @@
 import numbers
 from io import StringIO
+from typing import Mapping, List
+
 import pandas as pd
 import numpy as np
-import typing
-
 from libs.datasets.dataset_utils import (
     fill_fields_and_timeseries_from_column,
     fill_fields_with_data_source,
@@ -29,7 +29,7 @@ class NoNanDict(dict):
 
     @staticmethod
     def make_value(v):
-        if isinstance(v, typing.Mapping):
+        if isinstance(v, Mapping):
             return NoNanDict(v.items())
         else:
             return v
@@ -39,7 +39,7 @@ class NoNanDict(dict):
         return {k: NoNanDict.make_value(v) for k, v in a if not NoNanDict.is_nan(v)}
 
 
-def to_dict(keys: typing.List[str], df: pd.DataFrame):
+def to_dict(keys: List[str], df: pd.DataFrame):
     """Transforms df into a dict mapping columns `keys` to a dict of the record/row in df.
 
     Use this to extract the values from a DataFrame for easier comparisons in assert statements.
