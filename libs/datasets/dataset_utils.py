@@ -303,55 +303,71 @@ def _clear_common_values(existing_df, data_source, index_fields, column_to_fill)
 
 def fill_fields_and_timeseries_from_column(
     existing_df: pd.DataFrame,
-    data_source: pd.DataFrame,
+    new_df: pd.DataFrame,
     index_fields: List[str],
     date_field: str,
     column_to_fill: str,
 ) -> pd.DataFrame:
     """
-    Return a copy of existing_df with column column_to_fill populated from data_source. Values in existing_df are copied
-    to the return value except for column_to_fill of rows with index_fields present in data_source.
+    Return a copy of existing_df with column column_to_fill populated from new_df. Values in existing_df are copied
+    to the return value except for column_to_fill of rows with index_fields present in new_df.
 
     If the data frames represent timeseries than pass the name of the time column in date_field. This will clear
-    'column_to_fill' for all times for each index_fields in data_source. This prevents the return value containing
-    timeseries with a blend of values from existing_df and data_source.
+    'column_to_fill' for all times for each index_fields in new_df. This prevents the return value containing
+    timeseries with a blend of values from existing_df and new_df.
 
     See examples in dataset_utils_test.py
 
     Args:
         existing_df: Existing data frame
-        data_source: Data used to fill existing df columns
+        new_df: Data used to fill existing df columns
         index_fields: List of columns to use as common index.
         date_field: the time column name if the data frames represent timeseries, otherwise ''
         column_to_fill: List of columns to add into existing_df from data_source
 
     Returns: Updated DataFrame with requested column filled from data_source data.
     """
+    existing_df = existing_df.copy()
+    new_df = new_df.copy()
     if column_to_fill not in existing_df.columns:
         existing_df[column_to_fill] = None
 
     if date_field:
-        _clear_common_values(existing_df, data_source, index_fields, column_to_fill)
+        _clear_common_values(existing_df, new_df, index_fields, column_to_fill)
         index_fields.append(date_field)
 
-    existing_df.set_index(index_fields, inplace=True)
-    data_source.set_index(index_fields, inplace=True)
-    common_labels = existing_df.index.intersection(data_source.index)
-    # Sort suggested by 'PerformanceWarning: indexing past lexsort depth may impact performance'
-    # common_labels is a sparse subset of all labels in both DataFrame and the values are looked up
-    # one by one.
-    existing_df.sort_index(inplace=True, sort_remaining=True)
-    data_source.sort_index(inplace=True, sort_remaining=True)
-    existing_df.loc[common_labels.values, column_to_fill] = data_source.loc[
-        common_labels.values, column_to_fill
-    ]
+    new_df.set_index(index_fields, inplace=True)
+    if len(existing_df):
+        existing_df.set_index(index_fields, inplace=True)
+        common_labels = existing_df.index.intersection(new_df.index)
+    else:
+        common_labels = []
 
-    missing_new_data = data_source.loc[
-        data_source.index.difference(common_labels), [column_to_fill]
-    ]
+    if len(common_labels):
+        # existing_df is not empty and contains labels in common with new_df. When date_field is set the date is
+        # included in the compared labels and dates that are not in exsiting_df are appended later.
+
+        # Sort suggested by 'PerformanceWarning: indexing past lexsort depth may impact performance'
+        # common_labels is a sparse subset of all labels in both DataFrame and the values are looked up
+        # one by one.
+        existing_df.sort_index(inplace=True, sort_remaining=True)
+        new_df.sort_index(inplace=True, sort_remaining=True)
+
+        existing_df.loc[common_labels.values, column_to_fill] = new_df.loc[
+            common_labels.values, column_to_fill
+        ]
+        missing_new_data = new_df.loc[
+            new_df.index.difference(common_labels), [column_to_fill]
+        ]
+    else:
+        # There are no labels in common so all rows of new_df are to be appended to existing_df.
+        missing_new_data = new_df.loc[:, [column_to_fill]]
+
+    # Revert 'fips', 'state' etc back to regular columns
     existing_df.reset_index(inplace=True)
     missing_new_data.reset_index(inplace=True)
 
+    # Concat the existing data with new rows from new_data, creating a new integer index
     return pd.concat([existing_df, missing_new_data], ignore_index=True)
 
 
