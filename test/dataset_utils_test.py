@@ -44,10 +44,14 @@ def to_dict(keys: typing.List[str], df: pd.DataFrame):
 
     Use this to extract the values from a DataFrame for easier comparisons in assert statements.
     """
-    if any(df.index.names):
-        df = df.reset_index()
-    df = df.set_index(keys)
-    return df.to_dict(orient="index", into=NoNanDict)
+    try:
+        if any(df.index.names):
+            df = df.reset_index()
+        df = df.set_index(keys)
+        return df.to_dict(orient="index", into=NoNanDict)
+    except Exception:
+        print(f"Problem with {df}")
+        raise
 
 
 def test_fill_fields_and_timeseries_from_column():
@@ -201,7 +205,7 @@ def test_fill_fields_with_data_source_add_column():
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
 
 
-def test_fill_fields_with_data_source_empty_input():
+def test_fill_fields_with_data_source_no_rows_input():
     existing_df = pd.read_csv(StringIO("fips,state,aggregate_level,county,preserved\n"))
     new_df = pd.read_csv(
         StringIO(
@@ -219,6 +223,31 @@ def test_fill_fields_with_data_source_empty_input():
         StringIO(
             "fips,state,aggregate_level,county,current_icu,preserved\n"
             "55007,ZZ,county,West County,28,\n"
+            "55,ZZ,state,Grand State,64,\n"
+        )
+    )
+    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
+
+
+def test_fill_fields_with_data_source_empty_input():
+    existing_df = pd.DataFrame()
+    new_df = pd.read_csv(
+        StringIO(
+            "fips,state,aggregate_level,county,current_icu\n"
+            "55,ZZ,state,Grand State,64\n"
+        )
+    )
+
+    result = fill_fields_with_data_source(
+        existing_df,
+        new_df,
+        "fips state aggregate_level county".split(),
+        ["current_icu"],
+    )
+
+    expected = pd.read_csv(
+        StringIO(
+            "fips,state,aggregate_level,county,current_icu,preserved\n"
             "55,ZZ,state,Grand State,64,\n"
         )
     )
