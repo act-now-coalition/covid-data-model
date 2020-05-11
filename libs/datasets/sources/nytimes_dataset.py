@@ -45,7 +45,7 @@ class NYTimesDataset(data_source.DataSource):
         super().__init__(data)
 
     @classmethod
-    def load(cls) -> "NYTimesDataset":
+    def local(cls) -> "NYTimesDataset":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.DATA_FOLDER / cls.COUNTIES_DATA_FILE)
 
