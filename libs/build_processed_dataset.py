@@ -34,7 +34,7 @@ _logger = logging.getLogger(__name__)
 @lru_cache(None)
 def _get_interventions_df():
     # TODO: read this from a dataset class
-    interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
+    interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/interventions.json"
     interventions = requests.get(interventions_url).json()
     columns = [CommonFields.STATE, "intervention"]
     return pd.DataFrame(list(interventions.items()), columns=columns)
