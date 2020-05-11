@@ -1,9 +1,7 @@
 import pandas as pd
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
-from libs.datasets.common_fields import CommonIndexFields
-
+from libs.datasets.common_fields import CommonFields, CommonIndexFields
 
 
 class NYTimesDataset(data_source.DataSource):
@@ -33,8 +31,8 @@ class NYTimesDataset(data_source.DataSource):
         CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
     COMMON_FIELD_MAP = {
-        TimeseriesDataset.Fields.CASES: Fields.CASES,
-        TimeseriesDataset.Fields.DEATHS: Fields.DEATHS,
+        CommonFields.CASES: Fields.CASES,
+        CommonFields.DEATHS: Fields.DEATHS,
     }
 
     def __init__(self, input_path):
