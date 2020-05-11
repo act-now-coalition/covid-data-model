@@ -11,7 +11,7 @@ import functools
 
 @functools.lru_cache(None)
 def get_interventions():
-    interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
+    interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/interventions.json"
     interventions = requests.get(interventions_url).json()
     return interventions
 
@@ -19,7 +19,7 @@ def get_interventions():
 def get_intervention_for_state(state):
     return Intervention.from_str(get_interventions()[state])
     # TODO: read this from a dataset class
-    # interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
+    # interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/interventions.json"
     # interventions = requests.get(interventions_url).json()
     # return Intervention.from_str(interventions[state])
 
