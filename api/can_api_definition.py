@@ -80,7 +80,7 @@ class _Actuals(pydantic.BaseModel):
     hospitalBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
     contactTracers: Optional[int] = pydantic.Field(
-        ..., description="# of Contact Tracers"
+        default=None, description="# of Contact Tracers"
     )
 
 
