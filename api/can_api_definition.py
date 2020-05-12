@@ -79,6 +79,7 @@ class _Actuals(pydantic.BaseModel):
     )
     hospitalBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
+    # contactTracers count is available for states, not counties.
     contactTracers: Optional[int] = pydantic.Field(
         default=None, description="# of Contact Tracers"
     )
