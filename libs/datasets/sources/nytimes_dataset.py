@@ -10,7 +10,9 @@ from libs.datasets.common_fields import CommonFields
 
 
 class NYTimesDataset(data_source.DataSource):
-    DATA_URL = "https://github.com/nytimes/covid-19-data/raw/master/us-counties.csv"
+    #DATA_URL = "https://github.com/nytimes/covid-19-data/raw/master/us-counties.csv"
+    #DATA_URL = "https://github.com/nytimes/covid-19-data/raw/621fb652b003f049c1c3bc3985160da9db4fcf6d/us-counties.csv" #May 9 build
+    DATA_URL = "https://github.com/nytimes/covid-19-data/raw/d89108a8c52f3d100782e7bd63b678120648bb66/us-counties.csv" #May 11 build
     SOURCE_NAME = "NYTimes"
 
     HAS_AGGREGATED_NYC_BOROUGH = True

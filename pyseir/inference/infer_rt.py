@@ -191,12 +191,16 @@ class RtInferenceEngine:
                              .round()
 
         zeros = smoothed.index[smoothed.eq(0)]
+        nonzeros = [idx for idx, val in enumerate(smoothed) if val!= 0]
         if len(zeros) == 0:
             idx_start = 0
+            idx_newstart = 0
         else:
             last_zero = zeros.max()
             idx_start = smoothed.index.get_loc(last_zero) + 1
-        smoothed = smoothed.iloc[idx_start:]
+            idx_newstart = nonzeros[1]
+        #smoothed = smoothed.iloc[idx_start:]
+        smoothed = smoothed.iloc[idx_newstart:]
         original = timeseries.loc[smoothed.index]
 
         if plot:
@@ -359,7 +363,6 @@ class RtInferenceEngine:
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
         for timeseries_type in available_timeseries:
-
             df = pd.DataFrame()
             dates, times, posteriors = self.get_posteriors(timeseries_type)
             if posteriors is not None:
@@ -379,7 +382,10 @@ class RtInferenceEngine:
                     df_all = df
                 else:
                     df_all = df_all.merge(df, left_index=True, right_index=True, how='outer')
-
+                #Natasha There are NaN's here
+                pd.set_option('display.max_rows', None)
+                print('DF_ALL~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+                print(df_all)
                 # Compute the indicator lag using the curvature alignment method.
                 if timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS) \
                         and f'Rt_MAP__{TimeseriesType.NEW_CASES.value}' in df_all.columns:
@@ -441,8 +447,8 @@ class RtInferenceEngine:
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(.1, 5)
-            plt.yscale('log')
+            plt.ylim(0, 3)
+            #plt.yscale('log')
 
             plt.ylabel('$R_t$', fontsize=16)
             plt.legend()

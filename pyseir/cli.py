@@ -264,10 +264,10 @@ def _run_all(
     run_mode=DEFAULT_RUN_MODE,
     generate_reports=False,
     output_interval_days=1,
-    skip_download=False,
+    skip_download=True,
     states_only=False,
     output_dir=None,
-    skip_whitelist=False,
+    skip_whitelist=True,
 ):
     if state:
         # Deprecate temporarily since not needed. Our full model fits have
@@ -277,16 +277,16 @@ def _run_all(
         #     _impute_start_dates(state)
         root.warn("running deprecated method")
         _infer_rt(state, states_only=states_only)
-        _run_mle_fits(state, states_only=states_only)
-        _run_ensembles(
-            state,
-            ensemble_kwargs=dict(
-                run_mode=run_mode,
-                generate_report=generate_reports,
-                covid_timeseries=nyt_dataset,
-            ),
-            states_only=states_only,
-        )
+        #_run_mle_fits(state, states_only=states_only)
+        #_run_ensembles(
+        #    state,
+        #    ensemble_kwargs=dict(
+        #        run_mode=run_mode,
+        #        generate_report=generate_reports,
+        #        covid_timeseries=nyt_dataset,
+        #    ),
+        #    states_only=states_only,
+        #)
         if generate_reports:
             _generate_state_reports(state)
         # remove outputs atm. just output at the end
