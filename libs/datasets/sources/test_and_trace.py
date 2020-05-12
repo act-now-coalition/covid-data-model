@@ -12,10 +12,10 @@ class TestAndTraceData(data_source.DataSource):
     SOURCE_NAME = "TestAndTrace"
 
     class Fields(object):
-        FIPS = (CommonFields.FIPS,)
-        STATE = (CommonFields.STATE,)
-        DATE = (CommonFields.DATE,)
-        CONTACT_TRACERS = (CommonFields.CONTACT_TRACERS_COUNT,)
+        FIPS = CommonFields.FIPS
+        STATE = CommonFields.STATE
+        DATE = CommonFields.DATE
+        CONTACT_TRACERS = CommonFields.CONTACT_TRACERS_COUNT
 
         # Not in the source file, added to conform to the expectations of this repo
         AGGREGATE_LEVEL = "aggregate_level"
