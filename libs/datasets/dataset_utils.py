@@ -270,7 +270,11 @@ def summarize(data, aggregate_level, groupby):
 
 
 def _clear_common_values(existing_df, data_source, index_fields, column_to_fill):
-    """For labels shared between existing_df and data_source, clear column_to_fill of existing_df inplace."""
+    """For index labels shared between existing_df and data_source, clear column_to_fill in existing_df.
+
+    existing_df is modified inplace. Index labels (the values in the index for one row) do not need to be unique in a
+    table.
+    """
     existing_df.set_index(index_fields, inplace=True)
     data_source.set_index(index_fields, inplace=True)
     common_labels_without_date = existing_df.index.intersection(data_source.index)
@@ -278,6 +282,7 @@ def _clear_common_values(existing_df, data_source, index_fields, column_to_fill)
         # Maybe only do this for rows with some value in column_to_fill.
         existing_df.sort_index(inplace=True, sort_remaining=True)
         existing_df.loc[common_labels_without_date, [column_to_fill]] = None
+        # TODO(tom): log this so that the context of the datasources is included, perhaps using a structlog.
         logging.warning(
             f"Duplicate timeseries data for column {column_to_fill} at labels {common_labels_without_date}"
         )
@@ -307,7 +312,7 @@ def fill_fields_and_timeseries_from_column(
         new_df: Data used to fill existing df columns
         index_fields: List of columns to use as common index.
         date_field: the time column name if the data frames represent timeseries, otherwise ''
-        column_to_fill: List of columns to add into existing_df from data_source
+        column_to_fill: column to add into existing_df from data_source
 
     Returns: Updated DataFrame with requested column filled from data_source data.
     """
@@ -326,7 +331,7 @@ def fill_fields_and_timeseries_from_column(
         index_fields.append(date_field)
 
     new_df.set_index(index_fields, inplace=True)
-    if len(existing_df):
+    if not existing_df.empty:
         existing_df.set_index(index_fields, inplace=True)
         common_labels = existing_df.index.intersection(new_df.index)
     else:
