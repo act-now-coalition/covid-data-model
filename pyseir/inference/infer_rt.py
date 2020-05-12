@@ -321,8 +321,7 @@ class RtInferenceEngine:
 
         return dates[start_idx:], times[start_idx:], posteriors
 
-    def infer_all(self, plot=True, shift_deaths=0):
-        print('WE ARE HEREEEEE~~~~~~~~~~~~~~~~~~')
+    def infer_all(self, plot=False, shift_deaths=0):
         """
         Infer R_t from all available data sources.
 
@@ -442,7 +441,9 @@ class RtInferenceEngine:
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(0, 5)
+            plt.ylim(.1, 5)
+            plt.yscale('log')
+
             plt.ylabel('$R_t$', fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
