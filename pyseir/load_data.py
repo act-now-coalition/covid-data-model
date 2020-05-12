@@ -170,7 +170,7 @@ def load_county_case_data():
     -------
     : pd.DataFrame
     """
-    county_case_data = NYTimesDataset.load().timeseries() \
+    county_case_data = NYTimesDataset.local().timeseries() \
                          .get_subset(AggregationLevel.COUNTY, country='USA') \
                          .get_data(country='USA')
     return county_case_data
@@ -186,7 +186,7 @@ def load_state_case_data():
     : pd.DataFrame
     """
 
-    state_case_data = NYTimesDataset.load().timeseries() \
+    state_case_data = NYTimesDataset.local().timeseries() \
                          .get_subset(AggregationLevel.STATE, country='USA') \
                          .get_data(country='USA')
     return state_case_data
