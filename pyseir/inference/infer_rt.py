@@ -320,7 +320,7 @@ class RtInferenceEngine:
 
         return dates[start_idx:], times[start_idx:], posteriors
 
-    def infer_all(self, plot=True, shift_deaths=0):
+    def infer_all(self, plot=False, shift_deaths=0):
         """
         Infer R_t from all available data sources.
 
