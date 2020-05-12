@@ -430,7 +430,8 @@ def fill_fields_with_data_source(
 
     Returns: Updated dataframe with requested columns filled from data_source data.
     """
-    assert len(columns_to_fill) == 1
+    if len(columns_to_fill) != 1:
+        raise AssertionError("Not supported")
     return fill_fields_and_timeseries_from_column(
         existing_df, data_source, index_fields, "", columns_to_fill[0]
     )
