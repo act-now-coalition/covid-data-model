@@ -58,6 +58,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POSITIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
 }
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
