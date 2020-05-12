@@ -79,6 +79,9 @@ class _Actuals(pydantic.BaseModel):
     )
     hospitalBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
+    contactTracers: Optional[int] = pydantic.Field(
+        ..., description="# of Contact Tracers"
+    )
 
 
 class CovidActNowAreaSummary(pydantic.BaseModel):
