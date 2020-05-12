@@ -80,9 +80,6 @@ PySEIR provides a command line interface in the activated environment. You can a
 Example:
 `pyseir build-all --states="New York"` will run state and county models for New York
 
-The flag `--states-only` will skip counties and the flag `--state` will only run
-a single state. These can be combined if you want to run something quickly.
-
 Check the `output/` folder for results.
 
 ### Model Output
