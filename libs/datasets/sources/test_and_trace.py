@@ -12,11 +12,12 @@ class TestAndTraceData(data_source.DataSource):
     SOURCE_NAME = "TestAndTrace"
 
     class Fields(object):
-        STATE = "state_code"
-        COUNTY = "county_name"
-        FIPS = "fips_code"
-        CONTACT_TRACERS = "# of Contact Tracers"
+        FIPS = (CommonFields.FIPS,)
+        STATE = (CommonFields.STATE,)
+        DATE = (CommonFields.DATE,)
+        CONTACT_TRACERS = (CommonFields.CONTACT_TRACERS_COUNT,)
 
+        # Not in the source file, added to conform to the expectations of this repo
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
@@ -24,6 +25,7 @@ class TestAndTraceData(data_source.DataSource):
         CommonIndexFields.COUNTRY: Fields.COUNTRY,
         CommonIndexFields.STATE: Fields.STATE,
         CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.DATE: Fields.DATE,
         CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
