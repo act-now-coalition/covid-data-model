@@ -191,10 +191,10 @@ class RtInferenceEngine:
                              .round()
 
         nonzeros = [idx for idx, val in enumerate(smoothed) if val!= 0]
-        if len(zeros) == 0:
+        if len(nonzeros) == 0:
             idx_start = 0
         else:
-            idx_start = nonzeros[1]
+            idx_start = nonzeros[0]
         smoothed = smoothed.iloc[idx_start:]
         original = timeseries.loc[smoothed.index]
 
@@ -320,7 +320,7 @@ class RtInferenceEngine:
 
         return dates[start_idx:], times[start_idx:], posteriors
 
-    def infer_all(self, plot=False, shift_deaths=0):
+    def infer_all(self, plot=True, shift_deaths=0):
         """
         Infer R_t from all available data sources.
 
@@ -428,7 +428,9 @@ class RtInferenceEngine:
                                  alpha=.4, color='darkseagreen')
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_hospitalizations'],
                             alpha=1, s=25, color='darkseagreen', label='New Hospitalizations', marker='d')
-
+            if 'Rt_MAP_composite' in df_all:
+                plt.scatter(df_all.index, df_all['Rt_MAP_composite'],
+                            alpha=1, s=25, color='yellow', label='Inferred $R_{t}$ Web', marker='d')
             plt.hlines([1.0], *plt.xlim(), alpha=1, color='g')
             plt.hlines([1.1], *plt.xlim(), alpha=1, color='gold')
             plt.hlines([1.3], *plt.xlim(), alpha=1, color='r')
