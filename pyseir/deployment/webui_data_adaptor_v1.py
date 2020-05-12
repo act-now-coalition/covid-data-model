@@ -107,9 +107,9 @@ class WebUIDataAdaptorV1:
                 CommonFields.POPULATION
             ]
         else:
-            population = self.population_data.get_record_for_state(
-                self.state_abbreviation
-            )[CommonFields.POPULATION]
+            population = self.population_data.get_record_for_state(self.state_abbreviation)[
+                CommonFields.POPULATION
+            ]
 
         # logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
         # pyseir_outputs = load_data.load_ensemble_results(fips)
@@ -122,9 +122,7 @@ class WebUIDataAdaptorV1:
         ]
         if current_hosp is not None:
             t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]
-            t_latest_hosp_data_date = t0_simulation + timedelta(
-                days=int(t_latest_hosp_data)
-            )
+            t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
 
             state_hosp_gen = load_data.get_compartment_value_on_date(
                 fips=fips[:2], compartment="HGen", date=t_latest_hosp_data_date
@@ -149,9 +147,7 @@ class WebUIDataAdaptorV1:
                     date=t_latest_hosp_data_date,
                     ensemble_results=pyseir_outputs,
                 )
-                current_hosp *= (county_hosp + county_icu) / (
-                    state_hosp_gen + state_hosp_icu
-                )
+                current_hosp *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
 
             hosp_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
 
@@ -168,11 +164,7 @@ class WebUIDataAdaptorV1:
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
         for i_policy, suppression_policy in enumerate(
-            [
-                key
-                for key in pyseir_outputs.keys()
-                if key.startswith("suppression_policy")
-            ]
+            [key for key in pyseir_outputs.keys() if key.startswith("suppression_policy")]
         ):
 
             output_for_policy = pyseir_outputs[suppression_policy]
@@ -196,9 +188,7 @@ class WebUIDataAdaptorV1:
             output_model[schema.INFECTED] = np.interp(
                 t_list_downsampled,
                 t_list,
-                np.add(
-                    output_for_policy["I"]["ci_50"], output_for_policy["A"]["ci_50"]
-                ),
+                np.add(output_for_policy["I"]["ci_50"], output_for_policy["A"]["ci_50"]),
             )  # Infected + Asympt.
             output_model[schema.INFECTED_A] = output_model[schema.INFECTED]
             output_model[schema.INFECTED_B] = hosp_rescaling_factor * np.interp(
@@ -232,10 +222,7 @@ class WebUIDataAdaptorV1:
                 output_model[schema.Rt_ci90] = np.interp(
                     t_list_downsampled,
                     t_list,
-                    2
-                    * fit_results["eps_error"]
-                    * fit_results["R0"]
-                    * np.ones(len(t_list)),
+                    2 * fit_results["eps_error"] * fit_results["R0"] * np.ones(len(t_list)),
                 )
             else:
                 output_model[schema.Rt] = 0
@@ -264,9 +251,7 @@ class WebUIDataAdaptorV1:
             # Fill in results for the Rt indicator.
             try:
                 rt_results = load_Rt_result(fips)
-                rt_results.index = rt_results["Rt_MAP_composite"].index.strftime(
-                    "%m/%d/%y"
-                )
+                rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%m/%d/%y")
                 merged = output_model.merge(
                     rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
                     right_index=True,
@@ -283,11 +268,9 @@ class WebUIDataAdaptorV1:
                 output_model[schema.RT_INDICATOR] = "NaN"
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
-            output_model[
+            output_model[[schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]] = output_model[
                 [schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
-            ] = output_model[[schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]].fillna(
-                "NaN"
-            )
+            ].fillna("NaN")
 
             # Truncate floats and cast as strings to match data model.
             int_columns = [
@@ -306,21 +289,10 @@ class WebUIDataAdaptorV1:
                 output_model[int_columns].fillna(0).astype(int).astype(str)
             )
             output_model.loc[
-                :,
-                [
-                    schema.Rt,
-                    schema.Rt_ci90,
-                    schema.RT_INDICATOR,
-                    schema.RT_INDICATOR_CI90,
-                ],
+                :, [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90,],
             ] = (
                 output_model[
-                    [
-                        schema.Rt,
-                        schema.Rt_ci90,
-                        schema.RT_INDICATOR,
-                        schema.RT_INDICATOR_CI90,
-                    ]
+                    [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90,]
                 ]
                 .fillna(0)
                 .round(decimals=4)
@@ -337,9 +309,7 @@ class WebUIDataAdaptorV1:
                 fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
             policy_enum = Intervention.from_webui_data_adaptor(suppression_policy)
-            output_path = output_path.replace(
-                "__INTERVENTION_IDX__", str(policy_enum.value)
-            )
+            output_path = output_path.replace("__INTERVENTION_IDX__", str(policy_enum.value))
             with open(output_path, "w") as f:
                 json.dump(output_model, f)
 

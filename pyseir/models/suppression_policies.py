@@ -317,10 +317,7 @@ def generate_empirical_distancing_policy(
 
             # If lockdown, then we don't care about any others, just set to
             # future suppression.
-            if (
-                pd.isnull(policies["stay_at_home"])
-                and t_actual > policies["stay_at_home"]
-            ):
+            if pd.isnull(policies["stay_at_home"]) and t_actual > policies["stay_at_home"]:
                 rho_this_t = future_suppression
             rho.append(rho_this_t)
 
@@ -369,9 +366,7 @@ def generate_empirical_distancing_policy_by_state(
         reference_start_date = min([infer_t0(fips) for fips in counties_fips])
 
     # Aggregate the counties to the state level, weighted by population.
-    weight = county_metadata.loc[
-        county_metadata.state == state, "total_population"
-    ].values
+    weight = county_metadata.loc[county_metadata.state == state, "total_population"].values
     weight = weight / weight.sum()
     results = []
     for fips in counties_fips:
@@ -411,14 +406,10 @@ def piecewise_parametric_policy(x, t_list):
     split_power_law = x[0]
     suppression_levels = x[1:]
     period = int(np.max(t_list) - np.min(t_list))
-    periods = np.array(
-        [(t + 1) ** split_power_law for t in range(len(suppression_levels))]
-    )
+    periods = np.array([(t + 1) ** split_power_law for t in range(len(suppression_levels))])
     periods = (periods / periods.sum() * period).cumsum()
     periods[-1] += 0.001  # Prevents floating point errors.
-    suppression_levels = [
-        suppression_levels[np.argwhere(t <= periods)[0][0]] for t in t_list
-    ]
+    suppression_levels = [suppression_levels[np.argwhere(t <= periods)[0][0]] for t in t_list]
     policy = interp1d(t_list, suppression_levels, fill_value="extrapolate")
     return policy
 
@@ -448,9 +439,7 @@ def fourier_parametric_policy(x, t_list, suppression_bounds=(0.5, 1.5)):
     frequency_domain = np.zeros(len(t_list))
     frequency_domain[0] = (3 * (t_list.max() - t_list.min()) / 4) * x[0]
     frequency_domain[1 : len(x)] = x[1:]
-    time_domain = (
-        np.fft.ifft(frequency_domain).real + np.fft.ifft(frequency_domain).imag
-    )
+    time_domain = np.fft.ifft(frequency_domain).real + np.fft.ifft(frequency_domain).imag
 
     return interp1d(
         t_list,

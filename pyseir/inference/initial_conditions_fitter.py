@@ -117,9 +117,7 @@ class InitialConditionsFitter:
         : dict
             Fit parameters norm, t0, scale.
         """
-        x0 = dict(
-            norm=1, t0=5, scale=20, error_norm=0.01, error_t0=0.1, error_scale=0.01
-        )
+        x0 = dict(norm=1, t0=5, scale=20, error_norm=0.01, error_t0=0.1, error_scale=0.01)
         m = iminuit.Minuit(self.exponential_loss, **x0, errordef=0.5)
         fit = m.migrad()
         return {val["name"]: val["value"] for val in fit.params}
@@ -325,9 +323,9 @@ def generate_start_times_for_state(state, generate_report=False):
     # Plot doubling time by population density
     merged.loc[samples_with_no_data, "imputed_start_time"] = True
     merged.loc[samples_with_data, "imputed_start_time"] = False
-    merged.loc[samples_with_data, "doubling_rate_days"] = np.log(2) * merged[
-        "model_params"
-    ][samples_with_data].apply(lambda x: x["scale"])
+    merged.loc[samples_with_data, "doubling_rate_days"] = np.log(2) * merged["model_params"][
+        samples_with_data
+    ].apply(lambda x: x["scale"])
     merged.to_pickle(
         os.path.join(state_dir, "data", f"summary__{state}_imputed_start_times.pkl")
     )
@@ -335,9 +333,7 @@ def generate_start_times_for_state(state, generate_report=False):
     if generate_report:
         # Plot population density
         plt.figure(figsize=(14, 4))
-        for i, x in enumerate(
-            ("population_density", "housing_density", "total_population")
-        ):
+        for i, x in enumerate(("population_density", "housing_density", "total_population")):
             plt.subplot(1, 3, i + 1)
             plt.title(state)
             sns.jointplot(
@@ -349,9 +345,7 @@ def generate_start_times_for_state(state, generate_report=False):
             )
             plt.xlabel("log10 Population Density")
         plt.savefig(
-            os.path.join(
-                state_dir, "reports", f"summary__{state}__population_density.pdf"
-            ),
+            os.path.join(state_dir, "reports", f"summary__{state}__population_density.pdf"),
             bbox_inches="tight",
         )
         plt.close()

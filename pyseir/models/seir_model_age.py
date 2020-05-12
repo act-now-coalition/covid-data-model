@@ -306,9 +306,7 @@ class SEIRModelAge:
 
         self.hospitalization_rate_general = np.array(hospitalization_rate_general)
         self.hospitalization_rate_icu = np.array(hospitalization_rate_icu)
-        self.hospitalization_length_of_stay_general = (
-            hospitalization_length_of_stay_general
-        )
+        self.hospitalization_length_of_stay_general = hospitalization_length_of_stay_general
         self.hospitalization_length_of_stay_icu = hospitalization_length_of_stay_icu
         self.hospitalization_length_of_stay_icu_and_ventilator = (
             hospitalization_length_of_stay_icu_and_ventilator
@@ -483,22 +481,15 @@ class SEIRModelAge:
         rate_in_hospital_general = (
             self.hospitalization_rate_general - self.hospitalization_rate_icu
         ) / self.symptoms_to_hospital_days
-        rate_in_hospital_icu = (
-            self.hospitalization_rate_icu / self.symptoms_to_hospital_days
-        )
+        rate_in_hospital_icu = self.hospitalization_rate_icu / self.symptoms_to_hospital_days
         rate_out_of_I = (
-            aging_rate_out
-            + rate_recovered
-            + rate_in_hospital_general
-            + rate_in_hospital_icu
+            aging_rate_out + rate_recovered + rate_in_hospital_general + rate_in_hospital_icu
         )
 
         Z_I_E = np.zeros((age_group_num, age_group_num))
         np.fill_diagonal(Z_I_E, self.sigma * self.gamma)  # from E to I
         Z_I_A = np.zeros((age_group_num, age_group_num))
-        Z_I_I = np.diag(-rate_out_of_I) + np.diag(
-            aging_rate_in, k=-1
-        )  # transition out of I
+        Z_I_I = np.diag(-rate_out_of_I) + np.diag(aging_rate_in, k=-1)  # transition out of I
         Z_I_nonICU = np.zeros((age_group_num, age_group_num))
         Z_I_ICU = np.zeros((age_group_num, age_group_num))
         Z_I = np.concatenate([Z_I_E, Z_I_A, Z_I_I, Z_I_nonICU, Z_I_ICU], axis=1)
@@ -506,15 +497,12 @@ class SEIRModelAge:
         # rates of transition out of nonICU (recovery, death and aging)
         # and into nonICU (aging and from infected)
         died_from_hosp = (
-            self.mortality_rate_from_hospital
-            / self.hospitalization_length_of_stay_general
+            self.mortality_rate_from_hospital / self.hospitalization_length_of_stay_general
         )
         recovered_after_hospital_general = (
             1 - self.mortality_rate_from_hospital
         ) / self.hospitalization_length_of_stay_general
-        rate_out_of_nonICU = (
-            aging_rate_out + died_from_hosp + recovered_after_hospital_general
-        )
+        rate_out_of_nonICU = aging_rate_out + died_from_hosp + recovered_after_hospital_general
 
         Z_nonICU_E = np.zeros((age_group_num, age_group_num))
         Z_nonICU_A = np.zeros((age_group_num, age_group_num))
@@ -542,8 +530,7 @@ class SEIRModelAge:
             / self.hospitalization_length_of_stay_icu
         )
         recovered_from_icu_vent = (
-            1
-            - np.maximum(self.mortality_rate_from_ICU, self.mortality_rate_from_ICUVent)
+            1 - np.maximum(self.mortality_rate_from_ICU, self.mortality_rate_from_ICUVent)
         ) / self.hospitalization_length_of_stay_icu_and_ventilator
         rate_out_of_ICU = (
             aging_rate_out
@@ -558,9 +545,7 @@ class SEIRModelAge:
         Z_ICU_I = np.diag(rate_in_hospital_icu)
         Z_ICU_nonICU = np.zeros((age_group_num, age_group_num))
         Z_ICU_ICU = np.diag(-(rate_out_of_ICU)) + np.diag(aging_rate_in, k=-1)
-        Z_ICU = np.concatenate(
-            [Z_ICU_E, Z_ICU_A, Z_ICU_I, Z_ICU_nonICU, Z_ICU_ICU], axis=1
-        )
+        Z_ICU = np.concatenate([Z_ICU_E, Z_ICU_A, Z_ICU_I, Z_ICU_nonICU, Z_ICU_ICU], axis=1)
         Z = np.concatenate([Z_E, Z_A, Z_I, Z_nonICU, Z_ICU])
 
         # Calculate R0 from transmission and transition matrix
@@ -637,8 +622,7 @@ class SEIRModelAge:
         """
         # np.split(y[:-7], 7)  <--- This is 7x slower than the code below.
         chunk_size = (
-            y[: -self.num_compartments_not_by_age].shape[0]
-            // self.num_compartments_by_age
+            y[: -self.num_compartments_not_by_age].shape[0] // self.num_compartments_by_age
         )
         S, E, A, I, HNonICU, HICU, HICUVent = [
             y[(i * chunk_size) : ((i + 1) * chunk_size)]
@@ -695,9 +679,7 @@ class SEIRModelAge:
 
         asymptomatic_and_recovered = self.delta * A
         age_in_A, age_out_A = self._aging_rate(A)
-        dAdt = (
-            age_in_A + exposed_and_asymptomatic - asymptomatic_and_recovered - age_out_A
-        )
+        dAdt = age_in_A + exposed_and_asymptomatic - asymptomatic_and_recovered - age_out_A
 
         # Fraction that didn't die or go to hospital
         infected_and_recovered_no_hospital = self.delta * I
@@ -732,9 +714,7 @@ class SEIRModelAge:
         )
 
         died_from_hosp = (
-            HNonICU
-            * mortality_rate_NonICU
-            / self.hospitalization_length_of_stay_general
+            HNonICU * mortality_rate_NonICU / self.hospitalization_length_of_stay_general
         )
         died_from_icu = (
             HICU
@@ -749,9 +729,7 @@ class SEIRModelAge:
         )
 
         recovered_after_hospital_general = (
-            HNonICU
-            * (1 - mortality_rate_NonICU)
-            / self.hospitalization_length_of_stay_general
+            HNonICU * (1 - mortality_rate_NonICU) / self.hospitalization_length_of_stay_general
         )
         recovered_from_icu_no_vent = (
             HICU
@@ -893,13 +871,13 @@ class SEIRModelAge:
         }
         """
         # Initial conditions vector
-        (
-            D_no_hgen,
-            D_no_icu,
-            HAdmissions_general,
-            HAdmissions_ICU,
-            TotalAllInfections,
-        ) = (0, 0, 0, 0, 0)
+        (D_no_hgen, D_no_icu, HAdmissions_general, HAdmissions_ICU, TotalAllInfections,) = (
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
         y0 = np.concatenate(
             [
                 self.S_initial,
@@ -988,9 +966,7 @@ class SEIRModelAge:
         self.results["total_deaths"] = D + D_no_hgen + D_no_icu
 
         # Derivatives of the cumulative give the "new" infections per day.
-        self.results["total_new_infections"] = np.append(
-            [0], np.diff(TotalAllInfections)
-        )
+        self.results["total_new_infections"] = np.append([0], np.diff(TotalAllInfections))
         self.results["total_deaths_per_day"] = np.append(
             [0], np.diff(self.results["total_deaths"])
         )
@@ -1030,9 +1006,7 @@ class SEIRModelAge:
             plt.subplot(221)
             plt.plot(self.t_list, self.results["S"], alpha=1, lw=2, label="Susceptible")
             plt.plot(self.t_list, self.results["E"], alpha=0.5, lw=2, label="Exposed")
-            plt.plot(
-                self.t_list, self.results["A"], alpha=0.5, lw=2, label="Asymptomatic"
-            )
+            plt.plot(self.t_list, self.results["A"], alpha=0.5, lw=2, label="Asymptomatic")
             plt.plot(self.t_list, self.results["I"], alpha=0.5, lw=2, label="Infected")
             plt.plot(
                 self.t_list,
@@ -1152,9 +1126,7 @@ class SEIRModelAge:
 
             plt.subplot(223)
             plt.plot(
-                self.t_list,
-                [self.suppression_policy(t) for t in self.t_list],
-                c="steelblue",
+                self.t_list, [self.suppression_policy(t) for t in self.t_list], c="steelblue",
             )
             plt.ylabel("Contact Rate Reduction")
             plt.xlabel("Time [days]", fontsize=12)

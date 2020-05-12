@@ -40,9 +40,7 @@ class CountyReport:
         Limits in days since simulation start to plot.
     """
 
-    def __init__(
-        self, fips, model_ensemble, county_outputs, filename, summary, xlim=(0, 360)
-    ):
+    def __init__(self, fips, model_ensemble, county_outputs, filename, summary, xlim=(0, 360)):
         self.fips = fips
         self.county_outputs = county_outputs
         self.model_ensemble = model_ensemble
@@ -98,9 +96,7 @@ class CountyReport:
         self.report.add_figure(fig)
 
         suppression_policies = [
-            key
-            for key in self.county_outputs.keys()
-            if key.startswith("suppression_policy")
+            key for key in self.county_outputs.keys() if key.startswith("suppression_policy")
         ]
 
         for suppression_policy in suppression_policies:
@@ -147,9 +143,7 @@ class CountyReport:
                 plt.xlabel("Days Since Case 0")
 
                 # Circular import :(
-                from pyseir.ensembles.ensemble_runner import (
-                    compartment_to_capacity_attr_map,
-                )
+                from pyseir.ensembles.ensemble_runner import compartment_to_capacity_attr_map
 
                 if compartment in compartment_to_capacity_attr_map:
                     percentiles = np.percentile(
@@ -181,10 +175,7 @@ class CountyReport:
                     )
 
                 # Plot data
-                if (
-                    compartment in ["D", "total_deaths"]
-                    and len(self.county_case_data) > 0
-                ):
+                if compartment in ["D", "total_deaths"] and len(self.county_case_data) > 0:
                     plt.errorbar(
                         (self.county_case_data.date - self.summary["t0"]).dt.days,
                         self.county_case_data.deaths,
@@ -212,9 +203,7 @@ class CountyReport:
             # -----------------------------
             # Plot peak Timing
             # -----------------------------
-            color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + list(
-                "bgrcmyk"
-            )
+            color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + list("bgrcmyk")
             marker_cycle = ["o", "s", "+", "d", "o"] * 4
 
             plt.subplot(5, 5, len(compartments) + 1)
@@ -366,12 +355,7 @@ class CountyReport:
             dt = datetime.datetime(day=1, month=month, year=2020)
             offset = (dt - self.summary["t0"]).days
             plt.vlines(
-                offset,
-                low_limit,
-                upp_limit,
-                color="firebrick",
-                alpha=0.4,
-                linestyles=":",
+                offset, low_limit, upp_limit, color="firebrick", alpha=0.4, linestyles=":",
             )
             plt.text(
                 offset,

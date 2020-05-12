@@ -103,9 +103,7 @@ def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
         run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
     else:
         for state_name in ALL_STATES:
-            run_state(
-                state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only
-            )
+            run_state(state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
 
 
 def _generate_state_reports(state=None):
@@ -118,11 +116,7 @@ def _generate_state_reports(state=None):
 
 
 def _map_outputs(
-    state=None,
-    output_interval_days=1,
-    states_only=False,
-    output_dir=None,
-    run_mode="default",
+    state=None, output_interval_days=1, states_only=False, output_dir=None, run_mode="default",
 ):
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
@@ -160,9 +154,7 @@ def _state_only_pipeline(
     _run_ensembles(
         state,
         ensemble_kwargs=dict(
-            run_mode=run_mode,
-            generate_report=generate_reports,
-            covid_timeseries=nyt_dataset,
+            run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
         ),
         states_only=states_only,
     )
@@ -230,8 +222,7 @@ def _build_all_for_states(
     # calculate ensemble
     root.info(f"running ensemble for {len(all_county_fips)} counties")
     ensemble_func = partial(
-        _run_county,
-        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+        _run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
     )
     p.map(ensemble_func, all_county_fips.keys())
 
@@ -467,15 +458,9 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-download",
-    default=False,
-    is_flag=True,
-    type=bool,
-    help="Skip the download phase.",
+    "--skip-download", default=False, is_flag=True, type=bool, help="Skip the download phase.",
 )
-@click.option(
-    "--output-dir", default=None, type=str, help="Directory to deploy webui output."
-)
+@click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 @click.option(
     "--states-only", default=False, is_flag=True, type=bool, help="Only model states"
 )
@@ -526,11 +511,7 @@ def run_all(
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-download",
-    default=False,
-    is_flag=True,
-    type=bool,
-    help="Skip the download phase.",
+    "--skip-download", default=False, is_flag=True, type=bool, help="Skip the download phase.",
 )
 @click.option(
     "--skip-whitelist",
@@ -539,9 +520,7 @@ def run_all(
     type=bool,
     help="Skip the whitelist phase.",
 )
-@click.option(
-    "--output-dir", default=None, type=str, help="Directory to deploy webui output."
-)
+@click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
     states,
     run_mode,

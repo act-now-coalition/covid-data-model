@@ -130,8 +130,7 @@ class RtInferenceEngine:
 
         # Serial period = Incubation + 0.5 * Infections
         self.serial_period = (
-            1 / self.default_parameters["sigma"]
-            + 0.5 * 1 / self.default_parameters["delta"]
+            1 / self.default_parameters["sigma"] + 0.5 * 1 / self.default_parameters["delta"]
         )
 
         # If we only receive current hospitalizations, we need to account for
@@ -140,9 +139,7 @@ class RtInferenceEngine:
             self.hospitalization_data_type
             is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
         ):
-            los_general = self.default_parameters[
-                "hospitalization_length_of_stay_general"
-            ]
+            los_general = self.default_parameters["hospitalization_length_of_stay_general"]
             los_icu = self.default_parameters["hospitalization_length_of_stay_icu"]
             hosp_rate_general = self.default_parameters["hospitalization_rate_general"]
             hosp_rate_icu = self.default_parameters["hospitalization_rate_icu"]
@@ -308,9 +305,7 @@ class RtInferenceEngine:
 
         # (1) Calculate Lambda (the Poisson likelihood given the data) based on
         # the observed increase from t-1 cases to t cases.
-        lam = timeseries[:-1].values * np.exp(
-            (self.r_list[:, None] - 1) / self.serial_period
-        )
+        lam = timeseries[:-1].values * np.exp((self.r_list[:, None] - 1) / self.serial_period)
 
         # (2) Calculate each day's likelihood over R_t
         likelihoods = pd.DataFrame(
@@ -334,9 +329,7 @@ class RtInferenceEngine:
         # Create a DataFrame that will hold our posteriors for each day
         # Insert our prior as the first posterior.
         posteriors = pd.DataFrame(
-            index=self.r_list,
-            columns=timeseries.index,
-            data={timeseries.index[0]: prior0},
+            index=self.r_list, columns=timeseries.index, data={timeseries.index[0]: prior0},
         )
 
         # We said we'd keep track of the sum of the log of the probability
@@ -344,9 +337,7 @@ class RtInferenceEngine:
         log_likelihood = 0.0
 
         # (5) Iteratively apply Bayes' rule
-        for previous_day, current_day in zip(
-            timeseries.index[:-1], timeseries.index[1:]
-        ):
+        for previous_day, current_day in zip(timeseries.index[:-1], timeseries.index[1:]):
             # (5a) Calculate the new prior
             current_prior = process_matrix @ posteriors[previous_day]
 
@@ -445,9 +436,7 @@ class RtInferenceEngine:
                 if df_all is None:
                     df_all = df
                 else:
-                    df_all = df_all.merge(
-                        df, left_index=True, right_index=True, how="outer"
-                    )
+                    df_all = df_all.merge(df, left_index=True, right_index=True, how="outer")
 
                 # Compute the indicator lag using the curvature alignment method.
                 if (
@@ -458,12 +447,10 @@ class RtInferenceEngine:
                     # Go back upto 30 days or the max time series length we have if shorter.
                     last_idx = max(-21, -len(df))
                     shift_in_days = self.align_time_series(
-                        series_a=df_all[
-                            f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"
-                        ].iloc[-last_idx:],
-                        series_b=df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[
+                        series_a=df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[
                             -last_idx:
                         ],
+                        series_b=df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:],
                     )
                     df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
 
@@ -554,17 +541,14 @@ class RtInferenceEngine:
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(
-                df_all.index.min() - timedelta(days=2),
-                df_all.index.max() + timedelta(days=2),
+                df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2),
             )
             plt.ylim(0, 5)
             plt.ylabel("$R_t$", fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
 
-            output_path = get_run_artifact_path(
-                self.fips, RunArtifact.RT_INFERENCE_REPORT
-            )
+            output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches="tight")
             # plt.close()
 
@@ -598,9 +582,7 @@ class RtInferenceEngine:
             series_b_shifted = np.diff(series_b.shift(i))
             valid = ~np.isnan(_series_a) & ~np.isnan(series_b_shifted)
             if len(series_b_shifted[valid]) > 0:
-                xcor.append(
-                    signal.correlate(_series_a[valid], series_b_shifted[valid]).mean()
-                )
+                xcor.append(signal.correlate(_series_a[valid], series_b_shifted[valid]).mean())
                 valid_shifts.append(i)
         if len(valid_shifts) > 0:
             return valid_shifts[np.argmax(xcor)]
@@ -638,14 +620,10 @@ def run_state(state, states_only=False):
         all_fips = load_data.get_all_fips_codes_for_a_state(state)
 
         # Something in here doesn't like multiprocessing...
-        rt_inferences = all_fips.map(
-            lambda x: RtInferenceEngine.run_for_fips(x)
-        ).tolist()
+        rt_inferences = all_fips.map(lambda x: RtInferenceEngine.run_for_fips(x)).tolist()
 
         for fips, rt_inference in zip(all_fips, rt_inferences):
-            county_output_file = get_run_artifact_path(
-                fips, RunArtifact.RT_INFERENCE_RESULT
-            )
+            county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
             if rt_inference is not None:
                 rt_inference.to_json(county_output_file)
 

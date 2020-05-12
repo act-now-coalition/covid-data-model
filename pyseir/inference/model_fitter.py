@@ -26,9 +26,7 @@ from pyseir.models.seir_model import SEIRModel
 from pyseir.models.seir_model_age import SEIRModelAge
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-from pyseir.parameters.parameter_ensemble_generator_age import (
-    ParameterEnsembleGeneratorAge,
-)
+from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsembleGeneratorAge
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
@@ -331,9 +329,7 @@ class ModelFitter:
             self.hospitalization_data_type
             is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
         ):
-            hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(
-                min=0
-            )
+            hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(min=0)
             hosp_stdev = (
                 self.percent_error_on_max_observation
                 * self.hospital_to_deaths_err_factor
@@ -344,8 +340,7 @@ class ModelFitter:
             hosp_stdev[hosp_data <= 2] *= 3
 
         elif (
-            self.hospitalization_data_type
-            is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+            self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
         ):
             hosp_data = self.hospitalizations
             hosp_stdev = (
@@ -418,9 +413,7 @@ class ModelFitter:
         model.run()
         return model
 
-    def _fit_seir(
-        self, R0, t0, eps, t_break, test_fraction, hosp_fraction, log10_I_initial
-    ):
+    def _fit_seir(self, R0, t0, eps, t_break, test_fraction, hosp_fraction, log10_I_initial):
         """
         Fit SEIR model by MLE.
 
@@ -466,17 +459,12 @@ class ModelFitter:
                 right=0,
             )
         )
-        chi2_cases = calc_chi_sq(
-            self.observed_new_cases, predicted_cases, self.cases_stdev
-        )
+        chi2_cases = calc_chi_sq(self.observed_new_cases, predicted_cases, self.cases_stdev)
 
         # -----------------------------------
         # Chi2 Hospitalizations
         # -----------------------------------
-        if (
-            self.hospitalization_data_type
-            is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-        ):
+        if self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             predicted_hosp = hosp_fraction * np.interp(
                 self.hospital_times,
                 self.t_list + t0,
@@ -484,9 +472,7 @@ class ModelFitter:
                 left=0,
                 right=0,
             )
-            chi2_hosp = calc_chi_sq(
-                self.hospitalizations, predicted_hosp, self.hosp_stdev
-            )
+            chi2_hosp = calc_chi_sq(self.hospitalizations, predicted_hosp, self.hosp_stdev)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
 
         elif (
@@ -497,9 +483,7 @@ class ModelFitter:
             cumulative_hosp_predicted = (
                 model.results["HGen_cumulative"] + model.results["HICU_cumulative"]
             )
-            new_hosp_predicted = (
-                cumulative_hosp_predicted[1:] - cumulative_hosp_predicted[:-1]
-            )
+            new_hosp_predicted = cumulative_hosp_predicted[1:] - cumulative_hosp_predicted[:-1]
             new_hosp_predicted = hosp_fraction * np.interp(
                 self.hospital_times[1:],
                 self.t_list[1:] + t0,
@@ -509,9 +493,7 @@ class ModelFitter:
             )
             new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
 
-            chi2_hosp = calc_chi_sq(
-                new_hosp_observed, new_hosp_predicted, self.hosp_stdev
-            )
+            chi2_hosp = calc_chi_sq(new_hosp_observed, new_hosp_predicted, self.hosp_stdev)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
         else:
             chi2_hosp = 0
@@ -592,9 +574,7 @@ class ModelFitter:
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
-        self.fit_results.update(
-            {k + "_error": v for k, v in dict(minuit.errors).items()}
-        )
+        self.fit_results.update({k + "_error": v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
         self._fit_seir(**dict(minuit.values))
@@ -639,9 +619,7 @@ class ModelFitter:
                 "hospitalization_data_type"
             ] = self.hospitalization_data_type.value
         else:
-            self.fit_results[
-                "hospitalization_data_type"
-            ] = self.hospitalization_data_type
+            self.fit_results["hospitalization_data_type"] = self.hospitalization_data_type
 
         try:
             param_state = minuit.get_param_states()
@@ -667,8 +645,7 @@ class ModelFitter:
                 self.ref_date + timedelta(days=float(t)) for t in self.hospital_times
             ]
         model_dates = [
-            self.ref_date + timedelta(days=t + self.fit_results["t0"])
-            for t in self.t_list
+            self.ref_date + timedelta(days=t + self.fit_results["t0"]) for t in self.t_list
         ]
 
         # Don't display the zero-inflated error bars
@@ -716,8 +693,7 @@ class ModelFitter:
         )
         plt.plot(
             model_dates,
-            self.fit_results["test_fraction"]
-            * self.mle_model.results["total_new_infections"],
+            self.fit_results["test_fraction"] * self.mle_model.results["total_new_infections"],
             label="Estimated Tested New Infections Per Day",
             color="steelblue",
             lw=4,
@@ -762,8 +738,7 @@ class ModelFitter:
                 markersize=10,
             )
         elif (
-            self.hospitalization_data_type
-            is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+            self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
         ):
             plt.errorbar(
                 hosp_dates,
@@ -777,9 +752,7 @@ class ModelFitter:
                 alpha=0.5,
                 markersize=10,
             )
-            predicted_hosp = (
-                self.mle_model.results["HGen"] + self.mle_model.results["HICU"]
-            )
+            predicted_hosp = self.mle_model.results["HGen"] + self.mle_model.results["HICU"]
             plt.plot(
                 model_dates,
                 self.fit_results["hosp_fraction"] * predicted_hosp,
@@ -872,9 +845,7 @@ class ModelFitter:
             )
 
         plt.ylim(*y_lim)
-        plt.xlim(
-            min(model_dates[0], data_dates[0]), data_dates[-1] + timedelta(days=150)
-        )
+        plt.xlim(min(model_dates[0], data_dates[0]), data_dates[-1] + timedelta(days=150))
         plt.xticks(rotation=30, fontsize=14)
         plt.yticks(fontsize=14)
         plt.legend(loc=4, fontsize=14)
@@ -962,9 +933,7 @@ class ModelFitter:
                 if model_fitter.mle_model:
                     model_is_empty = False
             if retries_left <= 0 and model_is_empty:
-                raise RuntimeError(
-                    f"Could not converge after {n_retries} for fips {fips}"
-                )
+                raise RuntimeError(f"Could not converge after {n_retries} for fips {fips}")
         except Exception:
             logging.exception(f"Failed to run {fips}")
             return None
@@ -980,9 +949,7 @@ def _execute_model_for_fips(fips):
 
 
 def _persist_results_per_state(state_df):
-    county_output_file = get_run_artifact_path(
-        state_df.fips[0], RunArtifact.MLE_FIT_RESULT
-    )
+    county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
     data = state_df.drop(["state", "mle_model"], axis=1)
     data.to_json(county_output_file)
 
@@ -1035,9 +1002,7 @@ def run_state(state, states_only=False, with_age_structure=False):
     data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
     data.to_json(output_path)
 
-    with open(
-        get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), "wb"
-    ) as f:
+    with open(get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
         pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
@@ -1054,9 +1019,7 @@ def run_state(state, states_only=False, with_age_structure=False):
             fitters = p.map(ModelFitter.run_for_fips, all_fips)
             p.close()
 
-            county_output_file = get_run_artifact_path(
-                all_fips[0], RunArtifact.MLE_FIT_RESULT
-            )
+            county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
             data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
             data.to_json(county_output_file)
 

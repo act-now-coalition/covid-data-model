@@ -85,11 +85,7 @@ class WhitelistGenerator:
 
 
 def _whitelist_candidates_per_fips(fips):
-    (
-        times,
-        observed_new_cases,
-        observed_new_deaths,
-    ) = load_data.load_new_case_data_by_fips(
+    (times, observed_new_cases, observed_new_deaths,) = load_data.load_new_case_data_by_fips(
         fips, t0=datetime(day=1, month=1, year=2020)
     )
 

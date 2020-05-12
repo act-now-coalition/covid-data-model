@@ -40,10 +40,7 @@ class StateReport:
             for fips in self.counties
         ]
         self.filename = os.path.join(
-            OUTPUT_DIR,
-            self.state,
-            "reports",
-            f"summary__{self.state}__state_report.pdf",
+            OUTPUT_DIR, self.state, "reports", f"summary__{self.state}__state_report.pdf",
         )
         self.surge_filename = os.path.join(
             OUTPUT_DIR,
@@ -81,9 +78,7 @@ class StateReport:
             fontsize=20,
         )
 
-        color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + list(
-            "bgrcmyk"
-        )
+        color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + list("bgrcmyk")
         for i_plt, suppression_policy in enumerate(
             list(self.ensemble_data_by_county.values())[0].keys()
         ):
@@ -94,9 +89,9 @@ class StateReport:
             peak_times = [
                 fit_results.load_t0(fips)
                 + timedelta(
-                    days=self.ensemble_data_by_county[fips][suppression_policy][
-                        compartment
-                    ]["peak_time_ci50"]
+                    days=self.ensemble_data_by_county[fips][suppression_policy][compartment][
+                        "peak_time_ci50"
+                    ]
                 )
                 for fips in self.counties
             ]
@@ -105,10 +100,7 @@ class StateReport:
             median_statewide_peak = sorted_times[len(sorted_times) // 2]
 
             plt.scatter(
-                peak_times,
-                self.names,
-                label=f"{suppression_policy}",
-                c=color_cycle[i_plt],
+                peak_times, self.names, label=f"{suppression_policy}", c=color_cycle[i_plt],
             )
             plt.vlines(
                 median_statewide_peak,
@@ -135,9 +127,7 @@ class StateReport:
                 plt.subplot(121)
                 for i, fips in enumerate(self.counties):
                     value = "peak_time"
-                    d = self.ensemble_data_by_county[fips][suppression_policy][
-                        compartment
-                    ]
+                    d = self.ensemble_data_by_county[fips][suppression_policy][compartment]
                     t0 = fit_results.load_t0(fips)
 
                     plt.fill_betweenx(
@@ -173,9 +163,7 @@ class StateReport:
                 plt.subplot(1, 2, 2)
                 plot_capacity = (
                     "capacity"
-                    in self.ensemble_data_by_county[fips][suppression_policy][
-                        compartment
-                    ]
+                    in self.ensemble_data_by_county[fips][suppression_policy][compartment]
                 )
                 if plot_capacity:
                     capacities = np.median(
@@ -200,9 +188,7 @@ class StateReport:
 
                 for i, fips in enumerate(self.counties):
                     value = "peak_value"
-                    d = self.ensemble_data_by_county[fips][suppression_policy][
-                        compartment
-                    ]
+                    d = self.ensemble_data_by_county[fips][suppression_policy][compartment]
                     plt.fill_betweenx(
                         [i - 0.2, i + 0.2],
                         [d[f"{value}_ci5"]] * 2,
@@ -223,9 +209,7 @@ class StateReport:
 
                 if plot_capacity:
                     up_lim = plt.xlim()[1]
-                    for i, (capacity, peak_value) in enumerate(
-                        zip(capacities, peak_values)
-                    ):
+                    for i, (capacity, peak_value) in enumerate(zip(capacities, peak_values)):
                         if np.isnan(capacity) or capacity == 0:
                             try:
                                 plt.text(
@@ -276,9 +260,7 @@ class StateReport:
             ),
             width=120,
         )
-        plt.text(
-            0, 1.01, caption, ha="left", va="bottom", transform=plt.gca().transAxes
-        )
+        plt.text(0, 1.01, caption, ha="left", va="bottom", transform=plt.gca().transAxes)
         plt.legend()
         plt.subplot(122)
 
@@ -304,9 +286,7 @@ class StateReport:
             ),
             width=120,
         )
-        plt.text(
-            0, 1.01, caption, ha="left", va="bottom", transform=plt.gca().transAxes
-        )
+        plt.text(0, 1.01, caption, ha="left", va="bottom", transform=plt.gca().transAxes)
 
         plt.legend()
 

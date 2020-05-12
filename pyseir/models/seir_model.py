@@ -230,9 +230,7 @@ class SEIRModel:
         # Page 16
         self.hospitalization_rate_general = hospitalization_rate_general
         self.hospitalization_rate_icu = hospitalization_rate_icu
-        self.hospitalization_length_of_stay_general = (
-            hospitalization_length_of_stay_general
-        )
+        self.hospitalization_length_of_stay_general = hospitalization_length_of_stay_general
         self.hospitalization_length_of_stay_icu = hospitalization_length_of_stay_icu
         self.hospitalization_length_of_stay_icu_and_ventilator = (
             hospitalization_length_of_stay_icu_and_ventilator
@@ -329,9 +327,7 @@ class SEIRModel:
         )
 
         died_from_hosp = (
-            HNonICU
-            * mortality_rate_NonICU
-            / self.hospitalization_length_of_stay_general
+            HNonICU * mortality_rate_NonICU / self.hospitalization_length_of_stay_general
         )
         died_from_icu = (
             HICU
@@ -346,9 +342,7 @@ class SEIRModel:
         )
 
         recovered_after_hospital_general = (
-            HNonICU
-            * (1 - mortality_rate_NonICU)
-            / self.hospitalization_length_of_stay_general
+            HNonICU * (1 - mortality_rate_NonICU) / self.hospitalization_length_of_stay_general
         )
         recovered_from_icu_no_vent = (
             HICU
@@ -385,9 +379,7 @@ class SEIRModel:
         # Tracking categories...
         dTotalInfections = exposed_and_symptomatic + exposed_and_asymptomatic
         dHAdmissions_general = infected_and_in_hospital_general
-        dHAdmissions_ICU = (
-            infected_and_in_hospital_icu  # Ventilators also count as ICU beds.
-        )
+        dHAdmissions_ICU = infected_and_in_hospital_icu  # Ventilators also count as ICU beds.
 
         # Fraction that recover
         dRdt = (
@@ -458,9 +450,7 @@ class SEIRModel:
         )
 
         # Integrate the SEIR equations over the time grid, t.
-        result_time_series = odeint(
-            self._time_step, y0, self.t_list, atol=1e-3, rtol=1e-3
-        )
+        result_time_series = odeint(self._time_step, y0, self.t_list, atol=1e-3, rtol=1e-3)
         (
             S,
             E,
@@ -501,10 +491,8 @@ class SEIRModel:
             "deaths_from_icu_bed_limits": np.cumsum((HICU - self.beds_ICU).clip(min=0))
             * self.mortality_rate_no_ICU_beds
             / self.hospitalization_length_of_stay_icu,
-            "HGen_cumulative": np.cumsum(HGen)
-            / self.hospitalization_length_of_stay_general,
-            "HICU_cumulative": np.cumsum(HICU)
-            / self.hospitalization_length_of_stay_icu,
+            "HGen_cumulative": np.cumsum(HGen) / self.hospitalization_length_of_stay_general,
+            "HICU_cumulative": np.cumsum(HICU) / self.hospitalization_length_of_stay_icu,
             "HVent_cumulative": np.cumsum(HICUVent)
             / self.hospitalization_length_of_stay_icu_and_ventilator,
         }
@@ -681,9 +669,7 @@ class SEIRModel:
         # Reproduction numbers
         plt.subplot(133)
         plt.plot(
-            self.t_list,
-            [self.suppression_policy(t) for t in self.t_list],
-            c="steelblue",
+            self.t_list, [self.suppression_policy(t) for t in self.t_list], c="steelblue",
         )
         plt.ylabel("Contact Rate Reduction")
         plt.xlabel("Time [days]", fontsize=12)

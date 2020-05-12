@@ -111,8 +111,7 @@ class ParameterEnsembleGenerator:
                     # capacity, and about ~0.0125 with capacity constraints imposed
                     hospitalization_rate_general=hospitalization_rate_general,
                     hospitalization_rate_icu=max(
-                        np.random.normal(loc=0.30, scale=0.05)
-                        * hospitalization_rate_general,
+                        np.random.normal(loc=0.30, scale=0.05) * hospitalization_rate_general,
                         0,
                     ),
                     fraction_icu_requiring_ventilator=max(
@@ -134,9 +133,7 @@ class ParameterEnsembleGenerator:
                     gamma=(1 - fraction_asymptomatic),
                     # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                     symptoms_to_hospital_days=np.random.normal(loc=6.0, scale=1.5),
-                    hospitalization_length_of_stay_general=np.random.normal(
-                        loc=7, scale=1
-                    ),
+                    hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=1),
                     hospitalization_length_of_stay_icu=np.random.normal(loc=8, scale=3),
                     hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(
                         loc=9, scale=3
@@ -150,9 +147,7 @@ class ParameterEnsembleGenerator:
                     # 10% Of the population should die at saturation levels. CFR
                     # from Italy is 11.9% right now, Spain 8.9%.  System has to
                     # produce,
-                    mortality_rate_no_general_beds=np.random.normal(
-                        loc=0.10, scale=0.01
-                    ),
+                    mortality_rate_no_general_beds=np.random.normal(loc=0.10, scale=0.01),
                     mortality_rate_from_hospital=0.05,
                     mortality_rate_from_ICU=np.random.normal(loc=0.5, scale=0.05),
                     mortality_rate_from_ICUVent=0.70,

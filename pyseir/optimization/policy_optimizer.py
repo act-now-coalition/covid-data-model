@@ -84,9 +84,7 @@ class PolicyOptimizer:
         model = self.seir_model_class(
             **self.seir_model_args,
             suppression_policy=self.parametric_policy(
-                x,
-                t_list=self.seir_model_args["t_list"],
-                **self.parametric_policy_kwargs
+                x, t_list=self.seir_model_args["t_list"], **self.parametric_policy_kwargs
             )
         )
 
@@ -126,10 +124,7 @@ class PolicyOptimizer:
             Results dict from scipy.optimize.minimize.
         """
         self.minimization_results = minimize(
-            self._loss_function,
-            x0=self.x0,
-            bounds=self.optimization_bounds,
-            **minimize_kwargs
+            self._loss_function, x0=self.x0, bounds=self.optimization_bounds, **minimize_kwargs
         )
 
         self.best_model = self.seir_model_class(
@@ -166,9 +161,7 @@ class PolicyOptimizer:
         plt.figure(figsize=(8, 8))
 
         evals = range(len(self.fit_results["total_deaths"]))
-        plt.plot(
-            evals, self.fit_results["total_deaths"], label="Total Deaths", linestyle=""
-        )
+        plt.plot(evals, self.fit_results["total_deaths"], label="Total Deaths", linestyle="")
         plt.plot(evals, self.fit_results["D"], label="Direct COVID Deaths")
         plt.plot(
             evals,

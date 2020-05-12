@@ -76,18 +76,14 @@ class EnsembleRunner:
     ):
 
         self.fips = fips
-        self.agg_level = (
-            AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
-        )
+        self.agg_level = AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
 
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.skip_plots = skip_plots
         self.run_mode = RunMode(run_mode)
         self.hospitalizations_for_state = None
         self.min_hospitalization_threshold = min_hospitalization_threshold
-        self.hospitalization_to_confirmed_case_ratio = (
-            hospitalization_to_confirmed_case_ratio
-        )
+        self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata_by_fips(fips)
@@ -118,9 +114,7 @@ class EnsembleRunner:
             covid_timeseries = covid_timeseries.timeseries()
 
         self.covid_data = (
-            covid_timeseries.get_subset(
-                self.agg_level, country="USA", state=self.state_abbr
-            )
+            covid_timeseries.get_subset(self.agg_level, country="USA", state=self.state_abbr)
             .get_data(country="USA", state=self.state_abbr, fips=county_fips)
             .sort_values("date")
         )
@@ -169,9 +163,7 @@ class EnsembleRunner:
                 self.suppression_policies[
                     f"suppression_policy__{suppression_policy}"
                 ] = sp.generate_empirical_distancing_policy(
-                    t_list=self.t_list,
-                    fips=self.fips,
-                    future_suppression=suppression_policy,
+                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy,
                 )
             self.override_params = dict()
         else:
@@ -211,17 +203,13 @@ class EnsembleRunner:
             _logger.info(
                 f"No MLE model found for {self.state_name}: {self.fips}. Reverting to state level."
             )
-            artifact_path = get_run_artifact_path(
-                self.fips[:2], RunArtifact.MLE_FIT_MODEL
-            )
+            artifact_path = get_run_artifact_path(self.fips[:2], RunArtifact.MLE_FIT_MODEL)
             if os.path.exists(artifact_path):
                 with open(artifact_path, "rb") as f:
                     model = pickle.load(f)
                 inferred_params = fit_results.load_inference_result(self.fips[:2])
             else:
-                raise FileNotFoundError(
-                    f"Could not locate state result for {self.state_name}"
-                )
+                raise FileNotFoundError(f"Could not locate state result for {self.state_name}")
 
             # Rescale state values to the county population and replace county
             # specific params.
@@ -236,9 +224,7 @@ class EnsembleRunner:
             model.I_initial *= population_ratio
             model.E_initial *= population_ratio
             model.A_initial *= population_ratio
-            model.S_initial = (
-                model.N - model.I_initial - model.E_initial - model.A_initial
-            )
+            model.S_initial = model.N - model.I_initial - model.E_initial - model.A_initial
 
             for key in {"beds_general", "beds_ICU", "ventilators"}:
                 setattr(model, key, default_params[key])
@@ -280,9 +266,7 @@ class EnsembleRunner:
             )
 
             if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
-                model_ensemble = [
-                    self._load_model_for_fips(scenario=suppression_policy)
-                ]
+                model_ensemble = [self._load_model_for_fips(scenario=suppression_policy)]
 
             else:
                 raise ValueError(f"Run mode {self.run_mode.value} not supported.")
@@ -338,9 +322,7 @@ class EnsembleRunner:
             for key in compartments:
                 compartments[key].append(model.results[key])
 
-        return {
-            key: np.vstack(value_stack) for key, value_stack in compartments.items()
-        }
+        return {key: np.vstack(value_stack) for key, value_stack in compartments.items()}
 
     @staticmethod
     def _get_surge_window(model_ensemble, compartment):
@@ -372,9 +354,7 @@ class EnsembleRunner:
                 > getattr(m, compartment_to_capacity_attr_map[compartment])
             )
             surge_start.append(
-                m.t_list[surge_start_idx[0][0]]
-                if len(surge_start_idx) > 0
-                else float("NaN")
+                m.t_list[surge_start_idx[0][0]] if len(surge_start_idx) > 0 else float("NaN")
             )
 
             # Reverse the t-list and capacity and do the same.
@@ -383,9 +363,7 @@ class EnsembleRunner:
                 > getattr(m, compartment_to_capacity_attr_map[compartment])
             )
             surge_end.append(
-                m.t_list[::-1][surge_end_idx[0][0]]
-                if len(surge_end_idx) > 0
-                else float("NaN")
+                m.t_list[::-1][surge_end_idx[0][0]] if len(surge_end_idx) > 0 else float("NaN")
             )
 
         return surge_start, surge_end

@@ -121,9 +121,7 @@ class TimeSeriesMetrics:
             error = (
                 np.sqrt(
                     np.square(
-                        np.subtract(
-                            y_true[valid_observations], y_pred[valid_observations]
-                        )
+                        np.subtract(y_true[valid_observations], y_pred[valid_observations])
                     ).mean()
                 )
                 / y_true[valid_observations].mean()

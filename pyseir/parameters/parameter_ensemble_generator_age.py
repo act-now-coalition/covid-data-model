@@ -61,14 +61,11 @@ class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
         """
         age_bin_edges = self.contact_matrix_data[self.fips]["age_bin_edges"].copy()
         age_bin_edges.append(120)
-        age_bin_centers = (
-            np.array(age_bin_edges[1:]) + np.array(age_bin_edges[:-1])
-        ) / 2
+        age_bin_centers = (np.array(age_bin_edges[1:]) + np.array(age_bin_edges[:-1])) / 2
 
         for suffix in ["_hgen", "_icu", "_fatility"]:
             f = scipy.interpolate.interp1d(
-                hosp_rate_data["lower_age"].tolist()
-                + hosp_rate_data["mean_age"].tolist(),
+                hosp_rate_data["lower_age"].tolist() + hosp_rate_data["mean_age"].tolist(),
                 hosp_rate_data["lower%s" % suffix].tolist()
                 + hosp_rate_data["mean%s" % suffix].tolist(),
             )
@@ -180,8 +177,7 @@ class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
                         scale=hospitalization_rate_general / 10,
                     ).clip(min=0),
                     hospitalization_rate_icu=np.random.normal(
-                        loc=hospitalization_rate_icu,
-                        scale=hospitalization_rate_icu / 10,
+                        loc=hospitalization_rate_icu, scale=hospitalization_rate_icu / 10,
                     ).clip(min=0),
                     # w/o ventilation, this would suggest a 20-42% mortality rate
                     # among general hospitalized patients w/o access to ventilators:

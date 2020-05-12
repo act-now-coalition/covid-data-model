@@ -54,9 +54,7 @@ def hampel_filter__low_outliers_only(input_series, window_size=5, n_sigmas=2):
     # possibly use np.nanmedian
     for i in range(window_size, n - window_size):
         x0 = np.median(input_series[(i - window_size) : (i + window_size)])
-        S0 = k * np.median(
-            np.abs(input_series[(i - window_size) : (i + window_size)] - x0)
-        )
+        S0 = k * np.median(np.abs(input_series[(i - window_size) : (i + window_size)] - x0))
         if -(input_series[i] - x0) > n_sigmas * S0:
             new_series[i] = x0
             indices.append(i)
@@ -106,9 +104,7 @@ def cache_county_case_data():
         dtype="str",
     )
     county_case_data["date"] = pd.to_datetime(county_case_data["date"])
-    county_case_data[["cases", "deaths"]] = county_case_data[
-        ["cases", "deaths"]
-    ].astype(int)
+    county_case_data[["cases", "deaths"]] = county_case_data[["cases", "deaths"]].astype(int)
     county_case_data = county_case_data[county_case_data["fips"].notnull()]
     county_case_data.to_pickle(os.path.join(DATA_DIR, "covid_case_timeseries.pkl"))
 
@@ -142,9 +138,7 @@ def cache_mobility_data():
     )
 
     df__m50__final.to_pickle(os.path.join(DATA_DIR, "mobility_data__m50.pkl"))
-    df__m50_index__final.to_pickle(
-        os.path.join(DATA_DIR, "mobility_data__m50_index.pkl")
-    )
+    df__m50_index__final.to_pickle(os.path.join(DATA_DIR, "mobility_data__m50_index.pkl"))
 
 
 def cache_public_implementations_data():
@@ -155,9 +149,7 @@ def cache_public_implementations_data():
     url = "https://raw.githubusercontent.com/JieYingWu/COVID-19_US_County-level_Summaries/master/raw_data/national/public_implementations_fips.csv"
 
     data = requests.get(url, verify=False).content.decode("utf-8")
-    data = re.sub(
-        r",(\d+)-(\w+)", r",\1-\2-2020", data
-    )  # NOTE: This assumes the year 2020
+    data = re.sub(r",(\d+)-(\w+)", r",\1-\2-2020", data)  # NOTE: This assumes the year 2020
 
     date_cols = [
         "stay at home",
@@ -173,8 +165,7 @@ def cache_public_implementations_data():
         ["Unnamed: 1", "Unnamed: 2"], axis=1
     )
     df.columns = [
-        col.replace(">", "").replace(" ", "_").replace("/", "_").lower()
-        for col in df.columns
+        col.replace(">", "").replace(" ", "_").replace("/", "_").lower() for col in df.columns
     ]
     df.fips = df.fips.apply(lambda x: x.zfill(5))
     df.to_pickle(os.path.join(DATA_DIR, "public_implementations_data.pkl"))
@@ -268,9 +259,7 @@ def load_county_metadata_by_state(state=None):
 
     density_measures = ["housing_density", "population_density"]
     for col in density_measures:
-        state_metadata.loc[:, col] = (
-            state_metadata[col] * state_metadata["total_population"]
-        )
+        state_metadata.loc[:, col] = state_metadata[col] * state_metadata["total_population"]
 
     age_dist = state_metadata.groupby("state")["age_distribution"].apply(
         lambda l: np.stack(np.array(l)).sum(axis=0)
@@ -398,9 +387,7 @@ def get_hospitalization_data():
     # expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
     # hospitalization data.
     has_current_hospital = data[TimeseriesDataset.Fields.CURRENT_HOSPITALIZED].notnull()
-    has_cumulative_hospital = data[
-        TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED
-    ].notnull()
+    has_cumulative_hospital = data[TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED].notnull()
     return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
 
 
@@ -442,9 +429,7 @@ def load_hospitalization_data(fips, t0, category="hospitalized"):
         hospitalization_data = hospitalization_data[
             hospitalization_data[f"current_{category}"].notnull()
         ]
-        relative_days = (
-            hospitalization_data["date"].dt.date - t0.date()
-        ).dt.days.values
+        relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
         return (
             relative_days,
             hospitalization_data[f"current_{category}"].values.clip(min=0),
@@ -454,9 +439,7 @@ def load_hospitalization_data(fips, t0, category="hospitalized"):
         hospitalization_data = hospitalization_data[
             hospitalization_data[f"cumulative_{category}"].notnull()
         ]
-        relative_days = (
-            hospitalization_data["date"].dt.date - t0.date()
-        ).dt.days.values
+        relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
@@ -557,8 +540,7 @@ def load_hospitalization_data_by_state(
                     * params["fraction_icu_requiring_ventilator"]
                     * params["hospitalization_length_of_stay_icu_and_ventilator"]
                 ) / (
-                    params["hospitalization_rate_general"]
-                    + params["hospitalization_rate_icu"]
+                    params["hospitalization_rate_general"] + params["hospitalization_rate_icu"]
                 )
             else:
                 average_length_of_stay = (
@@ -572,9 +554,7 @@ def load_hospitalization_data_by_state(
             new_hospitalizations = np.append([0], np.diff(cumulative))
             current = [0]
             for i, new_hosps in enumerate(new_hospitalizations[1:]):
-                current.append(
-                    current[i] + new_hosps - current[i] / average_length_of_stay
-                )
+                current.append(current[i] + new_hosps - current[i] / average_length_of_stay)
             return times_new, current, HospitalizationDataType.CURRENT_HOSPITALIZATIONS
         else:
             return (
@@ -670,9 +650,9 @@ def load_mobility_data_m50_index():
     -------
     : pd.DataFrame
     """
-    return pd.read_pickle(
-        os.path.join(DATA_DIR, "mobility_data__m50_index.pkl")
-    ).set_index("fips")
+    return pd.read_pickle(os.path.join(DATA_DIR, "mobility_data__m50_index.pkl")).set_index(
+        "fips"
+    )
 
 
 @lru_cache(maxsize=1)
@@ -684,9 +664,9 @@ def load_public_implementations_data():
     -------
     : pd.DataFrame
     """
-    return pd.read_pickle(
-        os.path.join(DATA_DIR, "public_implementations_data.pkl")
-    ).set_index("fips")
+    return pd.read_pickle(os.path.join(DATA_DIR, "public_implementations_data.pkl")).set_index(
+        "fips"
+    )
 
 
 def load_contact_matrix_data_by_fips(fips):
@@ -716,9 +696,7 @@ def load_contact_matrix_data_by_fips(fips):
 
     fips = [fips] if isinstance(fips, str) else list(fips)
     state_abbr = us.states.lookup(fips[0][:2]).abbr
-    path = os.path.join(
-        DATA_DIR, "contact_matrix", "contact_matrix_fips_%s.json" % state_abbr
-    )
+    path = os.path.join(DATA_DIR, "contact_matrix", "contact_matrix_fips_%s.json" % state_abbr)
     contact_matrix_data = json.loads(open(path).read())
     return {s: contact_matrix_data[s] for s in fips}
 
@@ -773,13 +751,9 @@ def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None
     # Circular import avoidance
     from pyseir.inference.fit_results import load_inference_result
 
-    simulation_start_date = datetime.fromisoformat(
-        load_inference_result(fips)["t0_date"]
-    )
+    simulation_start_date = datetime.fromisoformat(load_inference_result(fips)["t0_date"])
     date_idx = int((date - simulation_start_date).days)
-    return ensemble_results["suppression_policy__inferred"][compartment]["ci_50"][
-        date_idx
-    ]
+    return ensemble_results["suppression_policy__inferred"][compartment]["ci_50"][date_idx]
 
 
 if __name__ == "__main__":
