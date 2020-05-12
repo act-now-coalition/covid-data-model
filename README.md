@@ -62,35 +62,32 @@ export SENTRY_DSN=https://<GET_SENTRY_DSN_FOR_DEV_INSTANCE>.ingest.sentry.io/<DE
 
 The gitub action pulls the sentry_dsn for the prod instance from a secrets stored within github.
 
-# [NEW 4/7] PySEIR Setup
+# PySEIR Setup
 
 ## Installation
 
 Recommend virtualenv or miniconda python 3.7 from here
 [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
 
-Execute
-`pip install -r requirements.txt -r requirements_test.txt`
-
-If using conda, activate the environment here..
-`conda activate pyseir`
-
+If using conda, you can use the following:
+- `conda create python=3.7 -n covid-data-model`
+- `conda activate covid-data-model`
+- `pip install -r requirements.txt -r requirements_test.txt`
 
 ### Running Models
-Example here. You can remove the `--state` flag to run everything. To run only
-states, add `--states-only`. `pyseir run-all --state="California"`
+PySEIR provides a command line interface in the activated environment. You can access the model with `pyseir --help ` and `pyseir <subcommand> --help` providing more information. 
 
-`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags. 
+Example:
+`pyseir build-all --states="New York"` will run state and county models for New York
+
+The flag `--states-only` will skip counties and the flag `--state` will only run
+a single state. These can be combined if you want to run something quickly.
 
 Check the `output/` folder for results.
-
-The flag `--states-only` will skip counties and the flat `--state` will only run
-a single state. These can be combined if you want to run things quickly.
 
 ### Model Output
 
 There are a variety of output artifacts to paths described in pyseir/utils.py.
 The main artifact is the ensemble_result which contains the output information
 for each `suppression policy -> model compartment` as well as capacity
-information. It is described in 
-[this running document](https://docs.google.com/document/d/1U0zTP_jjwp8i-hCj3jPosfeyj74vKqTy6ERFYzYgcvE/edit?usp=sharing).
+information.
