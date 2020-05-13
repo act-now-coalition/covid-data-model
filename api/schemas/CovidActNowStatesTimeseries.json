@@ -151,7 +151,12 @@
         },
         "ICUBeds": {
           "$ref": "#/definitions/_ResourceUtilization"
-        }
+        },
+	"contactTracersCount": {
+          "title": "contactTracersCount",
+          "description": "Number of contact tracers in the region",
+          "type": "integer"
+	}
       },
       "required": [
         "population",
@@ -292,6 +297,11 @@
         "ICUBeds": {
           "$ref": "#/definitions/_ResourceUtilization"
         },
+	"contactTracersCount": {
+          "title": "contactTracersCount",
+          "description": "Number of contact tracers in the region",
+          "type": "integer"
+	},
         "date": {
           "title": "Date",
           "descrition": "Date of timeseries data point",
