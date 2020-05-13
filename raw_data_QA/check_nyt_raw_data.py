@@ -5,6 +5,7 @@ from sklearn.metrics import mean_squared_error
 from datetime import datetime
 import calendar
 import argparse
+import pdb
 
 def aggregate_df(df, args):
   df[args.new_cases_name] = pd.to_numeric(df[args.new_cases_name])
@@ -38,14 +39,26 @@ def make_plot(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
   plt.xticks(rotation=30)
   plt.legend(loc = 'upper left')
   plt.grid(True)
-  plt.savefig(state + '_raw_' +  var + '_compare.pdf', bbox_inches='tight')
+  plt.savefig(state + '_raw_' +  var + '_compare.png', bbox_inches='tight')
+  plt.close('all')
+
+def compare_county_state_plot(var, df1, df2, df1_name, df2_name, args, state):
+  rmse2 = get_rmse(df1, df2, var)
+  plt.title(state)
+  plt.xlabel(var)
+  plt.ylabel(args.updated_date_name)
+  plt.plot(df1[args.updated_date_name], df1[var], color = 'blue', label = df1_name + ' NYT, RMSE: ' + str(rmse2), markersize = 8, marker = '.', alpha = 0.5)
+  plt.plot(df2[args.updated_date_name], df2[var],  color = 'orange', label = df2_name + ' NYT', markersize = 8, marker = '.', alpha = 0.5)
+  plt.xticks(rotation=30)
+  plt.legend(loc = 'upper left')
+  plt.grid(True)
+  plt.savefig(state + '_raw_county_state' +  var + '_compare.png', bbox_inches='tight')
   plt.close('all')
 
 def get_current_day():
   current_month = calendar.month_name[datetime.now().month]
   current_day = datetime.now().day
   return current_month + ' ' + str(current_day)
-
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description = 'arg parser for process.py')
@@ -63,6 +76,8 @@ if __name__ == '__main__':
     df1 = get_state(pd.read_csv("data/us-counties-may8build.csv", parse_dates=[args.date_name]), state, args)
     df2 = get_state(pd.read_csv("data/us-counties-may11.csv", parse_dates=[args.date_name]), state, args)
     df3 = get_state(pd.read_csv("data/us-counties-latest.csv", parse_dates=[args.date_name]), state, args)
+    df_state = get_state(pd.read_csv("data/us-states.csv", parse_dates=[args.date_name]), state, args)
+    df_county = get_state(pd.read_csv("data/us-counties.csv", parse_dates=[args.date_name]), state, args)
     df1_name = 'May 8 build'
     df2_name = 'May 11'
     df3_name = get_current_day()
@@ -72,7 +87,11 @@ if __name__ == '__main__':
     df1_ag = aggregate_df(df1, args)
     df2_ag = aggregate_df(df2, args)
     df3_ag = aggregate_df(df3, args)
-    make_plot('new_cases', df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
-    make_plot('new_deaths', df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
+    df_county_ag = aggregate_df(df_county, args)
+    df_state_ag = aggregate_df(df_state, args)
+    #make_plot('new_cases', df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
+    #make_plot('new_deaths', df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
+    compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
+    compare_county_state_plot('new_deaths', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
 
 
