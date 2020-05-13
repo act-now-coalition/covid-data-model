@@ -3,8 +3,9 @@ import pydantic
 import datetime
 
 """
-Documented https://www.dropbox.com/scl/fi/o4bec2kz8dkcxdtabtqda/CAN-V1-API-Draft.paper?dl=0&rlkey=f7elx3zmo6tt5s7mj5nvap9a0
+CovidActNow API
 
+Documentation at https://github.com/covid-projections/covid-data-model/tree/master/api
 """
 
 
