@@ -151,6 +151,11 @@
         },
         "ICUBeds": {
           "$ref": "#/definitions/_ResourceUtilization"
+        },
+        "contactTracers": {
+          "title": "Contacttracers",
+          "description": "# of Contact Tracers",
+          "type": "integer"
         }
       },
       "required": [
