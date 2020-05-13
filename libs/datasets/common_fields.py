@@ -43,6 +43,8 @@ class CommonFields(object):
     CURRENT_HOSPITALIZED_TOTAL = "current_hospitalized_total"
     CURRENT_ICU_TOTAL = "current_icu_total"
 
+    CONTACT_TRACERS_COUNT = "contact_tracers_count"
+
 
 class CommonIndexFields(object):
     # Column for FIPS code. Right now a column containing fips data may be
