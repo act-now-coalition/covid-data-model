@@ -110,7 +110,9 @@ def _generate_actuals(actual_data, intervention) -> _Actuals:
             "capacity": capacity,
             "totalCapacity": total_bed_capacity,
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED),
-            "currentUsageTotal": actual_data.get(CommonFields.CURRENT_HOSPITALIZED_TOTAL),
+            "currentUsageTotal": actual_data.get(
+                CommonFields.CURRENT_HOSPITALIZED_TOTAL
+            ),
             "typicalUsageRate": typical_usage_rate,
         },
         ICUBeds={
@@ -122,6 +124,7 @@ def _generate_actuals(actual_data, intervention) -> _Actuals:
                 CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
             ),
         },
+        contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
     )
 
 
