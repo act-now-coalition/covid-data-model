@@ -33,3 +33,4 @@ adtk==0.6.0
 -e .
 pydantic==1.4
 dill
+dictdiffer==0.8.1
