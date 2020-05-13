@@ -90,6 +90,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         data = self.data[
             self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value
         ].reset_index()
+        # If the groupby raises a ValueError check the dtype of date. If it was loaded
+        # by read_csv did you set parse_dates=["date"]?
         return data.iloc[data.groupby(group).date.idxmax(), :]
 
     def get_subset(
