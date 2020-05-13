@@ -151,7 +151,12 @@
         },
         "ICUBeds": {
           "$ref": "#/definitions/_ResourceUtilization"
-        }
+        },
+	"contactTracersCount": {
+          "title": "contactTracersCount",
+          "description": "Number of contact tracers in the region",
+          "type": "integer"
+	}
       },
       "required": [
         "population",
