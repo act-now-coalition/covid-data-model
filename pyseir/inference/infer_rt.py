@@ -430,6 +430,9 @@ class RtInferenceEngine:
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_hospitalizations'],
                             alpha=1, s=25, color='darkseagreen', label='New Hospitalizations', marker='d')
 
+            if 'Rt_MAP_composite' in df_all:
+                plt.scatter(df_all.index, df_all['Rt_MAP_composite'],
+                            alpha=1, s=25, color='yellow', label='Inferred $R_{t}$ Web', marker='d')
             plt.hlines([1.0], *plt.xlim(), alpha=1, color='g')
             plt.hlines([1.1], *plt.xlim(), alpha=1, color='gold')
             plt.hlines([1.3], *plt.xlim(), alpha=1, color='r')
