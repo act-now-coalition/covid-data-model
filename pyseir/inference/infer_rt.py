@@ -155,7 +155,7 @@ class RtInferenceEngine:
         elif timeseries_type in (TimeseriesType.NEW_HOSPITALIZATIONS, TimeseriesType.CURRENT_HOSPITALIZATIONS):
             return self.hospital_dates, self.hospital_times, self.hospitalizations
 
-    def apply_gaussian_smoothing(self, timeseries_type, plot=False):
+    def apply_gaussian_smoothing(self, timeseries_type, plot=False, smoothed_max_threshold=5):
         """
         Apply a rolling Gaussian window to smooth the data. This signature and
         returns match get_time_series, but will return a subset of the input
@@ -167,6 +167,13 @@ class RtInferenceEngine:
             Which type of time-series to use.
         plot: bool
             If True, plot smoothed and original data.
+        smoothed_max_threshold: int
+            This parameter allows you to filter out entire series
+            (e.g. NEW_DEATHS) when they do not contain high enough
+            numeric values. This has been added to account for low-level
+            constant smoothed values having a dispropotionate effect on
+            our final R(t) calculation, when all of their values are below
+            this parameter.
 
         Returns
         -------
@@ -176,6 +183,8 @@ class RtInferenceEngine:
             Output integers since the reference date.
         smoothed: array-like
             Gaussian smoothed data.
+        
+
         """
         timeseries_type = TimeseriesType(timeseries_type)
         dates, times, timeseries = self.get_timeseries(timeseries_type)
@@ -191,10 +200,12 @@ class RtInferenceEngine:
                              .round()
 
         nonzeros = [idx for idx, val in enumerate(smoothed) if val!= 0]
-        if len(nonzeros) == 0:
-            idx_start = 0
+        if max(smoothed) < smoothed_max_threshold:
+            # skip the entire array.
+            idx_start = len(smoothed)
         else:
             idx_start = nonzeros[0]
+ 
         smoothed = smoothed.iloc[idx_start:]
         original = timeseries.loc[smoothed.index]
 
