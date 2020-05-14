@@ -195,6 +195,9 @@ class RtInferenceEngine:
             idx_start = 0
         else:
             idx_start = nonzeros[0]
+        if max(smoothed) < threshold:
+            # skip the entire array.
+            idx_start = len(smoothed)
         smoothed = smoothed.iloc[idx_start:]
         original = timeseries.loc[smoothed.index]
 
