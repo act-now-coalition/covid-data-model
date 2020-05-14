@@ -21,7 +21,6 @@ def aggregate_df(df, args):
 
 def get_state(df, state, args):
   df_new = df.loc[df[args.state_name] == state]
-  #df_new[args.updated_date_name] = df[[args.date_name]]
   return df_new
 
 def get_rmse(df1, df2, var):
@@ -73,7 +72,6 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
   diff_df2, z_df2, avg_z2, latest_avg_z2, days_over_z2 = get_compare_metrics(df1, truncated_df2, var)
   diff_df3, z_df3, avg_z3, latest_avg_z3, days_over_z3 = get_compare_metrics(df1, truncated_df3, var)
 
-
   #determine if data is different enough to plot for further investigation
   if args.use_latest:
     abnormal = rmse2 > args.rmse_threshold and rmse3 > args.rmse_threshold
@@ -113,6 +111,9 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
     ax[0].legend(loc = 'upper left')
     plt.savefig(args.output_dir + '/' + state + '_' + var + '_compare.pdf', bbox_inches = 'tight')
     plt.close('all')
+    return avg_z2, latest_avg_z2, days_over_z2, rmse2, rmse3
+  else:
+    return 0, 0, 0, 0, 0
 
 def compare_county_state_plot(var, df1, df2, df1_name, df2_name, args, state):
   rmse2 = get_rmse(df1, df2, var)
@@ -167,26 +168,45 @@ if __name__ == '__main__':
     args.states = df1['state'].unique()
   
   #Iterate thru states
-  for state in args.states:
-    #Grab Data To Compare from CAN Data Caches
-    df1 = get_state(pd.read_csv(OLD_CAN_DATA, parse_dates=[args.date_name]), state, args)
-    df2 = get_state(pd.read_csv(NEW_CAN_DATA, parse_dates=[args.date_name]), state, args)
-    df1_name = 'CAN DF1'
-    df2_name = 'CAN DF2'
+  for var in variables:
+    z_avg_list, z_latest_avg_list, days_over_thres_list, states_list, rmse_new_list, rmse_latest_list = [], [], [], [], [], []
+    for state in args.states:
+      #Grab Data To Compare from CAN Data Caches
+      df1 = get_state(pd.read_csv(OLD_CAN_DATA, parse_dates=[args.date_name]), state, args)
+      df2 = get_state(pd.read_csv(NEW_CAN_DATA, parse_dates=[args.date_name]), state, args)
+      df1_name = 'CAN DF1'
+      df2_name = 'CAN DF2'
 
-    #Grab Latest Data directly from NYT
-    df3 = get_state(pd.read_csv(LATEST_NYT_DATA, parse_dates=[args.date_name]), state, args)
-    df3_state = get_state(pd.read_csv(LATEST_NYT_STATE_DATA, parse_dates=[args.date_name]), state, args)
-    df3_name = get_current_day()
+      #Grab Latest Data directly from NYT
+      df3 = get_state(pd.read_csv(LATEST_NYT_DATA, parse_dates=[args.date_name]), state, args)
+      df3_state = get_state(pd.read_csv(LATEST_NYT_STATE_DATA, parse_dates=[args.date_name]), state, args)
+      df3_name = get_current_day()
 
-    #Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
-    df1_ag = aggregate_df(df1, args)
-    df2_ag = aggregate_df(df2, args)
-    df3_ag = aggregate_df(df3, args)
-    df3_state_ag = aggregate_df(df3_state, args)
+      #Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
+      df1_ag = aggregate_df(df1, args)
+      df2_ag = aggregate_df(df2, args)
+      df3_ag = aggregate_df(df3, args)
+      df3_state_ag = aggregate_df(df3_state, args)
 
-    for var in variables:
-      compare_data(var, df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
+      avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest = compare_data(var, df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
+
+      if avg_z > 0:
+        z_avg_list.append(avg_z)
+        z_latest_avg_list.append(latest_avg_z)
+        days_over_thres_list.append(days_over_z)
+        states_list.append(state)
+        rmse_new_list.append(rmse_new)
+        rmse_latest_list.append(rmse_latest)
+
+    #Create meta-compare charts for all abnormal areas
+    x_values = np.arange(len(states_list))
+    fig, ax = plt.subplots()
+    ax.bar(x_values, z_avg_list)
+    ax.set_ylabel('Z Average')
+    ax.set_xticklabels(states_list)
+    plt.savefig(args.output_dir + '/meta_compare_' + var + '.pdf')
+    plt.close('all')
+
 
     #compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
 
