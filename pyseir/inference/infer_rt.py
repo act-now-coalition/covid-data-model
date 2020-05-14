@@ -200,13 +200,12 @@ class RtInferenceEngine:
                              .round()
 
         nonzeros = [idx for idx, val in enumerate(smoothed) if val!= 0]
-        if len(nonzeros) == 0:
-            idx_start = 0
-        else:
-            idx_start = nonzeros[0]
         if max(smoothed) < smoothed_max_threshold:
             # skip the entire array.
             idx_start = len(smoothed)
+        else:
+            idx_start = nonzeros[0]
+ 
         smoothed = smoothed.iloc[idx_start:]
         original = timeseries.loc[smoothed.index]
 
