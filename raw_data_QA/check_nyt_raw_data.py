@@ -44,29 +44,43 @@ def get_compare_metrics(df1, df2, var):
     if smaller_var == 0 and larger_var == 0:
       p_diff = 0
       z_score = 0
-    #elif smaller_var == 0 and larger_var != 0:
-    #  p_diff = (larger_var - smaller_var)/ smaller_var
-    #  z_score = (larger_var - smaller_var) / smal
+    #elif smaller_var == 0 and larger_var != 0: #may want to deal with small variations differently
     else:
       p_diff = (larger_var - smaller_var)/larger_var
       err = np.sqrt(larger_var)
       z_score = (larger_var - smaller_var)/err #to be added
     z_scores.append(z_score)
     diff.append(p_diff)
-  return diff, z_scores
+    number_of_days_percent_threshold = sum(i > args.percent_threshold for i in diff)
+    average_Z = round(Average(z_scores), 2)
+    latest_Z = round(Average(z_scores[:-args.n_days_z_score_mean]), 2)
+  return diff, z_scores, average_Z, latest_Z, number_of_days_percent_threshold
+
+def Average(list):
+  if len(list) > 0:
+    return sum(list)/len(list)
+  else:
+    return 0
 
 def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
   #truncated df2 and df3 to df1 (this assumes df1 is the shortest)
   truncated_df2 = get_equal_len_df(df2, df1)
   truncated_df3 = get_equal_len_df(df3, df1)
 
-  #This uses df2 as the reference!!!!!!!
+  #Get comparison metrics
   rmse2 = get_rmse(df1, truncated_df2, var)
   rmse3 = get_rmse(truncated_df2, truncated_df3, var)
-  if rmse2 > 0.1 or rmse3 > 0.1:
-    diff_df2, z_df2 = get_compare_metrics(df1, truncated_df2, var)
-    diff_df3, z_df3 = get_compare_metrics(df1, truncated_df3, var)
+  diff_df2, z_df2, avg_z2, latest_avg_z2, days_over_z2 = get_compare_metrics(df1, truncated_df2, var)
+  diff_df3, z_df3, avg_z3, latest_avg_z3, days_over_z3 = get_compare_metrics(df1, truncated_df3, var)
 
+
+  #determine if data is different enough to plot for further investigation
+  if args.use_latest:
+    abnormal = rmse2 > args.rmse_threshold and rmse3 > args.rmse_threshold
+  else:
+    abnormal = rmse2 > args.rmse_threshold
+
+  if abnormal:
     fig, ax = plt.subplots(3,1, sharex = True)
     fig.subplots_adjust(hspace = 0)
     markersize1 = 8
@@ -79,8 +93,8 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
     color2 = 'orange'
     color3 = 'purple'
     fig.suptitle(var)
-    ax[0].plot(df1.index.values, df1[var], color = color1, label = df1_name + ' NYT, RMSE: ' + str(rmse2), markersize = markersize1, marker = markerstyle1, alpha = 0.5)
-    ax[0].plot(df3.index.values, df3[var], color = color3, label = df3_name + ' NYT: RMSE: ' + str(rmse3), markersize = markersize3, marker = markerstyle3, alpha = 0.5)
+    ax[0].plot(df1.index.values, df1[var], color = color1, label = df1_name + ' NYT, RMSE: ' + str(rmse2) + ' $Z_{avg}$: ' + str(avg_z2),  markersize = markersize1, marker = markerstyle1, alpha = 0.5)
+    ax[0].plot(df3.index.values, df3[var], color = color3, label = df3_name + ' NYT: RMSE: ' + str(rmse3) + ' $Z_{avg}$: ' + str(avg_z3), markersize = markersize3, marker = markerstyle3, alpha = 0.5)
     ax[0].plot(df2.index.values, df2[var],  color = color2, label = df2_name + ' NYT', markersize = markersize2, marker = markerstyle2, alpha = 0.5)
     ax[0].set(ylabel = var)
     ax[0].grid(True)
@@ -130,7 +144,9 @@ if __name__ == '__main__':
   parser.add_argument('-rmse_threshold', '--rmse_threshold', type = float, dest = 'rmse_threshold', default = 1, help = 'rmse threshold to trigger on')
   parser.add_argument('-percent_threshold', '--percent_threshold', type = float, dest = 'percent_threshold', default = .1, help = 'percent difference threshold to trigger on')
   parser.add_argument('-z_threshold', '--z_threshold', type = float, dest = 'z_threshold', default = 2, help = 'Z score threshold to trigger on')
-  parser.add_argument('-n_days_over_threshold', '-n_days_over_threshold', type = int, default = 5, help = 'number of days to be over threshold to trigger on')
+  parser.add_argument('-n_days_over_threshold', '--n_days_over_threshold', type = int, default = 5, help = 'number of days to be over threshold to trigger on')
+  parser.add_argument('-use_latest', '--use_latest', type = bool, default = False, help = 'set to true to use latest data * and * new data to determine unexpected changes')
+  parser.add_argument('-n_days_z_score_mean', '--n_days_z_score_mean', type = int, default = 14, help = 'how many days in the past to average the z score to look for unexpcted changes to the data')
   args = parser.parse_args()
 
   #remove previous output directory if it exists
