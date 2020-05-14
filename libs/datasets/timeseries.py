@@ -41,7 +41,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     @property
     def state_data(self) -> pd.DataFrame:
-        return self.get_subset(AggregationLevel.STATE).data
+        # Return a copy instead of a slice so the caller may modify it without getting a SettingWithCopyWarning warning.
+        return self.get_subset(AggregationLevel.STATE).data.copy()
 
     @property
     def county_data(self) -> pd.DataFrame:
@@ -50,18 +51,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def county_keys(self) -> List:
         """Returns a list of all (country, state, county) combinations."""
         # Check to make sure all values are county values
-        county_values = (
-            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        )
+        county_values = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         county_data = self.data[county_values]
 
         data = county_data.set_index(
-            [
-                self.Fields.COUNTRY,
-                self.Fields.STATE,
-                self.Fields.COUNTY,
-                self.Fields.FIPS,
-            ]
+            [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.COUNTY, self.Fields.FIPS,]
         )
         values = set(data.index.to_list())
         return sorted(values)
@@ -185,9 +179,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         Returns: Timeseries object.
         """
         data = source.data
-        to_common_fields = {
-            value: key for key, value in source.all_fields_map().items()
-        }
+        to_common_fields = {value: key for key, value in source.all_fields_map().items()}
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
         group = [
@@ -207,19 +199,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
                 cls.Fields.STATE,
             ]
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data,
-                state_groupby_fields,
-                AggregationLevel.COUNTY,
-                AggregationLevel.STATE,
+                data, state_groupby_fields, AggregationLevel.COUNTY, AggregationLevel.STATE,
             ).reset_index()
             data = pd.concat([data, non_matching])
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
         is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, cls.Fields.STATE].map(
-            us_state_abbrev.ABBREV_US_FIPS
-        )
+        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, cls.Fields.FIPS] = state_fips
 
         # Choosing to sort by date
@@ -243,12 +230,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         dataset_utils.summarize(
             self.data,
             AggregationLevel.COUNTY,
-            [
-                self.Fields.DATE,
-                self.Fields.COUNTRY,
-                self.Fields.STATE,
-                self.Fields.FIPS,
-            ],
+            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS,],
         )
 
         print()
