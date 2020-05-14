@@ -1,6 +1,7 @@
 import logging
 import pandas as pd
 import numpy as np
+import sentry_sdk
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
@@ -133,7 +134,14 @@ class CovidTrackingDataSource(data_source.DataSource):
         # Removing bad data from Delaware.
         # Once that is resolved we can remove this while keeping the assert below.
         icu_mask = data[cls.Fields.IN_ICU_CURRENTLY] > data[cls.Fields.CURRENT_HOSPITALIZED]
-        data[cls.Fields.IN_ICU_CURRENTLY].loc[icu_mask] = np.nan
+        if icu_mask.any():
+            data[cls.Fields.IN_ICU_CURRENTLY].loc[icu_mask] = np.nan
+            message = (
+                f"{len(data[icu_mask])} lines were changed in the ICU Current data "
+                f"for {data[icu_mask]['state'].nunique()} state(s)"
+            )
+            _logger.warning(message)
+            sentry_sdk.capture_message(message)
 
         # Current Sanity Check and Filter for In ICU.
         # This should fail for Delaware right now unless we patch it.
