@@ -87,16 +87,14 @@ class CDSDataset(data_source.DataSource):
 
         # Don't want to return city data because it's duplicated in county
         # City data before 3-23 was not duplicated.
-        # data = data[data[cls.Fields.CITY].isnull()]
         select_pre_march_23 = data.date < "2020-03-23"
-        data.loc[select_pre_march_23, cls.Fields.COUNTY] = data.loc[
-            select_pre_march_23
-        ].apply(fill_missing_county_with_city, axis=1)
+        data.loc[select_pre_march_23, cls.Fields.COUNTY] = data.loc[select_pre_march_23].apply(
+            fill_missing_county_with_city, axis=1
+        )
+        data = data.iloc[select_pre_march_23 | data[cls.Fields.CITY].isnull()]
 
         # CDS state level aggregates are identifiable by not having a city or county.
-        only_county = (
-            data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
-        )
+        only_county = data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
         county_hits = numpy.where(only_county, "county", None)
         only_state = (
             data[cls.Fields.COUNTY].isnull()
@@ -129,9 +127,7 @@ class CDSDataset(data_source.DataSource):
         data = dataset_utils.add_fips_using_county(data, fips_data)
 
         # ADD Negative tests
-        data[cls.Fields.NEGATIVE_TESTS] = (
-            data[cls.Fields.TESTED] - data[cls.Fields.CASES]
-        )
+        data[cls.Fields.NEGATIVE_TESTS] = data[cls.Fields.TESTED] - data[cls.Fields.CASES]
 
         # put the state column back
         data["state"] = data["state_tmp"]
