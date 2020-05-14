@@ -13,6 +13,7 @@ from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
+log = logging.getLogger(__name__)
 
 class RtInferenceEngine:
     """
@@ -97,7 +98,7 @@ class RtInferenceEngine:
             self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
                 load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
-        logging.info(f'Running Rt Inference for {self.display_name}')
+        log.info(f'Running Rt Inference for {self.display_name}')
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         if self.hospitalization_data_type:
@@ -519,6 +520,8 @@ def run_state(state, states_only=False):
     state_obj = us.states.lookup(state)
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
+    if df is None or df.empty:
+        log.error("Emtpy dataframe encountered! No RtInfernce results available for %s", state)
     df.to_json(output_path)
 
     # Run the counties.
