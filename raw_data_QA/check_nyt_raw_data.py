@@ -133,6 +133,30 @@ def get_current_day():
   current_day = datetime.now().day
   return current_month + ' ' + str(current_day)
 
+def make_meta_comparison_plot(states_list, array1, name1, array2, name2, array3, name3, array4, name4, var):
+  x_values = np.arange(len(states_list))
+  fig, ax = plt.subplots(2,2)
+  width = 1
+  ax[0,0].bar(x_values, array1, width = width)
+  ax[0,0].set_ylabel(name1)
+  ax[0,0].set_xticks(x_values)
+  ax[0,0].set_xticklabels(states_list)
+  ax[0,1].bar(x_values, array2, width = width)
+  ax[0,1].set_ylabel(name2)
+  ax[0,1].set_xticks(x_values)
+  ax[0,1].set_xticklabels(states_list)
+  ax[1,1].bar(x_values, array3, width = width)
+  ax[1,1].set_ylabel(name3)
+  ax[1,1].set_xticks(x_values)
+  ax[1,1].set_xticklabels(states_list)
+  ax[1,0].bar(x_values, array4, width = width)
+  ax[1,0].set_ylabel(name4)
+  ax[1,0].set_xticks(x_values)
+  ax[1,0].set_xticklabels(states_list)
+  plt.savefig(args.output_dir + '/meta_compare_' + var + '.pdf')
+  plt.close('all')
+  return x_values
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description = 'arg parser for process.py')
   parser.add_argument('-output_dir', '--output_dir', type = str, dest = 'output_dir', default = 'output', help = 'output_dir')
@@ -199,13 +223,13 @@ if __name__ == '__main__':
         rmse_latest_list.append(rmse_latest)
 
     #Create meta-compare charts for all abnormal areas
-    x_values = np.arange(len(states_list))
-    fig, ax = plt.subplots()
-    ax.bar(x_values, z_avg_list)
-    ax.set_ylabel('Z Average')
-    ax.set_xticklabels(states_list)
-    plt.savefig(args.output_dir + '/meta_compare_' + var + '.pdf')
-    plt.close('all')
+    make_meta_comparison_plot(states_list, days_over_thres_list, 'days_over_thres', rmse_new_list, 'rmse_new', z_avg_list, 'z_avg', z_latest_avg_list, 'z_latest', var)
+    #rmse = make_meta_comparison_plot(states_list, rmse_new_list, 'rmse_new')
+    #z_avg = make_meta_comparison_plot(states_list, z_avg_list, 'z_avg')
+    #z_latest = make_meta_comparison_plot(states_list, z_latest_avg_list, 'z_latest')
+
+
+
 
 
     #compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
