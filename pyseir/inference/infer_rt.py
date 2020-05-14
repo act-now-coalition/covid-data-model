@@ -200,8 +200,12 @@ class RtInferenceEngine:
                              .mean(std=self.kernel_std)\
                              .round()
 
-        nonzeros = [idx for idx, val in enumerate(smoothed) if val!= 0]
-        if max(smoothed) < smoothed_max_threshold:
+
+        nonzeros = [idx for idx, val in enumerate(smoothed) if val != 0]
+
+        if smoothed.empty:
+            idx_start = 0
+        elif max(smoothed) < smoothed_max_threshold:
             # skip the entire array.
             idx_start = len(smoothed)
         else:
