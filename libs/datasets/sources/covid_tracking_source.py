@@ -1,5 +1,6 @@
 import logging
 import pandas as pd
+import numpy as np
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
@@ -45,7 +46,6 @@ class CovidTrackingDataSource(data_source.DataSource):
         IN_ICU_CURRENTLY = "inIcuCurrently"
         IN_ICU_CUMULATIVE = "inIcuCumulative"
 
-        IN_ICU_CURRENTLY = "inIcuCurrently"
         TOTAL_IN_ICU = "inIcuCumulative"
 
         ON_VENTILATOR_CURRENTLY = "onVentilatorCurrently"
@@ -130,13 +130,25 @@ class CovidTrackingDataSource(data_source.DataSource):
         # TODO(chris): Handle this in a more sane way.
         data = data.loc[data.state != "PR", :]
 
+        # Removing bad data from Delaware.
+        # Once that is resolved we can remove this while keeping the assert below.
+        icu_mask = data[cls.Fields.IN_ICU_CURRENTLY] > data[cls.Fields.CURRENT_HOSPITALIZED]
+        data[cls.Fields.IN_ICU_CURRENTLY].loc[icu_mask] = np.nan
+
+        # Current Sanity Check and Filter for In ICU.
+        # This should fail for Delaware right now unless we patch it.
+        # The 'not any' style is to deal with comparisons to np.nan.
+        assert not (
+            data[cls.Fields.IN_ICU_CURRENTLY] > data[cls.Fields.CURRENT_HOSPITALIZED]
+        ).any(), "IN_ICU_CURRENTLY field is greater than CURRENT_HOSPITALIZED"
+
         # must stay true: positive + negative  ==  total
         assert (
             data[cls.Fields.POSITIVE_TESTS] + data[cls.Fields.NEGATIVE_TESTS]
             == data[cls.Fields.TOTAL_TEST_RESULTS]
         ).all()
 
-        # must stay true: positive chage + negative change ==  total change
+        # must stay true: positive change + negative change ==  total change
         assert (
             data[cls.Fields.POSITIVE_INCREASE] + data[cls.Fields.NEGATIVE_INCREASE]
             == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
