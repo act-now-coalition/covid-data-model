@@ -7,7 +7,7 @@ import calendar
 import argparse
 import pdb
 import os
-import subprocess
+import shutil
 
 def aggregate_df(df, args):
   #get all county level data points and add to get state level data points
@@ -55,7 +55,7 @@ def get_compare_metrics(df1, df2, var):
     diff.append(p_diff)
   return diff, z_scores
 
-def make_plot(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
+def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
   #truncated df2 and df3 to df1 (this assumes df1 is the shortest)
   truncated_df2 = get_equal_len_df(df2, df1)
   truncated_df3 = get_equal_len_df(df3, df1)
@@ -66,29 +66,6 @@ def make_plot(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
   if rmse2 > 0.1 or rmse3 > 0.1:
     diff_df2, z_df2 = get_compare_metrics(df1, truncated_df2, var)
     diff_df3, z_df3 = get_compare_metrics(df1, truncated_df3, var)
-    '''
-    #plt.plot(df1.index.values, diff_df2, color = 'green')
-    #plt.plot(df1.index.values, diff_df3, color = 'yellow')
-    plt.plot(df1.index.values, z_df2, color = 'green')
-    plt.plot(df1.index.values, z_df3, color = 'yellow')
-    plt.xlabel('Date')
-    plt.ylabel('Percent Difference')
-    plt.savefig(args.output_dir + '/' + state + '_percentdiff.pdf')
-    plt.close('all')
-    plt.title(state)
-    plt.xlabel(args.updated_date_name)
-    plt.ylabel(var)
-    print('HERE')
-    plt.plot(df1.index.values, df1[var], color = 'orange', label = df1_name + ' NYT, RMSE: ' + str(rmse2), markersize = 15, marker = '.', alpha = 0.5)
-    plt.plot(df2.index.values, df2[var],  color = 'blue', label = df2_name + ' NYT, RMSE: ' + str(rmse3), markersize = 8, marker = '*', alpha = 0.5)
-    plt.plot(df3.index.values, df3[var], color = 'purple', label = df3_name + ' NYT: RMSE: ' + str(rmse3), markersize = 8, marker = 'd', alpha = 0.5)
-    
-    plt.xticks(rotation=30)
-    plt.legend(loc = 'upper left')
-    plt.grid(True)
-    plt.savefig(args.output_dir + '/' + state + '_raw_' +  var + '_compare.png', bbox_inches='tight')
-    plt.close('all')
-    '''
 
     fig, ax = plt.subplots(3,1, sharex = True)
     fig.subplots_adjust(hspace = 0)
@@ -101,6 +78,7 @@ def make_plot(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
     color1 = 'blue'
     color2 = 'orange'
     color3 = 'purple'
+    fig.suptitle(var)
     ax[0].plot(df1.index.values, df1[var], color = color1, label = df1_name + ' NYT, RMSE: ' + str(rmse2), markersize = markersize1, marker = markerstyle1, alpha = 0.5)
     ax[0].plot(df3.index.values, df3[var], color = color3, label = df3_name + ' NYT: RMSE: ' + str(rmse3), markersize = markersize3, marker = markerstyle3, alpha = 0.5)
     ax[0].plot(df2.index.values, df2[var],  color = color2, label = df2_name + ' NYT', markersize = markersize2, marker = markerstyle2, alpha = 0.5)
@@ -116,10 +94,10 @@ def make_plot(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
     ax[2].plot(df1.index.values, z_df3, color = color3, markersize = markersize3, marker = markerstyle3, alpha = 0.5)
     ax[2].set(ylabel='Z Score')
     ax[2].grid(True)
+
     plt.xticks(rotation=30)
     ax[0].legend(loc = 'upper left')
-    #plt.grid(True)
-    plt.savefig(args.output_dir + '/' + state + '_compare.pdf', bbox_inches = 'tight')
+    plt.savefig(args.output_dir + '/' + state + '_' + var + '_compare.pdf', bbox_inches = 'tight')
     plt.close('all')
 
 def compare_county_state_plot(var, df1, df2, df1_name, df2_name, args, state):
@@ -149,40 +127,51 @@ if __name__ == '__main__':
   parser.add_argument('-new_deaths_name', '--new_deaths_name', type = str, dest = 'new_deaths_name', default = 'deaths', help = 'name of new deaths name in input csv')
   parser.add_argument('-date_name', '--date_name', type = str, dest = 'date_name', default = 'date', help = 'name of datesin input csv')
   parser.add_argument('-updated_date_name', '--updated_date_name', type = str, dest = 'updated_date_name', default = 'Date', help = 'name of date variable that is computed in this script, really just renaming')
+  parser.add_argument('-rmse_threshold', '--rmse_threshold', type = float, dest = 'rmse_threshold', default = 1, help = 'rmse threshold to trigger on')
+  parser.add_argument('-percent_threshold', '--percent_threshold', type = float, dest = 'percent_threshold', default = .1, help = 'percent difference threshold to trigger on')
+  parser.add_argument('-z_threshold', '--z_threshold', type = float, dest = 'z_threshold', default = 2, help = 'Z score threshold to trigger on')
+  parser.add_argument('-n_days_over_threshold', '-n_days_over_threshold', type = int, default = 5, help = 'number of days to be over threshold to trigger on')
   args = parser.parse_args()
 
   #remove previous output directory if it exists
-  if os.path.isdir(args.output_dir):
-    subprocess.Popen("rm -r ./" + args.output_dir, stdout=subprocess.PIPE)
-  os.mkdir(args.output_dir)
+  if os.path.exists(args.output_dir):
+    shutil.rmtree(args.output_dir)
+  os.makedirs(args.output_dir)
+
+  OLD_CAN_DATA = "data/us-counties-old.csv" #This will be used as the reference dataset which is compared to NEW_CAN_DATA and LATEST_NYT_DATA datasets
+  NEW_CAN_DATA = "data/us-counties-new.csv"
+  LATEST_NYT_DATA = "data/us-counties-latest.csv"
+  LATEST_NYT_STATE_DATA = "data/us-states-latest.csv"
+  variables = ['cases', 'deaths']
+
+  #Get all states in input dataset if user asks for all states
   if 'All' in args.states:
     #could add start and end date here Natasha
-    df1 = pd.read_csv("data/us-counties-old.csv")
+    df1 = pd.read_csv(OLD_CAN_DATA)
     args.states = df1['state'].unique()
-    print(df1)
   
+  #Iterate thru states
   for state in args.states:
-    #Grab Data To Compare
-    df1 = get_state(pd.read_csv("data/us-counties-old.csv", parse_dates=[args.date_name]), state, args)
-    df2 = get_state(pd.read_csv("data/us-counties-new.csv", parse_dates=[args.date_name]), state, args)
+    #Grab Data To Compare from CAN Data Caches
+    df1 = get_state(pd.read_csv(OLD_CAN_DATA, parse_dates=[args.date_name]), state, args)
+    df2 = get_state(pd.read_csv(NEW_CAN_DATA, parse_dates=[args.date_name]), state, args)
     df1_name = 'CAN DF1'
     df2_name = 'CAN DF2'
 
-    #Grab Latest Data
-    df3 = get_state(pd.read_csv("data/us-counties-latest.csv", parse_dates=[args.date_name]), state, args)
-    df3_state = get_state(pd.read_csv("data/us-states-latest.csv", parse_dates=[args.date_name]), state, args)
+    #Grab Latest Data directly from NYT
+    df3 = get_state(pd.read_csv(LATEST_NYT_DATA, parse_dates=[args.date_name]), state, args)
+    df3_state = get_state(pd.read_csv(LATEST_NYT_STATE_DATA, parse_dates=[args.date_name]), state, args)
     df3_name = get_current_day()
 
-    #Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths to prepare for plotting)
+    #Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
     df1_ag = aggregate_df(df1, args)
     df2_ag = aggregate_df(df2, args)
     df3_ag = aggregate_df(df3, args)
     df3_state_ag = aggregate_df(df3_state, args)
 
+    for var in variables:
+      compare_data(var, df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
 
-    make_plot('cases', df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
-    make_plot('deaths', df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
     #compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
-    #compare_county_state_plot('new_deaths', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
 
 
