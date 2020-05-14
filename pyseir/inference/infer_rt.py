@@ -167,6 +167,13 @@ class RtInferenceEngine:
             Which type of time-series to use.
         plot: bool
             If True, plot smoothed and original data.
+        smoothed_max_threshold: int
+            This parameter allows you to filter out entire series
+            (e.g. NEW_DEATHS) when they do not contain high enough
+            numeric values. This has been added to account for low-level
+            constant smoothed values having a dispropotionate effect on
+            our final R(t) calculation, when all of their values are below
+            this parameter.
 
         Returns
         -------
@@ -176,13 +183,7 @@ class RtInferenceEngine:
             Output integers since the reference date.
         smoothed: array-like
             Gaussian smoothed data.
-        smoothed_max_threshold: int
-            This parameter allows you to filter out entire series
-            (e.g. NEW_DEATHS) when they do not contain high enough
-            numeric values. This has been added to account for low-level
-            constant smoothed values having a dispropotionate effect on
-            our final R(t) calculation, when all of their values are below
-            this parameter.
+        
 
         """
         timeseries_type = TimeseriesType(timeseries_type)
