@@ -52,16 +52,16 @@ class NevadaHospitalAssociationData(data_source.DataSource):
     def standardize_data(cls, data):
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.COUNTY.value
-        data[cls.Fields.CURRENT_HOSPITALIZED_TOTAL] = data[cls.Fields.ACCUTE_OCCUPIED] + data[cls.Fields.ICU_OCCUPIED]
+        data[cls.Fields.CURRENT_HOSPITALIZED_TOTAL] = (
+            data[cls.Fields.ACCUTE_OCCUPIED] + data[cls.Fields.ICU_OCCUPIED]
+        )
         return data
 
     @classmethod
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        data = pd.read_csv(
-            input_path, parse_dates=[cls.Fields.DATE], dtype={cls.Fields.FIPS: str}
-        )
+        data = pd.read_csv(input_path, parse_dates=[cls.Fields.DATE], dtype={cls.Fields.FIPS: str})
         data = cls.standardize_data(data)
 
         return cls(data)

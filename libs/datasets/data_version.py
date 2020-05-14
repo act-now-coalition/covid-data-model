@@ -31,12 +31,7 @@ class DataVersion(object):
         filename = os.path.join(output_dir, f"{data_type}.version.json")
         with open(filename, "w") as f:
             json.dump(
-                {
-                    "when": str(self.now),
-                    "gitHash": self.git_hash,
-                    "dirty": self.is_dirty,
-                },
-                f,
+                {"when": str(self.now), "gitHash": self.git_hash, "dirty": self.is_dirty,}, f,
             )
 
 
@@ -65,9 +60,7 @@ def public_data_hash(git_hash: Optional[str]):
     if git_hash is not None:
         repo = git.Repo(LOCAL_PUBLIC_DATA_PATH)
         if repo.is_dirty():
-            raise RuntimeError(
-                "Cannot set covid-data-public repo hash, working tree is dirty"
-            )
+            raise RuntimeError("Cannot set covid-data-public repo hash, working tree is dirty")
         _logger.info(f"Using git hash {git_hash}")
         with _repo_at_hash(repo, git_hash):
             yield git_hash
@@ -83,17 +76,13 @@ def data_version(git_hash: Optional[str]):
     is_dirty = repo.is_dirty()
     if git_hash:
         if is_dirty:
-            raise RuntimeError(
-                "Cannot set covid-data-public repo hash, working tree is dirty"
-            )
+            raise RuntimeError("Cannot set covid-data-public repo hash, working tree is dirty")
         with _repo_at_hash(repo, git_hash):
             logging.info(f"Using covid-data-public at version {git_hash}")
             yield DataVersion(git_hash, is_dirty)
     else:
         git_hash = repo.head.ref.commit.hexsha
-        logging.info(
-            f'Using covid-data-public at version {"*" if is_dirty else ""}{git_hash}'
-        )
+        logging.info(f'Using covid-data-public at version {"*" if is_dirty else ""}{git_hash}')
         yield DataVersion(git_hash, is_dirty)
 
 

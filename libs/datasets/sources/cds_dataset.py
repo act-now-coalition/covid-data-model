@@ -97,9 +97,7 @@ class CDSDataset(data_source.DataSource):
         data = pd.concat(split_data)
 
         # CDS state level aggregates are identifiable by not having a city or county.
-        only_county = (
-            data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
-        )
+        only_county = data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
         county_hits = numpy.where(only_county, "county", None)
         only_state = (
             data[cls.Fields.COUNTY].isnull()
@@ -132,9 +130,7 @@ class CDSDataset(data_source.DataSource):
         data = dataset_utils.add_fips_using_county(data, fips_data)
 
         # ADD Negative tests
-        data[cls.Fields.NEGATIVE_TESTS] = (
-            data[cls.Fields.TESTED] - data[cls.Fields.CASES]
-        )
+        data[cls.Fields.NEGATIVE_TESTS] = data[cls.Fields.TESTED] - data[cls.Fields.CASES]
 
         # put the state column back
         data["state"] = data["state_tmp"]

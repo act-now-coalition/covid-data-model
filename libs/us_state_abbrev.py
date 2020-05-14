@@ -138,6 +138,5 @@ if __name__ == "__main__":
     print("Wisconin --> WI?", US_STATE_ABBREV["Wisconsin"] == "WI")
     print("WI --> Wisconin?", abbrev_us_state["WI"] == "Wisconsin")
     print(
-        "Number of entries (50 states, DC, 5 Territories) == 56? ",
-        56 == len(US_STATE_ABBREV),
+        "Number of entries (50 states, DC, 5 Territories) == 56? ", 56 == len(US_STATE_ABBREV),
     )

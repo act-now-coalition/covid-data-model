@@ -22,6 +22,4 @@ def test__pyseir_end_to_end():
     rt_col = schema.CAN_MODEL_OUTPUT_SCHEMA.index(schema.RT_INDICATOR)
 
     assert (output[rt_col].astype(float) > 0).any()
-    assert (
-        output.loc[output[rt_col].astype(float).notnull(), rt_col].astype(float) < 6
-    ).all()
+    assert (output.loc[output[rt_col].astype(float).notnull(), rt_col].astype(float) < 6).all()
