@@ -155,7 +155,7 @@ class RtInferenceEngine:
         elif timeseries_type in (TimeseriesType.NEW_HOSPITALIZATIONS, TimeseriesType.CURRENT_HOSPITALIZATIONS):
             return self.hospital_dates, self.hospital_times, self.hospitalizations
 
-    def apply_gaussian_smoothing(self, timeseries_type, plot=False):
+    def apply_gaussian_smoothing(self, timeseries_type, plot=False, threshold=5):
         """
         Apply a rolling Gaussian window to smooth the data. This signature and
         returns match get_time_series, but will return a subset of the input
@@ -323,7 +323,7 @@ class RtInferenceEngine:
 
         return dates[start_idx:], times[start_idx:], posteriors
 
-    def infer_all(self, plot=False, shift_deaths=0):
+    def infer_all(self, plot=True, shift_deaths=0):
         """
         Infer R_t from all available data sources.
 
