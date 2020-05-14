@@ -137,6 +137,7 @@ def make_meta_comparison_plot(states_list, array1, name1, array2, name2, array3,
   x_values = np.arange(len(states_list))
   fig, ax = plt.subplots(2,2)
   width = 1
+  fig.suptitle(var)
   ax[0,0].bar(x_values, array1, width = width)
   ax[0,0].set_ylabel(name1)
   ax[0,0].set_xticks(x_values)
@@ -183,7 +184,7 @@ if __name__ == '__main__':
   NEW_CAN_DATA = "data/us-counties-new.csv"
   LATEST_NYT_DATA = "data/us-counties-latest.csv"
   LATEST_NYT_STATE_DATA = "data/us-states-latest.csv"
-  variables = ['cases', 'deaths']
+  variables = ['cases', 'deaths', 'new_cases', 'new_deaths']
 
   #Get all states in input dataset if user asks for all states
   if 'All' in args.states:
