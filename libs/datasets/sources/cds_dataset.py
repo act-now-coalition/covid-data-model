@@ -87,11 +87,14 @@ class CDSDataset(data_source.DataSource):
 
         # Don't want to return city data because it's duplicated in county
         # City data before 3-23 was not duplicated.
-        select_pre_march_23 = data.date < "2020-03-23"
-        data.loc[select_pre_march_23, cls.Fields.COUNTY] = data.loc[select_pre_march_23].apply(
-            fill_missing_county_with_city, axis=1
-        )
-        data = data.iloc[select_pre_march_23 | data[cls.Fields.CITY].isnull()]
+        # data = data[data[cls.Fields.CITY].isnull()]
+        pre_march_23 = data[data.date < "2020-03-23"]
+        pre_march_23.county = pre_march_23.apply(fill_missing_county_with_city, axis=1)
+        split_data = [
+            pre_march_23,
+            data[(data.date >= "2020-03-23") & data[cls.Fields.CITY].isnull()],
+        ]
+        data = pd.concat(split_data)
 
         # CDS state level aggregates are identifiable by not having a city or county.
         only_county = data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
@@ -132,4 +135,15 @@ class CDSDataset(data_source.DataSource):
         # put the state column back
         data["state"] = data["state_tmp"]
 
+        return data
+
+    @classmethod
+    def remove_duplicate_city_data(cls, data):
+        # Don't want to return city data because it's duplicated in county
+        # City data before 3-23 was not duplicated.
+        select_pre_march_23 = data.date < "2020-03-23"
+        data.loc[select_pre_march_23, cls.Fields.COUNTY] = data.loc[select_pre_march_23].apply(
+            fill_missing_county_with_city, axis=1
+        )
+        data = data.iloc[select_pre_march_23 | data[cls.Fields.CITY].isnull()]
         return data
