@@ -38,16 +38,20 @@ def get_compare_metrics(df1, df2, var):
   for i in range(len(df1.index)):
     var1 = df1[var].iloc[i]
     var2 = df2[var].iloc[i] 
-    larger_var = max(var1, var2)
-    smaller_var = min(var1, var2)
-    if smaller_var == 0 and larger_var == 0:
+    if var1 == 0 and var2 == 0:
       p_diff = 0
       z_score = 0
-    #elif smaller_var == 0 and larger_var != 0: #may want to deal with small variations differently
+    elif var1 == 0 and var2 != 0: #may want to deal with small variations differently
+      p_diff = (var2 - var1)/var2
+      z_score = (var2-var1)/1 # I am hardcoding the error on zero to be 1
+    elif var2 == 0 and var1 != 0:
+      p_diff = (var2 - var1)/var1
+      z_score = (var2 - var1)/1 #again hardcoding error on zero to be 1
     else:
-      p_diff = (larger_var - smaller_var)/larger_var
-      err = np.sqrt(larger_var)
-      z_score = (larger_var - smaller_var)/err #to be added
+      p_diff = (abs(var2) - abs(var1))/var1
+      err = np.sqrt(abs(var1))
+      z_score = (var2 - var1)/err #to be added
+
     z_scores.append(z_score)
     diff.append(p_diff)
     number_of_days_percent_threshold = sum(i > args.percent_threshold for i in diff)
@@ -68,15 +72,15 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
 
   #Get comparison metrics
   rmse2 = get_rmse(df1, truncated_df2, var)
-  rmse3 = get_rmse(truncated_df2, truncated_df3, var)
+  rmse3 = get_rmse(df1, truncated_df3, var)
   diff_df2, z_df2, avg_z2, latest_avg_z2, days_over_z2 = get_compare_metrics(df1, truncated_df2, var)
   diff_df3, z_df3, avg_z3, latest_avg_z3, days_over_z3 = get_compare_metrics(df1, truncated_df3, var)
 
   #determine if data is different enough to plot for further investigation
   if args.use_latest:
-    abnormal = rmse2 > args.rmse_threshold and rmse3 > args.rmse_threshold
+    abnormal = days_over_z2 > args.n_days_over_threshold and days_over_z3 > args.n_days_over_threshold
   else:
-    abnormal = rmse2 > args.rmse_threshold
+    abnormal = days_over_z2 > args.n_days_over_threshold
 
   if abnormal:
     fig, ax = plt.subplots(3,1, sharex = True)
@@ -91,11 +95,12 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
     color2 = 'orange'
     color3 = 'purple'
     fig.suptitle(var)
-    ax[0].plot(df1.index.values, df1[var], color = color1, label = df1_name + ' NYT, RMSE: ' + str(rmse2) + ' $Z_{avg}$: ' + str(avg_z2),  markersize = markersize1, marker = markerstyle1, alpha = 0.5)
-    ax[0].plot(df3.index.values, df3[var], color = color3, label = df3_name + ' NYT: RMSE: ' + str(rmse3) + ' $Z_{avg}$: ' + str(avg_z3), markersize = markersize3, marker = markerstyle3, alpha = 0.5)
-    ax[0].plot(df2.index.values, df2[var],  color = color2, label = df2_name + ' NYT', markersize = markersize2, marker = markerstyle2, alpha = 0.5)
+    ax[0].plot(df1.index.values, df1[var], color = color1, label = df1_name + ' (RMSE: ' + str(rmse2) + ' $Z_{avg}$: ' + str(avg_z2) + ')',  markersize = markersize1, marker = markerstyle1, alpha = 0.5)
+    ax[0].plot(df3.index.values, df3[var], color = color3, label = df3_name + ' (RMSE: ' + str(rmse3) + ' $Z_{avg}$: ' + str(avg_z3) + ')', markersize = markersize3, marker = markerstyle3, alpha = 0.5)
+    ax[0].plot(df2.index.values, df2[var],  color = color2, label = df2_name, markersize = markersize2, marker = markerstyle2, alpha = 0.5)
     ax[0].set(ylabel = var)
     ax[0].grid(True)
+    ax[0].set_yscale('log')
 
     ax[1].plot(df1.index.values, diff_df2, color = color2, markersize = markersize2, marker = markerstyle2, alpha = 0.5)
     ax[1].plot(df1.index.values, diff_df3, color = color3, markersize = markersize3, marker = markerstyle3, alpha = 0.5)
@@ -109,11 +114,12 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
 
     plt.xticks(rotation=30)
     ax[0].legend(loc = 'upper left')
+    ax[0].legend(loc=2, prop={'size': 4})
     plt.savefig(args.output_dir + '/' + state + '_' + var + '_compare.pdf', bbox_inches = 'tight')
     plt.close('all')
-    return avg_z2, latest_avg_z2, days_over_z2, rmse2, rmse3
+    return avg_z2, latest_avg_z2, days_over_z2, rmse2, rmse3, abnormal
   else:
-    return 0, 0, 0, 0, 0
+    return 0, 0, 0, 0, 0, False
 
 def compare_county_state_plot(var, df1, df2, df1_name, df2_name, args, state):
   rmse2 = get_rmse(df1, df2, var)
@@ -170,7 +176,7 @@ if __name__ == '__main__':
   parser.add_argument('-rmse_threshold', '--rmse_threshold', type = float, dest = 'rmse_threshold', default = 1, help = 'rmse threshold to trigger on')
   parser.add_argument('-percent_threshold', '--percent_threshold', type = float, dest = 'percent_threshold', default = .1, help = 'percent difference threshold to trigger on')
   parser.add_argument('-z_threshold', '--z_threshold', type = float, dest = 'z_threshold', default = 2, help = 'Z score threshold to trigger on')
-  parser.add_argument('-n_days_over_threshold', '--n_days_over_threshold', type = int, default = 5, help = 'number of days to be over threshold to trigger on')
+  parser.add_argument('-n_days_over_threshold', '--n_days_over_threshold', dest = 'n_days_over_threshold', type = int, default = 5, help = 'number of days to be over threshold to trigger on')
   parser.add_argument('-use_latest', '--use_latest', type = bool, default = False, help = 'set to true to use latest data * and * new data to determine unexpected changes')
   parser.add_argument('-n_days_z_score_mean', '--n_days_z_score_mean', type = int, default = 14, help = 'how many days in the past to average the z score to look for unexpcted changes to the data')
   args = parser.parse_args()
@@ -199,13 +205,14 @@ if __name__ == '__main__':
       #Grab Data To Compare from CAN Data Caches
       df1 = get_state(pd.read_csv(OLD_CAN_DATA, parse_dates=[args.date_name]), state, args)
       df2 = get_state(pd.read_csv(NEW_CAN_DATA, parse_dates=[args.date_name]), state, args)
-      df1_name = 'CAN DF1'
-      df2_name = 'CAN DF2'
+      df1_name = 'CAN LAST PROD'
+      df2_name = 'CAN CURRENT'
 
       #Grab Latest Data directly from NYT
       df3 = get_state(pd.read_csv(LATEST_NYT_DATA, parse_dates=[args.date_name]), state, args)
       df3_state = get_state(pd.read_csv(LATEST_NYT_STATE_DATA, parse_dates=[args.date_name]), state, args)
       df3_name = get_current_day()
+      df3_name = 'NYT LATEST'
 
       #Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
       df1_ag = aggregate_df(df1, args)
@@ -213,9 +220,9 @@ if __name__ == '__main__':
       df3_ag = aggregate_df(df3, args)
       df3_state_ag = aggregate_df(df3_state, args)
 
-      avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest = compare_data(var, df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
+      avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest, abnormal = compare_data(var, df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state)
 
-      if avg_z > 0:
+      if abnormal:
         z_avg_list.append(avg_z)
         z_latest_avg_list.append(latest_avg_z)
         days_over_thres_list.append(days_over_z)
@@ -224,9 +231,8 @@ if __name__ == '__main__':
         rmse_latest_list.append(rmse_latest)
 
     #Create meta-compare charts for all abnormal areas
+    states_list = list(dict.fromkeys(states_list))
     make_meta_comparison_plot(states_list, days_over_thres_list, 'days_over_thres', rmse_new_list, 'rmse_new', z_avg_list, 'z_avg', z_latest_avg_list, 'z_latest', var)
-    #rmse = make_meta_comparison_plot(states_list, rmse_new_list, 'rmse_new')
-    #z_avg = make_meta_comparison_plot(states_list, z_avg_list, 'z_avg')
     #z_latest = make_meta_comparison_plot(states_list, z_latest_avg_list, 'z_latest')
 
 
