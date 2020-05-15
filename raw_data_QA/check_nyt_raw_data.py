@@ -32,25 +32,30 @@ def get_equal_len_df(df1, df2):
   truncated_df1 = df1.head(df2_length)
   return truncated_df1
 
+
+def get_p_diff_z_score(var1, var2):
+  if var1 == 0 and var2 == 0:
+    p_diff = 0
+    z_score = 0
+  elif var1 == 0 and var2 != 0: #may want to deal with small variations differently
+    p_diff = (var2 - var1)/var2
+    z_score = (var2-var1)/1 # I am hardcoding the error on zero to be 1
+  elif var2 == 0 and var1 != 0:
+    p_diff = (var2 - var1)/var1
+    z_score = (var2 - var1)/1 #again hardcoding error on zero to be 1
+  else:
+    p_diff = (abs(var2) - abs(var1))/var1
+    err = np.sqrt(abs(var1))
+    z_score = (var2 - var1)/err #to be added
+  return p_diff, z_score
+
 def get_compare_metrics(df1, df2, var):
   diff = []
   z_scores = []
   for i in range(len(df1.index)):
     var1 = df1[var].iloc[i]
     var2 = df2[var].iloc[i] 
-    if var1 == 0 and var2 == 0:
-      p_diff = 0
-      z_score = 0
-    elif var1 == 0 and var2 != 0: #may want to deal with small variations differently
-      p_diff = (var2 - var1)/var2
-      z_score = (var2-var1)/1 # I am hardcoding the error on zero to be 1
-    elif var2 == 0 and var1 != 0:
-      p_diff = (var2 - var1)/var1
-      z_score = (var2 - var1)/1 #again hardcoding error on zero to be 1
-    else:
-      p_diff = (abs(var2) - abs(var1))/var1
-      err = np.sqrt(abs(var1))
-      z_score = (var2 - var1)/err #to be added
+    p_diff, z_score = get_p_diff_z_score(var1, var2)
 
     z_scores.append(z_score)
     diff.append(p_diff)
@@ -66,7 +71,12 @@ def Average(list):
     return 0
 
 def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
-  #truncated df2 and df3 to df1 (this assumes df1 is the shortest)
+  #compare new data to old
+  df_new_data, new_p_diffs, new_z_scores = check_new_data(df1_ag, df2_ag, args, var)
+
+  new_days_over_thres = sum(i > args.new_day_percent_thres for i in new_p_diffs)
+  new_data_days_abnormal = new_days_over_thres > 0 #there is at least one new day added that exceeds abnormal threshold
+  #truncate df2 and df3 to df1 (this assumes df1 is the shortest)
   truncated_df2 = get_equal_len_df(df2, df1)
   truncated_df3 = get_equal_len_df(df3, df1)
 
@@ -77,23 +87,23 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
   diff_df3, z_df3, avg_z3, latest_avg_z3, days_over_z3 = get_compare_metrics(df1, truncated_df3, var)
 
   #determine if data is different enough to plot for further investigation
-  if args.use_latest:
-    abnormal = days_over_z2 > args.n_days_over_threshold and days_over_z3 > args.n_days_over_threshold
-  else:
-    abnormal = days_over_z2 > args.n_days_over_threshold
+  historical_data_disagree = days_over_z2 > args.n_days_over_threshold
 
-  if abnormal:
+  if historical_data_disagree or new_data_days_abnormal:
     fig, ax = plt.subplots(3,1, sharex = True)
     fig.subplots_adjust(hspace = 0)
     markersize1 = 8
     markersize2 = 10
     markersize3 = 4
+    markersize4 = 4
     markerstyle1 = '.'
     markerstyle2 = '.'
     markerstyle3 = '.'
+    markerstyle4 = '.'
     color1 = 'blue'
     color2 = 'orange'
     color3 = 'purple'
+    color4 = 'red'
     fig.suptitle(var)
     ax[0].plot(df1.index.values, df1[var], color = color1, label = df1_name + ' (RMSE: ' + str(rmse2) + ' $Z_{avg}$: ' + str(avg_z2) + ')',  markersize = markersize1, marker = markerstyle1, alpha = 0.5)
     ax[0].plot(df3.index.values, df3[var], color = color3, label = df3_name + ' (RMSE: ' + str(rmse3) + ' $Z_{avg}$: ' + str(avg_z3) + ')', markersize = markersize3, marker = markerstyle3, alpha = 0.5)
@@ -104,20 +114,29 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
 
     ax[1].plot(df1.index.values, diff_df2, color = color2, markersize = markersize2, marker = markerstyle2, alpha = 0.5)
     ax[1].plot(df1.index.values, diff_df3, color = color3, markersize = markersize3, marker = markerstyle3, alpha = 0.5)
+    ax[1].plot(df_new_data.index.values, new_p_diffs, color = color4, markersize = markersize4, marker = markerstyle4, alpha = 0.5)
     ax[1].set(ylabel = 'Percent Difference')
     ax[1].grid(True)
 
     ax[2].plot(df1.index.values, z_df2, color = color2, markersize = markersize2, marker = markerstyle2, alpha = 0.5)
     ax[2].plot(df1.index.values, z_df3, color = color3, markersize = markersize3, marker = markerstyle3, alpha = 0.5)
+    ax[2].plot(df_new_data.index.values, new_z_scores, color = color4, markersize = markersize4, marker = markerstyle4, alpha = 0.5)
     ax[2].set(ylabel='Z Score')
     ax[2].grid(True)
 
     plt.xticks(rotation=30)
     ax[0].legend(loc = 'upper left')
     ax[0].legend(loc=2, prop={'size': 4})
-    plt.savefig(args.output_dir + '/' + state + '_' + var + '_compare.pdf', bbox_inches = 'tight')
+    if historical_data_disagree and not new_data_days_abnormal:
+      output_path = args.old_data_abnormal_folder
+    elif new_data_days_abnormal and not historical_data_disagree:
+      output_path = args.new_data_abnormal_folder
+    elif new_data_days_abnormal and historical_data_disagree:
+      output_path = args.new_and_old_data_abnormal
+
+    plt.savefig(args.output_dir + '/' + output_path + '/' + state + '_' + var + '_compare.pdf', bbox_inches = 'tight')
     plt.close('all')
-    return avg_z2, latest_avg_z2, days_over_z2, rmse2, rmse3, abnormal
+    return avg_z2, latest_avg_z2, days_over_z2, rmse2, rmse3, historical_data_disagree
   else:
     return 0, 0, 0, 0, 0, False
 
@@ -164,6 +183,21 @@ def make_meta_comparison_plot(states_list, array1, name1, array2, name2, array3,
   plt.close('all')
   return x_values
 
+def check_new_data(df1, df2, args, var):
+  number_of_new_days = len(df2.index) - len(df1.index)
+  new_data = df2.tail(number_of_new_days + 1) #the new data are the additional entries not in df1
+
+  #get percent change of values relative to last data point
+
+  p_diffs, z_scores = [], []
+  for i in range(1, len(new_data.index)):
+    ref_point = new_data[var].iloc[i-1]
+    var2 = new_data[var].iloc[i] 
+    p_diff, z_score = get_p_diff_z_score(ref_point, var2)
+    p_diffs.append(p_diff)
+    z_scores.append(z_score)
+  return new_data.tail(len(new_data.index) - 1), p_diffs, z_scores
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description = 'arg parser for process.py')
   parser.add_argument('-output_dir', '--output_dir', type = str, dest = 'output_dir', default = 'output', help = 'output_dir')
@@ -174,17 +208,24 @@ if __name__ == '__main__':
   parser.add_argument('-date_name', '--date_name', type = str, dest = 'date_name', default = 'date', help = 'name of datesin input csv')
   parser.add_argument('-updated_date_name', '--updated_date_name', type = str, dest = 'updated_date_name', default = 'Date', help = 'name of date variable that is computed in this script, really just renaming')
   parser.add_argument('-rmse_threshold', '--rmse_threshold', type = float, dest = 'rmse_threshold', default = 1, help = 'rmse threshold to trigger on')
-  parser.add_argument('-percent_threshold', '--percent_threshold', type = float, dest = 'percent_threshold', default = .1, help = 'percent difference threshold to trigger on')
+  parser.add_argument('-percent_threshold', '--percent_threshold', type = float, dest = 'percent_threshold', default = 0.1, help = 'percent difference threshold to trigger on')
   parser.add_argument('-z_threshold', '--z_threshold', type = float, dest = 'z_threshold', default = 2, help = 'Z score threshold to trigger on')
   parser.add_argument('-n_days_over_threshold', '--n_days_over_threshold', dest = 'n_days_over_threshold', type = int, default = 5, help = 'number of days to be over threshold to trigger on')
   parser.add_argument('-use_latest', '--use_latest', type = bool, default = False, help = 'set to true to use latest data * and * new data to determine unexpected changes')
   parser.add_argument('-n_days_z_score_mean', '--n_days_z_score_mean', type = int, default = 14, help = 'how many days in the past to average the z score to look for unexpcted changes to the data')
+  parser.add_argument('-new_day_percent_thres', '--new_day_percent_thres', type = float, dest = 'new_day_percent_thres', default = 1.2, help = 'percent change threshold for new days to trigger on')
   args = parser.parse_args()
 
+  args.new_data_abnormal_folder = 'new_data_abnormal'
+  args.old_data_abnormal_folder = 'old_data_abnormal'
+  args.new_and_old_data_abnormal_folder = 'new_and_old_data_abnormal'
   #remove previous output directory if it exists
   if os.path.exists(args.output_dir):
     shutil.rmtree(args.output_dir)
   os.makedirs(args.output_dir)
+  os.makedirs(args.output_dir + '/' + args.new_data_abnormal_folder)
+  os.makedirs(args.output_dir + '/' + args.old_data_abnormal_folder)
+  os.makedirs(args.output_dir + '/' + args.new_and_old_data_abnormal_folder)
 
   OLD_CAN_DATA = "data/us-counties-old.csv" #This will be used as the reference dataset which is compared to NEW_CAN_DATA and LATEST_NYT_DATA datasets
   NEW_CAN_DATA = "data/us-counties-new.csv"
