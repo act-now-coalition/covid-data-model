@@ -34,7 +34,7 @@ These instructions use `pyenv` to install python `3.7.7` and create a virtualenv
 4. Install git-lfs
   On mac, `brew install git-lfs`
 
-## Install Requirements
+## Install Requirements and pre-commit
 
 Make sure you are in your virtualenv and run:
 
@@ -42,28 +42,19 @@ Make sure you are in your virtualenv and run:
 make setup-dev
 ```
 
-or:
+or manually run the commands in [our Makefile](https://github.com/covid-projections/covid-data-model/blob/master/Makefile).
 
-```
-pip install -r requirements.txt -r requirements_test.txt
-```
 
-### Setup auto-formatting
+### Auto-formatting
 
 We use [black](https://github.com/psf/black) to automatically format python code.
-One way we keep this maintainable is by using a pre-commit step that automatically
-reformats modified files on commit.
-
-Steps to install this:
-```
-1. pip install -r requirements_test.txt
-2. pre-commit install
-```
+`make setup-dev` installs `pre-commit`, which helps to keep this maintainable by automatically
+reformating modified files on commit.
 
 
 ## Configuration
 
-If you've cloned the covid-data-public repo to a local, set and environment variable to enable caching
+If you've cloned the covid-data-public repo to locally, set the environment variable to enable caching
 ```bash
 export COVID_DATA_PUBLIC=../covid-data-public
 ```
