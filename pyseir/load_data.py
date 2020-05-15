@@ -100,10 +100,7 @@ def cache_county_case_data():
     """
     logging.info('Downloading covid case data')
     # NYT dataset
-    county_case_data = pd.read_csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv', dtype='str')
-    county_case_data['date'] = pd.to_datetime(county_case_data['date'])
-    county_case_data[['cases', 'deaths']] = county_case_data[['cases', 'deaths']].astype(int)
-    county_case_data = county_case_data[county_case_data['fips'].notnull()]
+    county_case_data = load_county_case_data()
     county_case_data.to_pickle(os.path.join(DATA_DIR, 'covid_case_timeseries.pkl'))
 
 
