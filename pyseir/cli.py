@@ -193,6 +193,9 @@ def _build_all_for_states(
     _cache_global_datasets()
     if not skip_download:
         cache_all_data()
+    if not skip_whitelist:
+        _generate_whitelist()
+
     # do everything for just states in paralell
     p = Pool()
     states_only_func = partial(
@@ -207,9 +210,6 @@ def _build_all_for_states(
     if states_only:
         root.info("Only executing for states. returning.")
         return
-
-    if not skip_whitelist:
-        _generate_whitelist()
 
     # run states in paralell
     all_county_fips = {}
