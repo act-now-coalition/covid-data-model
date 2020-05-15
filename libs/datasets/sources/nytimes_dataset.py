@@ -5,7 +5,6 @@ from libs.datasets.common_fields import CommonFields, CommonIndexFields
 
 
 class NYTimesDataset(data_source.DataSource):
-    DATA_URL = "https://github.com/nytimes/covid-19-data/raw/master/us-counties.csv"
     SOURCE_NAME = "NYTimes"
 
     DATA_FOLDER = "data/cases-nytimes"
