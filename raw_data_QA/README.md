@@ -3,7 +3,7 @@
 *Objective:* Provide library that ingests CAN's cached NYT data from the current prod site and the current NYT dataset and compares.
 
 ## Running QA
-get_data.sh and get_hash.py will grab the cached data from the current prod site and grab the current NYT data and store in the data folder. There are extra settings where you can grab data from a specific covid-data-public git commit as well.
+get_data.sh and get_hash.py together grab the cached data from the current prod site and the current NYT data and store in the data folder. There are extra settings where you can grab data from a specific covid-data-public git commit as well.
 
 check_nyt_raw_data.py will compare up to three NYT us-counties.csv files. Only areas that meet the abnormality requirements will be plotted. Currently, it is required that there are 5 days where the datasets differ by at least 10% for old data, and the new data must be greater than new_day_percent_thres = 1.2. All of these setting may be changed.
 
