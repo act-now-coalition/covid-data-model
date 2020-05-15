@@ -60,11 +60,11 @@ def get_compare_metrics(df1, df2, var):
     z_scores.append(z_score)
     diff.append(p_diff)
     number_of_days_percent_threshold = sum(i > args.percent_threshold for i in diff)
-    average_Z = round(Average(z_scores), 2)
-    latest_Z = round(Average(z_scores[:-args.n_days_z_score_mean]), 2)
+    average_Z = round(average(z_scores), 2)
+    latest_Z = round(average(z_scores[:-args.n_days_z_score_mean]), 2)
   return diff, z_scores, average_Z, latest_Z, number_of_days_percent_threshold
 
-def Average(list):
+def average(list):
   if len(list) > 0:
     return sum(list)/len(list)
   else:
