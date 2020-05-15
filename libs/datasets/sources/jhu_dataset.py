@@ -94,12 +94,8 @@ class JHUDataset(data_source.DataSource):
         data = data.replace({cls.Fields.COUNTRY: country_remap})
         states = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
 
-        county_from_state = data[cls.Fields.STATE].apply(
-            dataset_utils.parse_county_from_state
-        )
-        data[cls.Fields.COUNTY] = data[cls.Fields.COUNTY].combine_first(
-            county_from_state
-        )
+        county_from_state = data[cls.Fields.STATE].apply(dataset_utils.parse_county_from_state)
+        data[cls.Fields.COUNTY] = data[cls.Fields.COUNTY].combine_first(county_from_state)
         data[cls.Fields.STATE] = states
         data = cls._fill_incomplete_county_data(data)
 
@@ -142,9 +138,7 @@ class JHUDataset(data_source.DataSource):
 
     @classmethod
     def _aggregate_fips_data(cls, data):
-        is_county_level = (
-            data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        )
+        is_county_level = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         has_fips = data[cls.Fields.FIPS].notnull()
         county_data = data[is_county_level & has_fips]
 
@@ -173,7 +167,5 @@ class JHUDataset(data_source.DataSource):
         """Finds the path to the most recent JHU csv."""
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         jhu_dir = data_root / cls.DATA_FOLDER
-        latest_date, latest_path = max(
-            (path.stem, path) for path in jhu_dir.glob("*.csv")
-        )
+        latest_date, latest_path = max((path.stem, path) for path in jhu_dir.glob("*.csv"))
         return latest_path

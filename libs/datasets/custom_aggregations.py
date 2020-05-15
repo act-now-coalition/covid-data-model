@@ -74,6 +74,4 @@ def update_with_combined_new_york_counties(
     )
 
     data = data.reset_index()
-    return pd.concat(
-        [data[data.aggregate_level != AggregationLevel.COUNTY.value], county]
-    )
+    return pd.concat([data[data.aggregate_level != AggregationLevel.COUNTY.value], county])

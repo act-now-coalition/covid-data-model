@@ -32,6 +32,4 @@ def test_remove_duplicate_city_data():
         )
     )
 
-    assert to_dict(["fips", "date"], output_df) == to_dict(
-        ["fips", "date"], expected_df
-    )
+    assert to_dict(["fips", "date"], output_df) == to_dict(["fips", "date"], expected_df)

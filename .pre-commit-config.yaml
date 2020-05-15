@@ -3,7 +3,4 @@ repos:
     rev: stable
     hooks:
       - id: black
-        # Need to get additional buy-in on the pyseir code formatting.
-        # eventually would like to remove this.
-        exclude: pyseir/*
         language_version: python3.7

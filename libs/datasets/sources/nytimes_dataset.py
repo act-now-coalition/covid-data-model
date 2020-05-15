@@ -5,7 +5,6 @@ from libs.datasets.common_fields import CommonFields, CommonIndexFields
 
 
 class NYTimesDataset(data_source.DataSource):
-    DATA_URL = "https://github.com/nytimes/covid-19-data/raw/master/us-counties.csv"
     SOURCE_NAME = "NYTimes"
 
     DATA_FOLDER = "data/cases-nytimes"
@@ -36,9 +35,7 @@ class NYTimesDataset(data_source.DataSource):
     }
 
     def __init__(self, input_path):
-        data = pd.read_csv(
-            input_path, parse_dates=[self.Fields.DATE], dtype={"fips": str}
-        )
+        data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE], dtype={"fips": str})
         data = self.standardize_data(data)
         super().__init__(data)
 
@@ -53,9 +50,7 @@ class NYTimesDataset(data_source.DataSource):
         data = dataset_utils.strip_whitespace(data)
         data[cls.Fields.STATE] = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
         # Super hacky way of filling in new york.
-        data.loc[
-            data[cls.Fields.COUNTY] == "New York City", "county"
-        ] = "New York County"
+        data.loc[data[cls.Fields.COUNTY] == "New York City", "county"] = "New York County"
         data.loc[data[cls.Fields.COUNTY] == "New York County", "fips"] = "36061"
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
         return data

@@ -95,9 +95,7 @@ class CovidTrackingDataSource(data_source.DataSource):
 
     def __init__(self, input_path):
         data = pd.read_csv(
-            input_path,
-            parse_dates=[self.Fields.DATE_CHECKED],
-            dtype={self.Fields.FIPS: str},
+            input_path, parse_dates=[self.Fields.DATE_CHECKED], dtype={self.Fields.FIPS: str},
         )
         data = self.standardize_data(data)
         super().__init__(data)
@@ -114,9 +112,7 @@ class CovidTrackingDataSource(data_source.DataSource):
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
         # Date checked is the time that the data is actually updated.
         # assigning the date field as the date floor of that day.
-        data[cls.Fields.DATE] = (
-            data[cls.Fields.DATE_CHECKED].dt.tz_localize(None).dt.floor("D")
-        )
+        data[cls.Fields.DATE] = data[cls.Fields.DATE_CHECKED].dt.tz_localize(None).dt.floor("D")
 
         dtypes = {
             cls.Fields.POSITIVE_TESTS: "Int64",

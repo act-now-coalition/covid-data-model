@@ -6,6 +6,7 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 import libs.datasets.can_model_output_schema as schema
 
 import pytest
+
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error")
 
@@ -26,6 +27,4 @@ def test__pyseir_end_to_end():
     rt_col = schema.CAN_MODEL_OUTPUT_SCHEMA.index(schema.RT_INDICATOR)
 
     assert (output[rt_col].astype(float) > 0).any()
-    assert (
-        output.loc[output[rt_col].astype(float).notnull(), rt_col].astype(float) < 6
-    ).all()
+    assert (output.loc[output[rt_col].astype(float).notnull(), rt_col].astype(float) < 6).all()

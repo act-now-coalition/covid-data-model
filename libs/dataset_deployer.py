@@ -28,9 +28,7 @@ class DatasetDeployer(object):
             # hack to allow the local writer to take either bytes or a string
             # note this assumes that all strings are given in utf-8 and not,
             # like, ASCII
-            f.write(
-                self.body.encode("UTF-8") if isinstance(self.body, str) else self.body
-            )
+            f.write(self.body.encode("UTF-8") if isinstance(self.body, str) else self.body)
 
     def persist(self):
         self._persist_to_local()
@@ -101,11 +99,7 @@ def upload_json(key_name, json: str, output_dir: str):
 
 
 def deploy_shape_files(
-    output_dir: str,
-    key: str,
-    shp_bytes: io.BytesIO,
-    shx_bytes: io.BytesIO,
-    dbf_bytes: io.BytesIO,
+    output_dir: str, key: str, shp_bytes: io.BytesIO, shx_bytes: io.BytesIO, dbf_bytes: io.BytesIO,
 ):
     """Deploys shape files to specified output dir.
 
@@ -116,12 +110,6 @@ def deploy_shape_files(
         shx_bytes:
         dbf_bytes:
     """
-    DatasetDeployer(
-        key=f"{key}.shp", body=shp_bytes.getvalue(), output_dir=output_dir
-    ).persist()
-    DatasetDeployer(
-        key=f"{key}.shx", body=shx_bytes.getvalue(), output_dir=output_dir
-    ).persist()
-    DatasetDeployer(
-        key=f"{key}.dbf", body=dbf_bytes.getvalue(), output_dir=output_dir
-    ).persist()
+    DatasetDeployer(key=f"{key}.shp", body=shp_bytes.getvalue(), output_dir=output_dir).persist()
+    DatasetDeployer(key=f"{key}.shx", body=shx_bytes.getvalue(), output_dir=output_dir).persist()
+    DatasetDeployer(key=f"{key}.dbf", body=dbf_bytes.getvalue(), output_dir=output_dir).persist()

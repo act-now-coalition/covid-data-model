@@ -57,9 +57,7 @@ def validate_results(result_dir: str) -> None:
             except FileNotFoundError:
                 missing_or_empty.append(fname)
     if len(missing_or_empty) > 0:
-        raise RuntimeError(
-            f'Missing or empty expected files: {", ".join(missing_or_empty)}'
-        )
+        raise RuntimeError(f'Missing or empty expected files: {", ".join(missing_or_empty)}')
 
 
 if __name__ == "__main__":

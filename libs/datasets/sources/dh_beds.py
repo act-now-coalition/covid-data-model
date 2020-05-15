@@ -13,9 +13,7 @@ _logger = logging.getLogger(__name__)
 
 def match_county_to_fips(data, fips_data, county_key="county", state_key="state"):
     county_combos = set(data.set_index([state_key, county_key]).index.to_list())
-    fips_combos = set(
-        fips_data.set_index([state_key, county_key, "fips"]).index.to_list()
-    )
+    fips_combos = set(fips_data.set_index([state_key, county_key, "fips"]).index.to_list())
     fips_by_state_county = {
         (
             state,
@@ -83,9 +81,7 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
                 counties_by_state[state].remove(with_suffix)
                 match = True
                 break
-            with_suffix = with_suffix.replace("saint ", "st ").replace(
-                "sainte ", "ste "
-            )
+            with_suffix = with_suffix.replace("saint ", "st ").replace("sainte ", "ste ")
             fips = fips_by_state_county.get((state, with_suffix))
             if fips:
                 matched[key] = fips
@@ -153,9 +149,7 @@ class DHBeds(data_source.DataSource):
 
         # Backfilling FIPS data based on county names.
         fips_data = dataset_utils.build_fips_data_frame()
-        fips_data = fips_data[
-            fips_data.aggregate_level == AggregationLevel.COUNTY.value
-        ]
+        fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
         fips_data = fips_data[fips_data.fips != "99999"]
         data = match_county_to_fips(data, fips_data)
 
