@@ -1,19 +1,14 @@
 from typing import List
 import pathlib
 from collections import namedtuple
-from collections import defaultdict
 import logging
 import pydantic
 import simplejson
-from api.can_api_definition import CountyFipsSummary
-from api.can_api_definition import CovidActNowCountySummary
 from api.can_api_definition import CovidActNowCountiesSummary
 from api.can_api_definition import CovidActNowCountiesTimeseries
 from api.can_api_definition import CovidActNowCountyTimeseries
-from api.can_api_definition import CovidActNowStateSummary
 from api.can_api_definition import CovidActNowStatesSummary
 from api.can_api_definition import CovidActNowStatesTimeseries
-from api.can_api_definition import CovidActNowStateTimeseries
 from api.can_api_definition import PredictionTimeseriesRowWithHeader
 from libs.enums import Intervention
 from libs.datasets.dataset_utils import AggregationLevel
@@ -172,36 +167,6 @@ def build_counties_timeseries(counties_data: List[APIOutput], intervention) -> A
     county_api_data = CovidActNowCountiesTimeseries(__root__=county_summaries)
     key = f"counties.{intervention.name}.timeseries"
     return APIOutput(key, county_api_data, intervention)
-
-
-def build_county_summary_from_model_output(input_dir) -> List[APIOutput]:
-    """Builds lists of counties available from model output.
-
-    Args:
-        input_dir: Input directory.  Should point to county output.
-
-    Returns: List of API Output objects.
-    """
-    found_fips_by_state = defaultdict(set)
-    found_fips = set()
-    for path in pathlib.Path(input_dir).iterdir():
-        if not str(path).endswith(".json"):
-            continue
-
-        state, fips, intervention, _ = path.name.split(".")
-        found_fips_by_state[state].add(fips)
-        found_fips.add(fips)
-
-    results = []
-    for state, data in found_fips_by_state.items():
-        fips_summary = CountyFipsSummary(counties_with_data=sorted(list(data)))
-        output = APIOutput(f"{state}.summary", fips_summary, None)
-        results.append(output)
-
-    fips_summary = CountyFipsSummary(counties_with_data=sorted(list(found_fips)))
-    output = APIOutput(f"fips_summary", fips_summary, None)
-    results.append(output)
-    return results
 
 
 def remove_root_wrapper(obj: dict):

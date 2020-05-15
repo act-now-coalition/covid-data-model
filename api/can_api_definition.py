@@ -203,7 +203,3 @@ class CovidActNowCountiesSummary(pydantic.BaseModel):
 
 class CovidActNowCountiesTimeseries(pydantic.BaseModel):
     __root__: List[CovidActNowCountyTimeseries] = pydantic.Field(...)
-
-
-class CountyFipsSummary(pydantic.BaseModel):
-    counties_with_data: List[str] = pydantic.Field(...)
