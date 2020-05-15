@@ -15,6 +15,7 @@ from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGene
 
 log = logging.getLogger(__name__)
 
+
 class RtInferenceEngine:
     """
     This class extends the analysis of Kevin Systrom to include mortality
@@ -104,12 +105,18 @@ class RtInferenceEngine:
                 self.display_name = self.state
 
             # TODO Swap for new data source.
-            self.times, self.observed_new_cases, self.observed_new_deaths = \
-                load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
-            self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
-                load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
+            (
+                self.times,
+                self.observed_new_cases,
+                self.observed_new_deaths,
+            ) = load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
+            (
+                self.hospital_times,
+                self.hospitalizations,
+                self.hospitalization_data_type,
+            ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
-        log.info(f'Running Rt Inference for {self.display_name}')
+        log.info(f"Running Rt Inference for {self.display_name}")
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         if self.hospitalization_data_type:
@@ -224,7 +231,6 @@ class RtInferenceEngine:
             .mean(std=self.kernel_std)
             .round()
         )
-
 
         nonzeros = [idx for idx, val in enumerate(smoothed) if val != 0]
 
