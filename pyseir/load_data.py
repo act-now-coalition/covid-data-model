@@ -515,7 +515,11 @@ def load_hospitalization_data_by_state(
             from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
             params = ParameterEnsembleGenerator(
-                fips="06", t_list=[], N_samples=1
+                fips="06",
+                t_list=[],
+                N_samples=250  # We want close to the ensemble mean.
+                # Eventually replace with constants for average length of stay.
+                # Then we can revert back to 1.
             ).get_average_seir_parameters()
             if category == "hospitalized":
                 average_length_of_stay = (
@@ -529,16 +533,15 @@ def load_hospitalization_data_by_state(
                     * params["hospitalization_length_of_stay_icu_and_ventilator"]
                 ) / (params["hospitalization_rate_general"] + params["hospitalization_rate_icu"])
             else:
-                average_length_of_stay = (
-                    (1 - params["fraction_icu_requiring_ventilator"])
-                    * params["hospitalization_length_of_stay_icu"]
-                    + params["fraction_icu_requiring_ventilator"]
-                    * params["hospitalization_length_of_stay_icu_and_ventilator"]
-                )
+                # This value is a weighted average of icu w & w/o ventilator.
+                # It is deterministic.
+                average_length_of_stay = params["hospitalization_length_of_stay_icu_avg"]
 
-            # Now compute a cumulative sum, but at each day, subtract the discharges from the previous count.
+            # Now compute a cumulative sum, but at each day,
+            # subtract the discharges from the previous count.
             new_hospitalizations = np.append([0], np.diff(cumulative))
-            current = [0]
+            current = [0]  # THIS VALUE SHOULDN'T BE ZERO.
+            # TODO: (Brett) Need to initialize more skillfully or it takes a month to stabilize
             for i, new_hosps in enumerate(new_hospitalizations[1:]):
                 current.append(current[i] + new_hosps - current[i] / average_length_of_stay)
             return times_new, current, HospitalizationDataType.CURRENT_HOSPITALIZATIONS
