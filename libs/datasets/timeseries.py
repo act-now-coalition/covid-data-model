@@ -1,5 +1,6 @@
 from typing import List
 import pandas as pd
+import numpy as np
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
@@ -100,29 +101,28 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         fips=None,
         states=None,
     ) -> "TimeseriesDataset":
-        data = self.data
-
+        query_parts = []
         if aggregation_level:
-            data = data[data.aggregate_level == aggregation_level.value]
+            query_parts.append(f'aggregation_level == "{aggregation_level.value}"')
         if country:
-            data = data[data.country == country]
+            query_parts.append('country == @country')
         if state:
-            data = data[data.state == state]
+            query_parts.append('state == @state')
         if county:
-            data = data[data.county == county]
+            query_parts.append('count == @county')
         if fips:
-            data = data[data.fips == fips]
+            query_parts.append('fips == @fips')
         if states:
-            data = data[data[self.Fields.STATE].isin(states)]
+            query_parts.append('state in @states')
 
         if on:
-            data = data[data.date == on]
+            query_parts.append('date == @on')
         if after:
-            data = data[data.date > after]
+            query_parts.append('date > @after')
         if before:
-            data = data[data.date < before]
+            query_parts.append('date < @before')
 
-        return self.__class__(data)
+        return self.__class__(self.data.query(' and '.join(query_parts)))
 
     def get_records_for_fips(self, fips) -> List[dict]:
         """Get data for FIPS code.
