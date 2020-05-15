@@ -1,10 +1,9 @@
 from io import StringIO
-import pandas as pd
-import numpy as np
-import pytest
-
 from libs.datasets.sources import cds_dataset
 from test.dataset_utils_test import to_dict
+import pandas as pd
+import pytest
+
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error")
@@ -33,4 +32,6 @@ def test_remove_duplicate_city_data():
         )
     )
 
-    assert to_dict(["fips", "date"], output_df) == to_dict(["fips", "date"], expected_df)
+    assert to_dict(["fips", "date"], output_df) == to_dict(
+        ["fips", "date"], expected_df
+    )
