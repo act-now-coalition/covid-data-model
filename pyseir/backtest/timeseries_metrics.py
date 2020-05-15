@@ -2,23 +2,26 @@ import pandas as pd
 import numpy as np
 from enum import Enum
 
+
 class ErrorType(Enum):
-    RELATIVE_ERROR = 'relative_error'
-    PERCENTAGE_ABS_ERROR = 'percentage_abs_error'
-    SYMMETRIC_ABS_ERROR = 'symmetric_abs_error'
-    BOUNDED_RELATIVE_ERROR = 'bounded_relative_error'
-    RMSE = 'rmse'
-    NRMSE = 'nrmse'
-    ERROR = 'error'
-    ABS_ERROR = 'abs_error'
+    RELATIVE_ERROR = "relative_error"
+    PERCENTAGE_ABS_ERROR = "percentage_abs_error"
+    SYMMETRIC_ABS_ERROR = "symmetric_abs_error"
+    BOUNDED_RELATIVE_ERROR = "bounded_relative_error"
+    RMSE = "rmse"
+    NRMSE = "nrmse"
+    ERROR = "error"
+    ABS_ERROR = "abs_error"
+
 
 class Measure(Enum):
-    MEAN = 'mean'
-    MEDIAN = 'median'
-    CI_95 = 'ci_95'
-    CI_68 = 'ci_68'
-    VAR = 'var'
-    STD = 'std'
+    MEAN = "mean"
+    MEDIAN = "median"
+    CI_95 = "ci_95"
+    CI_68 = "ci_68"
+    VAR = "var"
+    STD = "std"
+
 
 def error_type_to_meaning(error_type):
     """
@@ -31,19 +34,19 @@ def error_type_to_meaning(error_type):
     """
     error_type = ErrorType(error_type)
     if error_type is ErrorType.RMSE:
-        return 'root of mean squared error'
+        return "root of mean squared error"
     if error_type is ErrorType.NRMSE:
-        return 'normalized root of mean squared error'
+        return "normalized root of mean squared error"
     if error_type is ErrorType.ERROR:
-        return 'error'
+        return "error"
     if error_type is ErrorType.RELATIVE_ERROR:
-        return 'percentage error'
+        return "percentage error"
     if error_type is ErrorType.PERCENTAGE_ABS_ERROR:
-        return 'Absolute percentage error'
+        return "Absolute percentage error"
     if error_type is ErrorType.SYMMETRIC_ABS_ERROR:
-        return 'Absolute error normalized by sum of prediction and observation'
+        return "Absolute error normalized by sum of prediction and observation"
     if error_type is ErrorType.ABS_ERROR:
-        return 'Absolute error'
+        return "Absolute error"
 
 
 class TimeSeriesMetrics:
@@ -70,7 +73,6 @@ class TimeSeriesMetrics:
         if isinstance(series, pd.Series) or isinstance(series, pd.DataFrame):
             return series.values.ravel()
         return series
-
 
     def calculate_error(self, y_true, y_pred, error_type, missing_observation=np.nan):
         """
@@ -106,21 +108,29 @@ class TimeSeriesMetrics:
         elif error_type is ErrorType.ABS_ERROR:
             error = np.abs(y_pred - y_true)
         elif error_type is ErrorType.PERCENTAGE_ABS_ERROR:
-            error = np.abs(y_pred - y_true)/y_true
+            error = np.abs(y_pred - y_true) / y_true
         elif error_type is ErrorType.SYMMETRIC_ABS_ERROR:
-            error = np.abs(y_pred - y_true)/np.abs(y_true + y_pred)
+            error = np.abs(y_pred - y_true) / np.abs(y_true + y_pred)
         elif error_type is ErrorType.RMSE:
-            error = np.sqrt(np.square(np.subtract(y_true[valid_observations],
-                                                  y_pred[valid_observations])).mean())
+            error = np.sqrt(
+                np.square(
+                    np.subtract(y_true[valid_observations], y_pred[valid_observations])
+                ).mean()
+            )
         elif error_type is ErrorType.NRMSE:
-            error = np.sqrt(np.square(np.subtract(y_true[valid_observations],
-                                                  y_pred[valid_observations])).mean()) / y_true[valid_observations].mean()
+            error = (
+                np.sqrt(
+                    np.square(
+                        np.subtract(y_true[valid_observations], y_pred[valid_observations])
+                    ).mean()
+                )
+                / y_true[valid_observations].mean()
+            )
 
         if error_type not in [ErrorType.RMSE, ErrorType.NRMSE]:
             error[invalid_observations] = np.nan
 
         return error
-
 
     def calculate_error_measure(self, error, measure):
         """
@@ -151,6 +161,6 @@ class TimeSeriesMetrics:
         elif measure is Measure.STD:
             return np.std(error)
         elif measure is Measure.CI_95:
-            return (np.quantile(error, (0.025, 0.975)))
+            return np.quantile(error, (0.025, 0.975))
         elif measure is Measure.CI_68:
-            return (np.quantile(error, (0.16, 0.84)))
+            return np.quantile(error, (0.16, 0.84))

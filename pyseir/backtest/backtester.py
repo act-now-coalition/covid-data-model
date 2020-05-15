@@ -99,21 +99,26 @@ class Backtester:
     n_retries: int
         Number of times to retry model fitting.
     """
-    def __init__(self,
-                 fips,
-                 model_fitter_args=None,
-                 ts_rolling_args={'window': 3,
-                                  'min_periods': 1,
-                                  'win_type': 'gaussian',
-                                  'center': True},
-                 ts_rolling_kernel_args={'std': 1},
-                 num_days_per_step=3,
-                 prediction_window_size=14,
-                 max_observation_days_blinded=40,
-                 error_types=['nrmse', 'rmse', 'relative_error',
-                              'percentage_abs_error', 'symmetric_abs_error'],
-                 ref_date=REF_DATE,
-                 n_retries=3):
+
+    def __init__(
+        self,
+        fips,
+        model_fitter_args=None,
+        ts_rolling_args={"window": 3, "min_periods": 1, "win_type": "gaussian", "center": True},
+        ts_rolling_kernel_args={"std": 1},
+        num_days_per_step=3,
+        prediction_window_size=14,
+        max_observation_days_blinded=40,
+        error_types=[
+            "nrmse",
+            "rmse",
+            "relative_error",
+            "percentage_abs_error",
+            "symmetric_abs_error",
+        ],
+        ref_date=REF_DATE,
+        n_retries=3,
+    ):
 
         self.fips = fips
         self.model_fitter_args = model_fitter_args or {}
@@ -126,15 +131,16 @@ class Backtester:
         self.ref_date = ref_date
         self.n_retries = n_retries
 
-        if self.num_days_per_step > self.ts_rolling_args['window']:
-            logging.warning("num_days_per_step is greater than "
-                            "ts_rolling_args['window'] which will make the "
-                            "backtest skip part of the time series.")
+        if self.num_days_per_step > self.ts_rolling_args["window"]:
+            logging.warning(
+                "num_days_per_step is greater than "
+                "ts_rolling_args['window'] which will make the "
+                "backtest skip part of the time series."
+            )
 
         self.observations = None
         self.backtest_results = None
         self.historical_predictions = None
-
 
     @staticmethod
     def load_observations(fips=None, ref_date=REF_DATE):
@@ -161,28 +167,45 @@ class Backtester:
 
         observations = {}
         if len(fips) == 5:
-            times, observations['new_cases'], observations['new_deaths'] = \
-                load_data.load_new_case_data_by_fips(fips, ref_date)
-            hospital_times, hospitalizations, hospitalization_data_type = \
-                load_data.load_hospitalization_data(fips, t0=ref_date)
-            observations['times'] = times.values
+            (
+                times,
+                observations["new_cases"],
+                observations["new_deaths"],
+            ) = load_data.load_new_case_data_by_fips(fips, ref_date)
+            (
+                hospital_times,
+                hospitalizations,
+                hospitalization_data_type,
+            ) = load_data.load_hospitalization_data(fips, t0=ref_date)
+            observations["times"] = times.values
         elif len(fips) == 2:
             state_obj = us.states.lookup(fips)
-            observations['times'], observations['new_cases'], observations['new_deaths'] = \
-                load_data.load_new_case_data_by_state(state_obj.name, ref_date)
-            hospital_times, hospitalizations, hospitalization_data_type = \
-                load_data.load_hospitalization_data_by_state(state_obj.abbr, t0=ref_date)
-            observations['times'] = np.array(observations['times'])
+            (
+                observations["times"],
+                observations["new_cases"],
+                observations["new_deaths"],
+            ) = load_data.load_new_case_data_by_state(state_obj.name, ref_date)
+            (
+                hospital_times,
+                hospitalizations,
+                hospitalization_data_type,
+            ) = load_data.load_hospitalization_data_by_state(state_obj.abbr, t0=ref_date)
+            observations["times"] = np.array(observations["times"])
 
-        observations['hospitalizations'] = np.full(observations['times'].shape[0], np.nan)
+        observations["hospitalizations"] = np.full(observations["times"].shape[0], np.nan)
         if hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
-            observations['hospitalizations'][hospital_times - observations['times'].min()] = np.diff(hospitalizations)
+            observations["hospitalizations"][
+                hospital_times - observations["times"].min()
+            ] = np.diff(hospitalizations)
         elif hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
-            observations['hospitalizations'][hospital_times - observations['times'].min()] = hospitalizations
+            observations["hospitalizations"][
+                hospital_times - observations["times"].min()
+            ] = hospitalizations
 
-        observation_dates = [ref_date + timedelta(int(t)) for t in observations['times']]
-        observations = pd.DataFrame(observations, index=pd.DatetimeIndex(
-            observation_dates)).dropna(axis=1, how='all')
+        observation_dates = [ref_date + timedelta(int(t)) for t in observations["times"]]
+        observations = pd.DataFrame(observations, index=pd.DatetimeIndex(observation_dates)).dropna(
+            axis=1, how="all"
+        )
 
         return observations
 
@@ -209,12 +232,12 @@ class Backtester:
         """
 
         mf = ModelFitter(fips=self.fips, **self.model_fitter_args)
-        mf.times = self.observations['times'][:-observation_days_blinded]
-        mf.observed_new_cases = self.observations['new_cases'].values[:-observation_days_blinded]
-        mf.observed_new_deaths = self.observations['new_deaths'].values[:-observation_days_blinded]
+        mf.times = self.observations["times"][:-observation_days_blinded]
+        mf.observed_new_cases = self.observations["new_cases"].values[:-observation_days_blinded]
+        mf.observed_new_deaths = self.observations["new_deaths"].values[:-observation_days_blinded]
         if mf.hospital_times is not None:
             mf.hospital_times = mf.hospital_times[mf.hospital_times <= mf.times.max()]
-            mf.hospitalizations = mf.hospitalizations[:len(mf.hospital_times)]
+            mf.hospitalizations = mf.hospitalizations[: len(mf.hospital_times)]
             # when all hospitalization data has been blinded
             if mf.hospital_times.size == 0:
                 mf.hospitalization_data_type = None
@@ -230,30 +253,39 @@ class Backtester:
                 print(e)
 
         prediction = {}
-        prediction['new_cases'] = mf.fit_results['test_fraction'] * \
-                                  np.interp(self.observations['times'],
-                                            mf.t_list + mf.fit_results['t0'],
-                                            mf.mle_model.results['total_new_infections'])
-        prediction['new_deaths'] = np.interp(self.observations['times'],
-                                             mf.t_list + mf.fit_results['t0'],
-                                             mf.mle_model.results['total_deaths_per_day'])
+        prediction["new_cases"] = mf.fit_results["test_fraction"] * np.interp(
+            self.observations["times"],
+            mf.t_list + mf.fit_results["t0"],
+            mf.mle_model.results["total_new_infections"],
+        )
+        prediction["new_deaths"] = np.interp(
+            self.observations["times"],
+            mf.t_list + mf.fit_results["t0"],
+            mf.mle_model.results["total_deaths_per_day"],
+        )
 
         if mf.hospitalization_data_type is not None:
             if mf.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
-                predicted_hosp = (mf.mle_model.results['HGen_cumulative'] + mf.mle_model.results['HICU_cumulative'])
+                predicted_hosp = (
+                    mf.mle_model.results["HGen_cumulative"]
+                    + mf.mle_model.results["HICU_cumulative"]
+                )
                 predicted_hosp = np.diff(predicted_hosp)
             elif mf.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
-                predicted_hosp = mf.mle_model.results['HGen'] + mf.mle_model.results['HICU']
-            prediction['hospitalizations'] = np.interp(self.observations['times'],
-                                                       mf.t_list + mf.fit_results['t0'],
-                                                       predicted_hosp * mf.fit_results['hosp_fraction'])
+                predicted_hosp = mf.mle_model.results["HGen"] + mf.mle_model.results["HICU"]
+            prediction["hospitalizations"] = np.interp(
+                self.observations["times"],
+                mf.t_list + mf.fit_results["t0"],
+                predicted_hosp * mf.fit_results["hosp_fraction"],
+            )
         else:
-            prediction['hospitalizations'] = None
+            prediction["hospitalizations"] = None
 
-        prediction = pd.DataFrame(prediction, index=self.observations.index).dropna(axis=1, how='all')
+        prediction = pd.DataFrame(prediction, index=self.observations.index).dropna(
+            axis=1, how="all"
+        )
 
         return prediction
-
 
     def run_backtest(self):
         """
@@ -294,46 +326,59 @@ class Backtester:
         historical_predictions = list()
 
         for d in np.arange(1, self.max_observation_days_blinded + 1, self.num_days_per_step):
-            observation_end_date = self.ref_date + timedelta(int(self.observations['times'].values[-d]))
+            observation_end_date = self.ref_date + timedelta(
+                int(self.observations["times"].values[-d])
+            )
             # record predictions
             prediction = self.run_model_fitter_for_backtest(observation_days_blinded=d)
-            prediction['observation_end_date'] = observation_end_date
-            prediction['observation_days_blinded'] = d
+            prediction["observation_end_date"] = observation_end_date
+            prediction["observation_days_blinded"] = d
 
             # record back test errors
             backtest_record = defaultdict(list)
 
             moving_average = lambda s: s.rolling(**self.ts_rolling_args).mean(
-                **self.ts_rolling_kernel_args)[-d:][:self.prediction_window_size]
+                **self.ts_rolling_kernel_args
+            )[-d:][: self.prediction_window_size]
 
-            for observation_type in ['new_cases', 'new_deaths', 'hospitalizations']:
+            for observation_type in ["new_cases", "new_deaths", "hospitalizations"]:
                 if observation_type in self.observations:
                     for error_type in self.error_types:
                         error = tsm.calculate_error(
                             moving_average(self.observations[observation_type]),
                             moving_average(prediction[observation_type]),
-                            error_type=error_type)
+                            error_type=error_type,
+                        )
 
-                        if error_type in ['rmse', 'nrmse']:
+                        if error_type in ["rmse", "nrmse"]:
                             error = np.array([error])
 
-                        backtest_record['observation_type'].extend([observation_type] * error.shape[0])
-                        backtest_record['error_type'].extend([error_type] * error.shape[0])
-                        backtest_record['observation_end_date'].extend([observation_end_date] * error.shape[0])
-                        backtest_record['error'].extend(list(error))
-                        if error_type in ['rmse', 'nrmse']:
-                            backtest_record['days_of_forecast'].append(min(self.prediction_window_size, d))
+                        backtest_record["observation_type"].extend(
+                            [observation_type] * error.shape[0]
+                        )
+                        backtest_record["error_type"].extend([error_type] * error.shape[0])
+                        backtest_record["observation_end_date"].extend(
+                            [observation_end_date] * error.shape[0]
+                        )
+                        backtest_record["error"].extend(list(error))
+                        if error_type in ["rmse", "nrmse"]:
+                            backtest_record["days_of_forecast"].append(
+                                min(self.prediction_window_size, d)
+                            )
                         else:
-                            backtest_record['days_of_forecast'].extend(list(range(1, error.shape[0] + 1)))
+                            backtest_record["days_of_forecast"].extend(
+                                list(range(1, error.shape[0] + 1))
+                            )
 
             backtest_results.append(pd.DataFrame(backtest_record))
-            historical_predictions.append(prediction.reset_index().rename(columns={'index': 'dates'}))
+            historical_predictions.append(
+                prediction.reset_index().rename(columns={"index": "dates"})
+            )
 
         self.backtest_results = pd.concat(backtest_results)
         self.historical_predictions = pd.concat(historical_predictions)
 
         return self.backtest_results, self.historical_predictions
-
 
     def plot_backtest_results(self, backtest_results=None, pdf=None):
         """
@@ -355,35 +400,41 @@ class Backtester:
             Pdf object to save the plot.
         """
 
-        if  backtest_results is None:
-            backtest_results =self.backtest_results
+        if backtest_results is None:
+            backtest_results = self.backtest_results
 
         for observation_type in backtest_results.observation_type.unique():
             for error_type in backtest_results.error_type.unique():
-                df = backtest_results[(backtest_results.error_type == error_type)
-                                    & (backtest_results.observation_type == observation_type)]
-                if error_type not in ['rmse', 'nrmse']:
-                    fig, axes = plt.subplots(nrows=int(np.ceil(df.days_of_forecast.max() / 3)),
-                                             ncols=3,
-                                             figsize=(18, 12))
+                df = backtest_results[
+                    (backtest_results.error_type == error_type)
+                    & (backtest_results.observation_type == observation_type)
+                ]
+                if error_type not in ["rmse", "nrmse"]:
+                    fig, axes = plt.subplots(
+                        nrows=int(np.ceil(df.days_of_forecast.max() / 3)), ncols=3, figsize=(18, 12)
+                    )
                     for d, ax in list(zip(df.days_of_forecast.unique(), np.ravel(axes))):
-                        df[df.days_of_forecast == d].plot('observation_end_date', 'error', ax=ax)
+                        df[df.days_of_forecast == d].plot("observation_end_date", "error", ax=ax)
                         ax.xaxis.set_major_formatter(DateFormatter("%m-%d"))
-                        ax.set_title('%d days prediction' % d)
-                        ax.set_xlabel('date of last observation')
+                        ax.set_title("%d days prediction" % d)
+                        ax.set_xlabel("date of last observation")
                     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
                     plt.subplots_adjust(wspace=0.2, hspace=2)
-                    plt.suptitle(f'{observation_type}\n{error_type_to_meaning(error_type)}', fontsize=15)
+                    plt.suptitle(
+                        f"{observation_type}\n{error_type_to_meaning(error_type)}", fontsize=15
+                    )
                 else:
                     plt.figure()
-                    df.drop_duplicates().plot(x='observation_end_date',
-                                              y='error', kind="line",
-                                              label=error_type)
-                    plt.title(f'{observation_type}\n'
-                              f'{error_type_to_meaning(error_type)}\n'
-                              f'{backtest_results.days_of_forecast.max()} days prediction')
+                    df.drop_duplicates().plot(
+                        x="observation_end_date", y="error", kind="line", label=error_type
+                    )
+                    plt.title(
+                        f"{observation_type}\n"
+                        f"{error_type_to_meaning(error_type)}\n"
+                        f"{backtest_results.days_of_forecast.max()} days prediction"
+                    )
                     plt.legend()
-                    plt.xlabel('date of last observation')
+                    plt.xlabel("date of last observation")
                     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
                 if pdf is not None:
@@ -416,17 +467,25 @@ class Backtester:
         if observations is None:
             observations = self.observations
 
-        for observation_type in ['new_cases', 'new_deaths', 'hospitalizations']:
+        for observation_type in ["new_cases", "new_deaths", "hospitalizations"]:
             if observation_type in historical_predictions.columns:
                 fig, ax = plt.subplots()
-                sns.lineplot(x='dates', y=observation_type, hue='observation_days_blinded',
-                             data=historical_predictions,
-                             palette='cool', **{'alpha': 0.5})
-                sns.lineplot(observations.index,
-                             observations[observation_type].values,
-                             color='k', label='observed ' + observation_type)
+                sns.lineplot(
+                    x="dates",
+                    y=observation_type,
+                    hue="observation_days_blinded",
+                    data=historical_predictions,
+                    palette="cool",
+                    **{"alpha": 0.5},
+                )
+                sns.lineplot(
+                    observations.index,
+                    observations[observation_type].values,
+                    color="k",
+                    label="observed " + observation_type,
+                )
 
-                plt.yscale('log')
+                plt.yscale("log")
                 plt.ylim(bottom=1)
                 plt.legend()
                 plt.xticks(rotation=45)
@@ -438,7 +497,7 @@ class Backtester:
         """
         Generate pdf report of backtesting results.
         """
-        output_path = get_run_artifact_path(self.fips, 'backtest_result')
+        output_path = get_run_artifact_path(self.fips, "backtest_result")
         pdf = matplotlib.backends.backend_pdf.PdfPages(output_path)
         self.plot_backtest_results(self.backtest_results, pdf)
         self.plot_historical_predictions(self.historical_predictions, self.observations, pdf)
@@ -489,10 +548,9 @@ class Backtester:
         backtester.run()
 
 
-def run_for_fips_list(fips=['06', '36',
-                           '06075', '06073', '36047',
-                           '36081', '36005', '13121'],
-                     kwargs=None):
+def run_for_fips_list(
+    fips=["06", "36", "06075", "06073", "36047", "36081", "36005", "13121"], kwargs=None
+):
     """
     Run backtest for given list of fips.
     Default fips list contains codes of states or counties with high covid

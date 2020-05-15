@@ -104,9 +104,7 @@ def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
         run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
     else:
         for state_name in ALL_STATES:
-            run_state(
-                state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only
-            )
+            run_state(state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
 
 
 def _generate_state_reports(state=None):
@@ -119,11 +117,7 @@ def _generate_state_reports(state=None):
 
 
 def _map_outputs(
-    state=None,
-    output_interval_days=1,
-    states_only=False,
-    output_dir=None,
-    run_mode="default",
+    state=None, output_interval_days=1, states_only=False, output_dir=None, run_mode="default",
 ):
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
@@ -161,9 +155,7 @@ def _state_only_pipeline(
     _run_ensembles(
         state,
         ensemble_kwargs=dict(
-            run_mode=run_mode,
-            generate_report=generate_reports,
-            covid_timeseries=nyt_dataset,
+            run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
         ),
         states_only=states_only,
     )
@@ -236,8 +228,7 @@ def _build_all_for_states(
     # calculate ensemble
     root.info(f"running ensemble for {len(all_county_fips)} counties")
     ensemble_func = partial(
-        _run_county,
-        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+        _run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
     )
     p.map(ensemble_func, all_county_fips.keys())
 
@@ -287,9 +278,7 @@ def _run_all(
         _run_ensembles(
             state,
             ensemble_kwargs=dict(
-                run_mode=run_mode,
-                generate_report=generate_reports,
-                covid_timeseries=nyt_dataset,
+                run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
             ),
             states_only=states_only,
         )
@@ -339,9 +328,7 @@ def _run_all(
     default="",
     help="State to generate files for. If no state is given, all states are computed.",
 )
-@click.option(
-    "--states-only", default=False, is_flag=True, type=bool, help="Only model states"
-)
+@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def impute_start_dates(state, states_only):
     _impute_start_dates(state, states_only)
 
@@ -357,9 +344,7 @@ def generate_whitelist():
     default="",
     help="State to generate files for. If no state is given, all states are computed.",
 )
-@click.option(
-    "--states-only", default=False, is_flag=True, type=bool, help="Only model states"
-)
+@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def infer_rt(state, states_only):
     _infer_rt(state, states_only=states_only)
 
@@ -370,9 +355,7 @@ def infer_rt(state, states_only):
     default="",
     help="State to generate files for. If no state is given, all states are computed.",
 )
-@click.option(
-    "--states-only", default=False, is_flag=True, type=bool, help="Only model states"
-)
+@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_mle_fits(state, states_only):
     _run_mle_fits(state, states_only=states_only)
 
@@ -396,9 +379,7 @@ def run_mle_fits(state, states_only):
     type=click.Choice([run_mode.value for run_mode in RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
-@click.option(
-    "--states-only", default=False, is_flag=True, type=bool, help="Only model states"
-)
+@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_ensembles(state, run_mode, generate_reports, states_only):
     _run_ensembles(
         state,
@@ -435,9 +416,7 @@ def generate_state_report(state):
     type=click.Choice([run_mode.value for run_mode in RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
-@click.option(
-    "--states-only", default=False, is_flag=True, type=bool, help="Only model states"
-)
+@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def map_outputs(state, output_interval_days, run_mode, states_only):
     _map_outputs(
         state,
@@ -473,26 +452,12 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-download",
-    default=False,
-    is_flag=True,
-    type=bool,
-    help="Skip the download phase.",
+    "--skip-download", default=False, is_flag=True, type=bool, help="Skip the download phase.",
 )
-@click.option(
-    "--output-dir", default=None, type=str, help="Directory to deploy webui output."
-)
-@click.option(
-    "--states-only", default=False, is_flag=True, type=bool, help="Only model states"
-)
+@click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
+@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_all(
-    state,
-    run_mode,
-    generate_reports,
-    output_interval_days,
-    skip_download,
-    output_dir,
-    states_only,
+    state, run_mode, generate_reports, output_interval_days, skip_download, output_dir, states_only,
 ):
     _run_all(
         state,
@@ -532,23 +497,13 @@ def run_all(
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-download",
-    default=False,
-    is_flag=True,
-    type=bool,
-    help="Skip the download phase.",
+    "--skip-download", default=False, is_flag=True, type=bool, help="Skip the download phase.",
 )
 @click.option(
-    "--skip-whitelist",
-    default=False,
-    is_flag=True,
-    type=bool,
-    help="Skip the whitelist phase.",
-)
-@click.option(
-    "--output-dir", default=None, type=str, help="Directory to deploy webui output."
+    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
+@click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
     states,
     run_mode,
@@ -557,7 +512,7 @@ def build_all(
     skip_download,
     output_dir,
     skip_whitelist,
-    states_only
+    states_only,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -576,7 +531,7 @@ def build_all(
         skip_download=skip_download,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
-        states_only=states_only
+        states_only=states_only,
     )
 
 
