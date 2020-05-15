@@ -3,6 +3,17 @@ name: Python Unit Tests
 on: [push]
 
 jobs:
+  code-formatting-linting:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout covid-data-model
+      uses: actions/checkout@v2
+    - name: Run Black
+      uses: lgeiger/black-action@v1.0.1
+      with:
+        args: '. --check --exclude pyseir/'
+
   build:
     env:
       COVID_DATA_PUBLIC_REF: 'master'
