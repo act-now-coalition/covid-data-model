@@ -14,6 +14,7 @@ from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import NYTimesDataset, CDSDataset
 from libs.datasets import combined_datasets
+from libs.us_state_abbrev import abbrev_us_state
 from pyseir.inference.whitelist_generator import WhitelistGenerator
 import pandas as pd
 
@@ -186,6 +187,7 @@ def _build_all_for_states(
     skip_download=False,
     output_dir=None,
     skip_whitelist=False,
+    states_only=False,
 ):
     # prepare data
     _cache_global_datasets()
@@ -193,13 +195,6 @@ def _build_all_for_states(
         cache_all_data()
     if not skip_whitelist:
         _generate_whitelist()
-
-    # run states in paralell
-    all_county_fips = {}
-    for state in states:
-        state_county_fips = model_fitter.build_county_list(state)
-        county_fips_per_state = {fips: state for fips in state_county_fips}
-        all_county_fips.update(county_fips_per_state)
 
     # do everything for just states in paralell
     p = Pool()
@@ -211,6 +206,17 @@ def _build_all_for_states(
         output_dir=output_dir,
     )
     p.map(states_only_func, states)
+
+    if states_only:
+        root.info("Only executing for states. returning.")
+        return
+
+    # run states in paralell
+    all_county_fips = {}
+    for state in states:
+        state_county_fips = model_fitter.build_county_list(state)
+        county_fips_per_state = {fips: state for fips in state_county_fips}
+        all_county_fips.update(county_fips_per_state)
 
     # calculate calculate county inference
     p.map(infer_rt_module.run_county, all_county_fips.keys())
@@ -542,6 +548,7 @@ def run_all(
 @click.option(
     "--output-dir", default=None, type=str, help="Directory to deploy webui output."
 )
+@click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 def build_all(
     states,
     run_mode,
@@ -550,9 +557,13 @@ def build_all(
     skip_download,
     output_dir,
     skip_whitelist,
+    states_only
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
+    # Convert abbreviated states to the full state name, allowing states passed in
+    # to be the full name or the abbreviated name.
+    states = [abbrev_us_state.get(state, state) for state in states]
     states = [state for state in states if state in ALL_STATES]
     if not len(states):
         states = ALL_STATES
@@ -565,6 +576,7 @@ def build_all(
         skip_download=skip_download,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
+        states_only=states_only
     )
 
 
