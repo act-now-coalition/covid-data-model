@@ -34,7 +34,7 @@ _logger = logging.getLogger(__name__)
 @lru_cache(None)
 def _get_interventions_df():
     # TODO: read this from a dataset class
-    interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
+    interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/interventions.json"
     interventions = requests.get(interventions_url).json()
     columns = [CommonFields.STATE, "intervention"]
     return pd.DataFrame(list(interventions.items()), columns=columns)
@@ -68,26 +68,21 @@ def get_cds():
 def get_testing_timeseries_by_state(state):
     testing_df = _get_testing_df()
     is_state = (
-        testing_df[CovidTrackingDataSource.Fields.AGGREGATE_LEVEL] ==
-        AggregationLevel.STATE.value
+        testing_df[CovidTrackingDataSource.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
     )
     testing_df = testing_df[is_state]
     # just select state
-    state_testing_df = testing_df[
-        testing_df[CovidTrackingDataSource.Fields.STATE] == state
-    ]
+    state_testing_df = testing_df[testing_df[CovidTrackingDataSource.Fields.STATE] == state]
     return state_testing_df[CovidTrackingDataSource.TESTS_ONLY_FIELDS]
 
 
 def get_testing_timeseries_by_fips(fips):
     testing_df = get_cds()
     # select by fips
-    fips_testing_df = testing_df[
-        testing_df[CDSDataset.Fields.FIPS] == fips
-    ]
+    fips_testing_df = testing_df[testing_df[CDSDataset.Fields.FIPS] == fips]
     before = len(fips_testing_df)
     fips_testing_df = fips_testing_df.set_index([CDSDataset.Fields.FIPS, CDSDataset.Fields.DATE])
-    fips_testing_df = fips_testing_df[~fips_testing_df.index.duplicated(keep='last')]
+    fips_testing_df = fips_testing_df[~fips_testing_df.index.duplicated(keep="last")]
     if before != len(fips_testing_df):
         _logger.warning(
             f"Testing DF contained duplicate rows for {fips}: {before} -> {len(fips_testing_df)}"
@@ -143,9 +138,7 @@ def _get_usa_by_county_df():
     final_df["County"] = final_df["County"].replace(county_replace_with_null)
     final_df["Combined Key"] = final_df["Combined Key"].str.replace("Unassigned, ", "")
 
-    final_df[CommonFields.STATE] = final_df[CommonFields.STATE_FULL_NAME].map(
-        US_STATE_ABBREV
-    )
+    final_df[CommonFields.STATE] = final_df[CommonFields.STATE_FULL_NAME].map(US_STATE_ABBREV)
 
     final_df = final_df.fillna(NULL_VALUE)
     # note this is a hack, 49053 is dupped in JHU data :(
@@ -162,21 +155,13 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     us_only = _get_usa_by_county_df()
     fips_df = FIPSPopulation.local().data  # used to get interventions
     interventions_df = _get_interventions_df()
-    projections_df = get_county_projections_df(
-        input_dir, intervention_type, interventions_df
-    )
+    projections_df = get_county_projections_df(input_dir, intervention_type, interventions_df)
     counties_decorated = (
         us_only.merge(projections_df, on=CommonFields.FIPS, how="inner")
-        .merge(
-            fips_df[[CommonFields.STATE, CommonFields.FIPS]],
-            on=CommonFields.FIPS,
-            how="inner",
-        )
+        .merge(fips_df[[CommonFields.STATE, CommonFields.FIPS]], on=CommonFields.FIPS, how="inner",)
         .merge(interventions_df, on=CommonFields.STATE, how="inner")
     )
-    counties_remapped = counties_decorated.rename(
-        columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA
-    )
+    counties_remapped = counties_decorated.rename(columns=OUTPUT_COLUMN_REMAP_TO_RESULT_DATA)
     counties = pd.DataFrame(counties_remapped)[RESULT_DATA_COLUMNS_COUNTIES]
     counties = counties.fillna(NULL_VALUE)
     counties.index.name = "OBJECTID"
@@ -193,9 +178,7 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
 def get_usa_by_states_df(input_dir, intervention_type):
     us_only = _get_usa_by_county_df()
     interventions_df = _get_interventions_df()
-    projections_df = get_state_projections_df(
-        input_dir, intervention_type, interventions_df
-    )
+    projections_df = get_state_projections_df(input_dir, intervention_type, interventions_df)
     testing_df = _get_testing_df()
     test_max_df = (
         testing_df.groupby(CommonFields.STATE)[
@@ -223,12 +206,7 @@ def get_usa_by_states_df(input_dir, intervention_type):
 
     states_abbrev = (
         states_agg.merge(test_max_df, on=CommonFields.STATE, how="left")
-        .merge(
-            interventions_df,
-            on=CommonFields.STATE,
-            how="inner",
-            suffixes=["", "_dropcol"],
-        )
+        .merge(interventions_df, on=CommonFields.STATE, how="inner", suffixes=["", "_dropcol"],)
         .merge(projections_df, on=CommonFields.STATE, how="left")
     )
     STATE_COLS_REMAP = {
@@ -238,17 +216,15 @@ def get_usa_by_states_df(input_dir, intervention_type):
     }
 
     states_remapped = states_abbrev.rename(columns=STATE_COLS_REMAP)
-    states_remapped[CommonFields.STATE_FULL_NAME] = states_remapped[
-        CommonFields.STATE
-    ].map(abbrev_us_state)
+    states_remapped[CommonFields.STATE_FULL_NAME] = states_remapped[CommonFields.STATE].map(
+        abbrev_us_state
+    )
     states_final = pd.DataFrame(states_remapped, columns=RESULT_DATA_COLUMNS_STATES)
 
     # Keep nulls as nulls
     states_final = states_final.fillna(NULL_VALUE)
     states_final["Combined Key"] = states_final[CommonFields.STATE_FULL_NAME]
-    states_final[CommonFields.FIPS] = states_final[CommonFields.STATE_FULL_NAME].map(
-        us_fips
-    )
+    states_final[CommonFields.FIPS] = states_final[CommonFields.STATE_FULL_NAME].map(us_fips)
 
     states_final.index.name = "OBJECTID"
 

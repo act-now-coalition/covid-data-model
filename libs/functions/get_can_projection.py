@@ -4,7 +4,6 @@ import requests
 
 from libs.enums import Intervention
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.beds import BedsDataset
 from libs.datasets import CovidCareMapBeds
 from libs.datasets.can_model_output_schema import CAN_MODEL_OUTPUT_SCHEMA
 import functools
@@ -12,7 +11,7 @@ import functools
 
 @functools.lru_cache(None)
 def get_interventions():
-    interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
+    interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/interventions.json"
     interventions = requests.get(interventions_url).json()
     return interventions
 
@@ -20,7 +19,7 @@ def get_interventions():
 def get_intervention_for_state(state):
     return Intervention.from_str(get_interventions()[state])
     # TODO: read this from a dataset class
-    # interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/interventions.json"
+    # interventions_url = "https://raw.githubusercontent.com/covid-projections/covid-data-public/master/data/misc/interventions.json"
     # interventions = requests.get(interventions_url).json()
     # return Intervention.from_str(interventions[state])
 
@@ -31,9 +30,7 @@ def _get_intervention(intervention, state):
     return intervention
 
 
-def get_can_projection_path(
-    input_dir, state_abbrev, fips, aggregation_level, initial_intervention
-):
+def get_can_projection_path(input_dir, state_abbrev, fips, aggregation_level, initial_intervention):
     intervention = _get_intervention(initial_intervention, state_abbrev)
     if aggregation_level == AggregationLevel.STATE:
         file_name = f"{state_abbrev}.{intervention.value}.json"

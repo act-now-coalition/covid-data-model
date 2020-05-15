@@ -3,6 +3,8 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 
 class NevadaHospitalAssociationData(data_source.DataSource):
@@ -25,37 +27,41 @@ class NevadaHospitalAssociationData(data_source.DataSource):
         COVID_ICU_OCCUPIED = "covid_icu"
         COVID_VENTILATOR = "covid_ventilator"
 
+        CURRENT_HOSPITALIZED_TOTAL = "current_hospitalized_total"
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    TIMESERIES_FIELD_MAP = {
-        TimeseriesDataset.Fields.DATE: Fields.DATE,
-        TimeseriesDataset.Fields.COUNTRY: Fields.COUNTRY,
-        TimeseriesDataset.Fields.STATE: Fields.STATE,
-        TimeseriesDataset.Fields.FIPS: Fields.FIPS,
-        TimeseriesDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-        TimeseriesDataset.Fields.CURRENT_HOSPITALIZED: Fields.COVID_CONFIRMED,
-        TimeseriesDataset.Fields.CURRENT_ICU: Fields.COVID_ICU_OCCUPIED,
-        TimeseriesDataset.Fields.CURRENT_VENTILATED: Fields.COVID_VENTILATOR,
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.DATE: Fields.DATE,
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    }
+
+    COMMON_FIELD_MAP = {
+        CommonFields.CURRENT_HOSPITALIZED: Fields.COVID_CONFIRMED,
+        CommonFields.CURRENT_ICU: Fields.COVID_ICU_OCCUPIED,
+        CommonFields.CURRENT_VENTILATED: Fields.COVID_VENTILATOR,
+        CommonFields.ICU_BEDS: Fields.ICU_STAFFED,
+        CommonFields.CURRENT_ICU_TOTAL: Fields.ICU_OCCUPIED,
+        CommonFields.CURRENT_HOSPITALIZED_TOTAL: Fields.CURRENT_HOSPITALIZED_TOTAL,
     }
 
     @classmethod
     def standardize_data(cls, data):
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.COUNTY.value
-
+        data[cls.Fields.CURRENT_HOSPITALIZED_TOTAL] = (
+            data[cls.Fields.ACCUTE_OCCUPIED] + data[cls.Fields.ICU_OCCUPIED]
+        )
         return data
 
     @classmethod
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        data = pd.read_csv(
-            input_path,
-            skiprows=1,
-            parse_dates=[cls.Fields.DATE],
-            dtype={cls.Fields.FIPS: str}
-        )
+        data = pd.read_csv(input_path, parse_dates=[cls.Fields.DATE], dtype={cls.Fields.FIPS: str})
         data = cls.standardize_data(data)
 
         return cls(data)

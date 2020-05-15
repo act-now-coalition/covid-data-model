@@ -14,6 +14,7 @@ def test_counties_api_output():
         fips="06075",
         lat=37.7749,
         long=122.4194,
+        population=100,
         lastUpdatedDate=date.today(),
         projections={
             "totalHospitalBeds": {
@@ -31,7 +32,7 @@ def test_counties_api_output():
             "peakDeathsDate": date(2020, 5, 15),
             "endDate": date(2020, 10, 1),
             "Rt": 1.1,
-            "RtCI90": 0.1
+            "RtCI90": 0.1,
         },
         actuals={
             "population": 883305,
@@ -40,8 +41,20 @@ def test_counties_api_output():
             "cumulativeDeaths": 5,
             "cumulativePositiveTests": None,
             "cumulativeNegativeTests": 20,
-            "hospitalBeds": {"capacity": 100, "currentUsage": 3, "typicalUsageRate": 0.4},
-            "ICUBeds": {"capacity": 10, "currentUsage": 2, "typicalUsageRate": 0.6},
+            "hospitalBeds": {
+                "capacity": 100,
+                "totalCapacity": 100,
+                "currentUsageCovid": 3,
+                "currentUsageTotal": 5,
+                "typicalUsageRate": 0.4,
+            },
+            "ICUBeds": {
+                "capacity": 10,
+                "totalCapacity": 10,
+                "currentUsageCovid": 2,
+                "currentUsageTotal": 5,
+                "typicalUsageRate": 0.6,
+            },
         },
     )
     counties = CovidActNowCountiesAPI(__root__=[county_summary])

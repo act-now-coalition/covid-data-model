@@ -26,7 +26,7 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 # API Snapshots
 
-We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/) 
+We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/)
 twice a day via a [github action](./.github/workflows/deploy_api.yml).  To manually kick off a new
 snapshot, get a
 [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
@@ -52,54 +52,41 @@ This will run all models and generate data needed for the website, outputting to
 ./deploy_website.sh
 ```
 
-### Run DoD dataset deploy
-Run all models, generate DoD datasets, output to `./dod_results/` folder:
-```bash
-./deploy_dod.sh
-```
-
-Run all models, generate DoD datasets, upload the files to S3 bucket specified by `BUCKET_NAME`.
-```bash
-BUCKET_NAME=<bucket name> ./deploy_dod.sh
-```
-
-If you've previously ran the full model, you can just re-run the DoD dataset part via:
-```
-# Output artifacts locally to dod_results/:
-python deploy_dod_dataset.py
-# Upload artifacts to S3 bucket:
-BUCKET_NAME=<bucket name> python deploy_dod_dataset.py
-```
-
 # Sentry
-In order to have sentry run locally and report errors to the dev sentry instance, add the following to your .env
+In order to have sentry run locally and report errors to the dev sentry
+instance, add the following to your .env
+
 ```
 export SENTRY_DSN=https://<GET_SENTRY_DSN_FOR_DEV_INSTANCE>.ingest.sentry.io/<DEV_INSTANCE>
 ```
 
-The gitub action pulls the sentry_dsn for the prod instance from a secrets stored within github. 
+The gitub action pulls the sentry_dsn for the prod instance from a secrets stored within github.
 
-# [NEW 4/7] PySEIR Setup
+# PySEIR Setup
 
 ## Installation
 
-Install miniconda python 3.7 from here [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
+Recommend virtualenv or miniconda python 3.7 from here
+[https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
 
-Execute
-`conda env create -f environment.yaml`
-
-Activate the environment here..
-`conda activate pyseir`
-
-### Installing pyseir
-Change to into the county_covid_seir_models directory
-`pip install -e .`
-
+If using conda, you can use the following:
+- `conda create python=3.7 -n covid-data-model`
+- `conda activate covid-data-model`
+- `pip install -r requirements.txt -r requirements_test.txt`
 
 ### Running Models
-Example here. You can remove the `--state` flag to run everything. To run only states, add `--states-only`.
-`pyseir run-all --run-mode='can-before-hospitalization-new-params' --output-interval-days=4 --state="California"`
+PySEIR provides a command line interface in the activated environment. You can access the model with `pyseir --help ` and `pyseir <subcommand> --help` providing more information.
 
-`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags. 
+Example:
+`pyseir build-all --states="New York"` will run state and county models for New York.
+States can also be specified by their state code: `--states="New York"` and `--states=NY` are equivalent.
+
 
 Check the `output/` folder for results.
+
+### Model Output
+
+There are a variety of output artifacts to paths described in pyseir/utils.py.
+The main artifact is the ensemble_result which contains the output information
+for each `suppression policy -> model compartment` as well as capacity
+information.

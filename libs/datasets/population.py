@@ -30,9 +30,7 @@ class PopulationDataset(object):
             raise ValueError("Source must have beds field map.")
 
         data = source.data
-        to_common_fields = {
-            value: key for key, value in source.POPULATION_FIELD_MAP.items()
-        }
+        to_common_fields = {value: key for key, value in source.POPULATION_FIELD_MAP.items()}
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
 
@@ -41,7 +39,13 @@ class PopulationDataset(object):
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
 
         data[cls.Fields.GENERATED] = False
-        group = [cls.Fields.SOURCE, cls.Fields.AGGREGATE_LEVEL, cls.Fields.STATE, cls.Fields.COUNTRY, cls.Fields.GENERATED]
+        group = [
+            cls.Fields.SOURCE,
+            cls.Fields.AGGREGATE_LEVEL,
+            cls.Fields.STATE,
+            cls.Fields.COUNTRY,
+            cls.Fields.GENERATED,
+        ]
         data = custom_aggregations.update_with_combined_new_york_counties(
             data, group, are_boroughs_zero=False
         )
@@ -53,10 +57,7 @@ class PopulationDataset(object):
                 cls.Fields.STATE,
             ]
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data,
-                state_groupby_fields,
-                AggregationLevel.COUNTY,
-                AggregationLevel.STATE,
+                data, state_groupby_fields, AggregationLevel.COUNTY, AggregationLevel.STATE,
             ).reset_index()
             non_matching[cls.Fields.GENERATED] = True
             data = pd.concat([data, non_matching])

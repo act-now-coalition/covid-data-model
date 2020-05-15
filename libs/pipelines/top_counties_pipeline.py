@@ -19,9 +19,7 @@ TopCountiesPipelineProjectionResult = namedtuple(
 TopCountiesPipelineResult = namedtuple("TopCountiesPipelineResult", ["api"])
 
 
-def run_projections(
-    input_file, run_validation=True
-) -> TopCountiesPipelineProjectionResult:
+def run_projections(input_file, run_validation=True) -> TopCountiesPipelineProjectionResult:
     """Run the projections for the current intervention for counties
     in order to generate a list of the 100 counties most affected
 
@@ -41,9 +39,7 @@ def run_projections(
         input_file, intervention.value
     )
     if run_validation:
-        validate_results.validate_counties_df(
-            counties_key_name, counties_df, intervention
-        )
+        validate_results.validate_counties_df(counties_key_name, counties_df, intervention)
 
     county_results = TopCountiesPipelineProjectionResult(counties_df)
 
@@ -56,12 +52,8 @@ def generate_api(
     length=100,
 ) -> TopCountiesPipelineResult:
     projection = projection_result.projection_df
-    sorted_limited = projection.sort_values(by=sort_fields, ascending=False).head(
-        length
-    )
-    return TopCountiesPipelineResult(
-        api.generate_api_for_county_projection(sorted_limited)
-    )
+    sorted_limited = projection.sort_values(by=sort_fields, ascending=False).head(length)
+    return TopCountiesPipelineResult(api.generate_api_for_county_projection(sorted_limited))
 
 
 def deploy_results(result: TopCountiesPipelineResult, key: str, output: str):

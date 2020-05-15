@@ -1,12 +1,12 @@
 import pathlib
-import numpy
 import pandas as pd
-from libs.datasets.population import PopulationDataset
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS
 from libs import enums
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 
@@ -32,12 +32,15 @@ class FIPSPopulation(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    POPULATION_FIELD_MAP = {
-        PopulationDataset.Fields.COUNTRY: Fields.COUNTRY,
-        PopulationDataset.Fields.STATE: Fields.STATE,
-        PopulationDataset.Fields.FIPS: Fields.FIPS,
-        PopulationDataset.Fields.POPULATION: Fields.POPULATION,
-        PopulationDataset.Fields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    INDEX_FIELD_MAP = {
+        CommonIndexFields.COUNTRY: Fields.COUNTRY,
+        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.FIPS: Fields.FIPS,
+        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+    }
+
+    COMMON_FIELD_MAP = {
+        CommonFields.POPULATION: Fields.POPULATION,
     }
 
     def __init__(self, path):
@@ -76,9 +79,7 @@ class FIPSPopulation(data_source.DataSource):
             AggregationLevel.COUNTY,
             AggregationLevel.STATE,
         ).reset_index()
-        states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(
-            ABBREV_US_FIPS
-        )
+        states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(ABBREV_US_FIPS)
         states_aggregated[cls.Fields.COUNTY] = None
 
         return pd.concat([data, states_aggregated])
@@ -108,16 +109,12 @@ def build_fips_data_frame(census_csv, counties_csv):
     no_city = counties.city == "00000"
 
     # Create state level fips
-    states = counties[
-        has_state & no_county & no_subdivision & no_city & no_place
-    ].reset_index()
+    states = counties[has_state & no_county & no_subdivision & no_city & no_place].reset_index()
     states = states.rename({"name": "state"}, axis=1)[["state_fip", "state"]]
     states.state = states.state.apply(lambda x: US_STATE_ABBREV[x])
 
     # Create County level
-    county_only = counties[
-        has_county & no_subdivision & no_place & no_city
-    ].reset_index()
+    county_only = counties[has_county & no_subdivision & no_place & no_city].reset_index()
     county_only = county_only.rename({"name": "county"}, axis=1)
     county_only["fips"] = county_only.state_fip + county_only.county_fip
     state_data = (
@@ -127,9 +124,7 @@ def build_fips_data_frame(census_csv, counties_csv):
     )
 
     # Sorry these lambdas are ugly
-    county_pop.population = county_pop.population.apply(
-        lambda x: int(x.replace(",", ""))
-    )
+    county_pop.population = county_pop.population.apply(lambda x: int(x.replace(",", "")))
     county_pop["state"] = county_pop.county_state.apply(
         lambda x: US_STATE_ABBREV[x.split(",")[1].strip()]
     )

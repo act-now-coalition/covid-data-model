@@ -3,6 +3,17 @@ name: Python Unit Tests
 on: [push]
 
 jobs:
+  code-formatting-linting:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout covid-data-model
+      uses: actions/checkout@v2
+    - name: Run Black
+      uses: lgeiger/black-action@v1.0.1
+      with:
+        args: '. --check'
+
   build:
     env:
       COVID_DATA_PUBLIC_REF: 'master'
@@ -29,12 +40,24 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Cache Pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt -r requirements_test.txt
       working-directory: ./covid-data-model
+    # - name: Setup tmate session
+    #   uses: mxschmitt/action-tmate@v2
     - name: Test with pytest
+      env:
+        PYSEIR_FAST_AND_DIRTY: 'True'
       run: |
         make test
       working-directory: ./covid-data-model
