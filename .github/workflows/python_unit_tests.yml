@@ -12,7 +12,7 @@ jobs:
     - name: Run Black
       uses: lgeiger/black-action@v1.0.1
       with:
-        args: '. --check --exclude pyseir/'
+        args: '. --check'
 
   build:
     env:

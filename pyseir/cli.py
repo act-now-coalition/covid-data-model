@@ -512,7 +512,7 @@ def build_all(
     skip_download,
     output_dir,
     skip_whitelist,
-    states_only
+    states_only,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -531,7 +531,7 @@ def build_all(
         skip_download=skip_download,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
-        states_only=states_only
+        states_only=states_only,
     )
 
 
