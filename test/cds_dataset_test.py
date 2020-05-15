@@ -1,7 +1,7 @@
 from io import StringIO
 from libs.datasets.sources import cds_dataset
 from test.dataset_utils_test import to_dict
-from pandas import pd
+import pandas as pd
 
 # turns all warnings into errors for this module
 # pytestmark = pytest.mark.filterwarnings("error")
