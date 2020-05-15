@@ -79,9 +79,7 @@ class FIPSPopulation(data_source.DataSource):
             AggregationLevel.COUNTY,
             AggregationLevel.STATE,
         ).reset_index()
-        states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(
-            ABBREV_US_FIPS
-        )
+        states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(ABBREV_US_FIPS)
         states_aggregated[cls.Fields.COUNTY] = None
 
         return pd.concat([data, states_aggregated])
@@ -111,16 +109,12 @@ def build_fips_data_frame(census_csv, counties_csv):
     no_city = counties.city == "00000"
 
     # Create state level fips
-    states = counties[
-        has_state & no_county & no_subdivision & no_city & no_place
-    ].reset_index()
+    states = counties[has_state & no_county & no_subdivision & no_city & no_place].reset_index()
     states = states.rename({"name": "state"}, axis=1)[["state_fip", "state"]]
     states.state = states.state.apply(lambda x: US_STATE_ABBREV[x])
 
     # Create County level
-    county_only = counties[
-        has_county & no_subdivision & no_place & no_city
-    ].reset_index()
+    county_only = counties[has_county & no_subdivision & no_place & no_city].reset_index()
     county_only = county_only.rename({"name": "county"}, axis=1)
     county_only["fips"] = county_only.state_fip + county_only.county_fip
     state_data = (
@@ -130,9 +124,7 @@ def build_fips_data_frame(census_csv, counties_csv):
     )
 
     # Sorry these lambdas are ugly
-    county_pop.population = county_pop.population.apply(
-        lambda x: int(x.replace(",", ""))
-    )
+    county_pop.population = county_pop.population.apply(lambda x: int(x.replace(",", "")))
     county_pop["state"] = county_pop.county_state.apply(
         lambda x: US_STATE_ABBREV[x.split(",")[1].strip()]
     )
