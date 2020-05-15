@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class QAMetric(ABC):
     def __init__(self):
         # ...
@@ -30,8 +31,9 @@ class QAMetric(ABC):
         return abs(value2 - value1)
 
     @classmethod
-    def isAboveThreshold(cls, value1, value2): 
-        return cls.diff(value1, value2) >= cls.threshold; 
+    def isAboveThreshold(cls, value1, value2):
+        return cls.diff(value1, value2) >= cls.threshold
+
 
 class HospitalBedsRequired(QAMetric):
     name = "HospitalBedsRequired"
@@ -39,23 +41,27 @@ class HospitalBedsRequired(QAMetric):
     actual_path = None
     threshold = 1
 
+
 class HospitalBedCapacity(QAMetric):
     name = "HospitalBedCapacity"
     projection_path = ["timeseries", "hospitalBedCapacity"]
     actual_path = None
     threshold = 1
 
+
 class ICUBedCovidUsage(QAMetric):
     name = "ICUBedCovidUsage"
     projection_path = ["timeseries", "ICUBedsInUse"]
     actual_path = ["actualsTimeseries", "ICUBeds", "currentUsageCovid"]
-    threshold = 1 
+    threshold = 1
+
 
 class ICUBedTotalCapacity(QAMetric):
     name = "ICUBedTotalCapacity"
     projection_path = None
     actual_path = ["actualsTimeseries", "ICUBeds", "totalCapacity"]
     threshold = 1
+
 
 METRICS = [HospitalBedCapacity, HospitalBedsRequired, ICUBedCovidUsage, ICUBedTotalCapacity]
 

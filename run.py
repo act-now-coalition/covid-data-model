@@ -12,8 +12,7 @@ from pandarallel import pandarallel
 from cli import run_top_counties_dataset
 from cli import run_states_api
 from cli import run_counties_api
-
-from qa.compare_snapshots import compare_snapshots
+from cli import compare_snapshots
 
 from cli import api
 
@@ -23,8 +22,9 @@ def entry_point():
     """Entry point for covid-data-model CLI."""
     pass
 
+
 # adding the QA command
-entry_point.add_command(compare_snapshots)
+entry_point.add_command(compare_snapshots.compare_snapshots)
 
 entry_point.add_command(run_top_counties_dataset.deploy_top_counties)
 entry_point.add_command(run_counties_api.deploy_counties_api)
