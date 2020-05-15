@@ -1,9 +1,11 @@
 import logging
 import iminuit
+
 # TODO use JAX for numpy XLA acceleration
-#from jax.config import config
-#config.update("jax_enable_x64", True) # enable float64 precision
+# from jax.config import config
+# config.update("jax_enable_x64", True) # enable float64 precision
 import numpy as np
+
 # from jax import numpy as np
 import os
 import us
@@ -11,7 +13,8 @@ import dill as pickle
 import numpy as np
 from pprint import pformat
 import pandas as pd
-#from jax.scipy.stats import gamma, norm
+
+# from jax.scipy.stats import gamma, norm
 from scipy.stats import gamma, norm
 from copy import deepcopy
 from matplotlib import pyplot as plt
@@ -23,8 +26,7 @@ from pyseir.models.seir_model import SEIRModel
 from pyseir.models.seir_model_age import SEIRModelAge
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-from pyseir.parameters.parameter_ensemble_generator_age import \
-    ParameterEnsembleGeneratorAge
+from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsembleGeneratorAge
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
@@ -72,35 +74,46 @@ class ModelFitter:
     """
 
     DEFAULT_FIT_PARAMS = dict(
-        R0=3.4, limit_R0=[2, 4.5], error_R0=.05,
-        log10_I_initial=1, limit_log10_I_initial=[.333, 2],
-        error_log10_I_initial=.33,
-        t0=60, limit_t0=[10, 80], error_t0=2.0,
-        eps=.3, limit_eps=[.20, 1.2], error_eps=.005,
-        t_break=20, limit_t_break=[5, 40], error_t_break=1,
-        test_fraction=.1, limit_test_fraction=[0.02, 1], error_test_fraction=.02,
-        hosp_fraction=.7, limit_hosp_fraction=[0.25, 1], error_hosp_fraction=.05,
+        R0=3.4,
+        limit_R0=[2, 4.5],
+        error_R0=0.05,
+        log10_I_initial=1,
+        limit_log10_I_initial=[0.333, 2],
+        error_log10_I_initial=0.33,
+        t0=60,
+        limit_t0=[10, 80],
+        error_t0=2.0,
+        eps=0.3,
+        limit_eps=[0.20, 1.2],
+        error_eps=0.005,
+        t_break=20,
+        limit_t_break=[5, 40],
+        error_t_break=1,
+        test_fraction=0.1,
+        limit_test_fraction=[0.02, 1],
+        error_test_fraction=0.02,
+        hosp_fraction=0.7,
+        limit_hosp_fraction=[0.25, 1],
+        error_hosp_fraction=0.05,
         # Let's not fit this to start...
-        errordef=.5
+        errordef=0.5,
     )
 
-    PARAM_SETS = {
-          ('HI',): dict(
-              eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]
-          )
-    }
+    PARAM_SETS = {("HI",): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90])}
 
     steady_state_exposed_to_infected_ratio = 1.2
 
-    def __init__(self,
-                 fips,
-                 ref_date=datetime(year=2020, month=1, day=1),
-                 min_deaths=2,
-                 n_years=1,
-                 cases_to_deaths_err_factor=.5,
-                 hospital_to_deaths_err_factor=.5,
-                 percent_error_on_max_observation=0.5,
-                 with_age_structure=False):
+    def __init__(
+        self,
+        fips,
+        ref_date=datetime(year=2020, month=1, day=1),
+        min_deaths=2,
+        n_years=1,
+        cases_to_deaths_err_factor=0.5,
+        hospital_to_deaths_err_factor=0.5,
+        percent_error_on_max_observation=0.5,
+        with_age_structure=False,
+    ):
 
         # Seed the random state. It is unclear whether this propagates to the
         # Minuit optimizer.
@@ -120,34 +133,45 @@ class ModelFitter:
             self.agg_level = AggregationLevel.STATE
             self.state_obj = us.states.lookup(self.fips)
             self.state = self.state_obj.name
-            self.geo_metadata = load_data.load_county_metadata_by_state(self.state).loc[self.state].to_dict()
 
-            self.times, self.observed_new_cases, self.observed_new_deaths = \
-                load_data.load_new_case_data_by_state(self.state, self.ref_date)
+            (
+                self.times,
+                self.observed_new_cases,
+                self.observed_new_deaths,
+            ) = load_data.load_new_case_data_by_state(self.state, self.ref_date)
 
-            self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
-                load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
+            (
+                self.hospital_times,
+                self.hospitalizations,
+                self.hospitalization_data_type,
+            ) = load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
-            self.geo_metadata = load_data.load_county_metadata().set_index('fips').loc[fips].to_dict()
-            self.state = self.geo_metadata['state']
-            self.state_obj = us.states.lookup(self.state)
-            self.county = self.geo_metadata['county']
-            if self.county:
-                self.display_name = self.county + ', ' + self.state
+            geo_metadata = load_data.load_county_metadata().set_index("fips").loc[fips].to_dict()
+            state = geo_metadata["state"]
+            self.state_obj = us.states.lookup(state)
+            county = geo_metadata["county"]
+            if county:
+                self.display_name = county + ", " + state
             else:
-                self.display_name = self.state
+                self.display_name = state
             # TODO Swap for new data source.
-            self.times, self.observed_new_cases, self.observed_new_deaths = \
-                load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
-            self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
-                load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
+            (
+                self.times,
+                self.observed_new_cases,
+                self.observed_new_deaths,
+            ) = load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
+            (
+                self.hospital_times,
+                self.hospitalizations,
+                self.hospitalization_data_type,
+            ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
 
-        self.model_fit_keys = ['R0', 'eps', 't_break', 'log10_I_initial']
+        self.model_fit_keys = ["R0", "eps", "t_break", "log10_I_initial"]
 
         self.SEIR_kwargs = self.get_average_seir_parameters()
         self.fit_results = None
@@ -172,35 +196,43 @@ class ModelFitter:
             if self.state_obj.abbr in k:
                 self.fit_params.update(v)
 
-        self.fit_params['fix_hosp_fraction'] = self.hospitalizations is None
-        if self.fit_params['fix_hosp_fraction']:
-            self.fit_params['hosp_fraction'] = 1
+        self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
+        if self.fit_params["fix_hosp_fraction"]:
+            self.fit_params["hosp_fraction"] = 1
 
         if len(self.fips) == 5:
             OBSERVED_NEW_CASES_GUESS_THRESHOLD = 2
-            idx_enough_cases = np.argwhere(np.cumsum(self.observed_new_cases) >= OBSERVED_NEW_CASES_GUESS_THRESHOLD)[0][0]
+            idx_enough_cases = np.argwhere(
+                np.cumsum(self.observed_new_cases) >= OBSERVED_NEW_CASES_GUESS_THRESHOLD
+            )[0][0]
             initial_cases_guess = np.cumsum(self.observed_new_cases)[idx_enough_cases]
             t0_guess = list(self.times)[idx_enough_cases]
 
             state_fit_result = load_inference_result(fips=self.state_obj.fips)
-            self.fit_params['t0'] = t0_guess
+            self.fit_params["t0"] = t0_guess
 
             total_cases = np.sum(self.observed_new_cases)
-            self.fit_params['log10_I_initial'] = np.log10(initial_cases_guess / self.fit_params['test_fraction'])
-            self.fit_params['limit_t0'] = state_fit_result['t0'] - 20, state_fit_result['t0'] + 30
-            self.fit_params['t_break'] = state_fit_result['t_break'] - (t0_guess - state_fit_result['t0'])
-            self.fit_params['R0'] = state_fit_result['R0']
-            self.fit_params['test_fraction'] = state_fit_result['test_fraction']
-            self.fit_params['eps'] = state_fit_result['eps']
+            self.fit_params["log10_I_initial"] = np.log10(
+                initial_cases_guess / self.fit_params["test_fraction"]
+            )
+            self.fit_params["limit_t0"] = state_fit_result["t0"] - 20, state_fit_result["t0"] + 30
+            self.fit_params["t_break"] = state_fit_result["t_break"] - (
+                t0_guess - state_fit_result["t0"]
+            )
+            self.fit_params["R0"] = state_fit_result["R0"]
+            self.fit_params["test_fraction"] = state_fit_result["test_fraction"]
+            self.fit_params["eps"] = state_fit_result["eps"]
             if total_cases < 100:
-                self.fit_params['t_break'] = 10
-                self.fit_params['fix_test_fraction'] = True
-                self.fit_params['fix_R0'] = True
-                self.fit_params['limit_t0'] = state_fit_result['t0'] - 5, \
-                                              state_fit_result['t0'] + 30
+                self.fit_params["t_break"] = 10
+                self.fit_params["fix_test_fraction"] = True
+                self.fit_params["fix_R0"] = True
+                self.fit_params["limit_t0"] = (
+                    state_fit_result["t0"] - 5,
+                    state_fit_result["t0"] + 30,
+                )
             if total_cases < 50:
-                self.fit_params['fix_eps'] = True
-                self.fit_params['fix_t_break'] = True
+                self.fit_params["fix_eps"] = True
+                self.fit_params["fix_t_break"] = True
 
     def get_average_seir_parameters(self):
         """
@@ -218,14 +250,12 @@ class ModelFitter:
             parameter_generator = ParameterEnsembleGenerator
 
         SEIR_kwargs = parameter_generator(
-                fips=self.fips,
-                N_samples=5000,
-                t_list=self.t_list,
-                suppression_policy=None).get_average_seir_parameters()
+            fips=self.fips, N_samples=5000, t_list=self.t_list, suppression_policy=None
+        ).get_average_seir_parameters()
 
         SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
-        del SEIR_kwargs['suppression_policy']
-        del SEIR_kwargs['I_initial']
+        del SEIR_kwargs["suppression_policy"]
+        del SEIR_kwargs["I_initial"]
         return SEIR_kwargs
 
     def calculate_observation_errors(self):
@@ -260,30 +290,47 @@ class ModelFitter:
             Float uncertainties (stdev) for death data.
         """
         # Stdev 50% of values.
-        cases_stdev = self.percent_error_on_max_observation * self.cases_to_deaths_err_factor \
-                      * self.observed_new_cases ** 0.5 * self.observed_new_cases.max() ** 0.5
-        deaths_stdev = self.percent_error_on_max_observation \
-                       * self.observed_new_deaths ** 0.5 * self.observed_new_deaths.max() ** 0.5
+        cases_stdev = (
+            self.percent_error_on_max_observation
+            * self.cases_to_deaths_err_factor
+            * self.observed_new_cases ** 0.5
+            * self.observed_new_cases.max() ** 0.5
+        )
+        deaths_stdev = (
+            self.percent_error_on_max_observation
+            * self.observed_new_deaths ** 0.5
+            * self.observed_new_deaths.max() ** 0.5
+        )
 
         # Add a bit more error in cases with very few deaths, cases, or hosps. Specifically, we
         # inflate error bars for very small numbers of deaths, cases, and hosps
         # since these clearly reduce the fit accuracy (and individual events are
         # rife with systematic issues).
-        deaths_stdev[self.observed_new_deaths <= 4] = deaths_stdev[self.observed_new_deaths <= 4] * 3
+        deaths_stdev[self.observed_new_deaths <= 4] = (
+            deaths_stdev[self.observed_new_deaths <= 4] * 3
+        )
         cases_stdev[self.observed_new_cases <= 4] = cases_stdev[self.observed_new_cases <= 4] * 3
 
         # If cumulative hospitalizations, differentiate.
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(min=0)
-            hosp_stdev = self.percent_error_on_max_observation * \
-                         self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
+            hosp_stdev = (
+                self.percent_error_on_max_observation
+                * self.hospital_to_deaths_err_factor
+                * hosp_data ** 0.5
+                * hosp_data.max() ** 0.5
+            )
             # Increase errors a bit for very low hospitalizations. There are clear outliers due to data quality.
             hosp_stdev[hosp_data <= 2] *= 3
 
         elif self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             hosp_data = self.hospitalizations
-            hosp_stdev = self.percent_error_on_max_observation \
-                         * self.hospital_to_deaths_err_factor * hosp_data ** 0.5 * hosp_data.max() ** 0.5
+            hosp_stdev = (
+                self.percent_error_on_max_observation
+                * self.hospital_to_deaths_err_factor
+                * hosp_data ** 0.5
+                * hosp_data.max() ** 0.5
+            )
             # Increase errors a bit for very low hospitalizations. There are clear outliers due to data quality.
             hosp_stdev[hosp_data <= 2] *= 3
         else:
@@ -319,10 +366,12 @@ class ModelFitter:
         model: SEIRModel
             The SEIR model that has been run.
         """
-        suppression_policy = suppression_policies.generate_two_step_policy(self.t_list, eps, t_break)
+        suppression_policy = suppression_policies.generate_two_step_policy(
+            self.t_list, eps, t_break
+        )
 
         if self.with_age_structure:
-            age_distribution = self.SEIR_kwargs['N'] / self.SEIR_kwargs['N'].sum()
+            age_distribution = self.SEIR_kwargs["N"] / self.SEIR_kwargs["N"].sum()
             seir_model = SEIRModelAge
         else:
             age_distribution = 1
@@ -330,20 +379,21 @@ class ModelFitter:
 
         # Load up some number of initial exposed so the initial flow into
         # infected is stable.
-        self.SEIR_kwargs['E_initial'] = \
+        self.SEIR_kwargs["E_initial"] = (
             self.steady_state_exposed_to_infected_ratio * 10 ** log10_I_initial * age_distribution
+        )
 
         model = seir_model(
-                R0=R0,
-                suppression_policy=suppression_policy,
-                I_initial=10 ** log10_I_initial * age_distribution,
-                **self.SEIR_kwargs)
+            R0=R0,
+            suppression_policy=suppression_policy,
+            I_initial=10 ** log10_I_initial * age_distribution,
+            **self.SEIR_kwargs,
+        )
 
         model.run()
         return model
 
-    def _fit_seir(self, R0, t0, eps, t_break, test_fraction, hosp_fraction,
-                  log10_I_initial):
+    def _fit_seir(self, R0, t0, eps, t_break, test_fraction, hosp_fraction, log10_I_initial):
         """
         Fit SEIR model by MLE.
 
@@ -378,26 +428,38 @@ class ModelFitter:
         # Chi2 Cases
         # -----------------------------------
         # Extract the predicted rates from the model.
-        predicted_cases = (test_fraction * model.gamma
-                           * np.interp(self.times, self.t_list + t0, model.results['total_new_infections'], left=0, right=0))
+        predicted_cases = (
+            test_fraction
+            * model.gamma
+            * np.interp(
+                self.times, self.t_list + t0, model.results["total_new_infections"], left=0, right=0
+            )
+        )
         chi2_cases = calc_chi_sq(self.observed_new_cases, predicted_cases, self.cases_stdev)
 
         # -----------------------------------
         # Chi2 Hospitalizations
         # -----------------------------------
         if self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
-            predicted_hosp = hosp_fraction * np.interp(self.hospital_times,
-                                                       self.t_list + t0,
-                                                       model.results['HGen'] + model.results['HICU'],
-                                                       left=0, right=0)
+            predicted_hosp = hosp_fraction * np.interp(
+                self.hospital_times,
+                self.t_list + t0,
+                model.results["HGen"] + model.results["HICU"],
+                left=0,
+                right=0,
+            )
             chi2_hosp = calc_chi_sq(self.hospitalizations, predicted_hosp, self.hosp_stdev)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
 
         elif self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             # Cumulative, so differentiate the data
-            cumulative_hosp_predicted = model.results['HGen_cumulative'] + model.results['HICU_cumulative']
+            cumulative_hosp_predicted = (
+                model.results["HGen_cumulative"] + model.results["HICU_cumulative"]
+            )
             new_hosp_predicted = cumulative_hosp_predicted[1:] - cumulative_hosp_predicted[:-1]
-            new_hosp_predicted = hosp_fraction * np.interp(self.hospital_times[1:], self.t_list[1:] + t0, new_hosp_predicted, left=0, right=0)
+            new_hosp_predicted = hosp_fraction * np.interp(
+                self.hospital_times[1:], self.t_list[1:] + t0, new_hosp_predicted, left=0, right=0
+            )
             new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
 
             chi2_hosp = calc_chi_sq(new_hosp_observed, new_hosp_predicted, self.hosp_stdev)
@@ -410,7 +472,9 @@ class ModelFitter:
         # Chi2 Deaths
         # -----------------------------------
         # Only use deaths if there are enough observations..
-        predicted_deaths = np.interp(self.times, self.t_list + t0, model.results['total_deaths_per_day'], left=0, right=0)
+        predicted_deaths = np.interp(
+            self.times, self.t_list + t0, model.results["total_deaths_per_day"], left=0, right=0
+        )
         if self.observed_new_deaths.sum() > self.min_deaths:
             chi2_deaths = calc_chi_sq(self.observed_new_deaths, predicted_deaths, self.deaths_stdev)
         else:
@@ -452,9 +516,9 @@ class ModelFitter:
         posterior_MAP_estimate = x[np.argmax(posterior)] / R0
 
         if plot:
-            plt.plot(x, prior, label='Prior')
-            plt.plot(x, likelihood, label='Likelihood')
-            plt.plot(x, posterior, label='Posterior')
+            plt.plot(x, prior, label="Prior")
+            plt.plot(x, likelihood, label="Likelihood")
+            plt.plot(x, posterior, label="Posterior")
             plt.grid()
             plt.legend()
 
@@ -466,58 +530,66 @@ class ModelFitter:
         """
         minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
 
-        if os.environ.get('PYSEIR_FAST_AND_DIRTY'):
-           minuit.strategy = 0
+        if os.environ.get("PYSEIR_FAST_AND_DIRTY"):
+            minuit.strategy = 0
 
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
         self.fit_results = dict(fips=self.fips, **dict(minuit.values))
-        self.fit_results.update({k + '_error': v for k, v in dict(minuit.errors).items()})
+        self.fit_results.update({k + "_error": v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
         self._fit_seir(**dict(minuit.values))
 
-        if self.fit_results['eps'] < 0.1:
-            raise RuntimeError(f'Fit failed for {self.state, self.fips}: '
-                               f'Epsilon == 0 which implies lack of convergence.')
+        if self.fit_results["eps"] < 0.1:
+            raise RuntimeError(
+                f"Fit failed for {self.state, self.fips}: "
+                f"Epsilon == 0 which implies lack of convergence."
+            )
 
         # Sometimes this is estimated to be way to small (incorrectly since we
         # don't know the true error model). This is a problem for bayesian
         # updates. Set a lower bound for the error here.
-        self.fit_results['eps_error'] = max(self.fit_results['eps_error'], 0.05)
+        self.fit_results["eps_error"] = max(self.fit_results["eps_error"], 0.05)
 
-        self.fit_results['eps'] = self.get_posterior_estimate_eps(
-            R0=self.fit_results['R0'], eps=self.fit_results['eps'],
-            eps_error=self.fit_results['eps_error'])
+        self.fit_results["eps"] = self.get_posterior_estimate_eps(
+            R0=self.fit_results["R0"],
+            eps=self.fit_results["eps"],
+            eps_error=self.fit_results["eps_error"],
+        )
 
-        if np.isnan(self.fit_results['t0']):
-            logging.error(f'Could not compute MLE values for {self.display_name}')
-            self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.t0_guess)).isoformat()
+        if np.isnan(self.fit_results["t0"]):
+            logging.error(f"Could not compute MLE values for {self.display_name}")
+            self.fit_results["t0_date"] = (
+                self.ref_date + timedelta(days=self.t0_guess)
+            ).isoformat()
         else:
-            self.fit_results['t0_date'] = (self.ref_date + timedelta(days=self.fit_results['t0'])).isoformat()
-        self.fit_results['t_today'] = (datetime.today() - self.ref_date).days
+            self.fit_results["t0_date"] = (
+                self.ref_date + timedelta(days=self.fit_results["t0"])
+            ).isoformat()
+        self.fit_results["t_today"] = (datetime.today() - self.ref_date).days
 
-        self.fit_results['Reff'] = self.fit_results['R0'] * self.fit_results['eps']
+        self.fit_results["Reff"] = self.fit_results["R0"] * self.fit_results["eps"]
 
-        self.fit_results['chi2_cases'] = self.chi2_cases
+        self.fit_results["chi2_cases"] = self.chi2_cases
         if self.hospitalizations is not None:
-            self.fit_results['chi2_hosps'] = self.chi2_hosp
-        self.fit_results['chi2_deaths'] = self.chi2_deaths
+            self.fit_results["chi2_hosps"] = self.chi2_hosp
+        self.fit_results["chi2_deaths"] = self.chi2_deaths
 
         if self.hospitalization_data_type:
-            self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type.value
+            self.fit_results["hospitalization_data_type"] = self.hospitalization_data_type.value
         else:
-            self.fit_results['hospitalization_data_type'] = self.hospitalization_data_type
+            self.fit_results["hospitalization_data_type"] = self.hospitalization_data_type
 
         try:
             param_state = minuit.get_param_states()
-            logging.info(f'Fit Results for {self.display_name} \n {param_state}')
+            logging.info(f"Fit Results for {self.display_name} \n {param_state}")
         except:
             param_state = dict(minuit.values)
-            logging.info(f'Fit Results for {self.display_name} \n {param_state}')
+            logging.info(f"Fit Results for {self.display_name} \n {param_state}")
 
-        logging.info(f'Complete fit results for {self.display_name} \n {pformat(self.fit_results)}')
+        logging.info(f"Complete fit results for {self.display_name} \n {pformat(self.fit_results)}")
         self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     def plot_fitting_results(self):
@@ -527,7 +599,9 @@ class ModelFitter:
         data_dates = [self.ref_date + timedelta(days=t) for t in self.times]
         if self.hospital_times is not None:
             hosp_dates = [self.ref_date + timedelta(days=float(t)) for t in self.hospital_times]
-        model_dates = [self.ref_date + timedelta(days=t + self.fit_results['t0']) for t in self.t_list]
+        model_dates = [
+            self.ref_date + timedelta(days=t + self.fit_results["t0"]) for t in self.t_list
+        ]
 
         # Don't display the zero-inflated error bars
         cases_err = np.array(self.cases_stdev)
@@ -539,114 +613,223 @@ class ModelFitter:
             hosp_stdev[hosp_stdev > 1e5] = 0
 
         plt.figure(figsize=(18, 12))
-        plt.errorbar(data_dates, self.observed_new_cases, yerr=cases_err,
-                     marker='o', linestyle='', label='Observed Cases Per Day',
-                     color='steelblue', capsize=3, alpha=.4, markersize=10)
-        plt.errorbar(data_dates, self.observed_new_deaths, yerr=death_err,
-                     marker='d', linestyle='', label='Observed Deaths Per Day',
-                     color='firebrick', capsize=3, alpha=.4, markersize=10)
+        plt.errorbar(
+            data_dates,
+            self.observed_new_cases,
+            yerr=cases_err,
+            marker="o",
+            linestyle="",
+            label="Observed Cases Per Day",
+            color="steelblue",
+            capsize=3,
+            alpha=0.4,
+            markersize=10,
+        )
+        plt.errorbar(
+            data_dates,
+            self.observed_new_deaths,
+            yerr=death_err,
+            marker="d",
+            linestyle="",
+            label="Observed Deaths Per Day",
+            color="firebrick",
+            capsize=3,
+            alpha=0.4,
+            markersize=10,
+        )
 
-        plt.plot(model_dates, self.mle_model.results['total_new_infections'],
-                 label='Estimated Total New Infections Per Day', linestyle='--',
-                 lw=4, color='steelblue')
-        plt.plot(model_dates,
-                 self.fit_results['test_fraction'] * self.mle_model.results[
-                     'total_new_infections'],
-                 label='Estimated Tested New Infections Per Day',
-                 color='steelblue', lw=4)
+        plt.plot(
+            model_dates,
+            self.mle_model.results["total_new_infections"],
+            label="Estimated Total New Infections Per Day",
+            linestyle="--",
+            lw=4,
+            color="steelblue",
+        )
+        plt.plot(
+            model_dates,
+            self.fit_results["test_fraction"] * self.mle_model.results["total_new_infections"],
+            label="Estimated Tested New Infections Per Day",
+            color="steelblue",
+            lw=4,
+        )
 
-        plt.plot(model_dates, self.mle_model.results['total_deaths_per_day'],
-                 label='Model Deaths Per Day', color='firebrick', lw=4)
+        plt.plot(
+            model_dates,
+            self.mle_model.results["total_deaths_per_day"],
+            label="Model Deaths Per Day",
+            color="firebrick",
+            lw=4,
+        )
 
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
-            new_hosp_observed = self.hospitalizations[
-                                1:] - self.hospitalizations[:-1]
-            plt.errorbar(hosp_dates[1:], new_hosp_observed, yerr=hosp_stdev,
-                         marker='s', linestyle='',
-                         label='Observed New Hospitalizations Per Day',
-                         color='darkseagreen', capsize=3, alpha=1)
-            predicted_hosp = (self.mle_model.results['HGen_cumulative'] +
-                              self.mle_model.results['HICU_cumulative'])
+            new_hosp_observed = self.hospitalizations[1:] - self.hospitalizations[:-1]
+            plt.errorbar(
+                hosp_dates[1:],
+                new_hosp_observed,
+                yerr=hosp_stdev,
+                marker="s",
+                linestyle="",
+                label="Observed New Hospitalizations Per Day",
+                color="darkseagreen",
+                capsize=3,
+                alpha=1,
+            )
+            predicted_hosp = (
+                self.mle_model.results["HGen_cumulative"]
+                + self.mle_model.results["HICU_cumulative"]
+            )
             predicted_hosp = predicted_hosp[1:] - predicted_hosp[:-1]
-            plt.plot(model_dates[1:],
-                     self.fit_results['hosp_fraction'] * predicted_hosp,
-                     label='Estimated Total New Hospitalizations Per Day',
-                     linestyle='-.', lw=4, color='darkseagreen', markersize=10)
+            plt.plot(
+                model_dates[1:],
+                self.fit_results["hosp_fraction"] * predicted_hosp,
+                label="Estimated Total New Hospitalizations Per Day",
+                linestyle="-.",
+                lw=4,
+                color="darkseagreen",
+                markersize=10,
+            )
         elif self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
-            plt.errorbar(hosp_dates, self.hospitalizations, yerr=hosp_stdev,
-                         marker='s', linestyle='',
-                         label='Observed Total Current Hospitalizations',
-                         color='darkseagreen', capsize=3, alpha=.5,
-                         markersize=10)
-            predicted_hosp = (self.mle_model.results['HGen'] + self.mle_model.results['HICU'])
-            plt.plot(model_dates,
-                     self.fit_results['hosp_fraction'] * predicted_hosp,
-                     label='Estimated Total Current Hospitalizations',
-                     linestyle='-.', lw=4, color='darkseagreen')
+            plt.errorbar(
+                hosp_dates,
+                self.hospitalizations,
+                yerr=hosp_stdev,
+                marker="s",
+                linestyle="",
+                label="Observed Total Current Hospitalizations",
+                color="darkseagreen",
+                capsize=3,
+                alpha=0.5,
+                markersize=10,
+            )
+            predicted_hosp = self.mle_model.results["HGen"] + self.mle_model.results["HICU"]
+            plt.plot(
+                model_dates,
+                self.fit_results["hosp_fraction"] * predicted_hosp,
+                label="Estimated Total Current Hospitalizations",
+                linestyle="-.",
+                lw=4,
+                color="darkseagreen",
+            )
 
-        plt.plot(model_dates,
-                 self.fit_results['hosp_fraction'] * self.mle_model.results['HICU'],
-                 label='Estimated ICU Occupancy',
-                 linestyle=':', lw=6, color='black')
-        plt.plot(model_dates,
-                 self.fit_results['hosp_fraction'] * self.mle_model.results['HGen'],
-                 label='Estimated General Occupancy',
-                 linestyle=':', lw=4, color='black', alpha=0.4)
+        plt.plot(
+            model_dates,
+            self.fit_results["hosp_fraction"] * self.mle_model.results["HICU"],
+            label="Estimated ICU Occupancy",
+            linestyle=":",
+            lw=6,
+            color="black",
+        )
+        plt.plot(
+            model_dates,
+            self.fit_results["hosp_fraction"] * self.mle_model.results["HGen"],
+            label="Estimated General Occupancy",
+            linestyle=":",
+            lw=4,
+            color="black",
+            alpha=0.4,
+        )
 
-        plt.yscale('log')
-        y_lim = plt.ylim(.8e0)
+        plt.yscale("log")
+        y_lim = plt.ylim(0.8e0)
 
-        start_intervention_date = self.ref_date + timedelta(days=self.fit_results['t_break'] + self.fit_results['t0'])
+        start_intervention_date = self.ref_date + timedelta(
+            days=self.fit_results["t_break"] + self.fit_results["t0"]
+        )
         stop_intervention_date = start_intervention_date + timedelta(days=14)
 
-        plt.fill_betweenx([y_lim[0], y_lim[1]],
-                          [start_intervention_date, start_intervention_date],
-                          [stop_intervention_date, stop_intervention_date], alpha=0.2, label='Estimated Intervention')
+        plt.fill_betweenx(
+            [y_lim[0], y_lim[1]],
+            [start_intervention_date, start_intervention_date],
+            [stop_intervention_date, stop_intervention_date],
+            alpha=0.2,
+            label="Estimated Intervention",
+        )
 
         running_total = timedelta(days=0)
-        for i_label, k in enumerate((
-                'symptoms_to_hospital_days',
-                'hospitalization_length_of_stay_general',
-                'hospitalization_length_of_stay_icu')):
+        for i_label, k in enumerate(
+            (
+                "symptoms_to_hospital_days",
+                "hospitalization_length_of_stay_general",
+                "hospitalization_length_of_stay_icu",
+            )
+        ):
 
             end_time = timedelta(days=self.SEIR_kwargs[k])
             x = start_intervention_date + running_total
             y = 1.5 ** (i_label + 1)
-            plt.errorbar(x=[x],
-                         y=[y],
-                         xerr=[[timedelta(days=0)], [end_time]],
-                         marker='', capsize=8, color='k', elinewidth=3, capthick=3)
-            plt.text(x + (end_time + timedelta(days=2)), y, k.replace('_', ' ').title(), fontsize=14)
+            plt.errorbar(
+                x=[x],
+                y=[y],
+                xerr=[[timedelta(days=0)], [end_time]],
+                marker="",
+                capsize=8,
+                color="k",
+                elinewidth=3,
+                capthick=3,
+            )
+            plt.text(
+                x + (end_time + timedelta(days=2)), y, k.replace("_", " ").title(), fontsize=14
+            )
             running_total += end_time
 
-        if self.SEIR_kwargs['beds_ICU'] > 0:
-            plt.hlines(self.SEIR_kwargs['beds_ICU'], *plt.xlim(), color='k', linestyles='-', linewidths=6, alpha=0.2)
-            plt.text(data_dates[0] + timedelta(days=5), self.SEIR_kwargs['beds_ICU'] * 1.1, 'Available ICU Capacity',
-                    color='k', alpha=0.5, fontsize=15)
+        if self.SEIR_kwargs["beds_ICU"] > 0:
+            plt.hlines(
+                self.SEIR_kwargs["beds_ICU"],
+                *plt.xlim(),
+                color="k",
+                linestyles="-",
+                linewidths=6,
+                alpha=0.2,
+            )
+            plt.text(
+                data_dates[0] + timedelta(days=5),
+                self.SEIR_kwargs["beds_ICU"] * 1.1,
+                "Available ICU Capacity",
+                color="k",
+                alpha=0.5,
+                fontsize=15,
+            )
 
         plt.ylim(*y_lim)
         plt.xlim(min(model_dates[0], data_dates[0]), data_dates[-1] + timedelta(days=150))
         plt.xticks(rotation=30, fontsize=14)
         plt.yticks(fontsize=14)
         plt.legend(loc=4, fontsize=14)
-        plt.grid(which='both', alpha=.5)
+        plt.grid(which="both", alpha=0.5)
         plt.title(self.display_name, fontsize=20)
 
         for i, (k, v) in enumerate(self.fit_results.items()):
 
-            fontweight = 'bold' if k in ('R0', 'Reff') else 'normal'
+            fontweight = "bold" if k in ("R0", "Reff") else "normal"
 
             if np.isscalar(v) and not isinstance(v, str):
-                plt.text(1.05, .7 - 0.032 * i, f'{k}={v:1.3f}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
+                plt.text(
+                    1.05,
+                    0.7 - 0.032 * i,
+                    f"{k}={v:1.3f}",
+                    transform=plt.gca().transAxes,
+                    fontsize=15,
+                    alpha=0.6,
+                    fontweight=fontweight,
+                )
             else:
-                plt.text(1.05, .7 - 0.032 * i, f'{k}={v}', transform=plt.gca().transAxes, fontsize=15, alpha=.6, fontweight=fontweight)
+                plt.text(
+                    1.05,
+                    0.7 - 0.032 * i,
+                    f"{k}={v}",
+                    transform=plt.gca().transAxes,
+                    fontsize=15,
+                    alpha=0.6,
+                    fontweight=fontweight,
+                )
 
         output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
-        plt.savefig(output_file, bbox_inches='tight')
+        plt.savefig(output_file, bbox_inches="tight")
         plt.close()
 
         self.mle_model.plot_results()
-        plt.savefig(output_file.replace('mle_fit_results', 'mle_fit_model'), bbox_inches='tight')
+        plt.savefig(output_file.replace("mle_fit_results", "mle_fit_model"), bbox_inches="tight")
         plt.close()
 
     @classmethod
@@ -672,7 +855,8 @@ class ModelFitter:
         # Assert that there are some cases for counties
         if len(fips) == 5:
             _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
-                fips, t0=datetime.today())
+                fips, t0=datetime.today()
+            )
             if observed_new_cases.sum() < 1:
                 return None
 
@@ -683,19 +867,54 @@ class ModelFitter:
                 model_fitter = cls(fips=fips, with_age_structure=with_age_structure)
                 try:
                     model_fitter.fit()
-                    if model_fitter.mle_model and os.environ.get('PYSEIR_PLOT_RESULTS') == 'True':
+                    if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
                         model_fitter.plot_fitting_results()
                 except RuntimeError as e:
-                    logging.warning('No convergence.. Retrying ' + str(e))
+                    logging.warning("No convergence.. Retrying " + str(e))
                 retries_left = retries_left - 1
                 if model_fitter.mle_model:
                     model_is_empty = False
             if retries_left <= 0 and model_is_empty:
-                raise RuntimeError(f'Could not converge after {n_retries} for fips {fips}')
+                raise RuntimeError(f"Could not converge after {n_retries} for fips {fips}")
         except Exception:
             logging.exception(f"Failed to run {fips}")
             return None
         return model_fitter
+
+
+def _execute_model_for_fips(fips):
+    if fips:
+        model_fitter = ModelFitter.run_for_fips(fips)
+        return model_fitter
+    logging.warning(f"Not funning model run for ${fips}")
+    return None
+
+
+def _persist_results_per_state(state_df):
+    county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
+    data = state_df.drop(["state", "mle_model"], axis=1)
+    data.to_json(county_output_file)
+
+    for fips, county_series in state_df.iterrows():
+        with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
+            pickle.dump(county_series.mle_model, f)
+
+
+def build_county_list(state):
+    """
+    Build the and return the fips list
+    """
+    state_obj = us.states.lookup(state)
+    logging.info(f"Get fips list for state {state_obj.name}")
+
+    df_whitelist = load_data.load_whitelist()
+    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
+
+    all_fips = df_whitelist[
+        df_whitelist["state"].str.lower() == state_obj.name.lower()
+    ].fips.tolist()
+
+    return all_fips
 
 
 def run_state(state, states_only=False, with_age_structure=False):
@@ -712,22 +931,30 @@ def run_state(state, states_only=False, with_age_structure=False):
         If True run model with age structure.
     """
     state_obj = us.states.lookup(state)
-    logging.info(f'Running MLE fitter for state {state_obj.name}')
+    logging.info(f"Running MLE fitter for state {state_obj.name}")
 
-    model_fitter = ModelFitter.run_for_fips(fips=state_obj.fips, with_age_structure=with_age_structure)
+    model_fitter = ModelFitter.run_for_fips(
+        fips=state_obj.fips, with_age_structure=with_age_structure
+    )
 
     df_whitelist = load_data.load_whitelist()
-    df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
+    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
-    pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips]).to_json(output_path)
+    data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
+    data.to_json(output_path)
 
-    with open(get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
+    with open(get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
         pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
     if not states_only:
-        all_fips = df_whitelist[df_whitelist['state'].str.lower() == state_obj.name.lower()].fips.values
+        df_whitelist = load_data.load_whitelist()
+        df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
+
+        all_fips = df_whitelist[
+            df_whitelist["state"].str.lower() == state_obj.name.lower()
+        ].fips.values
 
         if len(all_fips) > 0:
             p = Pool()
@@ -735,10 +962,11 @@ def run_state(state, states_only=False, with_age_structure=False):
             p.close()
 
             county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
-            pd.DataFrame([fit.fit_results for fit in fitters if fit]).to_json(county_output_file)
+            data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+            data.to_json(county_output_file)
 
             # Serialize the model results.
             for fips, fitter in zip(all_fips, fitters):
                 if fitter:
-                    with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), 'wb') as f:
+                    with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
                         pickle.dump(fitter.mle_model, f)

@@ -33,6 +33,12 @@
     },
     "actuals": {
       "$ref": "#/definitions/_Actuals"
+    },
+    "population": {
+      "title": "Population",
+      "description": "Total Population in geographic area.",
+      "exclusiveMinimum": 0,
+      "type": "integer"
     }
   },
   "required": [
@@ -41,7 +47,8 @@
     "long",
     "lastUpdatedDate",
     "projections",
-    "actuals"
+    "actuals",
+    "population"
   ],
   "definitions": {
     "_ResourceUsageProjection": {
@@ -118,12 +125,22 @@
       "properties": {
         "capacity": {
           "title": "Capacity",
-          "description": "Total capacity for resource",
+          "description": "*deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07",
           "type": "integer"
         },
-        "currentUsage": {
-          "title": "Currentusage",
-          "description": "Currently used capacity for resource",
+        "totalCapacity": {
+          "title": "Totalcapacity",
+          "description": "Total capacity for resource.",
+          "type": "integer"
+        },
+        "currentUsageCovid": {
+          "title": "Currentusagecovid",
+          "description": "Currently used capacity for resource by COVID ",
+          "type": "integer"
+        },
+        "currentUsageTotal": {
+          "title": "Currentusagetotal",
+          "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
           "type": "integer"
         },
         "typicalUsageRate": {
@@ -134,7 +151,9 @@
       },
       "required": [
         "capacity",
-        "currentUsage",
+        "totalCapacity",
+        "currentUsageCovid",
+        "currentUsageTotal",
         "typicalUsageRate"
       ]
     },
@@ -144,7 +163,7 @@
       "properties": {
         "population": {
           "title": "Population",
-          "description": "Total population in geographic area",
+          "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
           "exclusiveMinimum": 0,
           "type": "integer"
         },
@@ -178,6 +197,11 @@
         },
         "ICUBeds": {
           "$ref": "#/definitions/_ResourceUtilization"
+        },
+        "contactTracers": {
+          "title": "Contacttracers",
+          "description": "# of Contact Tracers",
+          "type": "integer"
         }
       },
       "required": [

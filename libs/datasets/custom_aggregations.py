@@ -63,7 +63,7 @@ def update_with_combined_new_york_counties(
         # No county level data, skipping county aggregation.
         return data
 
-    if not len(data[(data.state == 'NY') & is_county]):
+    if not len(data[(data.state == "NY") & is_county]):
         # No NY data, don't apply aggregation.
         return data
 
@@ -74,6 +74,4 @@ def update_with_combined_new_york_counties(
     )
 
     data = data.reset_index()
-    return pd.concat(
-        [data[data.aggregate_level != AggregationLevel.COUNTY.value], county]
-    )
+    return pd.concat([data[data.aggregate_level != AggregationLevel.COUNTY.value], county])

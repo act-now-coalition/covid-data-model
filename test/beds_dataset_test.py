@@ -106,17 +106,17 @@ def test_dh_beds_loading():
 
 def test_get_data():
     beds_data = CovidCareMapBeds.local().beds()
-    data = beds_data.get_data_for_state('MA')
+    data = beds_data.get_record_for_state("MA")
     assert data
 
-    data = beds_data.get_data_for_state('NOTSTATE')
+    data = beds_data.get_record_for_state("NOTSTATE")
     assert not data
 
 
 def test_nyc_aggregation():
     beds_data = CovidCareMapBeds.local().beds()
-    data = beds_data.get_data_for_fips(custom_aggregations.NEW_YORK_COUNTY_FIPS)
+    data = beds_data.get_record_for_fips(custom_aggregations.NEW_YORK_COUNTY_FIPS)
     # Check to make sure that beds occupancy rates are below 1,
     # signaling that it is properly combining occupancy rates.
-    assert data['all_beds_occupancy_rate'] < 1
-    assert data['icu_occupancy_rate'] < 1
+    assert data["all_beds_occupancy_rate"] < 1
+    assert data["icu_occupancy_rate"] < 1

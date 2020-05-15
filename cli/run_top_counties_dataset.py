@@ -10,22 +10,13 @@ PROD_BUCKET = "data.covidactnow.org"
 
 @click.command("deploy-top-counties")
 @click.option(
-    "--disable-validation",
-    "-dv",
-    is_flag=True,
-    help="Run the validation on the deploy command",
+    "--disable-validation", "-dv", is_flag=True, help="Run the validation on the deploy command",
 )
 @click.option(
-    "--input-dir",
-    "-i",
-    default="results",
-    help="Input directory of state/county projections",
+    "--input-dir", "-i", default="results", help="Input directory of state/county projections",
 )
 @click.option(
-    "--output",
-    "-o",
-    default="results/top_counties",
-    help="Output directory for artifacts",
+    "--output", "-o", default="results/top_counties", help="Output directory for artifacts",
 )
 def deploy_top_counties(disable_validation, input_dir, output):
     """The entry function for invocation"""

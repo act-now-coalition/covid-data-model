@@ -14,8 +14,6 @@ prepare () {
     echo
     echo "Example: $0 ../covid-data-public/ ./api-results/"
     echo "Example: $0 ../covid-data-public/ ./api-results/ execute_model"
-    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_summaries"
-    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_dod"
     echo "Example: $0 ../covid-data-public/ ./api-results/ execute_api"
     exit 1
   else
@@ -48,12 +46,6 @@ prepare () {
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
   API_OUTPUT_US="${API_OUTPUT_DIR}/us"
-
-  COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
-  CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
-
-  # TODO: Move DoD onto a more general-purpose schema rather than treat them custom.
-  DOD_DIR="${API_OUTPUT_DIR}/custom1"
 }
 
 execute_model() {
@@ -61,7 +53,8 @@ execute_model() {
   cd "$(dirname "$0")"
 
   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
-  pyseir run-all --output-dir="${API_OUTPUT_DIR}"
+  # TODO(#148): We need to clean up the output of these scripts!
+  pyseir build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
@@ -81,26 +74,6 @@ execute_model() {
   pushd output
   zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
   popd
-}
-
-execute_summaries() {
-  # Go to repo root (where run.sh lives).
-  cd "$(dirname "$0")"
-
-  echo ">>> Generating county summaries to ${COUNTY_SUMMARIES_DIR}"
-  ./run.py county-fips-summaries -i "${API_OUTPUT_DIR}/county" -o "${COUNTY_SUMMARIES_DIR}"
-
-  echo ">>> Generating case summaries to ${CASE_SUMMARIES_DIR}"
-  ./run.py data latest -o "${CASE_SUMMARIES_DIR}"
-}
-
-execute_dod() {
-  # Go to repo root (where run.sh lives).
-  cd "$(dirname "$0")"
-
-  echo ">>> Generating DoD artifacts to ${DOD_DIR}"
-  mkdir -p "${DOD_DIR}"
-  ./run.py deploy-dod -ic "${API_OUTPUT_DIR}/county" -is "${API_OUTPUT_DIR}" -o "${DOD_DIR}"
 }
 
 execute_api() {
@@ -138,8 +111,6 @@ execute_zip_folder() {
 
 execute() {
   execute_model
-  execute_dod
-  execute_summaries
   execute_api
   execute_zip_folder
 }
@@ -218,14 +189,6 @@ case $EXECUTE_FUNC in
   execute_model)
     echo "Executing Model Results"
     execute_model
-    ;;
-  execute_summaries)
-    echo "Executing Sumaries"
-    execute_summaries
-    ;;
-  execute_dod)
-    echo "Executing DoD Pipeline"
-    execute_dod
     ;;
   execute_api)
     echo "Executing Api"
