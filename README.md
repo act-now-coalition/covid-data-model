@@ -26,7 +26,7 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 # API Snapshots
 
-We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/) 
+We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/)
 twice a day via a [github action](./.github/workflows/deploy_api.yml).  To manually kick off a new
 snapshot, get a
 [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
@@ -77,20 +77,22 @@ If using conda, activate the environment here..
 
 
 ### Running Models
-Example here. You can remove the `--state` flag to run everything. To run only
-states, add `--states-only`. `pyseir run-all --state="California"`
+Example here. You can remove the `--states` flag to run everything. To run only
+states, add `--states-only`. `pyseir build-all --states="California"`
 
-`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags. 
+`pyseir --help ` and `pyseir <subcommand> --help` also provide specific flags.
 
 Check the `output/` folder for results.
 
-The flag `--states-only` will skip counties and the flat `--state` will only run
+The flag `--states-only` will skip counties and the flag `--states` will only run
 a single state. These can be combined if you want to run things quickly.
+
+`--states` accepts both full state names and state codes (i.e. `--states=NV` is the same as `--states=Nevada`).
 
 ### Model Output
 
 There are a variety of output artifacts to paths described in pyseir/utils.py.
 The main artifact is the ensemble_result which contains the output information
 for each `suppression policy -> model compartment` as well as capacity
-information. It is described in 
+information. It is described in
 [this running document](https://docs.google.com/document/d/1U0zTP_jjwp8i-hCj3jPosfeyj74vKqTy6ERFYzYgcvE/edit?usp=sharing).
