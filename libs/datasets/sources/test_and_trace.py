@@ -43,8 +43,6 @@ class TestAndTraceData(data_source.DataSource):
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        data = pd.read_csv(
-            input_path, parse_dates=[cls.Fields.DATE], dtype={cls.Fields.FIPS: str}
-        )
+        data = pd.read_csv(input_path, parse_dates=[cls.Fields.DATE], dtype={cls.Fields.FIPS: str})
         data = cls.standardize_data(data)
         return cls(data)

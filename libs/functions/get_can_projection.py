@@ -30,9 +30,7 @@ def _get_intervention(intervention, state):
     return intervention
 
 
-def get_can_projection_path(
-    input_dir, state_abbrev, fips, aggregation_level, initial_intervention
-):
+def get_can_projection_path(input_dir, state_abbrev, fips, aggregation_level, initial_intervention):
     intervention = _get_intervention(initial_intervention, state_abbrev)
     if aggregation_level == AggregationLevel.STATE:
         file_name = f"{state_abbrev}.{intervention.value}.json"

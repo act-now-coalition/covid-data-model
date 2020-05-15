@@ -57,10 +57,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data = cls._aggregate_new_york_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data,
-                cls.STATE_GROUP_KEY,
-                AggregationLevel.COUNTY,
-                AggregationLevel.STATE,
+                data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE,
             ).reset_index()
 
             data = pd.concat([data, non_matching])
@@ -70,9 +67,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
         # Add state fips
         is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, cls.Fields.STATE].map(
-            us_state_abbrev.ABBREV_US_FIPS
-        )
+        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, cls.Fields.FIPS] = state_fips
 
         return cls(data)
@@ -91,13 +86,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return cls.from_source(source)
 
     def get_subset(
-        self,
-        aggregation_level,
-        country=None,
-        state=None,
-        county=None,
-        fips=None,
-        states=None,
+        self, aggregation_level, country=None, state=None, county=None, fips=None, states=None,
     ) -> "LatestValuesDataset":
         data = self.data
 
@@ -145,8 +134,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
         if weighted_all_bed_occupancy:
             data.loc[
-                data[cls.Fields.FIPS] == nyc_fips,
-                cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+                data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
             ] = weighted_all_bed_occupancy
 
         if weighted_icu_occupancy:
@@ -160,17 +148,13 @@ class LatestValuesDataset(dataset_base.DatasetBase):
     def state_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only state data."""
 
-        is_state = (
-            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        )
+        is_state = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         return self.data[is_state]
 
     @property
     def county_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only county data."""
-        is_county = (
-            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        )
+        is_county = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         return self.data[is_county]
 
     def get_record_for_state(self, state) -> dict:
@@ -198,9 +182,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         Returns: Dictionary with all data for a given fips code.
         """
         # we map NaNs to none here so that they can be generated via the API easier
-        row = self.data[self.data[self.Fields.FIPS] == fips].where(
-            pd.notnull(self.data), None
-        )
+        row = self.data[self.data[self.Fields.FIPS] == fips].where(pd.notnull(self.data), None)
         if not len(row):
             return {}
 
