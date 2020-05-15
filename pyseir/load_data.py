@@ -521,6 +521,9 @@ def load_hospitalization_data_by_state(
                 # Eventually replace with constants for average length of stay.
                 # Then we can revert back to 1.
             ).get_average_seir_parameters()
+            # TODO: This value is temporarily in this limited scope.
+            # Will be added into the params once I decide on some refactoring.
+            params["hospitalization_length_of_stay_icu_avg"] = 8.6
             if category == "hospitalized":
                 average_length_of_stay = (
                     params["hospitalization_rate_general"]
@@ -534,9 +537,8 @@ def load_hospitalization_data_by_state(
                 ) / (params["hospitalization_rate_general"] + params["hospitalization_rate_icu"])
             else:
                 # This value is a weighted average of icu w & w/o ventilator.
-                # It is deterministic.
+                # It is deterministic. Warning: This param was added in this very local scope.
                 average_length_of_stay = params["hospitalization_length_of_stay_icu_avg"]
-
             # Now compute a cumulative sum, but at each day,
             # subtract the discharges from the previous count.
             new_hospitalizations = np.append([0], np.diff(cumulative))

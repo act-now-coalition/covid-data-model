@@ -122,7 +122,7 @@ class ParameterEnsembleGenerator:
                     # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                     symptoms_to_hospital_days=np.random.normal(loc=6.0, scale=1.5),
                     hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=1),
-                    hospitalization_length_of_stay_icu_avg=8.6,  # Weighted avg of icu w & w/o vent
+                    # hospitalization_length_of_stay_icu_avg=8.6,  # Weighted avg of icu w & w/o
                     hospitalization_length_of_stay_icu=np.random.normal(loc=8, scale=3),
                     hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(
                         loc=9, scale=3
