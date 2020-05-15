@@ -26,7 +26,7 @@ See [covid-data-public](https://github.com/covid-projections/covid-data-public) 
 
 # API Snapshots
 
-We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/) 
+We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/)
 twice a day via a [github action](./.github/workflows/deploy_api.yml).  To manually kick off a new
 snapshot, get a
 [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
@@ -75,10 +75,12 @@ If using conda, you can use the following:
 - `pip install -r requirements.txt -r requirements_test.txt`
 
 ### Running Models
-PySEIR provides a command line interface in the activated environment. You can access the model with `pyseir --help ` and `pyseir <subcommand> --help` providing more information. 
+PySEIR provides a command line interface in the activated environment. You can access the model with `pyseir --help ` and `pyseir <subcommand> --help` providing more information.
 
 Example:
-`pyseir build-all --states="New York"` will run state and county models for New York
+`pyseir build-all --states="New York"` will run state and county models for New York.
+States can also be specified by their state code: `--states="New York"` and `--states=NY` are equivalent.
+
 
 Check the `output/` folder for results.
 
