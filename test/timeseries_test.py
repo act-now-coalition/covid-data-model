@@ -26,6 +26,8 @@ def test_get_subset():
     )
     ts = TimeseriesDataset(input_df)
 
+    df = ts.data.loc[:, :]
+
     assert set(ts.get_subset(AggregationLevel.COUNTRY).data["country"]) == {"UK"}
     assert set(ts.get_subset(AggregationLevel.STATE).data["metric"]) == {"mystate"}
     assert set(ts.get_subset(None, on="2020-03-22").data["metric"]) == {"march22-nyc"}

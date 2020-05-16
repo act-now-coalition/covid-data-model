@@ -55,8 +55,8 @@ class WebUIDataAdaptorV1:
         self.county_timeseries = build_aggregate_county_data_frame(self.jhu_local, self.cds_dataset)
         self.county_timeseries["date"] = self.county_timeseries["date"].dt.normalize()
 
-        self.state_timeseries = self.jhu_local.timeseries().state_data
-        self.state_timeseries["date"] = self.state_timeseries["date"].dt.normalize()
+        state_timeseries = self.jhu_local.timeseries().get_subset(AggregationLevel.STATE)
+        self.state_timeseries = state_timeseries.data["date"].dt.normalize()
         self.df_whitelist = load_data.load_whitelist()
         self.df_whitelist = self.df_whitelist[self.df_whitelist["inference_ok"] == True]
 

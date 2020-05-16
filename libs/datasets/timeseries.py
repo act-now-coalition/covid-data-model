@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import pandas as pd
 import numpy as np
 from libs import us_state_abbrev
@@ -95,12 +95,15 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         after=None,
         before=None,
         country=None,
-        state=None,
-        county=None,
-        fips=None,
-        states=None,
+        state: Optional[str] = None,
+        county: Optional[str] = None,
+        fips: Optional[str] = None,
+        states: Optional[List[str]] = None,
+        columns_slice=None,
     ) -> "TimeseriesDataset":
-        assert sum([bool(country), bool(state), bool(county), bool(fips), bool(states)]) <= 1
+
+        # country is okay with states.
+        assert sum([bool(state), bool(county), bool(fips), bool(states)]) <= 1
 
         query_parts = []
         if aggregation_level:
@@ -122,8 +125,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             query_parts.append("date > @after")
         if before:
             query_parts.append("date < @before")
+        eval_rows_result = self.data.eval(" and ".join(query_parts))
 
-        return self.__class__(self.data.query(" and ".join(query_parts)))
+        if columns_slice is None:
+            columns_slice = slice(None, None, None)
+
+        return self.__class__(self.data.loc[eval_rows_result, columns_slice])
 
     def get_records_for_fips(self, fips) -> List[dict]:
         """Get data for FIPS code.
