@@ -16,9 +16,11 @@ def _get_state_data(snapshot1, snapshot2, state_abbrev, intervention):
 
     # counties_json_1 = requests.get(counties_url_1).json()
     # counties_json_2 = requests.get(counties_url_2).json()
-
-    states_json_1 = requests.get(states_url_1).json()
-    states_json_2 = requests.get(states_url_2).json()
+    try:
+        states_json_1 = requests.get(states_url_1).json()
+        states_json_2 = requests.get(states_url_2).json()
+    except:
+        states_json_1, states_json_2 = None, None
 
     return states_json_1, states_json_2
 
@@ -47,14 +49,25 @@ def _get_state_data(snapshot1, snapshot2, state_abbrev, intervention):
     required=False,
 )
 def compare_snapshots(snapshot1, snapshot2, state, fips, intervention):
-    if not intervention:
-        intervention = Intervention.SELECTED_INTERVENTION
-    if not state:
-        state = "CA"
-    if not fips:
-        api1, api2 = _get_state_data(snapshot1, snapshot2, state, intervention.name)
-    else:
-        raise NotImplementedError("currently only handles states data")
-    comparitor = Comparitor(snapshot1, snapshot2, api1, api2, state, intervention.name, fips)
-    results = comparitor.compareMetrics()
-    dataset_deployer.write_nested_csv(Comparitor.dict_results(results), "compared", "output/")
+    states = [state] if state else US_STATE_ABBREV.values()
+    results = []
+
+    for state_abbrev in states:
+        if not intervention:
+            intervention = Intervention.SELECTED_INTERVENTION
+        if not fips:
+            api1, api2 = _get_state_data(snapshot1, snapshot2, state_abbrev, intervention.name)
+        else:
+            raise NotImplementedError("currently only handles states data")
+        if not (api1 and api2):
+            print(f"State Abbrev {state_abbrev} doesn't have data")
+            continue
+        comparitor = Comparitor(
+            snapshot1, snapshot2, api1, api2, state_abbrev, intervention.name, fips
+        )
+        state_results = comparitor.compareMetrics()
+        results.extend(state_results)
+
+    dataset_deployer.write_nested_csv(
+        Comparitor.dict_results(sorted(results, reverse=True)), "compared", "output/"
+    )

@@ -16,9 +16,9 @@ class MetricDiff:
     metric_name: str
 
     snapshot1: int
-    snapshot2: int
-
     value1: float
+
+    snapshot2: int
     value2: float
 
     difference: float
@@ -171,8 +171,8 @@ class Comparitor(object):
                     date,
                     projection_name,
                     self.snapshot1,
-                    self.snapshot2,
                     projected_value1,
+                    self.snapshot2,
                     projected_value2,
                     metric.diff(projected_value1, projected_value2),
                     metric.threshold,
@@ -187,8 +187,8 @@ class Comparitor(object):
                     date,
                     actual_name,
                     self.snapshot1,
-                    self.snapshot2,
                     actual_value1,
+                    self.snapshot2,
                     actual_value2,
                     metric.diff(actual_value1, actual_value2),
                     metric.threshold,
