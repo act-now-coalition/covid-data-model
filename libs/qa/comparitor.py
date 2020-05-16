@@ -29,28 +29,18 @@ class MetricDiff:
 
 
 class Comparitor(object):
-    snapshot1 = None
-    snapshot2 = None
-
-    state = None
-    county = None
-    fips = None
-
-    api1 = None
-    api2 = None
-
-    _date_to_data = {}
-    _results = {}
-
     def __init__(self, snapshot1, snapshot2, api1, api2, state, intervention, fips=None):
         self.snapshot1 = snapshot1
         self.snapshot2 = snapshot2
         self.state = state
         self.fips = fips
+        self.county = None
         self.intervention = intervention
         # TODO (sgoldblatt) swap out here if it's counties
         self.api1 = api1
         self.api2 = api2
+        self._date_to_data = {}
+        self._results = []
         self._generate_date_dictionary()
 
     def _generate_helper(self, full_data, path, snapshot):
@@ -96,8 +86,11 @@ class Comparitor(object):
         metric_path = metric.projection_path if isProjected else metric.actual_path
         if not metric_path:
             return None
-
-        data = self._date_to_data[date].get(snapshot)
+        data_at_date = self._date_to_data.get(date)
+        if not data_at_date:
+            print(f"Missing data for date {date}")
+            return None
+        data = data_at_date.get(snapshot)
         if not data:
             return None
 
@@ -106,6 +99,8 @@ class Comparitor(object):
             current_data = current_data.get(path_segment)
             if current_data is None:
                 return None
+        if isinstance(current_data, float):
+            current_data = round(current_data, 4)
         return current_data
 
     def get_metric_projected_value(self, metric, date, snapshot):
@@ -165,34 +160,38 @@ class Comparitor(object):
 
         if projected_value1 and projected_value2:
             if metric.isAboveThreshold(projected_value1, projected_value2):
-                self._results[projection_name] = MetricDiff(
-                    self.state,
-                    self.county,
-                    self.fips,
-                    date,
-                    projection_name,
-                    self.snapshot1,
-                    projected_value1,
-                    self.snapshot2,
-                    projected_value2,
-                    metric.diff(projected_value1, projected_value2),
-                    metric.threshold,
+                self._results.append(
+                    MetricDiff(
+                        self.state,
+                        self.county,
+                        self.fips,
+                        date,
+                        projection_name,
+                        self.snapshot1,
+                        projected_value1,
+                        self.snapshot2,
+                        projected_value2,
+                        metric.diff(projected_value1, projected_value2),
+                        metric.threshold,
+                    )
                 )
 
         if actual_value1 and actual_value2:
             if metric.isAboveThreshold(actual_value1, actual_value2):
-                self._results[actual_name] = MetricDiff(
-                    self.state,
-                    self.county,
-                    self.fips,
-                    date,
-                    actual_name,
-                    self.snapshot1,
-                    actual_value1,
-                    self.snapshot2,
-                    actual_value2,
-                    metric.diff(actual_value1, actual_value2),
-                    metric.threshold,
+                self._results.append(
+                    MetricDiff(
+                        self.state,
+                        self.county,
+                        self.fips,
+                        date,
+                        actual_name,
+                        self.snapshot1,
+                        actual_value1,
+                        self.snapshot2,
+                        actual_value2,
+                        metric.diff(actual_value1, actual_value2),
+                        metric.threshold,
+                    )
                 )
 
     def compareMetrics(self):
@@ -201,7 +200,7 @@ class Comparitor(object):
                 self.compareMetric(date, metric)
         for metric in CURRENT_METRICS:
             self.compareMetric("current", metric)
-        return sorted(self._results.values(), reverse=True)
+        return self._results
 
     @classmethod
     def dict_results(cls, results):

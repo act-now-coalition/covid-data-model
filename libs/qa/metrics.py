@@ -29,53 +29,57 @@ class QAMetric(ABC):
 
     @classmethod
     def diff(cls, value1, value2):
-        return abs(value2 - value1)
+        return round(abs(value2 - value1), 4)
 
     @classmethod
     def isAboveThreshold(cls, value1, value2):
-        return cls.diff(value1, value2) > cls.threshold
+        average = (value2 + value1) / 2
+        if average < 20:
+            # small numbers changes are kind of confusing handle them a lil different
+            return False
+        return (abs(average - value1) / value1) * 100 > cls.threshold
 
 
 class HospitalBedsRequiredTS(QAMetric):
     name = "HospitalBedsRequiredTS"
     projection_path = ["timeseries", "hospitalBedsRequired"]
     actual_path = None
-    threshold = 1
+    threshold = 10
 
 
 class HospitalBedCapacityTS(QAMetric):
     name = "HospitalBedCapacityTS"
     projection_path = ["timeseries", "hospitalBedCapacity"]
     actual_path = None
-    threshold = 1
+    threshold = 10
 
 
 class ICUBedCovidUsageTS(QAMetric):
     name = "ICUBedCovidUsageTS"
     projection_path = ["timeseries", "ICUBedsInUse"]
     actual_path = ["actualsTimeseries", "ICUBeds", "currentUsageCovid"]
-    threshold = 1
+    threshold = 10
 
 
 class ICUBedTypicalUsageRateTS(QAMetric):
     name = "ICUBedTypicalUsageRateTS"
     projection_path = None
     actual_path = ["actualsTimeseries", "ICUBeds", "typicalUsageRate"]
-    threshold = 1
+    threshold = 10
 
 
 class ICUBedTotalUsageTS(QAMetric):
     name = "ICUBedTotalUsageTS"
     projection_path = None
     actual_path = ["actualsTimeseries", "ICUBeds", "currentUsageTotal"]
-    threshold = 1
+    threshold = 10
 
 
 class ICUBedTotalCapacityTS(QAMetric):
     name = "ICUBedTotalCapacityTS"
     projection_path = ["timeseries", "ICUBedCapacity"]
     actual_path = ["actualsTimeseries", "ICUBeds", "totalCapacity"]
-    threshold = 1
+    threshold = 10
 
 
 class RtIndicatorTS(QAMetric):
@@ -84,6 +88,10 @@ class RtIndicatorTS(QAMetric):
     actual_path = None
     threshold = 0.1
 
+    @classmethod
+    def isAboveThreshold(cls, value1, value2):
+        return cls.diff(value2, value1) > cls.threshold
+
 
 class RtIndicatorCI90TS(QAMetric):
     name = "RtIndicatorCI90TS"
@@ -91,40 +99,44 @@ class RtIndicatorCI90TS(QAMetric):
     actual_path = None
     threshold = 0.1
 
+    @classmethod
+    def isAboveThreshold(cls, value1, value2):
+        return cls.diff(value2, value1) > cls.threshold
+
 
 class CumulativePositiveTestsTS(QAMetric):
     name = "CumulativePositiveTestsTS"
     projection_path = ["timeseries", "cumulativePositiveTests"]
     actual_path = ["actualsTimeseries", "cumulativePositiveTests"]
-    threshold = 1
+    threshold = 10
 
 
 class CumulativeNegativeTestsTS(QAMetric):
     name = "CumulativeNegativeTestsTS"
     projection_path = ["timeseries", "cumulativeNegativeTests"]
     actual_path = ["actualsTimeseries", "cumulativeNegativeTests"]
-    threshold = 1
+    threshold = 10
 
 
 class CumulativeInfectedTS(QAMetric):
     name = "CumulativeInfectedTS"
     projection_path = ["timeseries", "cumulativeInfected"]
     actual_path = None
-    threshold = 1
+    threshold = 10
 
 
 class CumulativeDeathsTS(QAMetric):
     name = "CumulativeDeathsTS"
     projection_path = ["timeseries", "cumulativeDeaths"]
     actual_path = None
-    threshold = 1
+    threshold = 10
 
 
 class CurrentTestPositiveRate(QAMetric):
     name = "CurrentTestPositiveRate"
     projection_path = None
     actual_path = ["actuals", "cumulativePositiveTests"]
-    threshold = 1
+    threshold = 10
 
 
 class Population(QAMetric):
@@ -147,6 +159,11 @@ class HospitalShortageStartDate(QAMetric):
     actual_path = None
     threshold = 1
 
+    @classmethod
+    def isAboveThreshold(cls, value1, value2):
+        return cls.diff(value2, value1) > cls.threshold
+
+    @classmethod
     def diff(cls, value1, value2):
         value1_date = datetime.strptime(value1, "%Y-%m-%d")
         value2_date = datetime.strptime(value2, "%Y-%m-%d")

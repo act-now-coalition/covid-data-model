@@ -61,12 +61,15 @@ def compare_snapshots(snapshot1, snapshot2, state, fips, intervention):
             raise NotImplementedError("currently only handles states data")
         if not (api1 and api2):
             print(f"State Abbrev {state_abbrev} doesn't have data")
-            continue
-        comparitor = Comparitor(
-            snapshot1, snapshot2, api1, api2, state_abbrev, intervention.name, fips
-        )
-        state_results = comparitor.compareMetrics()
-        results.extend(state_results)
+        else:
+            comparitor = Comparitor(
+                snapshot1, snapshot2, api1, api2, state_abbrev, intervention.name, fips
+            )
+            state_results = comparitor.compareMetrics()
+            results.extend(state_results)
+            print(f"Adding {state_abbrev} {len(state_results)} to results")
+    if not len(results):
+        return "No difference above thresholds found"
 
     dataset_deployer.write_nested_csv(
         Comparitor.dict_results(sorted(results, reverse=True)), "compared", "output/"
