@@ -42,8 +42,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     @property
     def state_data(self) -> pd.DataFrame:
-        # Return a copy instead of a slice so the caller may modify it without getting a SettingWithCopyWarning warning.
-        return self.get_subset(AggregationLevel.STATE).data.copy()
+        return self.get_subset(AggregationLevel.STATE).data
 
     @property
     def county_data(self) -> pd.DataFrame:
@@ -101,6 +100,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         fips=None,
         states=None,
     ) -> "TimeseriesDataset":
+        assert sum([bool(country), bool(state), bool(county), bool(fips), bool(states)]) <= 1
+
         query_parts = []
         if aggregation_level:
             query_parts.append(f'aggregate_level == "{aggregation_level.value}"')

@@ -16,7 +16,7 @@ def test_get_subset():
     input_df = pd.read_csv(
         StringIO(
             "city,county,state,fips,country,aggregate_level,date,metric\n"
-            "Smithville,,ZZ,97123,USA,city,2020-03-23,march23-removed\n"
+            "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
             "New York City,,ZZ,97324,USA,city,2020-03-22,march22-nyc\n"
             "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
             ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
@@ -31,3 +31,13 @@ def test_get_subset():
     assert set(ts.get_subset(None, on="2020-03-22").data["metric"]) == {"march22-nyc"}
     assert set(ts.get_subset(None, after="2020-03-23").data["metric"]) == {"march24-nyc"}
     assert set(ts.get_subset(None, county="North County").data["metric"]) == {"county-metric"}
+    assert set(ts.get_subset(None, state="ZZ", on="2020-03-23").data["metric"]) == {
+        "smithville-march23",
+        "county-metric",
+        "mystate",
+    }
+    assert set(ts.get_subset(None, states=["ZZ",], on="2020-03-23").data["metric"]) == {
+        "smithville-march23",
+        "county-metric",
+        "mystate",
+    }
