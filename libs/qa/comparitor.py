@@ -2,7 +2,7 @@ import csv
 import requests
 from datetime import datetime, timedelta
 
-from libs.qa.metrics import METRICS, QAMetric
+from libs.qa.metrics import CURRENT_METRICS, TIMESERIES_METRICS, QAMetric
 
 from dataclasses import dataclass, asdict
 
@@ -64,11 +64,12 @@ class Comparitor(object):
             self._date_to_data[date_of_data] = current_data
 
     def _generate_last_updated_helper(self, full_data, snapshot):
-        # basically add the data of projections/actuals for a given date for comparison
-        last_updated_date = full_data["lastUpdatedDate"]
-        snapshot_data_at_last_updated = self._date_to_data[last_updated_date][snapshot]
-        snapshot_data_at_last_updated["projections"] = full_data["projections"]
-        snapshot_data_at_last_updated["actuals"] = full_data["actuals"]
+        current_data = self._date_to_data.get("current", {})
+        current_data[snapshot] = current_data.get(snapshot, {})
+
+        current_data[snapshot]["projections"] = full_data["projections"]
+        current_data[snapshot]["actuals"] = full_data["actuals"]
+        self._date_to_data["current"] = current_data
 
     def _generate_date_dictionary(self):
         """
@@ -196,8 +197,10 @@ class Comparitor(object):
 
     def compareMetrics(self):
         for date in self.dates:
-            for metric in METRICS:
+            for metric in TIMESERIES_METRICS:
                 self.compareMetric(date, metric)
+        for metric in CURRENT_METRICS:
+            self.compareMetric("current", metric)
         return sorted(self._results.values(), reverse=True)
 
     @classmethod

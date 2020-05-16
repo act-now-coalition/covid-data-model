@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 
 class QAMetric(ABC):
@@ -32,59 +33,146 @@ class QAMetric(ABC):
 
     @classmethod
     def isAboveThreshold(cls, value1, value2):
-        return cls.diff(value1, value2) >= cls.threshold
+        return cls.diff(value1, value2) > cls.threshold
 
 
-class HospitalBedsRequired(QAMetric):
-    name = "HospitalBedsRequired"
+class HospitalBedsRequiredTS(QAMetric):
+    name = "HospitalBedsRequiredTS"
     projection_path = ["timeseries", "hospitalBedsRequired"]
     actual_path = None
     threshold = 1
 
 
-class HospitalBedCapacity(QAMetric):
-    name = "HospitalBedCapacity"
+class HospitalBedCapacityTS(QAMetric):
+    name = "HospitalBedCapacityTS"
     projection_path = ["timeseries", "hospitalBedCapacity"]
     actual_path = None
     threshold = 1
 
 
-class ICUBedCovidUsage(QAMetric):
-    name = "ICUBedCovidUsage"
+class ICUBedCovidUsageTS(QAMetric):
+    name = "ICUBedCovidUsageTS"
     projection_path = ["timeseries", "ICUBedsInUse"]
     actual_path = ["actualsTimeseries", "ICUBeds", "currentUsageCovid"]
     threshold = 1
 
 
-class ICUBedTotalCapacity(QAMetric):
-    name = "ICUBedTotalCapacity"
+class ICUBedTypicalUsageRateTS(QAMetric):
+    name = "ICUBedTypicalUsageRateTS"
     projection_path = None
+    actual_path = ["actualsTimeseries", "ICUBeds", "typicalUsageRate"]
+    threshold = 1
+
+
+class ICUBedTotalUsageTS(QAMetric):
+    name = "ICUBedTotalUsageTS"
+    projection_path = None
+    actual_path = ["actualsTimeseries", "ICUBeds", "currentUsageTotal"]
+    threshold = 1
+
+
+class ICUBedTotalCapacityTS(QAMetric):
+    name = "ICUBedTotalCapacityTS"
+    projection_path = ["timeseries", "ICUBedCapacity"]
     actual_path = ["actualsTimeseries", "ICUBeds", "totalCapacity"]
     threshold = 1
 
 
-METRICS = [HospitalBedCapacity, HospitalBedsRequired, ICUBedCovidUsage, ICUBedTotalCapacity]
+class RtIndicatorTS(QAMetric):
+    name = "RtIndicatorTS"
+    projection_path = ["timeseries", "RtIndicator"]
+    actual_path = None
+    threshold = 0.1
 
-"""
-timeseries_projection_hospitalBedsRequired
-timeseries_projection_hospitalBedCapacity
-Acutalstimeseries_icubeds_currentUsageTotal
-Actualstimeseries_icubeds_totalCapacity
-Actualstimeseries_icubeds_currentUsageCovid
-Actualstimeseries_icubeds_typicalUsageRate
-timeseries_projection_hospitalBedsRequired
-timeseries_projection_hospitalBedCapacity
-timeseries_projection_ICUBedsInUse
-timeseries_projection_ICUBedCapacity
-timeseries_projection_RtIndicator
-timeseries_projection_RtIndicatorCI90
-timeseries_projection_cumulativePositiveTests
-timeseries_projection_cumulativeNegativeTests
-Projection.rt
-projection.currentIcuUtilization
-projection.currentTestPositiveRate
-projections_totalHospitalBeds_shortageStartDate, 
-timeseries_projection_cumulativeInfected, 
-actuals_totalPopulation, 
-timeseries_projection_cumulativeDeaths
-"""
+
+class RtIndicatorCI90TS(QAMetric):
+    name = "RtIndicatorCI90TS"
+    projection_path = ["timeseries", "RtIndicatorCI90"]
+    actual_path = None
+    threshold = 0.1
+
+
+class CumulativePositiveTestsTS(QAMetric):
+    name = "CumulativePositiveTestsTS"
+    projection_path = ["timeseries", "cumulativePositiveTests"]
+    actual_path = ["actualsTimeseries", "cumulativePositiveTests"]
+    threshold = 1
+
+
+class CumulativeNegativeTestsTS(QAMetric):
+    name = "CumulativeNegativeTestsTS"
+    projection_path = ["timeseries", "cumulativeNegativeTests"]
+    actual_path = ["actualsTimeseries", "cumulativeNegativeTests"]
+    threshold = 1
+
+
+class CumulativeInfectedTS(QAMetric):
+    name = "CumulativeInfectedTS"
+    projection_path = ["timeseries", "cumulativeInfected"]
+    actual_path = None
+    threshold = 1
+
+
+class CumulativeDeathsTS(QAMetric):
+    name = "CumulativeDeathsTS"
+    projection_path = ["timeseries", "cumulativeDeaths"]
+    actual_path = None
+    threshold = 1
+
+
+class CurrentTestPositiveRate(QAMetric):
+    name = "CurrentTestPositiveRate"
+    projection_path = None
+    actual_path = ["actuals", "cumulativePositiveTests"]
+    threshold = 1
+
+
+class Population(QAMetric):
+    name = "Population"
+    projection_path = None
+    actual_path = ["actuals", "population"]
+    threshold = 0
+
+
+class CurrentRT(QAMetric):
+    name = "rt"
+    projection_path = ["projections", "Rt"]
+    actual_path = None
+    threshold = 0.1
+
+
+class HospitalShortageStartDate(QAMetric):
+    name = "HospitalShortageStartDate"
+    projection_path = ["projections", "totalHospitalBeds", "shortageStartDate"]
+    actual_path = None
+    threshold = 1
+
+    def diff(cls, value1, value2):
+        value1_date = datetime.strptime(value1, "%Y-%m-%d")
+        value2_date = datetime.strptime(value2, "%Y-%m-%d")
+
+        delta = value1_date - value1_date
+        return abs(delta.day)
+
+
+CURRENT_METRICS = [
+    CurrentTestPositiveRate,
+    Population,
+    CurrentRT,
+    HospitalShortageStartDate,
+]
+
+TIMESERIES_METRICS = [
+    HospitalBedsRequiredTS,
+    HospitalBedCapacityTS,
+    ICUBedCovidUsageTS,
+    ICUBedTypicalUsageRateTS,
+    ICUBedTotalUsageTS,
+    ICUBedTotalCapacityTS,
+    RtIndicatorTS,
+    RtIndicatorCI90TS,
+    CumulativePositiveTestsTS,
+    CumulativeNegativeTestsTS,
+    CumulativeInfectedTS,
+    CumulativeDeathsTS,
+]
