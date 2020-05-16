@@ -103,26 +103,26 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     ) -> "TimeseriesDataset":
         query_parts = []
         if aggregation_level:
-            query_parts.append(f'aggregation_level == "{aggregation_level.value}"')
+            query_parts.append(f'aggregate_level == "{aggregation_level.value}"')
         if country:
-            query_parts.append('country == @country')
+            query_parts.append("country == @country")
         if state:
-            query_parts.append('state == @state')
+            query_parts.append("state == @state")
         if county:
-            query_parts.append('count == @county')
+            query_parts.append("county == @county")
         if fips:
-            query_parts.append('fips == @fips')
+            query_parts.append("fips == @fips")
         if states:
-            query_parts.append('state in @states')
+            query_parts.append("state in @states")
 
         if on:
-            query_parts.append('date == @on')
+            query_parts.append("date == @on")
         if after:
-            query_parts.append('date > @after')
+            query_parts.append("date > @after")
         if before:
-            query_parts.append('date < @before')
+            query_parts.append("date < @before")
 
-        return self.__class__(self.data.query(' and '.join(query_parts)))
+        return self.__class__(self.data.query(" and ".join(query_parts)))
 
     def get_records_for_fips(self, fips) -> List[dict]:
         """Get data for FIPS code.
