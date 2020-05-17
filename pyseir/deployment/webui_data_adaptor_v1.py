@@ -86,6 +86,9 @@ class WebUIDataAdaptorV1:
         # Rescale hosps based on the population ratio... Could swap this to
         # infection ratio later?
         # ---------------------------------------------------------------------
+        # TODO: THESE CALLS ARE NOT CATCHING THE FLAG ABOUT FAILING TO CONVERT TO CUMULATIVE
+        # this should just return the final values if that's all we are using for scaling anyways
+        # and should return none if the can't be calculated.
         hosp_times, current_hosp, _ = load_data.load_hospitalization_data_by_state(
             state=self.state_abbreviation,
             t0=t0_simulation,

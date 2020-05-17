@@ -504,53 +504,128 @@ def load_hospitalization_data_by_state(
         ]
         times_new = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
+        # TODO: Brett: Add more clarity to what those minor glitches were? Do we still need to
+        #  enforce this monotonically increasing stuff.
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
 
-        if convert_cumulative_to_current:
-            # Must be here to avoid circular import. This is required to convert
-            # cumulative hosps to current hosps. We also just use a dummy fips and t_list.
-            from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-
-            params = ParameterEnsembleGenerator(
-                fips="06",
-                t_list=[],
-                N_samples=250  # We want close to the ensemble mean.
-                # Eventually replace with constants for average length of stay.
-                # Then we can revert back to 1.
-            ).get_average_seir_parameters()
-            # TODO: This value is temporarily in this limited scope.
-            # Will be added into the params once I decide on some refactoring.
-            params["hospitalization_length_of_stay_icu_avg"] = 8.6
-            if category == "hospitalized":
-                average_length_of_stay = (
-                    params["hospitalization_rate_general"]
-                    * params["hospitalization_length_of_stay_general"]
-                    + params["hospitalization_rate_icu"]
-                    * (1 - params["fraction_icu_requiring_ventilator"])
-                    * params["hospitalization_length_of_stay_icu"]
-                    + params["hospitalization_rate_icu"]
-                    * params["fraction_icu_requiring_ventilator"]
-                    * params["hospitalization_length_of_stay_icu_and_ventilator"]
-                ) / (params["hospitalization_rate_general"] + params["hospitalization_rate_icu"])
-            else:
-                # This value is a weighted average of icu w & w/o ventilator.
-                # It is deterministic. Warning: This param was added in this very local scope.
-                average_length_of_stay = params["hospitalization_length_of_stay_icu_avg"]
-            # Now compute a cumulative sum, but at each day,
-            # subtract the discharges from the previous count.
-            new_hospitalizations = np.append([0], np.diff(cumulative))
-            current = [0]  # THIS VALUE SHOULDN'T BE ZERO.
-            # TODO: (Brett) Need to initialize more skillfully or it takes a month to stabilize
-            for i, new_hosps in enumerate(new_hospitalizations[1:]):
-                current.append(current[i] + new_hosps - current[i] / average_length_of_stay)
+        if convert_cumulative_to_current and len(cumulative) >= 3:
+            # We wait until the third datapoint to have 2 deltas to extrapolate from
+            current = estimate_current_from_cumulative(cumulative, category)
             return times_new, current, HospitalizationDataType.CURRENT_HOSPITALIZATIONS
         else:
-            return times_new, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+            return (
+                None,
+                None,
+                None,
+            )  # If you ask for current, and we can't do it, return none (or pull this out into it's own function.
     else:
         return None, None, None
+
+
+def estimate_current_from_cumulative(cumulative, category):
+    """
+    We assume that an agency starts reporting cumulative admissions at a time not related to a
+    particularly abnormal patient admission. So we use the data we have collected so far, and
+    extrapolate backwards to estimate the ICU population at the start of reporting (which is
+    non-zero). This should significantly speed up settling time (and the only
+    movements from then on will be from changing inputs).
+
+    The simple model provided (x_{i+1} = x_{i} + new - x_{i}/avg_length_of_stay
+    has a steady state solution with constant input of new * avg_length_of_stay.
+
+    We initialize the model by taking the first X data points, calculating the average, and then
+    calculating steady state if historical data had matched current data. X is the average
+    length of stay. We then use that as the starting point to step forward in the model. So once we
+    have more than X datapoints, the forecast will shift based on underlying changes in the data.
+    Until we collect significant data, the estimates are sensitive to the inital values reported.
+    E.g. If day 1 shows 10 new ICU patients, we assume that has been happening for the last week
+    too and estimate accordingly. We can choose to wait for multiple points before extrapolating
+    to protect against surfacing this to the user.
+
+    :param
+    cumulative: array
+        Array like sequence of daily cumulative values (expects, but doesn't enforce monotonic)
+    category: str
+        Either 'hospitalization' or 'icu
+    :return:
+        Timeseries estimate of estimated current hospitalized/ICU patients.
+    """
+    average_length_of_stay = get_average_dwell_time(category)
+
+    # Calculate new admissions as the differences of daily cumulatives
+    daily_admits = np.diff(cumulative)
+
+    # When reporting starts, we assume there will already be a non-zero number of patients
+    # in the hospital/ICU. We need to estimate that starting value to initialize the model.
+    # If we don't, it takes ~2 times the average length of stay for the value to reach the
+    # expected. So our reported numbers for the first ~14 days would be too low (which we saw in
+    # Utah ICU data).
+
+    # We average over the inputs for up to the same number of days as the average dwell
+    max_window = int(np.floor(average_length_of_stay))
+    initial_daily_estimate = daily_admits[:max_window].mean()
+
+    # And use that steady state solution as if that data had been entered in the past to initialize.
+    t0_patients = initial_daily_estimate * average_length_of_stay
+
+    # Step through the model and generate a output
+    current_pts = []
+    for step, new_day in enumerate(daily_admits):
+        if step == 0:
+            yesterday = t0_patients
+        else:
+            yesterday = current_pts[-1]
+
+        today = yesterday + new_day - yesterday / average_length_of_stay
+        current_pts.append(today)
+
+    return current_pts
+
+
+def get_average_dwell_time(category):
+    """
+    :parameter
+    category: str
+        Whether we are asking for 'hospital' or 'icu'
+
+    :return:
+    average_length_of_stay: float
+        the average length of stay for a given category
+    """
+    # Must be here to avoid circular import. This is required to convert
+    # cumulative hosps to current hosps. We also just use a dummy fips and t_list.
+    from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
+
+    # Surprisingly long load time if initial call (14sec) but then fast (22ms)
+    params = ParameterEnsembleGenerator(
+        fips="06",
+        t_list=[],
+        N_samples=250  # We want close to the ensemble mean.
+        # Eventually replace with constants derived from the mean characteristic.
+        # Then we can revert back to 1.
+    ).get_average_seir_parameters()
+    # TODO: This value is temporarily in this limited scope.
+    # Will be added into the params once I decide on some refactoring.
+    params["hospitalization_length_of_stay_icu_avg"] = 8.6
+    if category == "hospitalized":
+        average_length_of_stay = (
+            params["hospitalization_rate_general"]
+            * params["hospitalization_length_of_stay_general"]
+            + params["hospitalization_rate_icu"]
+            * (1 - params["fraction_icu_requiring_ventilator"])
+            * params["hospitalization_length_of_stay_icu"]
+            + params["hospitalization_rate_icu"]
+            * params["fraction_icu_requiring_ventilator"]
+            * params["hospitalization_length_of_stay_icu_and_ventilator"]
+        ) / (params["hospitalization_rate_general"] + params["hospitalization_rate_icu"])
+    else:
+        # This value is a weighted average of icu w & w/o ventilator.
+        # It is deterministic. Warning: This param was added in this very local scope.
+        average_length_of_stay = params["hospitalization_length_of_stay_icu_avg"]
+    return average_length_of_stay
 
 
 @lru_cache(maxsize=32)
