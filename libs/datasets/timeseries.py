@@ -1,3 +1,4 @@
+import warnings
 from typing import List
 import pandas as pd
 from libs import us_state_abbrev
@@ -50,6 +51,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def county_keys(self) -> List:
         """Returns a list of all (country, state, county) combinations."""
         # Check to make sure all values are county values
+        warnings.warn(
+            "Tell Tom you are using this, I'm going to delete it soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         county_values = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         county_data = self.data[county_values]
 
@@ -125,7 +131,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Args:
             fips: FIPS code.
-t
+
         Returns: List of dictionary records with NA values replaced to be None
         """
 
