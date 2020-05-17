@@ -51,16 +51,3 @@ def deploy_counties_api(disable_validation, input_dir, output, summary_output):
         api_pipeline.deploy_results([counties_timeseries], summary_output)
 
         logger.info("finished top counties job")
-
-
-@click.command("county-fips-summaries")
-@click.option(
-    "--input-dir", "-i", default="results", help="Input directory of county projections",
-)
-@click.option(
-    "--output", "-o", default="results/county_summaries", help="Output directory for artifacts",
-)
-def county_fips_summaries(input_dir, output):
-    """Generates summary files by state and globally of counties with model output data."""
-    county_summaries = api_pipeline.build_county_summary_from_model_output(input_dir)
-    api_pipeline.deploy_results(county_summaries, output)
