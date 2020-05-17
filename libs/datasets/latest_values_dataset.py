@@ -86,7 +86,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return cls.from_source(source)
 
     def get_subset(
-        self, aggregation_level, country=None, state=None, county=None, fips=None, states=None,
+        self, aggregation_level, country=None, state=None, fips=None, states=None,
     ) -> "LatestValuesDataset":
         data = self.data
 
@@ -96,8 +96,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             data = data[data.country == country]
         if state:
             data = data[data.state == state]
-        if county:
-            data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
         if states:
