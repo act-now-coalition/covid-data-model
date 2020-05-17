@@ -95,7 +95,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         before=None,
         country=None,
         state=None,
-        county=None,
         fips=None,
         states=None,
     ) -> "TimeseriesDataset":
@@ -107,8 +106,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             data = data[data.country == country]
         if state:
             data = data[data.state == state]
-        if county:
-            data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
         if states:
@@ -128,7 +125,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Args:
             fips: FIPS code.
-
+t
         Returns: List of dictionary records with NA values replaced to be None
         """
 
@@ -147,16 +144,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         pd_data = self.get_subset(AggregationLevel.STATE, state=state).data
         return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
 
-    def get_data(
-        self, country=None, state=None, county=None, fips=None, states=None
-    ) -> pd.DataFrame:
+    def get_data(self, country=None, state=None, fips=None, states=None) -> pd.DataFrame:
         data = self.data
         if country:
             data = data[data.country == country]
         if state:
             data = data[data.state == state]
-        if county:
-            data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
         if states:
