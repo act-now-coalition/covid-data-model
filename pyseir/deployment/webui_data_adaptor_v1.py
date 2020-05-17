@@ -88,19 +88,20 @@ class WebUIDataAdaptorV1:
         # ---------------------------------------------------------------------
         # TODO: THESE CALLS ARE NOT CATCHING THE FLAG ABOUT FAILING TO CONVERT TO CUMULATIVE
         # this should just return the final values if that's all we are using for scaling anyways
-        # and should return none if the can't be calculated.
-        hosp_times, current_hosp, _ = load_data.load_hospitalization_data_by_state(
-            state=self.state_abbreviation,
-            t0=t0_simulation,
-            convert_cumulative_to_current=True,
-            category="hospitalized",
+        # and should return none if that can't be calculated.
+        # hosp_times, current_hosp, _ = load_data.load_hospitalization_data_by_state(
+        #     state=self.state_abbreviation,
+        #     t0=t0_simulation,
+        #     convert_cumulative_to_current=True,
+        #     category="hospitalized",
+        # )
+
+        t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized(
+            state=self.state_abbreviation, t0=t0_simulation, category="hospitalized"
         )
 
-        _, current_icu, _ = load_data.load_hospitalization_data_by_state(
-            state=self.state_abbreviation,
-            t0=t0_simulation,
-            convert_cumulative_to_current=True,
-            category="icu",
+        t_latest_icu_data, current_icu = load_data.get_current_hospitalized(
+            state=self.state_abbreviation, t0=t0_simulation, category="icu",
         )
 
         if len(fips) == 5:
@@ -117,8 +118,7 @@ class WebUIDataAdaptorV1:
         #     return None
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith("suppression_policy")]
-        if current_hosp is not None:
-            t_latest_hosp_data, current_hosp = hosp_times[-1], current_hosp[-1]
+        if current_hosp_count is not None:
             t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
 
             state_hosp_gen = load_data.get_compartment_value_on_date(
@@ -144,16 +144,16 @@ class WebUIDataAdaptorV1:
                     date=t_latest_hosp_data_date,
                     ensemble_results=pyseir_outputs,
                 )
-                current_hosp *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
+                current_hosp_count *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
 
-            hosp_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
+            hosp_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
 
             # Some states have covidtracking issues. We shouldn't ground ICU cases
             # to zero since so far these have all been bad reporting.
-            if current_icu is not None and current_icu[-1] > 0:
-                icu_rescaling_factor = current_icu[-1] / state_hosp_icu
+            if current_icu is not None and current_icu > 0:
+                icu_rescaling_factor = current_icu / state_hosp_icu
             else:
-                icu_rescaling_factor = current_hosp / (state_hosp_gen + state_hosp_icu)
+                icu_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
         else:
             hosp_rescaling_factor = 1.0
             icu_rescaling_factor = 1.0

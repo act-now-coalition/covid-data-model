@@ -445,9 +445,7 @@ def load_hospitalization_data(fips, t0, category="hospitalized"):
 
 
 @lru_cache(maxsize=32)
-def load_hospitalization_data_by_state(
-    state, t0, convert_cumulative_to_current=False, category="hospitalized"
-):
+def load_hospitalization_data_by_state(state, t0, category="hospitalized"):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
@@ -504,25 +502,70 @@ def load_hospitalization_data_by_state(
         ]
         times_new = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
-        # TODO: Brett: Add more clarity to what those minor glitches were? Do we still need to
-        #  enforce this monotonically increasing stuff.
         # Some minor glitches for a few states..
         for i, val in enumerate(cumulative[1:]):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
-
-        if convert_cumulative_to_current and len(cumulative) >= 3:
-            # We wait until the third datapoint to have 2 deltas to extrapolate from
-            current = estimate_current_from_cumulative(cumulative, category)
-            return times_new, current, HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-        else:
-            return (
-                None,
-                None,
-                None,
-            )  # If you ask for current, and we can't do it, return none (or pull this out into it's own function.
+        return (
+            times_new,
+            hospitalization_data[f"cumulative_{category}"].values.clip(min=0),
+            HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS,
+        )
     else:
         return None, None, None
+
+
+def get_current_hospitalized(state, t0, category):
+    """
+
+    :param state:
+    :param t0:
+    :param category:
+    :return:
+    """
+    MIN_DATAPOINTS_TO_CONVERT = 3  # We wait until the third datapoint to have 2 deltas to forecast
+
+    abbr = us.states.lookup(state).abbr
+    df = (
+        combined_datasets.build_us_timeseries_with_all_fields()
+        .get_subset(AggregationLevel.STATE, country="USA", state=abbr)
+        .get_data(country="USA", state=abbr)
+    )
+
+    categories = ["icu", "hospitalized"]
+    if category not in categories:
+        raise ValueError(f"Hospitalization category {category} is not in {categories}")
+
+    if len(df) == 0:
+        return None, None
+
+    # If data available in current_{} column, then return latest not-null value
+    if (df[f"current_{category}"] > 0).any():
+        df = df[df[f"current_{category}"].notnull()]
+        df_latest = df[f"current_{category}"].values.clip(min=0)[-1]
+        times_new = (df["date"].dt.date - t0.date()).dt.days.values
+        times_new_latest = times_new[-1]
+        return times_new_latest, df_latest  # Return current since available
+
+    # If data is available in cumulative, try to convert to current (not just daily)
+    elif (df[f"cumulative_{category}"] > 0).any():
+        # Remove Null & Enforce Monotonically Increasing Cumulatives
+        df = df[df[f"cumulative_{category}"].notnull()]
+        cumulative = df[f"cumulative_{category}"].values.clip(min=0)
+        for i, val in enumerate(cumulative[1:]):
+            if cumulative[i] > cumulative[i + 1]:
+                cumulative[i] = cumulative[i + 1]
+
+        # Estimate Current from Derived Dailies
+        if len(cumulative) >= MIN_DATAPOINTS_TO_CONVERT:
+            current_latest = estimate_current_from_cumulative(cumulative, category)
+            times_new = (df["date"].dt.date - t0.date()).dt.days.values
+            times_new_latest = times_new[-1]
+            return times_new_latest, current_latest  # Return current estimate from cumulative
+        else:
+            return None, None  # No current, not enough cumulative
+    else:
+        return None, None  # No current nor cumulative
 
 
 def estimate_current_from_cumulative(cumulative, category):
@@ -551,7 +594,8 @@ def estimate_current_from_cumulative(cumulative, category):
     category: str
         Either 'hospitalization' or 'icu
     :return:
-        Timeseries estimate of estimated current hospitalized/ICU patients.
+    current_estimate: float
+        Latest estimate of currently occupied beds.
     """
     average_length_of_stay = get_average_dwell_time(category)
 
@@ -581,8 +625,8 @@ def estimate_current_from_cumulative(cumulative, category):
 
         today = yesterday + new_day - yesterday / average_length_of_stay
         current_pts.append(today)
-
-    return current_pts
+    current_pts_latest = current_pts[-1]
+    return current_pts_latest
 
 
 def get_average_dwell_time(category):
