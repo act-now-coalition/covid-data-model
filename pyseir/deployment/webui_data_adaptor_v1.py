@@ -86,15 +86,6 @@ class WebUIDataAdaptorV1:
         # Rescale hosps based on the population ratio... Could swap this to
         # infection ratio later?
         # ---------------------------------------------------------------------
-        # TODO: THESE CALLS ARE NOT CATCHING THE FLAG ABOUT FAILING TO CONVERT TO CUMULATIVE
-        # this should just return the final values if that's all we are using for scaling anyways
-        # and should return none if that can't be calculated.
-        # hosp_times, current_hosp, _ = load_data.load_hospitalization_data_by_state(
-        #     state=self.state_abbreviation,
-        #     t0=t0_simulation,
-        #     convert_cumulative_to_current=True,
-        #     category="hospitalized",
-        # )
 
         t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized(
             state=self.state_abbreviation, t0=t0_simulation, category="hospitalized"
@@ -110,12 +101,6 @@ class WebUIDataAdaptorV1:
             population = self.population_data.get_record_for_state(self.state_abbreviation)[
                 CommonFields.POPULATION
             ]
-
-        # logging.info(f'Mapping output to WebUI for {self.state}, {fips}')
-        # pyseir_outputs = load_data.load_ensemble_results(fips)
-        # if pyseir_outputs is None:
-        #     logging.warning(f'Fit result not found for {fips}: Skipping county')
-        #     return None
 
         policies = [key for key in pyseir_outputs.keys() if key.startswith("suppression_policy")]
         if current_hosp_count is not None:

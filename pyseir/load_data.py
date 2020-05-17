@@ -457,9 +457,6 @@ def load_hospitalization_data_by_state(state, t0, category="hospitalized"):
         State to lookup.
     t0: datetime
         Datetime to offset by.
-    convert_cumulative_to_current: bool
-        If True, and only cumulative hospitalizations are available, convert the
-        current hospitalizations to the current value.
     category: str
         'icu' for just ICU or 'hospitalized' for all ICU + Acute.
 
@@ -517,11 +514,23 @@ def load_hospitalization_data_by_state(state, t0, category="hospitalized"):
 
 def get_current_hospitalized(state, t0, category):
     """
+    Return the current estimate for the number of people in the given category for a given US state.
 
-    :param state:
-    :param t0:
-    :param category:
-    :return:
+    Parameters
+    ----------
+    state: str
+        US state to lookup.
+    t0: datetime
+        Datetime to offset by.
+    category: str
+        'icu' for just ICU or 'hospitalized' for all ICU + Acute.
+
+    Returns
+    -------
+    time: float
+        Days since t0 for the hospitalization data.
+    current estimate: float
+        The most recent estimate for the current occupied in the requested category.
     """
     MIN_DATAPOINTS_TO_CONVERT = 3  # We wait until the third datapoint to have 2 deltas to forecast
 
@@ -586,14 +595,17 @@ def estimate_current_from_cumulative(cumulative, category):
     Until we collect significant data, the estimates are sensitive to the inital values reported.
     E.g. If day 1 shows 10 new ICU patients, we assume that has been happening for the last week
     too and estimate accordingly. We can choose to wait for multiple points before extrapolating
-    to protect against surfacing this to the user.
+    to protect against surfacing noisy initial data to the user.
 
-    :param
+    Parameters
+    ----------
     cumulative: array
         Array like sequence of daily cumulative values (expects, but doesn't enforce monotonic)
     category: str
         Either 'hospitalization' or 'icu
-    :return:
+
+    Returns
+    -------
     current_estimate: float
         Latest estimate of currently occupied beds.
     """
