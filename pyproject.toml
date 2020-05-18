@@ -1,0 +1,4 @@
+[tool.black]
+# The black default of 88 feels a bit cramped.
+# Sorry ambv, I'm not joking (https://github.com/psf/black/issues/290).
+line-length = 100

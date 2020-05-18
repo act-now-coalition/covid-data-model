@@ -1,4 +1,6 @@
-import matplotlib; matplotlib.use('Agg')
+import matplotlib
+
+matplotlib.use("Agg")
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
@@ -14,9 +16,18 @@ class PDFReport:
         self.filename = filename
         self.pdf = PdfPages(self.filename)
 
-    def write_text_page(self, obj, title, page_heading=None, figsize=(6, 8),
-                        pprint_kwargs=None, color='k', body_fontsize=4,
-                        heading_fontsize=7, title_fontsize=12):
+    def write_text_page(
+        self,
+        obj,
+        title,
+        page_heading=None,
+        figsize=(6, 8),
+        pprint_kwargs=None,
+        color="k",
+        body_fontsize=4,
+        heading_fontsize=7,
+        title_fontsize=12,
+    ):
         """
         Use matplotlib to plot a blank figure and add text to it.
 
@@ -48,16 +59,29 @@ class PDFReport:
             s = pprint.pformat(obj, indent=0, **pprint_kwargs)
         else:
             s = obj
-        fig = plt.figure(figsize=figsize or (7, len(s.split('\n')) * 0.4))
+        fig = plt.figure(figsize=figsize or (7, len(s.split("\n")) * 0.4))
         if page_heading:
             plt.title(page_heading, fontsize=heading_fontsize)
-        plt.text(0, .98, title, transform=plt.gca().transAxes,
-                 verticalalignment='top', fontsize=title_fontsize, color=color)
+        plt.text(
+            0,
+            0.98,
+            title,
+            transform=plt.gca().transAxes,
+            verticalalignment="top",
+            fontsize=title_fontsize,
+            color=color,
+        )
 
-        plt.text(0, .9, s, transform=plt.gca().transAxes,
-                 verticalalignment='top', color=color,
-                 fontproperties=FontProperties(family='monospace', size=body_fontsize))
-        plt.gca().axis('off')
+        plt.text(
+            0,
+            0.9,
+            s,
+            transform=plt.gca().transAxes,
+            verticalalignment="top",
+            color=color,
+            fontproperties=FontProperties(family="monospace", size=body_fontsize),
+        )
+        plt.gca().axis("off")
         self.pdf.savefig(fig)
         plt.close()
 

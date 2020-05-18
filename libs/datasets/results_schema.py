@@ -99,13 +99,7 @@ RESULT_DATA_COLUMNS_STATES = RESULT_DATA_COLUMNS_SHARED + [
 RESULT_DATA_COLUMNS_COUNTIES = RESULT_DATA_COLUMNS_SHARED + []
 
 EXPECTED_MISSING_STATES = set(
-    [
-        "Northern Mariana Islands",
-        "American Samoa",
-        "Virgin Islands",
-        "Puerto Rico",
-        "Guam",
-    ]
+    ["Northern Mariana Islands", "American Samoa", "Virgin Islands", "Puerto Rico", "Guam",]
 )
 
 EXPECTED_MISSING_STATES_FROM_COUNTES = set(["District of Columbia"])

@@ -73,9 +73,7 @@ def _calculate_projection_data(state, file_path, fips=None):
     df["short_fall"] = df.apply(_calc_short_fall, axis=1)
 
     hosp_16_days, short_fall_16_days = _get_hospitals_and_shortfalls(df, sixteen_days)
-    hosp_32_days, short_fall_32_days = _get_hospitals_and_shortfalls(
-        df, thirty_two_days
-    )
+    hosp_32_days, short_fall_32_days = _get_hospitals_and_shortfalls(df, thirty_two_days)
 
     df["new_deaths"] = df.dead - df.dead.shift(1)
     hospitals_shortfall_date = NULL_VALUE
@@ -85,9 +83,7 @@ def _calculate_projection_data(state, file_path, fips=None):
     mean_deaths = df.new_deaths.mean()
 
     peak_hospitalizations_date = df.iloc[df.all_hospitalized.idxmax()].date
-    beds_at_peak_hospitalization_date = _beds_after_given_date(
-        df, peak_hospitalizations_date
-    )
+    beds_at_peak_hospitalization_date = _beds_after_given_date(df, peak_hospitalizations_date)
     peak_hospitalizations_short_falls = df.iloc[df.all_hospitalized.idxmax()].short_fall
     peak_deaths_date = df.iloc[df.new_deaths.idxmax()].date
 
@@ -132,9 +128,7 @@ def _get_intervention_type(intervention_type, state, state_interventions_df):
     return intervention_type
 
 
-def get_state_projections_df(
-    input_dir, initial_intervention_type, state_interventions_df
-):
+def get_state_projections_df(input_dir, initial_intervention_type, state_interventions_df):
     """
     for each state in our data look at the results we generated via run.py
     to create the projections
@@ -144,13 +138,10 @@ def get_state_projections_df(
 
     states_df = pd.DataFrame(US_STATE_ABBREV.values(), columns=["state"])
     states_df.loc[:, "intervention_type"] = states_df.state.apply(
-        lambda x: _get_intervention_type(
-            initial_intervention_type, x, state_interventions_df
-        )
+        lambda x: _get_intervention_type(initial_intervention_type, x, state_interventions_df)
     )
     states_df.loc[:, "path"] = states_df.apply(
-        lambda x: get_file_path(input_dir, x.state, x.intervention_type, fips=None),
-        axis=1,
+        lambda x: get_file_path(input_dir, x.state, x.intervention_type, fips=None), axis=1,
     ).values
     new_df = states_df.parallel_apply(
         lambda x: _calculate_projection_data(x.state, x.path, fips=None), axis=1
@@ -169,9 +160,7 @@ def get_file_path(input_dir, state, intervention_type, fips=None):
     return os.path.join(input_dir, file_name)
 
 
-def get_county_projections_df(
-    input_dir, initial_intervention_type, state_interventions_df
-):
+def get_county_projections_df(input_dir, initial_intervention_type, state_interventions_df):
     """
     for each state in our data look at the results we generated via run.py
     to create the projections
@@ -181,9 +170,7 @@ def get_county_projections_df(
 
     county_df = fips_pd[["state", CommonFields.FIPS]]
     county_df.loc[:, "intervention_type"] = county_df.state.apply(
-        lambda x: _get_intervention_type(
-            initial_intervention_type, x, state_interventions_df
-        )
+        lambda x: _get_intervention_type(initial_intervention_type, x, state_interventions_df)
     )
     county_df.loc[:, "path"] = county_df.apply(
         lambda x: get_file_path(input_dir, x.state, x.intervention_type, x.fips), axis=1

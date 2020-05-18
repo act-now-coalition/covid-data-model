@@ -32,17 +32,13 @@ class DataSource(object):
     @property
     def state_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only state data."""
-        is_state = (
-            self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        )
+        is_state = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         return self.data[is_state]
 
     @property
     def county_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only county data."""
-        is_county = (
-            self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        )
+        is_county = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         return self.data[is_county]
 
     @classmethod
