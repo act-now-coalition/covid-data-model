@@ -123,9 +123,6 @@ class CDSDataset(data_source.DataSource):
         # ADD Negative tests
         data[cls.Fields.NEGATIVE_TESTS] = data[cls.Fields.TESTED] - data[cls.Fields.CASES]
 
-        # put the state column back
-        data["state"] = data["state_tmp"]
-
         return data
 
     @classmethod

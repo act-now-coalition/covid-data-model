@@ -15,7 +15,7 @@ from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonFields
-from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import get_run_artifact_path, RunArtifact, ewma_smoothing
 from functools import lru_cache
 from enum import Enum
 
@@ -337,6 +337,9 @@ def get_all_fips_codes_for_a_state(state: str):
     return all_fips
 
 
+
+
+
 @lru_cache(maxsize=32)
 def load_new_case_data_by_fips(fips, t0, include_testing_correction=False):
     """
@@ -598,15 +601,8 @@ def load_new_case_data_by_state(state, t0):
     )
 
 
-# TODO: Remove this once the combined test data source fixed.
-from libs.datasets import combined_datasets, CDSDataset
 @lru_cache(maxsize=32)
-def _load_raw_testing_data():
-    return CDSDataset.local().timeseries()
-
-
-@lru_cache(maxsize=32)
-def load_new_test_data_by_fips(fips, t0):
+def load_new_test_data_by_fips(fips, t0, smoothing_tau=5):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
@@ -633,14 +629,17 @@ def load_new_test_data_by_fips(fips, t0):
             Number of positive detections expected just from increased test
             capacity.
         - times: days since t0 for this observation.
+    smoothing_tau: int
+        expected_positives_from_test_increase is smoothed based on an
+        exponentially weighted moving average of decay factor specified here.
     """
-    # TODO: Switch back to this source once fixed.
-    # us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
-    us_timeseries = _load_raw_testing_data()
+    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+
     if len(fips) == 2:
         df = us_timeseries.get_subset(AggregationLevel.STATE, state=us.states.lookup(fips).abbr).data
     else:
         df = us_timeseries.get_subset(AggregationLevel.COUNTY, fips=fips).data
+    df = df[(df[CommonFields.POSITIVE_TESTS].notnull()) & (df[CommonFields.NEGATIVE_TESTS].notnull())]
 
     df['positivity_rate'] = df[CommonFields.POSITIVE_TESTS] / (df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS])
     df['new_positive'] = np.append([0], np.diff(df[CommonFields.POSITIVE_TESTS]))
@@ -655,6 +654,7 @@ def load_new_test_data_by_fips(fips, t0):
     df = df[['date', 'new_tests', 'increase_in_new_tests', 'positivity_rate', 'expected_positives_from_test_increase', 'new_positive']]
 
     df = df[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull()]
+    df['expected_positives_from_test_increase'] = ewma_smoothing(df['expected_positives_from_test_increase'], smoothing_tau)
     df['times'] = [int((date - t0).days) for date in pd.to_datetime(df['date'].values).to_pydatetime()]
 
     return df
@@ -785,6 +785,7 @@ def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None
     date: datetime
         Date to retrieve values for.
     ensemble_results: NoneType or dict
+        Pass in the pre-loaded simulation data to save time, else load it.
         Pass in the pre-loaded simulation data to save time, else load it.
 
     Returns
