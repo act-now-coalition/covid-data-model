@@ -489,14 +489,9 @@ class EnsembleRunner:
 
             # Compute percentiles over the ensemble
             for percentile in self.output_percentiles:
-<<<<<<< HEAD
-                outputs[compartment]['ci_%i' % percentile] = np.percentile(
-                    value_stack, percentile, axis=0).tolist()
-=======
                 outputs[compartment]["ci_%i" % percentile] = np.percentile(
                     value_stack, percentile, axis=0
                 ).tolist()
->>>>>>> 72a86e6355c97ed2f5e418e181639e94e3da7ccf
 
             if compartment in compartment_to_capacity_attr_map:
                 (
