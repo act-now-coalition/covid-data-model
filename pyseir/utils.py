@@ -2,6 +2,7 @@ import os
 import us
 from datetime import datetime
 from enum import Enum
+from scipy import signal
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from libs.datasets.dataset_utils import AggregationLevel
@@ -203,3 +204,24 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return path
+
+def ewma_smoothing(series, tau=5):
+    """
+    Exponentially weighted moving average of a series.
+
+    Parameters
+    ----------
+    series: array-like
+        Series to convolve.
+    tau: float
+        Decay factor.
+
+    Returns
+    -------
+    smoothed: array-like
+        Smoothed series.
+    """
+    exp_window = signal.exponential(2 * tau, 0, tau, False)[::-1]
+    exp_window /= exp_window.sum()
+    smoothed = signal.convolve(series, exp_window, mode='same')
+    return smoothed
