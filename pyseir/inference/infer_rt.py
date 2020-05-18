@@ -14,6 +14,7 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
 log = logging.getLogger(__name__)
+NP_SEED = 42
 
 
 class RtInferenceEngine:
@@ -63,7 +64,9 @@ class RtInferenceEngine:
         min_cases=5,
         min_deaths=5,
     ):
-        np.random.seed(42)  # Xcor, used in align_time_series,  has some stochastic FFT elements.
+        np.random.seed(
+            NP_SEED
+        )  # Xcor, used in align_time_series,  has some stochastic FFT elements.
         self.fips = fips
         self.r_list = r_list
         self.window_size = window_size
@@ -583,7 +586,7 @@ class RtInferenceEngine:
         shifts = range(-21, 5)
         valid_shifts = []
         xcor = []
-        np.random.seed(42)  # Xcor has some stochastic FFT elements.
+        np.random.seed(NP_SEED)  # Xcor has some stochastic FFT elements.
         _series_a = np.diff(series_a)
 
         for i in shifts:
