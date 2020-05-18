@@ -89,7 +89,9 @@ class RtInferenceEngine:
                 self.hospital_times,
                 self.hospitalizations,
                 self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
+            ) = load_data.load_hospitalization_data_by_state(
+                state=self.state_obj.abbr, t0=self.ref_date
+            )
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
