@@ -10,12 +10,11 @@ import us
 import zipfile
 import json
 from datetime import datetime
-from libs import build_processed_dataset as test_data
 from libs.datasets import NYTimesDataset
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets import CovidTrackingDataSource
+from libs.datasets.common_fields import CommonFields
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from functools import lru_cache
 from enum import Enum
@@ -339,7 +338,7 @@ def get_all_fips_codes_for_a_state(state: str):
 
 
 @lru_cache(maxsize=32)
-def load_new_case_data_by_fips(fips, t0, include_testing_correction):
+def load_new_case_data_by_fips(fips, t0, include_testing_correction=False):
     """
     Get data for new cases.
 
@@ -349,6 +348,9 @@ def load_new_case_data_by_fips(fips, t0, include_testing_correction):
         County fips to lookup.
     t0: datetime
         Datetime to offset by.
+    include_testing_correction: bool
+        If True, include a correction for new expanded or decreaseed test
+        coverage.
 
     Returns
     -------
@@ -367,8 +369,11 @@ def load_new_case_data_by_fips(fips, t0, include_testing_correction):
     )
 
     if include_testing_correction:
-        positivity_rate = load_new_test_data_by_fips()
-        dPdT = 0.65 * positivity_rate
+        df_new_tests = load_new_test_data_by_fips(fips, t0)
+        df_cases = pd.DataFrame({'times': times_new, 'new_cases': observed_new_cases})
+        df_cases = df_cases.merge(df_new_tests, how='left', on='times')
+        df_cases['new_cases'] -= df_cases['expected_positives_from_test_increase'].fillna(0)
+        observed_new_cases = df_cases['new_cases'].values
 
     observed_new_deaths = (
         county_case_data["deaths"].values[1:] - county_case_data["deaths"].values[:-1]
@@ -593,8 +598,15 @@ def load_new_case_data_by_state(state, t0):
     )
 
 
+# TODO: Remove this once the combined test data source fixed.
+from libs.datasets import combined_datasets, CDSDataset
 @lru_cache(maxsize=32)
-def load_new_test_data_by_fips(fips, t0, get_positivity_rate=False):
+def _load_raw_testing_data():
+    return CDSDataset.local().timeseries()
+
+
+@lru_cache(maxsize=32)
+def load_new_test_data_by_fips(fips, t0):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
@@ -606,44 +618,45 @@ def load_new_test_data_by_fips(fips, t0, get_positivity_rate=False):
         State or county fips code
     t0: datetime
         Reference datetime to use.
-    get_positivity_rate:
-        If False, returns a total tests timeseries. If True, returns the
-        positivity rate.
 
     Returns
     -------
-    times: array(int)
-        Array of integers days w.r.t. the reference datetime.
-    new_tests: array(str)
-        Number of new tests for this day.
+    df: pd.DataFrame
+        DataFrame containing columns:
+        - 'date',
+        - 'new_tests': Number of total tests performed that day
+        - 'increase_in_new_tests': Increase in tests performed that day vs
+          previous day
+        - 'positivity_rate':
+            Test positivity rate
+        - 'expected_positives_from_test_increase':
+            Number of positive detections expected just from increased test
+            capacity.
+        - times: days since t0 for this observation.
     """
-    df_new = pd.DataFrame()
+    # TODO: Switch back to this source once fixed.
+    # us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    us_timeseries = _load_raw_testing_data()
     if len(fips) == 2:
-        df = test_data.get_testing_timeseries_by_state(us.states.lookup(fips).abbr)
-        if get_positivity_rate:
-            df_new['tested'] = np.diff(df['positive']) / (np.diff(df['positive'] + df['negative'])).clip(min=1)
-            df_new['date'] = df['date'].iloc[:-1]
-        else:
-            df_new['tested'] = np.diff(df['positive']) + np.diff(df['negative'])
-            df_new['date'] = df['date'].iloc[:-1]
-            df_new = df_new[['date', 'tested']].fillna(0)
+        df = us_timeseries.get_subset(AggregationLevel.STATE, state=us.states.lookup(fips).abbr).data
     else:
-        df = test_data.get_testing_timeseries_by_fips(fips)
+        df = us_timeseries.get_subset(AggregationLevel.COUNTY, fips=fips).data
 
-        # This doesn't work.
-        if get_positivity_rate:
-            df = df.reset_index()[['date', 'tested', 'cases']].fillna(0)
-            df_new['tested'] = np.diff(df['cases']) / np.diff(df['tested'])
-            df_new['date'] = df['date'].iloc[1:]
-        else:
-            df = df.reset_index()[['date', 'tested']].fillna(0)
-            df_new['tested'] = np.diff(df['tested'])
-            df_new['date'] = df['date'].iloc[1:]
+    df['positivity_rate'] = df[CommonFields.POSITIVE_TESTS] / (df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS])
+    df['new_positive'] = np.append([0], np.diff(df[CommonFields.POSITIVE_TESTS]))
 
-    dates = pd.to_datetime(df['date'].iloc[1:].values).to_pydatetime()
-    times = [int((date - t0).days) for date in dates]
+    # The first derivative gets us new instead of cumulative tests while the second derivative gives us the change in new test rate.
+    df['new_tests'] = np.append([0], np.diff(df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]))
+    df['increase_in_new_tests'] = np.append([0], np.diff(df['new_tests']))
 
-    return times, df_new['tested']
+    # dPositive / dTotal = 0.65 * positivity_rate was empirically determined by looking at
+    # the increase in positives day-over-day relative to the increase in total tests across all 50 states.
+    df['expected_positives_from_test_increase'] = df['increase_in_new_tests'] * 0.65 * df['positivity_rate']
+    df = df[['date', 'new_tests', 'increase_in_new_tests', 'positivity_rate', 'expected_positives_from_test_increase', 'new_positive']]
+    df = df[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull()]
+    df['times'] = [int((date - t0).days) for date in pd.to_datetime(df['date'].values).to_pydatetime()]
+
+    return df
 
 
 def load_cdc_hospitalization_data():
