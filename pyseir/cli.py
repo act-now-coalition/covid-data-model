@@ -13,7 +13,7 @@ from pyseir.ensembles.ensemble_runner import run_state, RunMode, _run_county
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
-from libs.datasets import NYTimesDataset, CDSDataset
+from libs.datasets import JHUDataset, CDSDataset
 from libs.datasets import combined_datasets
 from libs.us_state_abbrev import abbrev_us_state
 from pyseir.inference.whitelist_generator import WhitelistGenerator
@@ -51,7 +51,7 @@ def _cache_global_datasets():
     if cds_dataset is None:
         cds_dataset = CDSDataset.local()
     if nyt_dataset is None:
-        nyt_dataset = NYTimesDataset.local()
+        nyt_dataset = JHUDataset.local()
 
 
 @click.group()

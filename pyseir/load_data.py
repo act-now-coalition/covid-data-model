@@ -10,7 +10,7 @@ import us
 import zipfile
 import json
 from datetime import datetime
-from libs.datasets import NYTimesDataset
+from libs.datasets import JHUDataset
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -95,7 +95,7 @@ def load_zip_get_file(url, file, decoder="utf-8"):
 
 def cache_county_case_data():
     """
-    Cache county covid case data from NYT in #PYSEIR_HOME/data.
+    Cache county covid case data 
     """
     logging.info("Downloading covid case data")
     # NYT dataset
@@ -175,7 +175,7 @@ def load_county_case_data():
     : pd.DataFrame
     """
     county_case_data = (
-        NYTimesDataset.local()
+        JHUDataset.local()
         .timeseries()
         .get_subset(AggregationLevel.COUNTY, country="USA")
         .get_data(country="USA")
@@ -194,7 +194,7 @@ def load_state_case_data():
     """
 
     state_case_data = (
-        NYTimesDataset.local()
+        JHUDataset.local()
         .timeseries()
         .get_subset(AggregationLevel.STATE, country="USA")
         .get_data(country="USA")
