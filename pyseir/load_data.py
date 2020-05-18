@@ -653,6 +653,7 @@ def load_new_test_data_by_fips(fips, t0):
     # the increase in positives day-over-day relative to the increase in total tests across all 50 states.
     df['expected_positives_from_test_increase'] = df['increase_in_new_tests'] * 0.65 * df['positivity_rate']
     df = df[['date', 'new_tests', 'increase_in_new_tests', 'positivity_rate', 'expected_positives_from_test_increase', 'new_positive']]
+
     df = df[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull()]
     df['times'] = [int((date - t0).days) for date in pd.to_datetime(df['date'].values).to_pydatetime()]
 
