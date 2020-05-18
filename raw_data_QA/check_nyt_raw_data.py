@@ -3,13 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import mean_squared_error
 from datetime import datetime
-import calendar
-import argparse
-import pdb
-import os
-import shutil
-import requests
-import io
+import calendar, argparse, pdb, os, shutil, requests, io
 
 
 def aggregate_df(df, args):
@@ -44,6 +38,7 @@ def get_equal_len_df(df1, df2):
 
 
 def get_p_diff_z_score(var1, var2):
+    # print(f'var1: {var1} var2: {var2}')
     if var1 == 0 and var2 == 0:
         p_diff = 0
         z_score = 0
@@ -57,6 +52,7 @@ def get_p_diff_z_score(var1, var2):
         p_diff = (abs(var2) - abs(var1)) / var1
         err = np.sqrt(abs(var1))
         z_score = (var2 - var1) / err  # to be added
+    # print(f'pdiff: {p_diff} zscore: {z_score}')
     return p_diff, z_score
 
 
@@ -70,9 +66,9 @@ def get_compare_metrics(df1, df2, var):
 
         z_scores.append(z_score)
         diff.append(p_diff)
-        number_of_days_percent_threshold = sum(i > args.percent_threshold for i in diff)
-        average_Z = round(np.mean(z_scores), 2)
-        latest_Z = round(np.mean(z_scores[: -args.n_days_z_score_mean]), 2)
+    number_of_days_percent_threshold = sum(i > args.percent_threshold for i in diff)
+    average_Z = round(np.mean(z_scores), 2)
+    latest_Z = round(np.mean(z_scores[: -args.n_days_z_score_mean]), 2)
     return diff, z_scores, average_Z, latest_Z, number_of_days_percent_threshold
 
 
@@ -84,8 +80,8 @@ def average(list):
 
 
 def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
-    # compare new data to old
-    df_new_data, new_p_diffs, new_z_scores = check_new_data(df1_ag, df2_ag, args, var)
+    # compare old prod data to latest nyt
+    df_new_data, new_p_diffs, new_z_scores = check_new_data(df1, df3, args, var)
 
     new_days_over_thres = sum(i > args.new_day_percent_thres for i in new_p_diffs)
     new_data_days_abnormal = (
@@ -94,7 +90,7 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
     # truncate df2 and df3 to df1 (this assumes df1 is the shortest)
     truncated_df2 = get_equal_len_df(df2, df1)
     truncated_df3 = get_equal_len_df(df3, df1)
-
+    # pdb.set_trace()
     # Get comparison metrics
     rmse2 = get_rmse(df1, truncated_df2, var)
     rmse3 = get_rmse(df1, truncated_df3, var)
@@ -106,7 +102,7 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
     )
 
     # determine if data is different enough to plot for further investigation
-    historical_data_disagree = days_over_z2 > args.n_days_over_threshold
+    historical_data_disagree = days_over_z3 > args.n_days_over_threshold
 
     if historical_data_disagree or new_data_days_abnormal:
         fig, ax = plt.subplots(3, 1, sharex=True)
@@ -122,7 +118,7 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
         color1 = "blue"
         color2 = "orange"
         color3 = "purple"
-        color4 = "red"
+        color4 = "purple"  # because we are only comparing changes in additional days from the latest NYT dataset
         fig.suptitle(var)
         ax[0].plot(
             df1.index.values,
@@ -178,6 +174,7 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
             markersize=markersize4,
             marker=markerstyle4,
             alpha=0.5,
+            label="Additional New Data",
         )
         ax[1].set(ylabel="Percent Difference")
         ax[1].grid(True)
@@ -205,6 +202,7 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
             markersize=markersize4,
             marker=markerstyle4,
             alpha=0.5,
+            label="Additional New Data",
         )
         ax[2].set(ylabel="Z Score")
         ax[2].grid(True)
@@ -484,20 +482,14 @@ if __name__ == "__main__":
 
     # Get Current local cache being used
     current_df = pd.read_csv(
-        "../covid-data-public/data/cases-nytimes/us-counties.csv", parse_dates=[args.date_name]
+        "../../covid-data-public/data/cases-nytimes/us-counties.csv", parse_dates=[args.date_name]
     )
     current_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/current_cache.csv")
 
     # Get Latest NYT
     latest_nyt_df = get_df_from_url(NYT_PATH, args, "nyt_latest")
 
-    print(prod_df)
-    print(current_df)
-    print(latest_nyt_df)
-    # OLD_CAN_DATA = "data/us-counties-old.csv" #This will be used as the reference dataset which is compared to NEW_CAN_DATA and LATEST_NYT_DATA datasets
-    # NEW_CAN_DATA = "data/us-counties-new.csv"
-    # LATEST_NYT_DATA = "data/us-counties-latest.csv"
-    # LATEST_NYT_STATE_DATA = "data/us-states-latest.csv"
+    # Variables to Compare
     variables = ["cases", "deaths", "new_cases", "new_deaths"]
 
     # Get all states in input dataset if user asks for all states
@@ -528,7 +520,19 @@ if __name__ == "__main__":
             prod_ag = aggregate_df(this_prod_df, args)
             local_ag = aggregate_df(this_local_df, args)
             latest_ag = aggregate_df(this_latest_nyt_df, args)
-
+            """ I am leaving this here for easy testing
+            avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest, abnormal = compare_data(
+                var,
+                local_ag,
+                prod_ag,
+                latest_ag,
+                local_name,
+                prod_name,
+                latest_nyt_name,
+                args,
+                state,
+            )
+            """
             avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest, abnormal = compare_data(
                 var,
                 prod_ag,
@@ -563,6 +567,5 @@ if __name__ == "__main__":
             "z_latest",
             var,
         )
-        # z_latest = make_meta_comparison_plot(states_list, z_latest_avg_list, 'z_latest')
 
         # compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
