@@ -30,7 +30,7 @@ class Backtester:
     increases until it reaches max_observation_days_blinded.
     To remove unwanted feature (smooth) of the time series of the
     observation data, one can set window of ts_rolling_args greater than one.
-    To accelorate backtesting, one can set num_days_per_step greater than 1.
+    To accelerate backtesting, one can set num_days_per_step greater than 1.
     However it is recommended that num_days_per_step <= ts_rolling_args[
     'window'] to ensure a good coverage of the time series.
 
