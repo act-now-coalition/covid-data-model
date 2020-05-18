@@ -39,6 +39,7 @@ class CommonFields(object):
     ALL_BED_TYPICAL_OCCUPANCY_RATE = "all_beds_occupancy_rate"
     ICU_TYPICAL_OCCUPANCY_RATE = "icu_occupancy_rate"
     MAX_BED_COUNT = "max_bed_count"
+    VENTILATOR_CAPACITY = "ventilator_capacity"
 
     CURRENT_HOSPITALIZED_TOTAL = "current_hospitalized_total"
     CURRENT_ICU_TOTAL = "current_icu_total"
