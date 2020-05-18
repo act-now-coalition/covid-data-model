@@ -1,3 +1,4 @@
+import warnings
 from typing import List
 import pandas as pd
 from libs import us_state_abbrev
@@ -50,18 +51,16 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def county_keys(self) -> List:
         """Returns a list of all (country, state, county) combinations."""
         # Check to make sure all values are county values
-        county_values = (
-            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        warnings.warn(
+            "Tell Tom you are using this, I'm going to delete it soon.",
+            DeprecationWarning,
+            stacklevel=2,
         )
+        county_values = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         county_data = self.data[county_values]
 
         data = county_data.set_index(
-            [
-                self.Fields.COUNTRY,
-                self.Fields.STATE,
-                self.Fields.COUNTY,
-                self.Fields.FIPS,
-            ]
+            [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.COUNTY, self.Fields.FIPS,]
         )
         values = set(data.index.to_list())
         return sorted(values)
@@ -90,6 +89,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         data = self.data[
             self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value
         ].reset_index()
+        # If the groupby raises a ValueError check the dtype of date. If it was loaded
+        # by read_csv did you set parse_dates=["date"]?
         return data.iloc[data.groupby(group).date.idxmax(), :]
 
     def get_subset(
@@ -100,7 +101,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         before=None,
         country=None,
         state=None,
-        county=None,
         fips=None,
         states=None,
     ) -> "TimeseriesDataset":
@@ -112,8 +112,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             data = data[data.country == country]
         if state:
             data = data[data.state == state]
-        if county:
-            data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
         if states:
@@ -152,16 +150,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         pd_data = self.get_subset(AggregationLevel.STATE, state=state).data
         return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
 
-    def get_data(
-        self, country=None, state=None, county=None, fips=None, states=None
-    ) -> pd.DataFrame:
+    def get_data(self, country=None, state=None, fips=None, states=None) -> pd.DataFrame:
         data = self.data
         if country:
             data = data[data.country == country]
         if state:
             data = data[data.state == state]
-        if county:
-            data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
         if states:
@@ -183,9 +177,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         Returns: Timeseries object.
         """
         data = source.data
-        to_common_fields = {
-            value: key for key, value in source.all_fields_map().items()
-        }
+        to_common_fields = {value: key for key, value in source.all_fields_map().items()}
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
         group = [
@@ -205,19 +197,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
                 cls.Fields.STATE,
             ]
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data,
-                state_groupby_fields,
-                AggregationLevel.COUNTY,
-                AggregationLevel.STATE,
+                data, state_groupby_fields, AggregationLevel.COUNTY, AggregationLevel.STATE,
             ).reset_index()
             data = pd.concat([data, non_matching])
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
         is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, cls.Fields.STATE].map(
-            us_state_abbrev.ABBREV_US_FIPS
-        )
+        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, cls.Fields.FIPS] = state_fips
 
         # Choosing to sort by date
@@ -241,12 +228,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         dataset_utils.summarize(
             self.data,
             AggregationLevel.COUNTY,
-            [
-                self.Fields.DATE,
-                self.Fields.COUNTRY,
-                self.Fields.STATE,
-                self.Fields.FIPS,
-            ],
+            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS,],
         )
 
         print()

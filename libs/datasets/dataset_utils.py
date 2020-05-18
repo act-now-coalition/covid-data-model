@@ -4,7 +4,6 @@ import enum
 import logging
 import pathlib
 import pandas as pd
-import numpy as np
 from libs.us_state_abbrev import US_STATE_ABBREV
 
 if os.getenv("COVID_DATA_PUBLIC"):
@@ -66,22 +65,16 @@ def plot_grouped_data(data, group, series="source", values="cases"):
     cases_by_source = data_by_source.pivot_table(
         index=["date"], columns=series, values=values
     ).fillna(0)
-    cases_by_source.plot(
-        kind="bar", figsize=(15, 7), title=f"{values} by data source vs date"
-    )
+    cases_by_source.plot(kind="bar", figsize=(15, 7), title=f"{values} by data source vs date")
 
 
 def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
     """Combines JHU and CDS county data."""
     data = jhu_data_source.timeseries()
-    jhu_usa_data = data.get_subset(
-        AggregationLevel.COUNTY, country="USA", after="2020-03-01"
-    ).data
+    jhu_usa_data = data.get_subset(AggregationLevel.COUNTY, country="USA", after="2020-03-01").data
 
     data = cds_data_source.timeseries()
-    cds_usa_data = data.get_subset(
-        AggregationLevel.COUNTY, country="USA", after="2020-03-01"
-    ).data
+    cds_usa_data = data.get_subset(AggregationLevel.COUNTY, country="USA", after="2020-03-01").data
 
     # TODO(chris): Better handling of counties that are not consistent.
 
@@ -118,9 +111,7 @@ def check_index_values_are_unique(data, index=None, duplicates_as_error=True):
     return None
 
 
-def compare_datasets(
-    base, other, group, first_name="first", other_name="second", values="cases"
-):
+def compare_datasets(base, other, group, first_name="first", other_name="second", values="cases"):
     other = other.groupby(group).sum().reset_index().set_index(group)
     base = base.groupby(group).sum().reset_index().set_index(group)
     # Filling missing values
@@ -130,9 +121,9 @@ def compare_datasets(
     base["info"] = first_name
     other["info"] = other_name
     common = pd.concat([base, other])
-    all_combined = common.pivot_table(
-        index=group, columns="info", values=values
-    ).rename_axis(None, axis=1)
+    all_combined = common.pivot_table(index=group, columns="info", values=values).rename_axis(
+        None, axis=1
+    )
     first_notnull = all_combined[first_name].notnull()
     other_notnull = all_combined[other_name].notnull()
 
@@ -141,9 +132,7 @@ def compare_datasets(
     contains_both = contains_both.reset_index()
     values_matching = contains_both[first_name] == contains_both[other_name]
     not_matching = contains_both[~values_matching]
-    not_matching["delta_" + values] = (
-        contains_both[first_name] - contains_both[other_name]
-    )
+    not_matching["delta_" + values] = contains_both[first_name] - contains_both[other_name]
     not_matching["delta_ratio_" + values] = (
         contains_both[first_name] - contains_both[other_name]
     ) / contains_both[first_name]
@@ -152,9 +141,7 @@ def compare_datasets(
     return all_combined, matching, not_matching.dropna(), missing
 
 
-def aggregate_and_get_nonmatching(
-    data, groupby_fields, from_aggregation, to_aggregation
-):
+def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_aggregation):
 
     from_data = data[data.aggregate_level == from_aggregation.value]
     new_data = from_data.groupby(groupby_fields).sum().reset_index()
@@ -205,14 +192,10 @@ def add_county_using_fips(data, fips_data):
 
     data = data.set_index(["fips", "state"])
     fips_data = fips_data.set_index(["fips", "state"])
-    data = data.join(
-        fips_data[["county"]], on=["fips", "state"], rsuffix="_r"
-    ).reset_index()
+    data = data.join(fips_data[["county"]], on=["fips", "state"], rsuffix="_r").reset_index()
     is_missing_county = data.county.isnull() & data.fips.notnull()
 
-    data.loc[is_missing_county, "county"] = data.loc[
-        is_missing_county, "county"
-    ].fillna("")
+    data.loc[is_missing_county, "county"] = data.loc[is_missing_county, "county"].fillna("")
     non_matching = data[is_missing_county]
 
     # Not all datasources have country.  If the dataset doesn't have country,
@@ -369,9 +352,7 @@ def fill_fields_and_timeseries_from_column(
         existing_df.loc[common_labels.values, column_to_fill] = new_df.loc[
             common_labels.values, column_to_fill
         ]
-        missing_new_data = new_df.loc[
-            new_df.index.difference(common_labels), [column_to_fill]
-        ]
+        missing_new_data = new_df.loc[new_df.index.difference(common_labels), [column_to_fill]]
     else:
         # There are no labels in common so all rows of new_df are to be appended to existing_df.
         missing_new_data = new_df.loc[:, [column_to_fill]]

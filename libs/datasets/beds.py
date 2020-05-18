@@ -52,17 +52,13 @@ class BedsDataset(object):
     @property
     def state_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only state data."""
-        is_state = (
-            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        )
+        is_state = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         return self.data[is_state]
 
     @property
     def county_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only county data."""
-        is_county = (
-            self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        )
+        is_county = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         return self.data[is_county]
 
     @classmethod
@@ -95,10 +91,7 @@ class BedsDataset(object):
         data = cls._aggregate_new_york_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data,
-                cls.STATE_GROUP_KEY,
-                AggregationLevel.COUNTY,
-                AggregationLevel.STATE,
+                data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE,
             ).reset_index()
 
             non_matching[cls.Fields.GENERATED] = True
@@ -138,8 +131,7 @@ class BedsDataset(object):
         nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
         if weighted_all_bed_occupancy:
             data.loc[
-                data[cls.Fields.FIPS] == nyc_fips,
-                cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+                data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
             ] = weighted_all_bed_occupancy
 
         if weighted_icu_occupancy:
@@ -150,12 +142,8 @@ class BedsDataset(object):
         return data
 
     def validate(self):
-        dataset_utils.check_index_values_are_unique(
-            self.state_data, index=self.STATE_GROUP_KEY
-        )
-        dataset_utils.check_index_values_are_unique(
-            self.county_data, index=self.COUNTY_GROUP_KEY
-        )
+        dataset_utils.check_index_values_are_unique(self.state_data, index=self.STATE_GROUP_KEY)
+        dataset_utils.check_index_values_are_unique(self.county_data, index=self.COUNTY_GROUP_KEY)
 
     def get_data_for_state(self, state) -> dict:
         """Gets all data for a given state.

@@ -14,10 +14,13 @@ import pandas as pd
 
 
 class StateReport:
-
-    def __init__(self, state, reference_date=datetime(day=1, month=3, year=2020),
-                 plot_compartments=('HICU', 'HGen', 'HVent'),
-                 primary_suppression_policy='suppression_policy__0.5'):
+    def __init__(
+        self,
+        state,
+        reference_date=datetime(day=1, month=3, year=2020),
+        plot_compartments=("HICU", "HGen", "HVent"),
+        primary_suppression_policy="suppression_policy__0.5",
+    ):
         self.state = state
         self.reference_date = reference_date
         self.plot_compartments = plot_compartments
@@ -25,12 +28,23 @@ class StateReport:
 
         # Load the county metadata and extract names for the state.
         county_metadata = load_data.load_county_metadata()
-        self.counties = county_metadata[county_metadata['state'].str.lower() == self.state.lower()]['fips']
-        self.ensemble_data_by_county = {fips: load_data.load_ensemble_results(fips) for fips in self.counties}
-        self.county_metadata = county_metadata.set_index('fips')
-        self.names = [self.county_metadata.loc[fips, 'county'].replace(' County', '') for fips in self.counties]
-        self.filename = os.path.join(OUTPUT_DIR, self.state, 'reports', f"summary__{self.state}__state_report.pdf")
-        self.surge_filename = os.path.join(OUTPUT_DIR, self.state, 'reports', f"summary__{self.state}__state_surge_report.xlsx")
+        self.counties = county_metadata[county_metadata["state"].str.lower() == self.state.lower()][
+            "fips"
+        ]
+        self.ensemble_data_by_county = {
+            fips: load_data.load_ensemble_results(fips) for fips in self.counties
+        }
+        self.county_metadata = county_metadata.set_index("fips")
+        self.names = [
+            self.county_metadata.loc[fips, "county"].replace(" County", "")
+            for fips in self.counties
+        ]
+        self.filename = os.path.join(
+            OUTPUT_DIR, self.state, "reports", f"summary__{self.state}__state_report.pdf"
+        )
+        self.surge_filename = os.path.join(
+            OUTPUT_DIR, self.state, "reports", f"summary__{self.state}__state_surge_report.xlsx"
+        )
 
     def generate_report(self):
         """
@@ -56,44 +70,75 @@ class StateReport:
             love in the plots, such as confidence intervals.
         """
         fig = plt.figure(figsize=(30, 20))
-        plt.suptitle(f'{self.state}: Median Peak Estimates for {compartment_to_name_map[compartment]} Surges', fontsize=20)
+        plt.suptitle(
+            f"{self.state}: Median Peak Estimates for {compartment_to_name_map[compartment]} Surges",
+            fontsize=20,
+        )
 
-        color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color'] + list('bgrcmyk')
-        for i_plt, suppression_policy in enumerate(list(self.ensemble_data_by_county.values())[0].keys()):
+        color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"] + list("bgrcmyk")
+        for i_plt, suppression_policy in enumerate(
+            list(self.ensemble_data_by_county.values())[0].keys()
+        ):
             # ---------------------------------------------------------
             # Plot Peak Times and values These need to be shifter by t0
             # ---------------------------------------------------------
             plt.subplot(1, 2, 1)
-            peak_times = [fit_results.load_t0(fips) + timedelta(days=self.ensemble_data_by_county[fips][suppression_policy][compartment]['peak_time_ci50'])
-                          for fips in self.counties]
+            peak_times = [
+                fit_results.load_t0(fips)
+                + timedelta(
+                    days=self.ensemble_data_by_county[fips][suppression_policy][compartment][
+                        "peak_time_ci50"
+                    ]
+                )
+                for fips in self.counties
+            ]
 
             sorted_times = sorted(deepcopy(peak_times))
-            median_statewide_peak = sorted_times[len(sorted_times)//2]
+            median_statewide_peak = sorted_times[len(sorted_times) // 2]
 
-            plt.scatter(peak_times, self.names, label=f'{suppression_policy}', c=color_cycle[i_plt])
-            plt.vlines(median_statewide_peak, 0, len(self.names), alpha=1, linestyle='-.', colors=color_cycle[i_plt], label=f'State Median: {suppression_policy}')
+            plt.scatter(peak_times, self.names, label=f"{suppression_policy}", c=color_cycle[i_plt])
+            plt.vlines(
+                median_statewide_peak,
+                0,
+                len(self.names),
+                alpha=1,
+                linestyle="-.",
+                colors=color_cycle[i_plt],
+                label=f"State Median: {suppression_policy}",
+            )
 
             plt.subplot(1, 2, 2)
-            peak_values = [self.ensemble_data_by_county[fips][suppression_policy][compartment]['peak_value_ci50'] for fips in self.counties]
+            peak_values = [
+                self.ensemble_data_by_county[fips][suppression_policy][compartment][
+                    "peak_value_ci50"
+                ]
+                for fips in self.counties
+            ]
             plt.scatter(peak_values, self.names, label=suppression_policy, c=color_cycle[i_plt])
 
             if suppression_policy == self.primary_suppression_policy:
                 plt.subplot(121)
                 for i, fips in enumerate(self.counties):
-                    value='peak_time'
+                    value = "peak_time"
                     d = self.ensemble_data_by_county[fips][suppression_policy][compartment]
                     t0 = fit_results.load_t0(fips)
 
-                    plt.fill_betweenx([i-.2, i+.2],
-                                      [t0 + timedelta(days=d[f'{value}_ci5'])]*2,
-                                      [t0 + timedelta(days=d[f'{value}_ci95'])]*2,
-                                      alpha=.3, color=color_cycle[i_plt])
+                    plt.fill_betweenx(
+                        [i - 0.2, i + 0.2],
+                        [t0 + timedelta(days=d[f"{value}_ci5"])] * 2,
+                        [t0 + timedelta(days=d[f"{value}_ci95"])] * 2,
+                        alpha=0.3,
+                        color=color_cycle[i_plt],
+                    )
 
-                    plt.fill_betweenx([i-.2, i+.2],
-                                      [t0 + timedelta(days=d[f'{value}_ci32'])]*2,
-                                      [t0 + timedelta(days=d[f'{value}_ci68'])]*2,
-                                      alpha=.3, color=color_cycle[i_plt])
-                    plt.grid(alpha=.4)
+                    plt.fill_betweenx(
+                        [i - 0.2, i + 0.2],
+                        [t0 + timedelta(days=d[f"{value}_ci32"])] * 2,
+                        [t0 + timedelta(days=d[f"{value}_ci68"])] * 2,
+                        alpha=0.3,
+                        color=color_cycle[i_plt],
+                    )
+                    plt.grid(alpha=0.4)
                     plt.xlabel(value)
 
                 ticks = []
@@ -109,35 +154,81 @@ class StateReport:
                 # Plot Peak Values
                 # --------------------------
                 plt.subplot(1, 2, 2)
-                plot_capacity = 'capacity' in self.ensemble_data_by_county[fips][suppression_policy][compartment]
+                plot_capacity = (
+                    "capacity"
+                    in self.ensemble_data_by_county[fips][suppression_policy][compartment]
+                )
                 if plot_capacity:
-                    capacities = np.median(np.vstack([self.ensemble_data_by_county[fips][suppression_policy][compartment]['capacity'] for fips in self.counties]), axis=1)
-                    plt.scatter(capacities, self.names, marker='<', s=100, c='r', label='Estimated Capacity')
+                    capacities = np.median(
+                        np.vstack(
+                            [
+                                self.ensemble_data_by_county[fips][suppression_policy][compartment][
+                                    "capacity"
+                                ]
+                                for fips in self.counties
+                            ]
+                        ),
+                        axis=1,
+                    )
+                    plt.scatter(
+                        capacities, self.names, marker="<", s=100, c="r", label="Estimated Capacity"
+                    )
 
                 for i, fips in enumerate(self.counties):
-                    value = 'peak_value'
+                    value = "peak_value"
                     d = self.ensemble_data_by_county[fips][suppression_policy][compartment]
-                    plt.fill_betweenx([i-.2, i+.2], [d[f'{value}_ci5']]*2, [d[f'{value}_ci95']]*2, alpha=.3, color=color_cycle[i_plt])
-                    plt.fill_betweenx([i-.2, i+.2], [d[f'{value}_ci32']]*2, [d[f'{value}_ci68']]*2, alpha=.3, color=color_cycle[i_plt])
-                    plt.grid(which='both', alpha=.4)
-                    plt.xlabel('Required Surge Capacity at Peak', fontsize=14)
-                    plt.xscale('log')
+                    plt.fill_betweenx(
+                        [i - 0.2, i + 0.2],
+                        [d[f"{value}_ci5"]] * 2,
+                        [d[f"{value}_ci95"]] * 2,
+                        alpha=0.3,
+                        color=color_cycle[i_plt],
+                    )
+                    plt.fill_betweenx(
+                        [i - 0.2, i + 0.2],
+                        [d[f"{value}_ci32"]] * 2,
+                        [d[f"{value}_ci68"]] * 2,
+                        alpha=0.3,
+                        color=color_cycle[i_plt],
+                    )
+                    plt.grid(which="both", alpha=0.4)
+                    plt.xlabel("Required Surge Capacity at Peak", fontsize=14)
+                    plt.xscale("log")
 
                 if plot_capacity:
                     up_lim = plt.xlim()[1]
                     for i, (capacity, peak_value) in enumerate(zip(capacities, peak_values)):
                         if np.isnan(capacity) or capacity == 0:
                             try:
-                                plt.text(up_lim * 1.3, i - .5, f'UNKNOWN CAPACITY: %s NEEDED' % int(peak_value), color='r')
+                                plt.text(
+                                    up_lim * 1.3,
+                                    i - 0.5,
+                                    f"UNKNOWN CAPACITY: %s NEEDED" % int(peak_value),
+                                    color="r",
+                                )
                             except ValueError:
-                                logging.warning('Error estimating peak. NaN')
+                                logging.warning("Error estimating peak. NaN")
                         else:
-                            plt.text(up_lim*1.3, i-.5, f'Surge {peak_value / capacity * 100:.0f}%: {peak_value - capacity:.0f} Needed', color='r')
+                            plt.text(
+                                up_lim * 1.3,
+                                i - 0.5,
+                                f"Surge {peak_value / capacity * 100:.0f}%: {peak_value - capacity:.0f} Needed",
+                                color="r",
+                            )
 
-                    plt.text(.01, .01, f'Surge Capacity Listed for {suppression_policy}', transform=plt.gca().transAxes, color='r', fontsize=16)
+                    plt.text(
+                        0.01,
+                        0.01,
+                        f"Surge Capacity Listed for {suppression_policy}",
+                        transform=plt.gca().transAxes,
+                        color="r",
+                        fontsize=16,
+                    )
 
         plt.subplot(121)
-        caption = textwrap.fill(textwrap.dedent("""
+        caption = textwrap.fill(
+            textwrap.dedent(
+                """
             Surge Peak Timing: Timing of the surge peak under different
             suppression policies. A suppression policy of 0.7 implies contact is
             reduced by 30% (i.e. 30% efficacy of social distancing). Overall
@@ -153,12 +244,17 @@ class StateReport:
             impact of distancing measures is significantly larger than variance
             associated the epidemiological model suggesting that policy may be
             used to spread these peaks relative to each other to reduce
-            coincident surge."""), width=120)
-        plt.text(0, 1.01, caption, ha='left', va='bottom', transform=plt.gca().transAxes)
+            coincident surge."""
+            ),
+            width=120,
+        )
+        plt.text(0, 1.01, caption, ha="left", va="bottom", transform=plt.gca().transAxes)
         plt.legend()
         plt.subplot(122)
 
-        caption = textwrap.fill(textwrap.dedent(f"""
+        caption = textwrap.fill(
+            textwrap.dedent(
+                f"""
             Surge Peak Levels: Value of the surge peak under different
             suppression policies. A suppression policy of 0.7 implies contact is
             reduced by 30% (i.e. 30% efficacy of social distancing). Overall
@@ -174,8 +270,11 @@ class StateReport:
             account for utilization (Checking this!). For ventilators, we
             estimate nationally 1.1 ventilators per ICU bed which includes
             national emergency stockpile and a ~30% efficacy of an estimated
-            100k old ventilators."""), width=120)
-        plt.text(0, 1.01, caption, ha='left', va='bottom', transform=plt.gca().transAxes)
+            100k old ventilators."""
+            ),
+            width=120,
+        )
+        plt.text(0, 1.01, caption, ha="left", va="bottom", transform=plt.gca().transAxes)
 
         plt.legend()
 
@@ -197,11 +296,11 @@ class StateReport:
         df = load_data.load_county_metadata()
         all_fips = load_data.get_all_fips_codes_for_a_state(self.state)
         all_data = {fips: load_data.load_ensemble_results(fips) for fips in all_fips}
-        df = df.set_index('fips')
+        df = df.set_index("fips")
 
         records = []
         for fips, ensembles in all_data.items():
-            county_name = df.loc[fips]['county']
+            county_name = df.loc[fips]["county"]
             t0 = fit_results.load_t0(fips)
 
             for suppression_policy, ensemble in ensembles.items():
@@ -209,18 +308,38 @@ class StateReport:
                 county_record = dict(
                     county_name=county_name,
                     county_fips=fips,
-                    mitigation_policy=policy_to_mitigation(suppression_policy)
+                    mitigation_policy=policy_to_mitigation(suppression_policy),
                 )
 
-                for compartment in ['HGen', 'general_admissions_per_day', 'HICU', 'icu_admissions_per_day', 'total_new_infections',
-                                    'direct_deaths_per_day', 'total_deaths', 'D']:
+                for compartment in [
+                    "HGen",
+                    "general_admissions_per_day",
+                    "HICU",
+                    "icu_admissions_per_day",
+                    "total_new_infections",
+                    "direct_deaths_per_day",
+                    "total_deaths",
+                    "D",
+                ]:
                     compartment_name = compartment_to_name_map[compartment]
 
-                    county_record[compartment_name + ' Peak Value Mean'] = '%.0f' % ensemble[compartment]['peak_value_mean']
-                    county_record[compartment_name + ' Peak Value Median'] = '%.0f' % ensemble[compartment]['peak_value_ci50']
-                    county_record[compartment_name + ' Peak Value CI25'] = '%.0f' % ensemble[compartment]['peak_value_ci25']
-                    county_record[compartment_name + ' Peak Value CI75'] = '%.0f' % ensemble[compartment]['peak_value_ci75']
-                    county_record[compartment_name + ' Peak Time Median'] = (t0 + timedelta(days=ensemble[compartment]['peak_time_ci50'])).date().isoformat()
+                    county_record[compartment_name + " Peak Value Mean"] = (
+                        "%.0f" % ensemble[compartment]["peak_value_mean"]
+                    )
+                    county_record[compartment_name + " Peak Value Median"] = (
+                        "%.0f" % ensemble[compartment]["peak_value_ci50"]
+                    )
+                    county_record[compartment_name + " Peak Value CI25"] = (
+                        "%.0f" % ensemble[compartment]["peak_value_ci25"]
+                    )
+                    county_record[compartment_name + " Peak Value CI75"] = (
+                        "%.0f" % ensemble[compartment]["peak_value_ci75"]
+                    )
+                    county_record[compartment_name + " Peak Time Median"] = (
+                        (t0 + timedelta(days=ensemble[compartment]["peak_time_ci50"]))
+                        .date()
+                        .isoformat()
+                    )
 
                     # Leaving for now...
                     # if 'surge_start' in ensemble[compartment]:

@@ -85,21 +85,10 @@ class CDSDataset(data_source.DataSource):
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
 
-        # Don't want to return city data because it's duplicated in county
-        # City data before 3-23 was not duplicated.
-        # data = data[data[cls.Fields.CITY].isnull()]
-        pre_march_23 = data[data.date < "2020-03-23"]
-        pre_march_23.county = pre_march_23.apply(fill_missing_county_with_city, axis=1)
-        split_data = [
-            pre_march_23,
-            data[(data.date >= "2020-03-23") & data[cls.Fields.CITY].isnull()],
-        ]
-        data = pd.concat(split_data)
+        data = cls.remove_duplicate_city_data(data)
 
         # CDS state level aggregates are identifiable by not having a city or county.
-        only_county = (
-            data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
-        )
+        only_county = data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
         county_hits = numpy.where(only_county, "county", None)
         only_state = (
             data[cls.Fields.COUNTY].isnull()
@@ -132,11 +121,23 @@ class CDSDataset(data_source.DataSource):
         data = dataset_utils.add_fips_using_county(data, fips_data)
 
         # ADD Negative tests
-        data[cls.Fields.NEGATIVE_TESTS] = (
-            data[cls.Fields.TESTED] - data[cls.Fields.CASES]
-        )
+        data[cls.Fields.NEGATIVE_TESTS] = data[cls.Fields.TESTED] - data[cls.Fields.CASES]
 
         # put the state column back
         data["state"] = data["state_tmp"]
 
+        return data
+
+    @classmethod
+    def remove_duplicate_city_data(cls, data):
+        # Don't want to return city data because it's duplicated in county
+        # City data before 3-23 was not duplicated.
+        # data = data[data[cls.Fields.CITY].isnull()]
+        pre_march_23 = data[data.date < "2020-03-23"]
+        pre_march_23.county = pre_march_23.apply(fill_missing_county_with_city, axis=1)
+        split_data = [
+            pre_march_23,
+            data[(data.date >= "2020-03-23") & data[cls.Fields.CITY].isnull()],
+        ]
+        data = pd.concat(split_data)
         return data

@@ -118,10 +118,9 @@ def _generate_actuals(actual_data, intervention) -> _Actuals:
             "totalCapacity": actual_data.get(CommonFields.ICU_BEDS),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_ICU),
             "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL),
-            "typicalUsageRate": actual_data.get(
-                CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
-            ),
+            "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
+        contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
     )
 
 
@@ -129,9 +128,7 @@ def _generate_actuals_timeseries(actuals_timeseries_dataset, intervention):
     actual_timeseries_api_response = []
     for row in actuals_timeseries_dataset:
         actual = _generate_actuals(row, intervention)
-        timeseries_actual = CANActualsTimeseriesRow(
-            **actual.dict(), date=row[CommonFields.DATE]
-        )
+        timeseries_actual = CANActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
         actual_timeseries_api_response.append(timeseries_actual)
     return actual_timeseries_api_response
 
@@ -294,9 +291,7 @@ def generate_api_for_county_projection_row(projection_row):
     projections = _generate_api_for_projections(projection_row)
     state_intervention = get_can_projection.get_intervention_for_state(state_abbrev)
     fips = projection_row[rc.FIPS]
-    fips_actuals = combined_datasets.build_us_latest_with_all_fields().get_record_for_fips(
-        fips
-    )
+    fips_actuals = combined_datasets.build_us_latest_with_all_fields().get_record_for_fips(fips)
 
     county_result = CovidActNowCountySummary(
         population=fips_actuals[CommonFields.POPULATION],

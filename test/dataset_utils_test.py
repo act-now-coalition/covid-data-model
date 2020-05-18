@@ -116,10 +116,7 @@ def test_fill_fields_with_data_source():
     )
 
     result = fill_fields_with_data_source(
-        existing_df,
-        new_df,
-        "fips state aggregate_level county".split(),
-        ["current_icu"],
+        existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
     )
     expected = pd.read_csv(
         StringIO(
@@ -195,10 +192,7 @@ def test_fill_fields_with_data_source_add_column():
     )
 
     result = fill_fields_with_data_source(
-        existing_df,
-        new_df,
-        "fips state aggregate_level county".split(),
-        ["current_icu"],
+        existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
     )
 
     expected = pd.read_csv(
@@ -223,10 +217,7 @@ def test_fill_fields_with_data_source_no_rows_input():
     )
 
     result = fill_fields_with_data_source(
-        existing_df,
-        new_df,
-        "fips state aggregate_level county".split(),
-        ["current_icu"],
+        existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
     )
 
     expected = pd.read_csv(
@@ -242,17 +233,11 @@ def test_fill_fields_with_data_source_no_rows_input():
 def test_fill_fields_with_data_source_empty_input():
     existing_df = pd.DataFrame()
     new_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu\n"
-            "55,ZZ,state,Grand State,64\n"
-        )
+        StringIO("fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,64\n")
     )
 
     result = fill_fields_with_data_source(
-        existing_df,
-        new_df,
-        "fips state aggregate_level county".split(),
-        ["current_icu"],
+        existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
     )
 
     expected = pd.read_csv(

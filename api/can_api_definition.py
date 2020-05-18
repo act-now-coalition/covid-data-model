@@ -3,8 +3,9 @@ import pydantic
 import datetime
 
 """
-Documented https://www.dropbox.com/scl/fi/o4bec2kz8dkcxdtabtqda/CAN-V1-API-Draft.paper?dl=0&rlkey=f7elx3zmo6tt5s7mj5nvap9a0
+CovidActNow API
 
+Documentation at https://github.com/covid-projections/covid-data-model/tree/master/api
 """
 
 
@@ -40,19 +41,15 @@ class _ResourceUtilization(pydantic.BaseModel):
             "COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07"
         ),
     )
-    totalCapacity: Optional[int] = pydantic.Field(
-        ..., description="Total capacity for resource."
-    )
+    totalCapacity: Optional[int] = pydantic.Field(..., description="Total capacity for resource.")
     currentUsageCovid: Optional[int] = pydantic.Field(
         ..., description="Currently used capacity for resource by COVID "
     )
     currentUsageTotal: Optional[int] = pydantic.Field(
-        ...,
-        description="Currently used capacity for resource by all patients (COVID + Non-COVID)",
+        ..., description="Currently used capacity for resource by all patients (COVID + Non-COVID)",
     )
     typicalUsageRate: Optional[float] = pydantic.Field(
-        ...,
-        description="Typical used capacity rate for resource. This excludes any COVID usage.",
+        ..., description="Typical used capacity rate for resource. This excludes any COVID usage.",
     )
 
 
@@ -62,9 +59,7 @@ class _Actuals(pydantic.BaseModel):
         description="Total population in geographic area [*deprecated*: refer to summary for this]",
         gt=0,
     )
-    intervention: str = pydantic.Field(
-        ..., description="Name of high-level intervention in-place"
-    )
+    intervention: str = pydantic.Field(..., description="Name of high-level intervention in-place")
     cumulativeConfirmedCases: Optional[int] = pydantic.Field(
         ..., description="Number of confirmed cases so far"
     )
@@ -74,40 +69,28 @@ class _Actuals(pydantic.BaseModel):
     cumulativeNegativeTests: Optional[int] = pydantic.Field(
         ..., description="Number of negative test results to date"
     )
-    cumulativeDeaths: Optional[int] = pydantic.Field(
-        ..., description="Number of deaths so far"
-    )
+    cumulativeDeaths: Optional[int] = pydantic.Field(..., description="Number of deaths so far")
     hospitalBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
     ICUBeds: Optional[_ResourceUtilization] = pydantic.Field(...)
+    # contactTracers count is available for states, not counties.
+    contactTracers: Optional[int] = pydantic.Field(default=None, description="# of Contact Tracers")
 
 
 class CovidActNowAreaSummary(pydantic.BaseModel):
     countryName: str = "US"
-    fips: str = pydantic.Field(
-        ..., description="Fips for State + County. Five character code"
-    )
-    lat: float = pydantic.Field(
-        ..., description="Latitude of point within the state or county"
-    )
-    long: float = pydantic.Field(
-        ..., description="Longitude of point within the state or county"
-    )
-    lastUpdatedDate: datetime.date = pydantic.Field(
-        ..., description="Date of latest data"
-    )
+    fips: str = pydantic.Field(..., description="Fips for State + County. Five character code")
+    lat: float = pydantic.Field(..., description="Latitude of point within the state or county")
+    long: float = pydantic.Field(..., description="Longitude of point within the state or county")
+    lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
     projections: Optional[_Projections] = pydantic.Field(...)
     actuals: Optional[_Actuals] = pydantic.Field(...)
-    population: int = pydantic.Field(
-        ..., description="Total Population in geographic area.", gt=0
-    )
+    population: int = pydantic.Field(..., description="Total Population in geographic area.", gt=0)
 
 
 # TODO(igor): countyName *must* be None
 class CovidActNowStateSummary(CovidActNowAreaSummary):
     stateName: str = pydantic.Field(..., description="The state name")
-    countyName: Optional[str] = pydantic.Field(
-        default=None, description="The county name"
-    )
+    countyName: Optional[str] = pydantic.Field(default=None, description="The county name")
 
 
 class CovidActNowCountySummary(CovidActNowAreaSummary):
@@ -116,15 +99,11 @@ class CovidActNowCountySummary(CovidActNowAreaSummary):
 
 
 class CANActualsTimeseriesRow(_Actuals):
-    date: datetime.date = pydantic.Field(
-        ..., descrition="Date of timeseries data point"
-    )
+    date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
 
 
 class CANPredictionTimeseriesRow(pydantic.BaseModel):
-    date: datetime.date = pydantic.Field(
-        ..., descrition="Date of timeseries data point"
-    )
+    date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
     hospitalBedsRequired: int = pydantic.Field(
         ...,
         description="Number of hospital beds projected to be in-use or that were actually in use (if in the past)",
@@ -144,14 +123,10 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     ventilatorsInUse: int = pydantic.Field(
         ..., description="Number of ventilators projected to be in-use.",
     )
-    ventilatorCapacity: int = pydantic.Field(
-        ..., description="Total ventilator capacity."
-    )
+    ventilatorCapacity: int = pydantic.Field(..., description="Total ventilator capacity.")
     RtIndicator: float = pydantic.Field(..., description="Historical or Inferred Rt")
     RtIndicatorCI90: float = pydantic.Field(..., description="Rt standard deviation")
-    cumulativeDeaths: int = pydantic.Field(
-        ..., description="Number of cumulative deaths"
-    )
+    cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
     cumulativeInfected: Optional[int] = pydantic.Field(
         ..., description="Number of cumulative infections"
     )
@@ -167,21 +142,11 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
     countryName: str = "US"
     stateName: str = pydantic.Field(..., description="The state name")
     countyName: Optional[str] = pydantic.Field(..., description="The county name")
-    intervention: str = pydantic.Field(
-        ..., description="Name of high-level intervention in-place"
-    )
-    fips: str = pydantic.Field(
-        ..., description="Fips for State + County. Five character code"
-    )
-    lat: float = pydantic.Field(
-        ..., description="Latitude of point within the state or county"
-    )
-    long: float = pydantic.Field(
-        ..., description="Longitude of point within the state or county"
-    )
-    lastUpdatedDate: datetime.date = pydantic.Field(
-        ..., description="Date of latest data"
-    )
+    intervention: str = pydantic.Field(..., description="Name of high-level intervention in-place")
+    fips: str = pydantic.Field(..., description="Fips for State + County. Five character code")
+    lat: float = pydantic.Field(..., description="Latitude of point within the state or county")
+    long: float = pydantic.Field(..., description="Longitude of point within the state or county")
+    lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):
@@ -209,8 +174,7 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
         if len(rows) != dates_in_row:
 
             raise ValueError(
-                "Number of rows does not match number of dates: "
-                f"{len(rows)} vs. {dates_in_row}"
+                "Number of rows does not match number of dates: " f"{len(rows)} vs. {dates_in_row}"
             )
 
         return rows
@@ -239,7 +203,3 @@ class CovidActNowCountiesSummary(pydantic.BaseModel):
 
 class CovidActNowCountiesTimeseries(pydantic.BaseModel):
     __root__: List[CovidActNowCountyTimeseries] = pydantic.Field(...)
-
-
-class CountyFipsSummary(pydantic.BaseModel):
-    counties_with_data: List[str] = pydantic.Field(...)

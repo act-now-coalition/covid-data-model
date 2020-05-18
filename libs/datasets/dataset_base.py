@@ -13,9 +13,7 @@ class DatasetBase(object):
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
-    def get_subset(
-        self, aggregation_level: AggregationLevel, **filters
-    ) -> "DatasetBase":
+    def get_subset(self, aggregation_level: AggregationLevel, **filters) -> "DatasetBase":
         """Returns a subset of the existing dataset."""
         raise NotImplementedError("Subsclass must implement")
 
