@@ -3,12 +3,10 @@
 *Objective:* Provide library that ingests CAN's cached NYT data from the current prod site and the current NYT dataset and compares.
 
 ## Running QA
-`get_data.sh` and `get_hash.py` together grab the cached data from the current prod site and the current NYT data and store in the data folder. There are extra settings where you can grab data from a specific covid-data-public git commit as well.
+`check_nyt_raw_data.py `will compare the locally cached version of `us-counties.csv` that is locally cached in `/covid-data-public/data/nyt-cases/`, the latest from NYT, and what is currently being used on the production site. Only areas in the production and latest NYT datasets that meet the abnormality requirements will be plotted. For the case and death data stored in both the prod and latest datasets, datasets are considered abnormal if there are `args.n_days_over_thres` where the datasets differ by at least 10% (`args.percent_threshold`). For the additional days in the latest NYT dataset (not present in the prod dataset) are considered abnormal, if for those days data the percent different between that day and the previous day is greater than `args.new_day_percent_thres`, which is by default set to 1.2. All of these settings may be changed.
 
-`check_nyt_raw_data.py `will compare up to three NYT us-counties.csv files. Only areas that meet the abnormality requirements will be plotted. Currently, it is required that there are `args.n_days_over_thres` where the datasets differ by at least 10% (`args.percent_threshold`) for old data, and the new data must be greater than `args.new_day_percent_thres`, which is by default set to 1.2. All of these setting may be changed.
+The outputs will be sorted by if the area was abnormal due to historical data changes, new data changes, or both and will be put in the `args.output_dir` folder. All areas where the historical data changes will also produce metadata plots in the `args.output_dir` folder. The csvs used will also be stored in that folder for further investigation if needed.  
 
-The outputs will be sorted by if the area was abnormal due to historical data changes, new data changes, or both and will be put in the `args.output_dir` folder. All areas where the historical data changes will also produce metadata plots in the `args.output_dir` folder. 
-
-Run `run.sh` to download the data and process it.
-
+To run:
+`python check_nyt_raw_data.py`
 Happy hunting for anomalies!
