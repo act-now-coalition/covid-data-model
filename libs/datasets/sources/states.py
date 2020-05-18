@@ -1,14 +1,8 @@
 from pathlib import Path
 from typing import List
-
 import pandas as pd
-from pydantic.dataclasses import dataclass
-from pydantic.types import FilePath
-
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 
@@ -40,7 +34,7 @@ class StatesData(data_source.DataSource):
     }
 
     @staticmethod
-    def _load_dataframe(input_files: List[FilePath]) -> pd.DataFrame:
+    def _load_dataframe(input_files: List[Path]) -> pd.DataFrame:
         # Consider factoring out with jhu_dataset.JHUDataset.__init__
         loaded_df = []
         for input_filename in input_files:
