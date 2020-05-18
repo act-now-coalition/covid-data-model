@@ -18,7 +18,7 @@ Target_loc: some states
 time_horizon: ~
 Data_format: all requested quantiles
 forecast_startdate: $forecast_startdate
-forecast_frequency: weekly
+forecast_frequency: daily and weekly
 
 data_inputs_known: expert elicitation and literature review
 data_source_known: NYTimes for case and death data
@@ -32,5 +32,4 @@ methods: >-
 
 methods_long: >-
     The SEIR Model makes forecast of $Model_target_names by fitting predicted cases, deaths, and hospitalizations to
-    the observations. Quantiles of the forecast are derived by combining model parameters' prior distribution and
-    chi squares of fitting the SEIR models to the observations.
+    the observations. Quantiles of the forecast are derived from forecast error (comparing latest observation and corresponding forecast) rescaled based on days forward of forecast. 
