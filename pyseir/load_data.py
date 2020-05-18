@@ -339,7 +339,7 @@ def get_all_fips_codes_for_a_state(state: str):
 
 
 @lru_cache(maxsize=32)
-def load_new_case_data_by_fips(fips, t0):
+def load_new_case_data_by_fips(fips, t0, include_testing_correction):
     """
     Get data for new cases.
 
@@ -365,6 +365,11 @@ def load_new_case_data_by_fips(fips, t0):
     observed_new_cases = (
         county_case_data["cases"].values[1:] - county_case_data["cases"].values[:-1]
     )
+
+    if include_testing_correction:
+        positivity_rate = load_new_test_data_by_fips()
+        dPdT = 0.65 * positivity_rate
+
     observed_new_deaths = (
         county_case_data["deaths"].values[1:] - county_case_data["deaths"].values[:-1]
     )
