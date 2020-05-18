@@ -8,6 +8,8 @@ import argparse
 import pdb
 import os
 import shutil
+import requests
+import io
 
 
 def aggregate_df(df, args):
@@ -69,8 +71,8 @@ def get_compare_metrics(df1, df2, var):
         z_scores.append(z_score)
         diff.append(p_diff)
         number_of_days_percent_threshold = sum(i > args.percent_threshold for i in diff)
-        average_Z = round(average(z_scores), 2)
-        latest_Z = round(average(z_scores[: -args.n_days_z_score_mean]), 2)
+        average_Z = round(np.mean(z_scores), 2)
+        latest_Z = round(np.mean(z_scores[: -args.n_days_z_score_mean]), 2)
     return diff, z_scores, average_Z, latest_Z, number_of_days_percent_threshold
 
 
@@ -309,6 +311,46 @@ def check_new_data(df1, df2, args, var):
     return new_data.tail(len(new_data.index) - 1), p_diffs, z_scores
 
 
+def get_production_hash():
+    prod_snapshot_version = (
+        requests.get(
+            "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/data_url.json"
+        )
+        .json()["data_url"]
+        .split("/")[-2]
+    )
+    master_hash = requests.get(
+        f"https://data.covidactnow.org/snapshot/{prod_snapshot_version}/version.json"
+    ).json()["covid-data-public"]["hash"]
+    return master_hash
+
+
+def get_df_from_url_hash(thishash, basepath, filepath, args, name):
+    this_file = requests.get(f"{BASE_PATH}/{thishash}/{filepath}").content
+    this_df = pd.read_csv(io.StringIO(this_file.decode("utf-8")), parse_dates=[args.date_name])
+    this_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/{name}.csv")
+    return this_df
+
+
+def get_df_from_url(url, args, name):
+    this_file = requests.get(url).content
+    this_df = pd.read_csv(io.StringIO(this_file.decode("utf-8")), parse_dates=[args.date_name])
+    this_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/{name}.csv")
+    return this_df
+
+
+def make_outputdirs(args):
+    # remove output directory if it exists
+    if os.path.exists(args.output_dir):
+        shutil.rmtree(args.output_dir)
+    os.makedirs(args.output_dir)
+    os.makedirs(args.output_dir + "/" + args.new_data_abnormal_folder)
+    os.makedirs(args.output_dir + "/" + args.old_data_abnormal_folder)
+    os.makedirs(args.output_dir + "/" + args.new_and_old_data_abnormal_folder)
+    os.makedirs(args.output_dir + "/" + args.output_data_dir)
+    return
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="arg parser for process.py")
     parser.add_argument(
@@ -426,25 +468,42 @@ if __name__ == "__main__":
     args.new_data_abnormal_folder = "new_data_abnormal"
     args.old_data_abnormal_folder = "old_data_abnormal"
     args.new_and_old_data_abnormal_folder = "new_and_old_data_abnormal"
-    # remove previous output directory if it exists
-    if os.path.exists(args.output_dir):
-        shutil.rmtree(args.output_dir)
-    os.makedirs(args.output_dir)
-    os.makedirs(args.output_dir + "/" + args.new_data_abnormal_folder)
-    os.makedirs(args.output_dir + "/" + args.old_data_abnormal_folder)
-    os.makedirs(args.output_dir + "/" + args.new_and_old_data_abnormal_folder)
+    args.output_data_dir = "data"
 
-    OLD_CAN_DATA = "data/us-counties-old.csv"  # This will be used as the reference dataset which is compared to NEW_CAN_DATA and LATEST_NYT_DATA datasets
-    NEW_CAN_DATA = "data/us-counties-new.csv"
-    LATEST_NYT_DATA = "data/us-counties-latest.csv"
-    LATEST_NYT_STATE_DATA = "data/us-states-latest.csv"
+    # Make output dirs
+    make_outputdirs(args)
+
+    # Get Data
+    BASE_PATH = "https://raw.githubusercontent.com/covid-projections/covid-data-public/"
+    COUNTY_CSV_PATH = "data/cases-nytimes/us-counties.csv"
+    NYT_PATH = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+
+    # Get Current Prod Data
+    master_hash = get_production_hash()
+    prod_df = get_df_from_url_hash(master_hash, BASE_PATH, COUNTY_CSV_PATH, args, "prod")
+
+    # Get Current local cache being used
+    current_df = pd.read_csv(
+        "../covid-data-public/data/cases-nytimes/us-counties.csv", parse_dates=[args.date_name]
+    )
+    current_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/current_cache.csv")
+
+    # Get Latest NYT
+    latest_nyt_df = get_df_from_url(NYT_PATH, args, "nyt_latest")
+
+    print(prod_df)
+    print(current_df)
+    print(latest_nyt_df)
+    # OLD_CAN_DATA = "data/us-counties-old.csv" #This will be used as the reference dataset which is compared to NEW_CAN_DATA and LATEST_NYT_DATA datasets
+    # NEW_CAN_DATA = "data/us-counties-new.csv"
+    # LATEST_NYT_DATA = "data/us-counties-latest.csv"
+    # LATEST_NYT_STATE_DATA = "data/us-states-latest.csv"
     variables = ["cases", "deaths", "new_cases", "new_deaths"]
 
     # Get all states in input dataset if user asks for all states
     if "All" in args.states:
         # could add start and end date here Natasha
-        df1 = pd.read_csv(OLD_CAN_DATA)
-        args.states = df1["state"].unique()
+        args.states = latest_nyt_df["state"].unique()
 
     # Iterate thru states
     for var in variables:
@@ -458,27 +517,28 @@ if __name__ == "__main__":
         ) = ([], [], [], [], [], [])
         for state in args.states:
             # Grab Data To Compare from CAN Data Caches
-            df1 = get_state(pd.read_csv(OLD_CAN_DATA, parse_dates=[args.date_name]), state, args)
-            df2 = get_state(pd.read_csv(NEW_CAN_DATA, parse_dates=[args.date_name]), state, args)
-            df1_name = "CAN LAST PROD"
-            df2_name = "CAN CURRENT"
-
-            # Grab Latest Data directly from NYT
-            df3 = get_state(pd.read_csv(LATEST_NYT_DATA, parse_dates=[args.date_name]), state, args)
-            df3_state = get_state(
-                pd.read_csv(LATEST_NYT_STATE_DATA, parse_dates=[args.date_name]), state, args
-            )
-            df3_name = get_current_day()
-            df3_name = "NYT LATEST"
+            this_prod_df = get_state(prod_df, state, args)
+            this_local_df = get_state(current_df, state, args)
+            this_latest_nyt_df = get_state(latest_nyt_df, state, args)
+            prod_name = "CAN PROD"
+            local_name = "CAN LOCAL CACHE"
+            latest_nyt_name = "NYT LATEST"
 
             # Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
-            df1_ag = aggregate_df(df1, args)
-            df2_ag = aggregate_df(df2, args)
-            df3_ag = aggregate_df(df3, args)
-            df3_state_ag = aggregate_df(df3_state, args)
+            prod_ag = aggregate_df(this_prod_df, args)
+            local_ag = aggregate_df(this_local_df, args)
+            latest_ag = aggregate_df(this_latest_nyt_df, args)
 
             avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest, abnormal = compare_data(
-                var, df1_ag, df2_ag, df3_ag, df1_name, df2_name, df3_name, args, state
+                var,
+                prod_ag,
+                local_ag,
+                latest_ag,
+                prod_name,
+                local_name,
+                latest_nyt_name,
+                args,
+                state,
             )
 
             if abnormal:
