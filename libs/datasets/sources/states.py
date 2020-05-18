@@ -35,6 +35,7 @@ class StatesData(data_source.DataSource):
             CommonFields.CURRENT_ICU_TOTAL,
             CommonFields.CURRENT_VENTILATED,
             CommonFields.CURRENT_ICU,
+            CommonFields.VENTILATOR_CAPACITY,
         ]
     }
 
