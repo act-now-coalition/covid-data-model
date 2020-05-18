@@ -9,7 +9,6 @@ from scipy import signal
 from matplotlib import pyplot as plt
 import us
 from pyseir import load_data
-from libs import build_processed_dataset as test_data
 from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
@@ -51,7 +50,6 @@ class RtInferenceEngine:
     min_deaths: int
         Minimum number of deaths required to run death level inference.
     """
-
     def __init__(
         self,
         fips,
@@ -548,6 +546,28 @@ class RtInferenceEngine:
             # plt.close()
 
         return df_all
+
+    @staticmethod
+    def ewma_smoothing(series, tau=5):
+        """
+        Exponentially weighted moving average of a series.
+
+        Parameters
+        ----------
+        series: array-like
+            Series to convolve.
+        tau: float
+            Decay factor.
+
+        Returns
+        -------
+        smoothed: array-like
+            Smoothed series.
+        """
+        exp_window = signal.exponential(2 * tau, 0, tau, False)[::-1]
+        exp_window /= exp_window.sum()
+        smoothed = signal.convolve(series, exp_window, mode='same')
+        return smoothed
 
     @staticmethod
     def align_time_series(series_a, series_b):
