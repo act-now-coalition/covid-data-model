@@ -33,7 +33,7 @@ formatter = logging.Formatter(
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
-nyt_dataset = None
+jhu_dataset = None
 cds_dataset = None
 
 DEFAULT_RUN_MODE = "can-inference-derived"
@@ -47,11 +47,11 @@ def _cache_global_datasets():
     combined_datasets.build_us_latest_with_all_fields()
     combined_datasets.build_us_timeseries_with_all_fields()
 
-    global nyt_dataset, cds_dataset
+    global jhu_dataset, cds_dataset
     if cds_dataset is None:
         cds_dataset = CDSDataset.local()
-    if nyt_dataset is None:
-        nyt_dataset = JHUDataset.local()
+    if jhu_dataset is None:
+        jhu_dataset = JHUDataset.local()
 
 
 @click.group()
@@ -128,7 +128,7 @@ def _map_outputs(
             state,
             output_interval_days=output_interval_days,
             run_mode=run_mode,
-            jhu_dataset=nyt_dataset,
+            jhu_dataset=jhu_dataset,
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
@@ -157,7 +157,7 @@ def _state_only_pipeline(
     _run_ensembles(
         state,
         ensemble_kwargs=dict(
-            run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
+            run_mode=run_mode, generate_report=generate_reports, covid_timeseries=jhu_dataset,
         ),
         states_only=states_only,
     )
@@ -247,7 +247,7 @@ def _build_all_for_states(
             state,
             output_interval_days=output_interval_days,
             run_mode=run_mode,
-            jhu_dataset=nyt_dataset,
+            jhu_dataset=jhu_dataset,
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
