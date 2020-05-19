@@ -4,6 +4,8 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from datetime import datetime
 import calendar, argparse, pdb, os, shutil, requests, io, zipfile
+from subprocess import Popen, PIPE
+import subprocess
 
 
 def aggregate_df(df, args):
@@ -63,7 +65,6 @@ def get_compare_metrics(df1, df2, var):
         var1 = df1[var].iloc[i]
         var2 = df2[var].iloc[i]
         p_diff, z_score = get_p_diff_z_score(var1, var2)
-
         z_scores.append(z_score)
         diff.append(p_diff)
     number_of_days_percent_threshold = sum(i > args.percent_threshold for i in diff)
@@ -221,11 +222,22 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
             args.output_dir + "/" + output_path + "/" + state + "_" + var + "_compare.pdf",
             bbox_inches="tight",
         )
-        print("MADE PLOT")
         plt.close("all")
-        return avg_z2, latest_avg_z2, days_over_z2, rmse2, rmse3, historical_data_disagree
+        print(new_p_diffs)
+        print(np.mean(new_p_diffs))
+        return (
+            avg_z2,
+            latest_avg_z2,
+            days_over_z2,
+            rmse2,
+            rmse3,
+            historical_data_disagree,
+            new_data_days_abnormal,
+            round(np.mean(new_p_diffs), 2),
+        )
+
     else:
-        return 0, 0, 0, 0, 0, False
+        return 0, 0, 0, 0, 0, False, False, 0
 
 
 def compare_county_state_plot(var, df1, df2, df1_name, df2_name, args, state):
@@ -357,6 +369,14 @@ def zipdir(path, ziph):
             ziph.write(os.path.join(root, file))
 
 
+def get_latest_hash(REPO_PATH):
+    result = str(subprocess.check_output(["git", "ls-remote", REPO_PATH, "|", "grep", "HEAD"]))
+    first_index = result.find("'") + 1
+    last_index = result.find("\\")
+    result = result[first_index:last_index]
+    return
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="arg parser for process.py")
     parser.add_argument(
@@ -477,6 +497,14 @@ if __name__ == "__main__":
         default="../../covid-data-public",
         help="directory of covid-data-public",
     )
+    parser.add_argument(
+        "-data_source",
+        "--data_source",
+        type=str,
+        dest="data_source",
+        default="NYT",
+        help="input data source (e.g. NYT/JHU)",
+    )
     args = parser.parse_args()
 
     args.new_data_abnormal_folder = "new_data_abnormal"
@@ -488,10 +516,19 @@ if __name__ == "__main__":
     print("covid data public dir")
     print(args.covid_data_public_dir)
     make_outputdirs(args)
+    output_report = open(args.output_dir + "/outputreport.txt", "w+")
 
     # Get Data
+    COVID_DATA_PUBLIC_PATH = "https://github.com/covid-projections/covid-data-public"
     BASE_PATH = "https://raw.githubusercontent.com/covid-projections/covid-data-public/"
-    COUNTY_CSV_PATH = "data/cases-nytimes/us-counties.csv"
+    latest_hash = get_latest_hash(COVID_DATA_PUBLIC_PATH)
+    exit()
+
+    if args.data_source == "NYT":
+        COUNTY_CSV_PATH = "data/cases-nytimes/us-counties.csv"
+    else:
+        # Code globbing JHU dataset
+        print("add this next")
     NYT_PATH = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
 
     # Get Current Prod Data
@@ -550,7 +587,16 @@ if __name__ == "__main__":
                 state,
             )
             """
-            avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest, abnormal = compare_data(
+            (
+                avg_z,
+                latest_avg_z,
+                days_over_z,
+                rmse_new,
+                rmse_latest,
+                abnormal_old,
+                abnormal_new,
+                average_new_p_diff,
+            ) = compare_data(
                 var,
                 prod_ag,
                 local_ag,
@@ -561,14 +607,31 @@ if __name__ == "__main__":
                 args,
                 state,
             )
-            if abnormal:
-                print("abnormal result")
+
+            if abnormal_old:
                 z_avg_list.append(avg_z)
                 z_latest_avg_list.append(latest_avg_z)
                 days_over_thres_list.append(days_over_z)
                 states_list.append(state)
                 rmse_new_list.append(rmse_new)
                 rmse_latest_list.append(rmse_latest)
+                output_report.write(
+                    state
+                    + "'s "
+                    + var
+                    + " current and prod past data disagree (RMSE: "
+                    + str(rmse_new)
+                    + ") \n"
+                )
+            if abnormal_new:
+                output_report.write(
+                    state
+                    + "'s "
+                    + var
+                    + " latest data is on average "
+                    + str(average_new_p_diff)
+                    + "% different \n"
+                )
 
         # Create meta-compare charts for all abnormal areas
         states_list = list(dict.fromkeys(states_list))
@@ -585,8 +648,10 @@ if __name__ == "__main__":
             var,
         )
 
-        # zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
-        # zipdir("./output", zipf)
-        # zipf.close()
+    output_report.close()
 
-        # compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
+    # zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
+    # zipdir("./output", zipf)
+    # zipf.close()
+
+    # compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
