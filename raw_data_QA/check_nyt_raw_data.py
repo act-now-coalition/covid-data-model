@@ -371,7 +371,7 @@ if __name__ == "__main__":
         "--states",
         nargs="+",
         dest="states",
-        default=["All"],
+        default=["Wyoming"],
         help="name of state to process",
     )
     parser.add_argument(
@@ -484,6 +484,8 @@ if __name__ == "__main__":
     args.output_data_dir = "data"
 
     # Make output dirs
+    print("covid data public dir")
+    print(args.covid_data_public_dir)
     make_outputdirs(args)
 
     # Get Data
@@ -581,8 +583,8 @@ if __name__ == "__main__":
             var,
         )
 
-        zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
-        zipdir("./output", zipf)
-        zipf.close()
+        # zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
+        # zipdir("./output", zipf)
+        # zipf.close()
 
         # compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)

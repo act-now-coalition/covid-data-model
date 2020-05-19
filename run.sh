@@ -60,7 +60,8 @@ execute_raw_data_qa() {
   echo "Here"
   echo "$0"
   cd "$(dirname "$0")"
-  python raw_data_QA/check_nyt_raw_data.py --output_dir="${API_OUTPUT_DIR}"
+  python raw_data_QA/check_nyt_raw_data.py --output_dir="${API_OUTPUT_DIR}" --covid_data_public_dir="${DATA_SOURCES_DIR}"
+  echo "done with execute_raw_data_qa"
 }
 
 execute_model() {
