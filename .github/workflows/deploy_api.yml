@@ -78,7 +78,7 @@ jobs:
     #     mkdir -p /data/api-results-${{env.SNAPSHOT_ID}}
     #     touch /data/api-results-${{env.SNAPSHOT_ID}}/deleteme
     - name: Run Raw Data QA (run.sh .. .. execute_raw_data_qa)
-      run: ./covid-data-model/run.sh ./covid-data-public/ /data/apiresults execute_raw_data_qa
+      run: ./covid-data-model/run.sh ./covid-data-public/ /data/api-results-${{env.SNAPSHOT_ID}} execute_raw_data_qa
     #- name: Build Model Results (run.sh .. .. execute_model)
     #  run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
