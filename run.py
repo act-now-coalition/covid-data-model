@@ -18,9 +18,11 @@ from cli import api
 
 
 @click.group()
-def entry_point():
+@click.pass_context
+def entry_point(ctx):
     """Entry point for covid-data-model CLI."""
-    pass
+    with sentry_sdk.configure_scope() as scope:
+        scope.set_tag("command", ctx.invoked_subcommand)
 
 
 # adding the QA command
@@ -33,6 +35,7 @@ entry_point.add_command(api.main)
 
 if __name__ == "__main__":
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
+
     logging.basicConfig(level=logging.INFO)
     pandarallel.initialize(progress_bar=False)
     try:

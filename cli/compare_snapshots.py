@@ -8,14 +8,9 @@ from libs.us_state_abbrev import US_STATE_ABBREV
 
 
 def _get_state_data(snapshot1, snapshot2, state_abbrev, intervention):
-    # counties_url_1 = f'https://data.covidactnow.org/snapshot/{snapshot1}/us/counties.{intervention}.timeseries.json'
-    # counties_url_2= f'https://data.covidactnow.org/snapshot/{snapshot2}/us/counties.{intervention}.timeseries.json'
-
     states_url_1 = f"https://data.covidactnow.org/snapshot/{snapshot1}/us/states/{state_abbrev}.{intervention}.timeseries.json"
     states_url_2 = f"https://data.covidactnow.org/snapshot/{snapshot2}/us/states/{state_abbrev}.{intervention}.timeseries.json"
 
-    # counties_json_1 = requests.get(counties_url_1).json()
-    # counties_json_2 = requests.get(counties_url_2).json()
     try:
         states_json_1 = requests.get(states_url_1).json()
         states_json_2 = requests.get(states_url_2).json()
@@ -51,6 +46,7 @@ def _get_state_data(snapshot1, snapshot2, state_abbrev, intervention):
 def compare_snapshots(snapshot1, snapshot2, state, fips, intervention):
     states = [state] if state else US_STATE_ABBREV.values()
     results = []
+    report = []
 
     for state_abbrev in states:
         if not intervention:
@@ -66,11 +62,14 @@ def compare_snapshots(snapshot1, snapshot2, state, fips, intervention):
                 snapshot1, snapshot2, api1, api2, state_abbrev, intervention.name, fips
             )
             state_results = comparitor.compareMetrics()
-            results.extend(state_results)
+            if state_results:
+                report.append(comparitor.generate_report())
+                results.extend(state_results)
             print(f"Adding {state_abbrev} {len(state_results)} to results")
-    if not len(results):
-        return "No difference above thresholds found"
 
+    if not len(results):
+        return f"Applied dif from {snapshot1} to {snapshot2}, no difference above thresholds found"
     dataset_deployer.write_nested_csv(
         Comparitor.dict_results(sorted(results, reverse=True)), "compared", "output/"
     )
+    return f"Applied dif from {snapshot1} to {snapshot2}. Found the following: {report}"

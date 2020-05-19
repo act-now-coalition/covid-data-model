@@ -25,6 +25,9 @@ class QAMetric(ABC):
     @property
     @abstractmethod
     def threshold(self):
+        """ Can be either a percent or a raw value cutoff. If it's a raw cut off we
+        need to overwrite the method isAboveThreshold to handle correctly
+        """
         pass
 
     @classmethod
