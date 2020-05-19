@@ -221,6 +221,7 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
             args.output_dir + "/" + output_path + "/" + state + "_" + var + "_compare.pdf",
             bbox_inches="tight",
         )
+        print("MADE PLOT")
         plt.close("all")
         return avg_z2, latest_avg_z2, days_over_z2, rmse2, rmse3, historical_data_disagree
     else:
