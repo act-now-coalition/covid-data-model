@@ -4,6 +4,7 @@ import pandas as pd
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
+from libs.datasets.sources.states import StatesData
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
@@ -39,11 +40,15 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData, StatesData],
+    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData, StatesData],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
-    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_VENTILATED: [
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        StatesData,
+    ],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
@@ -62,11 +67,15 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData, StatesData],
+    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData, StatesData],
     CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_VENTILATED: [
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        StatesData,
+    ],
     CommonFields.STAFFED_BEDS: [],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],

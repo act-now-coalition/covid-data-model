@@ -13,8 +13,11 @@ class DataSource(object):
     class Fields(object):
         pass
 
+    # A map from column names in the source data to common field names. The keys of this map
+    # must match the keys of TimeseriesDataset.INDEX_FIELDS or LatestValuesDataset.INDEX_FIELDS.
     INDEX_FIELD_MAP = None
 
+    # A map from column names in the source data to common field names.
     COMMON_FIELD_MAP = None
 
     # Name of dataset source
