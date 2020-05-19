@@ -8,6 +8,7 @@ set -o errexit
 
 # Checks command-line arguments, sets variables, etc.
 prepare () {
+  echo "in prepare"
   # Parse args if specified.
   if [ $# -lt 2 ] || [ $# -gt 3 ]; then
     echo "Usage: $0 [covid-data-public directory] [output-directory] (optional - specific function)"
@@ -52,6 +53,14 @@ prepare () {
   COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
   CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
 
+}
+
+execute_raw_data_qa() {
+  # Go to repo root (where run.sh lives).
+  echo "Here"
+  echo "$0"
+  cd "$(dirname "$0")"
+  python raw_data_QA/check_nyt_raw_data.py --output_dir="${API_OUTPUT_DIR}"
 }
 
 execute_model() {
@@ -217,10 +226,15 @@ case $EXECUTE_FUNC in
     echo "Executing Api"
     execute_api
     ;;
+  execute_raw_data_qa)
+    echo "Executing Raw Data QA"
+    execute_raw_data_qa
+    ;;
   execute_zip_folder)
     echo "Executing Api"
     execute_zip_folder
     ;;
+
   execute)
     echo "Executing Entire Pipeline"
     execute

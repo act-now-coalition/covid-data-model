@@ -468,6 +468,14 @@ if __name__ == "__main__":
         default=1.2,
         help="percent change threshold for new days to trigger on",
     )
+    parser.add_argument(
+        "-covid_data_public_dir",
+        "--covid_data_public_dir",
+        type=str,
+        dest="covid_data_public_dir",
+        default="../../covid-data-public",
+        help="directory of covid-data-public",
+    )
     args = parser.parse_args()
 
     args.new_data_abnormal_folder = "new_data_abnormal"
@@ -488,9 +496,8 @@ if __name__ == "__main__":
     prod_df = get_df_from_url_hash(master_hash, BASE_PATH, COUNTY_CSV_PATH, args, "prod")
 
     # Get Current local cache being used
-    current_df = pd.read_csv(
-        "../../covid-data-public/data/cases-nytimes/us-counties.csv", parse_dates=[args.date_name]
-    )
+    current_cached_file = args.covid_data_public_dir + "/data/cases-nytimes/us-counties.csv"
+    current_df = pd.read_csv(current_cached_file, parse_dates=[args.date_name])
     current_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/current_cache.csv")
 
     # Get Latest NYT
