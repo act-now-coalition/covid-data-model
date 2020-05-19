@@ -372,7 +372,7 @@ if __name__ == "__main__":
         "--states",
         nargs="+",
         dest="states",
-        default=["Wyoming"],
+        default=["All"],
         help="name of state to process",
     )
     parser.add_argument(
@@ -537,6 +537,7 @@ if __name__ == "__main__":
             prod_ag = aggregate_df(this_prod_df, args)
             local_ag = aggregate_df(this_local_df, args)
             latest_ag = aggregate_df(this_latest_nyt_df, args)
+            """
             avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest, abnormal = compare_data(
                 var,
                 local_ag,
@@ -560,8 +561,8 @@ if __name__ == "__main__":
                 args,
                 state,
             )
-            """
             if abnormal:
+                print("abnormal result")
                 z_avg_list.append(avg_z)
                 z_latest_avg_list.append(latest_avg_z)
                 days_over_thres_list.append(days_over_z)
