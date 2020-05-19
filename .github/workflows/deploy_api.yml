@@ -86,6 +86,11 @@ jobs:
       with:
         name: model-results-${{env.SNAPSHOT_ID}}
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
+    - name: Upload Raw Data QA
+      uses: actions/upload-artifact@v2-preview
+      with:
+        name: raw_data_QA-${{env.SNAPSHOT_ID}}
+        path: /raw_data_QA/output/raw_data_QA.zip
 
   execute-api:
     runs-on: self-hosted

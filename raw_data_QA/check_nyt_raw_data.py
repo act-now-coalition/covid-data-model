@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import mean_squared_error
 from datetime import datetime
-import calendar, argparse, pdb, os, shutil, requests, io
+import calendar, argparse, pdb, os, shutil, requests, io, zipfile
 
 
 def aggregate_df(df, args):
@@ -349,6 +349,13 @@ def make_outputdirs(args):
     return
 
 
+def zipdir(path, ziph):
+    # ziph is zipfile handle
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            ziph.write(os.path.join(root, file))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="arg parser for process.py")
     parser.add_argument(
@@ -520,7 +527,6 @@ if __name__ == "__main__":
             prod_ag = aggregate_df(this_prod_df, args)
             local_ag = aggregate_df(this_local_df, args)
             latest_ag = aggregate_df(this_latest_nyt_df, args)
-            """ I am leaving this here for easy testing
             avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest, abnormal = compare_data(
                 var,
                 local_ag,
@@ -544,7 +550,7 @@ if __name__ == "__main__":
                 args,
                 state,
             )
-
+            """
             if abnormal:
                 z_avg_list.append(avg_z)
                 z_latest_avg_list.append(latest_avg_z)
@@ -567,5 +573,9 @@ if __name__ == "__main__":
             "z_latest",
             var,
         )
+
+        zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
+        zipdir("./output", zipf)
+        zipf.close()
 
         # compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
