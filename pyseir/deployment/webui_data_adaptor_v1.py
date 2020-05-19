@@ -245,6 +245,7 @@ class WebUIDataAdaptorV1:
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
             except (ValueError, KeyError) as e:
+                logging.warning(f"Clearing Rt in output for fips {fips}", exc_info=e)
                 output_model[schema.RT_INDICATOR] = "NaN"
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
