@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from enum import Enum
-from load_data import load_population_size, load_Rt, load_projection
+from pyseir.testing.load_data import load_population_size, load_Rt, load_projection
 from sklearn.model_selection import ParameterGrid
 from datetime import datetime, date
 
@@ -55,8 +55,10 @@ class TestStrategySimulator:
                  relative_contact_rate=1,
                  frac_contact_active=1,
                  min_num_case_outbreak=MIN_NUM_CASE_OUTBREAK,
-                 pcr_max_availability=100,
-                 antibody_max_availability=500
+                 pcr_max_availability_per_month=100,
+                 antibody_max_availability_per_month=500,
+                 max_test_cost_per_month=50000,
+                 num_days_aggregate = 30
                  ):
         self.fips = fips
         self.date = date
@@ -69,17 +71,21 @@ class TestStrategySimulator:
         self.pcr_cost = pcr_cost
         self.pcr_coverage = pcr_coverage
         self.pcr_frequency = pcr_frequency
-        self.pcr_max_availability = pcr_max_availability
+        self.pcr_max_availability_per_month = pcr_max_availability_per_month
 
         self.antibody_cost = antibody_cost
         self.antibody_sensitivity = antibody_sensitivity
         self.antibody_coverage = antibody_coverage
-        self.antibody_max_availability = antibody_max_availability
+        self.antibody_max_availability_per_month = antibody_max_availability_per_month
         self.antibody_false_positivity = antibody_false_positivity
 
         self.allocation = Allocation(allocation)
         self.frac_contact_active = frac_contact_active
         self.min_num_case_outbreak = min_num_case_outbreak
+
+        self.max_test_cost_per_month = max_test_cost_per_month
+
+        self.num_days_aggregate = num_days_aggregate
 
         self.results = None
 
@@ -105,6 +111,20 @@ class TestStrategySimulator:
         results['prevented_secondary_transmission'] = \
             self.N * self.Rt.loc[self.date] * results['delta_p_infected'] * self.relative_contact_rate / 2
         results['prevented_secondary_transmission'] *= (1 + results['delta_immunity'])
-        results['test_cost'] = self.N * self.pcr_coverage * self.pcr_cost * results[''] \
-                             + self.N * self.antibody_coverage * self.antibody_cost
+        results['test_cost_pcr'] = self.N * self.pcr_coverage * self.pcr_cost
+        results['test_cost_ab'] = self.N * self.antibody_coverage * self.antibody_costs
+        results['test_cost'] = results['test_cost_pcr'] * results['pcr_frequency'] * self.num_days_aggregate \
+                             + results['test_cost_ab'] * results['ab_frequency'] * self.num_days_aggregate
+
+        under_pcr_max_capacity = self.N * results['pcr_coverage'] * results['pcr_frequency'] * 30 \
+                                 <= self.pcr_max_availability_per_month
+        under_ab_max_capacity = self.N * results['ab_coverage'] * results['ab_frequency'] * 30 \
+                                 <= self.ab_max_availability_per_month
+        under_max_test_cost = results['test_cost'] * 30 / self.num_days_aggregate <= self.max_test_cost_per_month
+
+        self.results = results[under_pcr_max_capacity & under_ab_max_capacity & under_max_test_cost]
+
+        return self.results
+
+
 
