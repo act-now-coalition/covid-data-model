@@ -43,14 +43,21 @@ jobs:
   raw-data-qa:
     runs-on: self-hosted
     steps:
-    - name: Retrieve covid data model repo
+    - name: Checkout covid-data-model
       uses: actions/checkout@v2
       with:
         repository: covid-projections/covid-data-model
         path: covid-data-model
         ref: '${{env.COVID_DATA_MODEL_REF}}'
+    - name: Checkout covid-data-public
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-public
+        path: covid-data-public
+        lfs: true
+        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
     - name: run raw data QA
-      run: python raw_data_QA/check_nyt_raw_data.py
+      run: python ./covid-data-model/raw_data_QA/check_nyt_raw_data.py
     - name: upload raw data QA results zipfile
       uses: actions/upload-artifact@v2-preview
       with:
