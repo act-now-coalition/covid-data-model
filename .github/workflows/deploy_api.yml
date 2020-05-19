@@ -56,6 +56,11 @@ jobs:
         path: covid-data-public
         lfs: true
         ref: '${{env.COVID_DATA_PUBLIC_REF}}'
+    - name: Setup Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7.6'
+        architecture: 'x64'
     - name: run raw data QA
       run: python ./covid-data-model/raw_data_QA/check_nyt_raw_data.py
     - name: upload raw data QA results zipfile
