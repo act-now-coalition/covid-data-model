@@ -13,7 +13,7 @@ class ForecastTimeUnit(Enum):
 
 class ForecastUncertainty(Enum):
     DEFAULT = 'default'
-    NAIVE = 'native'
+    NAIVE = 'naive'
 
 def target_column_name(num, target, time_unit):
     """

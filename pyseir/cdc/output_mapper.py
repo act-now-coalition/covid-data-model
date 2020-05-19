@@ -1,6 +1,7 @@
 import itertools
 import os
 import us
+import scipy
 import numpy as np
 import pandas as pd
 from collections import defaultdict
@@ -12,7 +13,7 @@ from pyseir import OUTPUT_DIR, load_data
 from pyseir.utils import REF_DATE
 from pyseir.cdc.utils import Target, ForecastTimeUnit, ForecastUncertainty, target_column_name
 from pyseir.inference.fit_results import load_inference_result, load_mle_model
-from pyseir.ensembles.ensemble_runner import EnsembleRunner
+from pyseir.load_data import HospitalizationDataType
 
 
 """
@@ -56,6 +57,7 @@ TARGETS_TO_NAMES = {'cum death': 'cumulative deaths',
                     'inc death': 'incident deaths',
                     'inc hosp': 'incident hospitalizations'}
 
+DATE_FORMAT = '%Y-%m-%d'
 # units of forecast target.
 FORECAST_TIME_UNITS = ['day', 'wk']
 # number of weeks ahead for forecast.
@@ -63,7 +65,7 @@ FORECAST_WEEKS_NUM = 4
 # Default quantiles required by CDC.
 QUANTILES = np.concatenate([[0.01, 0.025], np.arange(0.05, 0.95, 0.05), [0.975, 0.99]])
 # Time of forecast, default date when this runs.
-FORECAST_DATE = datetime.today()
+FORECAST_DATE = datetime.today() - timedelta(days=1)
 # Next epi week. Epi weeks starts from Sunday and ends on Saturday.
 #if forecast date is Sunday or Monday, next epi week is the week that starts
 #with the latest Sunday.
@@ -71,7 +73,7 @@ if FORECAST_DATE.weekday() in (0, 6):
     NEXT_EPI_WEEK = Week(Year.thisyear().year, Week.thisweek().week)
 else:
     NEXT_EPI_WEEK = Week(Year.thisyear().year, Week.thisweek().week + 1)
-COLUMNS = ['forecast_date', 'location', 'location_name', 'target',
+COLUMNS = ['forecast_date', 'location', 'location_name', 'target', 'type',
            'target_end_date', 'quantile', 'value']
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -172,79 +174,209 @@ class OutputMapper:
         days the forecast is made ahead and total days of observations.
         Should be interpretable by ForecastUncertainty. Currently supports:
         - 'default': no adjustment
-        - 'naive': rescale the standard deviation by factor (1 + days_ahead
+        - 'naive': rescale the standard deviation by factor (days_ahead
                    ** 0.5)
     """
     def __init__(self,
                  fips,
-                 N_samples=5000,
                  targets=TARGETS,
                  forecast_time_units=FORECAST_TIME_UNITS,
                  forecast_date=FORECAST_DATE,
                  next_epi_week=NEXT_EPI_WEEK,
                  quantiles=QUANTILES,
-                 forecast_uncertainty='default'):
+                 forecast_uncertainty='naive'):
 
         self.fips = fips
-        self.N_samples = N_samples
         self.targets = [Target(t) for t in targets]
         self.forecast_time_units = [ForecastTimeUnit(u) for u in forecast_time_units]
         self.forecast_date = forecast_date
-        self.forecast_time_range = [datetime.fromordinal(next_epi_week.startdate().toordinal()) + timedelta(n)
+        self.forecast_time_range = [(datetime.fromordinal(next_epi_week.startdate().toordinal()) + timedelta(n))
                                     for n in range(FORECAST_WEEKS_NUM * 7)]
         # remove past predictions
         self.forecast_time_range = [t for t in self.forecast_time_range if datetime.date(t) >
                                     datetime.date(self.forecast_date)]
         self.quantiles = quantiles
         self.forecast_uncertainty = ForecastUncertainty(forecast_uncertainty)
-
+        self.observations = self.load_observations()
         self.model = load_mle_model(self.fips)
 
         self.fit_results = load_inference_result(self.fips)
-        forecast_days_since_ref_date = [(t - REF_DATE).days for t in self.forecast_time_range]
-        self.forecast_given_time_range = \
-            lambda forecast, t_list: np.interp(forecast_days_since_ref_date,
-                                               [self.fit_results['t0'] + t for t in t_list],
-                                               forecast)
 
+        self.errors = None
         self.result = None
 
-    def run_model_ensemble(self, override_param_names=('R0', 'I_initial',
-                                                       'E_initial',
-                                                       'suppression_policy')):
+    def load_observations(self):
         """
-        Get model ensemble by running models under different parameter sets
-        sampled from parameter prior distributions.
-
-        Parameters
-        ----------
-        override_param_names: tuple(str)
-            Names of model parameters to override. Default list includes the
-            parameters varied for MLE inference.
+        Load observations based on type of target and unit.
 
         Returns
         -------
-        model_ensemble: np.array(SEIRModel)
-            SEIR models ran under parameter sets randomly generated
+
+        """
+        times, observed_new_cases, observed_new_deaths = \
+            load_data.load_new_case_data_by_state(us.states.lookup(self.fips).name,
+                                                  REF_DATE)
+        dates = [timedelta(int(t)) + REF_DATE for t in times]
+
+        hospital_times, hospitalizations, hospitalization_data_type = \
+            load_data.load_hospitalization_data_by_state(us.states.lookup(self.fips).abbr,
+                                                         REF_DATE)
+        if hospital_times is not None:
+            hospital_dates = [timedelta(int(t)) + REF_DATE for t in hospital_times]
+
+        observations = defaultdict(dict)
+        for target in self.targets:
+            if target is Target.CUM_DEATH:
+                observations[target.value] = pd.Series(observed_new_deaths.cumsum(),
+                                                          index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
+            elif target is Target.INC_DEATH:
+                observations[target.value] = pd.Series(observed_new_deaths,
+                                                          index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
+            elif target is Target.INC_HOSP:
+                if (hospital_times is not None) and \
+                    (hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS):
+                    observations[target.value] = pd.Series(np.append(hospitalizations[0],
+                                                                       np.diff(hospitalizations)),
+                                                              index=pd.DatetimeIndex(hospital_dates).strftime(
+                                                                     DATE_FORMAT))
+                else:
+                    observations[target.value] = None
+
+        return observations
+
+
+    def generate_forecast(self, start_date=None, align_with_observations=True):
+        """
+        Generates a forecast ensemble given the model ensemble.
+
+        Parameters
+        ----------
+        model: list(SEIRModel) or NoneType
+            List of SEIR models run under parameter sets randomly generated
             from the parameter prior distributions.
-        chi_squares: np.array(float)
-            Chi squares when fitting each model in model_ensemble to
-            to observed cases, deaths w/o hospitalizations.
+
+        Returns
+        -------
+        forecast_ensemble: dict(pd.DataFrame)
+            Contains forecast of target within the forecast time window run by
+            each model from the model ensemble. With "<num> <unit> ahead
+            <target_measure>" as index, and corresponding value from each model
+            as columns, where unit can be 'day' or 'wk' depending on the
+            forecast_time_units.
+        """
+        start_date = start_date or datetime.strptime(self.observations['cum death'].index[-1], DATE_FORMAT)
+        forecast_days_since_ref_date = list(range((start_date - REF_DATE).days,
+                                                  (self.forecast_time_range[-1] - REF_DATE).days + 1))
+        forecast_dates = [timedelta(t) + REF_DATE for t in forecast_days_since_ref_date]
+
+        forecast_given_time_range = \
+            lambda forecast, t_list: np.interp(forecast_days_since_ref_date,
+                                               [self.fit_results['t0'] + t for t in t_list], forecast)
+
+        forecast = {}
+        for target in self.targets:
+            if target is Target.INC_DEATH:
+                forecast[target.value] = forecast_given_time_range(self.model.results['total_deaths_per_day'],
+                                                                   self.model.t_list)
+
+            elif target is Target.INC_HOSP:
+                forecast[target.value] = forecast_given_time_range(np.append([0],
+                                                                   np.diff(self.model.results['HGen_cumulative']
+                                                                         + self.model.results['HICU_cumulative'])),
+                                                                   self.model.t_list)
+
+            elif target is Target.CUM_DEATH:
+                forecast[target.value] = forecast_given_time_range(self.model.results['D'], self.model.t_list)
+
+            else:
+                raise ValueError(f'Target {target} is not implemented')
+
+
+            forecast[target.value] = pd.DataFrame({'value': forecast[target.value],
+                                                   'target_end_date': forecast_dates,
+                                                   'forecast_days': [(t - start_date).days for t in forecast_dates]},
+                                                   index=pd.DatetimeIndex(forecast_dates).strftime(DATE_FORMAT))
+            forecast[target.value]['target_end_date'] = forecast[target.value]['target_end_date'].astype('datetime64['
+                                                                                                        'D]')
+            forecast[target.value]['type'] = 'point'
+
+        if align_with_observations:
+            forecast = self.align_forecast_with_observations(forecast)
+
+        return forecast
+
+    def align_forecast_with_observations(self, forecast, ref_observation_date=None):
         """
 
-        override_params = {k: v for k, v in self.model.__dict__.items() if k in override_param_names}
-        override_params.update({k: v for k, v in self.fit_results.items() if k in ['eps', 't_break', 'test_fraction']})
-        er = EnsembleRunner(fips=self.fips)
-        model_ensemble, chi_squares = er.model_ensemble(
-            override_params=override_params, N_samples=self.N_samples, chi_square=True)
-        model_ensemble = np.append([self.model], model_ensemble)
-        chi_squares = np.append(sum([self.fit_results[k] for k in self.fit_results if k.startswith('chi2_')]),
-                                chi_squares)
+        """
 
-        return model_ensemble, chi_squares
+        ref_observation_date = ref_observation_date or self.observations['cum death'].index[-1]
+
+        shifted_forecast = forecast.copy()
+        # align with observations
+        for target in self.targets:
+            if self.observations[target.value] is not None:
+                shifted_forecast[target.value]['value'] += \
+                    (self.observations[target.value].loc[ref_observation_date]
+                   - forecast[target.value]['value'].loc[ref_observation_date])
+
+        return shifted_forecast
 
 
-    def forecast_target(self, model, target, unit):
+    def calculate_errors(self, days_back=3):
+        """
+        Collect average of absolute errors abs(y_t - y_t|y_t-1).
+
+        Parameters
+        ----------
+
+        """
+        self.errors = defaultdict(list)
+        for date in self.observations['cum death'].index[-(days_back+1):-1]:
+            forecast = self.generate_forecast(start_date=datetime.strptime(date, DATE_FORMAT))
+            for target in self.targets:
+                if self.observations[target.value] is not None:
+                    next_day = datetime.strftime(datetime.strptime(date, DATE_FORMAT) + timedelta(1), DATE_FORMAT)
+                    pred = forecast[target.value]['value'].loc[next_day]
+                    observ = self.observations[target.value].loc[next_day]
+                    self.errors[target.value].append(abs(pred - observ))
+
+        for target_name in self.errors:
+            self.errors[target_name] = np.mean(self.errors[target_name])
+
+        return self.errors
+
+
+    def _calculate_forecast_quantiles(self, loc, scale, h, quantiles):
+        """
+        Rescale forecast standard deviation by streching/shrinking the forecast
+        distribution (gaussian) around the mean.
+        Currently supports two approaches:
+        - default: no adjustment
+        - naive: rescale the standard deviation by factor (1 + days_ahead  **
+                 0.5)
+
+        Parameters
+        ----------
+        data: np.array or list
+            Data sample from the distribution.
+        h: int or float
+            Time step of forecast
+
+        Returns
+        -------
+          :  np.array
+            Data after the adjustment.
+        """
+        if self.forecast_uncertainty is ForecastUncertainty.DEFAULT:
+            return scipy.stats.norm(loc=loc, scale=scale).ppf(quantiles)
+        elif self.forecast_uncertainty is ForecastUncertainty.NAIVE:
+            return scipy.stats.norm(loc=loc, scale=scale * h ** 0.5).ppf(quantiles)
+        else:
+            raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
+
+
+    def generate_forecast_quantiles(self, forecast, quantiles=QUANTILES):
         """
         Runs forecast of a target with given model.
 
@@ -263,182 +395,25 @@ class OutputMapper:
             Forecast of target at given unit (daily or weekly), with shape (
             len(self.forecast_time_range),)
         """
+        forecast_quantiles = dict()
+        for target_name in forecast:
+            if target_name in self.errors:
+                scale = self.errors[target_name]
+            else:
+                scale = np.sqrt(forecast[target_name]['value'][0])
 
-        if target is Target.INC_DEATH:
-            target_forecast = self.forecast_given_time_range(model.results['total_deaths_per_day'], model.t_list)
+            forecast_quantiles[target_name] = forecast[target_name].apply(
+                lambda r: self._calculate_forecast_quantiles(loc=r.value, scale=scale,
+                                                             h=r.forecast_days,
+                                                             quantiles=quantiles), axis=1).rename('value')
 
-        elif target is Target.INC_HOSP:
-            target_forecast = self.forecast_given_time_range(np.append([0],
-                                                             np.diff(model.results['HGen_cumulative']
-                                                                   + model.results['HICU_cumulative'])),
-                                                             model.t_list)
+            forecast_quantiles[target_name] = pd.DataFrame(forecast_quantiles[target_name].explode())
+            forecast_quantiles[target_name]['target_end_date'] = forecast[target_name]['target_end_date']
+            forecast_quantiles[target_name]['quantile'] = np.tile(self.quantiles, forecast[target_name].shape[0])
+            forecast_quantiles[target_name]['type'] = 'quantile'
 
-        elif target is Target.CUM_DEATH:
-            target_forecast = self.forecast_given_time_range(model.results['D'], model.t_list)
+        return forecast_quantiles
 
-        else:
-            raise ValueError(f'Target {target} is not implemented')
-
-        if unit is ForecastTimeUnit.DAY:
-            num_of_units = [(datetime.date(t) - datetime.date(self.forecast_date)).days for t in
-                            self.forecast_time_range]
-            target_end_date = self.forecast_time_range
-        elif unit is ForecastTimeUnit.WK:
-            # n wk forecast are forecast for future Saturdays.
-            saturdays = np.where([t.weekday() == 5 for t in self.forecast_time_range])[0]
-            num_of_units = list(range(1, saturdays.shape[0] + 1))
-            target_forecast = target_forecast[saturdays,]
-            target_end_date = [self.forecast_time_range[n] for n in saturdays]
-        else:
-            raise ValueError(f'Forecast time unit {unit} is not implemented')
-
-        target_forecast = pd.DataFrame(target_forecast,
-                                       index=list(target_column_name(num_of_units, target, unit)))
-        target_forecast['target_end_date'] = target_end_date
-        target_forecast = target_forecast.set_index('target_end_date', append=True)
-
-        return target_forecast
-
-    def generate_forecast_ensemble(self, model_ensemble):
-        """
-        Generates a forecast ensemble given the model ensemble.
-
-        Parameters
-        ----------
-        model_ensemble: list(SEIRModel) or NoneType
-            List of SEIR models run under parameter sets randomly generated
-            from the parameter prior distributions.
-
-        Returns
-        -------
-        forecast_ensemble: dict(pd.DataFrame)
-            Contains forecast of target within the forecast time window run by
-            each model from the model ensemble. With "<num> <unit> ahead
-            <target_measure>" as index, and corresponding value from each model
-            as columns, where unit can be 'day' or 'wk' depending on the
-            forecast_time_units.
-        """
-
-        forecast_ensemble = defaultdict(dict)
-        for target in self.targets:
-            for unit in self.forecast_time_units:
-                forecast_ensemble[target.value][unit.value] = list()
-                for model in model_ensemble:
-                    target_forecast = self.forecast_target(model, target, unit).fillna(0)
-                    forecast_ensemble[target.value][unit.value].append(target_forecast)
-                forecast_ensemble[target.value][unit.value] = pd.concat(forecast_ensemble[target.value][unit.value],
-                                                                        axis=1)
-                # set all negative compartment size to zero
-                forecast_ensemble[target.value][unit.value][forecast_ensemble[target.value][unit.value] < 0] = 0
-        return forecast_ensemble
-
-    def _adjust_forecast_dist(self, data, h, T):
-        """
-        Rescale forecast standard deviation by streching/shrinking the forecast
-        distribution around the mean. Currently supports two approaches:
-        - default: no adjustment
-        - naive: rescale the standard deviation by factor (1 + days_ahead  **
-                 0.5)
-
-        Parameters
-        ----------
-        data: np.array or list
-            Data sample from the distribution.
-        h: int or float
-            Time step of forecast
-        T: int or float
-            Total days of projection before the forecast starts.
-
-        Returns
-        -------
-          :  np.array
-            Data after the adjustment.
-        """
-        data = np.array(data)
-        if self.forecast_uncertainty is ForecastUncertainty.DEFAULT:
-            return data
-        elif self.forecast_uncertainty is ForecastUncertainty.NAIVE:
-            return (data + (data - data.mean()) * (1 + h ** 0.5)).clip(0)
-        else:
-            raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
-
-    def _weighted_quantiles(self, quantile, data, weights):
-        """
-        Calculate quantile of data with given weights.
-
-        Parameters
-        ----------
-        quantile: np.array of list
-            Quantile to find corresponding data value.
-        data: np.array or list
-            Data sample
-        weights: np.array
-            Weight of each data point.
-
-        Returns
-        -------
-          :  np.array
-            Value of data at given quantile.
-        """
-        # remove lower 10% and upper 10% percentile to increase stability.
-        data = np.array(data)
-        lower, upper = np.quantile(data, (0.1, 0.9))
-        not_outlier = (data > lower) & (data < upper)
-        data = data[not_outlier]
-        weights = weights[not_outlier]
-        sorted_idx = np.argsort(data)
-        cdf = weights[sorted_idx].cumsum() / weights[sorted_idx].cumsum().max()
-
-        return np.interp(quantile, cdf, data[sorted_idx])
-
-    def generate_quantile_result(self, forecast_ensemble, chi_squares=None):
-        """
-        Generates results that contain the quantiles of the forecast with
-        format required for CDC model ensemble submission.
-
-        Parameters
-        ----------
-        forecast_ensemble: dict
-            Contains forecast of target within the forecast time window run by
-            each model from the model ensemble. With "<day_num> day ahead
-            <target_measure>" as index, and corresponding value from each model
-            as columns.
-        chi_squares: np.array(float)
-            Chi squares obtains by fitting each model (which makes the
-            forecast in forecast ensemble) to observed cases, deaths w/o
-            hospitalizations.
-
-
-        Returns
-        -------
-        quantile_result: pd.DataFrame
-            Contains the quantiles of the forecast with format required for
-            CDC model ensemble submission. For info on columns,
-            check description of self.results.
-        """
-
-        quantile_result = list()
-        for target_name in forecast_ensemble:
-            for unit_name in forecast_ensemble[target_name]:
-                target_output = \
-                    forecast_ensemble[target_name][unit_name].apply(
-                        lambda l: self._weighted_quantiles(self.quantiles, l,
-                                                           chi_squares.max() - chi_squares), axis=1)\
-                                                             .rename('value')
-
-                target_output = target_output.explode().reset_index().rename(columns={'level_0': 'target'})
-                target_output['quantile'] = np.tile(['%.3f' % q for q in self.quantiles],
-                                                    forecast_ensemble[target_name][unit_name].shape[0])
-                quantile_result.append(target_output)
-
-        quantile_result = pd.concat(quantile_result, axis=0)
-        quantile_result['location'] = str(self.fips)
-        quantile_result['location_name'] = us.states.lookup(self.fips).name
-        quantile_result['type'] = 'quantile'
-        quantile_result['forecast_date'] = self.forecast_date
-        quantile_result['forecast_date'] = quantile_result['forecast_date'].dt.strftime('%Y-%m-%d')
-
-        return quantile_result
 
     def run(self):
         """
@@ -472,15 +447,51 @@ class OutputMapper:
             - location_name: str
               Name of the state.
         """
-        models, chi_squares = self.run_model_ensemble()
-        forecast_ensemble = self.generate_forecast_ensemble(models)
-        self.result = self.generate_quantile_result(forecast_ensemble, chi_squares)
-        forecast_date = self.forecast_date.strftime('%Y-%m-%d')
+        forecast = self.generate_forecast()
+        self.calculate_errors()
+        forecast_quantile = self.generate_forecast_quantiles(forecast)
+
+        result = list()
+        for target_name in forecast_quantile:
+            for unit in self.forecast_time_units:
+                df = pd.concat([forecast_quantile[target_name], forecast[target_name]])
+                df = df[df['target_end_date'].apply(lambda t: datetime.date(t) > datetime.date(self.forecast_date))]
+                if unit is ForecastTimeUnit.DAY:
+                    num_of_units = [(datetime.date(datetime.strptime(str(t).partition('T')[0], DATE_FORMAT))
+                                     - datetime.date(self.forecast_date)).days for t in df['target_end_date'].values]
+
+                elif unit is ForecastTimeUnit.WK:
+                    # Weekly report use forecast on Saturdays
+                    df = df[df['target_end_date'].apply(lambda t: t.weekday() == 5)]
+                    num_of_units = [(datetime.strptime(str(t).partition('T')[0], DATE_FORMAT) -
+                                     self.forecast_date).days // 7 + 1 for t in df['target_end_date'].values]
+                df['target'] = list(target_column_name(num_of_units, Target(target_name), unit))
+                result.append(df)
+
+        result = pd.concat(result)
+        result['location'] = str(self.fips)
+        result['location_name'] = us.states.lookup(self.fips).name
+        result['forecast_date'] = self.forecast_date
+        result['forecast_date'] = result['forecast_date'].dt.strftime('%Y-%m-%d')
+        result['quantile'] = result['quantile'].apply(lambda v: '%.3f' % v)
+        result = result[~result['target'].apply(lambda s: 'wk ahead inc hosp' in s)]
+
+        self.result = result[['forecast_date',
+                              'location',
+                              'location_name',
+                              'target',
+                              'target_end_date',
+                              'type',
+                              'quantile',
+                              'value']]
+
+        forecast_date = self.forecast_date.strftime(DATE_FORMAT)
         self.result.to_csv(os.path.join(OUTPUT_FOLDER,
                                         f'{forecast_date}_{TEAM}_{MODEL}_{self.fips}.csv'),
-                                        index=False)
+                           index=False)
 
         return self.result
+
 
     @classmethod
     def run_for_fips(cls, fips):
@@ -503,6 +514,7 @@ class OutputMapper:
         result = om.run()
         return result
 
+
     @classmethod
     def generate_metadata(cls):
         """
@@ -514,9 +526,12 @@ class OutputMapper:
 
         combined_target_names = list(itertools.product([u.value for u in om.forecast_time_units],
                                      [t.value for t in om.targets]))
+        names = [' ahead '.join(tup) for tup in combined_target_names]
+        names = [v for v in names if 'wk ahead inc hosp' not in v]
+
         metadata = \
             Template(metadata).substitute(
-            dict(Model_targets=', '.join([' ahead '.join(tup) for tup in combined_target_names]),
+            dict(Model_targets=', '.join(names),
                  forecast_startdate=om.forecast_time_range[0].strftime('%Y-%m-%d'),
                  Model_target_names=', '.join([TARGETS_TO_NAMES[t.value] for t in om.targets]),
                  model_name=MODEL,
