@@ -98,7 +98,6 @@ def cache_county_case_data():
     Cache county covid case data 
     """
     logging.info("Downloading covid case data")
-    # NYT dataset
     county_case_data = load_county_case_data()
     county_case_data.to_pickle(os.path.join(DATA_DIR, "covid_case_timeseries.pkl"))
 
