@@ -7,7 +7,6 @@ import calendar, argparse, pdb, os, shutil, requests, io, zipfile, shutil
 from subprocess import Popen, PIPE
 import subprocess
 import glob
-from bs4 import BeautifulSoup
 import re
 import os
 
