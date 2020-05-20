@@ -85,6 +85,9 @@ def average(list):
 
 
 def compare_data(var, df1, df2, df1_name, df2_name, args, state):
+    # Since data is from CAN caches add that to names
+    df1_name += " CAN"
+    df2_name += " CAN"
     # compare old prod data to latest nyt
     df_new_data, new_p_diffs, new_z_scores = check_new_data(df1, df2, args, var)
 
@@ -540,29 +543,22 @@ if __name__ == "__main__":
     args.nyt_path = "data/cases-nytimes/us-counties.csv"
     args.jhu_path = "data/cases-jhu/csse_covid_19_daily_reports/"
 
-    # Make output dirs
+    # Make Output Dirs
     make_outputdirs(args)
     output_report = open(args.output_dir + "/outputreport.txt", "w+")
+    # Variables to Compare
+    variables = ["cases", "deaths", "new_cases", "new_deaths"]
 
-    # Get Latest Data
-    # COVID_DATA_PUBLIC_PATH = "https://github.com/covid-projections/covid-data-public"
-    # BASE_PATH = "https://raw.githubusercontent.com/covid-projections/covid-data-public/"
-
+    # Datasets to compare
+    latest_name = "LATEST"
+    prod_name = "PROD"
     # Copy latest commit of covid-data-public to output_data_dir
-    shutil.copytree(args.covid_data_public_dir, out_path("latest", args))
-
-    # latest_hash = get_latest_hash(args.covid_data_public_url)
-    # print(latest_hash)
-    # checkout_repo_by_hash(args.covid_data_public_dir, latest_hash, args, "latest")
-    # print('done with latest')
-    # exit()
+    shutil.copytree(args.covid_data_public_dir, out_path(latest_name, args))
 
     # Get Current Prod covid-data-public commit
     prod_hash = get_production_hash(args.prod_snapshot_json)
     prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
-    checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, "prod")
-
-    print("got prod")
+    checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
 
     if args.data_source == "NYT":
         CSV_PATH = args.nyt_path
@@ -575,19 +571,6 @@ if __name__ == "__main__":
 
     latest_df = get_df_save_csv("latest", args.data_source, args)
     prod_df = get_df_save_csv("prod", args.data_source, args)
-
-    # prod_df = get_df_from_url_hash(prod_hash, BASE_PATH, CSV_PATH, args, "prod", args.data_source)
-
-    # print("production df")
-    # print(prod_df)
-
-    # Get Current local cache being used
-    # current_cached_file = args.covid_data_public_dir + "/data/cases-nytimes/us-counties.csv"
-    # current_df = pd.read_csv(current_cached_file, parse_dates=[args.date_name])
-    # current_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/current_cache.csv")
-
-    # Variables to Compare
-    variables = ["cases", "deaths", "new_cases", "new_deaths"]
 
     # Get all states in input dataset if user asks for all states
     if "All" in args.states:
@@ -608,25 +591,10 @@ if __name__ == "__main__":
             # Grab Data To Compare from CAN Data Caches
             this_prod_df = get_state(prod_df, state, args)
             this_latest_df = get_state(latest_df, state, args)
-            prod_name = "CAN PROD"
-            latest_name = "CAN LATEST"
 
             # Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
             prod_ag = aggregate_df(this_prod_df, args)
             latest_ag = aggregate_df(this_latest_df, args)
-            """
-            avg_z, latest_avg_z, days_over_z, rmse_latest, abnormal = compare_data(
-                var,
-                local_ag,
-                prod_ag,
-                latest_ag,
-                local_name,
-                prod_name,
-                latest_nyt_name,
-                args,
-                state,
-            )
-            """
             (
                 avg_z,
                 latest_avg_z,
@@ -677,7 +645,7 @@ if __name__ == "__main__":
         )
 
     output_report.close()
-
+    os.system("rm -rf " + args.output_dir + "/" + args.output_data_dir)
     # zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
     # zipdir("./output", zipf)
     # zipf.close()
