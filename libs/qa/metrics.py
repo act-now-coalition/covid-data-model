@@ -35,12 +35,16 @@ class QAMetric(ABC):
         return round(abs(value2 - value1), 4)
 
     @classmethod
-    def isAboveThreshold(cls, value1, value2):
+    def threshold_diff_value(cls, value1, value2):
         average = (value2 + value1) / 2
         if average < 20:
             # small numbers changes are kind of confusing handle them a lil different
             return False
-        return (abs(average - value1) / value1) * 100 > cls.threshold
+        return (abs(average - value1) / value1) * 100
+
+    @classmethod
+    def isAboveThreshold(cls, value1, value2):
+        return cls.threshold_diff_value(value1, value2) > cls.threshold
 
 
 class HospitalBedsRequiredTS(QAMetric):
@@ -92,8 +96,8 @@ class RtIndicatorTS(QAMetric):
     threshold = 0.1
 
     @classmethod
-    def isAboveThreshold(cls, value1, value2):
-        return cls.diff(value2, value1) > cls.threshold
+    def threshold_diff_value(cls, value1, value2):
+        return cls.diff(value2, value1)
 
 
 class RtIndicatorCI90TS(QAMetric):
@@ -103,8 +107,8 @@ class RtIndicatorCI90TS(QAMetric):
     threshold = 0.1
 
     @classmethod
-    def isAboveThreshold(cls, value1, value2):
-        return cls.diff(value2, value1) > cls.threshold
+    def threshold_diff_value(cls, value1, value2):
+        return cls.diff(value2, value1)
 
 
 class CumulativePositiveTestsTS(QAMetric):
@@ -163,8 +167,8 @@ class HospitalShortageStartDate(QAMetric):
     threshold = 1
 
     @classmethod
-    def isAboveThreshold(cls, value1, value2):
-        return cls.diff(value2, value1) > cls.threshold
+    def threshold_diff_value(cls, value1, value2):
+        return cls.diff(value2, value1)
 
     @classmethod
     def diff(cls, value1, value2):
