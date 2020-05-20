@@ -3,12 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import mean_squared_error
 from datetime import datetime
-import calendar, argparse, pdb, os, shutil, requests, io, zipfile, shutil
+import calendar, argparse, pdb, os, shutil, requests, io, zipfile, shutil, glob, re, subprocess
 from subprocess import Popen, PIPE
-import subprocess
-import glob
-import re
-import os
 
 
 def aggregate_df(df, args):
@@ -314,19 +310,7 @@ def get_df_from_url_hash(thishash, basepath, filepath, args, name, data_source):
         this_file = glob.glob(f"{BASE_PATH}/{thishash}/{filepath}/*csv")
         print("JHU")
         print(this_file)
-
-
-def get_all_files_in_git_path(basepath, thishash, filepath, file_suffix):
-    url = f"{BASE_PATH}/{thishash}/{filepath}"
-    r = requests.get(url).text
-    soup = BeautifulSoup(url)
-    for link in (urljoin(url, a["href"]) for a in soup.select("a[href$=.csv]")):
-        print(link)
-        with open(basename(link), "w") as f:
-            f.writelines(requests.get(link))
-
-    return this_df
-
+    return this_file
 
 def get_df_from_url(url, args, name):
     this_file = requests.get(url).content
