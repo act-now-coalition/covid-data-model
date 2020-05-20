@@ -298,18 +298,13 @@ def get_production_hash(json_path):
     return master_hash
 
 
-def get_df_from_url_hash(thishash, basepath, filepath, args, name, data_source):
-    print(f"{BASE_PATH}/{thishash}/{filepath}")
+def get_df_from_url_hash(thishash, BASE_PATH, filepath, args, name, data_source):
     if data_source == "NYT":
         this_file = requests.get(f"{BASE_PATH}/{thishash}/{filepath}").content
         this_df = pd.read_csv(io.StringIO(this_file.decode("utf-8")), parse_dates=[args.date_name])
         this_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/{name}.csv")
     elif data_source == "JHU":
-        get_all_files_in_git_path(basepath, thishash, filepath, ".csv")
-        print(f"{BASE_PATH}/{thishash}/{filepath}/*csv")
         this_file = glob.glob(f"{BASE_PATH}/{thishash}/{filepath}/*csv")
-        print("JHU")
-        print(this_file)
     return this_file
 
 
