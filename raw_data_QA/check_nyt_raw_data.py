@@ -6,6 +6,10 @@ from datetime import datetime
 import calendar, argparse, pdb, os, shutil, requests, io, zipfile
 from subprocess import Popen, PIPE
 import subprocess
+import glob
+from bs4 import BeautifulSoup
+import re
+import os
 
 
 def aggregate_df(df, args):
@@ -80,9 +84,9 @@ def average(list):
         return 0
 
 
-def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
+def compare_data(var, df1, df2, df1_name, df2_name, args, state):
     # compare old prod data to latest nyt
-    df_new_data, new_p_diffs, new_z_scores = check_new_data(df1, df3, args, var)
+    df_new_data, new_p_diffs, new_z_scores = check_new_data(df1, df2, args, var)
 
     new_days_over_thres = sum(i > args.new_day_percent_thres for i in new_p_diffs)
     new_data_days_abnormal = (
@@ -90,20 +94,14 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
     )  # there is at least one new day added that exceeds abnormal threshold
     # truncate df2 and df3 to df1 (this assumes df1 is the shortest)
     truncated_df2 = get_equal_len_df(df2, df1)
-    truncated_df3 = get_equal_len_df(df3, df1)
-    # pdb.set_trace()
     # Get comparison metrics
     rmse2 = get_rmse(df1, truncated_df2, var)
-    rmse3 = get_rmse(df1, truncated_df3, var)
     diff_df2, z_df2, avg_z2, latest_avg_z2, days_over_z2 = get_compare_metrics(
         df1, truncated_df2, var
     )
-    diff_df3, z_df3, avg_z3, latest_avg_z3, days_over_z3 = get_compare_metrics(
-        df1, truncated_df3, var
-    )
 
     # determine if data is different enough to plot for further investigation
-    historical_data_disagree = days_over_z3 > args.n_days_over_threshold
+    historical_data_disagree = days_over_z2 > args.n_days_over_threshold
 
     if historical_data_disagree or new_data_days_abnormal:
         fig, ax = plt.subplots(3, 1, sharex=True)
@@ -131,15 +129,6 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
             alpha=0.5,
         )
         ax[0].plot(
-            df3.index.values,
-            df3[var],
-            color=color3,
-            label=df3_name + " (RMSE: " + str(rmse3) + " $Z_{avg}$: " + str(avg_z3) + ")",
-            markersize=markersize3,
-            marker=markerstyle3,
-            alpha=0.5,
-        )
-        ax[0].plot(
             df2.index.values,
             df2[var],
             color=color2,
@@ -161,14 +150,6 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
             alpha=0.5,
         )
         ax[1].plot(
-            df1.index.values,
-            diff_df3,
-            color=color3,
-            markersize=markersize3,
-            marker=markerstyle3,
-            alpha=0.5,
-        )
-        ax[1].plot(
             df_new_data.index.values,
             new_p_diffs,
             color=color4,
@@ -186,14 +167,6 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
             color=color2,
             markersize=markersize2,
             marker=markerstyle2,
-            alpha=0.5,
-        )
-        ax[2].plot(
-            df1.index.values,
-            z_df3,
-            color=color3,
-            markersize=markersize3,
-            marker=markerstyle3,
             alpha=0.5,
         )
         ax[2].plot(
@@ -223,21 +196,18 @@ def compare_data(var, df1, df2, df3, df1_name, df2_name, df3_name, args, state):
             bbox_inches="tight",
         )
         plt.close("all")
-        print(new_p_diffs)
-        print(np.mean(new_p_diffs))
         return (
             avg_z2,
             latest_avg_z2,
             days_over_z2,
             rmse2,
-            rmse3,
             historical_data_disagree,
             new_data_days_abnormal,
             round(np.mean(new_p_diffs), 2),
         )
 
     else:
-        return 0, 0, 0, 0, 0, False, False, 0
+        return 0, 0, 0, 0, False, False, 0
 
 
 def compare_county_state_plot(var, df1, df2, df1_name, df2_name, args, state):
@@ -336,10 +306,29 @@ def get_production_hash():
     return master_hash
 
 
-def get_df_from_url_hash(thishash, basepath, filepath, args, name):
-    this_file = requests.get(f"{BASE_PATH}/{thishash}/{filepath}").content
-    this_df = pd.read_csv(io.StringIO(this_file.decode("utf-8")), parse_dates=[args.date_name])
-    this_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/{name}.csv")
+def get_df_from_url_hash(thishash, basepath, filepath, args, name, data_source):
+    print(f"{BASE_PATH}/{thishash}/{filepath}")
+    if data_source == "NYT":
+        this_file = requests.get(f"{BASE_PATH}/{thishash}/{filepath}").content
+        this_df = pd.read_csv(io.StringIO(this_file.decode("utf-8")), parse_dates=[args.date_name])
+        this_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/{name}.csv")
+    elif data_source == "JHU":
+        get_all_files_in_git_path(basepath, thishash, filepath, ".csv")
+        print(f"{BASE_PATH}/{thishash}/{filepath}/*csv")
+        this_file = glob.glob(f"{BASE_PATH}/{thishash}/{filepath}/*csv")
+        print("JHU")
+        print(this_file)
+
+
+def get_all_files_in_git_path(basepath, thishash, filepath, file_suffix):
+    url = f"{BASE_PATH}/{thishash}/{filepath}"
+    r = requests.get(url).text
+    soup = BeautifulSoup(url)
+    for link in (urljoin(url, a["href"]) for a in soup.select("a[href$=.csv]")):
+        print(link)
+        with open(basename(link), "w") as f:
+            f.writelines(requests.get(link))
+
     return this_df
 
 
@@ -374,7 +363,20 @@ def get_latest_hash(REPO_PATH):
     first_index = result.find("'") + 1
     last_index = result.find("\\")
     result = result[first_index:last_index]
-    return
+    return result
+
+
+def clone_repo(REPO_PATH, REPO_NAME, args):
+    result = subprocess.check_output(["git", "clone", REPO_PATH])
+    subprocess.check_output(["mv", REPO_NAME, args.output_dir])
+
+
+def checkout_repo_by_hash(LOCAL_REPO_PATH, commit_hash, args, name):
+    # checkout repo by commit hash
+    os.system("cd " + LOCAL_REPO_PATH + " ; " + "git checkout " + commit_hash)
+    # move that copy of repo to dir with name 'name'
+    os.system("cp -r " + LOCAL_REPO_PATH + " " + args.output_dir + "/" + name)
+    os.system("pwd")
 
 
 if __name__ == "__main__":
@@ -513,35 +515,46 @@ if __name__ == "__main__":
     args.output_data_dir = "data"
 
     # Make output dirs
-    print("covid data public dir")
-    print(args.covid_data_public_dir)
     make_outputdirs(args)
     output_report = open(args.output_dir + "/outputreport.txt", "w+")
 
-    # Get Data
+    # Get Latest Data
     COVID_DATA_PUBLIC_PATH = "https://github.com/covid-projections/covid-data-public"
     BASE_PATH = "https://raw.githubusercontent.com/covid-projections/covid-data-public/"
-    latest_hash = get_latest_hash(COVID_DATA_PUBLIC_PATH)
-    exit()
 
     if args.data_source == "NYT":
-        COUNTY_CSV_PATH = "data/cases-nytimes/us-counties.csv"
+        CSV_PATH = "data/cases-nytimes/us-counties.csv"
+    elif args.data_source == "JHU":
+        CSV_PATH = "data/cases-jhu/csse_covid_19_daily_reports/"
     else:
-        # Code globbing JHU dataset
-        print("add this next")
-    NYT_PATH = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+        print("ERROR: Specify which input source data to use (e.g. JHU/NYT")
+        exit()
 
-    # Get Current Prod Data
-    master_hash = get_production_hash()
-    prod_df = get_df_from_url_hash(master_hash, BASE_PATH, COUNTY_CSV_PATH, args, "prod")
+    # Clone covid-data-public repo
+    clone_repo(COVID_DATA_PUBLIC_PATH, "covid-data-public", args)
+    # Get Current Prod covid-data-public commit
+    prod_hash = get_production_hash()
+    prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
+    checkout_repo_by_hash(args.output_dir + "/covid-data-public", prod_hash, args, "prod")
+    exit()
+
+    prod_df = get_df_from_url_hash(prod_hash, BASE_PATH, CSV_PATH, args, "prod", args.data_source)
+
+    print("production df")
+    print(prod_df)
 
     # Get Current local cache being used
-    current_cached_file = args.covid_data_public_dir + "/data/cases-nytimes/us-counties.csv"
-    current_df = pd.read_csv(current_cached_file, parse_dates=[args.date_name])
-    current_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/current_cache.csv")
+    # current_cached_file = args.covid_data_public_dir + "/data/cases-nytimes/us-counties.csv"
+    # current_df = pd.read_csv(current_cached_file, parse_dates=[args.date_name])
+    # current_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/current_cache.csv")
 
     # Get Latest NYT
-    latest_nyt_df = get_df_from_url(NYT_PATH, args, "nyt_latest")
+    latest_hash = get_latest_hash(COVID_DATA_PUBLIC_PATH)
+    latest_df = get_df_from_url_hash(
+        latest_hash, BASE_PATH, CSV_PATH, args, "latest", args.data_source
+    )
+    print("latest df")
+    print(latest_df)
 
     # Variables to Compare
     variables = ["cases", "deaths", "new_cases", "new_deaths"]
@@ -549,7 +562,7 @@ if __name__ == "__main__":
     # Get all states in input dataset if user asks for all states
     if "All" in args.states:
         # could add start and end date here Natasha
-        args.states = latest_nyt_df["state"].unique()
+        args.states = latest_df["state"].unique()
 
     # Iterate thru states
     for var in variables:
@@ -564,18 +577,15 @@ if __name__ == "__main__":
         for state in args.states:
             # Grab Data To Compare from CAN Data Caches
             this_prod_df = get_state(prod_df, state, args)
-            this_local_df = get_state(current_df, state, args)
-            this_latest_nyt_df = get_state(latest_nyt_df, state, args)
+            this_latest_df = get_state(latest_df, state, args)
             prod_name = "CAN PROD"
-            local_name = "CAN LOCAL CACHE"
-            latest_nyt_name = "NYT LATEST"
+            latest_name = "CAN LATEST"
 
             # Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
             prod_ag = aggregate_df(this_prod_df, args)
-            local_ag = aggregate_df(this_local_df, args)
-            latest_ag = aggregate_df(this_latest_nyt_df, args)
+            latest_ag = aggregate_df(this_latest_df, args)
             """
-            avg_z, latest_avg_z, days_over_z, rmse_new, rmse_latest, abnormal = compare_data(
+            avg_z, latest_avg_z, days_over_z, rmse_latest, abnormal = compare_data(
                 var,
                 local_ag,
                 prod_ag,
@@ -591,36 +601,24 @@ if __name__ == "__main__":
                 avg_z,
                 latest_avg_z,
                 days_over_z,
-                rmse_new,
                 rmse_latest,
                 abnormal_old,
                 abnormal_new,
                 average_new_p_diff,
-            ) = compare_data(
-                var,
-                prod_ag,
-                local_ag,
-                latest_ag,
-                prod_name,
-                local_name,
-                latest_nyt_name,
-                args,
-                state,
-            )
+            ) = compare_data(var, prod_ag, latest_ag, prod_name, latest_name, args, state,)
 
             if abnormal_old:
                 z_avg_list.append(avg_z)
                 z_latest_avg_list.append(latest_avg_z)
                 days_over_thres_list.append(days_over_z)
                 states_list.append(state)
-                rmse_new_list.append(rmse_new)
                 rmse_latest_list.append(rmse_latest)
                 output_report.write(
                     state
                     + "'s "
                     + var
                     + " current and prod past data disagree (RMSE: "
-                    + str(rmse_new)
+                    + str(rmse_latest)
                     + ") \n"
                 )
             if abnormal_new:
@@ -639,8 +637,8 @@ if __name__ == "__main__":
             states_list,
             days_over_thres_list,
             "days_over_thres",
-            rmse_new_list,
-            "rmse_new",
+            rmse_latest_list,
+            "rmse_latest",
             z_avg_list,
             "z_avg",
             z_latest_avg_list,
