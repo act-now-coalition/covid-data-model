@@ -22,6 +22,76 @@ distancing_measure_suppression = {
 }
 
 
+def get_r0_from_rt(fips):
+    """
+    Load R0 as the maximum of Rt. if the fips is not found, the state level is
+    used.
+
+    Parameters
+    ----------
+    fips: str
+        State or County FIPS code.
+
+    Returns
+    -------
+    r0: float
+        Maximum (unmitigated) Rt value.
+    """
+    try:
+        df_rt = fit_results.load_Rt_result(fips)
+    except ValueError:
+        df_rt = fit_results.load_Rt_result(fips[:2])
+
+    df_rt = df_rt[df_rt['Rt_MAP_composite'].notnull()]
+    return df_rt['Rt_MAP_composite'].max()
+
+
+def generate_rt_inference_policy(t0, fips, future_suppression, R0=None):
+    """
+    Generate a suprpession policy based on the inferred Rt.
+
+    Parameters
+    ----------
+
+    t0: datetime
+        Initial start time.
+    fips: str
+        State or county FIPS
+    future_suppression: float or str
+        Future suppression level to use. If 'current', use the last value.
+    R0: float or NoneType
+        Natural unmitigated reproduction number. If None, this will lookup the
+        maximal observed R for the fips.
+
+    Returns
+    -------
+    suppression_model: callable
+        suppression_model(t) returns the current suppression model at time t.
+    """
+    if R0 is None:
+        R0 = get_r0_from_rt(fips)
+    try:
+        df_rt = fit_results.load_Rt_result(fips)
+    except ValueError:
+        df_rt = fit_results.load_Rt_result(fips[:2])
+
+    df_rt = df_rt[df_rt['Rt_MAP_composite'].notnull()]
+
+    days = [(t - t0).days for t in
+            df_rt['Rt_MAP_composite'].index.to_pydatetime()]
+    suppression = list(df_rt['Rt_MAP_composite'] / R0)
+
+    if future_suppression == 'current':
+        future_suppression = suppression[-1]
+
+    suppression += [future_suppression, future_suppression]
+    days += [days[-1] + 14, days[-1] + 15]
+
+    days = [days[0] - 1] + days
+    suppression = [suppression[0]] + suppression
+    return interp1d(days, suppression, kind='linear', fill_value='extrapolate')
+
+
 def get_future_suppression_from_r0(R0, scenario):
     """
     Returns the future suppression level for a given R0 and a "future scenario".
