@@ -385,6 +385,18 @@ def working_dir():
     return wd
 
 
+def get_df_save_csv(name, data_source, args):
+    if data_source == "NYT":
+        csvfile = out_path(name, args) + "/" + args.nyt_path
+        df = pd.read_csv(csvfile, parse_dates=[args.date_name])
+    elif data_source == "JHU":
+        files = glob.glob(out_path(name, args) + "/" + args.jhu_path + "*csv")
+        df = pd.concat([pd.read_csv(f) for f in files])
+
+    df.to_csv(f"{args.output_dir}/{args.output_data_dir}/{name}_raw_data.csv")
+    return df
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="arg parser for process.py")
     parser.add_argument(
@@ -525,6 +537,8 @@ if __name__ == "__main__":
     # Specific paths for accessing git commit hashses from covid-data-public
     args.covid_data_public_url = "https://github.com/covid-projections/covid-data-public"
     args.prod_snapshot_json = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/data_url.json"
+    args.nyt_path = "data/cases-nytimes/us-counties.csv"
+    args.jhu_path = "data/cases-jhu/csse_covid_19_daily_reports/"
 
     # Make output dirs
     make_outputdirs(args)
@@ -533,14 +547,6 @@ if __name__ == "__main__":
     # Get Latest Data
     # COVID_DATA_PUBLIC_PATH = "https://github.com/covid-projections/covid-data-public"
     # BASE_PATH = "https://raw.githubusercontent.com/covid-projections/covid-data-public/"
-
-    if args.data_source == "NYT":
-        CSV_PATH = "data/cases-nytimes/us-counties.csv"
-    elif args.data_source == "JHU":
-        CSV_PATH = "data/cases-jhu/csse_covid_19_daily_reports/"
-    else:
-        print("ERROR: Specify which input source data to use (e.g. JHU/NYT")
-        exit()
 
     # Copy latest commit of covid-data-public to output_data_dir
     shutil.copytree(args.covid_data_public_dir, out_path("latest", args))
@@ -555,7 +561,20 @@ if __name__ == "__main__":
     prod_hash = get_production_hash(args.prod_snapshot_json)
     prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
     checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, "prod")
+
     print("got prod")
+
+    if args.data_source == "NYT":
+        CSV_PATH = args.nyt_path
+    elif args.data_source == "JHU":
+        CSV_PATH = args.jhu_path
+    else:
+        print("ERROR: Specify which input source data to use (e.g. JHU/NYT")
+        exit()
+
+    df_latest = get_df_save_csv("latest", args.data_source, args)
+    df_prod = get_df_save_csv("prod", args.data_source, args)
+
     exit()
 
     # prod_df = get_df_from_url_hash(prod_hash, BASE_PATH, CSV_PATH, args, "prod", args.data_source)
