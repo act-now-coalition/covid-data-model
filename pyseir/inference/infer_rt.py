@@ -361,7 +361,15 @@ class RtInferenceEngine:
             denominator = np.sum(numerator)
 
             # Execute full Bayes' Rule
-            posteriors[current_day] = numerator / denominator
+            if denominator == 0:
+                # restart the baysian learning for the remaining series
+                # this is necessary since otherwise NaN values
+                # will be inferred for all future days, after seeing
+                # a single (smoothed) zero value.
+
+                posteriors[current_day] = prior0
+            else:
+                posteriors[current_day] = numerator / denominator
 
             # Add to the running sum of log likelihoods
             log_likelihood += np.log(denominator)
