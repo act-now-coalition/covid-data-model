@@ -468,6 +468,10 @@ class RtInferenceEngine:
                     for col in df_all.columns:
                         if timeseries_type.value in col:
                             df_all[col] = df_all[col].shift(shift_in_days)
+                            # Extend death and hopitalization rt signals beyond shift to avoid sudden jumps in composit metric.
+                            df_all[col] = df_all[col].interpolate(
+                                limit_direction="forward", method="linear"
+                            )
 
         if df_all is not None and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
             df_all["Rt_MAP_composite"] = np.nanmean(
