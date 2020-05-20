@@ -564,7 +564,8 @@ class RtInferenceEngine:
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches="tight")
             # plt.close()
-
+        if df_all.empty:
+            log.warning("Inference not possible for fips: %s", self.fips)
         return df_all
 
     @staticmethod
