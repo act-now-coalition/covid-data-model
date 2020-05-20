@@ -5,6 +5,7 @@ import logging
 import sentry_sdk
 from multiprocessing import Pool
 from functools import partial
+from libs.datasets import dataset_cache
 from pyseir.load_data import cache_all_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
@@ -56,6 +57,7 @@ def _cache_global_datasets():
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
+    dataset_cache.set_pickle_cache_tempdir()
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
 
 
@@ -256,72 +258,6 @@ def _build_all_for_states(
     return
 
 
-def _run_all(
-    state=None,
-    run_mode=DEFAULT_RUN_MODE,
-    generate_reports=False,
-    output_interval_days=1,
-    skip_download=False,
-    states_only=False,
-    output_dir=None,
-    skip_whitelist=False,
-):
-    if state:
-        # Deprecate temporarily since not needed. Our full model fits have
-        # superseded these for now. But we may return to a context where this
-        # method is used to measure localized Reff.
-        # if not states_only:
-        #     _impute_start_dates(state)
-        root.warn("running deprecated method")
-        _infer_rt(state, states_only=states_only)
-        _run_mle_fits(state, states_only=states_only)
-        _run_ensembles(
-            state,
-            ensemble_kwargs=dict(
-                run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
-            ),
-            states_only=states_only,
-        )
-        if generate_reports:
-            _generate_state_reports(state)
-        # remove outputs atm. just output at the end
-        _map_outputs(
-            state,
-            output_interval_days,
-            states_only=states_only,
-            output_dir=output_dir,
-            run_mode=run_mode,
-        )
-    else:
-        if states_only:
-            f = partial(
-                _run_all,
-                run_mode=run_mode,
-                generate_reports=generate_reports,
-                output_interval_days=output_interval_days,
-                skip_download=True,
-                states_only=True,
-                output_dir=output_dir,
-                skip_whitelist=True,
-            )
-            p = Pool()
-            p.map(f, ALL_STATES)
-            p.close()
-
-        else:
-            for state_name in ALL_STATES:
-                _run_all(
-                    state_name,
-                    run_mode,
-                    generate_reports,
-                    output_interval_days,
-                    skip_download=True,
-                    states_only=False,
-                    output_dir=output_dir,
-                    skip_whitelist=True,
-                )
-
-
 @entry_point.command()
 @click.option(
     "--state",
@@ -422,50 +358,6 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
         state,
         output_interval_days=int(output_interval_days),
         run_mode=run_mode,
-        states_only=states_only,
-    )
-
-
-@entry_point.command()
-@click.option(
-    "--state",
-    default=None,
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option(
-    "--run-mode",
-    default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in RunMode]),
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option(
-    "--generate-reports",
-    default=False,
-    type=bool,
-    is_flag=True,
-    help="If False, skip pdf report generation.",
-)
-@click.option(
-    "--output-interval-days",
-    default=1,
-    type=int,
-    help="Number of days between outputs for the WebUI payload.",
-)
-@click.option(
-    "--skip-download", default=False, is_flag=True, type=bool, help="Skip the download phase.",
-)
-@click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def run_all(
-    state, run_mode, generate_reports, output_interval_days, skip_download, output_dir, states_only,
-):
-    _run_all(
-        state,
-        run_mode,
-        generate_reports,
-        output_interval_days,
-        skip_download=skip_download,
-        output_dir=output_dir,
         states_only=states_only,
     )
 

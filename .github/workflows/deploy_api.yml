@@ -89,6 +89,7 @@ jobs:
         name: model-results-${{env.SNAPSHOT_ID}}
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
 
+<<<<<<< HEAD
   #execute-api:
   #  runs-on: self-hosted
   #  needs: execute-model
@@ -122,6 +123,41 @@ jobs:
   #  - name: Install Dependencies
   #    working-directory: ./covid-data-model
   #    run: pip install -r requirements.txt
+=======
+  execute-api:
+    runs-on: self-hosted
+    needs: execute-model
+    steps:
+    - name: Checkout covid-data-model
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-model
+        path: covid-data-model
+        ref: '${{env.COVID_DATA_MODEL_REF}}'
+    - name: Checkout covid-data-public
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-public
+        path: covid-data-public
+        lfs: true
+        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
+    - name: Setup Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7.6'
+        architecture: 'x64'
+    - name: Cache Pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+    - name: Install Dependencies
+      working-directory: ./covid-data-model
+      run: pip install -r requirements.txt
+>>>>>>> 911000097547986e40907193c8dbc3119bbeaa40
 
     # - uses: actions/download-artifact@v1
     #   with:
@@ -139,7 +175,11 @@ jobs:
     runs-on: self-hosted
     needs:
       - execute-model
+<<<<<<< HEAD
       #- execute-api
+=======
+      - execute-api
+>>>>>>> 911000097547986e40907193c8dbc3119bbeaa40
 
     steps:
     - name: make and copy to local tmp directory

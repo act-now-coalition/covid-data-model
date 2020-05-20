@@ -15,8 +15,6 @@ prepare () {
     echo
     echo "Example: $0 ../covid-data-public/ ./api-results/"
     echo "Example: $0 ../covid-data-public/ ./api-results/ execute_model"
-    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_summaries"
-    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_dod"
     echo "Example: $0 ../covid-data-public/ ./api-results/ execute_api"
     exit 1
   else
@@ -49,10 +47,6 @@ prepare () {
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
   API_OUTPUT_US="${API_OUTPUT_DIR}/us"
-
-  COUNTY_SUMMARIES_DIR="${API_OUTPUT_DIR}/county_summaries";
-  CASE_SUMMARIES_DIR="${API_OUTPUT_DIR}/case_summary"
-
 }
 
 execute_raw_data_qa() {
@@ -92,18 +86,6 @@ execute_model() {
   popd
 }
 
-execute_summaries() {
-  # Go to repo root (where run.sh lives).
-  cd "$(dirname "$0")"
-
-  echo ">>> Generating county summaries to ${COUNTY_SUMMARIES_DIR}"
-  ./run.py county-fips-summaries -i "${API_OUTPUT_DIR}/county" -o "${COUNTY_SUMMARIES_DIR}"
-
-  echo ">>> Generating case summaries to ${CASE_SUMMARIES_DIR}"
-  ./run.py data latest -o "${CASE_SUMMARIES_DIR}"
-}
-
-
 execute_api() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
@@ -139,7 +121,6 @@ execute_zip_folder() {
 
 execute() {
   execute_model
-  execute_summaries
   execute_api
   execute_zip_folder
 }
@@ -218,10 +199,6 @@ case $EXECUTE_FUNC in
   execute_model)
     echo "Executing Model Results"
     execute_model
-    ;;
-  execute_summaries)
-    echo "Executing Sumaries"
-    execute_summaries
     ;;
   execute_api)
     echo "Executing Api"

@@ -14,6 +14,7 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
 log = logging.getLogger(__name__)
+NP_SEED = 42
 
 
 class RtInferenceEngine:
@@ -63,7 +64,9 @@ class RtInferenceEngine:
         min_cases=5,
         min_deaths=5,
     ):
-
+        np.random.seed(
+            NP_SEED
+        )  # Xcor, used in align_time_series,  has some stochastic FFT elements.
         self.fips = fips
         self.r_list = r_list
         self.window_size = window_size
@@ -89,7 +92,9 @@ class RtInferenceEngine:
                 self.hospital_times,
                 self.hospitalizations,
                 self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
+            ) = load_data.load_hospitalization_data_by_state(
+                state=self.state_obj.abbr, t0=self.ref_date
+            )
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
@@ -448,14 +453,17 @@ class RtInferenceEngine:
                 ):
                     # Go back upto 30 days or the max time series length we have if shorter.
                     last_idx = max(-21, -len(df))
-                    shift_in_days = self.align_time_series(
-                        series_a=df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[
-                            -last_idx:
-                        ],
-                        series_b=df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:],
-                    )
-                    df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
+                    series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
+                    series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
 
+                    shift_in_days = self.align_time_series(series_a=series_a, series_b=series_b,)
+
+                    df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
+                    log.debug(
+                        "Using timeshift of: %s for timeseries type: %s ",
+                        shift_in_days,
+                        timeseries_type,
+                    )
                     # Shift all the columns.
                     for col in df_all.columns:
                         if timeseries_type.value in col:
@@ -580,7 +588,7 @@ class RtInferenceEngine:
         shifts = range(-21, 5)
         valid_shifts = []
         xcor = []
-        np.random.seed(42)  # Xcor has some stochastic FFT elements.
+        np.random.seed(NP_SEED)  # Xcor has some stochastic FFT elements.
         _series_a = np.diff(series_a)
 
         for i in shifts:

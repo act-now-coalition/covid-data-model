@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import mean_squared_error
 from datetime import datetime
-import calendar, argparse, pdb, os, shutil, requests, io, zipfile
+import calendar, argparse, pdb, os, shutil, requests, io, zipfile, shutil
 from subprocess import Popen, PIPE
 import subprocess
 import glob
@@ -292,14 +292,8 @@ def check_new_data(df1, df2, args, var):
     return new_data.tail(len(new_data.index) - 1), p_diffs, z_scores
 
 
-def get_production_hash():
-    prod_snapshot_version = (
-        requests.get(
-            "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/data_url.json"
-        )
-        .json()["data_url"]
-        .split("/")[-2]
-    )
+def get_production_hash(json_path):
+    prod_snapshot_version = requests.get(json_path).json()["data_url"].split("/")[-2]
     master_hash = requests.get(
         f"https://data.covidactnow.org/snapshot/{prod_snapshot_version}/version.json"
     ).json()["covid-data-public"]["hash"]
@@ -375,8 +369,20 @@ def checkout_repo_by_hash(LOCAL_REPO_PATH, commit_hash, args, name):
     # checkout repo by commit hash
     os.system("cd " + LOCAL_REPO_PATH + " ; " + "git checkout " + commit_hash)
     # move that copy of repo to dir with name 'name'
-    os.system("cp -r " + LOCAL_REPO_PATH + " " + args.output_dir + "/" + name)
-    os.system("pwd")
+    shutil.copytree(LOCAL_REPO_PATH, out_path(name, args))
+    # restore master branch
+    os.system("cd " + LOCAL_REPO_PATH + " ; " + "git checkout master")
+    # os.system("git checkout master")
+    # os.system("git pull origin master")
+
+
+def out_path(foldername, args):
+    return str(args.output_dir + "/" + args.output_data_dir + "/" + foldername)
+
+
+def working_dir():
+    wd = os.getcwd()
+    return wd
 
 
 if __name__ == "__main__":
@@ -508,19 +514,25 @@ if __name__ == "__main__":
         help="input data source (e.g. NYT/JHU)",
     )
     args = parser.parse_args()
-
+    # put output dir in current working dir
+    args.output_dir = working_dir() + "/" + args.output_dir
+    # Create separate output folders based on abnormality of data
     args.new_data_abnormal_folder = "new_data_abnormal"
     args.old_data_abnormal_folder = "old_data_abnormal"
     args.new_and_old_data_abnormal_folder = "new_and_old_data_abnormal"
+    # Create output dir to store data that was used for comparison
     args.output_data_dir = "data"
+    # Specific paths for accessing git commit hashses from covid-data-public
+    args.covid_data_public_url = "https://github.com/covid-projections/covid-data-public"
+    args.prod_snapshot_json = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/data_url.json"
 
     # Make output dirs
     make_outputdirs(args)
     output_report = open(args.output_dir + "/outputreport.txt", "w+")
 
     # Get Latest Data
-    COVID_DATA_PUBLIC_PATH = "https://github.com/covid-projections/covid-data-public"
-    BASE_PATH = "https://raw.githubusercontent.com/covid-projections/covid-data-public/"
+    # COVID_DATA_PUBLIC_PATH = "https://github.com/covid-projections/covid-data-public"
+    # BASE_PATH = "https://raw.githubusercontent.com/covid-projections/covid-data-public/"
 
     if args.data_source == "NYT":
         CSV_PATH = "data/cases-nytimes/us-counties.csv"
@@ -530,31 +542,31 @@ if __name__ == "__main__":
         print("ERROR: Specify which input source data to use (e.g. JHU/NYT")
         exit()
 
-    # Clone covid-data-public repo
-    clone_repo(COVID_DATA_PUBLIC_PATH, "covid-data-public", args)
+    # Copy latest commit of covid-data-public to output_data_dir
+    shutil.copytree(args.covid_data_public_dir, out_path("latest", args))
+
+    # latest_hash = get_latest_hash(args.covid_data_public_url)
+    # print(latest_hash)
+    # checkout_repo_by_hash(args.covid_data_public_dir, latest_hash, args, "latest")
+    # print('done with latest')
+    # exit()
+
     # Get Current Prod covid-data-public commit
-    prod_hash = get_production_hash()
+    prod_hash = get_production_hash(args.prod_snapshot_json)
     prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
-    checkout_repo_by_hash(args.output_dir + "/covid-data-public", prod_hash, args, "prod")
+    checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, "prod")
+    print("got prod")
     exit()
 
-    prod_df = get_df_from_url_hash(prod_hash, BASE_PATH, CSV_PATH, args, "prod", args.data_source)
+    # prod_df = get_df_from_url_hash(prod_hash, BASE_PATH, CSV_PATH, args, "prod", args.data_source)
 
-    print("production df")
-    print(prod_df)
+    # print("production df")
+    # print(prod_df)
 
     # Get Current local cache being used
     # current_cached_file = args.covid_data_public_dir + "/data/cases-nytimes/us-counties.csv"
     # current_df = pd.read_csv(current_cached_file, parse_dates=[args.date_name])
     # current_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/current_cache.csv")
-
-    # Get Latest NYT
-    latest_hash = get_latest_hash(COVID_DATA_PUBLIC_PATH)
-    latest_df = get_df_from_url_hash(
-        latest_hash, BASE_PATH, CSV_PATH, args, "latest", args.data_source
-    )
-    print("latest df")
-    print(latest_df)
 
     # Variables to Compare
     variables = ["cases", "deaths", "new_cases", "new_deaths"]
