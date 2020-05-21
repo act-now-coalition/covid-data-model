@@ -39,6 +39,7 @@ prepare () {
   if [ ! -d "${API_OUTPUT_DIR}" ] ; then
     echo "Directory ${API_OUTPUT_DIR} does not exist. Creating."
     mkdir -p "${API_OUTPUT_DIR}"
+    echo "made dir"
   fi
 
 
