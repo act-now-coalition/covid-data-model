@@ -366,7 +366,6 @@ class RtInferenceEngine:
                 # this is necessary since otherwise NaN values
                 # will be inferred for all future days, after seeing
                 # a single (smoothed) zero value.
-
                 posteriors[current_day] = prior0
             else:
                 posteriors[current_day] = numerator / denominator
