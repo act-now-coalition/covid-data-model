@@ -12,8 +12,8 @@ on:
   push:
   # Hook to trigger a manual run.
   # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
-  #repository_dispatch:
-  #  types: publish-api
+  repository_dispatch:
+    types: publish-api
 
 env:
   # !!! Change this to your BRANCH if you want to test it
