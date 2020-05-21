@@ -362,10 +362,18 @@ class RtInferenceEngine:
 
             # Execute full Bayes' Rule
             if denominator == 0:
-                # restart the baysian learning for the remaining series
-                # this is necessary since otherwise NaN values
+                # Restart the baysian learning for the remaining series.
+                # This is necessary since otherwise NaN values
                 # will be inferred for all future days, after seeing
                 # a single (smoothed) zero value.
+                #
+                # We understand that restarting the posteriors with the
+                # initial prior may incur a start-up artifact as the posterior
+                # restabilizes, but we believe it's the current best
+                # solution for municipalities that have smoothed cases and
+                # deaths that dip down to zero, but then start to increase
+                # again.
+
                 posteriors[current_day] = prior0
             else:
                 posteriors[current_day] = numerator / denominator
@@ -475,7 +483,13 @@ class RtInferenceEngine:
                     for col in df_all.columns:
                         if timeseries_type.value in col:
                             df_all[col] = df_all[col].shift(shift_in_days)
-                            # Extend death and hopitalization rt signals beyond shift to avoid sudden jumps in composit metric.
+                            # Extend death and hopitalization rt signals beyond
+                            # shift to avoid sudden jumps in composit metric.
+                            #
+                            # N.B interpolate() behaves differently depending on the location
+                            # of the missing values: For any nans appearing in between valid
+                            # elements of the series, an interpolated value is filled in.
+                            # For values at the end of the series, the last *valid* value is used.
                             df_all[col] = df_all[col].interpolate(
                                 limit_direction="forward", method="linear"
                             )
