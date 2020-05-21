@@ -361,7 +361,22 @@ class RtInferenceEngine:
             denominator = np.sum(numerator)
 
             # Execute full Bayes' Rule
-            posteriors[current_day] = numerator / denominator
+            if denominator == 0:
+                # Restart the baysian learning for the remaining series.
+                # This is necessary since otherwise NaN values
+                # will be inferred for all future days, after seeing
+                # a single (smoothed) zero value.
+                #
+                # We understand that restarting the posteriors with the
+                # initial prior may incur a start-up artifact as the posterior
+                # restabilizes, but we believe it's the current best
+                # solution for municipalities that have smoothed cases and
+                # deaths that dip down to zero, but then start to increase
+                # again.
+
+                posteriors[current_day] = prior0
+            else:
+                posteriors[current_day] = numerator / denominator
 
             # Add to the running sum of log likelihoods
             log_likelihood += np.log(denominator)
@@ -468,6 +483,17 @@ class RtInferenceEngine:
                     for col in df_all.columns:
                         if timeseries_type.value in col:
                             df_all[col] = df_all[col].shift(shift_in_days)
+                            # Extend death and hopitalization rt signals beyond
+                            # shift to avoid sudden jumps in composit metric.
+                            #
+                            # N.B interpolate() behaves differently depending on the location
+                            # of the missing values: For any nans appearing in between valid
+                            # elements of the series, an interpolated value is filled in.
+                            # For values at the end of the series, the last *valid* value is used.
+                            log.debug("Filling in %s missing values", shift_in_days)
+                            df_all[col] = df_all[col].interpolate(
+                                limit_direction="forward", method="linear"
+                            )
 
         if df_all is not None and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
             df_all["Rt_MAP_composite"] = np.nanmean(
@@ -564,7 +590,8 @@ class RtInferenceEngine:
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches="tight")
             # plt.close()
-
+        if df_all is None or df_all.empty:
+            log.warning("Inference not possible for fips: %s", self.fips)
         return df_all
 
     @staticmethod
