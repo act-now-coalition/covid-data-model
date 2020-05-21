@@ -17,7 +17,7 @@ on:
 
 env:
   # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'woodsn_QA_raw_clean'
+  COVID_DATA_MODEL_REF: 'raw_QA'
 
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'master'
@@ -41,7 +41,8 @@ env:
 
 jobs:
   execute-model:
-    runs-on: self-hosted
+    #runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
@@ -90,7 +91,8 @@ jobs:
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
 
   execute-api:
-    runs-on: self-hosted
+    #runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: execute-model
     steps:
     - name: Checkout covid-data-model
@@ -136,7 +138,8 @@ jobs:
     #     path: ./api-results
 
   push-snapshot-to-s3:
-    runs-on: self-hosted
+    #runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs:
       - execute-model
       - execute-api
