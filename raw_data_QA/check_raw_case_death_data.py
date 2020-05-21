@@ -536,6 +536,7 @@ if __name__ == "__main__":
     # Datasets to compare
     latest_name = "LATEST"
     prod_name = "PROD"
+
     # Copy latest commit of covid-data-public to output_data_dir
     shutil.copytree(args.covid_data_public_dir, out_path(latest_name, args))
 
@@ -543,6 +544,13 @@ if __name__ == "__main__":
     prod_hash = get_production_hash(args.prod_snapshot_json)
     prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
     checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
+
+    print("data dir------------------")
+    os.system("ls " + args.output_dir + "/data/")
+    print("latest dir----------------------")
+    os.system("ls -lrth " + args.output_dir + "/data/LATEST/data/cases-nytimes/")
+    print("prod dir")
+    os.system("ls -lrth " + args.output_dir + "/data/PROD/data/cases-nytimes/")
 
     if args.data_source == "NYT":
         CSV_PATH = args.nyt_path
