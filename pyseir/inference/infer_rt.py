@@ -490,6 +490,7 @@ class RtInferenceEngine:
                             # of the missing values: For any nans appearing in between valid
                             # elements of the series, an interpolated value is filled in.
                             # For values at the end of the series, the last *valid* value is used.
+                            log.debug("Filling in %s missing values", shift_in_days)
                             df_all[col] = df_all[col].interpolate(
                                 limit_direction="forward", method="linear"
                             )
