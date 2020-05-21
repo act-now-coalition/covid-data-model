@@ -548,9 +548,9 @@ if __name__ == "__main__":
     print("data dir------------------")
     os.system("ls " + args.output_dir + "/data/")
     print("latest dir----------------------")
-    os.system("ls -lrth " + args.output_dir + "/data/LATEST/data/cases-nytimes/")
+    os.system("ls -dlrth " + args.output_dir + "/data/LATEST/data/cases-nytimes/*")
     print("prod dir")
-    os.system("ls -lrth " + args.output_dir + "/data/PROD/data/cases-nytimes/")
+    os.system("ls -dlrth " + args.output_dir + "/data/PROD/data/cases-nytimes/*")
 
     if args.data_source == "NYT":
         CSV_PATH = args.nyt_path
