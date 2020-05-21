@@ -91,10 +91,15 @@ def compare_data(var, df1, df2, df1_name, df2_name, args, state):
     df_new_data, new_p_diffs, new_z_scores = check_new_data(df1, df2, args, var)
 
     new_days_over_thres = sum(i > args.new_day_percent_thres for i in new_p_diffs)
+
     new_data_days_abnormal = (
         new_days_over_thres > 0
     )  # there is at least one new day added that exceeds abnormal threshold
     # truncate df2 and df3 to df1 (this assumes df1 is the shortest)
+    # print(state)
+    # print(new_p_diffs)
+    # print(new_days_over_thres)
+    # print(new_data_days_abnormal)
     truncated_df2 = get_equal_len_df(df2, df1)
     # Get comparison metrics
     rmse2 = get_rmse(df1, truncated_df2, var)
@@ -191,7 +196,7 @@ def compare_data(var, df1, df2, df1_name, df2_name, args, state):
         elif new_data_days_abnormal and not historical_data_disagree:
             output_path = args.new_data_abnormal_folder
         elif new_data_days_abnormal and historical_data_disagree:
-            output_path = args.new_and_old_data_abnormal
+            output_path = args.new_and_old_data_abnormal_folder
 
         plt.savefig(
             args.output_dir + "/" + output_path + "/" + state + "_" + var + "_compare.pdf",
@@ -454,7 +459,7 @@ if __name__ == "__main__":
         "--percent_threshold",
         type=float,
         dest="percent_threshold",
-        default=10,
+        default=5,
         help="percent difference threshold to trigger on",
     )
     parser.add_argument(
@@ -492,7 +497,7 @@ if __name__ == "__main__":
         "--new_day_percent_thres",
         type=float,
         dest="new_day_percent_thres",
-        default=30,
+        default=10,
         help="percent change threshold for new days to trigger on",
     )
     parser.add_argument(
@@ -541,7 +546,8 @@ if __name__ == "__main__":
 
     # Get Current Prod covid-data-public commit
     prod_hash = get_production_hash(args.prod_snapshot_json)
-    prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
+    # prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
+    prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
     checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
 
     if args.data_source == "NYT":
@@ -597,9 +603,9 @@ if __name__ == "__main__":
                 rmse_latest_list.append(rmse_latest)
                 historical_report_string = (
                     state
-                    + "'s "
+                    + "'s historical "
                     + var
-                    + "current and prod past data disagree (RMSE: "
+                    + " data disagree (RMSE: "
                     + str(rmse_latest)
                     + ")\n"
                 )
@@ -610,10 +616,11 @@ if __name__ == "__main__":
                 new_data_report_string = (
                     state
                     + "'s "
+                    + "latest "
                     + var
-                    + " latest data is on average "
+                    + " is on average "
                     + str(average_new_p_diff)
-                    + "% different\n"
+                    + "% different relative to past data.\n"
                 )
                 output_report.write(new_data_report_string)
                 _logger.warning(new_data_report_string)
