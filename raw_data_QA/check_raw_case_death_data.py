@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -5,6 +6,8 @@ from sklearn.metrics import mean_squared_error
 from datetime import datetime
 import calendar, argparse, pdb, os, shutil, requests, io, zipfile, shutil, glob, re, subprocess, sentry_sdk
 from subprocess import Popen, PIPE
+
+_logger = logging.getLogger(__name__)
 
 
 def aggregate_df(df, args):
@@ -612,6 +615,7 @@ if __name__ == "__main__":
                     + ")\n"
                 )
                 output_report.write(historical_report_string)
+                _logger.warning(historical_report_string)
                 sentry_sdk.capture_message(historical_report_string)
             if abnormal_new:
                 new_data_report_string = (
@@ -623,6 +627,7 @@ if __name__ == "__main__":
                     + "% different\n"
                 )
                 output_report.write(new_data_report_string)
+                _logger.warning(new_data_report_string)
                 sentry_sdk.capture_message(new_data_report_string)
 
         # Create meta-compare charts for all abnormal areas
