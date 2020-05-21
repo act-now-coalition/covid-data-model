@@ -131,8 +131,8 @@ jobs:
     #   with:
     #     name: model-results
     #     path: ./api-results
-    - name: Build API (run.sh .. .. execute_api)
-      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
+    #- name: Build API (run.sh .. .. execute_api)
+    #  run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
     # - name: Upload API with Model Results
     #   uses: actions/upload-artifact@v1
     #   with:
