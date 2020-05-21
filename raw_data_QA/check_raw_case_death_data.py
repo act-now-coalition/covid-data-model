@@ -590,11 +590,27 @@ if __name__ == "__main__":
                 days_over_thres_list.append(days_over_z)
                 states_list.append(state)
                 rmse_latest_list.append(rmse_latest)
-                historical_report_string = state + "'s " + var + "current and prod past data disagree (RMSE: " + str(rmse_latest) + ")\n"
+                historical_report_string = (
+                    state
+                    + "'s "
+                    + var
+                    + "current and prod past data disagree (RMSE: "
+                    + str(rmse_latest)
+                    + ")\n"
+                )
                 output_report.write(historical_report_string)
+                sentry_sdk.capture_message(historical_report_string)
             if abnormal_new:
-                new_data_report_string = state + "'s " + var + " latest data is on average " + str(average_new_p_diff) + "% different\n"
+                new_data_report_string = (
+                    state
+                    + "'s "
+                    + var
+                    + " latest data is on average "
+                    + str(average_new_p_diff)
+                    + "% different\n"
+                )
                 output_report.write(new_data_report_string)
+                sentry_sdk.capture_message(new_data_report_string)
 
         # Create meta-compare charts for all abnormal areas
         states_list = list(dict.fromkeys(states_list))
