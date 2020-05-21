@@ -3,38 +3,55 @@ from unittest.mock import patch
 import pytest
 
 from libs import build_processed_dataset, validate_results
-from libs.datasets import CommonFields
+from libs.datasets import CommonFields, CDSDataset, CovidTrackingDataSource
 import pandas as pd
+from libs.datasets.results_schema import CUMULATIVE_POSITIVE_TESTS, CUMULATIVE_NEGATIVE_TESTS
 
 from libs.enums import Intervention
+from more_itertools import one
 
 
 def test_get_usa_by_states_df():
-    empty_df_with_state = pd.DataFrame([], columns=['state',])
-    with patch('libs.build_processed_dataset.get_state_projections_df', return_value=empty_df_with_state) as mock:
-        df = build_processed_dataset.get_usa_by_states_df(input_dir="/tmp", intervention_type=Intervention.OBSERVED_INTERVENTION.value)
-    validate_results.validate_states_df("MA", df)
-    df.set_index([CommonFields.DATE, CommonFields.STATE], inplace=True)
-    print(df.info())
-    print(df.head())
-    assert df.loc[("2020-04-01", "MA"), CommonFields.POSITIVE_TESTS] > 0
+    empty_df_with_state = pd.DataFrame([], columns=["state",])
+    with patch(
+        "libs.build_processed_dataset.get_state_projections_df", return_value=empty_df_with_state
+    ) as mock:
+        df = build_processed_dataset.get_usa_by_states_df(
+            input_dir="/tmp", intervention_type=Intervention.OBSERVED_INTERVENTION.value
+        )
+    validate_results.validate_states_df("TX", df)
+
+    tx_record = one(df.loc[df[CommonFields.STATE_FULL_NAME] == "Texas"].to_dict(orient="records"))
+    assert tx_record[CUMULATIVE_POSITIVE_TESTS] > 100
+    assert tx_record[CUMULATIVE_NEGATIVE_TESTS] > 100
 
 
 def test_get_testing_df_by_state():
+    positive_field = CovidTrackingDataSource.Fields.POSITIVE_TESTS
+    negative_field = CovidTrackingDataSource.Fields.NEGATIVE_TESTS
     df = build_processed_dataset.get_testing_timeseries_by_state("MA")
-    assert CommonFields.POSITIVE_TESTS in df.columns
-    assert CommonFields.NEGATIVE_TESTS in df.columns
+    assert positive_field in df.columns
+    assert negative_field in df.columns
+    # TODO(tom): have build_processed_dataset return a real datetime dtype so callers don't need to parse a string.
+    df[CommonFields.DATE] = pd.to_datetime(df[CommonFields.DATE], format="%m/%d/%y")
     df.set_index(CommonFields.DATE, inplace=True)
-    assert df.loc["2020-04-01", CommonFields.POSITIVE_TESTS] > 0
+    print(df)
+    assert 0 < df.at["2020-04-01", positive_field] < df.at["2020-05-01", positive_field]
+    assert 0 < df.at["2020-04-01", negative_field] < df.at["2020-05-01", negative_field]
 
 
-# Check San Francisco and Houston (Harris County, TX)
+# Check San Francisco/06075 and Houston (Harris County, TX)/48201
 @pytest.mark.parametrize(
     "fips", ["06075", "48201"],
 )
 def test_get_testing_by_fips(fips):
     df = build_processed_dataset.get_testing_timeseries_by_fips(fips)
-    assert CommonFields.POSITIVE_TESTS in df.columns
-    assert CommonFields.NEGATIVE_TESTS in df.columns
-    df.set_index(CommonFields.DATE, inplace=True)
-    assert df.loc["2020-04-01", CommonFields.POSITIVE_TESTS] > 0
+
+    df.reset_index(inplace=True)
+    assert set(CDSDataset.TEST_FIELDS) == set(df.columns)
+
+    # TODO(tom): have build_processed_dataset return a real datetime dtype so callers don't need to parse a string.
+    df[CommonFields.DATE] = pd.to_datetime(df[CommonFields.DATE], format="%m/%d/%y")
+    df.set_index("date", inplace=True)
+
+    assert df.loc["2020-04-01", CDSDataset.Fields.CASES] > 0
