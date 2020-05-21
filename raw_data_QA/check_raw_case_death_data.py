@@ -1,6 +1,5 @@
 import logging
 import json
-import click
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +10,6 @@ from subprocess import Popen, PIPE
 
 _logger = logging.getLogger(__name__)
 
-# @click.command()
 def aggregate_df(df, args):
     # get all county level data points and add to get state level data points
     aggregation_functions = {
@@ -79,8 +77,9 @@ def get_compare_metrics(df1, df2, var):
 
 def compare_data(var, df1, df2, df1_name, df2_name, args, state):
     """
-    This function takes in two dataframe with their respective names and the variable and state to consider
-    It returns:
+    Input:
+          two dataframe with their respective names and the variable and state to consider
+    Output:
             avg_z2 - average number of standard deviations between df1[var] and df2[var] series
             latest_avg_z2: average number of standard deviations between each df1[var] and df2[var] series for last 14 days
             days_over_z2: number of days where percent difference between the df1 and df2 exceeded args.percent_threshold
@@ -100,11 +99,7 @@ def compare_data(var, df1, df2, df1_name, df2_name, args, state):
     new_data_days_abnormal = (
         new_days_over_thres > 0
     )  # there is at least one new day added that exceeds abnormal threshold
-    # truncate df2 and df3 to df1 (this assumes df1 is the shortest)
-    # print(state)
-    # print(new_p_diffs)
-    # print(new_days_over_thres)
-    # print(new_data_days_abnormal)
+    # truncate df2 to df1 (this assumes df1 is the shortest)
     truncated_df2 = get_equal_len_df(df2, df1)
     # Get comparison metrics
     rmse2 = get_rmse(df1, truncated_df2, var)
@@ -637,6 +632,7 @@ if __name__ == "__main__":
 
     output_report.close()
     os.system("rm -rf " + args.output_dir + "/" + args.output_data_dir)
+
     # send report to slack
     # slack_url = "https://hooks.slack.com/services/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"
     # with open(args.output_dir + "/outputreport.txt", 'rb') as f:
