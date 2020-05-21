@@ -1,5 +1,6 @@
 import logging
 import json
+import click
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,13 +11,13 @@ from subprocess import Popen, PIPE
 
 _logger = logging.getLogger(__name__)
 
-
+# @click.command()
 def aggregate_df(df, args):
     # get all county level data points and add to get state level data points
     aggregation_functions = {
-        args.new_cases_name: "sum",
-        args.new_deaths_name: "sum",
-        args.date_name: "first",
+        args.new_cases_name: "sum",  # add all county level new cases for each state
+        args.new_deaths_name: "sum",  # add all county level new deaths for each state
+        args.date_name: "first",  # keep first date in array
     }
     # add up all entries with same date
     df_new = df.groupby(df[args.date_name]).aggregate(aggregation_functions)
@@ -76,14 +77,18 @@ def get_compare_metrics(df1, df2, var):
     return diff, z_scores, average_Z, latest_Z, number_of_days_percent_threshold
 
 
-def average(list):
-    if len(list) > 0:
-        return sum(list) / len(list)
-    else:
-        return 0
-
-
 def compare_data(var, df1, df2, df1_name, df2_name, args, state):
+    """
+    This function takes in two dataframe with their respective names and the variable and state to consider
+    It returns:
+            avg_z2 - average number of standard deviations between df1[var] and df2[var] series
+            latest_avg_z2: average number of standard deviations between each df1[var] and df2[var] series for last 14 days
+            days_over_z2: number of days where percent difference between the df1 and df2 exceeded args.percent_threshold
+            rmse2: the RMSE between the dates shared between df1 and df2
+            historical_data_disagree: True df1 and df2 disagree historically (e.g. have at least args.n_days_threshold of days over args.percent_threshold)
+            new_data_days_abnormal: True if n_days in df2 not in df1 have percent difference relative to previous day > args.new_percent_threshold
+            average_new_p_diffs: average percent difference of new days in df2
+    """
     # Since data is from CAN caches add that to names
     df1_name += " CAN"
     df2_name += " CAN"
@@ -247,12 +252,6 @@ def compare_county_state_plot(var, df1, df2, df1_name, df2_name, args, state):
     plt.close("all")
 
 
-def get_current_day():
-    current_month = calendar.month_name[datetime.now().month]
-    current_day = datetime.now().day
-    return current_month + " " + str(current_day)
-
-
 def make_meta_comparison_plot(
     states_list, array1, name1, array2, name2, array3, name3, array4, name4, var
 ):
@@ -371,11 +370,6 @@ def out_path(foldername, args):
     return str(args.output_dir + "/" + args.output_data_dir + "/" + foldername)
 
 
-def working_dir():
-    wd = os.getcwd()
-    return wd
-
-
 def get_df_save_csv(name, data_source, args):
     if data_source == "NYT":
         csvfile = out_path(name, args) + "/" + args.nyt_path
@@ -403,7 +397,7 @@ if __name__ == "__main__":
         "--states",
         nargs="+",
         dest="states",
-        default=["All"],
+        default=["Alabama"],
         help="name of state to process",
     )
     parser.add_argument(
