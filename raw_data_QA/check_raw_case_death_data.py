@@ -10,6 +10,7 @@ from subprocess import Popen, PIPE
 
 _logger = logging.getLogger(__name__)
 
+
 def aggregate_df(df, args):
     # get all county level data points and add to get state level data points
     aggregation_functions = {
