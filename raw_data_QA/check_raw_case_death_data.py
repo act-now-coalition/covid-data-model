@@ -39,18 +39,18 @@ def get_equal_len_df(df1, df2):
 
 
 def get_p_diff_z_score(var1, var2):
-    #print(f'var1: {var1} var2: {var2}')
+    # print(f'var1: {var1} var2: {var2}')
     if var1 == 0 and var2 == 0:
         p_diff = 0
         z_score = 0
     elif var1 == 0 and var2 != 0:  # may want to deal with small variations differently
-        p_diff = 100*((var2 - var1) / var2)
+        p_diff = 100 * ((var2 - var1) / var2)
         z_score = (var2 - var1) / 1  # I am hardcoding the error on zero to be 1
     elif var2 == 0 and var1 != 0:
-        p_diff = 100*((var2 - var1) / var1)
+        p_diff = 100 * ((var2 - var1) / var1)
         z_score = (var2 - var1) / 1  # again hardcoding error on zero to be 1
     else:
-        p_diff = 100*((abs(var2) - abs(var1)) / var1)
+        p_diff = 100 * ((abs(var2) - abs(var1)) / var1)
         err = np.sqrt(abs(var1))
         z_score = (var2 - var1) / err  # to be added
     # print(f'pdiff: {p_diff} zscore: {z_score}')
@@ -370,7 +370,7 @@ def working_dir():
 def get_df_save_csv(name, data_source, args):
     if data_source == "NYT":
         csvfile = out_path(name, args) + "/" + args.nyt_path
-        print('this is the csvfile')
+        print("this is the csvfile")
         print(csvfile)
         df = pd.read_csv(csvfile, parse_dates=[args.date_name])
     elif data_source == "JHU":
@@ -511,7 +511,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     # put output dir in current working dir
-    #args.output_dir = working_dir() + "/" + args.output_dir
+    # args.output_dir = working_dir() + "/" + args.output_dir
     # Create separate output folders based on abnormality of data
     args.new_data_abnormal_folder = "new_data_abnormal"
     args.old_data_abnormal_folder = "old_data_abnormal"
@@ -526,9 +526,9 @@ if __name__ == "__main__":
 
     # Make Output Dirs
     make_outputdirs(args)
-    print('current dir')
-    os.system('pwd')
-    os.system('ls')
+    print("current dir")
+    os.system("pwd")
+    os.system("ls")
     output_report = open(args.output_dir + "/outputreport.txt", "w+")
     # Variables to Compare
     variables = ["cases", "deaths", "new_cases", "new_deaths"]
