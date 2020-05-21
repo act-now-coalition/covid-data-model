@@ -20,6 +20,9 @@ prepare () {
   else
     DATA_SOURCES_DIR="$(abs_path $1)"
     API_OUTPUT_DIR="$(abs_path $2)"
+    echo $DATA_SOURCES_DIR
+    echo $API_OUTPUT_DIR
+    echo "NATASHA"
   fi
 
   if [ $# -eq 2 ]; then
@@ -51,9 +54,11 @@ prepare () {
 
 execute_raw_data_qa() {
   # Go to repo root (where run.sh lives).
-  RAW_DATA_OUTPUT_STREAM="/RAW_QA"
+  #RAW_DATA_OUTPUT_STREAM="/RAW_QA"
   cd "$(dirname "$0")"
-  python ./raw_data_QA/check_raw_case_death_data.py --output_dir="${API_OUTPUT_DIR}${RAW_DATA_OUTPUT_STREAM}" --covid_data_public_dir="${DATA_SOURCES_DIR}"
+  echo "output dir"
+  echo $API_OUTPUT_DIR
+  python ./raw_data_QA/check_raw_case_death_data.py --output_dir="${API_OUTPUT_DIR}" --covid_data_public_dir="${DATA_SOURCES_DIR}"
   echo "done with execute_raw_data_qa"
 }
 
