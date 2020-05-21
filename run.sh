@@ -22,7 +22,6 @@ prepare () {
     API_OUTPUT_DIR="$(abs_path $2)"
     echo $DATA_SOURCES_DIR
     echo $API_OUTPUT_DIR
-    echo "NATASHA"
   fi
 
   if [ $# -eq 2 ]; then
