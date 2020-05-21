@@ -370,6 +370,7 @@ def working_dir():
 def get_df_save_csv(name, data_source, args):
     if data_source == "NYT":
         csvfile = out_path(name, args) + "/" + args.nyt_path
+        print('this is the csvfile')
         print(csvfile)
         df = pd.read_csv(csvfile, parse_dates=[args.date_name])
     elif data_source == "JHU":
@@ -525,6 +526,9 @@ if __name__ == "__main__":
 
     # Make Output Dirs
     make_outputdirs(args)
+    print('current dir')
+    os.system('pwd')
+    os.system('ls')
     output_report = open(args.output_dir + "/outputreport.txt", "w+")
     # Variables to Compare
     variables = ["cases", "deaths", "new_cases", "new_deaths"]
