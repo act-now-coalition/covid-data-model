@@ -41,11 +41,7 @@ env:
 
 jobs:
   execute-model:
-    #runs-on: self-hosted
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.7]
+    runs-on: self-hosted
     steps:
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
@@ -60,12 +56,11 @@ jobs:
         path: covid-data-public
         lfs: true
         ref: '${{env.COVID_DATA_PUBLIC_REF}}'
-    #Add back
-    #- name: Setup Python
-    #  uses: actions/setup-python@v1
-    #  with:
-    #    python-version: '3.7.6'
-    #    architecture: 'x64'
+    - name: Setup Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7.6'
+        architecture: 'x64'
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
@@ -99,8 +94,7 @@ jobs:
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
 
   execute-api:
-    #runs-on: self-hosted
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: execute-model
     steps:
     - name: Checkout covid-data-model
@@ -146,8 +140,7 @@ jobs:
     #     path: ./api-results
 
   push-snapshot-to-s3:
-    #runs-on: self-hosted
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs:
       - execute-model
       - execute-api
