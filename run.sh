@@ -57,10 +57,7 @@ execute_raw_data_qa() {
   # Go to repo root (where run.sh lives).
   #RAW_DATA_OUTPUT_STREAM="/RAW_QA"
   cd "$(dirname "$0")"
-  echo "output dir"
-  echo $API_OUTPUT_DIR
   python ./raw_data_QA/check_raw_case_death_data.py --output_dir="${API_OUTPUT_DIR}" --covid_data_public_dir="${DATA_SOURCES_DIR}"
-  echo "done with execute_raw_data_qa"
 }
 
 execute_model() {

@@ -1,4 +1,5 @@
 import logging
+import json
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -373,8 +374,6 @@ def working_dir():
 def get_df_save_csv(name, data_source, args):
     if data_source == "NYT":
         csvfile = out_path(name, args) + "/" + args.nyt_path
-        print("this is the csvfile")
-        print(csvfile)
         df = pd.read_csv(csvfile, parse_dates=[args.date_name])
     elif data_source == "JHU":
         files = glob.glob(out_path(name, args) + "/" + args.jhu_path + "*csv")
@@ -399,7 +398,7 @@ if __name__ == "__main__":
         "--states",
         nargs="+",
         dest="states",
-        default=["Alabama"],
+        default=["All"],
         help="name of state to process",
     )
     parser.add_argument(
@@ -529,9 +528,6 @@ if __name__ == "__main__":
 
     # Make Output Dirs
     make_outputdirs(args)
-    print("current dir")
-    os.system("pwd")
-    os.system("ls")
     output_report = open(args.output_dir + "/outputreport.txt", "w+")
     # Variables to Compare
     variables = ["cases", "deaths", "new_cases", "new_deaths"]
@@ -547,13 +543,6 @@ if __name__ == "__main__":
     prod_hash = get_production_hash(args.prod_snapshot_json)
     prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
     checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
-
-    print("data dir------------------")
-    os.system("ls " + args.output_dir + "/data/")
-    print("latest dir----------------------")
-    os.system("ls -dlrth " + args.output_dir + "/data/LATEST/data/cases-nytimes/*")
-    print("prod dir")
-    os.system("ls -dlrth " + args.output_dir + "/data/PROD/data/cases-nytimes/*")
 
     if args.data_source == "NYT":
         CSV_PATH = args.nyt_path
@@ -647,6 +636,14 @@ if __name__ == "__main__":
 
     output_report.close()
     os.system("rm -rf " + args.output_dir + "/" + args.output_data_dir)
+    # send report to slack
+    # slack_url = "https://hooks.slack.com/services/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"
+    # with open(args.output_dir + "/outputreport.txt", 'rb') as f:
+    #  r = requests.post(slack_url, data={'Raw_Data_QA': f.read()})
+    # output_report_for_post = {'upload_file': open(args.output_dir + "/outputreport.txt", 'rb')}
+    # response = requests.post(
+    #    slack_url, data = json.dumps({"text": output_report_for_post}), headers = {"Content-Type": "application/json"}
+    # )
     # zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
     # zipdir("./output", zipf)
     # zipf.close()

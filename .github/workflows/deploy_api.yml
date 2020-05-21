@@ -9,7 +9,7 @@ on:
   schedule:
    - cron: '30 0,12 * * *'
 
-  push:
+  #push:
   # Hook to trigger a manual run.
   # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
   #repository_dispatch:
@@ -34,7 +34,7 @@ env:
 
   # Used by execute-model (for now) to optimize parallelization on self-hosted
   # runner.
-  #COVID_MODEL_CORES: 96 #was 96
+  COVID_MODEL_CORES: 96
 
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -61,10 +61,6 @@ jobs:
       with:
         python-version: '3.7.6'
         architecture: 'x64'
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
     - name: Cache Pip
       uses: actions/cache@v1
       with:
@@ -83,8 +79,8 @@ jobs:
     #     touch /data/api-results-${{env.SNAPSHOT_ID}}/deleteme
     - name: run raw data QA
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_raw_data_qa
-    #- name: Build Model Results (run.sh .. .. execute_model)
-    #  run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
+    - name: Build Model Results (run.sh .. .. execute_model)
+      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
     - name: Upload Raw Data QA and Model Results
@@ -131,8 +127,8 @@ jobs:
     #   with:
     #     name: model-results
     #     path: ./api-results
-    #- name: Build API (run.sh .. .. execute_api)
-    #  run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
+    - name: Build API (run.sh .. .. execute_api)
+      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
     # - name: Upload API with Model Results
     #   uses: actions/upload-artifact@v1
     #   with:
