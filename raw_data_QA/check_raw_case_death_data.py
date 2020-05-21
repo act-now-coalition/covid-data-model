@@ -561,8 +561,8 @@ if __name__ == "__main__":
         print("ERROR: Specify which input source data to use (e.g. JHU/NYT")
         exit()
 
-    latest_df = get_df_save_csv("latest", args.data_source, args)
-    prod_df = get_df_save_csv("prod", args.data_source, args)
+    latest_df = get_df_save_csv(latest_name, args.data_source, args)
+    prod_df = get_df_save_csv(prod_name, args.data_source, args)
 
     # Get all states in input dataset if user asks for all states
     if "All" in args.states:
