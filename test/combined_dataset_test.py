@@ -3,7 +3,8 @@ import re
 
 import pytest
 
-from libs.datasets import combined_datasets
+from libs.datasets import combined_datasets, CommonFields
+from libs.datasets.dataset_utils import AggregationLevel
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import JHUDataset
@@ -29,6 +30,27 @@ def test_unique_index_values_us_latest():
     assert not sum(duplicates)
 
 
+# Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
+@pytest.mark.parametrize("fips", ["06075", "48201"])
+def test_combined_county_has_some_data(fips):
+    latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
+        AggregationLevel.COUNTY, fips=fips
+    )
+    assert latest.data[CommonFields.POSITIVE_TESTS] > 0
+    assert latest.data[CommonFields.NEGATIVE_TESTS] > 0
+
+
+# Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
+@pytest.mark.parametrize("fips", ["06075", "48201"])
+def test_combined_county_has_some_timeseries_data(fips):
+    latest = combined_datasets.build_us_timeseries_with_all_fields().get_subset(
+        AggregationLevel.COUNTY, fips=fips
+    )
+    df = latest.data.set_index(CommonFields.DATE)
+    assert df.loc["2020-05-01", CommonFields.CASES] > 0
+    assert df.loc["2020-05-01", CommonFields.DEATHS] > 0
+
+
 @pytest.mark.parametrize(
     "data_source_cls",
     [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
@@ -44,8 +66,7 @@ def test_unique_timeseries(data_source_cls):
 
 @pytest.mark.parametrize(
     "data_source_cls",
-    [JHUDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
-    # TODO(tom): Add CDSDataset when it fits in with the rest of the data source classes
+    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()

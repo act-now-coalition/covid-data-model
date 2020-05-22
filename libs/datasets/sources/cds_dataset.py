@@ -133,12 +133,14 @@ class CDSDataset(data_source.DataSource):
         data = dataset_utils.add_fips_using_county(data, fips_data)
         no_fips = data[CommonFields.FIPS].isna()
         if no_fips.sum() > 0:
-            logging.warning(f"Removing rows without fips id: {str(data.loc[no_fips])}")
+            logging.error(f"Removing rows without fips id: {str(data.loc[no_fips])}")
             data = data.loc[~no_fips]
 
         data.set_index(["date", "fips"], inplace=True)
         if data.index.has_duplicates:
-            logging.warning(f"Removing duplicates: {str(data.index.duplicated(keep=False))}")
+            # Use keep=False when logging so the output contains all duplicated rows, not just the first or last
+            # instance of each duplicate.
+            logging.error(f"Removing duplicates: {str(data.index.duplicated(keep=False))}")
             data = data.loc[~data.index.duplicated(keep=False)]
         data.reset_index(inplace=True)
 
