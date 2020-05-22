@@ -378,7 +378,7 @@ if __name__ == "__main__":
         "--states",
         nargs="+",
         dest="states",
-        default=["Alabama"],
+        default=["All"],
         help="name of state to process",
     )
     parser.add_argument(
@@ -492,8 +492,6 @@ if __name__ == "__main__":
         help="input data source (e.g. NYT/JHU)",
     )
     args = parser.parse_args()
-    # put output dir in current working dir
-    # args.output_dir = working_dir() + "/" + args.output_dir
     # Create separate output folders based on abnormality of data
     args.new_data_abnormal_folder = "new_data_abnormal"
     args.old_data_abnormal_folder = "old_data_abnormal"
@@ -523,8 +521,10 @@ if __name__ == "__main__":
 
         # Get Current Prod covid-data-public commit
         prod_hash = get_production_hash(args.prod_snapshot_json)
+        print("prod hash")
+        print(prod_hash)
         # prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
-        prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
+        # prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
         checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
 
         if args.data_source == "NYT":
