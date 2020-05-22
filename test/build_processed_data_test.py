@@ -15,7 +15,7 @@ def test_get_usa_by_states_df():
     empty_df_with_state = pd.DataFrame([], columns=["state",])
     with patch(
         "libs.build_processed_dataset.get_state_projections_df", return_value=empty_df_with_state
-    ) as mock:
+    ):
         df = build_processed_dataset.get_usa_by_states_df(
             input_dir="/tmp", intervention_type=Intervention.OBSERVED_INTERVENTION.value
         )
@@ -35,9 +35,9 @@ def test_get_testing_df_by_state():
     # TODO(tom): have build_processed_dataset return a real datetime dtype so callers don't need to parse a string.
     df[CommonFields.DATE] = pd.to_datetime(df[CommonFields.DATE], format="%m/%d/%y")
     df.set_index(CommonFields.DATE, inplace=True)
-    print(df)
-    assert 0 < df.at["2020-04-01", positive_field] < df.at["2020-05-01", positive_field]
-    assert 0 < df.at["2020-04-01", negative_field] < df.at["2020-05-01", negative_field]
+    # No joke, our only source of state-level timeseries testing data is CDSDataset and it has NaN for MA until April 6.
+    assert 0 < df.at["2020-04-10", positive_field] < df.at["2020-05-01", positive_field]
+    assert 0 < df.at["2020-04-10", negative_field] < df.at["2020-05-01", negative_field]
 
 
 # Check San Francisco/06075 and Houston (Harris County, TX)/48201
