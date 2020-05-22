@@ -44,7 +44,7 @@ def test_unique_timeseries(data_source_cls):
 
 @pytest.mark.parametrize(
     "data_source_cls",
-    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData, ],
+    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()
@@ -62,7 +62,7 @@ def test_expected_field_in_sources(data_source_cls):
     else:
         good_state = set()
         for state in states:
-            if re.fullmatch(r'[A-Z]{2}', state):
+            if re.fullmatch(r"[A-Z]{2}", state):
                 good_state.add(state)
             else:
                 logging.info(f"Ignoring {state} in {data_source.SOURCE_NAME}")
