@@ -524,7 +524,7 @@ if __name__ == "__main__":
         # print("prod hash")
         # print(prod_hash)
         # prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
-        prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
+        #prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
         checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
 
         if args.data_source == "NYT":
