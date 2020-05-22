@@ -5,6 +5,7 @@ import sentry_sdk
 from functools import lru_cache
 
 from libs.datasets.combined_datasets import build_us_timeseries_with_all_fields
+from libs.enums import Intervention
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.us_state_abbrev import abbrev_us_state
 from libs.us_state_abbrev import us_fips
@@ -68,8 +69,6 @@ def get_testing_timeseries_by_state(state):
 
 def get_testing_timeseries_by_fips(fips):
     """Called by generate_api"""
-    all_data = build_us_timeseries_with_all_fields().data
-    print(all_data.info())
     testing_df = (
         build_us_timeseries_with_all_fields()
         .get_data(fips=fips)
@@ -169,10 +168,10 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     return counties
 
 
-def get_usa_by_states_df(input_dir: str, intervention_type):
+def get_usa_by_states_df(input_dir: str, intervention: Intervention):
     us_only = _get_usa_by_county_df()
     interventions_df = _get_interventions_df()
-    projections_df = get_state_projections_df(input_dir, intervention_type, interventions_df)
+    projections_df = get_state_projections_df(input_dir, intervention.value, interventions_df)
     testing_df = (
         build_us_timeseries_with_all_fields()
         .get_data(aggregation_level=AggregationLevel.STATE)
