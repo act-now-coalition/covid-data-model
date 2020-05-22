@@ -95,17 +95,27 @@ class Comparitor(object):
         data_at_date = self._date_to_data.get(date)
         if not data_at_date:
             capture_event(
-                {"state": self.state, "snapshot": snapshot, "metric": metric.name, "date": date}
+                {
+                    "message": "{self.state} missing data for a given date",
+                    "extra": {
+                        "state": self.state,
+                        "snapshot": snapshot,
+                        "metric": metric.name,
+                        "missing_date": date,
+                    },
+                }
             )
             return None
         data = data_at_date.get(snapshot)
         if not data:
+            # This might be because the snapshot doesn't have data to compare it to (like the dates might not overlap)
             return None
 
         current_data = data
         for path_segment in metric_path:
             current_data = current_data.get(path_segment)
             if current_data is None:
+                # this would be for the actuals we wouldn't have future values
                 return None
         if isinstance(current_data, float):
             current_data = round(current_data, 4)
@@ -135,7 +145,47 @@ class Comparitor(object):
 
         return dates
 
-    def compareMetric(self, date, metric):
+    def _metric_diff(self, date, metric, value1, value2, metric_type) -> MetricDiff:
+        metric_diff = MetricDiff(
+            self.state,
+            self.county,
+            self.fips,
+            date,
+            metric.name,
+            metric_type,
+            self.snapshot1,
+            value1,
+            self.snapshot2,
+            value2,
+            metric.diff(value1, value2),
+            metric.threshold,
+            metric.threshold_diff_value(value1, value2),
+        )
+        capture_event(
+            {
+                "message": f"State has over threshold metrics",
+                "tags": {
+                    "state": self.state,
+                    "county": self.county,
+                    "fips": self.fips,
+                    "metric_date": date,
+                    "metric": metric.name,
+                    "metric_type": metric_type,
+                },
+                "extra": {
+                    "snapshot1": self.snapshot1,
+                    "value1": value1,
+                    "snapshot2": self.snapshot2,
+                    "value2": value2,
+                    "metric_diff": metric.diff(value1, value2),
+                    "metric_threshold": metric.threshold,
+                    "metric_diff_value": metric.threshold_diff_value(value1, value2),
+                },
+            }
+        )
+        return metric_diff
+
+    def compare_metric(self, date, metric):
         projected_value1 = self.get_metric_projected_value(metric, date, self.snapshot1)
         projected_value2 = self.get_metric_projected_value(metric, date, self.snapshot2)
 
@@ -145,50 +195,23 @@ class Comparitor(object):
         if projected_value1 and projected_value2:
             if metric.isAboveThreshold(projected_value1, projected_value2):
                 self._results.append(
-                    MetricDiff(
-                        self.state,
-                        self.county,
-                        self.fips,
-                        date,
-                        metric.name,
-                        "projected",
-                        self.snapshot1,
-                        projected_value1,
-                        self.snapshot2,
-                        projected_value2,
-                        metric.diff(projected_value1, projected_value2),
-                        metric.threshold,
-                        metric.threshold_diff_value(projected_value1, projected_value2),
-                    )
+                    self._metric_diff(date, metric, projected_value1, projected_value2, "projected")
                 )
 
         if actual_value1 and actual_value2:
             if metric.isAboveThreshold(actual_value1, actual_value2):
                 self._results.append(
-                    MetricDiff(
-                        self.state,
-                        self.county,
-                        self.fips,
-                        date,
-                        metric.name,
-                        "actual",
-                        self.snapshot1,
-                        actual_value1,
-                        self.snapshot2,
-                        actual_value2,
-                        metric.diff(actual_value1, actual_value2),
-                        metric.threshold,
-                        metric.threshold_diff_value(actual_value1, actual_value2),
-                    )
+                    self._metric_diff(date, metric, actual_value1, actual_value2, "actual")
                 )
+
         return self._results
 
-    def compareMetrics(self):
+    def compare_metrics(self):
         for date in self.dates:
             for metric in TIMESERIES_METRICS:
-                self.compareMetric(date, metric)
+                self.compare_metric(date, metric)
         for metric in CURRENT_METRICS:
-            self.compareMetric("current", metric)
+            self.compare_metric("current", metric)
         return self._results
 
     def generate_report(self):
@@ -200,15 +223,13 @@ class Comparitor(object):
             metric for metric in self._results if metric.metric_name == RtIndicatorTS.name
         ]
 
-        report = f"{self.state} has {len(self._results)} over threshold metrics ({len(unique_items)} unique metrics)."
-        report += f' Errors were found in the following metrics: {", ".join(unique_items)}'
+        report = f"{self.state} has {len(unique_items)} metrics past threshold."
         max_difference = max(self._results)
-        report += f" The biggest difference was {max_difference.difference} on {max_difference.date} for {max_difference.metric_name}"
+        report += f" Biggest diff: {max_difference.difference} on {max_difference.date} for {max_difference.metric_name}."
         if len(rt_difference_array) > 0 and max(rt_difference_array) != max_difference:
             rt_difference = max(rt_difference_array)
             report += f" There was also a {rt_difference.metric_name} of {rt_difference.difference} for {rt_difference.date}."
 
-        report += f" More detailed report can be found in a csv generated by this report."
         return report
 
     @classmethod
