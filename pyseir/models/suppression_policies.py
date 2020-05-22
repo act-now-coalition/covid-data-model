@@ -77,8 +77,7 @@ def generate_rt_inference_policy(t0, fips, future_suppression, R0=None):
 
     df_rt = df_rt[df_rt['Rt_MAP_composite'].notnull()]
 
-    days = [(t - t0).days for t in
-            df_rt['Rt_MAP_composite'].index.to_pydatetime()]
+    days = [(t - t0).days for t in df_rt['Rt_MAP_composite'].index.to_pydatetime()]
     suppression = list(df_rt['Rt_MAP_composite'] / R0)
 
     if future_suppression == 'current':

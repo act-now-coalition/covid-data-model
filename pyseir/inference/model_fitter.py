@@ -9,6 +9,7 @@ import numpy as np
 # from jax import numpy as np
 import os
 import us
+from enum import Enum
 import dill as pickle
 import numpy as np
 from pprint import pformat
@@ -34,6 +35,11 @@ from pyseir.inference.fit_results import load_inference_result
 
 def calc_chi_sq(obs, predicted, stddev):
     return np.sum((obs - predicted) ** 2 / stddev ** 2)
+
+
+class SuppressionPolicy(Enum):
+    TWO_STAGE = 'two_stage'
+    RT = 'rt'
 
 
 class ModelFitter:
@@ -71,6 +77,10 @@ class ModelFitter:
         estimates.  0.5 = 50% error. Best to be conservatively high.
     with_age_structure: bool
         Whether run model with age structure.
+    default_param_overrides: dict or NoneType
+        List of overrides for default model parameters.
+    fit_param_overrides: dict or NoneType
+        Override individual fit parameters.
     """
 
     DEFAULT_FIT_PARAMS = dict(
@@ -92,7 +102,7 @@ class ModelFitter:
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
         error_test_fraction=0.02,
-        hosp_fraction=0.7,
+        hosp_fraction=1,
         limit_hosp_fraction=[0.25, 1],
         error_hosp_fraction=0.05,
         # Let's not fit this to start...
@@ -113,6 +123,9 @@ class ModelFitter:
         hospital_to_deaths_err_factor=0.5,
         percent_error_on_max_observation=0.5,
         with_age_structure=False,
+        suppression_policy=SuppressionPolicy.TWO_STAGE,
+        default_param_overrides=None,
+        fit_param_overrides=None
     ):
 
         # Seed the random state. It is unclear whether this propagates to the
@@ -128,6 +141,9 @@ class ModelFitter:
         self.percent_error_on_max_observation = percent_error_on_max_observation
         self.t0_guess = 60
         self.with_age_structure = with_age_structure
+        self.suppression_policy = SuppressionPolicy(suppression_policy)
+        self.default_param_overrides = default_param_overrides or dict()
+        self.fit_param_overrides = fit_param_overrides or dict()
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -171,7 +187,7 @@ class ModelFitter:
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
 
-        self.model_fit_keys = ["R0", "eps", "t_break", "log10_I_initial"]
+        self.model_fit_keys = ["R0", "eps", "t_break", "log10_I_initial", "t0"]
 
         self.SEIR_kwargs = self.get_average_seir_parameters()
         self.fit_results = None
@@ -234,6 +250,13 @@ class ModelFitter:
                 self.fit_params["fix_eps"] = True
                 self.fit_params["fix_t_break"] = True
 
+        if self.suppression_policy is SuppressionPolicy.RT:
+            self.fit_params["fix_t_break"] = True
+            self.fit_params["fix_eps"] = True
+            self.fit_params["fix_R0"] = True
+
+        self.fit_params.update(self.fit_param_overrides)
+
     def get_average_seir_parameters(self):
         """
         Generate the additional fitter candidates from the ensemble generator. This
@@ -250,10 +273,14 @@ class ModelFitter:
             parameter_generator = ParameterEnsembleGenerator
 
         SEIR_kwargs = parameter_generator(
-            fips=self.fips, N_samples=5000, t_list=self.t_list, suppression_policy=None
+            fips=self.fips,
+            N_samples=5000,
+            t_list=self.t_list,
+            suppression_policy=None,
         ).get_average_seir_parameters()
 
         SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
+        SEIR_kwargs.update(self.default_param_overrides)
         del SEIR_kwargs["suppression_policy"]
         del SEIR_kwargs["I_initial"]
         return SEIR_kwargs
@@ -345,7 +372,7 @@ class ModelFitter:
 
         return cases_stdev, hosp_stdev, deaths_stdev
 
-    def run_model(self, R0, eps, t_break, log10_I_initial):
+    def run_model(self, R0, eps, t_break, log10_I_initial, t0):
         """
         Generate the model and run.
 
@@ -366,9 +393,17 @@ class ModelFitter:
         model: SEIRModel
             The SEIR model that has been run.
         """
-        suppression_policy = suppression_policies.generate_two_step_policy(
-            self.t_list, eps, t_break
-        )
+        if self.suppression_policy is SuppressionPolicy.TWO_STAGE:
+            suppression_policy = suppression_policies.generate_two_step_policy(
+                self.t_list, eps, t_break
+            )
+        elif self.suppression_policy is SuppressionPolicy.RT:
+            suppression_policy = suppression_policies.generate_rt_inference_policy(
+                t0=self.ref_date + timedelta(days=t0),
+                fips=self.fips,
+                future_suppression='current',
+                # R0=R0 # TODO: TBD if this should be fit...
+            )
 
         if self.with_age_structure:
             age_distribution = self.SEIR_kwargs["N"] / self.SEIR_kwargs["N"].sum()
