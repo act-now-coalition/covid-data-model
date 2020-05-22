@@ -1,3 +1,4 @@
+  
 #!/bin/bash
 # run.sh - Runs everything necessary to generate our API artifacts (for
 # website, external consumers, etc.) based on our inputs (from
@@ -19,6 +20,8 @@ prepare () {
   else
     DATA_SOURCES_DIR="$(abs_path $1)"
     API_OUTPUT_DIR="$(abs_path $2)"
+    echo $DATA_SOURCES_DIR
+    echo $API_OUTPUT_DIR
   fi
 
   if [ $# -eq 2 ]; then
@@ -35,6 +38,7 @@ prepare () {
   if [ ! -d "${API_OUTPUT_DIR}" ] ; then
     echo "Directory ${API_OUTPUT_DIR} does not exist. Creating."
     mkdir -p "${API_OUTPUT_DIR}"
+    echo "made dir"
   fi
 
 
@@ -46,6 +50,14 @@ prepare () {
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
   API_OUTPUT_US="${API_OUTPUT_DIR}/us"
+}
+
+execute_raw_data_qa() {
+  # Go to repo root (where run.sh lives).
+  RAW_DATA_OUTPUT_STREAM="/RAW_QA"
+  cd "$(dirname "$0")"
+  rm -rf "${API_OUTPUT_DIR}${RAW_DATA_OUTPUT_STREAM}"
+  python ./raw_data_QA/check_raw_case_death_data.py --output_dir="${API_OUTPUT_DIR}${RAW_DATA_OUTPUT_STREAM}" --covid_data_public_dir="${DATA_SOURCES_DIR}"
 }
 
 execute_model() {
@@ -193,6 +205,10 @@ case $EXECUTE_FUNC in
   execute_api)
     echo "Executing Api"
     execute_api
+    ;;
+  execute_raw_data_qa)
+    echo "Executing Raw Data QA"
+    execute_raw_data_qa
     ;;
   execute_zip_folder)
     echo "Executing Api"
