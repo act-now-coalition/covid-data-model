@@ -305,8 +305,8 @@ def get_production_hash(json_path):
 
 def make_outputdirs(args):
     # remove output directory if it exists
-    if os.path.exists(args.output_dir):
-        shutil.rmtree(args.output_dir)
+    # if os.path.exists(args.output_dir):
+    #    shutil.rmtree(args.output_dir)
     os.makedirs(args.output_dir)
     os.makedirs(args.output_dir + "/" + args.new_data_abnormal_folder)
     os.makedirs(args.output_dir + "/" + args.old_data_abnormal_folder)
@@ -521,10 +521,10 @@ if __name__ == "__main__":
 
         # Get Current Prod covid-data-public commit
         prod_hash = get_production_hash(args.prod_snapshot_json)
-        print("prod hash")
-        print(prod_hash)
+        # print("prod hash")
+        # print(prod_hash)
         # prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
-        # prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
+        prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
         checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
 
         if args.data_source == "NYT":
@@ -619,7 +619,6 @@ if __name__ == "__main__":
             )
 
         output_report.close()
-        # os.system("rm -rf " + args.output_dir + "/" + args.output_data_dir)
 
         # send report to slack
         # slack_url = "https://hooks.slack.com/services/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"
