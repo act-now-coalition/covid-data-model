@@ -1,4 +1,5 @@
 import logging
+import tempfile
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -302,23 +303,6 @@ def get_production_hash(json_path):
     return master_hash
 
 
-def get_df_from_url_hash(thishash, BASE_PATH, filepath, args, name, data_source):
-    if data_source == "NYT":
-        this_file = requests.get(f"{BASE_PATH}/{thishash}/{filepath}").content
-        this_df = pd.read_csv(io.StringIO(this_file.decode("utf-8")), parse_dates=[args.date_name])
-        this_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/{name}.csv")
-    elif data_source == "JHU":
-        this_file = glob.glob(f"{BASE_PATH}/{thishash}/{filepath}/*csv")
-    return this_file
-
-
-def get_df_from_url(url, args, name):
-    this_file = requests.get(url).content
-    this_df = pd.read_csv(io.StringIO(this_file.decode("utf-8")), parse_dates=[args.date_name])
-    this_df.to_csv(f"{args.output_dir}/{args.output_data_dir}/{name}.csv")
-    return this_df
-
-
 def make_outputdirs(args):
     # remove output directory if it exists
     if os.path.exists(args.output_dir):
@@ -327,7 +311,7 @@ def make_outputdirs(args):
     os.makedirs(args.output_dir + "/" + args.new_data_abnormal_folder)
     os.makedirs(args.output_dir + "/" + args.old_data_abnormal_folder)
     os.makedirs(args.output_dir + "/" + args.new_and_old_data_abnormal_folder)
-    os.makedirs(args.output_dir + "/" + args.output_data_dir)
+
     return
 
 
@@ -363,7 +347,8 @@ def checkout_repo_by_hash(LOCAL_REPO_PATH, commit_hash, args, name):
 
 
 def out_path(foldername, args):
-    return str(args.output_dir + "/" + args.output_data_dir + "/" + foldername)
+    # return str(args.output_dir + "/" + args.output_data_dir + "/" + foldername)
+    return str(args.output_data_dir + "/" + foldername)
 
 
 def get_df_save_csv(name, data_source, args):
@@ -393,7 +378,7 @@ if __name__ == "__main__":
         "--states",
         nargs="+",
         dest="states",
-        default=["Alabama"],
+        default=["All"],
         help="name of state to process",
     )
     parser.add_argument(
@@ -507,14 +492,10 @@ if __name__ == "__main__":
         help="input data source (e.g. NYT/JHU)",
     )
     args = parser.parse_args()
-    # put output dir in current working dir
-    # args.output_dir = working_dir() + "/" + args.output_dir
     # Create separate output folders based on abnormality of data
     args.new_data_abnormal_folder = "new_data_abnormal"
     args.old_data_abnormal_folder = "old_data_abnormal"
     args.new_and_old_data_abnormal_folder = "new_and_old_data_abnormal"
-    # Create output dir to store data that was used for comparison
-    args.output_data_dir = "data"
     # Specific paths for accessing git commit hashses from covid-data-public
     args.covid_data_public_url = "https://github.com/covid-projections/covid-data-public"
     args.prod_snapshot_json = "https://raw.githubusercontent.com/covid-projections/covid-projections/master/src/assets/data/data_url.json"
@@ -523,127 +504,133 @@ if __name__ == "__main__":
 
     # Make Output Dirs
     make_outputdirs(args)
-    output_report = open(args.output_dir + "/outputreport.txt", "w+")
-    # Variables to Compare
-    variables = ["cases", "deaths", "new_cases", "new_deaths"]
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # output data dir that will later be deleted
+        args.output_data_dir = tmpdirname
+        # os.makedirs(args.output_dir + "/" + args.output_data_dir)
+        output_report = open(args.output_dir + "/outputreport.txt", "w+")
+        # Variables to Compare
+        variables = ["cases", "deaths", "new_cases", "new_deaths"]
 
-    # Datasets to compare
-    latest_name = "LATEST"
-    prod_name = "PROD"
+        # Datasets to compare
+        latest_name = "LATEST"
+        prod_name = "PROD"
 
-    # Copy latest commit of covid-data-public to output_data_dir
-    shutil.copytree(args.covid_data_public_dir, out_path(latest_name, args))
+        # Copy latest commit of covid-data-public to output_data_dir
+        shutil.copytree(args.covid_data_public_dir, out_path(latest_name, args))
 
-    # Get Current Prod covid-data-public commit
-    prod_hash = get_production_hash(args.prod_snapshot_json)
-    # prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
-    prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
-    checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
+        # Get Current Prod covid-data-public commit
+        prod_hash = get_production_hash(args.prod_snapshot_json)
+        print("prod hash")
+        print(prod_hash)
+        # prod_hash = "39501c303acbb86a0c05c5266f63aa01899be42a"  # hardcoded for testing Natasha
+        # prod_hash = "6f24dcb9a6b2203572c7509e506182be62117a38"
+        checkout_repo_by_hash(args.covid_data_public_dir, prod_hash, args, prod_name)
 
-    if args.data_source == "NYT":
-        CSV_PATH = args.nyt_path
-    elif args.data_source == "JHU":
-        exit("ERROR: We are currently not using JHU data")
-        CSV_PATH = args.jhu_path
-    else:
-        print("ERROR: Specify which input source data to use (e.g. JHU/NYT")
-        exit()
+        if args.data_source == "NYT":
+            CSV_PATH = args.nyt_path
+        elif args.data_source == "JHU":
+            exit("ERROR: We are currently not using JHU data")
+            CSV_PATH = args.jhu_path
+        else:
+            print("ERROR: Specify which input source data to use (e.g. JHU/NYT")
+            exit()
 
-    latest_df = get_df_save_csv(latest_name, args.data_source, args)
-    prod_df = get_df_save_csv(prod_name, args.data_source, args)
+        latest_df = get_df_save_csv(latest_name, args.data_source, args)
+        prod_df = get_df_save_csv(prod_name, args.data_source, args)
 
-    # Get all states in input dataset if user asks for all states
-    if "All" in args.states:
-        # could add start and end date here Natasha
-        args.states = latest_df["state"].unique()
+        # Get all states in input dataset if user asks for all states
+        if "All" in args.states:
+            # could add start and end date here Natasha
+            args.states = latest_df["state"].unique()
 
-    # Iterate thru states
-    for var in variables:
-        (
-            z_avg_list,
-            z_latest_avg_list,
-            days_over_thres_list,
-            states_list,
-            rmse_new_list,
-            rmse_latest_list,
-        ) = ([], [], [], [], [], [])
-        for state in args.states:
-            # Grab Data To Compare from CAN Data Caches
-            this_prod_df = get_state(prod_df, state, args)
-            this_latest_df = get_state(latest_df, state, args)
-
-            # Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
-            prod_ag = aggregate_df(this_prod_df, args)
-            latest_ag = aggregate_df(this_latest_df, args)
+        # Iterate thru states
+        for var in variables:
             (
-                avg_z,
-                latest_avg_z,
-                days_over_z,
-                rmse_latest,
-                abnormal_old,
-                abnormal_new,
-                average_new_p_diff,
-            ) = compare_data(var, prod_ag, latest_ag, prod_name, latest_name, args, state,)
+                z_avg_list,
+                z_latest_avg_list,
+                days_over_thres_list,
+                states_list,
+                rmse_new_list,
+                rmse_latest_list,
+            ) = ([], [], [], [], [], [])
+            for state in args.states:
+                # Grab Data To Compare from CAN Data Caches
+                this_prod_df = get_state(prod_df, state, args)
+                this_latest_df = get_state(latest_df, state, args)
 
-            if abnormal_old:
-                z_avg_list.append(avg_z)
-                z_latest_avg_list.append(latest_avg_z)
-                days_over_thres_list.append(days_over_z)
-                states_list.append(state)
-                rmse_latest_list.append(rmse_latest)
-                historical_report_string = (
-                    state
-                    + "'s historical "
-                    + var
-                    + " data disagree (RMSE: "
-                    + str(rmse_latest)
-                    + ")\n"
-                )
-                output_report.write(historical_report_string)
-                _logger.warning(historical_report_string)
-                sentry_sdk.capture_message(historical_report_string)
-            if abnormal_new:
-                new_data_report_string = (
-                    state
-                    + "'s "
-                    + "latest "
-                    + var
-                    + " is on average "
-                    + str(average_new_p_diff)
-                    + "% different relative to past data.\n"
-                )
-                output_report.write(new_data_report_string)
-                _logger.warning(new_data_report_string)
-                sentry_sdk.capture_message(new_data_report_string)
+                # Aggregate Datasets (i.e. combine counties to state level and calculate new cases and deaths)
+                prod_ag = aggregate_df(this_prod_df, args)
+                latest_ag = aggregate_df(this_latest_df, args)
+                (
+                    avg_z,
+                    latest_avg_z,
+                    days_over_z,
+                    rmse_latest,
+                    abnormal_old,
+                    abnormal_new,
+                    average_new_p_diff,
+                ) = compare_data(var, prod_ag, latest_ag, prod_name, latest_name, args, state,)
 
-        # Create meta-compare charts for all abnormal areas
-        states_list = list(dict.fromkeys(states_list))
-        make_meta_comparison_plot(
-            states_list,
-            days_over_thres_list,
-            "days_over_thres",
-            rmse_latest_list,
-            "rmse_latest",
-            z_avg_list,
-            "z_avg",
-            z_latest_avg_list,
-            "z_latest",
-            var,
-        )
+                if abnormal_old:
+                    z_avg_list.append(avg_z)
+                    z_latest_avg_list.append(latest_avg_z)
+                    days_over_thres_list.append(days_over_z)
+                    states_list.append(state)
+                    rmse_latest_list.append(rmse_latest)
+                    historical_report_string = (
+                        state
+                        + "'s historical "
+                        + var
+                        + " data disagree (RMSE: "
+                        + str(rmse_latest)
+                        + ")\n"
+                    )
+                    output_report.write(historical_report_string)
+                    _logger.warning(historical_report_string)
+                    sentry_sdk.capture_message(historical_report_string)
+                if abnormal_new:
+                    new_data_report_string = (
+                        state
+                        + "'s "
+                        + "latest "
+                        + var
+                        + " is on average "
+                        + str(average_new_p_diff)
+                        + "% different relative to past data.\n"
+                    )
+                    output_report.write(new_data_report_string)
+                    _logger.warning(new_data_report_string)
+                    sentry_sdk.capture_message(new_data_report_string)
 
-    output_report.close()
-    os.system("rm -rf " + args.output_dir + "/" + args.output_data_dir)
+            # Create meta-compare charts for all abnormal areas
+            states_list = list(dict.fromkeys(states_list))
+            make_meta_comparison_plot(
+                states_list,
+                days_over_thres_list,
+                "days_over_thres",
+                rmse_latest_list,
+                "rmse_latest",
+                z_avg_list,
+                "z_avg",
+                z_latest_avg_list,
+                "z_latest",
+                var,
+            )
 
-    # send report to slack
-    # slack_url = "https://hooks.slack.com/services/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"
-    # with open(args.output_dir + "/outputreport.txt", 'rb') as f:
-    #  r = requests.post(slack_url, data={'Raw_Data_QA': f.read()})
-    # output_report_for_post = {'upload_file': open(args.output_dir + "/outputreport.txt", 'rb')}
-    # response = requests.post(
-    #    slack_url, data = json.dumps({"text": output_report_for_post}), headers = {"Content-Type": "application/json"}
-    # )
-    # zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
-    # zipdir("./output", zipf)
-    # zipf.close()
+        output_report.close()
+        # os.system("rm -rf " + args.output_dir + "/" + args.output_data_dir)
 
-    # compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
+        # send report to slack
+        # slack_url = "https://hooks.slack.com/services/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"
+        # with open(args.output_dir + "/outputreport.txt", 'rb') as f:
+        #  r = requests.post(slack_url, data={'Raw_Data_QA': f.read()})
+        # output_report_for_post = {'upload_file': open(args.output_dir + "/outputreport.txt", 'rb')}
+        # response = requests.post(
+        #    slack_url, data = json.dumps({"text": output_report_for_post}), headers = {"Content-Type": "application/json"}
+        # )
+        # zipf = zipfile.ZipFile(args.output_dir + "raw_data_QA.zip", "w", zipfile.ZIP_DEFLATED)
+        # zipdir("./output", zipf)
+        # zipf.close()
+
+        # compare_county_state_plot('new_cases', df_state_ag, df_county_ag, 'County Sum', 'State', args, state)
