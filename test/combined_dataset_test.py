@@ -44,7 +44,8 @@ def test_unique_timeseries(data_source_cls):
 
 @pytest.mark.parametrize(
     "data_source_cls",
-    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    [JHUDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    # TODO(tom): Add CDSDataset when it fits in with the rest of the data source classes
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()
