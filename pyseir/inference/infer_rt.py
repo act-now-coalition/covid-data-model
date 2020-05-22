@@ -393,7 +393,7 @@ class RtInferenceEngine:
 
         return dates[start_idx:], times[start_idx:], posteriors
 
-    def infer_all(self, plot=False, shift_deaths=0):
+    def infer_all(self, plot=True, shift_deaths=0):
         """
         Infer R_t from all available data sources.
 
@@ -510,7 +510,7 @@ class RtInferenceEngine:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
-        if plot:
+        if plot and df_all is not None:
             plt.figure(figsize=(10, 6))
 
             if "Rt_ci5__new_deaths" in df_all:
