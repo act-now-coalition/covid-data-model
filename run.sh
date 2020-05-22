@@ -106,6 +106,9 @@ execute_api() {
   echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
   ./run.py deploy-counties-api -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}" --summary-output "${API_OUTPUT_US}"
 
+  echo ">>> Generate an QA doc for states to ${API_OUTPUT_DIR}/qa"
+  ./run.py compare-snapshots -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_DIR}/qa"
+
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
 

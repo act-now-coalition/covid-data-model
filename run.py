@@ -13,15 +13,21 @@ from cli import api
 from cli import run_top_counties_dataset
 from cli import run_states_api
 from cli import run_counties_api
+from cli import compare_snapshots
 
 from libs.datasets import dataset_cache
 
 
 @click.group()
-def entry_point():
+@click.pass_context
+def entry_point(ctx):
     """Entry point for covid-data-model CLI."""
-    pass
+    with sentry_sdk.configure_scope() as scope:
+        scope.set_tag("command", ctx.invoked_subcommand)
 
+
+# adding the QA command
+entry_point.add_command(compare_snapshots.compare_snapshots)
 
 entry_point.add_command(run_top_counties_dataset.deploy_top_counties)
 entry_point.add_command(run_counties_api.deploy_counties_api)
@@ -30,6 +36,7 @@ entry_point.add_command(api.main)
 
 if __name__ == "__main__":
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
+
     logging.basicConfig(level=logging.INFO)
     dataset_cache.set_pickle_cache_tempdir()
     pandarallel.initialize(progress_bar=False)
