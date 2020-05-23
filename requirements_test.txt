@@ -1,11 +1,11 @@
 # Requirements file containing packages needed for testing.
 # These should *not* be installed in non-test environments.
 
-pytest==4.6.3
-pytest-pylint==0.14.1
+pytest==5.4.2
+pytest-pylint==0.17.0
 pytest-xdist==1.32.0
 pytest-mock >= 1.10.4
 black==19.10b0
 nbstripout==0.3.7
-pylint==2.4.4
+pylint==2.5.2
 pre-commit==2.3.0
