@@ -150,8 +150,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         pd_data = self.get_subset(AggregationLevel.STATE, state=state).data
         return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
 
-    def get_data(self, country=None, state=None, fips=None, states=None) -> pd.DataFrame:
+    def get_data(
+        self, aggregation_level=None, country=None, state=None, fips=None, states=None
+    ) -> pd.DataFrame:
         data = self.data
+        if aggregation_level:
+            data = data[data.aggregate_level == aggregation_level.value]
         if country:
             data = data[data.country == country]
         if state:
@@ -177,6 +181,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         Returns: Timeseries object.
         """
         data = source.data
+        # TODO(tom): Do this renaming upstream, when the source is loaded or when first copied from the third party.
         to_common_fields = {value: key for key, value in source.all_fields_map().items()}
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]

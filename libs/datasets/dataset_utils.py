@@ -4,7 +4,6 @@ import enum
 import logging
 import pathlib
 import pandas as pd
-import numpy as np
 from libs.us_state_abbrev import US_STATE_ABBREV
 
 if os.getenv("COVID_DATA_PUBLIC"):
@@ -244,7 +243,7 @@ def add_fips_using_county(data, fips_data) -> pd.Series:
     if len(non_matching):
         unique_counties = sorted(non_matching.county.unique())
         _logger.warning(f"Did not match {len(unique_counties)} counties to fips data.")
-        _logger.warning(f"{unique_counties}")
+        _logger.warning(f"{non_matching}")
         # TODO: Make this an error?
 
     # Handles if a fips column already in the dataframe.
