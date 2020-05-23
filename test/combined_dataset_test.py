@@ -36,8 +36,8 @@ def test_combined_county_has_some_data(fips):
     latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
         AggregationLevel.COUNTY, fips=fips
     )
-    assert latest.data[CommonFields.POSITIVE_TESTS] > 0
-    assert latest.data[CommonFields.NEGATIVE_TESTS] > 0
+    assert latest.data[CommonFields.POSITIVE_TESTS].all()
+    assert latest.data[CommonFields.NEGATIVE_TESTS].all()
 
 
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
