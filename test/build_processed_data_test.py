@@ -17,7 +17,7 @@ def test_get_usa_by_states_df():
         "libs.build_processed_dataset.get_state_projections_df", return_value=empty_df_with_state
     ):
         df = build_processed_dataset.get_usa_by_states_df(
-            input_dir="/tmp", intervention_type=Intervention.OBSERVED_INTERVENTION
+            input_dir="/tmp", intervention=Intervention.OBSERVED_INTERVENTION
         )
     validate_results.validate_states_df("TX", df)
 
