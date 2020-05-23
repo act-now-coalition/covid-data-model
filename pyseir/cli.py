@@ -57,7 +57,7 @@ def _cache_global_datasets():
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
-    dataset_cache.set_pickle_cache_tempdir()
+    dataset_cache.set_pickle_cache_dir()
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
 
 
