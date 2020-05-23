@@ -80,6 +80,7 @@ def get_testing_timeseries_by_fips(fips):
     testing_df.drop(columns=[CommonFields.NEGATIVE_TESTS], inplace=True)
     all_fields = dict(**CDSDataset.INDEX_FIELD_MAP, **CDSDataset.COMMON_FIELD_MAP)
     testing_df.rename(columns=all_fields, inplace=True)
+    testing_df["date"] = testing_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
     testing_df.set_index([CDSDataset.Fields.FIPS, CDSDataset.Fields.DATE], inplace=True)
     return testing_df
 
