@@ -17,7 +17,7 @@ def test_get_usa_by_states_df():
         "libs.build_processed_dataset.get_state_projections_df", return_value=empty_df_with_state
     ):
         df = build_processed_dataset.get_usa_by_states_df(
-            input_dir="/tmp", intervention_type=Intervention.OBSERVED_INTERVENTION.value
+            input_dir="/tmp", intervention=Intervention.OBSERVED_INTERVENTION
         )
     validate_results.validate_states_df("TX", df)
 
@@ -40,10 +40,8 @@ def test_get_testing_df_by_state():
     assert 0 < df.at["2020-04-10", negative_field] < df.at["2020-05-01", negative_field]
 
 
-# Check San Francisco/06075 and Houston (Harris County, TX)/48201
-@pytest.mark.parametrize(
-    "fips", ["06075", "48201"],
-)
+# Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
+@pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_get_testing_by_fips(fips):
     df = build_processed_dataset.get_testing_timeseries_by_fips(fips)
 
