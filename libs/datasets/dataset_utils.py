@@ -372,7 +372,6 @@ def fill_fields_and_timeseries_from_column(
 
 
 def fill_fields_with_data_source(
-    log: BoundLogger,
     existing_df: pd.DataFrame,
     data_source: pd.DataFrame,
     index_fields: List[str],
