@@ -4,6 +4,9 @@ from typing import Mapping, List
 
 import pandas as pd
 import numpy as np
+from more_itertools import one
+from structlog import testing, get_logger
+
 from libs.datasets.dataset_utils import (
     fill_fields_and_timeseries_from_column,
     fill_fields_with_data_source,
@@ -78,9 +81,11 @@ def test_fill_fields_and_timeseries_from_column():
         )
     )
 
-    result = fill_fields_and_timeseries_from_column(
-        existing_df, new_df, "fips state aggregate_level county".split(), "date", "cnt",
-    )
+    with testing.capture_logs() as logs:
+        log = get_logger()
+        result = fill_fields_and_timeseries_from_column(
+            log, existing_df, new_df, "fips state aggregate_level county".split(), "date", "cnt",
+        )
     expected = pd.read_csv(
         StringIO(
             "fips,state,aggregate_level,county,cnt,date,foo\n"
@@ -95,6 +100,10 @@ def test_fill_fields_and_timeseries_from_column():
         )
     )
     assert to_dict(["fips", "date"], result) == to_dict(["fips", "date"], expected)
+    assert one(logs)["event"] == "Duplicate timeseries data"
+    assert one(logs)["log_level"] == "error"
+    assert "55006" in repr(one(logs)["common_labels"])
+    assert "55007" not in repr(one(logs)["common_labels"])
 
 
 def test_fill_fields_with_data_source():
@@ -115,9 +124,11 @@ def test_fill_fields_with_data_source():
         )
     )
 
-    result = fill_fields_with_data_source(
-        existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
-    )
+    with testing.capture_logs() as logs:
+        log = get_logger()
+        result = fill_fields_with_data_source(
+            log, existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
+        )
     expected = pd.read_csv(
         StringIO(
             "fips,state,aggregate_level,county,current_icu,preserved\n"
@@ -129,6 +140,7 @@ def test_fill_fields_with_data_source():
     )
 
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
+    assert logs == []
 
 
 def test_fill_fields_with_data_source_timeseries():
@@ -154,9 +166,11 @@ def test_fill_fields_with_data_source_timeseries():
         )
     )
 
-    result = fill_fields_with_data_source(
-        existing_df, new_df, "fips state aggregate_level county date".split(), ["cnt"],
-    )
+    with testing.capture_logs() as logs:
+        log = get_logger()
+        result = fill_fields_with_data_source(
+            log, existing_df, new_df, "fips state aggregate_level county date".split(), ["cnt"],
+        )
     expected = pd.read_csv(
         StringIO(
             "fips,state,aggregate_level,county,cnt,date,foo\n"
@@ -172,6 +186,7 @@ def test_fill_fields_with_data_source_timeseries():
     )
 
     assert to_dict(["fips", "date"], result) == to_dict(["fips", "date"], expected)
+    assert logs == []
 
 
 def test_fill_fields_with_data_source_add_column():
@@ -191,9 +206,11 @@ def test_fill_fields_with_data_source_add_column():
         )
     )
 
-    result = fill_fields_with_data_source(
-        existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
-    )
+    with testing.capture_logs() as logs:
+        log = get_logger()
+        result = fill_fields_with_data_source(
+            log, existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
+        )
 
     expected = pd.read_csv(
         StringIO(
@@ -204,6 +221,7 @@ def test_fill_fields_with_data_source_add_column():
         )
     )
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
+    assert logs == []
 
 
 def test_fill_fields_with_data_source_no_rows_input():
@@ -216,9 +234,11 @@ def test_fill_fields_with_data_source_no_rows_input():
         )
     )
 
-    result = fill_fields_with_data_source(
-        existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
-    )
+    with testing.capture_logs() as logs:
+        log = get_logger()
+        result = fill_fields_with_data_source(
+            log, existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
+        )
 
     expected = pd.read_csv(
         StringIO(
@@ -228,23 +248,22 @@ def test_fill_fields_with_data_source_no_rows_input():
         )
     )
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
+    assert logs == []
 
 
 def test_fill_fields_with_data_source_empty_input():
     existing_df = pd.DataFrame()
     new_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu\n"
-            "55,ZZ,state,Grand State,64\n"
+        StringIO("fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,64\n")
+    )
+    with testing.capture_logs() as logs:
+        result = fill_fields_with_data_source(
+            get_logger(),
+            existing_df,
+            new_df,
+            "fips state aggregate_level county".split(),
+            ["current_icu"],
         )
-    )
-
-    result = fill_fields_with_data_source(
-        existing_df,
-        new_df,
-        "fips state aggregate_level county".split(),
-        ["current_icu"],
-    )
 
     expected = pd.read_csv(
         StringIO(
@@ -253,3 +272,4 @@ def test_fill_fields_with_data_source_empty_input():
         )
     )
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
+    assert logs == []

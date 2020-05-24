@@ -2,6 +2,8 @@ from typing import Dict, Type, List, NewType
 import logging
 import functools
 import pandas as pd
+import structlog
+
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
@@ -169,12 +171,16 @@ def build_combined_dataset_from_sources(
 
     # Build feature columns from feature_definition_config.
     data = pd.DataFrame({})
+    log = structlog.get_logger()
     for field, data_source_classes in feature_definition_config.items():
         for data_source_cls in data_source_classes:
             dataset = intermediate_datasets[data_source_cls]
-
             data = dataset_utils.fill_fields_with_data_source(
-                data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field]
+                log.bind(dataset_name=data_source_cls.SOURCE_NAME, field=field),
+                data,
+                dataset.data,
+                target_dataset_cls.INDEX_FIELDS,
+                [field],
             )
 
     return target_dataset_cls(data)

@@ -4,6 +4,9 @@ import enum
 import logging
 import pathlib
 import pandas as pd
+import structlog
+from structlog.stdlib import BoundLogger
+
 from libs.us_state_abbrev import US_STATE_ABBREV
 
 if os.getenv("COVID_DATA_PUBLIC"):
@@ -268,7 +271,7 @@ def summarize(data, aggregate_level, groupby):
     print(index_size[index_size > 1])
 
 
-def _clear_common_values(existing_df, data_source, index_fields, column_to_fill):
+def _clear_common_values(log: BoundLogger, existing_df, data_source, index_fields, column_to_fill):
     """For index labels shared between existing_df and data_source, clear column_to_fill in existing_df.
 
     existing_df is modified inplace. Index labels (the values in the index for one row) do not need to be unique in a
@@ -281,15 +284,18 @@ def _clear_common_values(existing_df, data_source, index_fields, column_to_fill)
         # Maybe only do this for rows with some value in column_to_fill.
         existing_df.sort_index(inplace=True, sort_remaining=True)
         existing_df.loc[common_labels_without_date, [column_to_fill]] = None
-        # TODO(tom): log this so that the context of the datasources is included, perhaps using a structlog.
-        logging.warning(
-            f"Duplicate timeseries data for column {column_to_fill} at labels {common_labels_without_date}"
+        log.error(
+            "Duplicate timeseries data",
+            common_labels=common_labels_without_date.to_frame(index=False).to_dict(
+                orient="records"
+            ),
         )
     existing_df.reset_index(inplace=True)
     data_source.reset_index(inplace=True)
 
 
 def fill_fields_and_timeseries_from_column(
+    log: BoundLogger,
     existing_df: pd.DataFrame,
     new_df: pd.DataFrame,
     index_fields: List[str],
@@ -325,7 +331,7 @@ def fill_fields_and_timeseries_from_column(
         existing_df[column_to_fill] = None
 
     if date_field:
-        _clear_common_values(existing_df, new_df, index_fields, column_to_fill)
+        _clear_common_values(log, existing_df, new_df, index_fields, column_to_fill)
         # From here down treat the date as part of the index label for joining rows of existing_df and new_df
         index_fields.append(date_field)
 
@@ -352,9 +358,7 @@ def fill_fields_and_timeseries_from_column(
         existing_df.loc[common_labels.values, column_to_fill] = new_df.loc[
             common_labels.values, column_to_fill
         ]
-        missing_new_data = new_df.loc[
-            new_df.index.difference(common_labels), [column_to_fill]
-        ]
+        missing_new_data = new_df.loc[new_df.index.difference(common_labels), [column_to_fill]]
     else:
         # There are no labels in common so all rows of new_df are to be appended to existing_df.
         missing_new_data = new_df.loc[:, [column_to_fill]]
@@ -368,6 +372,7 @@ def fill_fields_and_timeseries_from_column(
 
 
 def fill_fields_with_data_source(
+    log: BoundLogger,
     existing_df: pd.DataFrame,
     data_source: pd.DataFrame,
     index_fields: List[str],
@@ -416,5 +421,5 @@ def fill_fields_with_data_source(
     if len(columns_to_fill) != 1:
         raise AssertionError("Not supported")
     return fill_fields_and_timeseries_from_column(
-        existing_df, data_source, index_fields, "", columns_to_fill[0]
+        log, existing_df, data_source, index_fields, "", columns_to_fill[0]
     )

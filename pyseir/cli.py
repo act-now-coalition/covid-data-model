@@ -3,6 +3,8 @@ import click
 import us
 import logging
 import sentry_sdk
+import structlog
+from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
 from functools import partial
 from libs.datasets import dataset_cache
@@ -59,6 +61,12 @@ def entry_point():
     """Basic entrypoint for cortex subcommands"""
     dataset_cache.set_pickle_cache_tempdir()
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,  # required before SentryProcessor()
+            SentryProcessor(level=logging.INFO),
+        ]
+    )
 
 
 @entry_point.command()
