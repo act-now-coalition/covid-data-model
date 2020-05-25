@@ -26,13 +26,12 @@ def test_get_subset():
     )
     ts = TimeseriesDataset(input_df)
 
-    df = ts.data.loc[:, :]
-
     assert set(ts.get_subset(AggregationLevel.COUNTRY).data["country"]) == {"UK"}
     assert set(ts.get_subset(AggregationLevel.STATE).data["metric"]) == {"mystate"}
     assert set(ts.get_subset(None, on="2020-03-22").data["metric"]) == {"march22-nyc"}
     assert set(ts.get_subset(None, after="2020-03-23").data["metric"]) == {"march24-nyc"}
-    assert set(ts.get_subset(None, county="North County").data["metric"]) == {"county-metric"}
+    # county= parameter removed because it looks unused
+    # assert set(ts.get_subset(None, county="North County").data["metric"]) == {"county-metric"}
     assert set(ts.get_subset(None, state="ZZ", on="2020-03-23").data["metric"]) == {
         "smithville-march23",
         "county-metric",

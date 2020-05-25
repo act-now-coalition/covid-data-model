@@ -12,6 +12,7 @@ _logger = logging.getLogger(__name__)
 
 
 class CovidTrackingDataSource(data_source.DataSource):
+    # This
     DATA_PATH = "data/covid-tracking/covid_tracking_states.csv"
     SOURCE_NAME = "covid_tracking"
 

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import pandas as pd
 import numpy as np
 from libs import us_state_abbrev
@@ -51,6 +51,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def county_keys(self) -> List:
         """Returns a list of all (country, state, county) combinations."""
         # Check to make sure all values are county values
+        warnings.warn(
+            "Tell Tom you are using this, I'm going to delete it soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         county_values = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         county_data = self.data[county_values]
 
@@ -96,11 +101,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         before=None,
         country=None,
         state: Optional[str] = None,
-        county: Optional[str] = None,
         fips: Optional[str] = None,
         states: Optional[List[str]] = None,
         columns_slice=None,
     ) -> "TimeseriesDataset":
+        data = self.data
 
         # country is okay with states.
         assert sum([bool(state), bool(county), bool(fips), bool(states)]) <= 1
@@ -112,8 +117,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             query_parts.append("country == @country")
         if state:
             query_parts.append("state == @state")
-        if county:
-            query_parts.append("county == @county")
         if fips:
             query_parts.append("fips == @fips")
         if states:
@@ -157,15 +160,15 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
 
     def get_data(
-        self, country=None, state=None, county=None, fips=None, states=None
+        self, aggregation_level=None, country=None, state=None, fips=None, states=None
     ) -> pd.DataFrame:
         data = self.data
+        if aggregation_level:
+            data = data[data.aggregate_level == aggregation_level.value]
         if country:
             data = data[data.country == country]
         if state:
             data = data[data.state == state]
-        if county:
-            data = data[data.county == county]
         if fips:
             data = data[data.fips == fips]
         if states:
@@ -187,6 +190,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         Returns: Timeseries object.
         """
         data = source.data
+        # TODO(tom): Do this renaming upstream, when the source is loaded or when first copied from the third party.
         to_common_fields = {value: key for key, value in source.all_fields_map().items()}
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]

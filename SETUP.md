@@ -64,6 +64,14 @@ In addition, some models may require a results/test directory ahead of time, so 
 mkdir -p results/test/
 ```
 
+## Run Just Api Generateion
+Grab the results of a snapshot's model output (either from the s3 bucket or from a githubaction artifacts). 
+Move those files to results/ folder (or folder of your choice)
+
+```bash
+  ./run.py deploy-states-api -i "results/" -o "output/" --summary-output "output/"
+```
+
 
 ## Run Tests
 

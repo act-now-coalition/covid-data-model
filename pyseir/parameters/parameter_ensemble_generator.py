@@ -89,7 +89,6 @@ class ParameterEnsembleGenerator:
             # boxes accordingly. Since we were not modeling different contact
             # rates, this has the same result.
             fraction_asymptomatic = 0
-
             parameter_sets.append(
                 dict(
                     t_list=self.t_list,
@@ -112,23 +111,18 @@ class ParameterEnsembleGenerator:
                         np.random.normal(loc=0.30, scale=0.05) * hospitalization_rate_general, 0
                     ),
                     fraction_icu_requiring_ventilator=max(np.random.normal(loc=0.6, scale=0.1), 0),
-                    sigma=1
-                    / np.random.normal(
-                        loc=3.0, scale=0.86
-                    ),  # Imperial college - 2 days since that is expected infectious period.
-                    delta=1
-                    / np.random.gamma(
-                        6.0, scale=1
-                    ),  # Kind of based on imperial college + CDC digest.
-                    delta_hospital=1
-                    / np.random.gamma(
-                        8.0, scale=1
-                    ),  # Kind of based on imperial college + CDC digest.
+                    sigma=1 / np.random.normal(loc=3.0, scale=0.86),
+                    # Sigma = Imperial college - 2 days since that is expected infectious period.
+                    delta=1 / np.random.gamma(6.0, scale=1),
+                    # Delta = Kind of based on imperial college + CDC digest.
+                    delta_hospital=1 / np.random.gamma(8.0, scale=1),
+                    # delta_hospitalKind of based on imperial college + CDC digest.
                     kappa=1,  # Contact rate for asympt
                     gamma=(1 - fraction_asymptomatic),
                     # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
                     symptoms_to_hospital_days=np.random.normal(loc=6.0, scale=1.5),
                     hospitalization_length_of_stay_general=np.random.normal(loc=7, scale=1),
+                    # hospitalization_length_of_stay_icu_avg=8.6,  # Weighted avg of icu w & w/o
                     hospitalization_length_of_stay_icu=np.random.normal(loc=8, scale=3),
                     hospitalization_length_of_stay_icu_and_ventilator=np.random.normal(
                         loc=9, scale=3
