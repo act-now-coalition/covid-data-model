@@ -213,12 +213,14 @@ def generate_two_step_policy(
         suppression_model(t) returns the current suppression model at time t.
     """
     if eps_final is None:
+        print('Natasha: eps final is none')
         return interp1d(
             x=[0, t_break, t_break + transition_time, 100000],
             y=[1, 1, eps, eps],
             fill_value="extrapolate",
         )
     else:
+        print('Natasha: eps final in not none')
         return interp1d(
             x=[
                 0,
