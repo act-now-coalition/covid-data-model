@@ -376,7 +376,6 @@ def make_binary_array(
     states,
     after=None,
     before=None,
-    on=None,
 ):
     query_parts = []
     # aggregation_level is almost always set. The exception is `DatasetFilter` which is used to
@@ -391,8 +390,6 @@ def make_binary_array(
         query_parts.append("fips == @fips")
     if states:
         query_parts.append("state in @states")
-    if on:
-        query_parts.append("date == @on")
     if after:
         query_parts.append("date > @after")
     if before:
