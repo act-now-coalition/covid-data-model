@@ -24,8 +24,7 @@ def load_projection(fips):
     demo_output = pickle.load(open('demo_mapper_output.pkl', 'rb'))
 
     projection = list()
-    for c in demo_output['compartments']:
-        projection.append(demo_output['compartments'][c])
+    projection.append(demo_output['compartments'])
 
     for measure in demo_output:
         if measure != 'compartments':
