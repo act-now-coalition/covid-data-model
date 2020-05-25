@@ -214,11 +214,21 @@ def generate_two_step_policy(
     """
     if eps_final is None:
         print('Natasha: eps final is none')
+        end_stage1 = t_break + transition_time
+        t_break2 = t_break + transition_time + 1
+        eps2 = eps * 1.1
+
         return interp1d(
-            x=[0, t_break, t_break + transition_time, 100000],
-            y=[1, 1, eps, eps],
+            x=[0, t_break, end_stage1, t_break2, t_break2 + transition_time, 100000],
+            y=[1, 1, eps, eps, eps2, eps2],
             fill_value="extrapolate",
         )
+            
+        #return interp1d(
+        #    x=[0, t_break, t_break + transition_time, 100000],
+        #    y=[1, 1, eps, eps],
+        #    fill_value="extrapolate",
+        #)
     else:
         print('Natasha: eps final in not none')
         return interp1d(

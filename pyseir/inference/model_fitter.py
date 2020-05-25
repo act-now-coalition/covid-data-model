@@ -90,6 +90,12 @@ class ModelFitter:
         t_break=20,
         limit_t_break=[5, 40],
         error_t_break=1,
+        #t_break2=40,
+        #limit_t_break2=[10, 60],
+        #error_t_break2=1,
+        #eps2=0.3,
+        #limit_eps2=[0.20, 1.2],
+        #error_eps2=0.005,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
         error_test_fraction=0.02,
@@ -178,7 +184,7 @@ class ModelFitter:
         self.set_inference_parameters()
         print('Natasha: done setting inference params')
 
-        self.model_fit_keys = ["R0", "eps", "t_break", "log10_I_initial"]
+        self.model_fit_keys = ["R0", "eps", "t_break", "log10_I_initial"] #Natasha add this, "eps2", "t_break2"]
 
         print('Natasha: getting average params')
         self.SEIR_kwargs = self.get_average_seir_parameters()
@@ -374,6 +380,7 @@ class ModelFitter:
         model: SEIRModel
             The SEIR model that has been run.
         """
+        #Maybe start here Natasha
         suppression_policy = suppression_policies.generate_two_step_policy(
             self.t_list, eps, t_break
         )
