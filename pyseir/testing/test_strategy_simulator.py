@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from enum import Enum
-from pyseir.testing.load_data import load_population_size, load_Rt, load_projection
+from pyseir.testing.load_data import load_population_size, load_rt, load_projection
 from sklearn.model_selection import ParameterGrid
 from datetime import datetime, date, timedelta
 
@@ -14,10 +14,11 @@ ANTIBODY_FALSE_POSITIVITY = 0.1
 MAX_PCR_AVAILABILITY = 300
 MAX_ANTIBODY_AVAILABILITY = 1000
 MIN_NUM_CASE_OUTBREAK = 3
-HOSPITALIZATION_COST = 3000  # this maybe way off the real number, just use a number to start with
+HOSPITALIZATION_COST = 3000  # this maybe way off the real number
 MAX_TEST_COST_PER_MONTH = 100000
-DATE = datetime.today() - timedelta(days=3)
+DATE = datetime.today()
 SITE_CLOSURE_COST = 200000
+DATE_FORMAT = "%Y-%m-%d"
 
 class Allocation(Enum):
     RANDOM = 'random'
@@ -27,19 +28,7 @@ class Allocation(Enum):
 
 class TestStrategySimulator:
     """
-    delta P(infected) = P(infected) * cov_pcr *  sen_pcr
-    **Metrics to report:**
-   - delta COVID Index: reduction in COVID index:
-     delta P(infected) * P(hospitalization | infected)
-   - delta worksite immunity: increase in percentage of workers with immunity:
-     P(recovered) * (1 - frac_worker_back) * cov_ab * sen_ab
-   - prevented secondary transmission: prevented secondary transmission due to reduction in cases and increase in
-   immunity:
-  (N * R(t) x delta P(infection) x relative_contact_rate / 2) * (1 + delta worksite immunity) (assuming cases are     detected and quarantined in the middle of infectious period)
-- testing cost:
-    cov_pcr * N * cost_pcr + cov_ab * N * cost_ab
-- avoided cost:
-    hospitalization_cost * prevented secondary transmission * P(hospitalization | infected) + reduction in probability of outbreak(closure) * cost_of_closure
+
     """
     def __init__(self,
                  fips,
@@ -64,10 +53,15 @@ class TestStrategySimulator:
                  site_closure_cost=SITE_CLOSURE_COST
                  ):
         self.fips = fips
-        self.date = datetime.strftime(date, "%Y-%m-%d")
-        self.Rt = load_Rt(fips)
+
+        self.date = datetime.strftime(date, DATE_FORMAT)
+
         self.N = load_population_size(fips)
+        self.Rt = load_rt(fips)
+        self.Rt = self._index_time_to_str(self.Rt)
         self.projection = load_projection(fips)
+        self.projection = self._index_time_to_str(self.projection)
+
         self.relative_contact_rate = relative_contact_rate
 
         self.pcr_sensitivity = pcr_sensitivity
@@ -96,10 +90,16 @@ class TestStrategySimulator:
         self.results = None
 
 
+    def _index_time_to_str(self, df):
+        """
+
+        """
+        df.index = df.index.strftime(DATE_FORMAT)
+        return df
+
     def run(self):
         """
 
-        :return:
         """
         param_grid = {'pcr_coverage': self.pcr_coverage,
                       'antibody_coverage': self.antibody_coverage,
@@ -107,28 +107,32 @@ class TestStrategySimulator:
 
         results = pd.DataFrame(list(ParameterGrid(param_grid)))
         results['delta_p_infected'] = (self.projection['I'] / self.projection['N']).loc[self.date] * \
-                                      results['pcr_coverage'] * self.pcr_sensitivity * results['pcr_frequency'] * \
-                                      self.num_days_aggregate
+                                       results['pcr_coverage'] * self.pcr_sensitivity * results['pcr_frequency'] * \
+                                       self.num_days_aggregate
         results['delta_immunity'] = (self.projection['R'] / self.projection['N']).loc[self.date]\
                                   * (1 - self.frac_contact_active) \
                                   * results['antibody_coverage'] * self.antibody_sensitivity
-        results['delta_covid_index'] = results['delta_p_infected'] * self.projection['IHR__per_capita'].loc[self.date]
 
         # assuming cases are detected and quarantined in the middle of infectious period
         results['prevented_secondary_transmission'] = \
             self.N * self.Rt.loc[self.date] * results['delta_p_infected'] * self.relative_contact_rate / 2
         results['prevented_secondary_transmission'] *= (1 + results['delta_immunity'])
+        results['delta_covid_index'] = results['prevented_secondary_transmission'] \
+                                     * self.projection['IHR__per_capita'].loc[self.date]
         results['test_cost_pcr'] = self.N * results['pcr_coverage'] * self.pcr_cost
         results['test_cost_ab'] = self.N * results['antibody_coverage'] * self.antibody_cost
+
+        # assuming antibody test is given only once
         results['test_cost'] = results['test_cost_pcr'] * results['pcr_frequency'] * self.num_days_aggregate \
                              + results['test_cost_ab']
 
+        # reduction in outbreak probability as reduction in ratio of reduced number of infections over
+        # minimum number of cases that trigger an outbreak
         results['delta_outbreak_prob'] = np.minimum(1, (results['delta_p_infected'] * self.N + results[
             'prevented_secondary_transmission']) / self.min_num_case_outbreak)
 
-        results['avoided_cost'] = (results['prevented_secondary_transmission'] * self.projection['IHR__per_capita'].loc[self.date] \
-                                 + results['delta_covid_index'] * self.N) * self.hospitalization_cost \
-                                 + results['delta_outbreak_prob'] * self.site_closure_cost
+        results['avoided_cost'] = results['delta_covid_index'] * self.N * self.hospitalization_cost \
+                                + results['delta_outbreak_prob'] * self.site_closure_cost
 
         results['hospitalization_cost_no_test'] = self.N * (self.projection['I'] * self.projection['IHR__per_capita'] /
                                                   self.projection['N']).loc[self.date] * self.hospitalization_cost
@@ -148,6 +152,7 @@ class TestStrategySimulator:
 
         return self.results
 
+
     def optimize(self, by='net_cost'):
         if self.results is None:
             self.results = self.run()
@@ -158,6 +163,4 @@ class TestStrategySimulator:
             return self.results.iloc[np.argmax(self.results[by])].to_dict()
         elif by == 'delta_outbreak_p':
             return self.results.iloc[np.argmax(self.results[by])].to_dict()
-
-
 
