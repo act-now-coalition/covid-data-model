@@ -226,6 +226,12 @@ class DemographicMapper:
         ) / self.parameters["N"][:, np.newaxis]
         return prevalence
 
+    def _reconstruct_infection_inflow_rates(self):
+        """
+
+        """
+        return self.predictions_by_age['E'] * self.parameters['delta']
+
     def _reconstruct_mortality_inflow_rates(self):
         """
         Reconstruct trajectory of inferred per-capita rates of inflow
@@ -341,21 +347,40 @@ class DemographicMapper:
 
         hospital_recovery_inflow_rates = {}
         hospital_recovery_inflow_rates["HGen"] = (
-            1 - mortality_inflow_rates["HGen"]
-        ) / self.parameters["hospitalization_length_of_stay_general"]
+            1 / self.parameters["hospitalization_length_of_stay_general"] - mortality_inflow_rates["HGen"])
         hospital_recovery_inflow_rates["HICU"] = (
-            (1 - mortality_inflow_rates["HICU"])
-            * (1 - self.parameters["fraction_icu_requiring_ventilator"])
-            / self.parameters["hospitalization_length_of_stay_icu"]
+            (1 - self.parameters["fraction_icu_requiring_ventilator"])
+            / self.parameters["hospitalization_length_of_stay_icu"] - mortality_inflow_rates["HICU"]
         )
-        hospital_recovery_inflow_rates["HVent"] = (
-            1
-            - np.maximum(
-                mortality_inflow_rates["HVent"], self.parameters["mortality_rate_from_ICUVent"]
-            )
-        ) / self.parameters["hospitalization_length_of_stay_icu_and_ventilator"]
+        hospital_recovery_inflow_rates["HVent"] = \
+            1/ self.parameters["hospitalization_length_of_stay_icu_and_ventilator"] \
+          - np.maximum(self.parameters["mortality_rate_from_ICUVent"]
+                       / self.parameters["hospitalization_length_of_stay_icu_and_ventilator"],
+                       mortality_inflow_rates['HVent'])
 
         return hospital_recovery_inflow_rates
+
+    def _reconstruct_recovery(self):
+        """
+        Reconstruct trajectory of inferred recovery population size.
+
+        Returns
+        -------
+        R : np.array
+
+        """
+        hospital_recovery_inflow_rates = self._reconstruct_hospital_recovery_inflow_rates()
+        recovered_no_hospital = (self.predictions_by_age['A'] + self.predictions_by_age['I']) * self.parameters['delta']
+        recovered_from_hospital = 0
+        for k in hospital_recovery_inflow_rates:
+            recovered_from_hospital +=  self.predictions_by_age[k] * hospital_recovery_inflow_rates[k]
+
+        dRdt = recovered_no_hospital + recovered_from_hospital
+        delta_t = np.append(np.diff(self.parameters['t_list'])[:2],
+                            np.diff(self.parameters['t_list'])[:-1])
+        R = (dRdt * delta_t).cumsum(axis=1)
+        return R
+
 
     def _age_specific_IHR_by_hospitalization(self, measure_unit):
         """
@@ -637,10 +662,17 @@ class DemographicMapper:
             "-".join([str(int(tup[0])), str(int(tup[1]))]) for tup in self.parameters["age_groups"]
         ]
 
+        predictions['compartments']['R'] = self._reconstruct_recovery()
+        predictions['compartments']['incident_I'] = self._reconstruct_infection_inflow_rates()
+
         for c in self.predictions_by_age:
+            predictions["compartments"][c] = self.predictions_by_age[c]
+
+        for c in predictions["compartments"]:
             predictions["compartments"][c] = pd.DataFrame(
-                self.predictions_by_age[c].T, columns=age_groups, index=pd.DatetimeIndex(dates)
+                predictions["compartments"][c].T, columns=age_groups, index=pd.DatetimeIndex(dates)
             )
+
         # assuming a stable demographic distribution through time
         predictions["compartments"]["N"] = pd.DataFrame(
             np.tile(self.parameters["N"], (len(self.parameters["t_list"]), 1)),
@@ -731,6 +763,7 @@ class DemographicMapper:
         mapped_predictions = defaultdict(dict)
 
         for c in predictions["compartments"]:
+            print(c, predictions["compartments"][c].shape)
             mapped_predictions["compartments"][c] = (
                 predictions["compartments"][c].dot(demographic_group_size_ratio).rename(c)
             )
