@@ -71,12 +71,13 @@ def plot_grouped_data(data, group, series="source", values="cases"):
 def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
     """Combines JHU and CDS county data."""
     data = jhu_data_source.timeseries()
-    jhu_usa_data = data.get_subset(AggregationLevel.COUNTY, country="USA", after="2020-03-01").data
+    jhu_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
 
     data = cds_data_source.timeseries()
-    cds_usa_data = data.get_subset(AggregationLevel.COUNTY, country="USA", after="2020-03-01").data
+    cds_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
 
     # TODO(chris): Better handling of counties that are not consistent.
+    # Can we move this logic to combined_datasets?
 
     # Before 3-22, CDS has mostly consistent county level numbers - except for
     # 3-12, where there are no numbers reported. Still need to fill that in.

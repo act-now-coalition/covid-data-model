@@ -175,10 +175,7 @@ def load_county_case_data():
     : pd.DataFrame
     """
     county_case_data = (
-        NYTimesDataset.local()
-        .timeseries()
-        .get_subset(AggregationLevel.COUNTY, country="USA")
-        .get_data(country="USA")
+        NYTimesDataset.local().timeseries().get_data(AggregationLevel.COUNTY, country="USA")
     )
     return county_case_data
 
@@ -194,10 +191,7 @@ def load_state_case_data():
     """
 
     state_case_data = (
-        NYTimesDataset.local()
-        .timeseries()
-        .get_subset(AggregationLevel.STATE, country="USA")
-        .get_data(country="USA")
+        NYTimesDataset.local().timeseries().get_data(AggregationLevel.STATE, country="USA")
     )
     return state_case_data
 
@@ -410,10 +404,8 @@ def load_hospitalization_data(fips, t0, category="hospitalized"):
     type: HospitalizationDataType
         Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = (
-        get_hospitalization_data()
-        .get_subset(AggregationLevel.COUNTY, country="USA", fips=fips)
-        .get_data(country="USA", fips=fips)
+    hospitalization_data = get_hospitalization_data().get_data(
+        AggregationLevel.COUNTY, country="USA", fips=fips
     )
 
     if len(hospitalization_data) == 0:
@@ -470,10 +462,8 @@ def load_hospitalization_data_by_state(state, t0, category="hospitalized"):
         Specifies cumulative or current hospitalizations.
     """
     abbr = us.states.lookup(state).abbr
-    hospitalization_data = (
-        combined_datasets.build_us_timeseries_with_all_fields()
-        .get_subset(AggregationLevel.STATE, country="USA", state=abbr)
-        .get_data(country="USA", state=abbr)
+    hospitalization_data = combined_datasets.build_us_timeseries_with_all_fields().get_data(
+        AggregationLevel.STATE, country="USA", state=abbr
     )
 
     categories = ["icu", "hospitalized"]
@@ -535,10 +525,8 @@ def get_current_hospitalized(state, t0, category):
     MIN_DATAPOINTS_TO_CONVERT = 3  # We wait until the third datapoint to have 2 deltas to forecast
 
     abbr = us.states.lookup(state).abbr
-    df = (
-        combined_datasets.build_us_timeseries_with_all_fields()
-        .get_subset(AggregationLevel.STATE, country="USA", state=abbr)
-        .get_data(country="USA", state=abbr)
+    df = combined_datasets.build_us_timeseries_with_all_fields().get_data(
+        AggregationLevel.STATE, country="USA", state=abbr
     )
 
     categories = ["icu", "hospitalized"]

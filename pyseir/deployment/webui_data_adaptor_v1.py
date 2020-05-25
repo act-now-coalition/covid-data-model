@@ -311,10 +311,8 @@ class WebUIDataAdaptorV1:
 
             if not self.include_imputed:
                 # Filter...
-                fips_with_cases = (
-                    self.jhu_local.timeseries()
-                    .get_subset(AggregationLevel.COUNTY, country="USA")
-                    .get_data(country="USA", state=self.state_abbreviation)
+                fips_with_cases = self.jhu_local.timeseries().get_data(
+                    AggregationLevel.COUNTY, country="USA", state=self.state_abbreviation
                 )
                 fips_with_cases = fips_with_cases[fips_with_cases.cases > 0].fips.unique().tolist()
                 all_fips = [fips for fips in all_fips if fips in fips_with_cases]

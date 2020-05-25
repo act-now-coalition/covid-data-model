@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Optional
 import pandas as pd
 import numpy as np
@@ -105,12 +106,64 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         states: Optional[List[str]] = None,
         columns_slice=None,
     ) -> "TimeseriesDataset":
-        data = self.data
+        return self.__class__(
+            self.get_data(
+                aggregation_level=aggregation_level,
+                on=on,
+                after=after,
+                before=before,
+                country=country,
+                state=state,
+                fips=fips,
+                states=states,
+                columns_slice=columns_slice,
+            )
+        )
 
-        # country is okay with states.
-        assert sum([bool(state), bool(fips), bool(states)]) <= 1
+    def get_records_for_fips(self, fips) -> List[dict]:
+        """Get data for FIPS code.
+
+        Args:
+            fips: FIPS code.
+
+        Returns: List of dictionary records with NA values replaced to be None
+        """
+        pd_data = self.get_data(aggregation_level=AggregationLevel.COUNTY, fips=fips)
+        pd_data = pd_data.where(pd.notnull(pd_data), None)
+        return pd_data.to_dict(orient="records")
+
+    def get_records_for_state(self, state) -> List[dict]:
+        """Get data for state.
+
+        Args:
+            state: 2 letter state abbrev.
+
+        Returns: List of dictionary records with NA values replaced to be None.
+        """
+        pd_data = self.get_data(aggregation_level=AggregationLevel.STATE, state=state)
+        return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
+
+    def get_data(
+        self,
+        aggregation_level=None,
+        on=None,
+        after=None,
+        before=None,
+        country=None,
+        state: Optional[str] = None,
+        fips: Optional[str] = None,
+        states: Optional[List[str]] = None,
+        columns_slice=None,
+    ) -> pd.DataFrame:
+
+        # TODO(tom): Eliminate code paths that give this function redundant values to select a region. For example
+        # state, states and fips.
+        # if sum([bool(state), bool(fips), bool(states)]) > 1:
+        #     raise AssertionError("Expecting no more than one of state, fips and states")
 
         query_parts = []
+        # aggregation_level is almost always set. The exception is `DatasetFilter` which is used to
+        # get all data in the USA, at all aggregation levels.
         if aggregation_level:
             query_parts.append(f'aggregate_level == "{aggregation_level.value}"')
         if country:
@@ -133,48 +186,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         if columns_slice is None:
             columns_slice = slice(None, None, None)
 
-        return self.__class__(self.data.loc[eval_rows_result, columns_slice])
-
-    def get_records_for_fips(self, fips) -> List[dict]:
-        """Get data for FIPS code.
-
-        Args:
-            fips: FIPS code.
-
-        Returns: List of dictionary records with NA values replaced to be None
-        """
-
-        pd_data = self.get_subset(None, fips=fips).data
-        pd_data = pd_data.where(pd.notnull(pd_data), None)
-        return pd_data.to_dict(orient="records")
-
-    def get_records_for_state(self, state) -> List[dict]:
-        """Get data for state.
-
-        Args:
-            state: 2 letter state abbrev.
-
-        Returns: List of dictionary records with NA values replaced to be None.
-        """
-        pd_data = self.get_subset(AggregationLevel.STATE, state=state).data
-        return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
-
-    def get_data(
-        self, aggregation_level=None, country=None, state=None, fips=None, states=None
-    ) -> pd.DataFrame:
-        data = self.data
-        if aggregation_level:
-            data = data[data.aggregate_level == aggregation_level.value]
-        if country:
-            data = data[data.country == country]
-        if state:
-            data = data[data.state == state]
-        if fips:
-            data = data[data.fips == fips]
-        if states:
-            data = data[data[self.Fields.STATE].isin(states)]
-
-        return data
+        return self.data.loc[eval_rows_result, columns_slice]
 
     @classmethod
     def from_source(
