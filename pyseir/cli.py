@@ -5,6 +5,7 @@ import logging
 import sentry_sdk
 from multiprocessing import Pool
 from functools import partial
+from libs.datasets import dataset_cache
 from pyseir.load_data import cache_all_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
@@ -56,6 +57,7 @@ def _cache_global_datasets():
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
+    dataset_cache.set_pickle_cache_tempdir()
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
 
 
