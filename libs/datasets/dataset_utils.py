@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import os
 import enum
 import logging
@@ -365,3 +365,36 @@ def fill_fields_with_data_source(
     data = pd.concat([existing_df.reset_index(), missing_new_data[columns_to_fill].reset_index(),])
 
     return data
+
+
+def make_binary_array(
+    data: pd.DataFrame,
+    aggregation_level: Optional[AggregationLevel],
+    country,
+    fips,
+    state,
+    states,
+    after=None,
+    before=None,
+    on=None,
+):
+    query_parts = []
+    # aggregation_level is almost always set. The exception is `DatasetFilter` which is used to
+    # get all data in the USA, at all aggregation levels.
+    if aggregation_level:
+        query_parts.append(f'aggregate_level == "{aggregation_level.value}"')
+    if country:
+        query_parts.append("country == @country")
+    if state:
+        query_parts.append("state == @state")
+    if fips:
+        query_parts.append("fips == @fips")
+    if states:
+        query_parts.append("state in @states")
+    if on:
+        query_parts.append("date == @on")
+    if after:
+        query_parts.append("date > @after")
+    if before:
+        query_parts.append("date < @before")
+    return data.eval(" and ".join(query_parts))

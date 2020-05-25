@@ -1,14 +1,13 @@
 import warnings
 from typing import List, Optional
 import pandas as pd
-import numpy as np
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel, make_binary_array
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -97,28 +96,19 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def get_subset(
         self,
         aggregation_level,
-        on=None,
-        after=None,
-        before=None,
         country=None,
-        state: Optional[str] = None,
         fips: Optional[str] = None,
         states: Optional[List[str]] = None,
-        columns_slice=None,
     ) -> "TimeseriesDataset":
-        return self.__class__(
-            self.get_data(
-                aggregation_level=aggregation_level,
-                on=on,
-                after=after,
-                before=before,
-                country=country,
-                state=state,
-                fips=fips,
-                states=states,
-                columns_slice=columns_slice,
-            )
+        row_binary_array = make_binary_array(
+            self.data,
+            aggregation_level=aggregation_level,
+            country=country,
+            states=states,
+            fips=fips,
+            state=None,
         )
+        return self.__class__(self.data.loc[row_binary_array, :])
 
     def get_records_for_fips(self, fips) -> List[dict]:
         """Get data for FIPS code.
@@ -146,47 +136,25 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def get_data(
         self,
         aggregation_level=None,
-        on=None,
         after=None,
-        before=None,
         country=None,
         state: Optional[str] = None,
         fips: Optional[str] = None,
         states: Optional[List[str]] = None,
         columns_slice=None,
     ) -> pd.DataFrame:
-
-        # TODO(tom): Eliminate code paths that give this function redundant values to select a region. For example
-        # state, states and fips.
-        # if sum([bool(state), bool(fips), bool(states)]) > 1:
-        #     raise AssertionError("Expecting no more than one of state, fips and states")
-
-        query_parts = []
-        # aggregation_level is almost always set. The exception is `DatasetFilter` which is used to
-        # get all data in the USA, at all aggregation levels.
-        if aggregation_level:
-            query_parts.append(f'aggregate_level == "{aggregation_level.value}"')
-        if country:
-            query_parts.append("country == @country")
-        if state:
-            query_parts.append("state == @state")
-        if fips:
-            query_parts.append("fips == @fips")
-        if states:
-            query_parts.append("state in @states")
-
-        if on:
-            query_parts.append("date == @on")
-        if after:
-            query_parts.append("date > @after")
-        if before:
-            query_parts.append("date < @before")
-        eval_rows_result = self.data.eval(" and ".join(query_parts))
-
+        rows_binary_array = make_binary_array(
+            self.data,
+            aggregation_level=aggregation_level,
+            after=after,
+            country=country,
+            fips=fips,
+            state=state,
+            states=states,
+        )
         if columns_slice is None:
             columns_slice = slice(None, None, None)
-
-        return self.data.loc[eval_rows_result, columns_slice]
+        return self.data.loc[rows_binary_array, columns_slice]
 
     @classmethod
     def from_source(
