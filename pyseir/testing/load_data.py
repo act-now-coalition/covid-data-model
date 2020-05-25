@@ -11,9 +11,10 @@ def load_population_size(fips):
     """
     return 1000
 
-def load_Rt(fips):
+def load_rt(fips):
     Rt = load_Rt_result(fips)
     Rt = Rt['Rt_MAP_composite']
+    Rt = Rt.dropna()
     return Rt
 
 def load_projection(fips):
@@ -22,12 +23,32 @@ def load_projection(fips):
     """
     demo_output = pickle.load(open('demo_mapper_output.pkl', 'rb'))
 
-    projection = {}
-    projection.update(demo_output['compartments'])
+    projection = list()
+    for c in demo_output['compartments']:
+        projection.append(demo_output['compartments'][c])
+
     for measure in demo_output:
         if measure != 'compartments':
             for unit in demo_output[measure]:
-                projection[measure + '__' + unit] = demo_output[measure][unit]
+                s = demo_output[measure][unit]
+                projection.append(s.rename(measure + '__' + unit))
+
+    projection = pd.concat(projection, axis=1)
 
     return projection
+
+
+def load_pcr_stats():
+    """
+    load pcr sensitivity and specificity
+    """
+    return
+
+
+def load_antibody_stats():
+    """
+    load antibody test sensitivity and specificity
+    """
+
+    return
 
