@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import pandas as pd
 import numpy as np
 from libs import us_state_abbrev
@@ -108,7 +108,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         data = self.data
 
         # country is okay with states.
-        assert sum([bool(state), bool(county), bool(fips), bool(states)]) <= 1
+        assert sum([bool(state), bool(fips), bool(states)]) <= 1
 
         query_parts = []
         if aggregation_level:
