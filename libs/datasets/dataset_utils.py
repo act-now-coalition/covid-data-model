@@ -313,6 +313,7 @@ def fill_fields_and_timeseries_from_column(
     See examples in dataset_utils_test.py
 
     Args:
+        log: a bound structlog logger.
         existing_df: Existing data frame
         new_df: Data used to fill existing df columns
         index_fields: List of columns to use as common index.
@@ -372,6 +373,7 @@ def fill_fields_and_timeseries_from_column(
 
 
 def fill_fields_with_data_source(
+    log: BoundLogger,
     existing_df: pd.DataFrame,
     data_source: pd.DataFrame,
     index_fields: List[str],
@@ -410,6 +412,7 @@ def fill_fields_with_data_source(
         ------------------------------
 
     Args:
+        log: a bound structlog logger.
         existing_df: Existing data frame
         data_source: Data used to fill existing df columns
         index_fields: List of columns to use as common index.
