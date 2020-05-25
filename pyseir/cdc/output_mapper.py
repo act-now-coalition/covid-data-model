@@ -5,7 +5,7 @@ import scipy
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from multiprocessing import Pool
 from epiweeks import Week, Year
 from string import Template
@@ -14,6 +14,7 @@ from pyseir.utils import REF_DATE
 from pyseir.cdc.utils import Target, ForecastTimeUnit, ForecastUncertainty, target_column_name
 from pyseir.inference.fit_results import load_inference_result, load_mle_model
 from pyseir.load_data import HospitalizationDataType
+from statsmodels.nonparametric.kernel_regression import KernelReg
 
 
 """
@@ -45,6 +46,9 @@ The output includes:
 Where default value of forecast_date, team and model can be found from corresponding global variables.
 """
 
+DIR_PATH = os.path.dirname(os.path.realpath(__file__))
+REPORT_FOLDER = os.path.join(DIR_PATH, 'report')
+
 
 TEAM = 'CovidActNow'
 MODEL = 'SEIR_CAN'
@@ -75,9 +79,6 @@ else:
     NEXT_EPI_WEEK = Week(Year.thisyear().year, Week.thisweek().week + 1)
 COLUMNS = ['forecast_date', 'location', 'location_name', 'target', 'type',
            'target_end_date', 'quantile', 'value']
-
-DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-OUTPUT_FOLDER = os.path.join(OUTPUT_DIR, 'pyseir', 'cdc')
 
 
 class OutputMapper:
@@ -192,9 +193,6 @@ class OutputMapper:
         self.forecast_date = forecast_date
         self.forecast_time_range = [(datetime.fromordinal(next_epi_week.startdate().toordinal()) + timedelta(n))
                                     for n in range(FORECAST_WEEKS_NUM * 7)]
-        # remove past predictions
-        self.forecast_time_range = [t for t in self.forecast_time_range if datetime.date(t) >
-                                    datetime.date(self.forecast_date)]
         self.quantiles = quantiles
         self.forecast_uncertainty = ForecastUncertainty(forecast_uncertainty)
         self.observations = self.load_observations()
@@ -204,6 +202,7 @@ class OutputMapper:
 
         self.errors = None
         self.result = None
+
 
     def load_observations(self):
         """
@@ -228,17 +227,21 @@ class OutputMapper:
         for target in self.targets:
             if target is Target.CUM_DEATH:
                 observations[target.value] = pd.Series(observed_new_deaths.cumsum(),
-                                                          index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
+                                                       index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
             elif target is Target.INC_DEATH:
-                observations[target.value] = pd.Series(observed_new_deaths,
-                                                          index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
+                smoothed_observed_new_deaths = self._smooth_observation(times, observed_new_deaths)
+                observations[target.value] = pd.Series(smoothed_observed_new_deaths.clip(min=0),
+                                                       index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
             elif target is Target.INC_HOSP:
                 if (hospital_times is not None) and \
                     (hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS):
-                    observations[target.value] = pd.Series(np.append(hospitalizations[0],
-                                                                       np.diff(hospitalizations)),
-                                                              index=pd.DatetimeIndex(hospital_dates).strftime(
-                                                                     DATE_FORMAT))
+                    observed_hospitalizations = np.append(hospitalizations[0],
+                                                          np.diff(hospitalizations))
+                    smoothed_observed_hospitalizations = self._smooth_observation(hospital_times,
+                                                                                  observed_hospitalizations)
+                    observations[target.value] = pd.Series(smoothed_observed_hospitalizations.clip(min=0),
+                                                           index=pd.DatetimeIndex(hospital_dates).strftime(
+                                                                 DATE_FORMAT))
                 else:
                     observations[target.value] = None
 
@@ -292,7 +295,7 @@ class OutputMapper:
                 raise ValueError(f'Target {target} is not implemented')
 
 
-            forecast[target.value] = pd.DataFrame({'value': forecast[target.value],
+            forecast[target.value] = pd.DataFrame({'value': forecast[target.value].clip(min=0),
                                                    'target_end_date': forecast_dates,
                                                    'forecast_days': [(t - start_date).days for t in forecast_dates]},
                                                    index=pd.DatetimeIndex(forecast_dates).strftime(DATE_FORMAT))
@@ -316,44 +319,44 @@ class OutputMapper:
         # align with observations
         for target in self.targets:
             if self.observations[target.value] is not None:
+                observation = self.observations[target.value]
+
                 shifted_forecast[target.value]['value'] += \
-                    (self.observations[target.value].loc[ref_observation_date]
-                   - forecast[target.value]['value'].loc[ref_observation_date])
+                    (observation.loc[ref_observation_date]
+                   - forecast[target.value]['value'].loc[ref_observation_date]).clip(min=0)
 
         return shifted_forecast
 
 
-    def calculate_errors(self, days_back=3):
+    def calculate_errors(self):
         """
-        Collect average of absolute errors abs(y_t - y_t|y_t-1).
+        Collect distribution of absolute errors abs(y_t - y_t|y_t-1).
 
         Parameters
         ----------
 
         """
         self.errors = defaultdict(list)
-        for date in self.observations['cum death'].index[-(days_back+1):-1]:
+        for date in self.observations['cum death'].index[:-1]:
             forecast = self.generate_forecast(start_date=datetime.strptime(date, DATE_FORMAT))
             for target in self.targets:
                 if self.observations[target.value] is not None:
                     next_day = datetime.strftime(datetime.strptime(date, DATE_FORMAT) + timedelta(1), DATE_FORMAT)
-                    pred = forecast[target.value]['value'].loc[next_day]
-                    observ = self.observations[target.value].loc[next_day]
-                    self.errors[target.value].append(abs(pred - observ))
-
-        for target_name in self.errors:
-            self.errors[target_name] = np.mean(self.errors[target_name])
+                    if next_day in self.observations[target.value].index:
+                        pred = forecast[target.value]['value'].loc[next_day]
+                        observ = self.observations[target.value].loc[next_day]
+                        self.errors[target.value].append(abs(pred - observ))
 
         return self.errors
 
 
-    def _calculate_forecast_quantiles(self, loc, scale, h, quantiles):
+    def _calculate_forecast_quantiles(self, forecast, error_std, h, quantiles):
         """
         Rescale forecast standard deviation by streching/shrinking the forecast
         distribution (gaussian) around the mean.
         Currently supports two approaches:
         - default: no adjustment
-        - naive: rescale the standard deviation by factor (1 + days_ahead  **
+        - naive: rescale the standard deviation by factor (days_ahead  **
                  0.5)
 
         Parameters
@@ -369,11 +372,19 @@ class OutputMapper:
             Data after the adjustment.
         """
         if self.forecast_uncertainty is ForecastUncertainty.DEFAULT:
-            return scipy.stats.norm(loc=loc, scale=scale).ppf(quantiles)
+            return np.maximum(forecast + scipy.stats.norm(loc=0, scale=error_std).ppf(quantiles), 0)
         elif self.forecast_uncertainty is ForecastUncertainty.NAIVE:
-            return scipy.stats.norm(loc=loc, scale=scale * h ** 0.5).ppf(quantiles)
+            return np.maximum(forecast + scipy.stats.norm(loc=0, scale=error_std*h**0.5).ppf(quantiles), 0)
         else:
             raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
+
+    def _smooth_observation(self, time, observations):
+        """
+
+        """
+        kr = KernelReg(observations, time, 'c')
+        smoothed, _ = kr.fit(time)
+        return smoothed
 
 
     def generate_forecast_quantiles(self, forecast, quantiles=QUANTILES):
@@ -398,12 +409,13 @@ class OutputMapper:
         forecast_quantiles = dict()
         for target_name in forecast:
             if target_name in self.errors:
-                scale = self.errors[target_name]
+                error_std = np.std(self.errors[target_name])
             else:
-                scale = np.sqrt(forecast[target_name]['value'][0])
+                error_std = np.sqrt(forecast[target_name]['value'].iloc[0])
 
             forecast_quantiles[target_name] = forecast[target_name].apply(
-                lambda r: self._calculate_forecast_quantiles(loc=r.value, scale=scale,
+                lambda r: self._calculate_forecast_quantiles(forecast=r.value,
+                                                             error_std=error_std,
                                                              h=r.forecast_days,
                                                              quantiles=quantiles), axis=1).rename('value')
 
@@ -455,20 +467,54 @@ class OutputMapper:
         for target_name in forecast_quantile:
             for unit in self.forecast_time_units:
                 df = pd.concat([forecast_quantile[target_name], forecast[target_name]])
-                df = df[df['target_end_date'].apply(lambda t: datetime.date(t) > datetime.date(self.forecast_date))]
                 if unit is ForecastTimeUnit.DAY:
                     num_of_units = [(datetime.date(datetime.strptime(str(t).partition('T')[0], DATE_FORMAT))
-                                     - datetime.date(self.forecast_date)).days for t in df['target_end_date'].values]
+                                   - datetime.date(self.forecast_date)).days for t in df['target_end_date'].values]
 
                 elif unit is ForecastTimeUnit.WK:
                     # Weekly report use forecast on Saturdays
-                    df = df[df['target_end_date'].apply(lambda t: t.weekday() == 5)]
+                    df['is_saturday'] = df['target_end_date'].apply(lambda t: t.weekday() == 5)
+
+                    if Target(target_name) is Target.CUM_DEATH:
+                        df = df[df['is_saturday']]
+                    else:
+                        # if target is incident death or hospitalization, get the cumulative sum
+                        df = df[df['type'] == 'point']
+                        df['week'] = df['target_end_date'].apply(lambda t: Week.fromdate(t).week)
+                        df['week'] -= df['week'].min() - 1 # shift first week to week 1
+                        df = df.groupby('week').agg({'target_end_date': np.max,
+                                                     'value': sum}).reset_index()
+                        df_quantile = df.copy()
+
+                        if target_name in self.errors:
+                            error_std = np.std(self.errors[target_name])
+                        else:
+                            error_std = np.sqrt(df['value'].iloc[0])
+
+                        # assume error has poisson distribution with mean as the forecast value adjusted by forecast
+                        # forward days
+                        df_quantile = df_quantile.set_index('target_end_date').apply(
+                            lambda r: self._calculate_forecast_quantiles(forecast=r.value,
+                                                                         error_std=error_std,
+                                                                         h=r.week * 7,
+                                                                         quantiles=self.quantiles),
+                            axis=1).rename('value')
+                        df_quantile = pd.DataFrame(df_quantile.explode()).reset_index()
+                        df_quantile['quantile'] = np.tile(self.quantiles, df.shape[0])
+                        df_quantile['type'] = 'quantile'
+
+                        df['type'] = 'point'
+                        df = pd.concat([df, df_quantile])
+
                     num_of_units = [(datetime.strptime(str(t).partition('T')[0], DATE_FORMAT) -
                                      self.forecast_date).days // 7 + 1 for t in df['target_end_date'].values]
+
                 df['target'] = list(target_column_name(num_of_units, Target(target_name), unit))
                 result.append(df)
 
         result = pd.concat(result)
+        result = result[result['target_end_date'] >= self.forecast_date]
+
         result['location'] = str(self.fips)
         result['location_name'] = us.states.lookup(self.fips).name
         result['forecast_date'] = self.forecast_date
@@ -486,7 +532,7 @@ class OutputMapper:
                               'value']]
 
         forecast_date = self.forecast_date.strftime(DATE_FORMAT)
-        self.result.to_csv(os.path.join(OUTPUT_FOLDER,
+        self.result.to_csv(os.path.join(REPORT_FOLDER,
                                         f'{forecast_date}_{TEAM}_{MODEL}_{self.fips}.csv'),
                            index=False)
 
@@ -538,7 +584,7 @@ class OutputMapper:
                  team_name=TEAM)
         )
 
-        output_f = open(os.path.join(OUTPUT_FOLDER, f'metadata-{TEAM}-{MODEL}.txt'), 'w')
+        output_f = open(os.path.join(REPORT_FOLDER, f'metadata-{TEAM}-{MODEL}.txt'), 'w')
         output_f.write(metadata)
         output_f.close()
 
@@ -553,8 +599,8 @@ def run_all(parallel=False):
     parallel: bool
         Whether to run multiprocessing.
     """
-    if not os.path.exists(OUTPUT_FOLDER):
-        os.mkdir(OUTPUT_FOLDER)
+    if not os.path.exists(REPORT_FOLDER):
+        os.mkdir(REPORT_FOLDER)
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
@@ -570,11 +616,11 @@ def run_all(parallel=False):
             result = OutputMapper.run_for_fips(fips)
             results.append(result)
 
-    forecast_date = FORECAST_DATE.strftime('%Y-%m-%d')
+    forecast_date = FORECAST_DATE.strftime(DATE_FORMAT)
 
     results = pd.concat(results)
     results = results[COLUMNS].sort_values(COLUMNS)
-    results.to_csv(os.path.join(OUTPUT_FOLDER, f'{forecast_date}-{TEAM}-{MODEL}.csv'),
+    results.to_csv(os.path.join(REPORT_FOLDER, f'{forecast_date}-{TEAM}-{MODEL}.csv'),
                    index=False)
 
     OutputMapper.generate_metadata()
