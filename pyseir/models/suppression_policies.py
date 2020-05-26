@@ -185,7 +185,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
 
 
 def generate_two_step_policy(
-    t_list, eps, t_break, transition_time=14, t_break_final=None, eps_final=None
+    t_list, eps, t_break, eps2, t_break2, transition_time=14, t_break_final=None, eps_final=None
 ):
     """
     Produce a suppression policy based a two step policy where the level is
@@ -213,13 +213,9 @@ def generate_two_step_policy(
         suppression_model(t) returns the current suppression model at time t.
     """
     if eps_final is None:
-        print('Natasha: eps final is none')
-        end_stage1 = t_break + transition_time
-        t_break2 = t_break + transition_time + 1
-        eps2 = eps * 1.1
 
         return interp1d(
-            x=[0, t_break, end_stage1, t_break2, t_break2 + transition_time, 100000],
+            x=[0, t_break, t_break + transition_time, t_break2, t_break2 + transition_time, 100000],
             y=[1, 1, eps, eps, eps2, eps2],
             fill_value="extrapolate",
         )
