@@ -151,10 +151,12 @@ class CDSDataset(data_source.DataSource):
 
     @classmethod
     def remove_duplicate_city_data(cls, data):
-        # City data before 3-23 was not duplicated, copy the city name to the
+        # City data before 3-23 was not duplicated, copy the city name to the county field.
         select_pre_march_23 = data.date < "2020-03-23"
         data.loc[select_pre_march_23, cls.Fields.COUNTY] = data.loc[select_pre_march_23].apply(
             fill_missing_county_with_city, axis=1
         )
         # Don't want to return city data because it's duplicated in county
-        return data.loc[select_pre_march_23 | data[cls.Fields.CITY].isnull()]
+        return data.loc[
+            select_pre_march_23 | ((~select_pre_march_23) & data[cls.Fields.CITY].isnull())
+        ]
