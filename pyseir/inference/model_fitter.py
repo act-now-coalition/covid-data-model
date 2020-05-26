@@ -90,6 +90,12 @@ class ModelFitter:
         t_break=20,
         limit_t_break=[5, 40],
         error_t_break=1,
+        eps2=0.3,
+        limit_eps2=[0.20, 1.2],
+        error_eps2=0.005,
+        t_break2=20,
+        limit_t_break2=[40, 100], #is this appropriate
+        error_t_break2=1,
         #t_break2=40,
         #limit_t_break2=[10, 60],
         #error_t_break2=1,
@@ -184,7 +190,7 @@ class ModelFitter:
         self.set_inference_parameters()
         print('Natasha: done setting inference params')
 
-        self.model_fit_keys = ["R0", "eps", "t_break", "log10_I_initial"] #Natasha add this, "eps2", "t_break2"]
+        self.model_fit_keys = ["R0", "eps", "t_break", "eps2", "t_break2", "log10_I_initial"] #Natasha add this, "eps2", "t_break2"]
 
         print('Natasha: getting average params')
         self.SEIR_kwargs = self.get_average_seir_parameters()
@@ -359,7 +365,7 @@ class ModelFitter:
 
         return cases_stdev, hosp_stdev, deaths_stdev
 
-    def run_model(self, R0, eps, t_break, log10_I_initial):
+    def run_model(self, R0, eps, t_break, eps2, t_break2, log10_I_initial):
         """
         Generate the model and run.
 
@@ -382,7 +388,7 @@ class ModelFitter:
         """
         #Maybe start here Natasha
         suppression_policy = suppression_policies.generate_two_step_policy(
-            self.t_list, eps, t_break
+            self.t_list, eps, t_break, eps2, t_break2
         )
         print('Natasha: Suppression policy')
         print(suppression_policy)
@@ -410,7 +416,7 @@ class ModelFitter:
         model.run()
         return model
 
-    def _fit_seir(self, R0, t0, eps, t_break, test_fraction, hosp_fraction, log10_I_initial):
+    def _fit_seir(self, R0, t0, eps, t_break, eps2, t_break2, test_fraction, hosp_fraction, log10_I_initial):
         """
         Fit SEIR model by MLE.
 

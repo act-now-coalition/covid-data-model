@@ -156,7 +156,7 @@ def _state_only_pipeline(
     output_dir=None,
 ):
     states_only = True
-    #_infer_rt(state, states_only=states_only)
+    _infer_rt(state, states_only=states_only)
     print('Natasha running mle')
     _run_mle_fits(state, states_only=states_only)
     print('done with mle')
