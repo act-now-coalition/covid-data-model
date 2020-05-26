@@ -39,8 +39,7 @@ exit_with_usage () {
   echo "Usage: $CMD <label> <snapshot-id>"
   echo
   echo "Examples:"
-  echo "$CMD v0 15                # Points /v0 at /snapshot/15"
-  echo "$CMD snapshot/latest 15   # Points /snapshot/latest at /snapshot/15"
+  echo "$CMD latest 370   # Points /latest at /snapshot/370"
   exit 1
 }
 
