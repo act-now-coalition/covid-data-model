@@ -5,6 +5,11 @@ from pyseir import cli
 from pyseir.utils import get_run_artifact_path, RunArtifact
 import libs.datasets.can_model_output_schema as schema
 
+import pytest
+
+# turns all warnings into errors for this module
+pytestmark = pytest.mark.filterwarnings("error")
+
 
 def test__pyseir_end_to_end():
     # This covers a lot of edge cases.

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import os
 import enum
 import logging
@@ -71,12 +71,13 @@ def plot_grouped_data(data, group, series="source", values="cases"):
 def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
     """Combines JHU and CDS county data."""
     data = jhu_data_source.timeseries()
-    jhu_usa_data = data.get_subset(AggregationLevel.COUNTY, country="USA", after="2020-03-01").data
+    jhu_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
 
     data = cds_data_source.timeseries()
-    cds_usa_data = data.get_subset(AggregationLevel.COUNTY, country="USA", after="2020-03-01").data
+    cds_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
 
     # TODO(chris): Better handling of counties that are not consistent.
+    # Can we move this logic to combined_datasets?
 
     # Before 3-22, CDS has mostly consistent county level numbers - except for
     # 3-12, where there are no numbers reported. Still need to fill that in.
@@ -364,3 +365,37 @@ def fill_fields_with_data_source(
     data = pd.concat([existing_df.reset_index(), missing_new_data[columns_to_fill].reset_index(),])
 
     return data
+
+
+def make_binary_array(
+    data: pd.DataFrame,
+    aggregation_level: Optional[AggregationLevel] = None,
+    country=None,
+    fips=None,
+    state=None,
+    states=None,
+    on=None,
+    after=None,
+    before=None,
+):
+    """Create a binary array selecting rows in `data` matching the given parameters."""
+    query_parts = []
+    # aggregation_level is almost always set. The exception is `DatasetFilter` which is used to
+    # get all data in the USA, at all aggregation levels.
+    if aggregation_level:
+        query_parts.append(f'aggregate_level == "{aggregation_level.value}"')
+    if country:
+        query_parts.append("country == @country")
+    if state:
+        query_parts.append("state == @state")
+    if fips:
+        query_parts.append("fips == @fips")
+    if states:
+        query_parts.append("state in @states")
+    if on:
+        query_parts.append("date == @on")
+    if after:
+        query_parts.append("date > @after")
+    if before:
+        query_parts.append("date < @before")
+    return data.eval(" and ".join(query_parts))
