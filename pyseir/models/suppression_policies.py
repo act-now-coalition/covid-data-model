@@ -226,7 +226,6 @@ def generate_two_step_policy(
         #    fill_value="extrapolate",
         #)
     else:
-        print('Natasha: eps final in not none')
         return interp1d(
             x=[
                 0,
