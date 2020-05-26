@@ -125,9 +125,9 @@ class DemographicMapper:
           model assuming the population has the demographic distribution
           of the target population, with dates of prediction as index.
           Name of columns (compartments) include: S - susceptible,
-          E - exposed, A - asymptomatic, I - symptomatic, R - recovered,
-          HGen - in non-ICU, HICU - in ICU, HVent - on ventilator, N - entire
-          population.
+          E - exposed, A - asymptomatic, I - symptomatic, incident_I - new
+          infections, R - recovered, HGen - in non-ICU, HICU - in ICU,
+          HVent - on ventilator, N - entire population.
         - <measure>:
           - <measure_unit>: time series of covid measures predicted using
                             the MLE model and averaged over target
@@ -649,8 +649,9 @@ class DemographicMapper:
                                recorded as pd.DataFrame, with dates of
                                prediction as index.
               name of compartments include: S - susceptible, E - exposed,
-              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
-              ICU, HVent - on ventilator, N - entire population.
+              A - asymptomatic, I - symptomatic, R - recovered, HGen - in
+              non-ICU, HICU - in ICU, HVent - on ventilator, N - entire
+              population.
             - <measure>:
               - <measure_unit>: time series of covid measures by demographic
                                 group predicted using the MLE model.
@@ -722,8 +723,9 @@ class DemographicMapper:
                                recorded as pd.DataFrame, with dates of
                                prediction as index.
               name of compartments include: S - susceptible, E - exposed,
-              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in
-              ICU, HVent - on ventilator, N - entire population.
+              A - asymptomatic, I - symptomatic, incident_I - new infections,
+              R - recovered, HGen - in non-ICU, HICU - in ICU, HVent - on
+              ventilator, N - entire population.
             - <measure>:
               - <measure_unit>: time series of covid measures by demographic
                                 group predicted using the MLE model.
@@ -743,8 +745,9 @@ class DemographicMapper:
                                series is recorded as pd.DataFrame, with dates of
                                prediction as index.
               name of compartments include: S - susceptible, E - exposed,
-              A - asymptomatic, I - symptomatic, HGen - in non-ICU, HICU - in ICU,
-              HVent - on ventilator, N - entire population.
+              A - asymptomatic, I - symptomatic, incident_I - new infections,
+              R - recovered, HGen - in non-ICU, HICU - in ICU, HVent - on
+              ventilator, N - entire population.
             - <measure>:
               - <measure_unit>: time series of covid measures predicted using
                                 the MLE model and averaged over target
@@ -811,9 +814,9 @@ class DemographicMapper:
               model assuming the population has the demographic distribution
               of the target population, with dates of prediction as index.
               Name of columns (compartments) include: S - susceptible,
-              E - exposed, A - asymptomatic, I - symptomatic, HGen - in
-              non-ICU, HICU - in ICU, HVent - on ventilator, N - entire
-              population.
+              E - exposed, A - asymptomatic, I - symptomatic, incident_I -
+              new infections, R - recovered, HGen - in non-ICU, HICU - in
+              ICU, HVent - on ventilator, N - entire population.
             - <measure>:
               - <measure_unit>: time series of covid measures predicted using
                                 the MLE model and averaged over target
