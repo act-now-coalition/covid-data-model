@@ -377,6 +377,7 @@ def make_binary_array(
     after=None,
     before=None,
 ):
+    """Create a binary array selecting rows in `data` matching the given parameters."""
     query_parts = []
     # aggregation_level is almost always set. The exception is `DatasetFilter` which is used to
     # get all data in the USA, at all aggregation levels.

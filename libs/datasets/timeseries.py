@@ -141,7 +141,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         state: Optional[str] = None,
         fips: Optional[str] = None,
         states: Optional[List[str]] = None,
-        columns_slice=None,
+        columns_slice: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         rows_binary_array = make_binary_array(
             self.data,
