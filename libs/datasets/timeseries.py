@@ -7,7 +7,7 @@ from libs.datasets import dataset_base
 from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
-from libs.datasets.dataset_utils import AggregationLevel, make_binary_array
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -98,15 +98,25 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         aggregation_level,
         country=None,
         fips: Optional[str] = None,
+        state: Optional[str] = None,
         states: Optional[List[str]] = None,
+        on: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
     ) -> "TimeseriesDataset":
-        row_binary_array = make_binary_array(
+        """Fetch a new TimeseriesDataset with a subset of the data in `self`.
+
+        Some parameters are only used in ipython notebooks."""
+        row_binary_array = dataset_utils.make_binary_array(
             self.data,
             aggregation_level=aggregation_level,
             country=country,
-            states=states,
             fips=fips,
             state=None,
+            states=states,
+            on=on,
+            after=after,
+            before=before,
         )
         return self.__class__(self.data.loc[row_binary_array, :])
 
@@ -135,22 +145,26 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     def get_data(
         self,
-        aggregation_level=None,
-        after=None,
+        aggregation_level,
         country=None,
-        state: Optional[str] = None,
         fips: Optional[str] = None,
+        state: Optional[str] = None,
         states: Optional[List[str]] = None,
+        on: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
         columns_slice: Optional[List[str]] = None,
     ) -> pd.DataFrame:
-        rows_binary_array = make_binary_array(
+        rows_binary_array = dataset_utils.make_binary_array(
             self.data,
             aggregation_level=aggregation_level,
-            after=after,
             country=country,
             fips=fips,
             state=state,
             states=states,
+            on=on,
+            after=after,
+            before=before,
         )
         if columns_slice is None:
             columns_slice = slice(None, None, None)

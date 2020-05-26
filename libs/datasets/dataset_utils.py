@@ -369,11 +369,12 @@ def fill_fields_with_data_source(
 
 def make_binary_array(
     data: pd.DataFrame,
-    aggregation_level: Optional[AggregationLevel],
-    country,
-    fips,
-    state,
-    states,
+    aggregation_level: Optional[AggregationLevel] = None,
+    country=None,
+    fips=None,
+    state=None,
+    states=None,
+    on=None,
     after=None,
     before=None,
 ):
@@ -391,6 +392,8 @@ def make_binary_array(
         query_parts.append("fips == @fips")
     if states:
         query_parts.append("state in @states")
+    if on:
+        query_parts.append("date == @on")
     if after:
         query_parts.append("date > @after")
     if before:

@@ -1,4 +1,4 @@
-from typing import Type, List
+from typing import Type, List, Optional
 
 from libs import us_state_abbrev
 import pandas as pd
@@ -86,15 +86,26 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return cls.from_source(source)
 
     def get_subset(
-        self, aggregation_level, country=None, state=None, fips=None, states=None,
+        self,
+        aggregation_level,
+        country=None,
+        fips: Optional[str] = None,
+        state: Optional[str] = None,
+        states: Optional[List[str]] = None,
+        on: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
     ) -> "LatestValuesDataset":
         rows_binary_array = make_binary_array(
             self.data,
             aggregation_level=aggregation_level,
             country=country,
-            state=state,
             fips=fips,
+            state=state,
             states=states,
+            on=on,
+            after=after,
+            before=before,
         )
         return self.__class__(self.data.loc[rows_binary_array, :])
 

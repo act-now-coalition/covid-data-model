@@ -190,8 +190,9 @@ def column_as_set(
     aggregation_level,
     state=None,
     states=None,
-    before=None,
+    on=None,
     after=None,
+    before=None,
 ):
     """Return values in selected rows and column of df.
 
@@ -201,9 +202,10 @@ def column_as_set(
         df,
         aggregation_level,
         country=None,
-        state=state,
         fips=None,
+        state=state,
         states=states,
+        on=on,
         after=after,
         before=before,
     )
@@ -227,6 +229,7 @@ def test_make_binary_array():
     assert column_as_set(df, "metric", AggregationLevel.STATE) == {"mystate"}
     assert column_as_set(df, "metric", None, before="2020-03-23") == {"march22-nyc"}
     assert column_as_set(df, "metric", None, after="2020-03-23") == {"march24-nyc"}
+    assert column_as_set(df, "metric", None, on="2020-03-24") == {"march24-nyc"}
     assert column_as_set(
         df, "metric", None, state="ZZ", after="2020-03-22", before="2020-03-24"
     ) == {"smithville-march23", "county-metric", "mystate",}
