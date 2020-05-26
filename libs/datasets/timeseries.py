@@ -1,5 +1,5 @@
 import warnings
-from typing import List
+from typing import List, Optional
 import pandas as pd
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
@@ -96,35 +96,29 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def get_subset(
         self,
         aggregation_level,
-        on=None,
-        after=None,
-        before=None,
         country=None,
-        state=None,
-        fips=None,
-        states=None,
+        fips: Optional[str] = None,
+        state: Optional[str] = None,
+        states: Optional[List[str]] = None,
+        on: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
     ) -> "TimeseriesDataset":
-        data = self.data
+        """Fetch a new TimeseriesDataset with a subset of the data in `self`.
 
-        if aggregation_level:
-            data = data[data.aggregate_level == aggregation_level.value]
-        if country:
-            data = data[data.country == country]
-        if state:
-            data = data[data.state == state]
-        if fips:
-            data = data[data.fips == fips]
-        if states:
-            data = data[data[self.Fields.STATE].isin(states)]
-
-        if on:
-            data = data[data.date == on]
-        if after:
-            data = data[data.date > after]
-        if before:
-            data = data[data.date < before]
-
-        return self.__class__(data)
+        Some parameters are only used in ipython notebooks."""
+        row_binary_array = dataset_utils.make_binary_array(
+            self.data,
+            aggregation_level=aggregation_level,
+            country=country,
+            fips=fips,
+            state=None,
+            states=states,
+            on=on,
+            after=after,
+            before=before,
+        )
+        return self.__class__(self.data.loc[row_binary_array, :])
 
     def get_records_for_fips(self, fips) -> List[dict]:
         """Get data for FIPS code.
@@ -134,8 +128,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None
         """
-
-        pd_data = self.get_subset(None, fips=fips).data
+        pd_data = self.get_data(aggregation_level=AggregationLevel.COUNTY, fips=fips)
         pd_data = pd_data.where(pd.notnull(pd_data), None)
         return pd_data.to_dict(orient="records")
 
@@ -147,25 +140,35 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None.
         """
-        pd_data = self.get_subset(AggregationLevel.STATE, state=state).data
+        pd_data = self.get_data(aggregation_level=AggregationLevel.STATE, state=state)
         return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
 
     def get_data(
-        self, aggregation_level=None, country=None, state=None, fips=None, states=None
+        self,
+        aggregation_level,
+        country=None,
+        fips: Optional[str] = None,
+        state: Optional[str] = None,
+        states: Optional[List[str]] = None,
+        on: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+        columns_slice: Optional[List[str]] = None,
     ) -> pd.DataFrame:
-        data = self.data
-        if aggregation_level:
-            data = data[data.aggregate_level == aggregation_level.value]
-        if country:
-            data = data[data.country == country]
-        if state:
-            data = data[data.state == state]
-        if fips:
-            data = data[data.fips == fips]
-        if states:
-            data = data[data[self.Fields.STATE].isin(states)]
-
-        return data
+        rows_binary_array = dataset_utils.make_binary_array(
+            self.data,
+            aggregation_level=aggregation_level,
+            country=country,
+            fips=fips,
+            state=state,
+            states=states,
+            on=on,
+            after=after,
+            before=before,
+        )
+        if columns_slice is None:
+            columns_slice = slice(None, None, None)
+        return self.data.loc[rows_binary_array, columns_slice]
 
     @classmethod
     def from_source(

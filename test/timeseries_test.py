@@ -12,7 +12,7 @@ import pytest
 pytestmark = pytest.mark.filterwarnings("error")
 
 
-def test_get_subset():
+def test_get_subset_and_get_data():
     input_df = pd.read_csv(
         StringIO(
             "city,county,state,fips,country,aggregate_level,date,metric\n"
@@ -28,17 +28,10 @@ def test_get_subset():
 
     assert set(ts.get_subset(AggregationLevel.COUNTRY).data["country"]) == {"UK"}
     assert set(ts.get_subset(AggregationLevel.STATE).data["metric"]) == {"mystate"}
-    assert set(ts.get_subset(None, on="2020-03-22").data["metric"]) == {"march22-nyc"}
-    assert set(ts.get_subset(None, after="2020-03-23").data["metric"]) == {"march24-nyc"}
-    # county= parameter removed because it looks unused
-    # assert set(ts.get_subset(None, county="North County").data["metric"]) == {"county-metric"}
-    assert set(ts.get_subset(None, state="ZZ", on="2020-03-23").data["metric"]) == {
+    assert set(ts.get_data(None, state="ZZ", after="2020-03-23")["metric"]) == {"march24-nyc"}
+    assert set(ts.get_data(None, state="ZZ", after="2020-03-22")["metric"]) == {
         "smithville-march23",
         "county-metric",
         "mystate",
-    }
-    assert set(ts.get_subset(None, states=["ZZ",], on="2020-03-23").data["metric"]) == {
-        "smithville-march23",
-        "county-metric",
-        "mystate",
+        "march24-nyc",
     }
