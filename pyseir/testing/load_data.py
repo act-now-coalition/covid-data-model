@@ -9,7 +9,7 @@ def load_population_size(fips):
     """
     Load population size for a community.
     """
-    return 1000
+    return 5000
 
 def load_rt(fips):
     Rt = load_Rt_result(fips)
