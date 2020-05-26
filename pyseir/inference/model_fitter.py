@@ -146,14 +146,12 @@ class ModelFitter:
             self.agg_level = AggregationLevel.STATE
             self.state_obj = us.states.lookup(self.fips)
             self.state = self.state_obj.name
-            print('Natasha: getting cases')
 
             (
                 self.times,
                 self.observed_new_cases,
                 self.observed_new_deaths,
             ) = load_data.load_new_case_data_by_state(self.state, self.ref_date)
-            print('Natasha: getting hospitalizations')
 
             (
                 self.hospital_times,
@@ -161,9 +159,7 @@ class ModelFitter:
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
             self.display_name = self.state
-            print('Natasha: got hospitalization data')
         else:
-            print('Natasha: in else statement')
             self.agg_level = AggregationLevel.COUNTY
             geo_metadata = load_data.load_county_metadata().set_index("fips").loc[fips].to_dict()
             state = geo_metadata["state"]
@@ -184,15 +180,11 @@ class ModelFitter:
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-        print('Natasha: getting obs errors')
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
-        print('setting inference params')
         self.set_inference_parameters()
-        print('Natasha: done setting inference params')
 
         self.model_fit_keys = ["R0", "eps", "t_break", "eps2", "t_break2", "log10_I_initial"] #Natasha add this, "eps2", "t_break2"]
 
-        print('Natasha: getting average params')
         self.SEIR_kwargs = self.get_average_seir_parameters()
         self.fit_results = None
         self.mle_model = None
@@ -390,8 +382,8 @@ class ModelFitter:
         suppression_policy = suppression_policies.generate_two_step_policy(
             self.t_list, eps, t_break, eps2, t_break2
         )
-        print('Natasha: Suppression policy')
-        print(suppression_policy)
+        #print('Natasha: Suppression policy')
+        #print(suppression_policy)
 
         if self.with_age_structure:
             age_distribution = self.SEIR_kwargs["N"] / self.SEIR_kwargs["N"].sum()
@@ -876,14 +868,14 @@ class ModelFitter:
         : ModelFitter
         """
         # Assert that there are some cases for counties
-        print('Natasha: starting model_fitter.run_forfips()')
+        #print('Natasha: starting model_fitter.run_forfips()')
         if len(fips) == 5:
             _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
                 fips, t0=datetime.today()
             )
             if observed_new_cases.sum() < 1:
                 return None
-        print('Natasha: about to start try statement')
+        #print('Natasha: about to start try statement')
 
         try:
             retries_left = n_retries
@@ -955,7 +947,7 @@ def run_state(state, states_only=False, with_age_structure=False):
     with_age_structure: bool
         If True run model with age structure.
     """
-    print('Natasha: starting model_fitter.run_state()')
+    #print('Natasha: starting model_fitter.run_state()')
     state_obj = us.states.lookup(state)
     logging.info(f"Running MLE fitter for state {state_obj.name}")
 
