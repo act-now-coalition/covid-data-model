@@ -69,10 +69,8 @@ def get_testing_timeseries_by_state(state):
 
 def get_testing_timeseries_by_fips(fips):
     """Called by generate_api"""
-    testing_df = (
-        build_us_timeseries_with_all_fields()
-        .get_data(fips=fips)
-        .loc[:, CDSDataset.COMMON_TEST_FIELDS]
+    testing_df = build_us_timeseries_with_all_fields().get_data(
+        None, fips=fips, columns_slice=CDSDataset.COMMON_TEST_FIELDS
     )
     testing_df[CDSDataset.Fields.TESTED] = (
         testing_df[CommonFields.NEGATIVE_TESTS] + testing_df[CommonFields.POSITIVE_TESTS]
@@ -173,10 +171,13 @@ def get_usa_by_states_df(input_dir: str, intervention: Intervention):
     us_only = _get_usa_by_county_df()
     interventions_df = _get_interventions_df()
     projections_df = get_state_projections_df(input_dir, intervention.value, interventions_df)
-    testing_df = (
-        build_us_timeseries_with_all_fields()
-        .get_data(aggregation_level=AggregationLevel.STATE)
-        .loc[:, (CommonFields.STATE, CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS)]
+    testing_df = build_us_timeseries_with_all_fields().get_data(
+        aggregation_level=AggregationLevel.STATE,
+        columns_slice=[
+            CommonFields.STATE,
+            CommonFields.POSITIVE_TESTS,
+            CommonFields.NEGATIVE_TESTS,
+        ],
     )
     test_max_df = (
         testing_df.groupby(CommonFields.STATE, as_index=False)[
