@@ -171,6 +171,7 @@ def build_combined_dataset_from_sources(
 
     # Build feature columns from feature_definition_config.
     data = pd.DataFrame({})
+    # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
     log = structlog.get_logger()
     for field, data_source_classes in feature_definition_config.items():
         for data_source_cls in data_source_classes:

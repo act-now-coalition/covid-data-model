@@ -33,6 +33,7 @@ def entry_point(ctx):  # pylint: disable=no-value-for-parameter
     structlog.configure(
         processors=[
             structlog.stdlib.add_log_level,  # required before SentryProcessor()
+            # sentry_sdk creates events for level >= ERROR and keeps level >= INFO as breadcrumbs.
             SentryProcessor(level=logging.INFO),
         ]
     )
