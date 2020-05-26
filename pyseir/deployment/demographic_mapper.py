@@ -362,12 +362,12 @@ class DemographicMapper:
 
     def _reconstruct_recovery(self):
         """
-        Reconstruct trajectory of inferred recovery population size.
+        Reconstruct trajectory of inferred recovery population size by age group.
 
         Returns
         -------
         R : np.array
-
+            Trajectory of recovery population size by age groups.
         """
         hospital_recovery_inflow_rates = self._reconstruct_hospital_recovery_inflow_rates()
         recovered_no_hospital = (self.predictions_by_age['A'] + self.predictions_by_age['I']) * self.parameters['delta']
@@ -763,7 +763,6 @@ class DemographicMapper:
         mapped_predictions = defaultdict(dict)
 
         for c in predictions["compartments"]:
-            print(c, predictions["compartments"][c].shape)
             mapped_predictions["compartments"][c] = (
                 predictions["compartments"][c].dot(demographic_group_size_ratio).rename(c)
             )
