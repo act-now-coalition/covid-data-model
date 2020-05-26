@@ -125,8 +125,8 @@ class DemographicMapper:
           model assuming the population has the demographic distribution
           of the target population, with dates of prediction as index.
           Name of columns (compartments) include: S - susceptible,
-          E - exposed, A - asymptomatic, I - symptomatic, HGen - in
-          non-ICU, HICU - in ICU, HVent - on ventilator, N - entire
+          E - exposed, A - asymptomatic, I - symptomatic, R - recovered,
+          HGen - in non-ICU, HICU - in ICU, HVent - on ventilator, N - entire
           population.
         - <measure>:
           - <measure_unit>: time series of covid measures predicted using
@@ -228,7 +228,12 @@ class DemographicMapper:
 
     def _reconstruct_infection_inflow_rates(self):
         """
+        Reconstruct incident infection rates by age groups.
 
+        Returns
+        -------
+          : np.array
+            Trajectory of new infection rate by age groups.
         """
         return self.predictions_by_age['E'] * self.parameters['delta']
 
