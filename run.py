@@ -56,7 +56,7 @@ if __name__ == "__main__":
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
 
     logging.basicConfig(level=logging.INFO)
-    dataset_cache.set_pickle_cache_tempdir()
+    dataset_cache.set_pickle_cache_dir()
     pandarallel.initialize(progress_bar=False)
     try:
         entry_point()  # pylint: disable=no-value-for-parameter
