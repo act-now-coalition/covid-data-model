@@ -234,7 +234,7 @@ def generate_two_step_policy(
 
 
 def generate_three_step_policy(
-    t_list, eps, t_break, eps2, t_break2, transition_time=14, t_break_final=None, eps_final=None
+    t_list, eps, t_break, eps2, t_delta_phases, transition_time=14, t_break_final=None, eps_final=None
 ):
     """
     Produce a suppression policy based a two step policy where the level is
@@ -262,8 +262,8 @@ def generate_three_step_policy(
         suppression_model(t) returns the current suppression model at time t.
     """
     if eps_final is None:
-        t_break2_start = t_break + t_break2 + transition_time
-        t_break2_end = t_break + t_break2 + transition_time + transition_time
+        t_break2_start = t_break + t_delta_phases
+        t_break2_end = t_break2_start + transition_time
 
         return interp1d(
             x=[0, t_break, t_break + transition_time, t_break2_start, t_break2_end, 100000],
