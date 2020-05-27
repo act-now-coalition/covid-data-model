@@ -113,7 +113,8 @@ class WebUIDataAdaptorV1:
                     current_county_icu,
                 ) = self._get_county_hospitalization_from_actuals(fips, t0_simulation)
                 log.info(
-                    "Actual county hospitalizations: %s, icu: %s",
+                    "Actual county hospitalizations for fips %s: %s, icu: %s",
+                    fips,
                     current_county_hosp,
                     current_county_icu,
                 )
@@ -130,7 +131,8 @@ class WebUIDataAdaptorV1:
                     ensemble_results=pyseir_outputs,
                 )
                 log.info(
-                    "Inferred county hospitalized: %s, icu: %s",
+                    "Inferred county hospitalized for fips %s: %s, icu: %s",
+                    fips,
                     inferred_county_hosp,
                     inferred_county_icu,
                 )
