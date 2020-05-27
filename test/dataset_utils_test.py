@@ -7,6 +7,7 @@ import numpy as np
 from more_itertools import one
 from structlog import testing, get_logger
 
+from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import (
     fill_fields_and_timeseries_from_column,
     fill_fields_with_data_source,
@@ -252,6 +253,30 @@ def test_fill_fields_with_data_source_no_rows_input():
     assert logs == []
 
 
+def test_fill_fields_with_data_source_empty_input():
+    existing_df = pd.DataFrame()
+    new_df = pd.read_csv(
+        StringIO("fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,64\n")
+    )
+    with testing.capture_logs() as logs:
+        result = fill_fields_with_data_source(
+            get_logger(),
+            existing_df,
+            new_df,
+            "fips state aggregate_level county".split(),
+            ["current_icu"],
+        )
+
+    expected = pd.read_csv(
+        StringIO(
+            "fips,state,aggregate_level,county,current_icu,preserved\n"
+            "55,ZZ,state,Grand State,64,\n"
+        )
+    )
+    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
+    assert logs == []
+
+
 def column_as_set(
     df: pd.DataFrame,
     column: str,
@@ -266,7 +291,7 @@ def column_as_set(
 
     Exists to call `make_binary_array` without listing all the parameters.
     """
-    rows_binary_array = make_binary_array(
+    rows_binary_array = dataset_utils.make_binary_array(
         df,
         aggregation_level,
         country=None,
@@ -304,27 +329,3 @@ def test_make_binary_array():
     assert column_as_set(
         df, "metric", None, states=["ZZ"], after="2020-03-22", before="2020-03-24"
     ) == {"smithville-march23", "county-metric", "mystate",}
-
-
-def test_fill_fields_with_data_source_empty_input():
-    existing_df = pd.DataFrame()
-    new_df = pd.read_csv(
-        StringIO("fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,64\n")
-    )
-    with testing.capture_logs() as logs:
-        result = fill_fields_with_data_source(
-            get_logger(),
-            existing_df,
-            new_df,
-            "fips state aggregate_level county".split(),
-            ["current_icu"],
-        )
-
-    expected = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu,preserved\n"
-            "55,ZZ,state,Grand State,64,\n"
-        )
-    )
-    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-    assert logs == []
