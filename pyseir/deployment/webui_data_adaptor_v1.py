@@ -1,5 +1,4 @@
 import numpy as np
-import math
 import pandas as pd
 import ujson as json
 import logging
@@ -15,6 +14,8 @@ from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.datasets.can_model_output_schema as schema
+
+from typing import Tuple
 
 
 class WebUIDataAdaptorV1:
