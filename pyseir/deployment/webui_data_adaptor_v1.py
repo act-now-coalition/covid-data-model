@@ -163,7 +163,7 @@ class WebUIDataAdaptorV1:
         suppression_policies = [
             key for key in pyseir_outputs.keys() if key.startswith("suppression_policy")
         ]
-        for _, suppression_policy in suppression_policies:
+        for suppression_policy in suppression_policies:
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
