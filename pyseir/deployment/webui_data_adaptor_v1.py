@@ -176,7 +176,9 @@ class WebUIDataAdaptorV1:
 
             # Some states have covidtracking issues. We shouldn't ground ICU cases
             # to zero since so far these have all been bad reporting.
-            if self._is_valid_count_metric(current_state_icu):
+            if len(fips) == 5 and self._is_valid_count_metric(current_county_icu):
+                icu_rescaling_factor = current_county_icu / inferred_county_icu
+            elif self._is_valid_count_metric(current_state_icu):
                 icu_rescaling_factor = current_state_icu / state_hosp_icu
             else:
                 icu_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
