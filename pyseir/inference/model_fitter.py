@@ -94,7 +94,7 @@ class ModelFitter:
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
         t_delta_phases=15, #number of days between phase 2 and 3, since each phase is 14 days, we start at 15
-        limit_t_delta_phases=[15, 100],
+        limit_t_delta_phases=[15, 50],
         error_t_delta_phases=1,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
@@ -755,6 +755,19 @@ class ModelFitter:
             label="Estimated Intervention",
         )
 
+        start_intervention2_date = self.ref_date + timedelta(
+            days=self.fit_results["t_break"] + self.fit_results["t_delta_phases"] + self.fit_results["t0"]
+        )
+        stop_intervention2_date = start_intervention2_date + timedelta(days=14)
+
+        plt.fill_betweenx(
+            [y_lim[0], y_lim[1]],
+            [start_intervention2_date, start_intervention2_date],
+            [stop_intervention2_date, stop_intervention2_date],
+            alpha=0.2,
+            label="Estimated Intervention2",
+        )
+
         running_total = timedelta(days=0)
         for i_label, k in enumerate(
             (
@@ -808,9 +821,16 @@ class ModelFitter:
         plt.grid(which="both", alpha=0.5)
         plt.title(self.display_name, fontsize=20)
 
+        chi_total = 0
+        for i, (k, v) in enumerate(self.fit_results.items()):
+          if k in ("chi2_cases", "chi2_deaths", "chi2_hosps"):
+            chi_total += v
+        print('Natasha: chi total')
+        print(chi_total)
+
         for i, (k, v) in enumerate(self.fit_results.items()):
 
-            fontweight = "bold" if k in ("R0", "Reff") else "normal"
+            fontweight = "bold" if k in ("R0", "Reff", "eps", "eps2", "t_delta_phases") else "normal"
 
             if np.isscalar(v) and not isinstance(v, str):
                 plt.text(
@@ -832,7 +852,7 @@ class ModelFitter:
                     alpha=0.6,
                     fontweight=fontweight,
                 )
-
+        plt.text(1.05, 0.75, f"total_chi2:{chi_total:1.3f}", transform=plt.gca().transAxes, fontsize = 15, alpha = 0.6)
         output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
         plt.savefig(output_file, bbox_inches="tight")
         plt.close()
