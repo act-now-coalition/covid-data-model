@@ -75,18 +75,19 @@ class WebUIDataAdaptorV1:
             state=self.state_abbreviation, t0=t0_simulation, category="hospitalized"
         )
 
-        t_latest_icu_data, current_icu = load_data.get_current_hospitalized_for_state(
+        _, current_icu = load_data.get_current_hospitalized_for_state(
             state=self.state_abbreviation, t0=t0_simulation, category="icu",
         )
 
         if current_hosp_count is not None:
+            state_fips = fips[:2]
             t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
 
             state_hosp_gen = load_data.get_compartment_value_on_date(
-                fips=fips[:2], compartment="HGen", date=t_latest_hosp_data_date
+                fips=state_fips, compartment="HGen", date=t_latest_hosp_data_date
             )
             state_hosp_icu = load_data.get_compartment_value_on_date(
-                fips=fips[:2], compartment="HICU", date=t_latest_hosp_data_date
+                fips=state_fips, compartment="HICU", date=t_latest_hosp_data_date
             )
 
             if len(fips) == 5:
@@ -123,12 +124,10 @@ class WebUIDataAdaptorV1:
 
     def _get_population(self, fips: str):
         if len(fips) == 5:
-            population = self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
-        else:
-            population = self.population_data.get_record_for_state(self.state_abbreviation)[
-                CommonFields.POPULATION
-            ]
-        return population
+            return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
+        return self.population_data.get_record_for_state(self.state_abbreviation)[
+            CommonFields.POPULATION
+        ]
 
     def map_fips(self, fips):
         """
