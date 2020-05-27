@@ -183,4 +183,5 @@ def build_combined_dataset_from_sources(
                 target_dataset_cls.INDEX_FIELDS,
                 [field],
             )
+
     return target_dataset_cls(data)
