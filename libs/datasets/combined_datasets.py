@@ -176,4 +176,5 @@ def build_combined_dataset_from_sources(
             data = dataset_utils.fill_fields_with_data_source(
                 data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field]
             )
+
     return target_dataset_cls(data)
