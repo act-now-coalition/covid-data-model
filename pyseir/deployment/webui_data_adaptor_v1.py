@@ -67,10 +67,10 @@ class WebUIDataAdaptorV1:
     def _get_county_hospitalization_from_actuals(fips, t0_simulation):
         county_hosp = load_data.get_current_hospitalized_for_county(
             fips, t0_simulation, category="hospitalized"
-        )
+        )[1]
         county_icu = load_data.get_current_hospitalized_for_county(
             fips, t0_simulation, category="icu"
-        )
+        )[1]
 
         return county_hosp, county_icu
 
