@@ -34,3 +34,6 @@ adtk==0.6.0
 pydantic==1.4
 dill
 dictdiffer==0.8.1
+structlog==20.1.0
+structlog-sentry==1.2.2
+more_itertools==8.3.0
