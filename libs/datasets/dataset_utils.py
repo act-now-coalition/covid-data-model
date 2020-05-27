@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import os
 import enum
 import logging
@@ -71,12 +71,13 @@ def plot_grouped_data(data, group, series="source", values="cases"):
 def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
     """Combines JHU and CDS county data."""
     data = jhu_data_source.timeseries()
-    jhu_usa_data = data.get_subset(AggregationLevel.COUNTY, country="USA", after="2020-03-01").data
+    jhu_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
 
     data = cds_data_source.timeseries()
-    cds_usa_data = data.get_subset(AggregationLevel.COUNTY, country="USA", after="2020-03-01").data
+    cds_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
 
     # TODO(chris): Better handling of counties that are not consistent.
+    # Can we move this logic to combined_datasets?
 
     # Before 3-22, CDS has mostly consistent county level numbers - except for
     # 3-12, where there are no numbers reported. Still need to fill that in.
@@ -243,7 +244,7 @@ def add_fips_using_county(data, fips_data) -> pd.Series:
     if len(non_matching):
         unique_counties = sorted(non_matching.county.unique())
         _logger.warning(f"Did not match {len(unique_counties)} counties to fips data.")
-        _logger.warning(f"{unique_counties}")
+        _logger.warning(f"{non_matching}")
         # TODO: Make this an error?
 
     # Handles if a fips column already in the dataframe.
@@ -334,9 +335,16 @@ def fill_fields_with_data_source(
     new_data_in_existing_df = new_data.index.isin(existing_df.index)
 
     if not sum(existing_df_in_new_data) == sum(new_data_in_existing_df):
+        print("Intersection")
         print(new_data.loc[new_data_in_existing_df, columns_to_fill])
+        print("new data not in existing")
+        print(new_data.loc[~new_data.index.isin(existing_df.index), columns_to_fill])
+        if columns_to_fill[0] in existing_df.columns:
+            print("existing not in new")
+            print(existing_df.loc[~existing_df.index.isin(new_data.index), columns_to_fill])
         existing_in_new = sum(existing_df_in_new_data)
         new_in_existing = sum(new_data_in_existing_df)
+        # If this trips consider adding verify_integrity=True to the set_index calls above.
         raise ValueError(
             f"Number of rows should be the for data to replace: {existing_in_new} -> {new_in_existing}: {columns_to_fill}"
         )
@@ -357,3 +365,37 @@ def fill_fields_with_data_source(
     data = pd.concat([existing_df.reset_index(), missing_new_data[columns_to_fill].reset_index(),])
 
     return data
+
+
+def make_binary_array(
+    data: pd.DataFrame,
+    aggregation_level: Optional[AggregationLevel] = None,
+    country=None,
+    fips=None,
+    state=None,
+    states=None,
+    on=None,
+    after=None,
+    before=None,
+):
+    """Create a binary array selecting rows in `data` matching the given parameters."""
+    query_parts = []
+    # aggregation_level is almost always set. The exception is `DatasetFilter` which is used to
+    # get all data in the USA, at all aggregation levels.
+    if aggregation_level:
+        query_parts.append(f'aggregate_level == "{aggregation_level.value}"')
+    if country:
+        query_parts.append("country == @country")
+    if state:
+        query_parts.append("state == @state")
+    if fips:
+        query_parts.append("fips == @fips")
+    if states:
+        query_parts.append("state in @states")
+    if on:
+        query_parts.append("date == @on")
+    if after:
+        query_parts.append("date > @after")
+    if before:
+        query_parts.append("date < @before")
+    return data.eval(" and ".join(query_parts))
