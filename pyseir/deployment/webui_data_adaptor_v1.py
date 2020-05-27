@@ -78,16 +78,36 @@ class WebUIDataAdaptorV1:
     def _is_valid_count_metric(metric: float) -> bool:
         return metric is not None and metric > 0
 
-    def _calculate_hospitalization_scaling_factors(
-        self, fips: str, t0_simulation: datetime, pyseir_outputs
-    ) -> Tuple[float, float]:
+    def _get_population(self, fips: str):
+        if len(fips) == 5:
+            return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
+        return self.population_data.get_record_for_state(self.state_abbreviation)[
+            CommonFields.POPULATION
+        ]
+
+    def map_fips(self, fips):
         """
-        Rescale hospitalization and icu usage
-        based on the population ratio...
-        
-        This could be swapped to use infection ratio later?
-        
+        For a given county fips code, generate the CAN UI output format.
+
+        Parameters
+        ----------
+        fips: str
+            County FIPS code to map.
         """
+        log.info("Mapping output to WebUI for %s, %s", self.state, fips)
+        pyseir_outputs = load_data.load_ensemble_results(fips)
+
+        if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
+            log.info("Excluding %s due to white list...", fips)
+            return
+        try:
+            fit_results = load_inference_result(fips)
+            t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
+        except (KeyError, ValueError):
+            log.error("Fit result not found for %s. Skipping...", fips)
+            return
+        population = self._get_population(fips)
+
         t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized_for_state(
             state=self.state_abbreviation, t0=t0_simulation, category="hospitalized"
         )
@@ -155,42 +175,6 @@ class WebUIDataAdaptorV1:
             hosp_rescaling_factor = 1.0
             icu_rescaling_factor = 1.0
 
-        return hosp_rescaling_factor, icu_rescaling_factor
-
-    def _get_population(self, fips: str):
-        if len(fips) == 5:
-            return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
-        return self.population_data.get_record_for_state(self.state_abbreviation)[
-            CommonFields.POPULATION
-        ]
-
-    def map_fips(self, fips):
-        """
-        For a given county fips code, generate the CAN UI output format.
-
-        Parameters
-        ----------
-        fips: str
-            County FIPS code to map.
-        """
-        log.info("Mapping output to WebUI for %s, %s", self.state, fips)
-        pyseir_outputs = load_data.load_ensemble_results(fips)
-
-        if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
-            log.info("Excluding %s due to white list...", fips)
-            return
-        try:
-            fit_results = load_inference_result(fips)
-            t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
-        except (KeyError, ValueError):
-            log.error("Fit result not found for %s. Skipping...", fips)
-            return
-        population = self._get_population(fips)
-
-        (
-            hosp_rescaling_factor,
-            icu_rescaling_factor,
-        ) = self._calculate_hospitalization_scaling_factors(fips, t0_simulation, pyseir_outputs)
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
         suppression_policies = [
