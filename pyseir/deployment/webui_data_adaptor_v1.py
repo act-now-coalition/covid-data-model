@@ -17,6 +17,8 @@ import libs.datasets.can_model_output_schema as schema
 
 from typing import Tuple
 
+log = logging.getLogger(__name__)
+
 
 class WebUIDataAdaptorV1:
     """
@@ -138,17 +140,17 @@ class WebUIDataAdaptorV1:
         fips: str
             County FIPS code to map.
         """
-        logging.info(f"Mapping output to WebUI for {self.state}, {fips}")
+        log.info("Mapping output to WebUI for %s, %s", self.state, fips)
         pyseir_outputs = load_data.load_ensemble_results(fips)
 
         if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
-            logging.info("Excluding %s due to white list...", fips)
+            log.info("Excluding %s due to white list...", fips)
             return
         try:
             fit_results = load_inference_result(fips)
             t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
         except (KeyError, ValueError):
-            logging.error("Fit result not found for %s. Skipping...", fips)
+            log.error("Fit result not found for %s. Skipping...", fips)
             return
         population = self._get_population(fips)
 
@@ -253,12 +255,13 @@ class WebUIDataAdaptorV1:
                 )
                 output_model[schema.RT_INDICATOR] = merged["Rt_MAP_composite"]
 
-                # With 90% probability the value is between rt_indicator - ci90 to rt_indicator + ci90
+                # With 90% probability the value is between rt_indicator - ci90
+                # to rt_indicator + ci90
                 output_model[schema.RT_INDICATOR_CI90] = (
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
             except (ValueError, KeyError) as e:
-                logging.warning("Clearing Rt in output for fips %s", fips, exc_info=e)
+                log.warning("Clearing Rt in output for fips %s", fips, exc_info=e)
                 output_model[schema.RT_INDICATOR] = "NaN"
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
