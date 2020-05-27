@@ -19,6 +19,7 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 from functools import lru_cache
 from enum import Enum
 
+log = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pyseir_data")
 
@@ -97,7 +98,7 @@ def cache_county_case_data():
     """
     Cache county covid case data from NYT in #PYSEIR_HOME/data.
     """
-    logging.info("Downloading covid case data")
+    log.info("Downloading covid case data")
     # NYT dataset
     county_case_data = load_county_case_data()
     county_case_data.to_pickle(os.path.join(DATA_DIR, "covid_case_timeseries.pkl"))
@@ -107,7 +108,7 @@ def cache_mobility_data():
     """
     Pulled from https://github.com/descarteslabs/DL-COVID-19
     """
-    logging.info("Downloading mobility data.")
+    log.info("Downloading mobility data.")
     url = "https://raw.githubusercontent.com/descarteslabs/DL-COVID-19/master/DL-us-mobility-daterow.csv"
 
     dtypes_mapping = {
@@ -139,7 +140,7 @@ def cache_public_implementations_data():
     """
     Pulled from https://github.com/JieYingWu/COVID-19_US_County-level_Summaries
     """
-    logging.info("Downloading public implementations data")
+    log.info("Downloading public implementations data")
     url = "https://raw.githubusercontent.com/JieYingWu/COVID-19_US_County-level_Summaries/master/raw_data/national/public_implementations_fips.csv"
 
     data = requests.get(url, verify=True).content.decode("utf-8")
@@ -560,6 +561,7 @@ def _get_current_hospitalized(df: pd.DataFrame, t0: datetime, category: str):
 
     # If data is available in cumulative, try to convert to current (not just daily)
     elif (df[f"cumulative_{category}"] > 0).any():
+        log.warning("Attempting to convert cummulative data to current.")
         # Remove Null & Enforce Monotonically Increasing Cumulatives
         df = df[df[f"cumulative_{category}"].notnull()]
         cumulative = df[f"cumulative_{category}"].values.clip(min=0)
