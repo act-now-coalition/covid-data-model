@@ -112,19 +112,39 @@ class WebUIDataAdaptorV1:
                     fips, t0_simulation
                 )
                 if not self._is_valid_count_metric(county_hosp):
-                    county_hosp = load_data.get_compartment_value_on_date(
+                    inferred_hosp = load_data.get_compartment_value_on_date(
                         fips=fips,
                         compartment="HGen",
                         date=t_latest_hosp_data_date,
                         ensemble_results=pyseir_outputs,
                     )
+                    log.warning(
+                        "Invalid actual value for hospitalizations "
+                        "encountered for fips: %s. "
+                        "Actual value, %s. Value from model: %s. "
+                        "Using value from model.",
+                        fips,
+                        county_hosp,
+                        inferred_hosp,
+                    )
+                    county_hosp = inferred_hosp
                 if not self._is_valid_count_metric(county_icu):
-                    county_icu = load_data.get_compartment_value_on_date(
+                    inferred_icu = load_data.get_compartment_value_on_date(
                         fips=fips,
                         compartment="HICU",
                         date=t_latest_hosp_data_date,
                         ensemble_results=pyseir_outputs,
                     )
+                    log.warning(
+                        "Invalid actual value for ICU "
+                        "encountered for fips: %s. "
+                        "Actual value, %s. Value from model: %s. "
+                        "Using value from model.",
+                        fips,
+                        county_icu,
+                        inferred_icu,
+                    )
+                    county_icu = inferred_icu
                 # Rescale the county level hospitalizations by the expected
                 # ratio of county / state hospitalizations from simulations.
                 # We use ICU data if available too.
