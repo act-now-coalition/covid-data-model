@@ -108,47 +108,38 @@ class WebUIDataAdaptorV1:
             )
 
             if len(fips) == 5:
-                county_hosp, county_icu = self._get_county_hospitalization_from_actuals(
-                    fips, t0_simulation
+                (
+                    current_county_hosp,
+                    current_county_icu,
+                ) = self._get_county_hospitalization_from_actuals(fips, t0_simulation)
+                log.info(
+                    "Actual county hospitalizations: %s, icu: %s",
+                    current_county_hosp,
+                    current_county_icu,
                 )
-                if not self._is_valid_count_metric(county_hosp):
-                    inferred_hosp = load_data.get_compartment_value_on_date(
-                        fips=fips,
-                        compartment="HGen",
-                        date=t_latest_hosp_data_date,
-                        ensemble_results=pyseir_outputs,
-                    )
-                    log.warning(
-                        "Invalid actual value for hospitalizations "
-                        "encountered for fips: %s. "
-                        "Actual value, %s. Value from model: %s. "
-                        "Using value from model.",
-                        fips,
-                        county_hosp,
-                        inferred_hosp,
-                    )
-                    county_hosp = inferred_hosp
-                if not self._is_valid_count_metric(county_icu):
-                    inferred_icu = load_data.get_compartment_value_on_date(
-                        fips=fips,
-                        compartment="HICU",
-                        date=t_latest_hosp_data_date,
-                        ensemble_results=pyseir_outputs,
-                    )
-                    log.warning(
-                        "Invalid actual value for ICU "
-                        "encountered for fips: %s. "
-                        "Actual value, %s. Value from model: %s. "
-                        "Using value from model.",
-                        fips,
-                        county_icu,
-                        inferred_icu,
-                    )
-                    county_icu = inferred_icu
+                inferred_county_hosp = load_data.get_compartment_value_on_date(
+                    fips=fips,
+                    compartment="HGen",
+                    date=t_latest_hosp_data_date,
+                    ensemble_results=pyseir_outputs,
+                )
+                inferred_county_icu = load_data.get_compartment_value_on_date(
+                    fips=fips,
+                    compartment="HICU",
+                    date=t_latest_hosp_data_date,
+                    ensemble_results=pyseir_outputs,
+                )
+                log.info(
+                    "Inferred county hospitalized: %s, icu: %s",
+                    inferred_county_hosp,
+                    inferred_county_icu,
+                )
                 # Rescale the county level hospitalizations by the expected
                 # ratio of county / state hospitalizations from simulations.
                 # We use ICU data if available too.
-                current_hosp_count *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
+                current_hosp_count *= (inferred_county_hosp + inferred_county_icu) / (
+                    state_hosp_gen + state_hosp_icu
+                )
 
             hosp_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
 
@@ -231,9 +222,15 @@ class WebUIDataAdaptorV1:
             output_model[schema.INFECTED_B] = hosp_rescaling_factor * np.interp(
                 t_list_downsampled, t_list, output_for_policy["HGen"]["ci_50"]
             )  # Hosp General
-            output_model[schema.INFECTED_C] = icu_rescaling_factor * np.interp(
-                t_list_downsampled, t_list, output_for_policy["HICU"]["ci_50"]
-            )  # Hosp ICU
+
+            raw_model_icu_values = output_for_policy["HICU"]["ci_50"]
+            interpolated_model_icu_values = np.interp(
+                t_list_downsampled, t_list, raw_model_icu_values
+            )
+            log.info("Raw icu: %s", raw_model_icu_values)
+            final_derived_model_value = icu_rescaling_factor * interpolated_model_icu_values
+            log.info("Final icu value from model: %s", final_derived_model_value[-1])
+            output_model[schema.INFECTED_C] = final_derived_model_value
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = np.add(
                 output_model[schema.INFECTED_B], output_model[schema.INFECTED_C]
