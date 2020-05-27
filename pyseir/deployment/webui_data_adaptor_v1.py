@@ -63,6 +63,21 @@ class WebUIDataAdaptorV1:
         self.df_whitelist = load_data.load_whitelist()
         self.df_whitelist = self.df_whitelist[self.df_whitelist["inference_ok"] == True]
 
+    @staticmethod
+    def _get_county_hospitalization_from_actuals(fips, t0_simulation):
+        county_hosp = load_data.get_current_hospitalized_for_county(
+            fips, t0_simulation, category=self.HOSPITALIZED
+        )
+        county_icu = load_data.get_current_hospitalized_for_county(
+            fips, t0_simulation, category=self.ICU
+        )
+
+        return county_hosp, county_icu
+
+    @staticmethod
+    def _is_valid_count_metric(metric: float) -> bool:
+        return metric is not None and metric > 0
+
     def _calculate_hospitalization_scaling_factors(
         self, fips: str, t0_simulation: datetime, pyseir_outputs
     ) -> Tuple[float, float]:
@@ -77,7 +92,7 @@ class WebUIDataAdaptorV1:
             state=self.state_abbreviation, t0=t0_simulation, category="hospitalized"
         )
 
-        _, current_icu = load_data.get_current_hospitalized_for_state(
+        _, current_state_icu = load_data.get_current_hospitalized_for_state(
             state=self.state_abbreviation, t0=t0_simulation, category="icu",
         )
 
@@ -93,29 +108,34 @@ class WebUIDataAdaptorV1:
             )
 
             if len(fips) == 5:
+                county_hosp, county_icu = self._get_county_hospitalization_from_actuals(
+                    fips, t0_simulation
+                )
+                if not self._is_valid_count_metric(county_hosp):
+                    county_hosp = load_data.get_compartment_value_on_date(
+                        fips=fips,
+                        compartment="HGen",
+                        date=t_latest_hosp_data_date,
+                        ensemble_results=pyseir_outputs,
+                    )
+                if not self._is_valid_count_metric(county_icu):
+                    county_icu = load_data.get_compartment_value_on_date(
+                        fips=fips,
+                        compartment="HICU",
+                        date=t_latest_hosp_data_date,
+                        ensemble_results=pyseir_outputs,
+                    )
                 # Rescale the county level hospitalizations by the expected
                 # ratio of county / state hospitalizations from simulations.
                 # We use ICU data if available too.
-                county_hosp = load_data.get_compartment_value_on_date(
-                    fips=fips,
-                    compartment="HGen",
-                    date=t_latest_hosp_data_date,
-                    ensemble_results=pyseir_outputs,
-                )
-                county_icu = load_data.get_compartment_value_on_date(
-                    fips=fips,
-                    compartment="HICU",
-                    date=t_latest_hosp_data_date,
-                    ensemble_results=pyseir_outputs,
-                )
                 current_hosp_count *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
 
             hosp_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
 
             # Some states have covidtracking issues. We shouldn't ground ICU cases
             # to zero since so far these have all been bad reporting.
-            if current_icu is not None and current_icu > 0:
-                icu_rescaling_factor = current_icu / state_hosp_icu
+            if self._is_valid_count_metric(current_state_icu):
+                icu_rescaling_factor = current_state_icu / state_hosp_icu
             else:
                 icu_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
         else:
