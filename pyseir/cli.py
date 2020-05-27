@@ -46,18 +46,14 @@ def _cache_global_datasets():
     # Populate cache for combined latest and timeseries.  Caching pre-fork
     # will make sure cache is populated for subprocesses.  Return value
     # is not needed as the only goal is to populate the cache.
-    print('Natasha caching datasets')
-    #combined_datasets.build_us_latest_with_all_fields()
-    #combined_datasets.build_us_timeseries_with_all_fields()
-    print('done')
+    combined_datasets.build_us_latest_with_all_fields()
+    combined_datasets.build_us_timeseries_with_all_fields()
 
     global nyt_dataset, cds_dataset
     if cds_dataset is None:
         cds_dataset = CDSDataset.local()
-    print('got cds')
     if nyt_dataset is None:
         nyt_dataset = NYTimesDataset.local()
-    print('got nyt')
 
 
 @click.group()
@@ -166,16 +162,14 @@ def _state_only_pipeline(
 ):
     states_only = True
     _infer_rt(state, states_only=states_only)
-    print('Natasha running mle')
     _run_mle_fits(state, states_only=states_only)
-    print('done with mle')
-    #_run_ensembles(
-    #    state,
-    #    ensemble_kwargs=dict(
-    #        run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
-    #    ),
-    #    states_only=states_only,
-    #)
+    _run_ensembles(
+        state,
+        ensemble_kwargs=dict(
+            run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
+        ),
+        states_only=states_only,
+    )
     if generate_reports:
         _generate_state_reports(state)
     # remove outputs atm. just output at the end
@@ -193,24 +187,19 @@ def _build_all_for_states(
     run_mode=DEFAULT_RUN_MODE,
     generate_reports=False,
     output_interval_days=4,
-    skip_download=True,
+    skip_download=False,
     output_dir=None,
-    skip_whitelist=True,
-    states_only=True,
+    skip_whitelist=False,
+    states_only=False,
 ):
-    print('Natasha: in build all for states')
     # prepare data
     _cache_global_datasets()
-    print('cached datasets')
     if not skip_download:
-        print('not skipping downlaod')
         cache_all_data()
     if not skip_whitelist:
-        print('getting whitelist')
         _generate_whitelist()
 
     # do everything for just states in paralell
-    print('running state only pipeline')
     p = Pool()
     states_only_func = partial(
         _state_only_pipeline,
