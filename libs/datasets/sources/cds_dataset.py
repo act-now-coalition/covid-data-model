@@ -64,15 +64,28 @@ class CDSDataset(data_source.DataSource):
     TEST_FIELDS = [
         Fields.COUNTRY,
         Fields.STATE,
-        Fields.COUNTY,
         Fields.FIPS,
         Fields.DATE,
         Fields.CASES,
         Fields.TESTED,
     ]
 
+    COMMON_TEST_FIELDS = [
+        CommonFields.COUNTRY,
+        CommonFields.STATE,
+        CommonFields.FIPS,
+        CommonFields.DATE,
+        CommonFields.POSITIVE_TESTS,
+        CommonFields.NEGATIVE_TESTS,
+    ]
+
     def __init__(self, input_path):
-        data = pd.read_csv(input_path, parse_dates=[self.Fields.DATE])
+        data = pd.read_csv(
+            input_path,
+            parse_dates=[self.Fields.DATE],
+            dtype={self.Fields.FIPS: str},
+            low_memory=False,
+        )
         data = self.standardize_data(data)
         super().__init__(data)
 
@@ -111,14 +124,25 @@ class CDSDataset(data_source.DataSource):
         # The following abbrev mapping only makes sense for the US
         # TODO: Fix all missing cases
         data = data[data["country"] == "United States"]
-        data["state_abbr"] = data[cls.Fields.STATE].apply(
+        data[CommonFields.COUNTRY] = "USA"
+        data[CommonFields.STATE] = data[cls.Fields.STATE].apply(
             lambda x: US_STATE_ABBREV[x] if x in US_STATE_ABBREV else x
         )
-        data["state_tmp"] = data["state"]
-        data["state"] = data["state_abbr"]
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_fips_using_county(data, fips_data)
+        no_fips = data[CommonFields.FIPS].isna()
+        if no_fips.sum() > 0:
+            logging.error(f"Removing rows without fips id: {str(data.loc[no_fips])}")
+            data = data.loc[~no_fips]
+
+        data.set_index(["date", "fips"], inplace=True)
+        if data.index.has_duplicates:
+            # Use keep=False when logging so the output contains all duplicated rows, not just the first or last
+            # instance of each duplicate.
+            logging.error(f"Removing duplicates: {str(data.index.duplicated(keep=False))}")
+            data = data.loc[~data.index.duplicated(keep=False)]
+        data.reset_index(inplace=True)
 
         # ADD Negative tests
         data[cls.Fields.NEGATIVE_TESTS] = data[cls.Fields.TESTED] - data[cls.Fields.CASES]
@@ -127,14 +151,12 @@ class CDSDataset(data_source.DataSource):
 
     @classmethod
     def remove_duplicate_city_data(cls, data):
+        # City data before 3-23 was not duplicated, copy the city name to the county field.
+        select_pre_march_23 = data.date < "2020-03-23"
+        data.loc[select_pre_march_23, cls.Fields.COUNTY] = data.loc[select_pre_march_23].apply(
+            fill_missing_county_with_city, axis=1
+        )
         # Don't want to return city data because it's duplicated in county
-        # City data before 3-23 was not duplicated.
-        # data = data[data[cls.Fields.CITY].isnull()]
-        pre_march_23 = data[data.date < "2020-03-23"]
-        pre_march_23.county = pre_march_23.apply(fill_missing_county_with_city, axis=1)
-        split_data = [
-            pre_march_23,
-            data[(data.date >= "2020-03-23") & data[cls.Fields.CITY].isnull()],
+        return data.loc[
+            select_pre_march_23 | ((~select_pre_march_23) & data[cls.Fields.CITY].isnull())
         ]
-        data = pd.concat(split_data)
-        return data

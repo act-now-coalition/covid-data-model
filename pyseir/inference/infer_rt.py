@@ -14,6 +14,7 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
 log = logging.getLogger(__name__)
+NP_SEED = 42
 
 
 class RtInferenceEngine:
@@ -62,7 +63,9 @@ class RtInferenceEngine:
         min_cases=5,
         min_deaths=5,
     ):
-
+        np.random.seed(
+            NP_SEED
+        )  # Xcor, used in align_time_series,  has some stochastic FFT elements.
         self.fips = fips
         self.r_list = r_list
         self.window_size = window_size
@@ -88,7 +91,9 @@ class RtInferenceEngine:
                 self.hospital_times,
                 self.hospitalizations,
                 self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
+            ) = load_data.load_hospitalization_data_by_state(
+                state=self.state_obj.abbr, t0=self.ref_date
+            )
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
@@ -353,7 +358,22 @@ class RtInferenceEngine:
             denominator = np.sum(numerator)
 
             # Execute full Bayes' Rule
-            posteriors[current_day] = numerator / denominator
+            if denominator == 0:
+                # Restart the baysian learning for the remaining series.
+                # This is necessary since otherwise NaN values
+                # will be inferred for all future days, after seeing
+                # a single (smoothed) zero value.
+                #
+                # We understand that restarting the posteriors with the
+                # initial prior may incur a start-up artifact as the posterior
+                # restabilizes, but we believe it's the current best
+                # solution for municipalities that have smoothed cases and
+                # deaths that dip down to zero, but then start to increase
+                # again.
+
+                posteriors[current_day] = prior0
+            else:
+                posteriors[current_day] = numerator / denominator
 
             # Add to the running sum of log likelihoods
             log_likelihood += np.log(denominator)
@@ -370,7 +390,7 @@ class RtInferenceEngine:
 
         return dates[start_idx:], times[start_idx:], posteriors
 
-    def infer_all(self, plot=False, shift_deaths=0):
+    def infer_all(self, plot=True, shift_deaths=0):
         """
         Infer R_t from all available data sources.
 
@@ -473,18 +493,32 @@ class RtInferenceEngine:
 
                     # Go back upto 30 days or the max time series length we have if shorter.
                     last_idx = max(-21, -len(df))
-                    shift_in_days = self.align_time_series(
-                        series_a=df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[
-                            -last_idx:
-                        ],
-                        series_b=df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:],
-                    )
-                    df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
+                    series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
+                    series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
 
+                    shift_in_days = self.align_time_series(series_a=series_a, series_b=series_b,)
+
+                    df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
+                    log.debug(
+                        "Using timeshift of: %s for timeseries type: %s ",
+                        shift_in_days,
+                        timeseries_type,
+                    )
                     # Shift all the columns.
                     for col in df_all.columns:
                         if timeseries_type.value in col:
                             df_all[col] = df_all[col].shift(shift_in_days)
+                            # Extend death and hopitalization rt signals beyond
+                            # shift to avoid sudden jumps in composit metric.
+                            #
+                            # N.B interpolate() behaves differently depending on the location
+                            # of the missing values: For any nans appearing in between valid
+                            # elements of the series, an interpolated value is filled in.
+                            # For values at the end of the series, the last *valid* value is used.
+                            log.debug("Filling in %s missing values", shift_in_days)
+                            df_all[col] = df_all[col].interpolate(
+                                limit_direction="forward", method="linear"
+                            )
 
         if df_all is not None and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
             df_all["Rt_MAP_composite"] = np.nanmean(
@@ -501,7 +535,7 @@ class RtInferenceEngine:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
-        if plot:
+        if plot and df_all is not None:
             plt.figure(figsize=(10, 6))
 
             if 'Rt_ci5__new_deaths' in df_all:
@@ -544,7 +578,8 @@ class RtInferenceEngine:
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches="tight")
             # plt.close()
-
+        if df_all is None or df_all.empty:
+            log.warning("Inference not possible for fips: %s", self.fips)
         return df_all
 
     @staticmethod
@@ -590,7 +625,7 @@ class RtInferenceEngine:
         shifts = range(-21, 5)
         valid_shifts = []
         xcor = []
-        np.random.seed(42)  # Xcor has some stochastic FFT elements.
+        np.random.seed(NP_SEED)  # Xcor has some stochastic FFT elements.
         _series_a = np.diff(series_a)
 
         for i in shifts:

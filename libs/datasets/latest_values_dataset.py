@@ -1,8 +1,8 @@
-from typing import Type, List
+from typing import Type, List, Optional
 
 from libs import us_state_abbrev
 import pandas as pd
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel, make_binary_array
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
 from libs.datasets import dataset_base
@@ -86,22 +86,28 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return cls.from_source(source)
 
     def get_subset(
-        self, aggregation_level, country=None, state=None, fips=None, states=None,
+        self,
+        aggregation_level,
+        country=None,
+        fips: Optional[str] = None,
+        state: Optional[str] = None,
+        states: Optional[List[str]] = None,
+        on: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
     ) -> "LatestValuesDataset":
-        data = self.data
-
-        if aggregation_level:
-            data = data[data.aggregate_level == aggregation_level.value]
-        if country:
-            data = data[data.country == country]
-        if state:
-            data = data[data.state == state]
-        if fips:
-            data = data[data.fips == fips]
-        if states:
-            data = data[data[self.Fields.STATE].isin(states)]
-
-        return self.__class__(data)
+        rows_binary_array = make_binary_array(
+            self.data,
+            aggregation_level=aggregation_level,
+            country=country,
+            fips=fips,
+            state=state,
+            states=states,
+            on=on,
+            after=after,
+            before=before,
+        )
+        return self.__class__(self.data.loc[rows_binary_array, :])
 
     @classmethod
     def _aggregate_new_york_data(cls, data):

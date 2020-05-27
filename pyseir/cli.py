@@ -3,8 +3,11 @@ import click
 import us
 import logging
 import sentry_sdk
+import structlog
+from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
 from functools import partial
+from libs.datasets import dataset_cache
 from pyseir.load_data import cache_all_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
@@ -56,7 +59,15 @@ def _cache_global_datasets():
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
+    dataset_cache.set_pickle_cache_tempdir()
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,  # required before SentryProcessor()
+            # sentry_sdk creates events for level >= ERROR and keeps level >= INFO as breadcrumbs.
+            SentryProcessor(level=logging.INFO),
+        ]
+    )
 
 
 @entry_point.command()

@@ -3,7 +3,7 @@ certifi==2019.11.28
 chardet==3.0.4
 cycler==0.10.0
 idna==2.9
-isort==4.3.4
+isort==4.3.21
 kiwisolver==1.1.0
 lazy-object-proxy==1.3.1
 GitPython==3.1.0
@@ -33,3 +33,7 @@ adtk==0.6.0
 -e .
 pydantic==1.4
 dill
+dictdiffer==0.8.1
+structlog==20.1.0
+structlog-sentry==1.2.2
+more_itertools==8.3.0
