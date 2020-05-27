@@ -144,6 +144,9 @@ class WebUIDataAdaptorV1:
                     date=t_latest_hosp_data_date,
                     ensemble_results=pyseir_outputs,
                 )
+
+                county_hosp = inferred_county_hosp
+
                 inferred_county_icu = load_data.get_compartment_value_on_date(
                     fips=fips,
                     compartment="HICU",
@@ -156,12 +159,18 @@ class WebUIDataAdaptorV1:
                     inferred_county_hosp,
                     inferred_county_icu,
                 )
+                county_icu = inferred_county_icu
+                if self._is_valid_count_metric(current_county_hosp):
+                    # use actual instead of adjusted
+                    county_hosp = current_county_hosp
+
+                if self._is_valid_count_metric(current_county_icu):
+                    county_icu = current_county_icu
+
                 # Rescale the county level hospitalizations by the expected
                 # ratio of county / state hospitalizations from simulations.
                 # We use ICU data if available too.
-                current_hosp_count *= (inferred_county_hosp + inferred_county_icu) / (
-                    state_hosp_gen + state_hosp_icu
-                )
+                current_hosp_count *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
 
             hosp_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
 
@@ -214,7 +223,6 @@ class WebUIDataAdaptorV1:
                 t_list_downsampled, t_list, raw_model_icu_values
             )
             final_derived_model_value = icu_rescaling_factor * interpolated_model_icu_values
-            log.info("Final icu value from model: %s", final_derived_model_value[-1])
             output_model[schema.INFECTED_C] = final_derived_model_value
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = np.add(
