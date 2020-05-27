@@ -1,5 +1,6 @@
 from typing import Tuple
 import shutil
+import click
 import tempfile
 import io
 import zipfile
@@ -49,7 +50,7 @@ def _get_artifact_zip_url(run_number: int = None, latest: bool = True) -> Tuple[
 
 
 def download_model_artifact(
-    github_token: str, output_dir: pathlib.Path, run_number: int = None, overwrite=True
+    github_token: str, output_dir: pathlib.Path, run_number: int = None, prompt_overwrite=True
 ):
     """Downloads and extracts model output artifact.
 
@@ -57,7 +58,8 @@ def download_model_artifact(
         github_token: GitHub token with read access.
         output_dir: Output directory to extract artifact to.
         run_number: If specified, will download the specific run number.
-        overwrite: If true, removes and overwrites exsting output artifact.
+        prompt_overwrite: If true, shows a prompt before overwriting exsting output artifact.
+            If False, does not overwrite.
     """
     latest = False if run_number else True
     artifact_url, run_number = _get_artifact_zip_url(run_number=run_number, latest=latest)
@@ -77,9 +79,9 @@ def download_model_artifact(
 
         for path in data_path.iterdir():
             output_path = output_dir / path.name
-            if output_path.exists() and overwrite:
-                _logger.warning(f"Output path {output_path} exists, removing.")
-                shutil.rmtree(output_path)
+            if output_path.exists() and prompt_overwrite:
+                if click.confirm(f"Overwrite existing path {output_path}?", default=True):
+                    shutil.rmtree(output_path)
 
             _logger.info(f"Extracted {path.name} to  {str(output_dir)}")
             path.rename(output_dir / path.name)
