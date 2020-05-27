@@ -38,6 +38,9 @@ env:
 
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+  
+  # use a webhook to write to slack for QA
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
 jobs:
   execute-model:

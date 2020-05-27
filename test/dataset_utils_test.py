@@ -10,6 +10,7 @@ from structlog import testing, get_logger
 from libs.datasets.dataset_utils import (
     fill_fields_and_timeseries_from_column,
     fill_fields_with_data_source,
+    AggregationLevel,
 )
 import pytest
 
@@ -249,6 +250,60 @@ def test_fill_fields_with_data_source_no_rows_input():
     )
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
     assert logs == []
+
+
+def column_as_set(
+    df: pd.DataFrame,
+    column: str,
+    aggregation_level,
+    state=None,
+    states=None,
+    on=None,
+    after=None,
+    before=None,
+):
+    """Return values in selected rows and column of df.
+
+    Exists to call `make_binary_array` without listing all the parameters.
+    """
+    rows_binary_array = make_binary_array(
+        df,
+        aggregation_level,
+        country=None,
+        fips=None,
+        state=state,
+        states=states,
+        on=on,
+        after=after,
+        before=before,
+    )
+    return set(df.loc[rows_binary_array][column])
+
+
+def test_make_binary_array():
+    df = pd.read_csv(
+        StringIO(
+            "city,county,state,fips,country,aggregate_level,date,metric\n"
+            "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
+            "New York City,,ZZ,97324,USA,city,2020-03-22,march22-nyc\n"
+            "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
+            ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
+            ",,ZZ,97001,USA,state,2020-03-23,mystate\n"
+            ",,,,UK,country,2020-03-23,foo\n"
+        )
+    )
+
+    assert column_as_set(df, "country", AggregationLevel.COUNTRY) == {"UK"}
+    assert column_as_set(df, "metric", AggregationLevel.STATE) == {"mystate"}
+    assert column_as_set(df, "metric", None, before="2020-03-23") == {"march22-nyc"}
+    assert column_as_set(df, "metric", None, after="2020-03-23") == {"march24-nyc"}
+    assert column_as_set(df, "metric", None, on="2020-03-24") == {"march24-nyc"}
+    assert column_as_set(
+        df, "metric", None, state="ZZ", after="2020-03-22", before="2020-03-24"
+    ) == {"smithville-march23", "county-metric", "mystate",}
+    assert column_as_set(
+        df, "metric", None, states=["ZZ"], after="2020-03-22", before="2020-03-24"
+    ) == {"smithville-march23", "county-metric", "mystate",}
 
 
 def test_fill_fields_with_data_source_empty_input():

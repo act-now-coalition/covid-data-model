@@ -103,15 +103,15 @@ class EnsembleRunner:
         county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
         if not covid_timeseries:
+            # TODO(tom): deprecate all code paths that get here. I'm trying to move towards loading all data
+            # once and passing it around in parameters.
             covid_timeseries = JHUDataset.local().timeseries()
         else:
             covid_timeseries = covid_timeseries.timeseries()
 
-        self.covid_data = (
-            covid_timeseries.get_subset(self.agg_level, country="USA", state=self.state_abbr)
-            .get_data(country="USA", state=self.state_abbr, fips=county_fips)
-            .sort_values("date")
-        )
+        self.covid_data = covid_timeseries.get_data(
+            aggregation_level=self.agg_level, country="USA", state=self.state_abbr, fips=county_fips
+        ).sort_values("date")
 
         os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
         if self.output_file_report:
