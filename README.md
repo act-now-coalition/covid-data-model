@@ -62,6 +62,16 @@ export SENTRY_DSN=https://<GET_SENTRY_DSN_FOR_DEV_INSTANCE>.ingest.sentry.io/<DE
 
 The gitub action pulls the sentry_dsn for the prod instance from a secrets stored within github.
 
+# Downloading Model Run Data
+
+You can download recent model data output from the github action:
+```
+export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
+./run.py utils download-model-artifact --run-number <optional run number>
+```
+By default it downloads the last run, but you can choose a specific run with `--run-number`
+
+
 # PySEIR Setup
 
 ## Installation
