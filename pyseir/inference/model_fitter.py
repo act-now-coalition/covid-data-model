@@ -94,7 +94,7 @@ class ModelFitter:
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
         t_break2=20,
-        limit_t_break2=[40, 100], #is this appropriate
+        limit_t_break2=[20, 100], #is this appropriate
         error_t_break2=1,
         #t_break2=40,
         #limit_t_break2=[10, 60],
@@ -379,7 +379,7 @@ class ModelFitter:
             The SEIR model that has been run.
         """
         #Maybe start here Natasha
-        suppression_policy = suppression_policies.generate_two_step_policy(
+        suppression_policy = suppression_policies.generate_three_step_policy(
             self.t_list, eps, t_break, eps2, t_break2
         )
         #print('Natasha: Suppression policy')
@@ -955,8 +955,6 @@ def run_state(state, states_only=False, with_age_structure=False):
         fips=state_obj.fips, with_age_structure=with_age_structure
     )
 
-    df_whitelist = load_data.load_whitelist()
-    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
@@ -967,6 +965,12 @@ def run_state(state, states_only=False, with_age_structure=False):
 
     # Run the counties.
     if not states_only:
+        logging.info(f"Generating whitelist for state {state_obj.name}")
+        df_whitelist = load_data.load_whitelist()
+        print(df_whitelist)
+        df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
+
+        logging.info("NOT RUNNING STATES ONLY")
         df_whitelist = load_data.load_whitelist()
         df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
