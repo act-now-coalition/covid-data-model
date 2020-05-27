@@ -502,7 +502,7 @@ def load_hospitalization_data_by_state(state, t0, category="hospitalized"):
         return None, None, None
 
 
-def get_current_hospitalized(state, t0, category):
+def get_current_hospitalized_for_state(state: str, t0: datetime, category: str):
     """
     Return the current estimate for the number of people in the given category for a given US state.
 
@@ -522,16 +522,29 @@ def get_current_hospitalized(state, t0, category):
     current estimate: float
         The most recent estimate for the current occupied in the requested category.
     """
-    MIN_DATAPOINTS_TO_CONVERT = 3  # We wait until the third datapoint to have 2 deltas to forecast
-
     abbr = us.states.lookup(state).abbr
     df = combined_datasets.build_us_timeseries_with_all_fields().get_data(
         AggregationLevel.STATE, country="USA", state=abbr
     )
 
-    categories = ["icu", "hospitalized"]
-    if category not in categories:
-        raise ValueError(f"Hospitalization category {category} is not in {categories}")
+    return _get_current_hospitalized(df, t0, category)
+
+
+def get_current_hospitalized_for_county(fips: str, t0: datetime, category: str):
+    df = (
+        get_hospitalization_data()
+        .get_subset(AggregationLevel.COUNTY, country="USA", fips=fips)
+        .get_data(country="USA", fips=fips)
+    )
+    return _get_current_hospitalized(df, t0, category)
+
+
+def _get_current_hospitalized(df: pd.DataFrame, t0: datetime, category: str):
+    MIN_DATAPOINTS_TO_CONVERT = 3  # We wait until the third datapoint to have 2 deltas to forecast
+    ALLOWED_CATEGORIES = ["icu", "hospitalized"]
+
+    if category not in ALLOWED_CATEGORIES:
+        raise ValueError(f"Hospitalization category {category} is not in {ALLOWED_CATEGORIES}")
 
     if len(df) == 0:
         return None, None
@@ -540,6 +553,7 @@ def get_current_hospitalized(state, t0, category):
     if (df[f"current_{category}"] > 0).any():
         df = df[df[f"current_{category}"].notnull()]
         df_latest = df[f"current_{category}"].values.clip(min=0)[-1]
+
         times_new = (df["date"].dt.date - t0.date()).dt.days.values
         times_new_latest = times_new[-1]
         return times_new_latest, df_latest  # Return current since available
