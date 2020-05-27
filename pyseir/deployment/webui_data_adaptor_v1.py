@@ -66,10 +66,10 @@ class WebUIDataAdaptorV1:
     @staticmethod
     def _get_county_hospitalization_from_actuals(fips, t0_simulation):
         county_hosp = load_data.get_current_hospitalized_for_county(
-            fips, t0_simulation, category=self.HOSPITALIZED
+            fips, t0_simulation, category="hospitalized"
         )
         county_icu = load_data.get_current_hospitalized_for_county(
-            fips, t0_simulation, category=self.ICU
+            fips, t0_simulation, category="icu"
         )
 
         return county_hosp, county_icu
