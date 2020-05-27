@@ -262,9 +262,11 @@ def generate_three_step_policy(
         suppression_model(t) returns the current suppression model at time t.
     """
     if eps_final is None:
+        t_break2_start = t_break + t_break2 + transition_time
+        t_break2_end = t_break + t_break2 + transition_time + transition_time
 
         return interp1d(
-            x=[0, t_break, t_break + transition_time, t_break2, t_break2 + transition_time, 100000],
+            x=[0, t_break, t_break + transition_time, t_break2_start, t_break2_end, 100000],
             y=[1, 1, eps, eps, eps2, eps2],
             fill_value="extrapolate",
         )

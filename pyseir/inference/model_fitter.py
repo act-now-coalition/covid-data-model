@@ -93,8 +93,8 @@ class ModelFitter:
         eps2=0.3,
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
-        t_break2=20,
-        limit_t_break2=[20, 100], #is this appropriate
+        t_break2=1,
+        limit_t_break2=[1, 100], #is this appropriate
         error_t_break2=1,
         #t_break2=40,
         #limit_t_break2=[10, 60],
