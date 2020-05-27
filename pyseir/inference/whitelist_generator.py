@@ -61,8 +61,7 @@ class WhitelistGenerator:
             how="inner",
         )
 
-        df_whitelist = df_candidates[["fips", "state", "county"]]
-        df_whitelist.loc[:, "inference_ok"] = (
+        df_candidates["inference_ok"] = (
             (df_candidates.nonzero_case_datapoints >= self.nonzero_case_datapoints)
             & (df_candidates.nonzero_death_datapoints >= self.nonzero_death_datapoints)
             & (df_candidates.total_cases >= self.total_cases)
@@ -72,6 +71,7 @@ class WhitelistGenerator:
         output_path = get_run_artifact_path(
             fips="06", artifact=RunArtifact.WHITELIST_RESULT  # Dummy fips since not used here...
         )
+        df_whitelist = df_candidates[["fips", "state", "county", "inference_ok"]]
         df_whitelist.to_json(output_path)
 
         return df_whitelist

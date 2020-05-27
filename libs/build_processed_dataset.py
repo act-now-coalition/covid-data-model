@@ -4,6 +4,8 @@ import logging
 import sentry_sdk
 from functools import lru_cache
 
+from libs.datasets.combined_datasets import build_us_timeseries_with_all_fields
+from libs.enums import Intervention
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.us_state_abbrev import abbrev_us_state
 from libs.us_state_abbrev import us_fips
@@ -40,55 +42,45 @@ def _get_interventions_df():
     return pd.DataFrame(list(interventions.items()), columns=columns)
 
 
-@lru_cache(None)
-def _get_testing_df():
-    # TODO: read this from a dataset class
-    ctd_df = CovidTrackingDataSource.local().data
-    # use a string for dates
-    ctd_df["date"] = ctd_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
-    # handle missing data
-    ctd_df[CovidTrackingDataSource.Fields.POSITIVE_TESTS] = ctd_df[
-        CovidTrackingDataSource.Fields.POSITIVE_TESTS
-    ].apply(lambda x: x if pd.isna(x) else int(x))
-    ctd_df[CovidTrackingDataSource.Fields.NEGATIVE_TESTS] = ctd_df[
-        CovidTrackingDataSource.Fields.NEGATIVE_TESTS
-    ].apply(lambda x: x if pd.isna(x) else int(x))
-    ctd_df = ctd_df[CovidTrackingDataSource.TEST_FIELDS]
-    return ctd_df
-
-
-@lru_cache(None)
-def get_cds():
-    cds_df = CDSDataset.local().data
-    cds_df["date"] = cds_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
-    cds_df = cds_df[CDSDataset.TEST_FIELDS]
-    return cds_df
+TEST_FIELDS = [
+    CommonFields.NEGATIVE_TESTS,
+    CommonFields.POSITIVE_TESTS,
+    CommonFields.STATE,
+    CommonFields.DATE,
+]
 
 
 def get_testing_timeseries_by_state(state):
-    testing_df = _get_testing_df()
-    is_state = (
-        testing_df[CovidTrackingDataSource.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
+    testing_df = (
+        build_us_timeseries_with_all_fields()
+        .get_data(aggregation_level=AggregationLevel.STATE, state=state)
+        .loc[:, (CommonFields.NEGATIVE_TESTS, CommonFields.POSITIVE_TESTS, CommonFields.DATE)]
     )
-    testing_df = testing_df[is_state]
-    # just select state
-    state_testing_df = testing_df[testing_df[CovidTrackingDataSource.Fields.STATE] == state]
-    return state_testing_df[CovidTrackingDataSource.TESTS_ONLY_FIELDS]
+    testing_df.rename(
+        columns={
+            CommonFields.POSITIVE_TESTS: CovidTrackingDataSource.Fields.POSITIVE_TESTS,
+            CommonFields.NEGATIVE_TESTS: CovidTrackingDataSource.Fields.NEGATIVE_TESTS,
+        },
+        inplace=True,
+    )
+    testing_df["date"] = testing_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
+    return testing_df
 
 
 def get_testing_timeseries_by_fips(fips):
-    testing_df = get_cds()
-    # select by fips
-    fips_testing_df = testing_df[testing_df[CDSDataset.Fields.FIPS] == fips]
-    before = len(fips_testing_df)
-    fips_testing_df = fips_testing_df.set_index([CDSDataset.Fields.FIPS, CDSDataset.Fields.DATE])
-    fips_testing_df = fips_testing_df[~fips_testing_df.index.duplicated(keep="last")]
-    if before != len(fips_testing_df):
-        _logger.warning(
-            f"Testing DF contained duplicate rows for {fips}: {before} -> {len(fips_testing_df)}"
-        )
-        sentry_sdk.capture_message(f"Testing DF contained duplicate rows for {fips}")
-    return fips_testing_df
+    """Called by generate_api"""
+    testing_df = build_us_timeseries_with_all_fields().get_data(
+        None, fips=fips, columns_slice=CDSDataset.COMMON_TEST_FIELDS
+    )
+    testing_df[CDSDataset.Fields.TESTED] = (
+        testing_df[CommonFields.NEGATIVE_TESTS] + testing_df[CommonFields.POSITIVE_TESTS]
+    )
+    testing_df.drop(columns=[CommonFields.NEGATIVE_TESTS], inplace=True)
+    all_fields = dict(**CDSDataset.INDEX_FIELD_MAP, **CDSDataset.COMMON_FIELD_MAP)
+    testing_df.rename(columns=all_fields, inplace=True)
+    testing_df["date"] = testing_df.date.apply(lambda x: x.strftime("%m/%d/%y"))
+    testing_df.set_index([CDSDataset.Fields.FIPS, CDSDataset.Fields.DATE], inplace=True)
+    return testing_df
 
 
 county_replace_with_null = {"Unassigned": NULL_VALUE}
@@ -175,18 +167,29 @@ def get_usa_by_county_with_projection_df(input_dir, intervention_type):
     return counties
 
 
-def get_usa_by_states_df(input_dir, intervention_type):
+def get_usa_by_states_df(input_dir: str, intervention: Intervention):
     us_only = _get_usa_by_county_df()
     interventions_df = _get_interventions_df()
-    projections_df = get_state_projections_df(input_dir, intervention_type, interventions_df)
-    testing_df = _get_testing_df()
+    projections_df = get_state_projections_df(input_dir, intervention.value, interventions_df)
+    testing_df = build_us_timeseries_with_all_fields().get_data(
+        aggregation_level=AggregationLevel.STATE,
+        columns_slice=[
+            CommonFields.STATE,
+            CommonFields.POSITIVE_TESTS,
+            CommonFields.NEGATIVE_TESTS,
+        ],
+    )
     test_max_df = (
-        testing_df.groupby(CommonFields.STATE)[
-            CovidTrackingDataSource.Fields.POSITIVE_TESTS,
-            CovidTrackingDataSource.Fields.NEGATIVE_TESTS,
+        testing_df.groupby(CommonFields.STATE, as_index=False)[
+            [CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS]
         ]
         .max()
-        .reset_index()
+        .rename(
+            columns={
+                CommonFields.POSITIVE_TESTS: CovidTrackingDataSource.Fields.POSITIVE_TESTS,
+                CommonFields.NEGATIVE_TESTS: CovidTrackingDataSource.Fields.NEGATIVE_TESTS,
+            }
+        )
     )
     states_group = us_only.groupby([CommonFields.STATE])
     states_agg = states_group.aggregate(
