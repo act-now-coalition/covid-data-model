@@ -93,15 +93,9 @@ class ModelFitter:
         eps2=0.3,
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
-        t_break2=1,
-        limit_t_break2=[1, 100], #is this appropriate
-        error_t_break2=1,
-        #t_break2=40,
-        #limit_t_break2=[10, 60],
-        #error_t_break2=1,
-        #eps2=0.3,
-        #limit_eps2=[0.20, 1.2],
-        #error_eps2=0.005,
+        t_delta_phases=15, #number of days between phase 2 and 3, since each phase is 14 days, we start at 15
+        limit_t_delta_phases=[15, 100],
+        error_t_delta_phases=1,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
         error_test_fraction=0.02,
@@ -183,7 +177,7 @@ class ModelFitter:
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
 
-        self.model_fit_keys = ["R0", "eps", "t_break", "eps2", "t_break2", "log10_I_initial"] #Natasha add this, "eps2", "t_break2"]
+        self.model_fit_keys = ["R0", "eps", "t_break", "eps2", "t_delta_phases", "log10_I_initial"] #Natasha
 
         self.SEIR_kwargs = self.get_average_seir_parameters()
         self.fit_results = None
@@ -357,7 +351,7 @@ class ModelFitter:
 
         return cases_stdev, hosp_stdev, deaths_stdev
 
-    def run_model(self, R0, eps, t_break, eps2, t_break2, log10_I_initial):
+    def run_model(self, R0, eps, t_break, eps2, t_delta_phases, log10_I_initial):
         """
         Generate the model and run.
 
@@ -380,7 +374,7 @@ class ModelFitter:
         """
         #Maybe start here Natasha
         suppression_policy = suppression_policies.generate_three_step_policy(
-            self.t_list, eps, t_break, eps2, t_break2
+            self.t_list, eps, t_break, eps2, t_delta_phases
         )
         #print('Natasha: Suppression policy')
         #print(suppression_policy)
@@ -408,7 +402,7 @@ class ModelFitter:
         model.run()
         return model
 
-    def _fit_seir(self, R0, t0, eps, t_break, eps2, t_break2, test_fraction, hosp_fraction, log10_I_initial):
+    def _fit_seir(self, R0, t0, eps, t_break, eps2, t_delta_phases, test_fraction, hosp_fraction, log10_I_initial):
         """
         Fit SEIR model by MLE.
 
