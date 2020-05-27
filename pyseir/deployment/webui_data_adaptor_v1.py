@@ -229,7 +229,6 @@ class WebUIDataAdaptorV1:
             interpolated_model_icu_values = np.interp(
                 t_list_downsampled, t_list, raw_model_icu_values
             )
-            log.info("Raw icu: %s", raw_model_icu_values)
             final_derived_model_value = icu_rescaling_factor * interpolated_model_icu_values
             log.info("Final icu value from model: %s", final_derived_model_value[-1])
             output_model[schema.INFECTED_C] = final_derived_model_value
