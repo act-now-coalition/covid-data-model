@@ -1,4 +1,4 @@
-  
+
 #!/bin/bash
 # run.sh - Runs everything necessary to generate our API artifacts (for
 # website, external consumers, etc.) based on our inputs (from
