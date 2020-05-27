@@ -8,6 +8,8 @@ import logging
 import click
 import sentry_sdk
 from pandarallel import pandarallel
+import structlog
+from structlog_sentry import SentryProcessor
 
 from cli import api
 from cli import run_top_counties_dataset
@@ -27,6 +29,14 @@ def entry_point(ctx):  # pylint: disable=no-value-for-parameter
         scope.set_tag("command", ctx.invoked_subcommand)
         # changes applied to scope remain after scope exits. See
         # https://github.com/getsentry/sentry-python/issues/184
+
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,  # required before SentryProcessor()
+            # sentry_sdk creates events for level >= ERROR and keeps level >= INFO as breadcrumbs.
+            SentryProcessor(level=logging.INFO),
+        ]
+    )
 
 
 # adding the QA command
