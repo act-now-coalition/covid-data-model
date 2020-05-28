@@ -42,7 +42,8 @@ def calculate_combined_new_york_counties(
     else:
         grouped = non_ny_county.groupby(group).sum()
         for column in grouped.columns:
-            assert sum(grouped[column]) != 0, f"{column} is unexpectedly zero."
+            if not non_ny_county[column].isna().all():
+                assert sum(grouped[column]) != 0, f"{column} is unexpectedly zero."
 
     aggregated = new_york_county.groupby(group).sum().reset_index()
     aggregated["fips"] = NEW_YORK_COUNTY_FIPS
