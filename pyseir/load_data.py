@@ -22,6 +22,9 @@ from enum import Enum
 log = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pyseir_data")
+MIN_CUMULATIVE_DATAPOINTS_TO_CONVERT = (
+    3  # We wait until the third datapoint to have 2 deltas to forecast
+)
 
 
 class HospitalizationDataType(Enum):
@@ -540,8 +543,30 @@ def get_current_hospitalized_for_county(fips: str, t0: datetime, category: str):
     return _get_current_hospitalized(df, t0, category)
 
 
-def _get_current_hospitalized(df: pd.DataFrame, t0: datetime, category: str):
-    MIN_DATAPOINTS_TO_CONVERT = 3  # We wait until the third datapoint to have 2 deltas to forecast
+def _get_current_hospitalized(
+    df: pd.DataFrame,
+    t0: datetime,
+    category: str,
+    min_cumulative_datapoints_to_convert: int = MIN_CUMULATIVE_DATAPOINTS_TO_CONVERT,
+):
+    """
+    Given a DataFrame that contains values icu or hospitalization data
+    for a single county/state, this function returns the latest value.
+
+    When only cummulative data is available,
+    a small model is used to estimate the latest current value from the cummulative.
+    This conversion only occurs if enough data is available.
+
+    Parameters:
+    @param df - dataframe containing either current_ or cumulative_ values for a single county or state
+    @param t0 - beggining of observation period
+    @param category - the type of current data to be returned
+    @param min_cumulative_datapoints_to_convert - the required number of cummulative data points before conversion to current will be done.
+
+    Returns:
+    (times_new_latest, current_latest) - the date and value of the latest data for a given category.
+    """
+
     ALLOWED_CATEGORIES = ["icu", "hospitalized"]
 
     if category not in ALLOWED_CATEGORIES:
@@ -570,7 +595,7 @@ def _get_current_hospitalized(df: pd.DataFrame, t0: datetime, category: str):
                 cumulative[i] = cumulative[i + 1]
 
         # Estimate Current from Derived Dailies
-        if len(cumulative) >= MIN_DATAPOINTS_TO_CONVERT:
+        if len(cumulative) >= min_cumulative_datapoints_to_convert:
             current_latest = estimate_current_from_cumulative(cumulative, category)
             times_new = (df["date"].dt.date - t0.date()).dt.days.values
             times_new_latest = times_new[-1]
