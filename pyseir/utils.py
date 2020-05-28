@@ -205,6 +205,7 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return path
 
+
 def ewma_smoothing(series, tau=5):
     """
     Exponentially weighted moving average of a series.

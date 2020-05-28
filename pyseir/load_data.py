@@ -331,11 +331,8 @@ def get_all_fips_codes_for_a_state(state: str):
     return all_fips
 
 
-
-
-
 @lru_cache(maxsize=32)
-def load_new_case_data_by_fips(fips, t0, include_testing_correction=False):
+def load_new_case_data_by_fips(fips, t0, include_testing_correction=False, testing_correction_smoothing_tau=5):
     """
     Get data for new cases.
 
@@ -348,6 +345,9 @@ def load_new_case_data_by_fips(fips, t0, include_testing_correction=False):
     include_testing_correction: bool
         If True, include a correction for new expanded or decreaseed test
         coverage.
+    testing_correction_smoothing_tau: float
+        expected_positives_from_test_increase is smoothed based on an
+        exponentially weighted moving average of decay factor specified here.
 
     Returns
     -------
@@ -366,7 +366,7 @@ def load_new_case_data_by_fips(fips, t0, include_testing_correction=False):
     )
 
     if include_testing_correction:
-        df_new_tests = load_new_test_data_by_fips(fips, t0)
+        df_new_tests = load_new_test_data_by_fips(fips, t0, smoothing_tau=testing_correction_smoothing_tau)
         df_cases = pd.DataFrame({'times': times_new, 'new_cases': observed_new_cases})
         df_cases = df_cases.merge(df_new_tests, how='left', on='times')
         df_cases['new_cases'] -= df_cases['expected_positives_from_test_increase'].fillna(0)
@@ -687,7 +687,10 @@ def get_average_dwell_time(category):
 
 
 @lru_cache(maxsize=32)
-def load_new_case_data_by_state(state, t0):
+def load_new_case_data_by_state(state,
+                                t0,
+                                include_testing_correction=False,
+                                testing_correction_smoothing_tau=5):
     """
     Get data for new cases at state level.
 
@@ -697,6 +700,12 @@ def load_new_case_data_by_state(state, t0):
         State full name.
     t0: datetime
         Datetime to offset by.
+    include_testing_correction: bool
+        If True, include a correction for new expanded or decreaseed test
+        coverage.
+    testing_correction_smoothing_tau: float
+        expected_positives_from_test_increase is smoothed based on an
+        exponentially weighted moving average of decay factor specified here.
 
     Returns
     -------
@@ -711,6 +720,14 @@ def load_new_case_data_by_state(state, t0):
     state_case_data = _state_case_data[_state_case_data["state"] == us.states.lookup(state).abbr]
     times_new = (state_case_data["date"] - t0).dt.days.iloc[1:]
     observed_new_cases = state_case_data["cases"].values[1:] - state_case_data["cases"].values[:-1]
+
+    if include_testing_correction:
+        df_new_tests = load_new_test_data_by_fips(us.states.lookup(state).fips, t0, smoothing_tau=testing_correction_smoothing_tau)
+        df_cases = pd.DataFrame({'times': times_new, 'new_cases': observed_new_cases})
+        df_cases = df_cases.merge(df_new_tests, how='left', on='times')
+        df_cases['new_cases'] -= df_cases['expected_positives_from_test_increase'].fillna(0)
+        observed_new_cases = df_cases['new_cases'].values
+
     observed_new_deaths = (
         state_case_data["deaths"].values[1:] - state_case_data["deaths"].values[:-1]
     )
@@ -726,7 +743,7 @@ def load_new_case_data_by_state(state, t0):
 
 
 @lru_cache(maxsize=32)
-def load_new_test_data_by_fips(fips, t0, smoothing_tau=5):
+def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
@@ -756,14 +773,19 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5):
     smoothing_tau: int
         expected_positives_from_test_increase is smoothed based on an
         exponentially weighted moving average of decay factor specified here.
+    correction_threshold: int
+        Do not apply a correction if the incident cases per day is lower than
+        this value. There can be instability if case counts are very low.
     """
     us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
 
     if len(fips) == 2:
-        df = us_timeseries.get_subset(AggregationLevel.STATE, state=us.states.lookup(fips).abbr).data
+        df = us_timeseries.get_data(AggregationLevel.STATE, state=us.states.lookup(fips).abbr)
     else:
-        df = us_timeseries.get_subset(AggregationLevel.COUNTY, fips=fips).data
-    df = df[(df[CommonFields.POSITIVE_TESTS].notnull()) & (df[CommonFields.NEGATIVE_TESTS].notnull())]
+        df = us_timeseries.get_data(AggregationLevel.COUNTY, fips=fips)
+    df = df[(df[CommonFields.POSITIVE_TESTS].notnull())
+            & (df[CommonFields.NEGATIVE_TESTS].notnull())
+            & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0)]
 
     df['positivity_rate'] = df[CommonFields.POSITIVE_TESTS] / (df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS])
     df['new_positive'] = np.append([0], np.diff(df[CommonFields.POSITIVE_TESTS]))
@@ -779,6 +801,8 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5):
 
     df = df[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull()]
     df['expected_positives_from_test_increase'] = ewma_smoothing(df['expected_positives_from_test_increase'], smoothing_tau)
+    df['expected_positives_from_test_increase'][df['new_positive'] < 5] = 0
+
     df['times'] = [int((date - t0).days) for date in pd.to_datetime(df['date'].values).to_pydatetime()]
 
     return df
