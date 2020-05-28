@@ -232,9 +232,13 @@ def get_epsilon_interpolator(
     if eps_final is None:  # Use the current fit value
         points.extend([(TIMEBOUNDARY, eps2)])
     else:  # Transition to the provided value
-        points.extend([(t_break_final, eps2),
-                       (t_break_final + transition_time, eps_final),
-                       (TIMEBOUNDARY, eps_final)])
+        points.extend(
+            [
+                (t_break_final, eps2),
+                (t_break_final + transition_time, eps_final),
+                (TIMEBOUNDARY, eps_final),
+            ]
+        )
 
     x, y = zip(*points)
     return interp1d(x=x, y=y, fill_value="extrapolate")

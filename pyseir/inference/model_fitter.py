@@ -93,7 +93,7 @@ class ModelFitter:
         eps2=0.3,
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
-        t_delta_phases=15, #number of days between phase 2 and 3, since each phase is 14 days, we start at 15
+        t_delta_phases=15,  # number of days between phase 2 and 3, since each phase is 14 days, we start at 15
         limit_t_delta_phases=[15, 30],
         error_t_delta_phases=1,
         test_fraction=0.1,
@@ -177,7 +177,14 @@ class ModelFitter:
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
 
-        self.model_fit_keys = ["R0", "eps", "t_break", "eps2", "t_delta_phases", "log10_I_initial"] #Natasha
+        self.model_fit_keys = [
+            "R0",
+            "eps",
+            "t_break",
+            "eps2",
+            "t_delta_phases",
+            "log10_I_initial",
+        ]  # Natasha
 
         self.SEIR_kwargs = self.get_average_seir_parameters()
         self.fit_results = None
@@ -372,12 +379,12 @@ class ModelFitter:
         model: SEIRModel
             The SEIR model that has been run.
         """
-        #Maybe start here Natasha
+        # Maybe start here Natasha
         suppression_policy = suppression_policies.get_epsilon_interpolator(
             eps, t_break, eps2, t_delta_phases
         )
-        #print('Natasha: Suppression policy')
-        #print(suppression_policy)
+        # print('Natasha: Suppression policy')
+        # print(suppression_policy)
 
         if self.with_age_structure:
             age_distribution = self.SEIR_kwargs["N"] / self.SEIR_kwargs["N"].sum()
@@ -402,7 +409,18 @@ class ModelFitter:
         model.run()
         return model
 
-    def _fit_seir(self, R0, t0, eps, t_break, eps2, t_delta_phases, test_fraction, hosp_fraction, log10_I_initial):
+    def _fit_seir(
+        self,
+        R0,
+        t0,
+        eps,
+        t_break,
+        eps2,
+        t_delta_phases,
+        test_fraction,
+        hosp_fraction,
+        log10_I_initial,
+    ):
         """
         Fit SEIR model by MLE.
 
@@ -755,7 +773,9 @@ class ModelFitter:
         )
 
         start_intervention2_date = self.ref_date + timedelta(
-            days=self.fit_results["t_break"] + self.fit_results["t_delta_phases"] + self.fit_results["t0"]
+            days=self.fit_results["t_break"]
+            + self.fit_results["t_delta_phases"]
+            + self.fit_results["t0"]
         )
         stop_intervention2_date = start_intervention2_date + timedelta(days=14)
 
@@ -822,14 +842,16 @@ class ModelFitter:
 
         chi_total = 0
         for i, (k, v) in enumerate(self.fit_results.items()):
-          if k in ("chi2_cases", "chi2_deaths", "chi2_hosps"):
-            chi_total += v
-        print('Natasha: chi total')
+            if k in ("chi2_cases", "chi2_deaths", "chi2_hosps"):
+                chi_total += v
+        print("Natasha: chi total")
         print(chi_total)
 
         for i, (k, v) in enumerate(self.fit_results.items()):
 
-            fontweight = "bold" if k in ("R0", "Reff", "eps", "eps2", "t_delta_phases") else "normal"
+            fontweight = (
+                "bold" if k in ("R0", "Reff", "eps", "eps2", "t_delta_phases") else "normal"
+            )
 
             if np.isscalar(v) and not isinstance(v, str):
                 plt.text(
@@ -851,7 +873,15 @@ class ModelFitter:
                     alpha=0.6,
                     fontweight=fontweight,
                 )
-        plt.text(1.05, 0.75, f"total_chi2:{chi_total:1.3f}", transform=plt.gca().transAxes, fontsize = 15, alpha = 0.6, fontweight='bold')
+        plt.text(
+            1.05,
+            0.75,
+            f"total_chi2:{chi_total:1.3f}",
+            transform=plt.gca().transAxes,
+            fontsize=15,
+            alpha=0.6,
+            fontweight="bold",
+        )
         output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
         plt.savefig(output_file, bbox_inches="tight")
         plt.close()
@@ -881,14 +911,14 @@ class ModelFitter:
         : ModelFitter
         """
         # Assert that there are some cases for counties
-        #print('Natasha: starting model_fitter.run_forfips()')
+        # print('Natasha: starting model_fitter.run_forfips()')
         if len(fips) == 5:
             _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
                 fips, t0=datetime.today()
             )
             if observed_new_cases.sum() < 1:
                 return None
-        #print('Natasha: about to start try statement')
+        # print('Natasha: about to start try statement')
 
         try:
             retries_left = n_retries
@@ -960,14 +990,13 @@ def run_state(state, states_only=False, with_age_structure=False):
     with_age_structure: bool
         If True run model with age structure.
     """
-    #print('Natasha: starting model_fitter.run_state()')
+    # print('Natasha: starting model_fitter.run_state()')
     state_obj = us.states.lookup(state)
     logging.info(f"Running MLE fitter for state {state_obj.name}")
 
     model_fitter = ModelFitter.run_for_fips(
         fips=state_obj.fips, with_age_structure=with_age_structure
     )
-
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
