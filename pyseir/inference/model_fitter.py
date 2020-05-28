@@ -94,7 +94,7 @@ class ModelFitter:
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
         t_delta_phases=15, #number of days between phase 2 and 3, since each phase is 14 days, we start at 15
-        limit_t_delta_phases=[15, 50],
+        limit_t_delta_phases=[15, 30],
         error_t_delta_phases=1,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
@@ -852,7 +852,7 @@ class ModelFitter:
                     alpha=0.6,
                     fontweight=fontweight,
                 )
-        plt.text(1.05, 0.75, f"total_chi2:{chi_total:1.3f}", transform=plt.gca().transAxes, fontsize = 15, alpha = 0.6)
+        plt.text(1.05, 0.75, f"total_chi2:{chi_total:1.3f}", transform=plt.gca().transAxes, fontsize = 15, alpha = 0.6, fontweight='bold')
         output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
         plt.savefig(output_file, bbox_inches="tight")
         plt.close()
