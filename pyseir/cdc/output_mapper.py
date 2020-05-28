@@ -595,7 +595,7 @@ def run_all(parallel=False):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    fips_list = list(df_whitelist['fips'].str[:2].unique())[:6]
+    fips_list = list(df_whitelist['fips'].str[:2].unique())
 
     if parallel:
         p = Pool()
