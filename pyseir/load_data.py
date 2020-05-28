@@ -408,8 +408,7 @@ def load_hospitalization_data(
         County fips to lookup.
     t0: datetime
         Datetime to offset by.
-    category: str
-        'icu' or 'hospitalized'
+    category: HospitalizationCategory
 
     Returns
     -------
@@ -469,7 +468,7 @@ def load_hospitalization_data_by_state(
         State to lookup.
     t0: datetime
         Datetime to offset by.
-    category: str
+    category: HospitalizationCategory
         'icu' for just ICU or 'hospitalized' for all ICU + Acute.
 
     Returns
@@ -518,7 +517,7 @@ def load_hospitalization_data_by_state(
         return None, None, None
 
 
-def get_current_hospitalized_for_state(state: str, t0: datetime, category: str):
+def get_current_hospitalized_for_state(state: str, t0: datetime, category: HospitalizationCategory):
     """
     Return the current estimate for the number of people in the given category for a given US state.
 
@@ -528,7 +527,7 @@ def get_current_hospitalized_for_state(state: str, t0: datetime, category: str):
         US state to lookup.
     t0: datetime
         Datetime to offset by.
-    category: str
+    category: HospitalizationCategory
         'icu' for just ICU or 'hospitalized' for all ICU + Acute.
 
     Returns
@@ -546,7 +545,7 @@ def get_current_hospitalized_for_state(state: str, t0: datetime, category: str):
     return _get_current_hospitalized(df, t0, category)
 
 
-def get_current_hospitalized_for_county(fips: str, t0: datetime, category: str):
+def get_current_hospitalized_for_county(fips: str, t0: datetime, category: HospitalizationCategory):
     df = get_hospitalization_data().get_data(AggregationLevel.COUNTY, country="USA", fips=fips)
     return _get_current_hospitalized(df, t0, category)
 
@@ -554,7 +553,7 @@ def get_current_hospitalized_for_county(fips: str, t0: datetime, category: str):
 def _get_current_hospitalized(
     df: pd.DataFrame,
     t0: datetime,
-    category: str,
+    category: HospitalizationCategory,
     min_cumulative_datapoints_to_convert: int = MIN_CUMULATIVE_DATAPOINTS_TO_CONVERT,
 ):
     """
@@ -574,12 +573,6 @@ def _get_current_hospitalized(
     Returns:
     (times_new_latest, current_latest) - the date and value of the latest data for a given category.
     """
-
-    ALLOWED_CATEGORIES = ["icu", "hospitalized"]
-
-    if category not in ALLOWED_CATEGORIES:
-        raise ValueError(f"Hospitalization category {category} is not in {ALLOWED_CATEGORIES}")
-
     if len(df) == 0:
         return None, None
 
@@ -681,7 +674,7 @@ def estimate_current_from_cumulative(cumulative, category):
 def get_average_dwell_time(category):
     """
     :parameter
-    category: str
+    category: HospitalizationCategory
         Whether we are asking for 'hospital' or 'icu'
 
     :return:
@@ -703,7 +696,7 @@ def get_average_dwell_time(category):
     # TODO: This value is temporarily in this limited scope.
     # Will be added into the params once I decide on some refactoring.
     params["hospitalization_length_of_stay_icu_avg"] = 8.6
-    if category == "hospitalized":
+    if str(category) == "hospitalized":
         average_length_of_stay = (
             params["hospitalization_rate_general"]
             * params["hospitalization_length_of_stay_general"]

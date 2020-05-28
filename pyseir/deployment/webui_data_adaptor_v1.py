@@ -72,10 +72,10 @@ class WebUIDataAdaptorV1:
         If not, current values are esimated from cummulative.
         """
         county_hosp = load_data.get_current_hospitalized_for_county(
-            fips, t0_simulation, category="hospitalized"
+            fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
         )[1]
         county_icu = load_data.get_current_hospitalized_for_county(
-            fips, t0_simulation, category="icu"
+            fips, t0_simulation, category=load_data.HospitalizationCategory.ICU
         )[1]
 
         return county_hosp, county_icu
@@ -115,11 +115,15 @@ class WebUIDataAdaptorV1:
         population = self._get_population(fips)
 
         t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized_for_state(
-            state=self.state_abbreviation, t0=t0_simulation, category="hospitalized"
+            state=self.state_abbreviation,
+            t0=t0_simulation,
+            category=load_data.HospitalizationCategory.HOSPITALIZED,
         )
 
         _, current_state_icu = load_data.get_current_hospitalized_for_state(
-            state=self.state_abbreviation, t0=t0_simulation, category="icu",
+            state=self.state_abbreviation,
+            t0=t0_simulation,
+            category=load_data.HospitalizationCategory.ICU,
         )
 
         if current_hosp_count is not None:
