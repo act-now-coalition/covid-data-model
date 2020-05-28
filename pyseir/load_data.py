@@ -696,7 +696,7 @@ def get_average_dwell_time(category):
     # TODO: This value is temporarily in this limited scope.
     # Will be added into the params once I decide on some refactoring.
     params["hospitalization_length_of_stay_icu_avg"] = 8.6
-    if str(category) == "hospitalized":
+    if category == HospitalizationCategory.HOSPITALIZED:
         average_length_of_stay = (
             params["hospitalization_rate_general"]
             * params["hospitalization_length_of_stay_general"]
