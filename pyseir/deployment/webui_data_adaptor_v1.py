@@ -64,7 +64,13 @@ class WebUIDataAdaptorV1:
         self.df_whitelist = self.df_whitelist[self.df_whitelist["inference_ok"] == True]
 
     @staticmethod
-    def _get_county_hospitalization_from_actuals(fips, t0_simulation):
+    def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
+        """
+        Fetches the latest county hospitalization and icu utilization.
+        
+        If current data is available, we return that.
+        If not, current values are esimated from cummulative.
+        """
         county_hosp = load_data.get_current_hospitalized_for_county(
             fips, t0_simulation, category="hospitalized"
         )[1]
@@ -78,14 +84,14 @@ class WebUIDataAdaptorV1:
     def _is_valid_count_metric(metric: float) -> bool:
         return metric is not None and metric > 0
 
-    def _get_population(self, fips: str):
+    def _get_population(self, fips: str) -> int:
         if len(fips) == 5:
             return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
         return self.population_data.get_record_for_state(self.state_abbreviation)[
             CommonFields.POPULATION
         ]
 
-    def map_fips(self, fips):
+    def map_fips(self, fips: str) -> None:
         """
         For a given county fips code, generate the CAN UI output format.
 
@@ -128,10 +134,9 @@ class WebUIDataAdaptorV1:
             )
 
             if len(fips) == 5:
-                (
-                    current_county_hosp,
-                    current_county_icu,
-                ) = self._get_county_hospitalization_from_actuals(fips, t0_simulation)
+                (current_county_hosp, current_county_icu,) = self._get_county_hospitalization(
+                    fips, t0_simulation
+                )
                 log.info(
                     "Actual county hospitalizations for fips %s: %s, icu: %s",
                     fips,
