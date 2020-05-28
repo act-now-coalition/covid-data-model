@@ -797,7 +797,12 @@ class ModelFitter:
         plt.yticks(fontsize=14)
         plt.legend(loc=4, fontsize=14)
         plt.grid(which="both", alpha=0.5)
-        plt.title(self.display_name, fontsize=20)
+        plt.title(self.display_name, fontsize=60)
+
+        chi_total = 0
+        for i, (k, v) in enumerate(self.fit_results.items()):
+            if k in ("chi2_cases", "chi2_deaths", "chi2_hosps"):
+                chi_total += v
 
         for i, (k, v) in enumerate(self.fit_results.items()):
 
@@ -824,6 +829,15 @@ class ModelFitter:
                     fontweight=fontweight,
                 )
 
+        plt.text(
+            1.05,
+            0.75,
+            f"total_chi2:{chi_total:1.3f}",
+            transform=plt.gca().transAxes,
+            fontsize=15,
+            alpha=0.6,
+            fontweight="bold",
+        )
         output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_REPORT)
         plt.savefig(output_file, bbox_inches="tight")
         plt.close()
