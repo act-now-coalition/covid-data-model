@@ -71,7 +71,7 @@ def plot_results(fips, forecast_date, target, observations, pdf):
 def run_all():
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    fips_list = list(df_whitelist['fips'].str[:2].unique())[:5]
+    fips_list = list(df_whitelist['fips'].str[:2].unique())
     output_path = f'{REPORT_FOLDER}/report_{datetime.strftime(FORECAST_DATE, DATE_FORMAT)}.pdf'
     pdf = backend_pdf.PdfPages(output_path)
     for fips in fips_list:
