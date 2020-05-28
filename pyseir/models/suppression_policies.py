@@ -185,7 +185,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
 
 
 def get_epsilon_interpolator(
-    eps, t_break, eps2, t_delta_phases, transition_time=14, t_break_final=None, eps_final=None
+    eps, t_break, eps2=-1, t_delta_phases=-1, transition_time=14, t_break_final=None, eps_final=None
 ):
     """
     Return an interpolator that produces an epsilon when called with a time (relative to the model

@@ -620,7 +620,6 @@ class ModelFitter:
         if self.hosp_stdev is not None:
             hosp_stdev = deepcopy(self.hosp_stdev)
             hosp_stdev[hosp_stdev > 1e5] = 0
-
         plt.figure(figsize=(18, 12))
         plt.errorbar(
             data_dates,
@@ -819,7 +818,7 @@ class ModelFitter:
         plt.yticks(fontsize=14)
         plt.legend(loc=4, fontsize=14)
         plt.grid(which="both", alpha=0.5)
-        plt.title(self.display_name, fontsize=20)
+        plt.title(self.display_name, fontsize=60)
 
         chi_total = 0
         for i, (k, v) in enumerate(self.fit_results.items()):
