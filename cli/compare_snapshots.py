@@ -34,6 +34,13 @@ def _get_compare_snapshot():
     return match[0]
 
 
+def _get_input_dir_snapshot(input_dir):
+    match = re.findall(r"/data/api-results-(\d+)/\w+", input_dir)
+    if not match:
+        return None
+    return match[0]
+
+
 @click.command("compare-snapshots")
 @click.option(
     "--input-dir", "-i", type=str, help="The input path of the snapshot to compare", required=False,
@@ -80,7 +87,9 @@ def compare_snapshots(
 
     if not (compare_snapshot):
         compare_snapshot = _get_compare_snapshot()
-        output_report += f"More info can be found at https://data.covidactnow.org/snapshot/{input_snapshot}/qa/compared.csv"
+        if input_dir:
+            input_snapshot_from_dir = _get_input_dir_snapshot(input_dir)
+            output_report += f"More info can be found at https://data.covidactnow.org/snapshot/{input_snapshot_from_dir}/qa/compared.csv"
 
     for state_abbrev in states:
         if not fips:
