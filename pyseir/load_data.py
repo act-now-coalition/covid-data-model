@@ -27,6 +27,14 @@ MIN_CUMULATIVE_DATAPOINTS_TO_CONVERT = (
 )
 
 
+class HospitalizationCategory(Enum):
+    HOSPITALIZED = "hospitalized"
+    ICU = "icu"
+
+    def __str__(self):
+        return str(self.value)
+
+
 class HospitalizationDataType(Enum):
     CUMULATIVE_HOSPITALIZATIONS = "cumulative_hospitalizations"
     CURRENT_HOSPITALIZATIONS = "current_hospitalizations"
@@ -441,7 +449,11 @@ def load_hospitalization_data(fips, t0, category="hospitalized"):
 
 
 @lru_cache(maxsize=32)
-def load_hospitalization_data_by_state(state, t0, category="hospitalized"):
+def load_hospitalization_data_by_state(
+    state: str,
+    t0: datetime,
+    category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
+):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
@@ -469,10 +481,6 @@ def load_hospitalization_data_by_state(state, t0, category="hospitalized"):
     hospitalization_data = combined_datasets.build_us_timeseries_with_all_fields().get_data(
         AggregationLevel.STATE, country="USA", state=abbr
     )
-
-    categories = ["icu", "hospitalized"]
-    if category not in categories:
-        raise ValueError(f"Hospitalization category {category} is not in {categories}")
 
     if len(hospitalization_data) == 0:
         return None, None, None
