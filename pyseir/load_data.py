@@ -392,7 +392,11 @@ def get_hospitalization_data():
 
 
 @lru_cache(maxsize=32)
-def load_hospitalization_data(fips, t0, category="hospitalized"):
+def load_hospitalization_data(
+    fips: str,
+    t0: datetime,
+    category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
+):
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
