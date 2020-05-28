@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends import backend_pdf
 import us
 import matplotlib
-from pyseir.cdc.utils import Target
+from pyseir.cdc.utils import Target, ForecastTimeUnit, aggregate_observations, load_and_aggregate_observations
 from pyseir.cdc.output_mapper import OutputMapper, REPORT_FOLDER, TEAM, MODEL, FORECAST_DATE, DATE_FORMAT
 from collections import defaultdict
 from epiweeks import Week, Year
@@ -17,24 +17,12 @@ LABELS = {Target.CUM_DEATH: 'cumulative death',
           Target.INC_DEATH: 'incident death'}
 
 
-def aggregate_by_week(dates, data):
+
+def plot_results(fips, forecast_date, target, observations, pdf):
     """
 
     """
 
-    saturdays = np.array([d + timedelta((12 - d.weekday()) % 7) for d in dates])
-    df = pd.DataFrame({'data': data, 'saturdays': saturdays})
-    df = df.groupby('saturdays')['data'].sum().reset_index()
-
-    return df['saturdays'].values, df['data'].values
-
-
-def plot_results(fips, forecast_date, target, pdf):
-    """
-
-    """
-
-    times, _, death = load_data.load_new_case_data_by_state(fips, t0=REF_DATE)
     df = pd.read_csv(f'{REPORT_FOLDER}/{forecast_date}_{TEAM}_{MODEL}_{fips}.csv')
 
     results = defaultdict(list)
@@ -58,14 +46,9 @@ def plot_results(fips, forecast_date, target, pdf):
     plt.figure(figsize=(10, 6))
     for n, unit in enumerate(['day', 'wk']):
         plt.subplot(1, 2, n+1)
-        if target is Target.CUM_DEATH:
-            plt.plot([REF_DATE + timedelta(t) for t in times], death.cumsum(), label='observed')
-        elif target is Target.INC_DEATH:
-            if unit  == 'day':
-                plt.plot([REF_DATE + timedelta(t) for t in times], death, label='observed')
-            elif unit == 'wk':
-                dates, values = aggregate_by_week([REF_DATE + timedelta(t) for t in times], death)
-                plt.plot(dates, values, label='observed')
+        plt.plot(pd.to_datetime(observations[target.value][unit].index),
+                 observations[target.value][unit].values,
+                 label='observed')
 
         plt.plot(results[unit]['target_end_date'], results[unit]['expected'], marker='o')
         plt.fill_between(x=results[unit]['target_end_date'],
@@ -92,6 +75,11 @@ def run_all():
     output_path = f'{REPORT_FOLDER}/report_{datetime.strftime(FORECAST_DATE, DATE_FORMAT)}.pdf'
     pdf = backend_pdf.PdfPages(output_path)
     for fips in fips_list:
+        observations = load_and_aggregate_observations(fips,
+                                                       units=[ForecastTimeUnit.DAY, ForecastTimeUnit.WK],
+                                                       targets=[Target.CUM_DEATH, Target.INC_DEATH],
+                                                       smooth=False)
         for target in [Target.CUM_DEATH, Target.INC_DEATH]:
-            plot_results(fips, datetime.strftime(FORECAST_DATE, DATE_FORMAT), target, pdf)
+            plot_results(fips, datetime.strftime(FORECAST_DATE, DATE_FORMAT),
+                         target, observations, pdf)
     pdf.close()
