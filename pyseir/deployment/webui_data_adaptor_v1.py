@@ -93,12 +93,12 @@ class WebUIDataAdaptorV1:
 
     def map_fips(self, fips: str) -> None:
         """
-        For a given county fips code, generate the CAN UI output format.
+        For a given fips code, for either a county or state, generate the CAN UI output format.
 
         Parameters
         ----------
         fips: str
-            County FIPS code to map.
+            FIPS code to map.
         """
         log.info("Mapping output to WebUI for.", state=self.state, fips=fips)
         pyseir_outputs = load_data.load_ensemble_results(fips)
