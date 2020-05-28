@@ -50,6 +50,8 @@ class RtInferenceEngine:
         data from introducing pathological results.
     min_deaths: int
         Minimum number of deaths required to run death level inference.
+    include_testing_corrections: bool
+        If True, include a correction for testing increases and decreases.
     """
     def __init__(
         self,
@@ -62,6 +64,7 @@ class RtInferenceEngine:
         confidence_intervals=(0.68, 0.95),
         min_cases=5,
         min_deaths=5,
+        include_testing_correction=True
     ):
         np.random.seed(
             NP_SEED
@@ -75,6 +78,7 @@ class RtInferenceEngine:
         self.confidence_intervals = confidence_intervals
         self.min_cases = min_cases
         self.min_deaths = min_deaths
+        self.include_testing_correction = include_testing_correction
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -85,7 +89,8 @@ class RtInferenceEngine:
                 self.times,
                 self.observed_new_cases,
                 self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_state(self.state, self.ref_date)
+            ) = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, include_testing_correction=self.include_testing_correction)
 
             (
                 self.hospital_times,
@@ -109,12 +114,10 @@ class RtInferenceEngine:
                 self.display_name = self.state
 
             self.times, self.observed_new_cases, self.observed_new_deaths = \
-                load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
+                load_data.load_new_case_data_by_fips(
+                    self.fips, t0=self.ref_date, include_testing_correction=self.include_testing_correction)
             self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
                 load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-
-        self.new_test_times, self.new_tests = load_data.load_new_test_data_by_fips(fips, t0=self.ref_date)
-        self.new_test_dates = [self.ref_date + timedelta(days=t) for t in self.new_test_times]
 
         logging.info(f'Running Rt Inference for {self.display_name}')
 
@@ -181,8 +184,6 @@ class RtInferenceEngine:
             TimeseriesType.CURRENT_HOSPITALIZATIONS,
         ):
             return self.hospital_dates, self.hospital_times, self.hospitalizations
-        elif timeseries_type is TimeseriesType.NEW_TESTS:
-            return self.new_test_dates, self.new_test_times, self.new_tests
 
     def apply_gaussian_smoothing(self, timeseries_type, plot=False, smoothed_max_threshold=5):
         """
@@ -412,15 +413,11 @@ class RtInferenceEngine:
         IDX_OF_COUNTS = 2
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
-        tests = self.get_timeseries(TimeseriesType.NEW_TESTS.value)[IDX_OF_COUNTS]
         if self.hospitalization_data_type:
             hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
-
-        if np.sum(tests) > self.min_cases:
-            available_timeseries.append(TimeseriesType.NEW_TESTS)
 
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
@@ -460,29 +457,6 @@ class RtInferenceEngine:
                     df_all = df
                 else:
                     df_all = df_all.merge(df, left_index=True, right_index=True, how="outer")
-
-                # ------------------------------------------------
-                # Convert the new cases growth rate to an adjustment by finding
-                # the difference between the growth rate of new cases and new
-                # tests. Thus if tests are growing quickly and cases growth is
-                # staying the same, this will reduce Rt for new cases. This is
-                # effectively adjusting for test growth based on the positivity
-                # rate.
-                #
-                # As far as Eric can tell, IHME seems to doing the absolute
-                # simplest thing by assuming a constant increase in cases per
-                # test increase. Our method should be far superior by taking
-                # into account relative growth between cases and tests.
-                # ------------------------------------------------
-                if 'Rt_MAP__new_cases' in df_all and 'Rt_MAP__new_tests' in df_all and timeseries_type is TimeseriesType.NEW_TESTS:
-                    df_all['new_tests_adjustment'] = (df_all['Rt_MAP__new_cases'] - df_all['Rt_MAP__new_tests']).fillna(0)
-                    df_all['Rt_MAP__new_cases'] = df_all['Rt_MAP__new_cases'] + df_all['new_tests_adjustment']
-
-                    for ci in self.confidence_intervals:
-                        low_val = 1 - ci
-                        high_val = ci
-                        df_all[f'Rt_ci{int(math.floor(100 * low_val))}__new_cases'] += df_all['new_tests_adjustment']
-                        df_all[f'Rt_ci{int(math.floor(100 * high_val))}__new_cases'] += df_all['new_tests_adjustment']
 
                 # ------------------------------------------------
                 # Compute the indicator lag using the curvature
@@ -555,13 +529,6 @@ class RtInferenceEngine:
                                  alpha=.4, color='darkseagreen')
                 plt.scatter(df_all.index, df_all['Rt_MAP__new_hospitalizations'],
                             alpha=1, s=25, color='darkseagreen', label='New Hospitalizations', marker='d')
-
-            if 'new_tests_adjustment' in df_all:
-                plt.scatter(df_all.index, df_all['Rt_MAP__new_tests'],
-                            alpha=1, s=25, color='goldenrod',
-                            label='New Tests', marker='>')
-                plt.scatter(df_all.index, df_all['new_tests_adjustment'],
-                            alpha=1, s=25, color='k', label='New Tests Adjustment', marker='<')
 
             plt.hlines([1.0], *plt.xlim(), alpha=1, color='g')
             plt.hlines([1.1], *plt.xlim(), alpha=1, color='gold')
