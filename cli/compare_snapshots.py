@@ -80,7 +80,7 @@ def compare_snapshots(
 
     if not (compare_snapshot):
         compare_snapshot = _get_compare_snapshot()
-        output_report += f"More info can be found at https://data.covidactnow.org/snapshot/{compare_snapshot}/qa/compared.csv"
+        output_report += f"More info can be found at https://data.covidactnow.org/snapshot/{input_snapshot}/qa/compared.csv"
 
     for state_abbrev in states:
         if not fips:
