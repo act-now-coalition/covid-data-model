@@ -11,10 +11,18 @@ from epiweeks import Week, Year
 from string import Template
 from pyseir import OUTPUT_DIR, load_data
 from pyseir.utils import REF_DATE
-from pyseir.cdc.utils import Target, ForecastTimeUnit, ForecastUncertainty, target_column_name
+from pyseir.cdc.utils import (Target,
+                              ForecastTimeUnit,
+                              ForecastUncertainty,
+                              target_column_name,
+                              aggregate_observations,
+                              smooth_observations,
+                              number_of_units,
+                              load_and_aggregate_observations,
+                              DATE_FORMAT)
 from pyseir.inference.fit_results import load_inference_result, load_mle_model
-from pyseir.load_data import HospitalizationDataType
-from statsmodels.nonparametric.kernel_regression import KernelReg
+
+
 
 
 """
@@ -61,7 +69,6 @@ TARGETS_TO_NAMES = {'cum death': 'cumulative deaths',
                     'inc death': 'incident deaths',
                     'inc hosp': 'incident hospitalizations'}
 
-DATE_FORMAT = '%Y-%m-%d'
 # units of forecast target.
 FORECAST_TIME_UNITS = ['day', 'wk']
 # number of weeks ahead for forecast.
@@ -195,57 +202,15 @@ class OutputMapper:
                                     for n in range(FORECAST_WEEKS_NUM * 7)]
         self.quantiles = quantiles
         self.forecast_uncertainty = ForecastUncertainty(forecast_uncertainty)
-        self.observations = self.load_observations()
+        self.observations = load_and_aggregate_observations(fips=self.fips,
+                                                            units=self.forecast_time_units,
+                                                            targets=self.targets)
         self.model = load_mle_model(self.fips)
 
         self.fit_results = load_inference_result(self.fips)
 
         self.errors = None
         self.result = None
-
-
-    def load_observations(self):
-        """
-        Load observations based on type of target and unit.
-
-        Returns
-        -------
-
-        """
-        times, observed_new_cases, observed_new_deaths = \
-            load_data.load_new_case_data_by_state(us.states.lookup(self.fips).name,
-                                                  REF_DATE)
-        dates = [timedelta(int(t)) + REF_DATE for t in times]
-
-        hospital_times, hospitalizations, hospitalization_data_type = \
-            load_data.load_hospitalization_data_by_state(us.states.lookup(self.fips).abbr,
-                                                         REF_DATE)
-        if hospital_times is not None:
-            hospital_dates = [timedelta(int(t)) + REF_DATE for t in hospital_times]
-
-        observations = defaultdict(dict)
-        for target in self.targets:
-            if target is Target.CUM_DEATH:
-                observations[target.value] = pd.Series(observed_new_deaths.cumsum(),
-                                                       index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
-            elif target is Target.INC_DEATH:
-                smoothed_observed_new_deaths = self._smooth_observation(times, observed_new_deaths)
-                observations[target.value] = pd.Series(smoothed_observed_new_deaths.clip(min=0),
-                                                       index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
-            elif target is Target.INC_HOSP:
-                if (hospital_times is not None) and \
-                    (hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS):
-                    observed_hospitalizations = np.append(hospitalizations[0],
-                                                          np.diff(hospitalizations))
-                    smoothed_observed_hospitalizations = self._smooth_observation(hospital_times,
-                                                                                  observed_hospitalizations)
-                    observations[target.value] = pd.Series(smoothed_observed_hospitalizations.clip(min=0),
-                                                           index=pd.DatetimeIndex(hospital_dates).strftime(
-                                                                 DATE_FORMAT))
-                else:
-                    observations[target.value] = None
-
-        return observations
 
 
     def generate_forecast(self, start_date=None, align_with_observations=True):
@@ -267,68 +232,84 @@ class OutputMapper:
             as columns, where unit can be 'day' or 'wk' depending on the
             forecast_time_units.
         """
-        start_date = start_date or datetime.strptime(self.observations['cum death'].index[-1], DATE_FORMAT)
+        # start date as date of latest observation
+        start_date = start_date or datetime.strptime(self.observations['cum death']['day'].index[-1],
+                                                     DATE_FORMAT)
         forecast_days_since_ref_date = list(range((start_date - REF_DATE).days,
                                                   (self.forecast_time_range[-1] - REF_DATE).days + 1))
         forecast_dates = [timedelta(t) + REF_DATE for t in forecast_days_since_ref_date]
 
         forecast_given_time_range = \
-            lambda forecast, t_list: np.interp(forecast_days_since_ref_date,
-                                               [self.fit_results['t0'] + t for t in t_list], forecast)
+            lambda forecast: np.interp(forecast_days_since_ref_date,
+                                       [self.fit_results['t0'] + t for t in self.model.t_list],
+                                       forecast)
 
-        forecast = {}
+        forecast = defaultdict(dict)
         for target in self.targets:
-            if target is Target.INC_DEATH:
-                forecast[target.value] = forecast_given_time_range(self.model.results['total_deaths_per_day'],
-                                                                   self.model.t_list)
+            for unit in self.forecast_time_units:
+                if target is Target.INC_DEATH:
+                    predictions = forecast_given_time_range(self.model.results['total_deaths_per_day'])
 
-            elif target is Target.INC_HOSP:
-                forecast[target.value] = forecast_given_time_range(np.append([0],
-                                                                   np.diff(self.model.results['HGen_cumulative']
-                                                                         + self.model.results['HICU_cumulative'])),
-                                                                   self.model.t_list)
+                elif target is Target.INC_HOSP:
+                    predictions = forecast_given_time_range(
+                        np.append([0], np.diff(self.model.results['HGen_cumulative']
+                                             + self.model.results['HICU_cumulative'])))
 
-            elif target is Target.CUM_DEATH:
-                forecast[target.value] = forecast_given_time_range(self.model.results['D'], self.model.t_list)
+                elif target is Target.CUM_DEATH:
+                    predictions = forecast_given_time_range(self.model.results['D'])
 
-            else:
-                raise ValueError(f'Target {target} is not implemented')
+                else:
+                    raise ValueError(f'Target {target} is not implemented')
 
+                dates, predictions = aggregate_observations(forecast_dates,
+                                                            predictions,
+                                                            unit,
+                                                            target)
+                df = pd.DataFrame(
+                        {'value': predictions.clip(min=0),
+                         'target_end_date': dates,
+                         'forecast_days': [(t - start_date).days for t in dates]},
+                        index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
 
-            forecast[target.value] = pd.DataFrame({'value': forecast[target.value].clip(min=0),
-                                                   'target_end_date': forecast_dates,
-                                                   'forecast_days': [(t - start_date).days for t in forecast_dates]},
-                                                   index=pd.DatetimeIndex(forecast_dates).strftime(DATE_FORMAT))
-            forecast[target.value]['target_end_date'] = forecast[target.value]['target_end_date'].astype('datetime64['
-                                                                                                        'D]')
-            forecast[target.value]['type'] = 'point'
+                n_units = number_of_units(self.forecast_date, dates, unit)
+
+                df['target'] = list(target_column_name(n_units, target, unit))
+                df['target_end_date'] = df['target_end_date'].astype('datetime64[D]')
+                df['type'] = 'point'
+
+                forecast[target.value][unit.value] = df
 
         if align_with_observations:
             forecast = self.align_forecast_with_observations(forecast)
 
         return forecast
 
+
     def align_forecast_with_observations(self, forecast, ref_observation_date=None):
         """
 
         """
-
-        ref_observation_date = ref_observation_date or self.observations['cum death'].index[-1]
+        # shift based on lastest observations
+        ref_observation_date = ref_observation_date or self.observations['cum death']['day'].index[-1]
 
         shifted_forecast = forecast.copy()
         # align with observations
         for target in self.targets:
-            if self.observations[target.value] is not None:
-                observation = self.observations[target.value]
+            for unit in self.forecast_time_units:
+                if self.observations[target.value][unit.value] is not None:
+                    observation = self.observations[target.value][unit.value]
 
-                shifted_forecast[target.value]['value'] += \
-                    (observation.loc[ref_observation_date]
-                   - forecast[target.value]['value'].loc[ref_observation_date]).clip(min=0)
+                    shifted_forecast[target.value][unit.value]['value'] += \
+                        (observation.loc[ref_observation_date]
+                       - forecast[target.value][unit.value]['value'].loc[ref_observation_date])
+
+                    shifted_forecast[target.value][unit.value]['value'] = \
+                        shifted_forecast[target.value][unit.value]['value'].clip(lower=0)
 
         return shifted_forecast
 
 
-    def calculate_errors(self):
+    def calculate_errors(self, ref_unit=ForecastTimeUnit.DAY):
         """
         Collect distribution of absolute errors abs(y_t - y_t|y_t-1).
 
@@ -337,14 +318,15 @@ class OutputMapper:
 
         """
         self.errors = defaultdict(list)
-        for date in self.observations['cum death'].index[:-1]:
+        for date in self.observations['cum death'][ref_unit.value].index[:-1]:
             forecast = self.generate_forecast(start_date=datetime.strptime(date, DATE_FORMAT))
             for target in self.targets:
-                if self.observations[target.value] is not None:
-                    next_day = datetime.strftime(datetime.strptime(date, DATE_FORMAT) + timedelta(1), DATE_FORMAT)
-                    if next_day in self.observations[target.value].index:
-                        pred = forecast[target.value]['value'].loc[next_day]
-                        observ = self.observations[target.value].loc[next_day]
+                if self.observations[target.value][ref_unit.value] is not None:
+                    next_day = datetime.strftime(datetime.strptime(date, DATE_FORMAT) + timedelta(1),
+                                                 DATE_FORMAT)
+                    if next_day in self.observations[target.value][ref_unit.value].index:
+                        pred = forecast[target.value][ref_unit.value]['value'].loc[next_day]
+                        observ = self.observations[target.value][ref_unit.value].loc[next_day]
                         self.errors[target.value].append(abs(pred - observ))
 
         return self.errors
@@ -371,20 +353,23 @@ class OutputMapper:
           :  np.array
             Data after the adjustment.
         """
+
         if self.forecast_uncertainty is ForecastUncertainty.DEFAULT:
-            return np.maximum(forecast + scipy.stats.norm(loc=0, scale=error_std).ppf(quantiles), 0)
+            scale_factor = 1
         elif self.forecast_uncertainty is ForecastUncertainty.NAIVE:
-            return np.maximum(forecast + scipy.stats.norm(loc=0, scale=error_std*h**0.5).ppf(quantiles), 0)
+            scale_factor = h**0.5
         else:
             raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
 
-    def _smooth_observation(self, time, observations):
-        """
+        #if forecast >= 50:
+        values = forecast + scipy.stats.norm(
+                loc=0, scale=np.sqrt(error_std**2*scale_factor + forecast)).ppf(quantiles)
+        '''else:
+            values = scipy.stats.poisson(mu=round(error_std*scale_factor + forecast)).ppf(quantiles) \
+                     - error_std*scale_factor'''
+        values = values.clip(min=0)
 
-        """
-        kr = KernelReg(observations, time, 'c')
-        smoothed, _ = kr.fit(time)
-        return smoothed
+        return values
 
 
     def generate_forecast_quantiles(self, forecast, quantiles=QUANTILES):
@@ -406,23 +391,27 @@ class OutputMapper:
             Forecast of target at given unit (daily or weekly), with shape (
             len(self.forecast_time_range),)
         """
-        forecast_quantiles = dict()
+        forecast_quantiles = defaultdict(dict)
         for target_name in forecast:
             if target_name in self.errors:
                 error_std = np.std(self.errors[target_name])
             else:
-                error_std = np.sqrt(forecast[target_name]['value'].iloc[0])
+                error_std = np.sqrt(forecast[target_name]['day']['value'].iloc[0])
 
-            forecast_quantiles[target_name] = forecast[target_name].apply(
-                lambda r: self._calculate_forecast_quantiles(forecast=r.value,
-                                                             error_std=error_std,
-                                                             h=r.forecast_days,
-                                                             quantiles=quantiles), axis=1).rename('value')
+            for unit_name in forecast[target_name]:
+                df = forecast[target_name][unit_name].set_index(['target', 'target_end_date'])\
+                                                     .apply(
+                    lambda r: self._calculate_forecast_quantiles(forecast=r.value,
+                                                                 error_std=error_std,
+                                                                 h=r.forecast_days,
+                                                                 quantiles=quantiles), axis=1)\
+                    .rename('value')
 
-            forecast_quantiles[target_name] = pd.DataFrame(forecast_quantiles[target_name].explode())
-            forecast_quantiles[target_name]['target_end_date'] = forecast[target_name]['target_end_date']
-            forecast_quantiles[target_name]['quantile'] = np.tile(self.quantiles, forecast[target_name].shape[0])
-            forecast_quantiles[target_name]['type'] = 'quantile'
+                df = df.explode().reset_index()
+                df['quantile'] = np.tile(self.quantiles,
+                                         forecast[target_name][unit_name].shape[0])
+                df['type'] = 'quantile'
+                forecast_quantiles[target_name][unit_name] = df
 
         return forecast_quantiles
 
@@ -466,8 +455,10 @@ class OutputMapper:
         result = list()
         for target_name in forecast_quantile:
             for unit in self.forecast_time_units:
-                df = pd.concat([forecast_quantile[target_name], forecast[target_name]])
-                if unit is ForecastTimeUnit.DAY:
+                df = pd.concat([forecast_quantile[target_name][unit.value],
+                                forecast[target_name][unit.value]])
+                result.append(df)
+                '''if unit is ForecastTimeUnit.DAY:
                     num_of_units = [(datetime.date(datetime.strptime(str(t).partition('T')[0], DATE_FORMAT))
                                    - datetime.date(self.forecast_date)).days for t in df['target_end_date'].values]
 
@@ -510,7 +501,7 @@ class OutputMapper:
                                      self.forecast_date).days // 7 + 1 for t in df['target_end_date'].values]
 
                 df['target'] = list(target_column_name(num_of_units, Target(target_name), unit))
-                result.append(df)
+                result.append(df)'''
 
         result = pd.concat(result)
         result = result[result['target_end_date'] >= self.forecast_date]
@@ -604,7 +595,7 @@ def run_all(parallel=False):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    fips_list = list(df_whitelist['fips'].str[:2].unique())
+    fips_list = list(df_whitelist['fips'].str[:2].unique())[:6]
 
     if parallel:
         p = Pool()
@@ -613,6 +604,7 @@ def run_all(parallel=False):
     else:
         results = list()
         for fips in fips_list:
+            print(fips)
             result = OutputMapper.run_for_fips(fips)
             results.append(result)
 
