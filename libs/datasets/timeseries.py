@@ -112,7 +112,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             aggregation_level=aggregation_level,
             country=country,
             fips=fips,
-            state=None,
+            state=state,
             states=states,
             on=on,
             after=after,
