@@ -67,7 +67,7 @@ class WebUIDataAdaptorV1:
     def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
         """
         Fetches the latest county hospitalization and icu utilization.
-        
+
         If current data is available, we return that.
         If not, current values are esimated from cummulative.
         """

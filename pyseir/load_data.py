@@ -535,11 +535,7 @@ def get_current_hospitalized_for_state(state: str, t0: datetime, category: str):
 
 
 def get_current_hospitalized_for_county(fips: str, t0: datetime, category: str):
-    df = (
-        get_hospitalization_data()
-        .get_subset(AggregationLevel.COUNTY, country="USA", fips=fips)
-        .get_data(AggregationLevel.COUNTY, country="USA", fips=fips)
-    )
+    df = get_hospitalization_data().get_data(AggregationLevel.COUNTY, country="USA", fips=fips)
     return _get_current_hospitalized(df, t0, category)
 
 
