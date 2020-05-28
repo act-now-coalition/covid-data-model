@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import ujson as json
-import logging
+import structlog
 import us
 from datetime import timedelta, datetime
 from multiprocessing import Pool
@@ -17,7 +17,7 @@ import libs.datasets.can_model_output_schema as schema
 
 from typing import Tuple
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger()
 
 
 class WebUIDataAdaptorV1:
@@ -100,17 +100,17 @@ class WebUIDataAdaptorV1:
         fips: str
             County FIPS code to map.
         """
-        log.info("Mapping output to WebUI for %s, %s", self.state, fips)
+        log.info("Mapping output to WebUI for.", state=self.state, fips=fips)
         pyseir_outputs = load_data.load_ensemble_results(fips)
 
         if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
-            log.info("Excluding %s due to white list...", fips)
+            log.info("Excluding fips due to white list.", fips=fips)
             return
         try:
             fit_results = load_inference_result(fips)
             t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
         except (KeyError, ValueError):
-            log.error("Fit result not found for %s. Skipping...", fips)
+            log.error("Fit result not found for fips. Skipping.", fips=fips)
             return
         population = self._get_population(fips)
 
@@ -138,10 +138,10 @@ class WebUIDataAdaptorV1:
                     fips, t0_simulation
                 )
                 log.info(
-                    "Actual county hospitalizations for fips %s: %s, icu: %s",
-                    fips,
-                    current_county_hosp,
-                    current_county_icu,
+                    "Actual county hospitalizations.",
+                    fips=fips,
+                    hospitalized=current_county_hosp,
+                    icu=current_county_icu,
                 )
                 inferred_county_hosp = load_data.get_compartment_value_on_date(
                     fips=fips,
@@ -159,10 +159,10 @@ class WebUIDataAdaptorV1:
                     ensemble_results=pyseir_outputs,
                 )
                 log.info(
-                    "Inferred county hospitalized for fips %s: %s, icu: %s",
-                    fips,
-                    inferred_county_hosp,
-                    inferred_county_icu,
+                    "Inferred county hospitalizations",
+                    fips=fips,
+                    hospitalized=inferred_county_hosp,
+                    icu=inferred_county_icu,
                 )
                 county_icu = inferred_county_icu
                 if self._is_valid_count_metric(current_county_hosp):
@@ -298,7 +298,7 @@ class WebUIDataAdaptorV1:
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
             except (ValueError, KeyError) as e:
-                log.warning("Clearing Rt in output for fips %s", fips, exc_info=e)
+                log.warning("Clearing Rt in output for fips.", fips=fips, exc_info=e)
                 output_model[schema.RT_INDICATOR] = "NaN"
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
