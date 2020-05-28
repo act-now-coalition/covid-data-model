@@ -373,8 +373,8 @@ class ModelFitter:
             The SEIR model that has been run.
         """
         #Maybe start here Natasha
-        suppression_policy = suppression_policies.generate_three_step_policy(
-            self.t_list, eps, t_break, eps2, t_delta_phases
+        suppression_policy = suppression_policies.get_epsilon_interpolator(
+            eps, t_break, eps2, t_delta_phases
         )
         #print('Natasha: Suppression policy')
         #print(suppression_policy)
