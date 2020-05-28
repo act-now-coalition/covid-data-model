@@ -3,7 +3,7 @@ import pandas as pd
 import ujson as json
 import logging
 import us
-from datetime import timedelta, datetime, date
+from datetime import timedelta, datetime
 from multiprocessing import Pool
 from pyseir import load_data
 from pyseir.inference.fit_results import load_inference_result, load_Rt_result
