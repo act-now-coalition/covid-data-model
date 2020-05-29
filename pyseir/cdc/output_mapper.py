@@ -11,15 +11,13 @@ from epiweeks import Week, Year
 from string import Template
 from pyseir import OUTPUT_DIR, load_data
 from pyseir.utils import REF_DATE
-from pyseir.cdc.utils import (Target,
-                              ForecastTimeUnit,
-                              ForecastUncertainty,
-                              target_column_name,
-                              aggregate_observations,
-                              smooth_observations,
-                              number_of_units,
-                              load_and_aggregate_observations,
-                              DATE_FORMAT)
+from pyseir.cdc.definitions import (Target, ForecastTimeUnit,
+                                    ForecastUncertainty, DATE_FORMAT)
+from pyseir.cdc.utils import (target_column_name,
+                              aggregate_timeseries,
+                              smooth_timeseries,
+                              number_of_time_units,
+                              load_and_aggregate_observations)
 from pyseir.inference.fit_results import load_inference_result, load_mle_model
 
 
@@ -29,29 +27,33 @@ from pyseir.inference.fit_results import load_inference_result, load_mle_model
 This mapper maps current pyseir model output to match cdc format.
 
 Output file should have columns:
-- forecast_date: the date on which the submitted forecast data was made available in YYYY-MM-DD format
-- target: Values in the target column must be a character (string) and have format "<day_num> day ahead <target_measure>"
-          where day_num is number of days since forecast_date to each date in forecast time range. 
+- forecast_date: the date on which the submitted forecast data was made available 
+                 in YYYY-MM-DD format
+- target: Values in the target column must be a character (string) and have format 
+         "<day_num> day ahead <target_measure>" where day_num is number of 
+         days since forecast_date to each date in forecast time range. 
 - target_end_date: end date of forecast in YYYY-MM-DD format.
 - location: 2 digit FIPS code
-- type: "quantile" or "point"
+- type: "quantile"
 - quantile: quantiles of forecast target measure, with format 0.###.
-- value: value of target measure at given quantile and forecast date for given location.
-and optional: 
-- location_name: name of the location that can be useful to identify the location. 
+- value: value of target measure at given quantile and forecast date for given 
+         location
+- location_name: name of the location that can be useful to identify the 
+                 location. 
 
 For details on formatting, check:
 https://github.com/reichlab/covid19-forecast-hub/blob/master/data-processed/README.md
 
 The output includes:
-- <forecast_date>_<team>_<model>_<fips>.csv
+- <forecast_date>-<team>-<model>_<fips>.csv
   File that contain the output with above columns for a specific fips.
-- <forecast_date>_<team>_<model>.csv
+- <forecast_date>-<team>-<model>.csv
   File that contain the output with above columns for all US states fips.
 - metadata-CovidActNow.txt
   Metadata with most up-to-date forecast date.
   
-Where default value of forecast_date, team and model can be found from corresponding global variables.
+Where default value of forecast_date, team and model can be found from 
+corresponding global variables.
 """
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -93,26 +95,33 @@ class OutputMapper:
     This mapper maps CAN SEIR model inference results to the format required
     for CDC model submission. For the given State FIPS code, it reads in the
     most up-to-date MLE inference (mle model + fit_results json file),
-    and runs the model ensemble when fixing the parameters varied for model
-    fitting at their MLE estimate. Quantile of forecast is then derived from
-    the forecast ensemble weighted by the chi square obtained by fitting
-    corresponding model to observed cases, deaths w/o hospitalizations,
-    aiming to obtain the uncertainty associated with the prior distribution
-    of the parameters not varied during model fitting and the (
-    unknown) likelihood function (L(y_1:t|theta)). This for sure will
-    underestimate the level of uncertainty of the forecast since it does not
-    take into account the parameters varied for MLE inference.
-    However, the error associated with the parameters for inference is
-    generally small, so their variations are also relatively small.
+    and aligns the forecast with the latest observations.
+
+    Quantile of forecast is derived assuming uncertainty from two
+    sources: distribution of forecast error and distribution of forecast
+    itself. Distribution of forecast error is obtained by collecting
+    historical 1-day step forecast: y_t+1 - y^hat_t+1 | y_t with t varied from
+    first day of observation to one day before the latest observation.
+
+    For nth day forecast,
+        forecast error ~ N(0, error_std)
+        where error_std
+        = (forecast + variance of historical 1-day error * s(n)) ** 0.5
+    and s(n) is the factor that increase the forecast uncertainty based on
+    n, currently s(n) is either 1 or n ** 0.5.
 
     The output has the columns required for CDC model ensemble
     submission (check description of results). It currently supports daily
     and weekly forecast.
 
+
     Attributes
     ----------
     model: SEIRModel
         SEIR model with MLE parameter estimates.
+    fit_results: dict
+        Maximum likelihood parameters inferred by fitting SEIR model to
+        observed cases/deaths/hospitalizations.
     forecast_given_time_range: callable
         Makes forecast of a target during the forecast time window given a
         model's prediction of target and model's t_list (t steps since the
@@ -128,8 +137,22 @@ class OutputMapper:
         days the forecast is made ahead and total days of observations.
         Should be interpretable by ForecastUncertainty. Currently supports:
         - ForecastUncertainty.DEFAULT: no adjustment
-        - ForecastUncertainty.NAIVE: rescale the standard deviation by factor (1
-                                     + days_ahead  ** 0.5)
+        - ForecastUncertainty.NAIVE: rescale the standard deviation by factor
+          (days_ahead  ** 0.5)
+    observations: dict(dict)
+        Contains observed cumulative deaths, incident deaths,
+        and incident hospitalizations, with target name as primary key and
+        forecast time unit as secondary key, and corresponding time series of
+        observations as values:
+        <target>:
+            <forecast time unit>: pd.Series
+                With date string as index and observations as values.
+        Observations for hospitalizations can be None if no
+        cumulative hospitalization data is available for the FIPS code.
+    errors: dict
+        Contains all historical 1-day step absolute forecast error for each
+        type of observation: cumulative death, incident death, incident
+        hospitalization.
     result: pd.DataFrame
         Output that meets requirement for CDC model ensemble submission for
         given FIPS code.
@@ -219,24 +242,38 @@ class OutputMapper:
 
         Parameters
         ----------
-        model: list(SEIRModel) or NoneType
-            List of SEIR models run under parameter sets randomly generated
-            from the parameter prior distributions.
+        start_date: datetime.datetime
+            First date of forecast, default to date of latest observation.
+        align_with_observations: bool
+            Whether shift the forecast to match the latest observation.
 
         Returns
         -------
-        forecast_ensemble: dict(pd.DataFrame)
-            Contains forecast of target within the forecast time window run by
-            each model from the model ensemble. With "<num> <unit> ahead
-            <target_measure>" as index, and corresponding value from each model
-            as columns, where unit can be 'day' or 'wk' depending on the
-            forecast_time_units.
+        forecast: dict(pd.DataFrame)
+            Contains forecast of target within the forecast time window.
+            With targets as primary keys and units as secondary keys and
+            corresponding forecast time series as values:
+            <target>:
+                <unit>: pd.DataFrame
+                 With columns:
+                    - target: forecat target name with format
+                              '<n> <unit> ahead <target type>'
+                              where n is the number of time units, unit can
+                              be day or wk, and target type is 'cum death',
+                              'inc death' or 'inc hosp'.
+                    - value: str, maximum likelihood forecast value
+                    - target_end_date: np.datetime64, date of the forecast
+                    - forecast_days: days forward of forecast since lastest
+                                     observation
         """
         # start date as date of latest observation
         start_date = start_date or datetime.strptime(self.observations['cum death']['day'].index[-1],
                                                      DATE_FORMAT)
-        forecast_days_since_ref_date = list(range((start_date - REF_DATE).days,
-                                                  (self.forecast_time_range[-1] - REF_DATE).days + 1))
+
+        # record forecast 10 days before the last observation to enable
+        # calculation of week ahead forecast
+        forecast_days_since_ref_date = list(range((start_date - REF_DATE).days - 10,
+                                               (self.forecast_time_range[-1] - REF_DATE).days + 1))
         forecast_dates = [timedelta(t) + REF_DATE for t in forecast_days_since_ref_date]
 
         forecast_given_time_range = \
@@ -261,7 +298,7 @@ class OutputMapper:
                 else:
                     raise ValueError(f'Target {target} is not implemented')
 
-                dates, predictions = aggregate_observations(forecast_dates,
+                dates, predictions = aggregate_timeseries(forecast_dates,
                                                             predictions,
                                                             unit,
                                                             target)
@@ -271,11 +308,11 @@ class OutputMapper:
                          'forecast_days': [(t - start_date).days for t in dates]},
                         index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
 
-                n_units = number_of_units(self.forecast_date, dates, unit)
+                n_units = number_of_time_units(self.forecast_date,
+                                               dates, unit)
 
                 df['target'] = list(target_column_name(n_units, target, unit))
                 df['target_end_date'] = df['target_end_date'].astype('datetime64[D]')
-                df['type'] = 'point'
 
                 forecast[target.value][unit.value] = df
 
@@ -285,18 +322,58 @@ class OutputMapper:
         return forecast
 
 
-    def align_forecast_with_observations(self, forecast, ref_observation_date=None):
+    def align_forecast_with_observations(self, forecast):
         """
+        Shift forecast curve so that its value on the date of lastest
+        observation matches the observation.
+
+        Parameters
+        ----------
+        forecast: dict(pd.DataFrame)
+            Contains forecast of target within the forecast time window.
+            With targets as primary keys and units as secondary keys and
+            corresponding forecast time series as values:
+            <target>:
+                <unit>: pd.DataFrame
+                 With columns:
+                    - target: forecat target name with format
+                              '<n> <unit> ahead <target type>'
+                              where n is the number of time units, unit can
+                              be day or wk, and target type is 'cum death',
+                              'inc death' or 'inc hosp'.
+                    - value: str, maximum likelihood forecast value
+                    - target_end_date: np.datetime64, date of the forecast
+                    - forecast_days: days forward of forecast since lastest
+                                     observation
+
+        Returns
+        -------
+        shifted_forecast: dict(pd.DataFrame)
+            Contains forecast of target within the forecast time window
+            shifted based on latest observations.
+            With targets as primary keys and units as secondary keys and
+            corresponding forecast time series as values:
+            <target>:
+                <unit>: pd.DataFrame
+                 With columns:
+                    - target: forecat target name with format
+                              '<n> <unit> ahead <target type>'
+                              where n is the number of time units, unit can
+                              be day or wk, and target type is 'cum death',
+                              'inc death' or 'inc hosp'.
+                    - value: str, maximum likelihood forecast value
+                    - target_end_date: np.datetime64, date of the forecast
+                    - forecast_days: days forward of forecast since lastest
+                                     observation
 
         """
-        # shift based on lastest observations
-        ref_observation_date = ref_observation_date or self.observations['cum death']['day'].index[-1]
-
         shifted_forecast = forecast.copy()
         # align with observations
         for target in self.targets:
             for unit in self.forecast_time_units:
                 if self.observations[target.value][unit.value] is not None:
+                    ref_observation_date = self.observations[target.value][
+                        unit.value].index[-1]
                     observation = self.observations[target.value][unit.value]
 
                     shifted_forecast[target.value][unit.value]['value'] += \
@@ -309,33 +386,48 @@ class OutputMapper:
         return shifted_forecast
 
 
-    def calculate_errors(self, ref_unit=ForecastTimeUnit.DAY):
+    def calculate_errors(self, unit=ForecastTimeUnit.DAY):
         """
-        Collect distribution of absolute errors abs(y_t - y_t|y_t-1).
+        Collect distribution of historical absolute errors 1-day forecast abs(
+        y_t - y^hat_t|y_t-1) for t from second earliest available observation to
+        latest available observation.
 
         Parameters
         ----------
+        unit: ForecastTimeUnit
+            Time unit of forecast to calculate the error, default
+            ForecastTimeUnit.DAY.
 
+        Returns
+        -------
+          :  dict
+            Contains all historical 1-day step absoluate forecast error for
+            each type of observation: cumulative death, incident death,
+            incident hospitalization.
         """
         self.errors = defaultdict(list)
-        for date in self.observations['cum death'][ref_unit.value].index[:-1]:
+        for date in self.observations['cum death'][unit.value].index[:-1]:
             forecast = self.generate_forecast(start_date=datetime.strptime(date, DATE_FORMAT))
             for target in self.targets:
-                if self.observations[target.value][ref_unit.value] is not None:
+                if self.observations[target.value][unit.value] is not None:
                     next_day = datetime.strftime(datetime.strptime(date, DATE_FORMAT) + timedelta(1),
                                                  DATE_FORMAT)
-                    if next_day in self.observations[target.value][ref_unit.value].index:
-                        pred = forecast[target.value][ref_unit.value]['value'].loc[next_day]
-                        observ = self.observations[target.value][ref_unit.value].loc[next_day]
+                    if next_day in self.observations[target.value][unit.value].index:
+                        pred = forecast[target.value][unit.value]['value'].loc[next_day]
+                        observ = self.observations[target.value][unit.value].loc[next_day]
                         self.errors[target.value].append(abs(pred - observ))
+
+        self.errors = dict(self.errors)
 
         return self.errors
 
 
-    def _calculate_forecast_quantiles(self, forecast, error_std, h, quantiles):
+    def _calculate_forecast_quantiles(self, forecast, error_std, h, quantiles, baseline=0):
         """
-        Rescale forecast standard deviation by streching/shrinking the forecast
-        distribution (gaussian) around the mean.
+        Generate forecast quantiles based on standard deviation of historical
+        forecast errors, forecast, number of days forward. Values for
+        given quantile are clipped at given baseline value.
+
         Currently supports two approaches:
         - default: no adjustment
         - naive: rescale the standard deviation by factor (days_ahead  **
@@ -343,10 +435,16 @@ class OutputMapper:
 
         Parameters
         ----------
-        data: np.array or list
-            Data sample from the distribution.
+        forecast: float
+            Value of forecast.
+        error_std: float
+            Standard deviation of historical forecast errors.
         h: int or float
-            Time step of forecast
+            Time step of forecast in days.
+        quantiles: list or np.array
+            Quantile
+        baseline: float
+            Minimum value to clip the values at each quantile.
 
         Returns
         -------
@@ -361,16 +459,12 @@ class OutputMapper:
         else:
             raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
 
-        #if forecast >= 50:
-        values = forecast + scipy.stats.norm(
-                loc=0, scale=np.sqrt(error_std**2*scale_factor + forecast)).ppf(quantiles)
-        '''else:
-            values = scipy.stats.poisson(mu=round(error_std*scale_factor + forecast)).ppf(quantiles) \
-                     - error_std*scale_factor'''
-        values = values.clip(min=0)
+        values = scipy.stats.norm(loc=forecast,
+                                  scale=np.sqrt((error_std * scale_factor) ** 2 + forecast)) \
+                      .ppf(quantiles)
+        values = values.clip(min=baseline)
 
         return values
-
 
     def generate_forecast_quantiles(self, forecast, quantiles=QUANTILES):
         """
@@ -378,18 +472,44 @@ class OutputMapper:
 
         Parameters
         ----------
-        model: SEIRModel
-            SEIR model to run the forecast.
-        target: Target
-            The target to forecast.
-        unit: ForecastTimeUnit
-            Time unit to aggregate the forecast.
+        forecast: dict
+            Contains forecast of target within the forecast time window.
+            With targets as primary keys and units as secondary keys and
+            corresponding forecast time series as values:
+            <target>:
+                <unit>: pd.DataFrame
+                 With columns:
+                    - target: forecat target name with format
+                              '<n> <unit> ahead <target type>'
+                              where n is the number of time units, unit can
+                              be day or wk, and target type is 'cum death',
+                              'inc death' or 'inc hosp'.
+                    - value: str, maximum likelihood forecast value
+                    - target_end_date: np.datetime64, date of the forecast
+                    - forecast_days: days forward of forecast since lastest
+                                     observation
+
+        quantiles: np.array or list
+            Quantile of forecast.
 
         Returns
         -------
-        target_forecast: np.array
-            Forecast of target at given unit (daily or weekly), with shape (
-            len(self.forecast_time_range),)
+        forecast_quantiles: dict
+            Contains forecast of target within the forecast time window.
+            With targets as primary keys and units as secondary keys and
+            corresponding forecast time series as values:
+            <target>:
+                <unit>: pd.DataFrame
+                 With columns:
+                    - target: forecat target name with format
+                              '<n> <unit> ahead <target type>'
+                              where n is the number of time units, unit can
+                              be day or wk, and target type is 'cum death',
+                              'inc death' or 'inc hosp'.
+                    - value: str, maximum likelihood forecast value
+                    - target_end_date: np.datetime64, date of the forecast
+                    - quantile: days forward of forecast since lastest
+                                     observation
         """
         forecast_quantiles = defaultdict(dict)
         for target_name in forecast:
@@ -398,14 +518,27 @@ class OutputMapper:
             else:
                 error_std = np.sqrt(forecast[target_name]['day']['value'].iloc[0])
 
+            # For cumulative death forecast should not fall below the lastest
+            #  observed death.
+            if Target(target_name) is Target.CUM_DEATH:
+                baseline = \
+                    self.observations[Target(target_name).value]['day'].iloc[-1]
+            # For incident death/hospitalization, forecast should not fall
+            # below 0
+            else:
+                baseline = 0
+
             for unit_name in forecast[target_name]:
-                df = forecast[target_name][unit_name].set_index(['target', 'target_end_date'])\
-                                                     .apply(
-                    lambda r: self._calculate_forecast_quantiles(forecast=r.value,
-                                                                 error_std=error_std,
-                                                                 h=r.forecast_days,
-                                                                 quantiles=quantiles), axis=1)\
-                    .rename('value')
+                df = forecast[target_name][unit_name]\
+                    .set_index(['target', 'target_end_date'])\
+                    .apply(
+                    lambda r: self._calculate_forecast_quantiles(
+                        forecast=r.value,
+                        error_std=error_std,
+                        h=r.forecast_days,
+                        quantiles=quantiles,
+                        baseline=baseline),
+                    axis=1).rename('value')
 
                 df = df.explode().reset_index()
                 df['quantile'] = np.tile(self.quantiles,
@@ -418,8 +551,10 @@ class OutputMapper:
 
     def run(self):
         """
-        Runs forecast ensemble. Results contain quantiles of
-        the forecast targets and saves results to csv file.
+        Makes MLE forecast, calculating historical forecast errors and
+        quantiles of forecast.
+        Results contain quantiles of the forecast targets and saves results
+        to csv file.
 
         Returns
         -------
@@ -455,53 +590,7 @@ class OutputMapper:
         result = list()
         for target_name in forecast_quantile:
             for unit in self.forecast_time_units:
-                df = pd.concat([forecast_quantile[target_name][unit.value],
-                                forecast[target_name][unit.value]])
-                result.append(df)
-                '''if unit is ForecastTimeUnit.DAY:
-                    num_of_units = [(datetime.date(datetime.strptime(str(t).partition('T')[0], DATE_FORMAT))
-                                   - datetime.date(self.forecast_date)).days for t in df['target_end_date'].values]
-
-                elif unit is ForecastTimeUnit.WK:
-                    # Weekly report use forecast on Saturdays
-                    df['is_saturday'] = df['target_end_date'].apply(lambda t: t.weekday() == 5)
-
-                    if Target(target_name) is Target.CUM_DEATH:
-                        df = df[df['is_saturday']]
-                    else:
-                        # if target is incident death or hospitalization, get the cumulative sum
-                        df = df[df['type'] == 'point']
-                        df['week'] = df['target_end_date'].apply(lambda t: Week.fromdate(t).week)
-                        df['week'] -= df['week'].min() - 1 # shift first week to week 1
-                        df = df.groupby('week').agg({'target_end_date': np.max,
-                                                     'value': sum}).reset_index()
-                        df_quantile = df.copy()
-
-                        if target_name in self.errors:
-                            error_std = np.std(self.errors[target_name])
-                        else:
-                            error_std = np.sqrt(df['value'].iloc[0])
-
-                        # assume error has poisson distribution with mean as the forecast value adjusted by forecast
-                        # forward days
-                        df_quantile = df_quantile.set_index('target_end_date').apply(
-                            lambda r: self._calculate_forecast_quantiles(forecast=r.value,
-                                                                         error_std=error_std,
-                                                                         h=r.week * 7,
-                                                                         quantiles=self.quantiles),
-                            axis=1).rename('value')
-                        df_quantile = pd.DataFrame(df_quantile.explode()).reset_index()
-                        df_quantile['quantile'] = np.tile(self.quantiles, df.shape[0])
-                        df_quantile['type'] = 'quantile'
-
-                        df['type'] = 'point'
-                        df = pd.concat([df, df_quantile])
-
-                    num_of_units = [(datetime.strptime(str(t).partition('T')[0], DATE_FORMAT) -
-                                     self.forecast_date).days // 7 + 1 for t in df['target_end_date'].values]
-
-                df['target'] = list(target_column_name(num_of_units, Target(target_name), unit))
-                result.append(df)'''
+                result.append(forecast_quantile[target_name][unit.value])
 
         result = pd.concat(result)
         result = result[result['target_end_date'] >= self.forecast_date]
@@ -604,7 +693,6 @@ def run_all(parallel=False):
     else:
         results = list()
         for fips in fips_list:
-            print(fips)
             result = OutputMapper.run_for_fips(fips)
             results.append(result)
 
