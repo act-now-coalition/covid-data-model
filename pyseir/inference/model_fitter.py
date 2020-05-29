@@ -93,7 +93,7 @@ class ModelFitter:
         eps2=0.3,
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
-        t_delta_phases=15,  # number of days between phase 2 and 3, since each phase is 14 days, we start at 15
+        t_delta_phases=15,  # number of days between phase 2 and 3 (including 14 day transition)
         limit_t_delta_phases=[15, 30],
         error_t_delta_phases=1,
         test_fraction=0.1,
@@ -523,11 +523,14 @@ class ModelFitter:
         in this case we use the inferred R0 to convert eps -> Reff, apply a
         prior, and invert this transform to get back to the epsilon Max
         A-Posteriori (MAP) estimate.
+
+        The prior is gamma.pdf((x - 0.70) / 1.5, 1.1)
         Returns
         -------
         posterior_map_estimate: float
             Max A-Posteriori (MAP) estimate for epsilon.
         """
+        LOWER_LIMIT = 0.70
         R_eff = R0 * eps
         R_eff_stdev = R0 * eps_error
 
@@ -535,7 +538,7 @@ class ModelFitter:
         delta_x = x[1] - x[0]
 
         # This implements a hard lower limit of 0.80
-        prior = gamma.pdf((x - 0.80) / 1.5, 1.1)
+        prior = gamma.pdf((x - LOWER_LIMIT) / 1.5, 1.1)
         # Add a tiny amount to the likelihood to prevent zero common support
         # between the prior and likelihood functions.
         likelihood = norm.pdf(x, R_eff, R_eff_stdev) + 0.0001
@@ -576,17 +579,18 @@ class ModelFitter:
                 f"Epsilon < 0.1 which implies lack of convergence."
             )
 
-        # Sometimes this is estimated to be way to small (incorrectly since we
-        # don't know the true error model). This is a problem for bayesian
-        # updates. Set a lower bound for the error here.
-        self.fit_results["eps_error"] = max(self.fit_results["eps_error"], 0.05)
-
-        # THIS EFFECTIVELY LIMITS R_EFF TO AT LEAST .8 We Should Limit That Somewhere Else
-        self.fit_results["eps"] = self.get_posterior_estimate_eps(
-            R0=self.fit_results["R0"],
-            eps=self.fit_results["eps"],
-            eps_error=self.fit_results["eps_error"],
-        )
+        # After the optimization, we constrain r_eff by applying an external prior on any r_eff
+        # with the essential effect that r_eff can not be less than 0.7
+        for value in ["eps", "eps2"]:
+            # Sometimes the error is estimated to be way to small (incorrectly since we
+            # don't know the true error model). This is a problem for bayesian
+            # updates. Set a lower bound for the error here.
+            self.fit_results[f"{value}_error"] = max(self.fit_results[f"{value}_error"], 0.05)
+            self.fit_results[value] = self.get_posterior_estimate_eps(
+                R0=self.fit_results["R0"],
+                eps=self.fit_results[value],
+                eps_error=self.fit_results["eps_error"],
+            )
 
         if np.isnan(self.fit_results["t0"]):
             logging.error(f"Could not compute MLE values for {self.display_name}")
