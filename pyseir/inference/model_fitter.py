@@ -94,7 +94,7 @@ class ModelFitter:
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
         t_delta_phases=15,  # number of days between phase 2 and 3, since each phase is 14 days, we start at 15
-        limit_t_delta_phases=[15, 30],
+        limit_t_delta_phases=[29, 74],
         error_t_delta_phases=1,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
@@ -125,7 +125,8 @@ class ModelFitter:
         # Seed the random state. It is unclear whether this propagates to the
         # Minuit optimizer.
         np.random.seed(seed=42)
-
+        self.max_fit_day = datetime.now() - self.ref_date - 14 #natasha this keeps the ramp up period within the current data
+        #self.max_fit_day = datetime.date.today() - ref_date
         self.fips = fips
         self.ref_date = ref_date
         self.min_deaths = min_deaths
@@ -380,6 +381,14 @@ class ModelFitter:
             The SEIR model that has been run.
         """
         # Maybe start here Natasha
+
+        max_fit_day = datetime.now() - self.ref_date
+        print(datetime.now())
+        print(max_fit_day)
+        print(self.max_fit_day)
+        print('natasha')
+        if t_break + t_delta_phases + 14 > self.max_fit_day:
+          t_delta_phases = self.max_fit_day - t_break
         suppression_policy = suppression_policies.get_epsilon_interpolator(
             eps, t_break, eps2, t_delta_phases
         )
