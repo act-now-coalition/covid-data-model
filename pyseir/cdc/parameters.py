@@ -21,7 +21,7 @@ FORECAST_WEEKS_NUM = 4
 # Default quantiles required by CDC.
 QUANTILES = np.concatenate([[0.01, 0.025], np.arange(0.05, 0.95, 0.05), [0.975, 0.99]])
 # Time of forecast, default date when this runs.
-FORECAST_DATE = datetime.today() - timedelta(days=1)
+FORECAST_DATE = datetime.today()
 # Next epi week. Epi weeks starts from Sunday and ends on Saturday.
 #if forecast date is Sunday or Monday, next epi week is the week that starts
 #with the latest Sunday.
