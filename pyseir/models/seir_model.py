@@ -262,7 +262,8 @@ class SEIRModel:
         One integral moment.
 
         y: array
-            S, E, A, I, R, HNonICU, HICU, HICUVent, D = y
+            S, E, A, I, R, HNonICU, HICU, HICUVent, D = y, dHAdmissions_general, dHAdmissions_icu,
+            dTotalInfections
         """
         (
             S,
