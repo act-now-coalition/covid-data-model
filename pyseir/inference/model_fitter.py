@@ -20,6 +20,7 @@ from scipy.stats import gamma, norm
 from copy import deepcopy
 from matplotlib import pyplot as plt
 from datetime import datetime, timedelta
+import datetime as dt
 from multiprocessing import Pool
 from pyseir.models import suppression_policies
 from pyseir import load_data
@@ -31,6 +32,8 @@ from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsemble
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
+
+_logger = logging.getLogger(__name__)
 
 
 def calc_chi_sq(obs, predicted, stddev):
@@ -131,6 +134,7 @@ class ModelFitter:
         # self.max_fit_day = datetime.date.today() - ref_date
         self.fips = fips
         self.ref_date = ref_date
+        self.max_fit_date=(dt.date.today() - timedelta(days = 7) - ref_date.date()).days#natasha
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
@@ -138,6 +142,7 @@ class ModelFitter:
         self.percent_error_on_max_observation = percent_error_on_max_observation
         self.t0_guess = 60
         self.with_age_structure = with_age_structure
+
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -387,6 +392,10 @@ class ModelFitter:
         # max_fit_day = datetime.now() - self.ref_date
         # if t_break + t_delta_phases + 14 > self.max_fit_day:
         #    t_delta_phases = self.max_fit_day - t_break
+        #_logger.info(
+        #f"---------------------Natasha: max fit date: {self.max_fit_date}"
+        #)
+
         suppression_policy = suppression_policies.get_epsilon_interpolator(
             eps, t_break, eps2, t_delta_phases
         )
@@ -456,8 +465,14 @@ class ModelFitter:
         """
         l = locals()
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
-        model = self.run_model(**model_kwargs)
 
+
+        _logger.info(f"t0: {t0} t_break: {t_break} t_delta_phases: {t_delta_phases} self.max_fit_date: {self.max_fit_date}")
+        if t0 + t_break + t_delta_phases + 14 + 7 < self.max_fit_date:
+          model = self.run_model(**model_kwargs)
+        else:
+          _logger.info("--------not considering models that fit that far out into future, must contain 7 days of real data in ramp up")
+          return 1000
         # -----------------------------------
         # Chi2 Cases
         # -----------------------------------
