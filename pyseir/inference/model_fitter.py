@@ -125,8 +125,10 @@ class ModelFitter:
         # Seed the random state. It is unclear whether this propagates to the
         # Minuit optimizer.
         np.random.seed(seed=42)
-        self.max_fit_day = datetime.now() - self.ref_date - 14 #natasha this keeps the ramp up period within the current data
-        #self.max_fit_day = datetime.date.today() - ref_date
+        self.max_fit_day = (
+            datetime.now() - self.ref_date - 14
+        )  # natasha this keeps the ramp up period within the current data
+        # self.max_fit_day = datetime.date.today() - ref_date
         self.fips = fips
         self.ref_date = ref_date
         self.min_deaths = min_deaths
@@ -386,9 +388,9 @@ class ModelFitter:
         print(datetime.now())
         print(max_fit_day)
         print(self.max_fit_day)
-        print('natasha')
+        print("natasha")
         if t_break + t_delta_phases + 14 > self.max_fit_day:
-          t_delta_phases = self.max_fit_day - t_break
+            t_delta_phases = self.max_fit_day - t_break
         suppression_policy = suppression_policies.get_epsilon_interpolator(
             eps, t_break, eps2, t_delta_phases
         )
