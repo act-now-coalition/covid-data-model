@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 from matplotlib.backends import backend_pdf
 from pyseir import load_data
-from pyseir.cdc.definitions import Target, ForecastTimeUnit
+from pyseir.cdc.parameters import Target, ForecastTimeUnit
 from pyseir.cdc.utils import load_and_aggregate_observations
 from pyseir.cdc.output_mapper import (OutputMapper, REPORT_FOLDER, TEAM,
                                       MODEL, FORECAST_DATE, DATE_FORMAT)
