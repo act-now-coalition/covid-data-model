@@ -1,32 +1,14 @@
-from enum import Enum
 import us
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from datetime import timedelta, date
+from epiweeks import Week, Year
+from datetime import timedelta
 from pyseir import OUTPUT_DIR, load_data
 from pyseir.utils import REF_DATE
 from pyseir.load_data import HospitalizationDataType
 from statsmodels.nonparametric.kernel_regression import KernelReg
-
-
-DATE_FORMAT = '%Y-%m-%d'
-
-class Target(Enum):
-    CUM_DEATH = 'cum death'
-    INC_DEATH = 'inc death'
-    CUM_HOSP = 'cum hosp'
-    INC_HOSP = 'inc hosp'
-
-
-class ForecastTimeUnit(Enum):
-    DAY = 'day'
-    WK = 'wk'
-
-
-class ForecastUncertainty(Enum):
-    DEFAULT = 'default'
-    NAIVE = 'naive'
+from pyseir.cdc.definitions import Target, ForecastTimeUnit, DATE_FORMAT
 
 
 def target_column_name(num, target, time_unit):
@@ -53,29 +35,109 @@ def target_column_name(num, target, time_unit):
         yield f'{int(n)} {time_unit.value} ahead {target.value}'
 
 
-def number_of_units(start_date, dates, unit):
+def number_of_time_units(ref_date, dates, unit, epi_week=True):
     """
+    Generates a sequence of number of time units from given sequence of dates
+    from the ref date.
+    When unit is ForecastTimeUnit.DAY, return the time gap of given dates
+    from the start date in days; when unit is ForecastTimeUnit.WK, return
+    time gap from ref date in weeks.
+    Note if unit is ForecastTimeUnit.WK, and using epi weeks definition (
+    epi_week as True), Saturday is used as the cutoff of a week (ref:
+    https://wwwn.cdc.gov/nndss/document/MMWR_Week_overview.pdf).
+    In this case, if the ref date is not Saturday, Saturday
+    within the same epi week is counted as one epi week from the ref
+    date (not zero).
+
+    Parameters
+    ----------
+    ref_date: datetime.datetime
+        Reference date.
+    dates: list(datetime.datetime)
+        Dates to calculate number of time units since the starting date.
+    unit: ForecastTimeUnit
+        Time unit of forecast.
+    epi_week: bool
+        If True, Saturday is used as the cutoff to define the week.
+        If ref_date is not Saturday then all following Saturdays are counted
+        as its epi week + 1. For example, if ref_date is 2020-05-20,
+        then 2020-05-23 is one week from the ref_date and 2020-05-30 is two
+        weeks from it, and so on.
+        If false, number of weeks from ref date is only determined by
+        how many 7 days each date is from the ref date.
+
+    Returns
+    -------
+    n_units: np.array
+        Number of time units from the start date.
 
     """
     if unit is ForecastTimeUnit.DAY:
-        num_days = 1
+        n_units = np.array([(d - ref_date).days for d in dates])
     elif unit is ForecastTimeUnit.WK:
-        num_days = 7
-    n_units = [(d - start_date).days // num_days + 1 for d in dates]
+        if epi_week:
+            n_units = np.array(
+                [Week.fromdate(d).week - Week.fromdate(ref_date).week for d in
+                 dates])
+            saturdays = [int(d.weekday() == 5) for d in dates]
+            # Saturday within same week is counted as next epi week if ref
+            # date itself is not Saturday
+            n_units += saturdays * (ref_date.weekday() != 5)
+        else:
+            n_units = np.array([(d - ref_date).days // 7 for d in dates])
+
     return n_units
 
-def smooth_observations(time, observations):
+
+def smooth_timeseries(time_steps, data):
+    """
+    Smoothing time series data.
+
+    Parameters
+    ----------
+    time_steps: list or np.array
+        Time steps from some starting date.
+    data: list or np.array
+        data to smooth
+
+    Returns
+    -------
+    smoothed: np.array
+        Data smoothed through given time steps.
     """
 
-    """
-    kr = KernelReg(observations, time, 'c')
-    smoothed, _ = kr.fit(time)
+    kr = KernelReg(data, time_steps, 'c')
+    smoothed, _ = kr.fit(time_steps)
     return smoothed
 
 
-def aggregate_observations(dates, data, unit, target):
+def aggregate_timeseries(dates, data, unit, target):
     """
+    Aggregates time series data based on time unit and forecast target.
+    There is no aggregation if unit is ForecastTimeUnit.DAY. If unit is
+    ForecastTimeUnit.WK, do aggregation based on type of forecast target:
+    if target is incident death or incident hospitalizations, the time series
+    data is aggregated as weekly sum; if target is cumulative death,
+    the time series is aggregated as the value on Saturdays.
 
+    Parameters
+    ----------
+    dates: list or np.array
+        Dates of the time series.
+    data: list or np.array
+        Time series data
+    unit: ForecastTimeUnit
+        Time unit to aggregate the data
+    target: Target
+        Forecast target, cumulative death, incident death and incident
+        hospitalizations
+
+    Returns
+    -------
+    agg_dates: np.array
+        Date corresponding to the aggregated time series data.
+    agg_data: np.array
+        Aggregated time series data.
     """
     dates = np.array(dates)
     data = np.array(data)
@@ -94,22 +156,41 @@ def aggregate_observations(dates, data, unit, target):
             agg_data = np.array(agg)
             agg_dates = np.unique(saturdays)
         else:
-            agg_data = data[dates == saturdays]
-            agg_dates = np.unique(np.intersect1d(dates, saturdays))
+            agg_dates = np.intersect1d(dates, saturdays)
+            agg_data = data[np.searchsorted(dates, agg_dates)]
 
     else:
         raise ValueError(f'{unit} is not implemented')
 
-    return agg_dates.flatten(), agg_data.flatten()
+    return agg_dates, agg_data
 
 
 def load_and_aggregate_observations(fips, units, targets, smooth=True):
     """
-    Load observations based on type of target and unit.
+    Load observations based on type of target (cumulative death, incident
+    death and incident hospitalizations) and unit (day, week).
+
+    Parameters
+    ----------
+    fips: str
+        Two digits State FIPS code.
+    units: list
+        List of ForecastTimeUnit objects.
+    targets: list
+        List of Target objects.
 
     Returns
     -------
-
+      : dict(dict)
+        Contains observed cumulative deaths, incident deaths,
+        and incident hospitalizations, with target name as primary key and
+        forecast time unit as secondary key, and corresponding time series of
+        observations as values:
+        <target>:
+            <forecast time unit>: pd.Series
+                With date string as index and observations as values.
+        Observations for hospitalizations can be None if no
+        cumulative hospitalization data is available for the FIPS code.
     """
 
     times, observed_new_cases, observed_new_deaths = \
@@ -138,18 +219,17 @@ def load_and_aggregate_observations(fips, units, targets, smooth=True):
     for unit in units:
         for target in targets:
             if target.value in raw_observations:
-
-                agg_dates, agg_observations = aggregate_observations(observation_dates[target.value],
-                                                                     raw_observations[target.value],
-                                                                     unit,
-                                                                     target)
+                agg_dates, agg_observations = aggregate_timeseries(observation_dates[target.value],
+                                                                   raw_observations[target.value],
+                                                                   unit,
+                                                                   target)
 
                 # smoothing observed daily incident deaths or hospitalizations
                 if smooth:
                     if target in [Target.INC_DEATH, Target.INC_HOSP]:
                         if unit is ForecastTimeUnit.DAY:
-                            agg_observations = smooth_observations([(d - REF_DATE).days for d in agg_dates],
-                                                                    agg_observations).clip(min=0)
+                            agg_observations = smooth_timeseries([(d - REF_DATE).days for d in agg_dates],
+                                                                  agg_observations).clip(min=0)
 
                 observations[target.value][unit.value] = \
                     pd.Series(agg_observations,
@@ -158,5 +238,4 @@ def load_and_aggregate_observations(fips, units, targets, smooth=True):
             else:
                 observations[target.value][unit.value] = None
 
-    return observations
-
+    return dict(observations)
