@@ -222,8 +222,8 @@ def get_epsilon_interpolator(
         (0, 1),
         (t_break, 1),
         (t_break + transition_time, eps),
-        (t_break + t_delta_phases, eps),
-        (t_break + t_delta_phases + transition_time, eps2),
+        (t_break + transition_time + t_delta_phases, eps),
+        (t_break + transition_time + t_delta_phases + transition_time, eps2),
     ]
 
     # For estimating future trajectories we can either use the last fitted value or pass in

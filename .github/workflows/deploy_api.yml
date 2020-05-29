@@ -38,7 +38,7 @@ env:
 
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-  
+
   # use a webhook to write to slack for QA
   SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
@@ -164,4 +164,13 @@ jobs:
       run: |
         rm -rf ./tmp/data/
 
-      # TODO: Upload RedirectRules to AWS to make snapshot/latest pointer work.
+  finish:
+    runs-on: self-hosted
+    needs:
+      - push-snapshot-to-s3
+
+    steps:
+    - name: Maybe trigger covid-projections repo to use new snapshot.
+      env:
+        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+      run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
