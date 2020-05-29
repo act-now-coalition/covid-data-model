@@ -125,9 +125,9 @@ class ModelFitter:
         # Seed the random state. It is unclear whether this propagates to the
         # Minuit optimizer.
         np.random.seed(seed=42)
-        #self.max_fit_day = (
+        # self.max_fit_day = (
         #    datetime.now() - self.ref_date - 14
-        #)  # natasha this keeps the ramp up period within the current data
+        # )  # natasha this keeps the ramp up period within the current data
         # self.max_fit_day = datetime.date.today() - ref_date
         self.fips = fips
         self.ref_date = ref_date
@@ -384,8 +384,8 @@ class ModelFitter:
         """
         # Maybe start here Natasha
 
-        #max_fit_day = datetime.now() - self.ref_date
-        #if t_break + t_delta_phases + 14 > self.max_fit_day:
+        # max_fit_day = datetime.now() - self.ref_date
+        # if t_break + t_delta_phases + 14 > self.max_fit_day:
         #    t_delta_phases = self.max_fit_day - t_break
         suppression_policy = suppression_policies.get_epsilon_interpolator(
             eps, t_break, eps2, t_delta_phases
@@ -779,11 +779,15 @@ class ModelFitter:
             label="Estimated Intervention",
         )
 
-        start_intervention2_date = self.ref_date + timedelta(
-            days=self.fit_results["t_break"]
-            + self.fit_results["t_delta_phases"]
-            + self.fit_results["t0"]
-        ) + timedelta(days=14)
+        start_intervention2_date = (
+            self.ref_date
+            + timedelta(
+                days=self.fit_results["t_break"]
+                + self.fit_results["t_delta_phases"]
+                + self.fit_results["t0"]
+            )
+            + timedelta(days=14)
+        )
         stop_intervention2_date = start_intervention2_date + timedelta(days=14)
 
         plt.fill_betweenx(
