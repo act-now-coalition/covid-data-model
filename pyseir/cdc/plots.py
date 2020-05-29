@@ -1,27 +1,52 @@
-from pyseir.inference.fit_results import load_mle_model, load_inference_result
-from pyseir import load_data
-import pandas as pd
-from pyseir.utils import REF_DATE
-import numpy as np
-from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-from matplotlib.backends import backend_pdf
 import us
-import matplotlib
-from pyseir.cdc.utils import Target, ForecastTimeUnit, aggregate_observations, load_and_aggregate_observations
-from pyseir.cdc.output_mapper import OutputMapper, REPORT_FOLDER, TEAM, MODEL, FORECAST_DATE, DATE_FORMAT
+import matplotlib.pyplot as plt
+import pandas as pd
 from collections import defaultdict
-from epiweeks import Week, Year
+from datetime import datetime
+from matplotlib.backends import backend_pdf
+from pyseir import load_data
+from pyseir.cdc.definitions import Target, ForecastTimeUnit
+from pyseir.cdc.utils import load_and_aggregate_observations
+from pyseir.cdc.output_mapper import (OutputMapper, REPORT_FOLDER, TEAM,
+                                      MODEL, FORECAST_DATE, DATE_FORMAT)
+
 
 LABELS = {Target.CUM_DEATH: 'cumulative death',
           Target.INC_DEATH: 'incident death'}
 
 
 
-def plot_results(fips, forecast_date, target, observations, pdf):
+def plot_results(fips, forecast_date, target, observations, pdf=None):
+    """
+    Plot median and 95% confidence interval of the forecast and observations
+    for a given type of target (cumulative death, incident death or incident
+    hospitalizations).
+
+    Parameters
+    ----------
+    fips: str
+        State FIPS code.
+    forecast_date: datetime.datetime or str
+        date when the forecast is made
+    target: Target
+        Target of forecast, cumulative death, incident death or
+        incident hospitalizations.
+    observations: dict(dict)
+        Contains observed cumulative deaths, incident deaths,
+        and incident hospitalizations, with target name as primary key and
+        forecast time unit as secondary key, and corresponding time series of
+        observations as values:
+        <target>:
+            <forecast time unit>: pd.Series
+                With date string as index and observations as values.
+        Observations for hospitalizations can be None if no
+        cumulative hospitalization data is available for the FIPS code.
+    pdf: matplotlib.backends.backend_pdf.PdfPages
+        Pdf object to save the figures.
     """
 
-    """
+    if isinstance(forecast_date, datetime):
+        forecast_date = datetime.strftime(forecast_date, DATE_FORMAT)
 
     df = pd.read_csv(f'{REPORT_FOLDER}/{forecast_date}_{TEAM}_{MODEL}_{fips}.csv')
 
@@ -32,25 +57,27 @@ def plot_results(fips, forecast_date, target, observations, pdf):
         for target_name in df_by_unit.target.unique():
             sub_df = df_by_unit[df_by_unit.target == target_name]
             sub_df['quantile'] = sub_df['quantile'].apply(lambda x: float(x))
-            sub_df['pdf'] = np.append(sub_df['quantile'].values[0], np.diff(sub_df['quantile']))
+
             results[unit].append(pd.DataFrame({
                 'target_end_date': [sub_df.iloc[0]['target_end_date']],
-                'expected': [(sub_df['pdf'] * sub_df['value']).sum()],
+                'median': [float(sub_df[sub_df['quantile'] == 0.5]['value'])],
                 'ci_025': [float(sub_df[sub_df['quantile'] == 0.025]['value'])],
                 'ci_975': [float(sub_df[sub_df['quantile'] == 0.975]['value'])]}))
 
-    for unit in ['day', 'wk']:
+    for unit in [ForecastTimeUnit.DAY.value, ForecastTimeUnit.WK.value]:
         results[unit] = pd.concat(results[unit])
         results[unit]['target_end_date'] = pd.to_datetime(results[unit]['target_end_date'])
 
     plt.figure(figsize=(10, 6))
-    for n, unit in enumerate(['day', 'wk']):
+    for n, unit in enumerate([ForecastTimeUnit.DAY.value,
+                              ForecastTimeUnit.WK.value]):
         plt.subplot(1, 2, n+1)
         plt.plot(pd.to_datetime(observations[target.value][unit].index),
                  observations[target.value][unit].values,
                  label='observed')
 
-        plt.plot(results[unit]['target_end_date'], results[unit]['expected'], marker='o')
+        plt.plot(results[unit]['target_end_date'], results[unit]['median'],
+                 marker='o', label='forecast median')
         plt.fill_between(x=results[unit]['target_end_date'],
                          y1=results[unit]['ci_025'],
                          y2=results[unit]['ci_975'],
@@ -61,14 +88,20 @@ def plot_results(fips, forecast_date, target, observations, pdf):
         plt.legend()
         plt.xticks(rotation=45)
 
-
     plt.suptitle('/'.join([us.states.lookup(fips).name, fips, LABELS[target]]))
     plt.tight_layout()
     plt.subplots_adjust(top=0.88)
-    pdf.savefig()
+
+    if pdf:
+        pdf.savefig()
 
 
 def run_all():
+    """
+    Plot confidence intervals of forecast targests for States and save
+    figures to pdf.
+    """
+
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
     fips_list = list(df_whitelist['fips'].str[:2].unique())
