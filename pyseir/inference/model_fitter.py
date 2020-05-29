@@ -109,7 +109,7 @@ class ModelFitter:
         errordef=0.5,
     )
 
-    PARAM_SETS = {("HI",): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90])}
+    PARAM_SETS = {("HI"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]), ("AK"): dict(eps=0.25, t0 = 75, t_break=10, limit_t0=[50,90]), ("MT"): dict(eps=0.25, t0 = 75, t_break=10, limit_t0=[50,90]) }
 
     steady_state_exposed_to_infected_ratio = 1.2
 
@@ -467,11 +467,9 @@ class ModelFitter:
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
 
 
-        _logger.info(f"t0: {t0} t_break: {t_break} t_delta_phases: {t_delta_phases} self.max_fit_date: {self.max_fit_date}")
         if t0 + t_break + t_delta_phases + 14 + 7 < self.max_fit_date:
           model = self.run_model(**model_kwargs)
         else:
-          _logger.info("--------not considering models that fit that far out into future, must contain 7 days of real data in ramp up")
           return 1000
         # -----------------------------------
         # Chi2 Cases
