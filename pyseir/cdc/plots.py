@@ -96,16 +96,21 @@ def plot_results(fips, forecast_date, target, observations, pdf=None):
         pdf.savefig()
 
 
-def run_all():
+def run_all(forecast_date=FORECAST_DATE):
     """
     Plot confidence intervals of forecast targests for States and save
     figures to pdf.
+
+    Parameters
+    ----------
+    forecast_date: datetime.datetime
+        Date of the forecast.
     """
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
     fips_list = list(df_whitelist['fips'].str[:2].unique())
-    output_path = f'{REPORT_FOLDER}/report_{datetime.strftime(FORECAST_DATE, DATE_FORMAT)}.pdf'
+    output_path = f'{REPORT_FOLDER}/report_{datetime.strftime(forecast_date, DATE_FORMAT)}.pdf'
     pdf = backend_pdf.PdfPages(output_path)
     for fips in fips_list:
         observations = load_and_aggregate_observations(fips,
@@ -113,6 +118,6 @@ def run_all():
                                                        targets=[Target.CUM_DEATH, Target.INC_DEATH],
                                                        smooth=False)
         for target in [Target.CUM_DEATH, Target.INC_DEATH]:
-            plot_results(fips, datetime.strftime(FORECAST_DATE, DATE_FORMAT),
+            plot_results(fips, datetime.strftime(forecast_date, DATE_FORMAT),
                          target, observations, pdf)
     pdf.close()
