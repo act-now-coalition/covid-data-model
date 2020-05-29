@@ -7,12 +7,15 @@ import pandas as pd
 from collections import defaultdict
 from datetime import datetime, timedelta, date
 from multiprocessing import Pool
-from epiweeks import Week, Year
 from string import Template
 from pyseir import OUTPUT_DIR, load_data
 from pyseir.utils import REF_DATE
-from pyseir.cdc.definitions import (Target, ForecastTimeUnit,
-                                    ForecastUncertainty, DATE_FORMAT)
+from pyseir.cdc.parameters import (TEAM, MODEL, TARGETS, TARGETS_TO_NAMES,
+                                   FORECAST_TIME_UNITS, FORECAST_WEEKS_NUM,
+                                   QUANTILES, FORECAST_DATE, NEXT_EPI_WEEK,
+                                   COLUMNS, DATE_FORMAT, Target,
+                                   ForecastTimeUnit, ForecastTimeUnit,
+                                   ForecastUncertainty)
 from pyseir.cdc.utils import (target_column_name,
                               aggregate_timeseries,
                               smooth_timeseries,
@@ -58,36 +61,6 @@ corresponding global variables.
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 REPORT_FOLDER = os.path.join(DIR_PATH, 'report')
-
-
-TEAM = 'CovidActNow'
-MODEL = 'SEIR_CAN'
-
-# type of target measures
-TARGETS = ['cum death', 'inc death', 'inc hosp']
-
-# names of target measures that will be used to generate metadata
-TARGETS_TO_NAMES = {'cum death': 'cumulative deaths',
-                    'inc death': 'incident deaths',
-                    'inc hosp': 'incident hospitalizations'}
-
-# units of forecast target.
-FORECAST_TIME_UNITS = ['day', 'wk']
-# number of weeks ahead for forecast.
-FORECAST_WEEKS_NUM = 4
-# Default quantiles required by CDC.
-QUANTILES = np.concatenate([[0.01, 0.025], np.arange(0.05, 0.95, 0.05), [0.975, 0.99]])
-# Time of forecast, default date when this runs.
-FORECAST_DATE = datetime.today() - timedelta(days=1)
-# Next epi week. Epi weeks starts from Sunday and ends on Saturday.
-#if forecast date is Sunday or Monday, next epi week is the week that starts
-#with the latest Sunday.
-if FORECAST_DATE.weekday() in (0, 6):
-    NEXT_EPI_WEEK = Week(Year.thisyear().year, Week.thisweek().week)
-else:
-    NEXT_EPI_WEEK = Week(Year.thisyear().year, Week.thisweek().week + 1)
-COLUMNS = ['forecast_date', 'location', 'location_name', 'target', 'type',
-           'target_end_date', 'quantile', 'value']
 
 
 class OutputMapper:
@@ -308,9 +281,7 @@ class OutputMapper:
                          'forecast_days': [(t - start_date).days for t in dates]},
                         index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
 
-                n_units = number_of_time_units(self.forecast_date,
-                                               dates, unit)
-
+                n_units = number_of_time_units(self.forecast_date, dates, unit)
                 df['target'] = list(target_column_name(n_units, target, unit))
                 df['target_end_date'] = df['target_end_date'].astype('datetime64[D]')
 
