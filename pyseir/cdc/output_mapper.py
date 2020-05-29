@@ -200,7 +200,8 @@ class OutputMapper:
         self.forecast_uncertainty = ForecastUncertainty(forecast_uncertainty)
         self.observations = load_and_aggregate_observations(fips=self.fips,
                                                             units=self.forecast_time_units,
-                                                            targets=self.targets)
+                                                            targets=self.targets,
+                                                            end_date=self.forecast_date)
         self.model = load_mle_model(self.fips)
 
         self.fit_results = load_inference_result(self.fips)
@@ -343,8 +344,7 @@ class OutputMapper:
         for target in self.targets:
             for unit in self.forecast_time_units:
                 if self.observations[target.value][unit.value] is not None:
-                    ref_observation_date = self.observations[target.value][
-                        unit.value].index[-1]
+                    ref_observation_date = self.observations[target.value][unit.value].index[-1]
                     observation = self.observations[target.value][unit.value]
 
                     shifted_forecast[target.value][unit.value]['value'] += \
@@ -591,7 +591,7 @@ class OutputMapper:
 
 
     @classmethod
-    def run_for_fips(cls, fips):
+    def run_for_fips(cls, fips, kwargs=None):
         """
         Run OutputMapper for given State FIPS code.
 
@@ -607,7 +607,8 @@ class OutputMapper:
             given FIPS code. For details on columns, refer description of
             self.results.
         """
-        om = cls(fips)
+        kwargs = kwargs or {}
+        om = cls(fips, **kwargs)
         result = om.run()
         return result
 
@@ -640,7 +641,7 @@ class OutputMapper:
         output_f.close()
 
 
-def run_all(parallel=False):
+def run_all(parallel=False, mapper_kwargs=None):
     """
     Prepares inference results for all whitelist States for CDC model
     ensemble submission.
@@ -649,7 +650,11 @@ def run_all(parallel=False):
     ----------
     parallel: bool
         Whether to run multiprocessing.
+    mapper_kwargs: dict
+        Contains parameters and values to override the default output mapper
+        parameters (given in parameters.py).
     """
+    mapper_kwargs = mapper_kwargs or {}
     if not os.path.exists(REPORT_FOLDER):
         os.mkdir(REPORT_FOLDER)
 
@@ -664,7 +669,7 @@ def run_all(parallel=False):
     else:
         results = list()
         for fips in fips_list:
-            result = OutputMapper.run_for_fips(fips)
+            result = OutputMapper.run_for_fips(fips, mapper_kwargs)
             results.append(result)
 
     forecast_date = FORECAST_DATE.strftime(DATE_FORMAT)

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 from epiweeks import Week, Year
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pyseir import OUTPUT_DIR, load_data
 from pyseir.utils import REF_DATE
 from pyseir.load_data import HospitalizationDataType
@@ -11,7 +11,7 @@ from statsmodels.nonparametric.kernel_regression import KernelReg
 from pyseir.cdc.parameters import Target, ForecastTimeUnit, DATE_FORMAT
 
 
-def target_column_name(num, target, time_unit):
+def target_column_name(num, target, unit):
     """
     Concatenate number of time units ahead for forecast, name of target and
     the forecast time unit as column name.
@@ -22,7 +22,7 @@ def target_column_name(num, target, time_unit):
         Number of time units ahead for forecast.
     target: Target
         The target measure.
-    time_unit: ForecastTimeUnit
+    unit: ForecastTimeUnit
         The time unit of forecast.
 
     Yields
@@ -30,9 +30,10 @@ def target_column_name(num, target, time_unit):
       : str
         generated column name.
     """
-    num = list(num)
+    if isinstance(num, int) or isinstance(num, float):
+        num = [num]
     for n in num:
-        yield f'{int(n)} {time_unit.value} ahead {target.value}'
+        yield f'{int(n)} {unit.value} ahead {target.value}'
 
 
 def number_of_time_units(ref_date, dates, unit, epi_week=True):
@@ -165,7 +166,7 @@ def aggregate_timeseries(dates, data, unit, target):
     return agg_dates, agg_data
 
 
-def load_and_aggregate_observations(fips, units, targets, smooth=True):
+def load_and_aggregate_observations(fips, units, targets, end_date=None, smooth=True):
     """
     Load observations based on type of target (cumulative death, incident
     death and incident hospitalizations) and unit (day, week).
@@ -178,6 +179,9 @@ def load_and_aggregate_observations(fips, units, targets, smooth=True):
         List of ForecastTimeUnit objects.
     targets: list
         List of Target objects.
+    end_date: datetime.datetime
+        End date of the observations. Default None, if set observation after
+        this date will be removed.
 
     Returns
     -------
@@ -196,10 +200,23 @@ def load_and_aggregate_observations(fips, units, targets, smooth=True):
     times, observed_new_cases, observed_new_deaths = \
         load_data.load_new_case_data_by_state(us.states.lookup(fips).name,
                                               REF_DATE)
-
+    times = np.array(times)
     hospital_times, hospitalizations, hospitalization_data_type = \
         load_data.load_hospitalization_data_by_state(us.states.lookup(fips).abbr,
                                                      REF_DATE)
+    hospital_times = np.array(hospital_times)
+    # sometimes we may want to check the performance of historical forecast,
+    # here it enables blocking part of observations.
+    end_date = end_date or datetime.today()
+    maximum_time_step = (end_date.date() - REF_DATE.date()).days
+
+    observed_new_cases = observed_new_cases[times <= maximum_time_step]
+    observed_new_deaths = observed_new_deaths[times <= maximum_time_step]
+    times = times[times <= maximum_time_step]
+
+    if hospital_times is not None:
+        hospitalizations = hospitalizations[hospital_times <= maximum_time_step]
+        hospital_times = hospital_times[hospital_times <= maximum_time_step]
 
     observation_dates = {}
     for target in [Target.CUM_DEATH, Target.INC_DEATH]:
