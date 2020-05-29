@@ -8,7 +8,7 @@ from pyseir import OUTPUT_DIR, load_data
 from pyseir.utils import REF_DATE
 from pyseir.load_data import HospitalizationDataType
 from statsmodels.nonparametric.kernel_regression import KernelReg
-from pyseir.cdc.definitions import Target, ForecastTimeUnit, DATE_FORMAT
+from pyseir.cdc.parameters import Target, ForecastTimeUnit, DATE_FORMAT
 
 
 def target_column_name(num, target, time_unit):
@@ -73,7 +73,7 @@ def number_of_time_units(ref_date, dates, unit, epi_week=True):
 
     """
     if unit is ForecastTimeUnit.DAY:
-        n_units = np.array([(d - ref_date).days for d in dates])
+        n_units = np.array([(d.date() - ref_date.date()).days for d in dates])
     elif unit is ForecastTimeUnit.WK:
         if epi_week:
             n_units = np.array(
