@@ -1,5 +1,4 @@
 # calculating interval scores by making historical forecast
-
 from datetime import datetime, timedelta
 from pyseir.cdc.utils import target_column_name
 from pyseir.cdc.parameters import (FORECAST_DATE, Target, ForecastTimeUnit,
@@ -8,14 +7,18 @@ from pyseir.cdc.parameters import (FORECAST_DATE, Target, ForecastTimeUnit,
                                    TARGETS_TO_NAMES)
 from pyseir.cdc.output_mapper import REPORT_FOLDER
 import scipy
-import pandas as pd
-import numpy as np
+from pyseir.cdc.output_mapper import OutputMapper, run_all as run_output_mapper
 import us
 import matplotlib.pyplot as plt
-from pyseir.cdc.utils import load_and_aggregate_observations
+import pandas as pd
 from collections import defaultdict
-import matplotlib.pyplot as plt
-from pyseir.cdc.output_mapper import OutputMapper, run_all as run_output_mapper
+from datetime import datetime
+from matplotlib.backends import backend_pdf
+from pyseir import load_data
+from pyseir.cdc.parameters import Target, ForecastTimeUnit
+from pyseir.cdc.utils import load_and_aggregate_observations
+from pyseir.cdc.output_mapper import (OutputMapper, REPORT_FOLDER, TEAM,
+                                      MODEL, FORECAST_DATE, DATE_FORMAT)
 
 
 class Validation:
@@ -190,12 +193,12 @@ class Validation:
 
         """
         interval_scores = interval_scores or self.interval_scores
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=(10, 10))
         for n, target_name in enumerate(interval_scores.keys()):
             plt.subplot(len(interval_scores.keys()), 2, n*2 + 1)
             observed = self.observations[target_name][ForecastTimeUnit.DAY.value]
             observed.index = pd.to_datetime(observed.index)
-            plt.plot(observed.index, observed.values)
+            plt.plot(observed.index, observed.values, label='observed')
 
             df = self.forecast[self.forecast['target'].str.contains(f'day ahead {target_name}')]
             df['target_end_date'] = pd.to_datetime(df['target_end_date'])
@@ -205,7 +208,7 @@ class Validation:
                      color='orange')
 
 
-            plt.axvline(x=self.forecast_date, label='date of forecast', color='0.5', linestyle=':')
+            plt.axvline(x=self.forecast_date, label='date of backtesting forecast', color='0.5', linestyle=':')
             plt.xlim(xmin=self.forecast_date - timedelta(days=7))
             plt.ylabel(TARGETS_TO_NAMES[target_name])
 
@@ -214,7 +217,7 @@ class Validation:
                                     y2=df[df['quantile'] == 0.975].sort_values('target_end_date')['value'],
                                     label=f'CI_95',
                                     facecolor='b',
-                                     alpha=0.3)
+                                     alpha=0.2)
             plt.xticks(rotation=45)
 
             plt.legend()
@@ -242,15 +245,21 @@ class Validation:
         self.plot()
 
 
-def run_validation(window=15, run_om=True):
+def run_validation(window=7, forecast_date=FORECAST_DATE, run_om=True):
     """
 
     """
-
+    backtesting_forecast_date = forecast_date - timedelta(days=window)
     if run_om:
-        run_output_mapper(mapper_kwargs = {'forecast_date': datetime.today() - timedelta(days=window)})
+        run_output_mapper(mapper_kwargs = {'forecast_date': backtesting_forecast_date})
 
+    df_whitelist = load_data.load_whitelist()
+    df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
+    fips_list = list(df_whitelist['fips'].str[:2].unique())
 
-
-
-
+    output_path = f'{REPORT_FOLDER}/validation_report_{datetime.strftime(forecast_date, DATE_FORMAT)}.pdf'
+    pdf = backend_pdf.PdfPages(output_path)
+    for fips in fips_list:
+        v = Validation(fips=fips, forecast_date=backtesting_forecast_date, pdf=pdf)
+        v.run()
+    pdf.close()
