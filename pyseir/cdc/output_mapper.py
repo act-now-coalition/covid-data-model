@@ -285,6 +285,7 @@ class OutputMapper:
                 n_units = number_of_time_units(self.forecast_date, dates, unit)
                 df['target'] = list(target_column_name(n_units, target, unit))
                 df['target_end_date'] = df['target_end_date'].astype('datetime64[D]')
+                df['type'] = 'point'
 
                 forecast[target.value][unit.value] = df
 
@@ -430,9 +431,7 @@ class OutputMapper:
         else:
             raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
 
-        values = scipy.stats.norm(loc=forecast,
-                                  scale=np.sqrt((error_std * scale_factor) ** 2 + forecast)) \
-                      .ppf(quantiles)
+        values = scipy.stats.norm(loc=float(forecast), scale=float(error_std * scale_factor)).ppf(quantiles)
         values = values.clip(min=baseline)
 
         return values
@@ -515,6 +514,7 @@ class OutputMapper:
                 df['quantile'] = np.tile(self.quantiles,
                                          forecast[target_name][unit_name].shape[0])
                 df['type'] = 'quantile'
+                df['quantile'] = df['quantile'].apply(lambda v: '%.3f' % v)
                 forecast_quantiles[target_name][unit_name] = df
 
         return forecast_quantiles
@@ -561,7 +561,8 @@ class OutputMapper:
         result = list()
         for target_name in forecast_quantile:
             for unit in self.forecast_time_units:
-                result.append(forecast_quantile[target_name][unit.value])
+                result.append(pd.concat([forecast_quantile[target_name][unit.value],
+                                         forecast[target_name][unit.value]]))
 
         result = pd.concat(result)
         result = result[result['target_end_date'] >= self.forecast_date]
@@ -570,7 +571,6 @@ class OutputMapper:
         result['location_name'] = us.states.lookup(self.fips).name
         result['forecast_date'] = self.forecast_date
         result['forecast_date'] = result['forecast_date'].dt.strftime('%Y-%m-%d')
-        result['quantile'] = result['quantile'].apply(lambda v: '%.3f' % v)
         result = result[~result['target'].apply(lambda s: 'wk ahead inc hosp' in s)]
 
         self.result = result[['forecast_date',
