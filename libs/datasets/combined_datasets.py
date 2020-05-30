@@ -2,10 +2,11 @@ from typing import Dict, Type, List, NewType
 import logging
 import functools
 import pandas as pd
+import structlog
+
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
-from libs.datasets.sources.states import StatesData
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
@@ -42,17 +43,13 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [JHUDataset],
     CommonFields.DEATHS: [JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
-    CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
-    CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData, StatesData],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData, StatesData],
+    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
-    CommonFields.CURRENT_VENTILATED: [
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-        StatesData,
-    ],
+    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
@@ -69,17 +66,13 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [JHUDataset],
     CommonFields.DEATHS: [JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
-    CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
-    CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData, StatesData],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData, StatesData],
+    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.CURRENT_VENTILATED: [
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-        StatesData,
-    ],
+    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
     CommonFields.STAFFED_BEDS: [],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
@@ -178,12 +171,17 @@ def build_combined_dataset_from_sources(
 
     # Build feature columns from feature_definition_config.
     data = pd.DataFrame({})
+    # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
+    log = structlog.get_logger()
     for field, data_source_classes in feature_definition_config.items():
         for data_source_cls in data_source_classes:
             dataset = intermediate_datasets[data_source_cls]
-
             data = dataset_utils.fill_fields_with_data_source(
-                data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field]
+                log.bind(dataset_name=data_source_cls.SOURCE_NAME, field=field),
+                data,
+                dataset.data,
+                target_dataset_cls.INDEX_FIELDS,
+                [field],
             )
 
     return target_dataset_cls(data)
