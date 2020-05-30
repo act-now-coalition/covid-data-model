@@ -1,5 +1,4 @@
-# calculating interval scores by making historical forecast
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pyseir.cdc.utils import target_column_name
 from pyseir.cdc.parameters import (FORECAST_DATE, Target, ForecastTimeUnit,
                                    TEAM, MODEL, DATE_FORMAT,
@@ -24,6 +23,10 @@ from pyseir.cdc.output_mapper import (OutputMapper, REPORT_FOLDER, TEAM,
 class Validation:
     """
     Currently supports validation of daily forecast.
+    Mainly calculates the interval scores of a state forecast by comparing the backtesting forecast
+    with the observations.
+    Interval scores are calculated with the interval scoring approach from Reichlab:
+    reference: https://arxiv.org/pdf/2005.12881.pdf
     """
 
     def __init__(self, fips, forecast_date, pdf=None, forecast=None):
@@ -85,7 +88,7 @@ class Validation:
           interval. So an alpha of .1
           would be the 90% prediction interval and would use the .05 and .95
           quantiles are predictions.
-        F: pandas.Series or object with quantile method
+        quantile_func: callable
           The function to draw quantiles. Can be anything that has a
           self.quantile method that returns
           a quantile when passed a value in [0,1]
