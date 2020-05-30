@@ -1,7 +1,6 @@
 import os
 import pickle
 from pyseir.load_data import load_county_metadata
-import ujson
 from pyseir import OUTPUT_DIR
 import pandas as pd
 from datetime import datetime
@@ -42,7 +41,9 @@ def load_mle_model(fips):
         of compartments at different states of infection (susceptible,
         exposed, infected, etc.). None when no valid path is given or found.
     """
+
     model_path = get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL)
+    print(model_path)
     model = pickle.loads(open(model_path, 'rb').read())
 
     return model

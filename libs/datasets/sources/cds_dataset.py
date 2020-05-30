@@ -45,6 +45,8 @@ class CDSDataset(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         FIPS = "fips"
         NEGATIVE_TESTS = "negative_tests"
+        HOSPITALIZED = "hospitalized"
+        ICU = "icu"
 
     INDEX_FIELD_MAP = {
         CommonIndexFields.DATE: Fields.DATE,
@@ -59,6 +61,8 @@ class CDSDataset(data_source.DataSource):
         CommonFields.POSITIVE_TESTS: Fields.CASES,
         CommonFields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS,
         CommonFields.POPULATION: Fields.POPULATION,
+        CommonFields.CUMULATIVE_ICU: Fields.ICU,
+        CommonFields.CUMULATIVE_HOSPITALIZED: Fields.HOSPITALIZED,
     }
 
     TEST_FIELDS = [

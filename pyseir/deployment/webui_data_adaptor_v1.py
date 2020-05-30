@@ -1,10 +1,9 @@
 import numpy as np
-import math
 import pandas as pd
 import ujson as json
-import logging
+import structlog
 import us
-from datetime import timedelta, datetime, date
+from datetime import timedelta, datetime
 from multiprocessing import Pool
 from pyseir import load_data
 from pyseir.inference.fit_results import load_inference_result, load_Rt_result
@@ -15,6 +14,10 @@ from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.datasets.can_model_output_schema as schema
+
+from typing import Tuple
+
+log = structlog.get_logger()
 
 
 class WebUIDataAdaptorV1:
@@ -60,83 +63,132 @@ class WebUIDataAdaptorV1:
         self.df_whitelist = load_data.load_whitelist()
         self.df_whitelist = self.df_whitelist[self.df_whitelist["inference_ok"] == True]
 
-    def map_fips(self, fips):
+    @staticmethod
+    def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
         """
-        For a given county fips code, generate the CAN UI output format.
+        Fetches the latest county hospitalization and icu utilization.
+
+        If current data is available, we return that.
+        If not, current values are esimated from cummulative.
+        """
+        county_hosp = load_data.get_current_hospitalized_for_county(
+            fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
+        )[1]
+        county_icu = load_data.get_current_hospitalized_for_county(
+            fips, t0_simulation, category=load_data.HospitalizationCategory.ICU
+        )[1]
+
+        return county_hosp, county_icu
+
+    @staticmethod
+    def _is_valid_count_metric(metric: float) -> bool:
+        return metric is not None and metric > 0
+
+    def _get_population(self, fips: str) -> int:
+        if len(fips) == 5:
+            return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
+        return self.population_data.get_record_for_state(self.state_abbreviation)[
+            CommonFields.POPULATION
+        ]
+
+    def map_fips(self, fips: str) -> None:
+        """
+        For a given fips code, for either a county or state, generate the CAN UI output format.
 
         Parameters
         ----------
         fips: str
-            County FIPS code to map.
+            FIPS code to map.
         """
-        logging.info(f"Mapping output to WebUI for {self.state}, {fips}")
+        log.info("Mapping output to WebUI.", state=self.state, fips=fips)
         pyseir_outputs = load_data.load_ensemble_results(fips)
 
         if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
-            logging.info(f"Excluding {fips} due to white list...")
+            log.info("Excluding fips due to white list.", fips=fips)
             return
         try:
             fit_results = load_inference_result(fips)
             t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
         except (KeyError, ValueError):
-            logging.error(f"Fit result not found for {fips}. Skipping...")
+            log.error("Fit result not found for fips. Skipping...", fips=fips)
             return
+        population = self._get_population(fips)
 
-        # ---------------------------------------------------------------------
-        # Rescale hosps based on the population ratio... Could swap this to
-        # infection ratio later?
-        # ---------------------------------------------------------------------
-
-        t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized(
-            state=self.state_abbreviation, t0=t0_simulation, category="hospitalized"
+        t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized_for_state(
+            state=self.state_abbreviation,
+            t0=t0_simulation,
+            category=load_data.HospitalizationCategory.HOSPITALIZED,
         )
 
-        t_latest_icu_data, current_icu = load_data.get_current_hospitalized(
-            state=self.state_abbreviation, t0=t0_simulation, category="icu",
+        _, current_state_icu = load_data.get_current_hospitalized_for_state(
+            state=self.state_abbreviation,
+            t0=t0_simulation,
+            category=load_data.HospitalizationCategory.ICU,
         )
 
-        if len(fips) == 5:
-            population = self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
-        else:
-            population = self.population_data.get_record_for_state(self.state_abbreviation)[
-                CommonFields.POPULATION
-            ]
-
-        policies = [key for key in pyseir_outputs.keys() if key.startswith("suppression_policy")]
         if current_hosp_count is not None:
+            state_fips = fips[:2]
             t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
 
             state_hosp_gen = load_data.get_compartment_value_on_date(
-                fips=fips[:2], compartment="HGen", date=t_latest_hosp_data_date
+                fips=state_fips, compartment="HGen", date=t_latest_hosp_data_date
             )
             state_hosp_icu = load_data.get_compartment_value_on_date(
-                fips=fips[:2], compartment="HICU", date=t_latest_hosp_data_date
+                fips=state_fips, compartment="HICU", date=t_latest_hosp_data_date
             )
 
             if len(fips) == 5:
-                # Rescale the county level hospitalizations by the expected
-                # ratio of county / state hospitalizations from simulations.
-                # We use ICU data if available too.
-                county_hosp = load_data.get_compartment_value_on_date(
+                (current_county_hosp, current_county_icu,) = self._get_county_hospitalization(
+                    fips, t0_simulation
+                )
+                log.info(
+                    "Actual county hospitalizations",
+                    fips=fips,
+                    hospitalized=current_county_hosp,
+                    icu=current_county_icu,
+                )
+                inferred_county_hosp = load_data.get_compartment_value_on_date(
                     fips=fips,
                     compartment="HGen",
                     date=t_latest_hosp_data_date,
                     ensemble_results=pyseir_outputs,
                 )
-                county_icu = load_data.get_compartment_value_on_date(
+
+                county_hosp = inferred_county_hosp
+
+                inferred_county_icu = load_data.get_compartment_value_on_date(
                     fips=fips,
                     compartment="HICU",
                     date=t_latest_hosp_data_date,
                     ensemble_results=pyseir_outputs,
                 )
+                log.info(
+                    "Inferred county hospitalized for fips.",
+                    fips=fips,
+                    hospitalized=inferred_county_hosp,
+                    icu=inferred_county_icu,
+                )
+                county_icu = inferred_county_icu
+                if self._is_valid_count_metric(current_county_hosp):
+                    # use actual instead of adjusted
+                    county_hosp = current_county_hosp
+
+                if self._is_valid_count_metric(current_county_icu):
+                    county_icu = current_county_icu
+
+                # Rescale the county level hospitalizations by the expected
+                # ratio of county / state hospitalizations from simulations.
+                # We use ICU data if available too.
                 current_hosp_count *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
 
             hosp_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
 
             # Some states have covidtracking issues. We shouldn't ground ICU cases
             # to zero since so far these have all been bad reporting.
-            if current_icu is not None and current_icu > 0:
-                icu_rescaling_factor = current_icu / state_hosp_icu
+            if len(fips) == 5 and self._is_valid_count_metric(current_county_icu):
+                icu_rescaling_factor = current_county_icu / inferred_county_icu
+            elif self._is_valid_count_metric(current_state_icu):
+                icu_rescaling_factor = current_state_icu / state_hosp_icu
             else:
                 icu_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
         else:
@@ -145,10 +197,10 @@ class WebUIDataAdaptorV1:
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
-        for i_policy, suppression_policy in enumerate(
-            [key for key in pyseir_outputs.keys() if key.startswith("suppression_policy")]
-        ):
-
+        suppression_policies = [
+            key for key in pyseir_outputs.keys() if key.startswith("suppression_policy")
+        ]
+        for suppression_policy in suppression_policies:
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
 
@@ -176,9 +228,13 @@ class WebUIDataAdaptorV1:
             output_model[schema.INFECTED_B] = hosp_rescaling_factor * np.interp(
                 t_list_downsampled, t_list, output_for_policy["HGen"]["ci_50"]
             )  # Hosp General
-            output_model[schema.INFECTED_C] = icu_rescaling_factor * np.interp(
-                t_list_downsampled, t_list, output_for_policy["HICU"]["ci_50"]
-            )  # Hosp ICU
+
+            raw_model_icu_values = output_for_policy["HICU"]["ci_50"]
+            interpolated_model_icu_values = np.interp(
+                t_list_downsampled, t_list, raw_model_icu_values
+            )
+            final_derived_model_value = icu_rescaling_factor * interpolated_model_icu_values
+            output_model[schema.INFECTED_C] = final_derived_model_value
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = np.add(
                 output_model[schema.INFECTED_B], output_model[schema.INFECTED_C]
@@ -240,12 +296,13 @@ class WebUIDataAdaptorV1:
                 )
                 output_model[schema.RT_INDICATOR] = merged["Rt_MAP_composite"]
 
-                # With 90% probability the value is between rt_indicator - ci90 to rt_indicator + ci90
+                # With 90% probability the value is between rt_indicator - ci90
+                # to rt_indicator + ci90
                 output_model[schema.RT_INDICATOR_CI90] = (
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
             except (ValueError, KeyError) as e:
-                logging.warning(f"Clearing Rt in output for fips {fips}", exc_info=e)
+                log.warning("Clearing Rt in output for fips.", fips=fips, exc_info=e)
                 output_model[schema.RT_INDICATOR] = "NaN"
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
 

@@ -4,6 +4,9 @@ import enum
 import logging
 import pathlib
 import pandas as pd
+import structlog
+from structlog.stdlib import BoundLogger
+
 from libs.us_state_abbrev import US_STATE_ABBREV
 
 if os.getenv("COVID_DATA_PUBLIC"):
@@ -269,7 +272,109 @@ def summarize(data, aggregate_level, groupby):
     print(index_size[index_size > 1])
 
 
+def _clear_common_values(log: BoundLogger, existing_df, data_source, index_fields, column_to_fill):
+    """For index labels shared between existing_df and data_source, clear column_to_fill in existing_df.
+
+    existing_df is modified inplace. Index labels (the values in the index for one row) do not need to be unique in a
+    table.
+    """
+    existing_df.set_index(index_fields, inplace=True)
+    data_source.set_index(index_fields, inplace=True)
+    common_labels_without_date = existing_df.index.intersection(data_source.index)
+    if not common_labels_without_date.empty:
+        # Maybe only do this for rows with some value in column_to_fill.
+        existing_df.sort_index(inplace=True, sort_remaining=True)
+        existing_df.loc[common_labels_without_date, [column_to_fill]] = None
+        log.error(
+            "Duplicate timeseries data",
+            common_labels=common_labels_without_date.to_frame(index=False).to_dict(
+                orient="records"
+            ),
+        )
+    existing_df.reset_index(inplace=True)
+    data_source.reset_index(inplace=True)
+
+
+def fill_fields_and_timeseries_from_column(
+    log: BoundLogger,
+    existing_df: pd.DataFrame,
+    new_df: pd.DataFrame,
+    index_fields: List[str],
+    date_field: str,
+    column_to_fill: str,
+) -> pd.DataFrame:
+    """
+    Return a copy of existing_df with column column_to_fill populated from new_df. Values in existing_df are copied
+    to the return value except for column_to_fill of rows with index_fields present in new_df.
+
+    If the data frames represent timeseries than pass the name of the time column in date_field. This will clear
+    'column_to_fill' for all times for each index_fields in new_df. This prevents the return value containing
+    timeseries with a blend of values from existing_df and new_df.
+
+    See examples in dataset_utils_test.py
+
+    Args:
+        log: a bound structlog logger.
+        existing_df: Existing data frame
+        new_df: Data used to fill existing df columns
+        index_fields: List of columns to use as common index.
+        date_field: the time column name if the data frames represent timeseries, otherwise ''
+        column_to_fill: column to add into existing_df from data_source
+
+    Returns: Updated DataFrame with requested column filled from data_source data.
+    """
+    # Here is a nice tutorial on indexing:
+    # https://jakevdp.github.io/PythonDataScienceHandbook/03.05-hierarchical-indexing.html
+
+    # Copy so this code can work on the data inplace without modifying the inputs.
+    existing_df = existing_df.copy()
+    new_df = new_df.copy()
+    if column_to_fill not in existing_df.columns:
+        existing_df[column_to_fill] = None
+
+    if date_field:
+        _clear_common_values(log, existing_df, new_df, index_fields, column_to_fill)
+        # From here down treat the date as part of the index label for joining rows of existing_df and new_df
+        index_fields.append(date_field)
+
+    new_df.set_index(index_fields, inplace=True)
+    if not existing_df.empty:
+        existing_df.set_index(index_fields, inplace=True)
+        common_labels = existing_df.index.intersection(new_df.index)
+    else:
+        # Treat an empty existing_df the same as one that has no rows in common with new_df
+        common_labels = []
+
+    if len(common_labels):
+        # existing_df is not empty and contains labels in common with new_df. When date_field is set the date is
+        # included in the compared labels and dates that are not in exsiting_df are appended later.
+
+        # Sort suggested by 'PerformanceWarning: indexing past lexsort depth may impact performance'
+        # common_labels is a sparse subset of all labels in both DataFrame and the values are looked up
+        # one by one.
+        existing_df.sort_index(inplace=True, sort_remaining=True)
+        new_df.sort_index(inplace=True, sort_remaining=True)
+
+        # TODO(tombrown): I have a hunch that this is mostly copying NaN values. Check and consider optimizing by
+        # ignoring rows without a real value in column_to_fill.
+        existing_df.loc[common_labels.values, column_to_fill] = new_df.loc[
+            common_labels.values, column_to_fill
+        ]
+        missing_new_data = new_df.loc[new_df.index.difference(common_labels), [column_to_fill]]
+    else:
+        # There are no labels in common so all rows of new_df are to be appended to existing_df.
+        missing_new_data = new_df.loc[:, [column_to_fill]]
+
+    # Revert 'fips', 'state' etc back to regular columns
+    existing_df.reset_index(inplace=True)
+    missing_new_data.reset_index(inplace=True)
+
+    # Concat the existing data with new rows from new_data, creating a new integer index
+    return pd.concat([existing_df, missing_new_data], ignore_index=True)
+
+
 def fill_fields_with_data_source(
+    log: BoundLogger,
     existing_df: pd.DataFrame,
     data_source: pd.DataFrame,
     index_fields: List[str],
@@ -308,6 +413,7 @@ def fill_fields_with_data_source(
         ------------------------------
 
     Args:
+        log: a bound structlog logger.
         existing_df: Existing data frame
         data_source: Data used to fill existing df columns
         index_fields: List of columns to use as common index.
@@ -315,56 +421,11 @@ def fill_fields_with_data_source(
 
     Returns: Updated dataframe with requested columns filled from data_source data.
     """
-    new_data = data_source.set_index(index_fields)
-
-    # If no data exists, return all rows from new data with just the requested columns.
-    if not len(existing_df):
-        for column in columns_to_fill:
-            if column not in new_data.columns:
-                new_data[column] = None
-        return new_data[columns_to_fill].reset_index()
-    existing_df = existing_df.set_index(index_fields)
-
-    # Sort indices so that we have chunks of equal length in the
-    # correct order so that we can splice in values.
-    existing_df = existing_df.sort_index()
-    new_data = new_data.sort_index()
-
-    # Build series that point to rows that match in each data frame.
-    existing_df_in_new_data = existing_df.index.isin(new_data.index)
-    new_data_in_existing_df = new_data.index.isin(existing_df.index)
-
-    if not sum(existing_df_in_new_data) == sum(new_data_in_existing_df):
-        print("Intersection")
-        print(new_data.loc[new_data_in_existing_df, columns_to_fill])
-        print("new data not in existing")
-        print(new_data.loc[~new_data.index.isin(existing_df.index), columns_to_fill])
-        if columns_to_fill[0] in existing_df.columns:
-            print("existing not in new")
-            print(existing_df.loc[~existing_df.index.isin(new_data.index), columns_to_fill])
-        existing_in_new = sum(existing_df_in_new_data)
-        new_in_existing = sum(new_data_in_existing_df)
-        # If this trips consider adding verify_integrity=True to the set_index calls above.
-        raise ValueError(
-            f"Number of rows should be the for data to replace: {existing_in_new} -> {new_in_existing}: {columns_to_fill}"
-        )
-
-    # If a column doesn't exist in the existing data, add it (throws an error)
-    # otherwise.
-    for column in columns_to_fill:
-        if column not in existing_df.columns:
-            existing_df[column] = None
-
-    # Fill in values for rows that match in both data frames.
-    existing_df.loc[existing_df_in_new_data, columns_to_fill] = new_data.loc[
-        new_data_in_existing_df, columns_to_fill
-    ]
-    # Get rows that do not exist in the existing data frame
-    missing_new_data = new_data[~new_data_in_existing_df]
-
-    data = pd.concat([existing_df.reset_index(), missing_new_data[columns_to_fill].reset_index(),])
-
-    return data
+    if len(columns_to_fill) != 1:
+        raise AssertionError("Not supported")
+    return fill_fields_and_timeseries_from_column(
+        log, existing_df, data_source, index_fields, "", columns_to_fill[0]
+    )
 
 
 def make_binary_array(
