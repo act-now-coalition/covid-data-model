@@ -80,10 +80,10 @@ def number_of_time_units(ref_date, dates, unit, epi_week=True):
             n_units = np.array(
                 [Week.fromdate(d).week - Week.fromdate(ref_date).week for d in
                  dates])
-            saturdays = [int(d.weekday() == 5) for d in dates]
+            saturdays = np.array([int(d.weekday() == 5) for d in dates])
             # Saturday within same week is counted as next epi week if ref
             # date itself is not Saturday
-            n_units += saturdays * (ref_date.weekday() != 5)
+            n_units += saturdays * int(ref_date.weekday() != 5)
         else:
             n_units = np.array([(d - ref_date).days // 7 for d in dates])
 
