@@ -30,7 +30,7 @@ Checkout the branch `CovidActNow`, the remote branch already exits.
 Change to `cdc/report` folder copy the most recent forecast and metadata to folder:   
 ```
 cp -t 
-<directory_of_forked_repo>/covid19-forecast-hub/data_processed/CovidActNow-SEIR_CAN/
+<directory_of_forked_repo>/covid19-forecast-hub/data-processed/CovidActNow-SEIR_CAN/
 <forecast date>-CovidActNow-SEIR_CAN.csv metadata-CovidActNow-SEIR_CAN.txt
 ```
 Where `forecast date` should be in `YYYY-MM-DD` format.
@@ -41,7 +41,7 @@ Where `forecast date` should be in `YYYY-MM-DD` format.
 
 # Data Visualization
 To visualize the submitted forecast (and forecast from other models), change to the folder 
-`<directory_of_forked_repo>/covid19-forecast-hub/data_processed/`, 
+`<directory_of_forked_repo>/covid19-forecast-hub/data-processed/`, 
 and run in R:  
 ```
 source("explore_processed_data.R")
