@@ -109,7 +109,11 @@ class ModelFitter:
         errordef=0.5,
     )
 
-    PARAM_SETS = {("HI"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]), ("AK"): dict(eps=0.25, t0 = 75, t_break=10, limit_t0=[50,90]), ("MT"): dict(eps=0.25, t0 = 75, t_break=10, limit_t0=[50,90]) }
+    PARAM_SETS = {
+        ("HI"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("AK"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("MT"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+    }
 
     steady_state_exposed_to_infected_ratio = 1.2
 
@@ -134,7 +138,7 @@ class ModelFitter:
         # self.max_fit_day = datetime.date.today() - ref_date
         self.fips = fips
         self.ref_date = ref_date
-        self.max_fit_date=(dt.date.today() - timedelta(days = 7) - ref_date.date()).days#natasha
+        self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
@@ -142,7 +146,6 @@ class ModelFitter:
         self.percent_error_on_max_observation = percent_error_on_max_observation
         self.t0_guess = 60
         self.with_age_structure = with_age_structure
-
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -392,9 +395,9 @@ class ModelFitter:
         # max_fit_day = datetime.now() - self.ref_date
         # if t_break + t_delta_phases + 14 > self.max_fit_day:
         #    t_delta_phases = self.max_fit_day - t_break
-        #_logger.info(
-        #f"---------------------Natasha: max fit date: {self.max_fit_date}"
-        #)
+        # _logger.info(
+        # f"---------------------Natasha: max fit date: {self.max_fit_date}"
+        # )
 
         suppression_policy = suppression_policies.get_epsilon_interpolator(
             eps, t_break, eps2, t_delta_phases
@@ -466,11 +469,10 @@ class ModelFitter:
         l = locals()
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
 
-
         if t0 + t_break + t_delta_phases + 14 + 7 < self.max_fit_date:
-          model = self.run_model(**model_kwargs)
+            model = self.run_model(**model_kwargs)
         else:
-          return 1000
+            return 1000
         # -----------------------------------
         # Chi2 Cases
         # -----------------------------------
@@ -618,6 +620,7 @@ class ModelFitter:
         self.fit_results["t_today"] = (datetime.today() - self.ref_date).days
 
         self.fit_results["Reff"] = self.fit_results["R0"] * self.fit_results["eps"]
+        self.fit_results["Reff2"] = self.fit_results["R0"] * self.fit_results["eps2"]
 
         self.fit_results["chi2_cases"] = self.chi2_cases
         if self.hospitalizations is not None:
@@ -874,7 +877,9 @@ class ModelFitter:
         for i, (k, v) in enumerate(self.fit_results.items()):
 
             fontweight = (
-                "bold" if k in ("R0", "Reff", "eps", "eps2", "t_delta_phases") else "normal"
+                "bold"
+                if k in ("R0", "Reff", "Reff2", "eps", "eps2", "t_delta_phases")
+                else "normal"
             )
 
             if np.isscalar(v) and not isinstance(v, str):
