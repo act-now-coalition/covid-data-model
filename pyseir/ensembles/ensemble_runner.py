@@ -1,4 +1,3 @@
-import inspect
 import datetime
 import logging
 import os
@@ -17,7 +16,6 @@ from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from pyseir.inference import fit_results
-from pyseir.inference.model_fitter import ModelFitter
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import JHUDataset
 
@@ -105,15 +103,15 @@ class EnsembleRunner:
         county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
 
         if not covid_timeseries:
-            # TODO(tom): deprecate all code paths that get here. I'm trying to move towards loading all data
-            # once and passing it around in parameters.
             covid_timeseries = JHUDataset.local().timeseries()
         else:
             covid_timeseries = covid_timeseries.timeseries()
 
-        self.covid_data = covid_timeseries.get_data(
-            aggregation_level=self.agg_level, country="USA", state=self.state_abbr, fips=county_fips
-        ).sort_values("date")
+        self.covid_data = (
+            covid_timeseries.get_subset(self.agg_level, country="USA", state=self.state_abbr)
+            .get_data(country="USA", state=self.state_abbr, fips=county_fips)
+            .sort_values("date")
+        )
 
         os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
         if self.output_file_report:
@@ -184,8 +182,7 @@ class EnsembleRunner:
         model.run()
         return model
 
-
-    def _load_model_for_fips(self, scenario='inferred'):
+    def _load_model_for_fips(self, scenario="inferred"):
         """
         Try to load a model for the locale, else load the state level model
         and update parameters for the county.
@@ -246,74 +243,6 @@ class EnsembleRunner:
         model.run()
         return model
 
-    def model_ensemble(self, override_params=None, N_samples=5000,
-                       chi_square=False):
-        """
-        Run SEIR model with parameter sets sampled by parameter ensemble
-        generator.
-
-        Parameters
-        ----------
-        override_params: dict
-            Parameters and their values to override in the parameter sets.
-        N_samples: int
-            Number of sample of parameter sets.
-        chi_square: bool
-            Whether returns chi squares obtained by fitting each model in
-            model ensemble to observed cases, deaths w/o hospitalizations.
-
-        Returns
-        -------
-        model_ensemble: np.array(SEIRModel)
-            SEIR models that run with parameter sets sampled by parameter
-            ensemble generator.
-        chi_squares: np.array
-            Chi squares by fitting each model in model ensemble to
-            observed cases, deaths w/o hospitalizations.
-        """
-        model_ensemble = list()
-        parameter_sets = ParameterEnsembleGenerator(self.fips,
-                                                    N_samples=N_samples,
-                                                    t_list=self.t_list,
-                                                    suppression_policy=self.suppression_policy) \
-            .sample_seir_parameters(override_params=override_params)
-
-        # get mle eps and t_break from suppression policy
-        for parameter_set in parameter_sets:
-            model = self._run_single_simulation({k: v for k, v in parameter_set.items() if k in
-                                                 inspect.getfullargspec(SEIRModel.__init__).args})
-            model_ensemble.append(model)
-        model_ensemble = np.array(model_ensemble)
-
-        if not chi_square:
-            return model_ensemble, None
-        else:
-            #TODO @Xinyu: simplify this to avoid duplicated model simulation.
-            chi_squares = np.zeros(model_ensemble.shape[0])
-            fitting_args = dict(eps=1,
-                                t0=60,
-                                t_break=15,
-                                test_fraction=0.06,
-                                hosp_fraction=1,
-                                log10_I_initial=0)
-            mf = ModelFitter(fips=self.fips)
-            for n, parameter_set in enumerate(parameter_sets):
-                try:
-                    fitting_args.update(parameter_set)
-                    mf.SEIR_kwargs = {k: v for k, v in fitting_args.items() if k in mf.SEIR_kwargs.keys()}
-                    mf.t_list = self.t_list
-                    if 'suppression_policy' in mf.SEIR_kwargs.keys():
-                        del mf.SEIR_kwargs['suppression_policy']
-                    if 'I_initial' in mf.SEIR_kwargs.keys():
-                        del mf.SEIR_kwargs['I_initial']
-
-                    arg_names = ['R0', 't0', 'eps', 't_break', 'log10_I_initial', 'test_fraction', 'hosp_fraction']
-                    chi_squares[n] += mf._fit_seir(**{k: fitting_args[k] for k in arg_names})
-                except OverflowError:
-                    next
-
-            return model_ensemble[chi_squares > 0], chi_squares[chi_squares > 0]
-
     def run_ensemble(self):
         """
         Run an ensemble of models for each suppression policy nad generate the
@@ -330,7 +259,6 @@ class EnsembleRunner:
 
             else:
                 raise ValueError(f"Run mode {self.run_mode.value} not supported.")
-
 
             if self.agg_level is AggregationLevel.COUNTY:
                 self.all_outputs["county_metadata"] = self.county_metadata
