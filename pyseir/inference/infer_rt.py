@@ -632,7 +632,8 @@ def run_state(state, states_only=False):
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
         log.error("Emtpy dataframe encountered! No RtInfernce results available for %s", state)
-    df.to_json(output_path)
+    else:
+        df.to_json(output_path)
 
     # Run the counties.
     if not states_only:
