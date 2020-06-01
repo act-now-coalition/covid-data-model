@@ -139,6 +139,7 @@ class ModelFitter:
         self.fips = fips
         self.ref_date = ref_date
         self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
+        self.ref_future_date = (dt.date.today() - ref_date.date()).days
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
@@ -469,7 +470,19 @@ class ModelFitter:
         l = locals()
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
 
-        if t0 + t_break + t_delta_phases + 14 + 7 < self.max_fit_date:
+        future_days_penalty = 1.0
+        last_data_point_used = t0 + t_break + 14 + t_delta_phases + 14
+        number_of_future_days_used = last_data_point_used - self.ref_future_date
+        if (
+            number_of_future_days_used > 7
+        ):  # we are allowing 7 days in the future to be used so we only penalize results beyond that
+            future_days_penalty = number_of_future_days_used
+        # if future_days_penalty != 1.0:
+        #  _logger.info(f't0: {t0} t_break: {t_break} t_delta_phases: {t_delta_phases}')
+        #  _logger.info(f'sim_future_day: {self.ref_future_date} last_pt_used: {last_data_point_used} n_future_days: {number_of_future_days_used}')
+        #  _logger.info(f'future_days_penalty: {future_days_penalty}')
+        # if t0 + t_break + t_delta_phases + 14 + 7 < self.max_fit_date:
+        if last_data_point_used < self.ref_future_date - 10:
             model = self.run_model(**model_kwargs)
         else:
             return 1000
@@ -535,7 +548,13 @@ class ModelFitter:
         self.dof_deaths = (self.observed_new_deaths > 0).sum()
         self.dof_cases = (self.observed_new_cases > 0).sum()
 
-        return chi2_deaths + chi2_cases + chi2_hosp
+        not_penalized_score = chi2_deaths + chi2_cases + chi2_hosp
+        score = future_days_penalty * (chi2_deaths + chi2_cases + chi2_hosp)
+
+        # if future_days_penalty != 1.0:
+        # _logger.info(f'future_days_penalty: {future_days_penalty}')
+        # _logger.info(f'score: {score} not_penalized_score: {not_penalized_score}')
+        return score
 
     def get_posterior_estimate_eps(self, R0, eps, eps_error, plot=False):
         """
