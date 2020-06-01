@@ -113,6 +113,10 @@ class ModelFitter:
         ("HI"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
         ("AK"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
         ("MT"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("ID"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("LA"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("ND"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("WV"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
     }
 
     steady_state_exposed_to_infected_ratio = 1.2
@@ -498,6 +502,9 @@ class ModelFitter:
             )
         )
         chi2_cases = calc_chi_sq(self.observed_new_cases, predicted_cases, self.cases_stdev)
+        # _logger.info(f'cases: {self.observed_new_cases}')
+        # _logger.info(f'predic: {predicted_cases}')
+        # _logger.info(f'chi2: {chi2_cases}')
 
         # -----------------------------------
         # Chi2 Hospitalizations
