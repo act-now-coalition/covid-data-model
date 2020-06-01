@@ -464,7 +464,7 @@ class ModelFitter:
         Returns
         -------
           : float
-            Chi square of fitting model to observed cases and deaths.
+            Chi square of fitting model to observed cases, deaths, and hospitalizations.
         """
         l = locals()
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
