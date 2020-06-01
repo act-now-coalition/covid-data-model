@@ -16,7 +16,7 @@ from cli import run_top_counties_dataset
 from cli import run_states_api
 from cli import run_counties_api
 from cli import compare_snapshots
-
+from cli import utils
 from libs.datasets import dataset_cache
 
 
@@ -46,6 +46,7 @@ entry_point.add_command(run_top_counties_dataset.deploy_top_counties)
 entry_point.add_command(run_counties_api.deploy_counties_api)
 entry_point.add_command(run_states_api.deploy_states_api)
 entry_point.add_command(api.main)
+entry_point.add_command(utils.main)
 
 
 # This code is executed when invoked as `python run.py ...` and will need to be changed if you
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     sentry_sdk.init(os.getenv("SENTRY_DSN"))
 
     logging.basicConfig(level=logging.INFO)
-    dataset_cache.set_pickle_cache_tempdir()
+    dataset_cache.set_pickle_cache_dir()
     pandarallel.initialize(progress_bar=False)
     try:
         entry_point()  # pylint: disable=no-value-for-parameter

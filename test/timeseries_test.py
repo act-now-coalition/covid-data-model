@@ -21,13 +21,16 @@ def test_get_subset_and_get_data():
             "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
             ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
             ",,ZZ,97001,USA,state,2020-03-23,mystate\n"
-            ",,,,UK,country,2020-03-23,foo\n"
+            ",,XY,96001,USA,state,2020-03-23,other-state\n"
+            ",,,,UK,country,2020-03-23,you-kee\n"
+            ",,,,US,country,2020-03-23,you-ess-hey\n"
         )
     )
     ts = TimeseriesDataset(input_df)
 
-    assert set(ts.get_subset(AggregationLevel.COUNTRY).data["country"]) == {"UK"}
-    assert set(ts.get_subset(AggregationLevel.STATE).data["metric"]) == {"mystate"}
+    assert set(ts.get_subset(AggregationLevel.COUNTRY).data["metric"]) == {"you-kee", "you-ess-hey"}
+    assert set(ts.get_subset(AggregationLevel.COUNTRY, country="UK").data["country"]) == {"UK"}
+    assert set(ts.get_subset(AggregationLevel.STATE).data["metric"]) == {"mystate", "other-state"}
     assert set(ts.get_data(None, state="ZZ", after="2020-03-23")["metric"]) == {"march24-nyc"}
     assert set(ts.get_data(None, state="ZZ", after="2020-03-22")["metric"]) == {
         "smithville-march23",
@@ -35,3 +38,13 @@ def test_get_subset_and_get_data():
         "mystate",
         "march24-nyc",
     }
+    assert set(ts.get_data(AggregationLevel.STATE, states=["ZZ", "XY"])["metric"]) == {
+        "mystate",
+        "other-state",
+    }
+    assert set(ts.get_data(None, states=["ZZ"], on="2020-03-23")["metric"]) == {
+        "smithville-march23",
+        "county-metric",
+        "mystate",
+    }
+    assert set(ts.get_data(None, states=["ZZ"], before="2020-03-23")["metric"]) == {"march22-nyc"}
