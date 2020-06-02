@@ -212,7 +212,7 @@ class EnsembleRunner:
             # across the code base).
             default_params = ParameterEnsembleGenerator(
                 self.fips,
-                N_samples=1, #change back to 250?
+                N_samples=1,  # change back to 250?
                 t_list=model.t_list,
                 suppression_policy=model.suppression_policy,
             ).get_average_seir_parameters()
