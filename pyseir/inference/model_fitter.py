@@ -1,6 +1,5 @@
 import logging
 import iminuit
-import pdb
 
 # TODO use JAX for numpy XLA acceleration
 # from jax.config import config
@@ -32,8 +31,6 @@ from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsemble
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
-
-_logger = logging.getLogger(__name__)
 
 
 def calc_chi_sq(obs, predicted, stddev):
@@ -95,7 +92,7 @@ class ModelFitter:
         eps2=0.3,
         limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
-        t_delta_phases=14,  # number of days between phase 2 and 3, since each phase is 14 days, we start at 15
+        t_delta_phases=14,  # number of days between second and third ramps
         limit_t_delta_phases=[14, 60],
         error_t_delta_phases=1,
         test_fraction=0.1,
@@ -195,7 +192,7 @@ class ModelFitter:
             "eps2",
             "t_delta_phases",
             "log10_I_initial",
-        ]  # Natasha
+        ]
 
         self.SEIR_kwargs = self.get_average_seir_parameters()
         self.fit_results = None
@@ -453,17 +450,28 @@ class ModelFitter:
         l = locals()
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
 
-        future_days_penalty = 1.0
+
+        #Last data point used in Fit
         last_data_point_used = t0 + t_break + 14 + t_delta_phases + 14
-        future_days_allowed = 7
-        max_future_days_fitted = future_days_allowed + 7
+        #Number of future days used in second ramp period
         number_of_future_days_used = last_data_point_used - self.ref_future_date
+        #Max number of future days allowed
+        future_days_allowed = 7
+        #How many future days to let the fit iterate over (this is larger than future_days_allowed to give the optimizer space)
+        max_future_days_fitted = future_days_allowed + 7
+        #Multiplicative chi2 penalty if future_days are used in second ramp period (set to 1 by default)
+        future_days_penalty = 1.0
+
+        #Set if using more future days than allowed, updated future_days_penalty
         if (
             number_of_future_days_used > future_days_allowed
-        ):  # we are allowing 7 days in the future to be used so we only penalize results beyond that
+        ):
             future_days_penalty = number_of_future_days_used
+
+        #Only run fit when last_data_point_used does not use more than max_future_days_fitted 
         if last_data_point_used < self.ref_future_date + max_future_days_fitted:
             model = self.run_model(**model_kwargs)
+        #Otherwise return chi2 = 1000, we could further optimize this, but this is functional
         else:
             return 1000
         # -----------------------------------
@@ -529,6 +537,7 @@ class ModelFitter:
         self.dof_cases = (self.observed_new_cases > 0).sum()
 
         not_penalized_score = chi2_deaths + chi2_cases + chi2_hosp
+        #Calculate the final score as the product of the future_days_penalty and not_penalized_score
         score = future_days_penalty * (chi2_deaths + chi2_cases + chi2_hosp)
 
         return score
@@ -867,8 +876,6 @@ class ModelFitter:
         for i, (k, v) in enumerate(self.fit_results.items()):
             if k in ("chi2_cases", "chi2_deaths", "chi2_hosps"):
                 chi_total += v
-        print("Natasha: chi total")
-        print(chi_total)
 
         for i, (k, v) in enumerate(self.fit_results.items()):
 
@@ -934,14 +941,12 @@ class ModelFitter:
         : ModelFitter
         """
         # Assert that there are some cases for counties
-        # print('Natasha: starting model_fitter.run_forfips()')
         if len(fips) == 5:
             _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
                 fips, t0=datetime.today()
             )
             if observed_new_cases.sum() < 1:
                 return None
-        # print('Natasha: about to start try statement')
 
         try:
             retries_left = n_retries
@@ -1012,7 +1017,6 @@ def run_state(state, states_only=False, with_age_structure=False):
     with_age_structure: bool
         If True run model with age structure.
     """
-    # print('Natasha: starting model_fitter.run_state()')
     state_obj = us.states.lookup(state)
     logging.info(f"Running MLE fitter for state {state_obj.name}")
 
@@ -1029,12 +1033,9 @@ def run_state(state, states_only=False, with_age_structure=False):
 
     # Run the counties.
     if not states_only:
-        logging.info(f"Generating whitelist for state {state_obj.name}")
         df_whitelist = load_data.load_whitelist()
-        print(df_whitelist)
         df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
-        logging.info("NOT RUNNING STATES ONLY")
         df_whitelist = load_data.load_whitelist()
         df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
