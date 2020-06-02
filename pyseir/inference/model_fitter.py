@@ -45,6 +45,7 @@ class ModelFitter:
     statistical ones. We allow for relative rates of confirmed cases, hosp and
     deaths to float, allowing the fitter to focus on the shape parameters rather
     than absolutes.
+
     Parameters
     ----------
     fips: str
@@ -132,6 +133,7 @@ class ModelFitter:
         # Seed the random state. It is unclear whether this propagates to the
         # Minuit optimizer.
         np.random.seed(seed=42)
+
         self.fips = fips
         self.ref_date = ref_date
         self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
@@ -182,6 +184,7 @@ class ModelFitter:
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
+
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
 
@@ -259,6 +262,7 @@ class ModelFitter:
         """
         Generate the additional fitter candidates from the ensemble generator. This
         has the suppression policy and R0 keys removed.
+
         Returns
         -------
         SEIR_kwargs: dict
@@ -298,6 +302,7 @@ class ModelFitter:
         the errors in the following way:
         1. Set the error of the largest observation to 100% of its value.
         2. Scale all other errors based on sqrt(value) * sqrt(max_value)
+
         Returns
         -------
         cases_stdev: array-like
@@ -367,6 +372,7 @@ class ModelFitter:
     def run_model(self, R0, eps, t_break, eps2, t_delta_phases, log10_I_initial):
         """
         Generate the model and run.
+
         Parameters
         ----------
         R0: float
@@ -378,6 +384,7 @@ class ModelFitter:
             Timing for the switch in suppression policy.
         log10_I_initial:
             log10 initial infections.
+
         Returns
         -------
         model: SEIRModel
@@ -425,6 +432,7 @@ class ModelFitter:
     ):
         """
         Fit SEIR model by MLE.
+
         Parameters
         ----------
         R0: float
@@ -442,6 +450,7 @@ class ModelFitter:
             Fraction of actual hospitalizations vs the total.
         log10_I_initial:
             log10 initial infections.
+
         Returns
         -------
           : float
@@ -666,6 +675,7 @@ class ModelFitter:
         if self.hosp_stdev is not None:
             hosp_stdev = deepcopy(self.hosp_stdev)
             hosp_stdev[hosp_stdev > 1e5] = 0
+
         plt.figure(figsize=(18, 12))
         plt.errorbar(
             data_dates,
@@ -895,6 +905,7 @@ class ModelFitter:
                     alpha=0.6,
                     fontweight=fontweight,
                 )
+
             else:
                 plt.text(
                     1.05,
@@ -926,6 +937,7 @@ class ModelFitter:
     def run_for_fips(cls, fips, n_retries=3, with_age_structure=False):
         """
         Run the model fitter for a state or county fips code.
+
         Parameters
         ----------
         fips: str
@@ -936,6 +948,7 @@ class ModelFitter:
             implemented.
         with_age_structure: bool
             If True run model with age structure.
+
         Returns
         -------
         : ModelFitter
@@ -1008,6 +1021,7 @@ def build_county_list(state):
 def run_state(state, states_only=False, with_age_structure=False):
     """
     Run the fitter for each county in a state.
+
     Parameters
     ----------
     state: str

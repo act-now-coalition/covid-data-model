@@ -24,6 +24,7 @@ distancing_measure_suppression = {
 
 def get_future_suppression_from_r0(R0, scenario):
     """
+
     Returns the future suppression level for a given R0 and a "future scenario".
     Parameters
     ----------
@@ -31,6 +32,7 @@ def get_future_suppression_from_r0(R0, scenario):
         Reproduction number
     scenario: str
         'no_intervention', 'flatten_the_curve', 'social_distancing'.
+
     Returns
     -------
     epsilon: float
@@ -52,6 +54,7 @@ def generate_triggered_suppression_model(
     """
     Generates a contact reduction model which switches a binary suppression
     policy on and off.
+
     Parameters
     ----------
     t_list: array-like
@@ -62,6 +65,7 @@ def generate_triggered_suppression_model(
         Days of high contact rate.
     start_on: int
         Start the lockdown fluctuation after X days.
+
     Returns
     -------
     suppression_model: callable
@@ -99,6 +103,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     Generate a suppression policy for CovidActNow which generates an Reff on a
     given date according to the policies in place.
     Implements CovidActNow's version, which sets Reff
+
         ```
         def get_interventions(start_date=datetime.now().date()):
             return [
@@ -123,6 +128,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
                 },
             ]
         ```
+
     Returns
     -------
     suppression_model: callable
@@ -185,6 +191,7 @@ def get_epsilon_interpolator(
     Return an interpolator that produces an epsilon when called with a time (relative to the model
     start). The solution has at least 3 steps (4 if t_break_final and eps_final are set) with a
     linear transition between each step.
+
     Parameters
     ----------
     eps: float
@@ -201,6 +208,7 @@ def get_epsilon_interpolator(
         Time since simulation start to place a break to a final level.
     eps_final: float
         Suppression level after t_break_final. If None, then eps is used.
+
     Returns
     -------
     suppression_model: callable
@@ -242,6 +250,7 @@ def generate_empirical_distancing_policy(
     Produce a suppression policy based on Imperial College estimates of social
     distancing programs combined with County level datasets about their
     implementation.
+
     Parameters
     ----------
     t_list: array-like
@@ -253,6 +262,7 @@ def generate_empirical_distancing_policy(
         going backward as the lockdown / stay-at-home efficacy.
     reference_start_date: pd.Timestamp
         Start date as reference to shift t_list.
+
     Returns
     -------
     suppression_model: callable
@@ -331,11 +341,13 @@ def generate_empirical_distancing_policy_by_state(
     Produce a suppression policy at state level based on Imperial College
     estimates of social distancing programs combined with County level
     datasets about their implementation.
+
     Note: This is about 250ms per state, which adds up when running e.g. MLE
     optimization. Bottleneck is computing the suppression policy to date which
     is done by summing counties. This should be done once per state and lru
     cached, not done for each county every call. Also just using numpy instead
     of pandas.
+
     Parameters
     ----------
     t_list: array-like
@@ -347,6 +359,7 @@ def generate_empirical_distancing_policy_by_state(
         going backward as the lockdown / stay-at-home efficacy.
     reference_start_date: pd.Timestamp
         Start date as reference to shift t_list.
+
     Returns
     -------
     suppression_model: callable
@@ -379,6 +392,7 @@ def piecewise_parametric_policy(x, t_list):
     """
     Generate a piecewise suppression policy over n_days based on interval
     splits at levels passed and according to the split_power_law.
+
     Parameters
     ----------
     x: array(float)
@@ -389,6 +403,7 @@ def piecewise_parametric_policy(x, t_list):
             Series of suppression levels that will be equally strewn across.
     t_list: array-like
         List of days over which the period.
+
     Returns
     -------
     policy: callable
@@ -409,6 +424,7 @@ def fourier_parametric_policy(x, t_list, suppression_bounds=(0.5, 1.5)):
     """
     Generate a piecewise suppression policy over n_days based on interval
     splits at levels passed and according to the split_power_law.
+
     Parameters
     ----------
     x: array(float)
@@ -420,6 +436,7 @@ def fourier_parametric_policy(x, t_list, suppression_bounds=(0.5, 1.5)):
     suppression_bounds: tuple(float)
         Lower and upper bounds on the suppression level. This clips the fourier
         policy.
+
     Returns
     -------
     policy: callable
