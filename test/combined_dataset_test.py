@@ -59,7 +59,9 @@ def test_unique_timeseries(data_source_cls):
     data_source = data_source_cls.local()
     timeseries = TimeseriesDataset.build_from_data_source(data_source)
     timeseries = combined_datasets.US_STATES_FILTER.apply(timeseries)
-    timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS)
+    # Check for duplicate rows with the same INDEX_FIELDS. Sort by index so duplicates are next to
+    # each other in the output.
+    timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS).sort_index()
     duplicates = timeseries_data.index.duplicated(keep=False)
     assert not sum(duplicates), str(timeseries_data.loc[duplicates])
 
