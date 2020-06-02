@@ -25,6 +25,7 @@ distancing_measure_suppression = {
 def get_future_suppression_from_r0(R0, scenario):
     """
     Returns the future suppression level for a given R0 and a "future scenario".
+
     Parameters
     ----------
     R0:float
@@ -101,8 +102,8 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     """
     Generate a suppression policy for CovidActNow which generates an Reff on a
     given date according to the policies in place.
+    
     Implements CovidActNow's version, which sets Reff
-
         ```
         def get_interventions(start_date=datetime.now().date()):
             return [
