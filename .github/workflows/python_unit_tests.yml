@@ -16,8 +16,7 @@ jobs:
 
   build:
     env:
-      #TODO(tom): Put back to master once latest breakage addressed.
-      COVID_DATA_PUBLIC_REF: '1c7ae4c874debe48d31af281a4611a1f72a552b4'
+      COVID_DATA_PUBLIC_REF: 'master'
 
     runs-on: ubuntu-latest
     strategy:
