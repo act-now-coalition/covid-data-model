@@ -16,7 +16,7 @@ jobs:
 
   build:
     env:
-      COVID_DATA_PUBLIC_REF: 'june1_data'
+      COVID_DATA_PUBLIC_REF: '1c7ae4c874debe48d31af281a4611a1f72a552b4'
 
     runs-on: ubuntu-latest
     strategy:

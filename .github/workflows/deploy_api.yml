@@ -21,7 +21,7 @@ env:
 
   # To pin to an old data sets, put the branch/tag/commit here:
   #TODO(tom): Put back to master once latest breakage addressed.
-  COVID_DATA_PUBLIC_REF: 'june1_data'
+  COVID_DATA_PUBLIC_REF: '1c7ae4c874debe48d31af281a4611a1f72a552b4'
 
   # S3 Bucket (used by s3-sync-action tasks) to store final API snapshot.
   AWS_S3_BUCKET: 'data.covidactnow.org'
