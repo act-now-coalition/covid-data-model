@@ -65,7 +65,7 @@ class RtInferenceEngine:
         confidence_intervals=(0.68, 0.95),
         min_cases=5,
         min_deaths=5,
-        include_testing_correction=True,
+        include_testing_correction=False,
     ):
         np.random.seed(
             NP_SEED
