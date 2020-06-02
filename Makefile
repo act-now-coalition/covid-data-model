@@ -3,7 +3,6 @@
 setup-dev: requirements.txt requirements_test.txt
 	pip install --upgrade -r requirements.txt -r requirements_test.txt
 	pre-commit install
-	nbstripout --install
 
 unittest:
 	pytest -n 2 test/
