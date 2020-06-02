@@ -1,5 +1,6 @@
 import logging
 import iminuit
+import pdb
 
 # TODO use JAX for numpy XLA acceleration
 # from jax.config import config
@@ -19,6 +20,7 @@ from scipy.stats import gamma, norm
 from copy import deepcopy
 from matplotlib import pyplot as plt
 from datetime import datetime, timedelta
+import datetime as dt
 from multiprocessing import Pool
 from pyseir.models import suppression_policies
 from pyseir import load_data
@@ -30,6 +32,8 @@ from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsemble
 from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
+
+_logger = logging.getLogger(__name__)
 
 
 def calc_chi_sq(obs, predicted, stddev):
@@ -44,7 +48,6 @@ class ModelFitter:
     statistical ones. We allow for relative rates of confirmed cases, hosp and
     deaths to float, allowing the fitter to focus on the shape parameters rather
     than absolutes.
-
     Parameters
     ----------
     fips: str
@@ -89,6 +92,12 @@ class ModelFitter:
         t_break=20,
         limit_t_break=[5, 40],
         error_t_break=1,
+        eps2=0.3,
+        limit_eps2=[0.20, 1.2],
+        error_eps2=0.005,
+        t_delta_phases=14,  # number of days between phase 2 and 3, since each phase is 14 days, we start at 15
+        limit_t_delta_phases=[14, 60],
+        error_t_delta_phases=1,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
         error_test_fraction=0.02,
@@ -99,7 +108,15 @@ class ModelFitter:
         errordef=0.5,
     )
 
-    PARAM_SETS = {("HI",): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90])}
+    PARAM_SETS = {
+        ("HI"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("AK"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("MT"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("ID"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("LA"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("ND"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("WV"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+    }
 
     steady_state_exposed_to_infected_ratio = 1.2
 
@@ -118,9 +135,10 @@ class ModelFitter:
         # Seed the random state. It is unclear whether this propagates to the
         # Minuit optimizer.
         np.random.seed(seed=42)
-
         self.fips = fips
         self.ref_date = ref_date
+        self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
+        self.ref_future_date = (dt.date.today() - ref_date.date()).days
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
@@ -167,11 +185,17 @@ class ModelFitter:
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
 
-        self.model_fit_keys = ["R0", "eps", "t_break", "log10_I_initial"]
+        self.model_fit_keys = [
+            "R0",
+            "eps",
+            "t_break",
+            "eps2",
+            "t_delta_phases",
+            "log10_I_initial",
+        ]  # Natasha
 
         self.SEIR_kwargs = self.get_average_seir_parameters()
         self.fit_results = None
@@ -238,7 +262,6 @@ class ModelFitter:
         """
         Generate the additional fitter candidates from the ensemble generator. This
         has the suppression policy and R0 keys removed.
-
         Returns
         -------
         SEIR_kwargs: dict
@@ -278,7 +301,6 @@ class ModelFitter:
         the errors in the following way:
         1. Set the error of the largest observation to 100% of its value.
         2. Scale all other errors based on sqrt(value) * sqrt(max_value)
-
         Returns
         -------
         cases_stdev: array-like
@@ -345,10 +367,9 @@ class ModelFitter:
 
         return cases_stdev, hosp_stdev, deaths_stdev
 
-    def run_model(self, R0, eps, t_break, log10_I_initial):
+    def run_model(self, R0, eps, t_break, eps2, t_delta_phases, log10_I_initial):
         """
         Generate the model and run.
-
         Parameters
         ----------
         R0: float
@@ -360,14 +381,14 @@ class ModelFitter:
             Timing for the switch in suppression policy.
         log10_I_initial:
             log10 initial infections.
-
         Returns
         -------
         model: SEIRModel
             The SEIR model that has been run.
         """
-        suppression_policy = suppression_policies.generate_two_step_policy(
-            self.t_list, eps, t_break
+
+        suppression_policy = suppression_policies.get_epsilon_interpolator(
+            eps, t_break, eps2, t_delta_phases
         )
 
         if self.with_age_structure:
@@ -393,10 +414,20 @@ class ModelFitter:
         model.run()
         return model
 
-    def _fit_seir(self, R0, t0, eps, t_break, test_fraction, hosp_fraction, log10_I_initial):
+    def _fit_seir(
+        self,
+        R0,
+        t0,
+        eps,
+        t_break,
+        eps2,
+        t_delta_phases,
+        test_fraction,
+        hosp_fraction,
+        log10_I_initial,
+    ):
         """
         Fit SEIR model by MLE.
-
         Parameters
         ----------
         R0: float
@@ -414,16 +445,27 @@ class ModelFitter:
             Fraction of actual hospitalizations vs the total.
         log10_I_initial:
             log10 initial infections.
-
         Returns
         -------
           : float
-            Chi square of fitting model to observed cases and deaths.
+            Chi square of fitting model to observed cases, deaths, and hospitalizations.
         """
         l = locals()
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
-        model = self.run_model(**model_kwargs)
 
+        future_days_penalty = 1.0
+        last_data_point_used = t0 + t_break + 14 + t_delta_phases + 14
+        future_days_allowed = 7
+        max_future_days_fitted = future_days_allowed + 7
+        number_of_future_days_used = last_data_point_used - self.ref_future_date
+        if (
+            number_of_future_days_used > future_days_allowed
+        ):  # we are allowing 7 days in the future to be used so we only penalize results beyond that
+            future_days_penalty = number_of_future_days_used
+        if last_data_point_used < self.ref_future_date + max_future_days_fitted:
+            model = self.run_model(**model_kwargs)
+        else:
+            return 1000
         # -----------------------------------
         # Chi2 Cases
         # -----------------------------------
@@ -486,7 +528,10 @@ class ModelFitter:
         self.dof_deaths = (self.observed_new_deaths > 0).sum()
         self.dof_cases = (self.observed_new_cases > 0).sum()
 
-        return chi2_deaths + chi2_cases + chi2_hosp
+        not_penalized_score = chi2_deaths + chi2_cases + chi2_hosp
+        score = future_days_penalty * (chi2_deaths + chi2_cases + chi2_hosp)
+
+        return score
 
     def get_posterior_estimate_eps(self, R0, eps, eps_error, plot=False):
         """
@@ -571,6 +616,7 @@ class ModelFitter:
         self.fit_results["t_today"] = (datetime.today() - self.ref_date).days
 
         self.fit_results["Reff"] = self.fit_results["R0"] * self.fit_results["eps"]
+        self.fit_results["Reff2"] = self.fit_results["R0"] * self.fit_results["eps2"]
 
         self.fit_results["chi2_cases"] = self.chi2_cases
         if self.hospitalizations is not None:
@@ -611,7 +657,6 @@ class ModelFitter:
         if self.hosp_stdev is not None:
             hosp_stdev = deepcopy(self.hosp_stdev)
             hosp_stdev[hosp_stdev > 1e5] = 0
-
         plt.figure(figsize=(18, 12))
         plt.errorbar(
             data_dates,
@@ -746,6 +791,25 @@ class ModelFitter:
             label="Estimated Intervention",
         )
 
+        start_intervention2_date = (
+            self.ref_date
+            + timedelta(
+                days=self.fit_results["t_break"]
+                + self.fit_results["t_delta_phases"]
+                + self.fit_results["t0"]
+            )
+            + timedelta(days=14)
+        )
+        stop_intervention2_date = start_intervention2_date + timedelta(days=14)
+
+        plt.fill_betweenx(
+            [y_lim[0], y_lim[1]],
+            [start_intervention2_date, start_intervention2_date],
+            [stop_intervention2_date, stop_intervention2_date],
+            alpha=0.2,
+            label="Estimated Intervention2",
+        )
+
         running_total = timedelta(days=0)
         for i_label, k in enumerate(
             (
@@ -803,10 +867,16 @@ class ModelFitter:
         for i, (k, v) in enumerate(self.fit_results.items()):
             if k in ("chi2_cases", "chi2_deaths", "chi2_hosps"):
                 chi_total += v
+        print("Natasha: chi total")
+        print(chi_total)
 
         for i, (k, v) in enumerate(self.fit_results.items()):
 
-            fontweight = "bold" if k in ("R0", "Reff") else "normal"
+            fontweight = (
+                "bold"
+                if k in ("R0", "Reff", "Reff2", "eps", "eps2", "t_delta_phases")
+                else "normal"
+            )
 
             if np.isscalar(v) and not isinstance(v, str):
                 plt.text(
@@ -828,7 +898,6 @@ class ModelFitter:
                     alpha=0.6,
                     fontweight=fontweight,
                 )
-
         plt.text(
             1.05,
             0.75,
@@ -850,7 +919,6 @@ class ModelFitter:
     def run_for_fips(cls, fips, n_retries=3, with_age_structure=False):
         """
         Run the model fitter for a state or county fips code.
-
         Parameters
         ----------
         fips: str
@@ -861,18 +929,19 @@ class ModelFitter:
             implemented.
         with_age_structure: bool
             If True run model with age structure.
-
         Returns
         -------
         : ModelFitter
         """
         # Assert that there are some cases for counties
+        # print('Natasha: starting model_fitter.run_forfips()')
         if len(fips) == 5:
             _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
                 fips, t0=datetime.today()
             )
             if observed_new_cases.sum() < 1:
                 return None
+        # print('Natasha: about to start try statement')
 
         try:
             retries_left = n_retries
@@ -934,7 +1003,6 @@ def build_county_list(state):
 def run_state(state, states_only=False, with_age_structure=False):
     """
     Run the fitter for each county in a state.
-
     Parameters
     ----------
     state: str
@@ -944,15 +1012,13 @@ def run_state(state, states_only=False, with_age_structure=False):
     with_age_structure: bool
         If True run model with age structure.
     """
+    # print('Natasha: starting model_fitter.run_state()')
     state_obj = us.states.lookup(state)
     logging.info(f"Running MLE fitter for state {state_obj.name}")
 
     model_fitter = ModelFitter.run_for_fips(
         fips=state_obj.fips, with_age_structure=with_age_structure
     )
-
-    df_whitelist = load_data.load_whitelist()
-    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
@@ -963,6 +1029,12 @@ def run_state(state, states_only=False, with_age_structure=False):
 
     # Run the counties.
     if not states_only:
+        logging.info(f"Generating whitelist for state {state_obj.name}")
+        df_whitelist = load_data.load_whitelist()
+        print(df_whitelist)
+        df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
+
+        logging.info("NOT RUNNING STATES ONLY")
         df_whitelist = load_data.load_whitelist()
         df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 

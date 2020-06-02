@@ -25,18 +25,16 @@ distancing_measure_suppression = {
 def get_future_suppression_from_r0(R0, scenario):
     """
     Returns the future suppression level for a given R0 and a "future scenario".
-
     Parameters
     ----------
     R0:float
         Reproduction number
     scenario: str
         'no_intervention', 'flatten_the_curve', 'social_distancing'.
-
     Returns
     -------
     epsilon: float
-        Suppression percentage.
+        Suppression fraction.
     """
     if scenario == "no_intervention":
         return 1
@@ -54,7 +52,6 @@ def generate_triggered_suppression_model(
     """
     Generates a contact reduction model which switches a binary suppression
     policy on and off.
-
     Parameters
     ----------
     t_list: array-like
@@ -65,7 +62,6 @@ def generate_triggered_suppression_model(
         Days of high contact rate.
     start_on: int
         Start the lockdown fluctuation after X days.
-
     Returns
     -------
     suppression_model: callable
@@ -102,7 +98,6 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     """
     Generate a suppression policy for CovidActNow which generates an Reff on a
     given date according to the policies in place.
-
     Implements CovidActNow's version, which sets Reff
         ```
         def get_interventions(start_date=datetime.now().date()):
@@ -128,7 +123,6 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
                 },
             ]
         ```
-
     Returns
     -------
     suppression_model: callable
@@ -184,53 +178,62 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     return interp1d(t_list, rho, fill_value="extrapolate")
 
 
-def generate_two_step_policy(
-    t_list, eps, t_break, transition_time=14, t_break_final=None, eps_final=None
+def get_epsilon_interpolator(
+    eps, t_break, eps2=-1, t_delta_phases=-1, transition_time=14, t_break_final=None, eps_final=None
 ):
     """
-    Produce a suppression policy based a two step policy where the level is
-    fixed at 1 until t_break and then it goes to eps linearly over a fied
-    transition time.
-
+    Return an interpolator that produces an epsilon when called with a time (relative to the model
+    start). The solution has at least 3 steps (4 if t_break_final and eps_final are set) with a
+    linear transition between each step.
     Parameters
     ----------
-    t_list: array-like
-        List of times to interpolate over.
     eps: float
         Suppression level after t_break
     t_break: float
         Time since simulation start to place a break.
+    eps2: float
+        Relative fraction of R0 for third phase
+    t_delta_phases: float
+        Time between first and second phase transitions (limited in solver to be greater than the
+        transition_time).
     transition_time: float
         Length of time to transition between epsilon states.
     t_break_final: int or NoneType
         Time since simulation start to place a break to a final level.
     eps_final: float
         Suppression level after t_break_final. If None, then eps is used.
-
     Returns
     -------
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t.
     """
-    if eps_final is None:
-        return interp1d(
-            x=[0, t_break, t_break + transition_time, 100000],
-            y=[1, 1, eps, eps],
-            fill_value="extrapolate",
+    TIMEBOUNDARY = 100000
+
+    # List of points (time, epsilon value) where transitions will occur
+    points = [
+        (0, 1),
+        (t_break, 1),
+        (t_break + transition_time, eps),
+        (t_break + transition_time + t_delta_phases, eps),
+        (t_break + transition_time + t_delta_phases + transition_time, eps2),
+    ]
+
+    # For estimating future trajectories we can either use the last fitted value or pass in
+    # another value to the SEIR model.
+
+    if eps_final is None:  # Use the current fit value
+        points.extend([(TIMEBOUNDARY, eps2)])
+    else:  # Transition to the provided value
+        points.extend(
+            [
+                (t_break_final, eps2),
+                (t_break_final + transition_time, eps_final),
+                (TIMEBOUNDARY, eps_final),
+            ]
         )
-    else:
-        return interp1d(
-            x=[
-                0,
-                t_break,
-                t_break + transition_time,
-                t_break_final,
-                t_break_final + transition_time,
-                100000,
-            ],
-            y=[1, 1, eps, eps, eps_final, eps_final],
-            fill_value="extrapolate",
-        )
+
+    x, y = zip(*points)
+    return interp1d(x=x, y=y, fill_value="extrapolate")
 
 
 def generate_empirical_distancing_policy(
@@ -240,7 +243,6 @@ def generate_empirical_distancing_policy(
     Produce a suppression policy based on Imperial College estimates of social
     distancing programs combined with County level datasets about their
     implementation.
-
     Parameters
     ----------
     t_list: array-like
@@ -252,7 +254,6 @@ def generate_empirical_distancing_policy(
         going backward as the lockdown / stay-at-home efficacy.
     reference_start_date: pd.Timestamp
         Start date as reference to shift t_list.
-
     Returns
     -------
     suppression_model: callable
@@ -331,13 +332,11 @@ def generate_empirical_distancing_policy_by_state(
     Produce a suppression policy at state level based on Imperial College
     estimates of social distancing programs combined with County level
     datasets about their implementation.
-
     Note: This is about 250ms per state, which adds up when running e.g. MLE
     optimization. Bottleneck is computing the suppression policy to date which
     is done by summing counties. This should be done once per state and lru
     cached, not done for each county every call. Also just using numpy instead
     of pandas.
-
     Parameters
     ----------
     t_list: array-like
@@ -349,7 +348,6 @@ def generate_empirical_distancing_policy_by_state(
         going backward as the lockdown / stay-at-home efficacy.
     reference_start_date: pd.Timestamp
         Start date as reference to shift t_list.
-
     Returns
     -------
     suppression_model: callable
@@ -382,7 +380,6 @@ def piecewise_parametric_policy(x, t_list):
     """
     Generate a piecewise suppression policy over n_days based on interval
     splits at levels passed and according to the split_power_law.
-
     Parameters
     ----------
     x: array(float)
@@ -393,7 +390,6 @@ def piecewise_parametric_policy(x, t_list):
             Series of suppression levels that will be equally strewn across.
     t_list: array-like
         List of days over which the period.
-
     Returns
     -------
     policy: callable
@@ -414,7 +410,6 @@ def fourier_parametric_policy(x, t_list, suppression_bounds=(0.5, 1.5)):
     """
     Generate a piecewise suppression policy over n_days based on interval
     splits at levels passed and according to the split_power_law.
-
     Parameters
     ----------
     x: array(float)
@@ -426,7 +421,6 @@ def fourier_parametric_policy(x, t_list, suppression_bounds=(0.5, 1.5)):
     suppression_bounds: tuple(float)
         Lower and upper bounds on the suppression level. This clips the fourier
         policy.
-
     Returns
     -------
     policy: callable
