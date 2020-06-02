@@ -459,28 +459,25 @@ class ModelFitter:
         l = locals()
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
 
-
-        #Last data point used in Fit
+        # Last data point used in Fit
         last_data_point_used = t0 + t_break + 14 + t_delta_phases + 14
-        #Number of future days used in second ramp period
+        # Number of future days used in second ramp period
         number_of_future_days_used = last_data_point_used - self.ref_future_date
-        #Max number of future days allowed
+        # Max number of future days allowed
         future_days_allowed = 7
-        #How many future days to let the fit iterate over (this is larger than future_days_allowed to give the optimizer space)
+        # How many future days to let the fit iterate over (this is larger than future_days_allowed to give the optimizer space)
         max_future_days_fitted = future_days_allowed + 7
-        #Multiplicative chi2 penalty if future_days are used in second ramp period (set to 1 by default)
+        # Multiplicative chi2 penalty if future_days are used in second ramp period (set to 1 by default)
         future_days_penalty = 1.0
 
-        #Set if using more future days than allowed, updated future_days_penalty
-        if (
-            number_of_future_days_used > future_days_allowed
-        ):
+        # Set if using more future days than allowed, updated future_days_penalty
+        if number_of_future_days_used > future_days_allowed:
             future_days_penalty = number_of_future_days_used
 
-        #Only run fit when last_data_point_used does not use more than max_future_days_fitted 
+        # Only run fit when last_data_point_used does not use more than max_future_days_fitted
         if last_data_point_used < self.ref_future_date + max_future_days_fitted:
             model = self.run_model(**model_kwargs)
-        #Otherwise return chi2 = 1000, we could further optimize this, but this is functional
+        # Otherwise return chi2 = 1000, we could further optimize this, but this is functional
         else:
             return 1000
         # -----------------------------------
@@ -546,7 +543,7 @@ class ModelFitter:
         self.dof_cases = (self.observed_new_cases > 0).sum()
 
         not_penalized_score = chi2_deaths + chi2_cases + chi2_hosp
-        #Calculate the final score as the product of the future_days_penalty and not_penalized_score
+        # Calculate the final score as the product of the future_days_penalty and not_penalized_score
         score = future_days_penalty * (chi2_deaths + chi2_cases + chi2_hosp)
 
         return score
