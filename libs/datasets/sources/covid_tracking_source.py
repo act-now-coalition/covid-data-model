@@ -111,9 +111,7 @@ class CovidTrackingDataSource(data_source.DataSource):
         data[cls.Fields.COUNTY] = None
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
-        # Date checked is the time that the data is actually updated.
-        # assigning the date field as the date floor of that day.
-        data[cls.Fields.DATE] = data[cls.Fields.DATE_CHECKED].dt.tz_localize(None).dt.floor("D")
+        data[cls.Fields.DATE] = pd.to_datetime(data[cls.Fields.DATE], format="%Y%m%d")
 
         dtypes = {
             cls.Fields.POSITIVE_TESTS: "Int64",
