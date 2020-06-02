@@ -136,10 +136,6 @@ class ModelFitter:
         # Seed the random state. It is unclear whether this propagates to the
         # Minuit optimizer.
         np.random.seed(seed=42)
-        # self.max_fit_day = (
-        #    datetime.now() - self.ref_date - 14
-        # )  # natasha this keeps the ramp up period within the current data
-        # self.max_fit_day = datetime.date.today() - ref_date
         self.fips = fips
         self.ref_date = ref_date
         self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
@@ -372,6 +368,7 @@ class ModelFitter:
         if hosp_stdev is not None:
             hosp_stdev[hosp_stdev == 0] = 1e2
 
+        
         return cases_stdev, hosp_stdev, deaths_stdev
 
     def run_model(self, R0, eps, t_break, eps2, t_delta_phases, log10_I_initial):
@@ -395,20 +392,10 @@ class ModelFitter:
         model: SEIRModel
             The SEIR model that has been run.
         """
-        # Maybe start here Natasha
-
-        # max_fit_day = datetime.now() - self.ref_date
-        # if t_break + t_delta_phases + 14 > self.max_fit_day:
-        #    t_delta_phases = self.max_fit_day - t_break
-        # _logger.info(
-        # f"---------------------Natasha: max fit date: {self.max_fit_date}"
-        # )
 
         suppression_policy = suppression_policies.get_epsilon_interpolator(
             eps, t_break, eps2, t_delta_phases
         )
-        # print('Natasha: Suppression policy')
-        # print(suppression_policy)
 
         if self.with_age_structure:
             age_distribution = self.SEIR_kwargs["N"] / self.SEIR_kwargs["N"].sum()
@@ -476,19 +463,16 @@ class ModelFitter:
 
         future_days_penalty = 1.0
         last_data_point_used = t0 + t_break + 14 + t_delta_phases + 14
+        future_days_allowed = 7
+        max_future_days_fitted = future_days_allowed + 7
         number_of_future_days_used = last_data_point_used - self.ref_future_date
         if (
-            number_of_future_days_used > 7
+            number_of_future_days_used > future_days_allowed
         ):  # we are allowing 7 days in the future to be used so we only penalize results beyond that
             future_days_penalty = number_of_future_days_used
-        # if future_days_penalty != 1.0:
-        #  _logger.info(f't0: {t0} t_break: {t_break} t_delta_phases: {t_delta_phases}')
-        #  _logger.info(f'sim_future_day: {self.ref_future_date} last_pt_used: {last_data_point_used} n_future_days: {number_of_future_days_used}')
-        #  _logger.info(f'future_days_penalty: {future_days_penalty}')
-        # if t0 + t_break + t_delta_phases + 14 + 7 < self.max_fit_date:
-        if last_data_point_used < self.ref_future_date - 10:
+        if last_data_point_used < self.ref_future_date + max_future_days_fitted:
             model = self.run_model(**model_kwargs)
-        else:
+        else: 
             return 1000
         # -----------------------------------
         # Chi2 Cases
@@ -502,9 +486,6 @@ class ModelFitter:
             )
         )
         chi2_cases = calc_chi_sq(self.observed_new_cases, predicted_cases, self.cases_stdev)
-        # _logger.info(f'cases: {self.observed_new_cases}')
-        # _logger.info(f'predic: {predicted_cases}')
-        # _logger.info(f'chi2: {chi2_cases}')
 
         # -----------------------------------
         # Chi2 Hospitalizations
@@ -558,9 +539,6 @@ class ModelFitter:
         not_penalized_score = chi2_deaths + chi2_cases + chi2_hosp
         score = future_days_penalty * (chi2_deaths + chi2_cases + chi2_hosp)
 
-        # if future_days_penalty != 1.0:
-        # _logger.info(f'future_days_penalty: {future_days_penalty}')
-        # _logger.info(f'score: {score} not_penalized_score: {not_penalized_score}')
         return score
 
     def get_posterior_estimate_eps(self, R0, eps, eps_error, plot=False):
