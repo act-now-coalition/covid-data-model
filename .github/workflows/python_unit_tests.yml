@@ -57,7 +57,7 @@ jobs:
     #   uses: mxschmitt/action-tmate@v2
     - name: Test with pytest
       env:
-        PYSEIR_FAST_AND_DIRTY: 'True'
+        PYSEIR_FAST_AND_DIRTY: 'False'
       run: |
         make test
       working-directory: ./covid-data-model
