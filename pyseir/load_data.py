@@ -344,7 +344,9 @@ def get_all_fips_codes_for_a_state(state: str):
 
 
 @lru_cache(maxsize=32)
-def load_new_case_data_by_fips(fips, t0, include_testing_correction=False, testing_correction_smoothing_tau=5):
+def load_new_case_data_by_fips(
+    fips, t0, include_testing_correction=False, testing_correction_smoothing_tau=5
+):
     """
     Get data for new cases.
 
@@ -378,11 +380,13 @@ def load_new_case_data_by_fips(fips, t0, include_testing_correction=False, testi
     )
 
     if include_testing_correction:
-        df_new_tests = load_new_test_data_by_fips(fips, t0, smoothing_tau=testing_correction_smoothing_tau)
-        df_cases = pd.DataFrame({'times': times_new, 'new_cases': observed_new_cases})
-        df_cases = df_cases.merge(df_new_tests, how='left', on='times')
-        df_cases['new_cases'] -= df_cases['expected_positives_from_test_increase'].fillna(0)
-        observed_new_cases = df_cases['new_cases'].values
+        df_new_tests = load_new_test_data_by_fips(
+            fips, t0, smoothing_tau=testing_correction_smoothing_tau
+        )
+        df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
+        df_cases = df_cases.merge(df_new_tests, how="left", on="times")
+        df_cases["new_cases"] -= df_cases["expected_positives_from_test_increase"].fillna(0)
+        observed_new_cases = df_cases["new_cases"].values
 
     observed_new_deaths = (
         county_case_data["deaths"].values[1:] - county_case_data["deaths"].values[:-1]
@@ -729,10 +733,9 @@ def get_average_dwell_time(category):
 
 
 @lru_cache(maxsize=32)
-def load_new_case_data_by_state(state,
-                                t0,
-                                include_testing_correction=False,
-                                testing_correction_smoothing_tau=5):
+def load_new_case_data_by_state(
+    state, t0, include_testing_correction=False, testing_correction_smoothing_tau=5
+):
     """
     Get data for new cases at state level.
 
@@ -764,11 +767,13 @@ def load_new_case_data_by_state(state,
     observed_new_cases = state_case_data["cases"].values[1:] - state_case_data["cases"].values[:-1]
 
     if include_testing_correction:
-        df_new_tests = load_new_test_data_by_fips(us.states.lookup(state).fips, t0, smoothing_tau=testing_correction_smoothing_tau)
-        df_cases = pd.DataFrame({'times': times_new, 'new_cases': observed_new_cases})
-        df_cases = df_cases.merge(df_new_tests, how='left', on='times')
-        df_cases['new_cases'] -= df_cases['expected_positives_from_test_increase'].fillna(0)
-        observed_new_cases = df_cases['new_cases'].values
+        df_new_tests = load_new_test_data_by_fips(
+            us.states.lookup(state).fips, t0, smoothing_tau=testing_correction_smoothing_tau
+        )
+        df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
+        df_cases = df_cases.merge(df_new_tests, how="left", on="times")
+        df_cases["new_cases"] -= df_cases["expected_positives_from_test_increase"].fillna(0)
+        observed_new_cases = df_cases["new_cases"].values
 
     observed_new_deaths = (
         state_case_data["deaths"].values[1:] - state_case_data["deaths"].values[:-1]
@@ -825,27 +830,48 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
         df = us_timeseries.get_data(AggregationLevel.STATE, state=us.states.lookup(fips).abbr)
     else:
         df = us_timeseries.get_data(AggregationLevel.COUNTY, fips=fips)
-    df = df[(df[CommonFields.POSITIVE_TESTS].notnull())
-            & (df[CommonFields.NEGATIVE_TESTS].notnull())
-            & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0)]
+    df = df[
+        (df[CommonFields.POSITIVE_TESTS].notnull())
+        & (df[CommonFields.NEGATIVE_TESTS].notnull())
+        & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0)
+    ]
 
-    df['positivity_rate'] = df[CommonFields.POSITIVE_TESTS] / (df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS])
-    df['new_positive'] = np.append([0], np.diff(df[CommonFields.POSITIVE_TESTS]))
+    df["positivity_rate"] = df[CommonFields.POSITIVE_TESTS] / (
+        df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]
+    )
+    df["new_positive"] = np.append([0], np.diff(df[CommonFields.POSITIVE_TESTS]))
 
     # The first derivative gets us new instead of cumulative tests while the second derivative gives us the change in new test rate.
-    df['new_tests'] = np.append([0], np.diff(df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]))
-    df['increase_in_new_tests'] = np.append([0], np.diff(df['new_tests']))
+    df["new_tests"] = np.append(
+        [0], np.diff(df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS])
+    )
+    df["increase_in_new_tests"] = np.append([0], np.diff(df["new_tests"]))
 
     # dPositive / dTotal = 0.65 * positivity_rate was empirically determined by looking at
     # the increase in positives day-over-day relative to the increase in total tests across all 50 states.
-    df['expected_positives_from_test_increase'] = df['increase_in_new_tests'] * 0.65 * df['positivity_rate']
-    df = df[['date', 'new_tests', 'increase_in_new_tests', 'positivity_rate', 'expected_positives_from_test_increase', 'new_positive']]
+    df["expected_positives_from_test_increase"] = (
+        df["increase_in_new_tests"] * 0.65 * df["positivity_rate"]
+    )
+    df = df[
+        [
+            "date",
+            "new_tests",
+            "increase_in_new_tests",
+            "positivity_rate",
+            "expected_positives_from_test_increase",
+            "new_positive",
+        ]
+    ]
 
     df = df[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull()]
-    df['expected_positives_from_test_increase'] = ewma_smoothing(df['expected_positives_from_test_increase'], smoothing_tau)
-    df['expected_positives_from_test_increase'][df['new_positive'] < 5] = 0
+    df["expected_positives_from_test_increase"] = ewma_smoothing(
+        df["expected_positives_from_test_increase"], smoothing_tau
+    )
+    df["expected_positives_from_test_increase"][df["new_positive"] < 5] = 0
 
-    df['times'] = [int((date - t0).days) for date in pd.to_datetime(df['date'].values).to_pydatetime()]
+    df["times"] = [
+        int((date - t0).days) for date in pd.to_datetime(df["date"].values).to_pydatetime()
+    ]
 
     return df
 
