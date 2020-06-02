@@ -236,7 +236,7 @@ class EnsembleRunner:
         model.suppression_policy = sp.get_epsilon_interpolator(
             eps=inferred_params["eps"],
             t_break=inferred_params["t_break"],
-            eps2=inferred_params["eps2"],
+            eps2=inferred_params["eps2"],  # check
             t_delta_phases=inferred_params["t_delta_phases"],
             t_break_final=(
                 datetime.datetime.today()

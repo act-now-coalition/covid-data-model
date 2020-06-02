@@ -201,7 +201,7 @@ def get_epsilon_interpolator(
     eps2: float
         Relative fraction of R0 for third phase
     t_delta_phases: float
-        Time between end of first and second phase transitions
+        Time between first and second phase transitions
     transition_time: float
         Length of time to transition between epsilon states.
     t_break_final: int or NoneType
