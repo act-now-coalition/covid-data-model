@@ -32,7 +32,7 @@ fastparquet==0.3.3
 us==1.0.0
 adtk==0.6.0
 -e .
-pydantic==1.4
+pydantic==1.5
 dill
 dictdiffer==0.8.1
 structlog==20.1.0

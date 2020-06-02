@@ -6,6 +6,7 @@ import us
 from datetime import timedelta, datetime
 from multiprocessing import Pool
 from pyseir import load_data
+from pyseir.inference import model_fitter
 from pyseir.inference.fit_results import load_inference_result, load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
@@ -60,8 +61,7 @@ class WebUIDataAdaptorV1:
 
         state_timeseries = self.jhu_local.timeseries().get_subset(AggregationLevel.STATE)
         self.state_timeseries = state_timeseries.data["date"].dt.normalize()
-        self.df_whitelist = load_data.load_whitelist()
-        self.df_whitelist = self.df_whitelist[self.df_whitelist["inference_ok"] == True]
+        self.allowed_counties = model_fitter.build_county_list(self.state)
 
     @staticmethod
     def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
@@ -69,7 +69,7 @@ class WebUIDataAdaptorV1:
         Fetches the latest county hospitalization and icu utilization.
 
         If current data is available, we return that.
-        If not, current values are esimated from cummulative.
+        If not, current values are esimated from cumulative.
         """
         county_hosp = load_data.get_current_hospitalized_for_county(
             fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
@@ -91,29 +91,13 @@ class WebUIDataAdaptorV1:
             CommonFields.POPULATION
         ]
 
-    def map_fips(self, fips: str) -> None:
+    def _get_model_to_dataset_conversion_factors(self, t0_simulation, fips, pyseir_outputs):
         """
-        For a given fips code, for either a county or state, generate the CAN UI output format.
 
-        Parameters
-        ----------
-        fips: str
-            FIPS code to map.
+        Returns
+        -------
+
         """
-        log.info("Mapping output to WebUI.", state=self.state, fips=fips)
-        pyseir_outputs = load_data.load_ensemble_results(fips)
-
-        if len(fips) == 5 and fips not in self.df_whitelist.fips.values:
-            log.info("Excluding fips due to white list.", fips=fips)
-            return
-        try:
-            fit_results = load_inference_result(fips)
-            t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
-        except (KeyError, ValueError):
-            log.error("Fit result not found for fips. Skipping...", fips=fips)
-            return
-        population = self._get_population(fips)
-
         t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized_for_state(
             state=self.state_abbreviation,
             t0=t0_simulation,
@@ -194,6 +178,35 @@ class WebUIDataAdaptorV1:
         else:
             hosp_rescaling_factor = 1.0
             icu_rescaling_factor = 1.0
+        return hosp_rescaling_factor, icu_rescaling_factor
+
+    def map_fips(self, fips: str) -> None:
+        """
+        For a given fips code, for either a county or state, generate the CAN UI output format.
+
+        Parameters
+        ----------
+        fips: str
+            FIPS code to map.
+        """
+        log.info("Mapping output to WebUI.", state=self.state, fips=fips)
+        pyseir_outputs = load_data.load_ensemble_results(fips)
+
+        if len(fips) == 5 and fips not in self.allowed_counties:
+            log.info("Excluding fips due to white list.", fips=fips)
+            return
+        try:
+            fit_results = load_inference_result(fips)
+            t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
+        except (KeyError, ValueError):
+            log.error("Fit result not found for fips. Skipping...", fips=fips)
+            return
+        population = self._get_population(fips)
+
+        # Get multiplicative conversion factors to scale model output to fit dataset current values
+        hosp_rescaling_factor, icu_rescaling_factor = self._get_model_to_dataset_conversion_factors(
+            t0_simulation=t0_simulation, fips=fips, pyseir_outputs=pyseir_outputs,
+        )
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
@@ -351,35 +364,33 @@ class WebUIDataAdaptorV1:
             with open(output_path, "w") as f:
                 json.dump(output_model, f)
 
-    def generate_state(self, all_fips=[], states_only=False):
+    def generate_state(self, states_only=False):
         """
-        Generate for each county in a state, the output for the webUI.
+        Generate the output for the webUI for the given state, and counties in that state if
+        states_only=False.
 
         Parameters
         ----------
         states_only: bool
             If True only run the state level.
         """
+
         state_fips = us.states.lookup(self.state).fips
         self.map_fips(state_fips)
 
-        if not states_only:
-            all_fips = load_data.get_all_fips_codes_for_a_state(self.state)
-
-            if not self.include_imputed:
-                # Filter...
-                fips_with_cases = self.jhu_local.timeseries().get_data(
-                    AggregationLevel.COUNTY, country="USA", state=self.state_abbreviation
-                )
-                fips_with_cases = fips_with_cases[fips_with_cases.cases > 0].fips.unique().tolist()
-                all_fips = [fips for fips in all_fips if fips in fips_with_cases]
-
+        if states_only:
+            return
+        else:
             p = Pool()
-            p.map(self.map_fips, all_fips)
+            p.map(self.map_fips, self.allowed_counties)
             p.close()
             p.join()
 
 
 if __name__ == "__main__":
-    mapper = WebUIDataAdaptorV1("California", output_interval_days=4)
+    # Need to have a whitelist pre-generated
+    # Need to have a state output already built
+    mapper = WebUIDataAdaptorV1(
+        state="California", output_interval_days=4, run_mode="can-inference-derived"
+    )
     mapper.generate_state()
