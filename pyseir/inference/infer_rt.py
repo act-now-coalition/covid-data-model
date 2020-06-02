@@ -512,6 +512,21 @@ class RtInferenceEngine:
         if plot and df_all is not None:
             plt.figure(figsize=(10, 6))
 
+            if "Rt_MAP_composite" in df_all:
+
+                plt.scatter(
+                    df_all.index,
+                    df_all["Rt_MAP_composite"],
+                    alpha=1,
+                    s=25,
+                    color="yellow",
+                    label="Inferred $R_{t}$ Web",
+                    marker="d",
+                )
+            plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
+            plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
+            plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
+
             if 'Rt_ci5__new_deaths' in df_all:
                 plt.fill_between(df_all.index,  df_all['Rt_ci5__new_deaths'],  df_all['Rt_ci95__new_deaths'],
                                  alpha=.2, color='firebrick')
