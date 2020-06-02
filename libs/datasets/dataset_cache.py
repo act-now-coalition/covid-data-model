@@ -43,7 +43,7 @@ def set_pickle_cache_dir(force=False, cache_dir=DEFAULT_CACHE_DIR) -> str:
 
 
 def cache_dataset_on_disk(
-    target_dataset_cls: Type[dataset_base.DatasetBase], max_age_in_minutes=60, key=None
+    target_dataset_cls: Type[dataset_base.DatasetBase], max_age_in_minutes=240, key=None
 ):
     """Caches underlying pandas data from to an on disk location.
 
