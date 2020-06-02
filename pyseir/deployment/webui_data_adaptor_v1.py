@@ -6,7 +6,6 @@ import us
 from datetime import timedelta, datetime
 from multiprocessing import Pool
 from pyseir import load_data
-from pyseir.inference import model_fitter
 from pyseir.inference.fit_results import load_inference_result, load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
@@ -61,7 +60,7 @@ class WebUIDataAdaptorV1:
 
         state_timeseries = self.jhu_local.timeseries().get_subset(AggregationLevel.STATE)
         self.state_timeseries = state_timeseries.data["date"].dt.normalize()
-        self.allowed_counties = model_fitter.build_county_list(self.state)
+        # self.allowed_counties = model_fitter.build_county_list(self.state)
 
     @staticmethod
     def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
@@ -192,9 +191,11 @@ class WebUIDataAdaptorV1:
         log.info("Mapping output to WebUI.", state=self.state, fips=fips)
         pyseir_outputs = load_data.load_ensemble_results(fips)
 
-        if len(fips) == 5 and fips not in self.allowed_counties:
-            log.info("Excluding fips due to white list.", fips=fips)
-            return
+        # # This is handled in the call to generate_state.
+        # if len(fips) == 5 and fips not in self.allowed_counties:
+        #     log.info("Excluding fips due to white list.", fips=fips)
+        #     return
+
         try:
             fit_results = load_inference_result(fips)
             t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
@@ -364,13 +365,14 @@ class WebUIDataAdaptorV1:
             with open(output_path, "w") as f:
                 json.dump(output_model, f)
 
-    def generate_state(self, states_only=False):
+    def generate_state(self, whitelisted_county_fips: list, states_only=False):
         """
         Generate the output for the webUI for the given state, and counties in that state if
         states_only=False.
 
         Parameters
         ----------
+        whitelisted_county_fips
         states_only: bool
             If True only run the state level.
         """
@@ -382,9 +384,10 @@ class WebUIDataAdaptorV1:
             return
         else:
             p = Pool()
-            p.map(self.map_fips, self.allowed_counties)
+            p.map(self.map_fips, whitelisted_county_fips)
             p.close()
             p.join()
+            return
 
 
 if __name__ == "__main__":

@@ -262,7 +262,9 @@ def _build_all_for_states(
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state()
+        web_ui_mapper.generate_state(
+            whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state]
+        )
     p.close()
     p.join()
 
