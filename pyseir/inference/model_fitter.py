@@ -589,7 +589,7 @@ class ModelFitter:
         Fit a model to the data.
         """
         minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
-
+        minuit.strategy = 0
         if os.environ.get("PYSEIR_FAST_AND_DIRTY"):
             minuit.strategy = 0
 
