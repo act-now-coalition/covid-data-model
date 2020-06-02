@@ -24,7 +24,6 @@ distancing_measure_suppression = {
 
 def get_future_suppression_from_r0(R0, scenario):
     """
-
     Returns the future suppression level for a given R0 and a "future scenario".
     Parameters
     ----------
