@@ -368,7 +368,6 @@ class ModelFitter:
         if hosp_stdev is not None:
             hosp_stdev[hosp_stdev == 0] = 1e2
 
-        
         return cases_stdev, hosp_stdev, deaths_stdev
 
     def run_model(self, R0, eps, t_break, eps2, t_delta_phases, log10_I_initial):
@@ -472,7 +471,7 @@ class ModelFitter:
             future_days_penalty = number_of_future_days_used
         if last_data_point_used < self.ref_future_date + max_future_days_fitted:
             model = self.run_model(**model_kwargs)
-        else: 
+        else:
             return 1000
         # -----------------------------------
         # Chi2 Cases
