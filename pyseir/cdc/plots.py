@@ -61,6 +61,8 @@ def plot_results(fips, forecast_date, target, observations, pdf=None):
             results[unit].append(pd.DataFrame({
                 'target_end_date': [sub_df.iloc[0]['target_end_date']],
                 'median': [float(sub_df[sub_df['quantile'] == 0.5]['value'])],
+                'ci_250': [float(sub_df[sub_df['quantile'] == 0.25]['value'])],
+                'ci_750': [float(sub_df[sub_df['quantile'] == 0.75]['value'])],
                 'ci_025': [float(sub_df[sub_df['quantile'] == 0.025]['value'])],
                 'ci_975': [float(sub_df[sub_df['quantile'] == 0.975]['value'])]}))
 
@@ -82,6 +84,11 @@ def plot_results(fips, forecast_date, target, observations, pdf=None):
                          y1=results[unit]['ci_025'],
                          y2=results[unit]['ci_975'],
                          label=f'CI_95',
+                         alpha=0.15)
+        plt.fill_between(x=results[unit]['target_end_date'],
+                         y1=results[unit]['ci_250'],
+                         y2=results[unit]['ci_750'],
+                         label=f'CI_50',
                          alpha=0.3)
         plt.ylabel(f'{unit} ahead forecast')
         plt.xlabel('time')

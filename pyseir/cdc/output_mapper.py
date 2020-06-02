@@ -17,10 +17,12 @@ from pyseir.cdc.parameters import (TEAM, MODEL, TARGETS, TARGETS_TO_NAMES,
                                    ForecastTimeUnit, ForecastTimeUnit,
                                    ForecastUncertainty)
 from pyseir.cdc.utils import (target_column_name,
+                              load_state_level_death_data,
                               aggregate_timeseries,
                               smooth_timeseries,
                               number_of_time_units,
-                              load_and_aggregate_observations)
+                              load_and_aggregate_observations,
+                              smooth_observations)
 from pyseir.inference.fit_results import load_inference_result, load_mle_model
 
 
@@ -198,19 +200,22 @@ class OutputMapper:
                                     for n in range(FORECAST_WEEKS_NUM * 7)]
         self.quantiles = quantiles
         self.forecast_uncertainty = ForecastUncertainty(forecast_uncertainty)
-        self.observations = load_and_aggregate_observations(fips=self.fips,
+
+        self.raw_observations = load_and_aggregate_observations(fips=self.fips,
                                                             units=self.forecast_time_units,
                                                             targets=self.targets,
                                                             end_date=self.forecast_date)
+        self.observations = smooth_observations(self.raw_observations)
         self.model = load_mle_model(self.fips)
 
         self.fit_results = load_inference_result(self.fips)
 
+        self.raw_forecast = None
         self.errors = None
         self.result = None
 
 
-    def generate_forecast(self, start_date=None, align_with_observations=True):
+    def generate_raw_forecast(self, start_date=None, align_with_observations=True):
         """
         Generates a forecast ensemble given the model ensemble.
 
@@ -240,46 +245,34 @@ class OutputMapper:
                     - forecast_days: days forward of forecast since lastest
                                      observation
         """
-        # start date as date of latest observation
-        start_date = start_date or datetime.strptime(self.observations['cum death']['day'].index[-1],
-                                                     DATE_FORMAT)
 
-        # record forecast 10 days before the last observation to enable
-        # calculation of week ahead forecast
-        forecast_days_since_ref_date = list(range((start_date - REF_DATE).days - 10,
-                                               (self.forecast_time_range[-1] - REF_DATE).days + 1))
-        forecast_dates = [timedelta(t) + REF_DATE for t in forecast_days_since_ref_date]
-
-        forecast_given_time_range = \
-            lambda forecast: np.interp(forecast_days_since_ref_date,
-                                       [self.fit_results['t0'] + t for t in self.model.t_list],
-                                       forecast)
+        # start date as one day before the forecast date
+        forecast_dates = [timedelta(self.fit_results['t0'] + t) + REF_DATE for t in self.model.t_list]
 
         forecast = defaultdict(dict)
         for target in self.targets:
             for unit in self.forecast_time_units:
                 if target is Target.INC_DEATH:
-                    predictions = forecast_given_time_range(self.model.results['total_deaths_per_day'])
+                    predictions = self.model.results['total_deaths_per_day']
 
                 elif target is Target.INC_HOSP:
-                    predictions = forecast_given_time_range(
-                        np.append([0], np.diff(self.model.results['HGen_cumulative']
-                                             + self.model.results['HICU_cumulative'])))
+                    predictions = np.append([0], np.diff(self.model.results['HGen_cumulative']
+                                                       + self.model.results['HICU_cumulative']))
 
                 elif target is Target.CUM_DEATH:
-                    predictions = forecast_given_time_range(self.model.results['D'])
+                    predictions = self.model.results['D']
 
                 else:
                     raise ValueError(f'Target {target} is not implemented')
 
                 dates, predictions = aggregate_timeseries(forecast_dates,
-                                                            predictions,
-                                                            unit,
-                                                            target)
+                                                          predictions,
+                                                          unit,
+                                                          target)
                 df = pd.DataFrame(
                         {'value': predictions.clip(min=0),
                          'target_end_date': dates,
-                         'forecast_days': [(t - start_date).days for t in dates]},
+                         'forecast_days': [(t.date() - self.forecast_date.date()).days for t in dates]},
                         index=pd.DatetimeIndex(dates).strftime(DATE_FORMAT))
 
                 n_units = number_of_time_units(self.forecast_date, dates, unit)
@@ -289,13 +282,14 @@ class OutputMapper:
 
                 forecast[target.value][unit.value] = df
 
-        if align_with_observations:
-            forecast = self.align_forecast_with_observations(forecast)
+        self.raw_forecast = dict(forecast)
 
-        return forecast
+        return self.raw_forecast
 
 
-    def align_forecast_with_observations(self, forecast):
+    def align_forecast_with_observations(self, ref_date=None, forecast=None,
+                                         targets=None,
+                                         units=None):
         """
         Shift forecast curve so that its value on the date of lastest
         observation matches the observation.
@@ -340,20 +334,31 @@ class OutputMapper:
                                      observation
 
         """
+        forecast = forecast or self.raw_forecast
+        units = units or self.forecast_time_units
+        targets = targets or self.targets
         shifted_forecast = forecast.copy()
-        # align with observations
-        for target in self.targets:
-            for unit in self.forecast_time_units:
-                if self.observations[target.value][unit.value] is not None:
-                    ref_observation_date = self.observations[target.value][unit.value].index[-1]
-                    observation = self.observations[target.value][unit.value]
+        # align with observations (not including weekly cumulative death because)
+        for target in targets:
+            for unit in units:
+                if not ((target is Target.CUM_DEATH) & (unit is ForecastTimeUnit.WK)):
+                    if self.observations[target.value][unit.value] is not None:
+                        ref_observation_date = ref_date or self.observations[target.value][unit.value].index[-1]
 
-                    shifted_forecast[target.value][unit.value]['value'] += \
-                        (observation.loc[ref_observation_date]
-                       - forecast[target.value][unit.value]['value'].loc[ref_observation_date])
+                        observation = self.observations[target.value][unit.value]
 
-                    shifted_forecast[target.value][unit.value]['value'] = \
-                        shifted_forecast[target.value][unit.value]['value'].clip(lower=0)
+                        shifted_forecast[target.value][unit.value]['value'] += \
+                            (observation.loc[ref_observation_date]
+                           - forecast[target.value][unit.value]['value'].loc[ref_observation_date])
+
+                        shifted_forecast[target.value][unit.value]['value'] = \
+                            shifted_forecast[target.value][unit.value]['value'].clip(lower=0)
+
+        if ((Target.CUM_DEATH in targets) & (ForecastTimeUnit.WK in units)):
+            shifted_forecast[Target.CUM_DEATH.value][ForecastTimeUnit.WK.value]['value'] = \
+                shifted_forecast[Target.CUM_DEATH.value][ForecastTimeUnit.DAY.value]['value'].loc[
+                    list(shifted_forecast[Target.CUM_DEATH.value][ForecastTimeUnit.WK.value].index)]
+
 
         return shifted_forecast
 
@@ -378,15 +383,19 @@ class OutputMapper:
             incident hospitalization.
         """
         self.errors = defaultdict(list)
-        for date in self.observations['cum death'][unit.value].index[:-1]:
-            forecast = self.generate_forecast(start_date=datetime.strptime(date, DATE_FORMAT))
-            for target in self.targets:
-                if self.observations[target.value][unit.value] is not None:
-                    next_day = datetime.strftime(datetime.strptime(date, DATE_FORMAT) + timedelta(1),
-                                                 DATE_FORMAT)
-                    if next_day in self.observations[target.value][unit.value].index:
-                        pred = forecast[target.value][unit.value]['value'].loc[next_day]
-                        observ = self.observations[target.value][unit.value].loc[next_day]
+
+        for target in self.targets:
+            if self.raw_observations[target.value][unit.value] is not None:
+                observed_dates = list(self.raw_observations[target.value][unit.value].index)
+                for n in range(len(observed_dates) - 1):
+                    date = observed_dates[n]
+                    next_date = observed_dates[n+1]
+                    if date in self.raw_forecast[target.value][unit.value].index:
+                        forecast = self.align_forecast_with_observations(ref_date=date,
+                                                                         targets=[target],
+                                                                         units=[ForecastTimeUnit.DAY])
+                        pred = forecast[target.value][unit.value]['value'].loc[next_date]
+                        observ = self.raw_observations[target.value][unit.value].loc[next_date]
                         self.errors[target.value].append(abs(pred - observ))
 
         self.errors = dict(self.errors)
@@ -431,7 +440,8 @@ class OutputMapper:
         else:
             raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
 
-        values = scipy.stats.norm(loc=float(forecast), scale=float(error_std * scale_factor)).ppf(quantiles)
+        values = scipy.stats.norm(loc=float(forecast),
+                                  scale=float(error_std * scale_factor)).ppf(quantiles)
         values = values.clip(min=baseline)
 
         return values
@@ -479,7 +489,7 @@ class OutputMapper:
                     - value: str, maximum likelihood forecast value
                     - target_end_date: np.datetime64, date of the forecast
                     - quantile: days forward of forecast since lastest
-                                     observation
+                                observation
         """
         forecast_quantiles = defaultdict(dict)
         for target_name in forecast:
@@ -499,12 +509,17 @@ class OutputMapper:
                 baseline = 0
 
             for unit_name in forecast[target_name]:
+                rescale = 1
+                if ForecastTimeUnit(unit_name) is ForecastTimeUnit.WK:
+                    if Target(target_name) in [Target.INC_DEATH, Target.INC_HOSP]:
+                        rescale = 7
+
                 df = forecast[target_name][unit_name]\
                     .set_index(['target', 'target_end_date'])\
                     .apply(
                     lambda r: self._calculate_forecast_quantiles(
                         forecast=r.value,
-                        error_std=error_std,
+                        error_std=error_std * rescale,
                         h=r.forecast_days,
                         quantiles=quantiles,
                         baseline=baseline),
@@ -554,7 +569,8 @@ class OutputMapper:
             - location_name: str
               Name of the state.
         """
-        forecast = self.generate_forecast()
+        self.raw_forecast = self.generate_raw_forecast()
+        forecast = self.align_forecast_with_observations()
         self.calculate_errors()
         forecast_quantile = self.generate_forecast_quantiles(forecast)
 
@@ -563,9 +579,9 @@ class OutputMapper:
             for unit in self.forecast_time_units:
                 result.append(pd.concat([forecast_quantile[target_name][unit.value],
                                          forecast[target_name][unit.value]]))
-
         result = pd.concat(result)
-        result = result[result['target_end_date'] >= self.forecast_date]
+        result = result[(result['target_end_date'] >= self.forecast_date)
+                     & (result['target_end_date'] <= self.forecast_time_range[-1])]
 
         result['location'] = str(self.fips)
         result['location_name'] = us.states.lookup(self.fips).name
@@ -635,6 +651,8 @@ class OutputMapper:
                  model_name=MODEL,
                  team_name=TEAM)
         )
+
+        print(metadata)
 
         output_f = open(os.path.join(REPORT_FOLDER, f'metadata-{TEAM}-{MODEL}.txt'), 'w')
         output_f.write(metadata)
