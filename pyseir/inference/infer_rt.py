@@ -513,7 +513,6 @@ class RtInferenceEngine:
             plt.figure(figsize=(10, 6))
 
             if "Rt_MAP_composite" in df_all:
-
                 plt.scatter(
                     df_all.index,
                     df_all["Rt_MAP_composite"],
