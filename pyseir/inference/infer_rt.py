@@ -53,6 +53,7 @@ class RtInferenceEngine:
     include_testing_corrections: bool
         If True, include a correction for testing increases and decreases.
     """
+
     def __init__(
         self,
         fips,
@@ -64,7 +65,7 @@ class RtInferenceEngine:
         confidence_intervals=(0.68, 0.95),
         min_cases=5,
         min_deaths=5,
-        include_testing_correction=True
+        include_testing_correction=True,
     ):
         np.random.seed(
             NP_SEED
@@ -90,7 +91,10 @@ class RtInferenceEngine:
                 self.observed_new_cases,
                 self.observed_new_deaths,
             ) = load_data.load_new_case_data_by_state(
-                self.state, self.ref_date, include_testing_correction=self.include_testing_correction)
+                self.state,
+                self.ref_date,
+                include_testing_correction=self.include_testing_correction,
+            )
 
             (
                 self.hospital_times,
@@ -113,13 +117,22 @@ class RtInferenceEngine:
             else:
                 self.display_name = self.state
 
-            self.times, self.observed_new_cases, self.observed_new_deaths = \
-                load_data.load_new_case_data_by_fips(
-                    self.fips, t0=self.ref_date, include_testing_correction=self.include_testing_correction)
-            self.hospital_times, self.hospitalizations, self.hospitalization_data_type = \
-                load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
+            (
+                self.times,
+                self.observed_new_cases,
+                self.observed_new_deaths,
+            ) = load_data.load_new_case_data_by_fips(
+                self.fips,
+                t0=self.ref_date,
+                include_testing_correction=self.include_testing_correction,
+            )
+            (
+                self.hospital_times,
+                self.hospitalizations,
+                self.hospitalization_data_type,
+            ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
-        logging.info(f'Running Rt Inference for {self.display_name}')
+        logging.info(f"Running Rt Inference for {self.display_name}")
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         if self.hospitalization_data_type:
@@ -462,8 +475,11 @@ class RtInferenceEngine:
                 # Compute the indicator lag using the curvature
                 # alignment method.
                 # ------------------------------------------------
-                if timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS) \
-                    and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns:
+                if (
+                    timeseries_type
+                    in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS)
+                    and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns
+                ):
 
                     # Go back upto 30 days or the max time series length we have if shorter.
                     last_idx = max(-21, -len(df))
@@ -526,33 +542,68 @@ class RtInferenceEngine:
             plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
             plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
 
-            if 'Rt_ci5__new_deaths' in df_all:
-                plt.fill_between(df_all.index,  df_all['Rt_ci5__new_deaths'],  df_all['Rt_ci95__new_deaths'],
-                                 alpha=.2, color='firebrick')
-                plt.scatter(df_all.index, df_all['Rt_MAP__new_deaths'].shift(periods=shift_deaths),
-                            alpha=1, s=25, color='firebrick', label='New Deaths')
+            if "Rt_ci5__new_deaths" in df_all:
+                plt.fill_between(
+                    df_all.index,
+                    df_all["Rt_ci5__new_deaths"],
+                    df_all["Rt_ci95__new_deaths"],
+                    alpha=0.2,
+                    color="firebrick",
+                )
+                plt.scatter(
+                    df_all.index,
+                    df_all["Rt_MAP__new_deaths"].shift(periods=shift_deaths),
+                    alpha=1,
+                    s=25,
+                    color="firebrick",
+                    label="New Deaths",
+                )
 
-            if 'Rt_ci5__new_cases' in df_all:
-                plt.fill_between(df_all.index, df_all['Rt_ci5__new_cases'], df_all['Rt_ci95__new_cases'],
-                                 alpha=.2, color='steelblue')
-                plt.scatter(df_all.index, df_all['Rt_MAP__new_cases'],
-                            alpha=1, s=25, color='steelblue', label='New Cases', marker='s')
+            if "Rt_ci5__new_cases" in df_all:
+                plt.fill_between(
+                    df_all.index,
+                    df_all["Rt_ci5__new_cases"],
+                    df_all["Rt_ci95__new_cases"],
+                    alpha=0.2,
+                    color="steelblue",
+                )
+                plt.scatter(
+                    df_all.index,
+                    df_all["Rt_MAP__new_cases"],
+                    alpha=1,
+                    s=25,
+                    color="steelblue",
+                    label="New Cases",
+                    marker="s",
+                )
 
-            if 'Rt_ci5__new_hospitalizations' in df_all:
-                plt.fill_between(df_all.index, df_all['Rt_ci5__new_hospitalizations'], df_all['Rt_ci95__new_hospitalizations'],
-                                 alpha=.4, color='darkseagreen')
-                plt.scatter(df_all.index, df_all['Rt_MAP__new_hospitalizations'],
-                            alpha=1, s=25, color='darkseagreen', label='New Hospitalizations', marker='d')
+            if "Rt_ci5__new_hospitalizations" in df_all:
+                plt.fill_between(
+                    df_all.index,
+                    df_all["Rt_ci5__new_hospitalizations"],
+                    df_all["Rt_ci95__new_hospitalizations"],
+                    alpha=0.4,
+                    color="darkseagreen",
+                )
+                plt.scatter(
+                    df_all.index,
+                    df_all["Rt_MAP__new_hospitalizations"],
+                    alpha=1,
+                    s=25,
+                    color="darkseagreen",
+                    label="New Hospitalizations",
+                    marker="d",
+                )
 
-            plt.hlines([1.0], *plt.xlim(), alpha=1, color='g')
-            plt.hlines([1.1], *plt.xlim(), alpha=1, color='gold')
-            plt.hlines([1.3], *plt.xlim(), alpha=1, color='r')
+            plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
+            plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
+            plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
 
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
             plt.ylim(-1, 4)
-            plt.ylabel('$R_t$', fontsize=16)
+            plt.ylabel("$R_t$", fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
 
@@ -582,7 +633,7 @@ class RtInferenceEngine:
         """
         exp_window = signal.exponential(2 * tau, 0, tau, False)[::-1]
         exp_window /= exp_window.sum()
-        smoothed = signal.convolve(series, exp_window, mode='same')
+        smoothed = signal.convolve(series, exp_window, mode="same")
         return smoothed
 
     @staticmethod

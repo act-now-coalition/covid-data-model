@@ -17,11 +17,11 @@ REF_DATE = datetime(year=2020, month=1, day=1)
 
 
 class TimeseriesType(Enum):
-    NEW_CASES = 'new_cases'
-    NEW_DEATHS = 'new_deaths'
-    NEW_HOSPITALIZATIONS = 'new_hospitalizations'
-    CURRENT_HOSPITALIZATIONS = 'current_hospitalizations'
-    NEW_TESTS = 'new_tests'
+    NEW_CASES = "new_cases"
+    NEW_DEATHS = "new_deaths"
+    NEW_HOSPITALIZATIONS = "new_hospitalizations"
+    CURRENT_HOSPITALIZATIONS = "current_hospitalizations"
+    NEW_TESTS = "new_tests"
 
 
 class RunMode(Enum):
@@ -224,5 +224,5 @@ def ewma_smoothing(series, tau=5):
     """
     exp_window = signal.exponential(2 * tau, 0, tau, False)[::-1]
     exp_window /= exp_window.sum()
-    smoothed = signal.convolve(series, exp_window, mode='same')
+    smoothed = signal.convolve(series, exp_window, mode="same")
     return smoothed
