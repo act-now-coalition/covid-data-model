@@ -34,7 +34,6 @@ class EnsembleRunner:
     """
     The EnsembleRunner executes a collection of N_samples simulations based on
     priors defined in the ParameterEnsembleGenerator.
-
     Parameters
     ----------
     fips: str
@@ -167,12 +166,10 @@ class EnsembleRunner:
     def _run_single_simulation(parameter_set):
         """
         Run a single simulation instance.
-
         Parameters
         ----------
         parameter_set: dict
             Params passed to the SEIR model
-
         Returns
         -------
         model: SEIRModel
@@ -207,9 +204,12 @@ class EnsembleRunner:
 
             # Rescale state values to the county population and replace county
             # specific params.
+            # TODO: get_average_seir_parameters should return the analytic solution when available
+            # right now it runs an average over the ensemble (with N_samples not consistently set
+            # across the code base).
             default_params = ParameterEnsembleGenerator(
                 self.fips,
-                N_samples=1,
+                N_samples=250,
                 t_list=model.t_list,
                 suppression_policy=model.suppression_policy,
             ).get_average_seir_parameters()
@@ -230,10 +230,11 @@ class EnsembleRunner:
         else:
             eps_final = sp.get_future_suppression_from_r0(inferred_params["R0"], scenario=scenario)
 
-        model.suppression_policy = sp.generate_two_step_policy(
-            self.t_list,
+        model.suppression_policy = sp.get_epsilon_interpolator(
             eps=inferred_params["eps"],
             t_break=inferred_params["t_break"],
+            eps2=inferred_params["eps2"],
+            t_delta_phases=inferred_params["t_delta_phases"],
             t_break_final=(
                 datetime.datetime.today()
                 - datetime.datetime.fromisoformat(inferred_params["t0_date"])
@@ -292,11 +293,9 @@ class EnsembleRunner:
         Given a collection of SEIR models, convert these to numpy arrays for
         each compartment, with axis 0 being the model index and axis 1 being the
         timestep.
-
         Parameters
         ----------
         model_ensemble: list(SEIRModel)
-
         Returns
         -------
         value_stack: array[n_samples, time steps]
@@ -317,14 +316,12 @@ class EnsembleRunner:
     def _get_surge_window(model_ensemble, compartment):
         """
         Calculate the list of surge window starts and ends for an ensemble.
-
         Parameters
         ----------
         model_ensemble: list(SEIRModel)
             List of models to compute the surge windows for.
         compartment: str
             Compartment to calculate the surge window over.
-
         Returns
         -------
         surge_start: np.array
@@ -360,14 +357,12 @@ class EnsembleRunner:
         """
         Compute the peak times for each compartment by finding the arg
         max, and selecting the corresponding time.
-
         Parameters
         ----------
         value_stack: array[n_samples, time steps]
             Array with the stacked model output results.
         t_list: array
             Array of timesteps.
-
         Returns
         -------
         peak_data: dict
@@ -395,12 +390,10 @@ class EnsembleRunner:
     def _generate_output_for_suppression_policy(self, model_ensemble):
         """
         Generate output data for a given suppression policy.
-
         Parameters
         ----------
         model_ensemble: list(SEIRModel)
             List of models to compute the surge windows for.
-
         Returns
         -------
         outputs: dict
@@ -444,7 +437,6 @@ class EnsembleRunner:
 def _run_county(fips, ensemble_kwargs):
     """
     Execute the ensemble runner for a specific county.
-
     Parameters
     ----------
     fips: str
@@ -459,7 +451,6 @@ def _run_county(fips, ensemble_kwargs):
 def run_state(state, ensemble_kwargs, states_only=False):
     """
     Run the EnsembleRunner for each county in a state.
-
     Parameters
     ----------
     state: str
