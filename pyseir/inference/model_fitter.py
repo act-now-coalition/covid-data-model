@@ -32,7 +32,7 @@ from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
 
-_logger = logging.getLogger(__name__)
+# _logger = logging.getLogger(__name__)
 
 
 def calc_chi_sq(obs, predicted, stddev):
@@ -591,8 +591,8 @@ class ModelFitter:
         Fit a model to the data.
         """
         minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
-        minuit.strategy = 0
-        _logger.info(f"---------minuit_strategy: {minuit.strategy}")
+        # minuit.strategy = 0
+        # _logger.info(f"---------minuit_strategy: {minuit.strategy}")
 
         if os.environ.get("PYSEIR_FAST_AND_DIRTY"):
             minuit.strategy = 0
@@ -1039,6 +1039,9 @@ def run_state(state, states_only=False, with_age_structure=False):
         fips=state_obj.fips, with_age_structure=with_age_structure
     )
 
+    df_whitelist = load_data.load_whitelist()
+    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
+
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
     data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
     data.to_json(output_path)
@@ -1048,9 +1051,6 @@ def run_state(state, states_only=False, with_age_structure=False):
 
     # Run the counties.
     if not states_only:
-        df_whitelist = load_data.load_whitelist()
-        df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-
         df_whitelist = load_data.load_whitelist()
         df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
