@@ -36,7 +36,7 @@ def get_future_suppression_from_r0(R0, scenario):
     Returns
     -------
     epsilon: float
-        Suppression percentage.
+        Suppression fraction.
     """
     if scenario == "no_intervention":
         return 1
@@ -102,7 +102,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     """
     Generate a suppression policy for CovidActNow which generates an Reff on a
     given date according to the policies in place.
-
+    
     Implements CovidActNow's version, which sets Reff
         ```
         def get_interventions(start_date=datetime.now().date()):
@@ -184,22 +184,24 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     return interp1d(t_list, rho, fill_value="extrapolate")
 
 
-def generate_two_step_policy(
-    t_list, eps, t_break, transition_time=14, t_break_final=None, eps_final=None
+def get_epsilon_interpolator(
+    eps, t_break, eps2=-1, t_delta_phases=-1, transition_time=14, t_break_final=None, eps_final=None
 ):
     """
-    Produce a suppression policy based a two step policy where the level is
-    fixed at 1 until t_break and then it goes to eps linearly over a fied
-    transition time.
+    Return an interpolator that produces an epsilon when called with a time (relative to the model
+    start). The solution has at least 3 steps (4 if t_break_final and eps_final are set) with a
+    linear transition between each step.
 
     Parameters
     ----------
-    t_list: array-like
-        List of times to interpolate over.
     eps: float
         Suppression level after t_break
     t_break: float
         Time since simulation start to place a break.
+    eps2: float
+        Relative fraction of R0 for third phase
+    t_delta_phases: float
+        Time between first and second phase transitions
     transition_time: float
         Length of time to transition between epsilon states.
     t_break_final: int or NoneType
@@ -212,25 +214,33 @@ def generate_two_step_policy(
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t.
     """
-    if eps_final is None:
-        return interp1d(
-            x=[0, t_break, t_break + transition_time, 100000],
-            y=[1, 1, eps, eps],
-            fill_value="extrapolate",
+    TIMEBOUNDARY = 100000
+
+    # List of points (time, epsilon value) where transitions will occur
+    points = [
+        (0, 1),
+        (t_break, 1),
+        (t_break + transition_time, eps),
+        (t_break + transition_time + t_delta_phases, eps),
+        (t_break + transition_time + t_delta_phases + transition_time, eps2),
+    ]
+
+    # For estimating future trajectories we can either use the last fitted value or pass in
+    # another value to the SEIR model.
+
+    if eps_final is None:  # Use the current fit value
+        points.extend([(TIMEBOUNDARY, eps2)])
+    else:  # Transition to the provided value
+        points.extend(
+            [
+                (t_break_final, eps2),
+                (t_break_final + transition_time, eps_final),
+                (TIMEBOUNDARY, eps_final),
+            ]
         )
-    else:
-        return interp1d(
-            x=[
-                0,
-                t_break,
-                t_break + transition_time,
-                t_break_final,
-                t_break_final + transition_time,
-                100000,
-            ],
-            y=[1, 1, eps, eps, eps_final, eps_final],
-            fill_value="extrapolate",
-        )
+
+    x, y = zip(*points)
+    return interp1d(x=x, y=y, fill_value="extrapolate")
 
 
 def generate_empirical_distancing_policy(
