@@ -91,7 +91,7 @@ class ModelFitter:
         limit_t_break=[5, 40],
         error_t_break=1,
         eps2=0.3,
-        limit_eps2=[0.20, 2.0],
+        limit_eps2=[0.20, 1.2],
         error_eps2=0.005,
         t_delta_phases=14,  # number of days between second and third ramps
         limit_t_delta_phases=[14, 60],  # good as of June 3, 2020 may need to update in the future
