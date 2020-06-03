@@ -345,6 +345,7 @@ def fill_fields_and_timeseries_from_column(
         # Treat an empty existing_df the same as one that has no rows in common with new_df
         common_labels = []
 
+    missing_new_data = None
     if len(common_labels):
         # existing_df is not empty and contains labels in common with new_df. When date_field is set the date is
         # included in the compared labels and dates that are not in exsiting_df are appended later.
@@ -360,15 +361,18 @@ def fill_fields_and_timeseries_from_column(
         existing_df.loc[common_labels.values, column_to_fill] = new_df.loc[
             common_labels.values, column_to_fill
         ]
-        missing_new_data = new_df.loc[new_df.index.difference(common_labels), [column_to_fill]]
+        diff = new_df.index.difference(common_labels)
+        if diff.size:
+            missing_new_data = new_df.loc[diff, [column_to_fill]]
     else:
         # There are no labels in common so all rows of new_df are to be appended to existing_df.
         missing_new_data = new_df.loc[:, [column_to_fill]]
 
     # Revert 'fips', 'state' etc back to regular columns
     existing_df.reset_index(inplace=True)
+    if missing_new_data is None:
+        return existing_df
     missing_new_data.reset_index(inplace=True)
-
     # Concat the existing data with new rows from new_data, creating a new integer index
     return pd.concat([existing_df, missing_new_data], ignore_index=True)
 
