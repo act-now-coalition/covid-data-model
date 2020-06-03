@@ -459,7 +459,7 @@ class ModelFitter:
         l = locals()
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
 
-        # Last data point used in Fit
+        # Last data point in ramp 2
         last_data_point_ramp_2 = t0 + t_break + 14 + t_delta_phases + 14
         # Number of future days used in second ramp period
         number_of_future_days_used = last_data_point_ramp_2 - self.days_since_ref_date
