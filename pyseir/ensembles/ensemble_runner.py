@@ -212,7 +212,7 @@ class EnsembleRunner:
             # across the code base).
             default_params = ParameterEnsembleGenerator(
                 self.fips,
-                N_samples=1,  # change back to 250?
+                N_samples=500,
                 t_list=model.t_list,
                 suppression_policy=model.suppression_policy,
             ).get_average_seir_parameters()
@@ -236,7 +236,7 @@ class EnsembleRunner:
         model.suppression_policy = sp.get_epsilon_interpolator(
             eps=inferred_params["eps"],
             t_break=inferred_params["t_break"],
-            eps2=inferred_params["eps2"],  # check
+            eps2=inferred_params["eps2"],
             t_delta_phases=inferred_params["t_delta_phases"],
             t_break_final=(
                 datetime.datetime.today()
