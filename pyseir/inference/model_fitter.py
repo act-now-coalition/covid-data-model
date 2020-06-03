@@ -137,8 +137,12 @@ class ModelFitter:
 
         self.fips = fips
         self.ref_date = ref_date
-        self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
+        # self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
         self.ref_future_date = (dt.date.today() - ref_date.date()).days
+        self.future_days_allowed = (
+            7  # number of future days allowed in second ramp period without penalty on chi2 score
+        )
+        self.max_future_days_fitted = 14  # number of future days to allowed to be fitted, days beyond future_days_allowed are penalized
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
@@ -464,19 +468,15 @@ class ModelFitter:
         last_data_point_used = t0 + t_break + 14 + t_delta_phases + 14
         # Number of future days used in second ramp period
         number_of_future_days_used = last_data_point_used - self.ref_future_date
-        # Max number of future days allowed
-        future_days_allowed = 7
-        # How many future days to let the fit iterate over (this is larger than future_days_allowed to give the optimizer space)
-        max_future_days_fitted = future_days_allowed + 7
         # Multiplicative chi2 penalty if future_days are used in second ramp period (set to 1 by default)
         future_days_penalty = 1.0
 
-        # Set if using more future days than allowed, updated future_days_penalty
-        if number_of_future_days_used > future_days_allowed:
+        # If using more future days than allowed, updated future_days_penalty
+        if number_of_future_days_used > self.future_days_allowed:
             future_days_penalty = number_of_future_days_used
 
         # Only run fit when last_data_point_used does not use more than max_future_days_fitted
-        if last_data_point_used < self.ref_future_date + max_future_days_fitted:
+        if last_data_point_used < self.ref_future_date + self.max_future_days_fitted:
             model = self.run_model(**model_kwargs)
         # Otherwise return chi2 = 1000, we could further optimize this, but this is functional
         else:
