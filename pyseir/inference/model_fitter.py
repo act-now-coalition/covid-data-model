@@ -963,6 +963,7 @@ def run_state(state, states_only=False, with_age_structure=False):
 
     # Run the counties.
     if not states_only:
+        # TODO: Replace with build_county_list
         df_whitelist = load_data.load_whitelist()
         df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 

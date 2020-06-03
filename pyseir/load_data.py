@@ -973,9 +973,9 @@ def load_whitelist():
     whitelist: pd.DataFrame
         DataFrame containing a whitelist of product features for counties.
     """
-    path = get_run_artifact_path(
-        fips="06", artifact=RunArtifact.WHITELIST_RESULT  # dummy since not used for whitelist.
-    )
+    # Whitelist path isn't state specific, but the call requires ANY fips
+    PLACEHOLDER_FIPS = "06"
+    path = get_run_artifact_path(fips=PLACEHOLDER_FIPS, artifact=RunArtifact.WHITELIST_RESULT)
     return pd.read_json(path, dtype={"fips": str})
 
 
