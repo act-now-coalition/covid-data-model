@@ -14,7 +14,7 @@ pytestmark = pytest.mark.filterwarnings("error")
 def test__pyseir_end_to_end():
     # This covers a lot of edge cases.
     # cli._run_all(state='idaho')
-    cli._build_all_for_states(states=["Alabama"], generate_reports=False, states_only=True)
+    cli._build_all_for_states(states=["Delaware"], generate_reports=False, states_only=True)
     path = get_run_artifact_path("16001", RunArtifact.WEB_UI_RESULT).replace(
         "__INTERVENTION_IDX__", "2"
     )
