@@ -32,8 +32,6 @@ from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
 
-## _logger = logging.getLogger(__name__)
-
 
 def calc_chi_sq(obs, predicted, stddev):
     return np.sum((obs - predicted) ** 2 / stddev ** 2)
@@ -116,6 +114,7 @@ class ModelFitter:
         ("LA"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
         ("ND"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
         ("WV"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("WY"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
     }
 
     steady_state_exposed_to_infected_ratio = 1.2
@@ -591,8 +590,6 @@ class ModelFitter:
         Fit a model to the data.
         """
         minuit = iminuit.Minuit(self._fit_seir, **self.fit_params, print_level=1)
-        # minuit.strategy = 0
-        # _logger.info(f"---------minuit_strategy: {minuit.strategy}")
 
         if os.environ.get("PYSEIR_FAST_AND_DIRTY"):
             minuit.strategy = 0
