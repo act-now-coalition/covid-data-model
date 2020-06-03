@@ -91,10 +91,10 @@ class ModelFitter:
         limit_t_break=[5, 40],
         error_t_break=1,
         eps2=0.3,
-        limit_eps2=[0.20, 1.2],
+        limit_eps2=[0.20, 2.0],
         error_eps2=0.005,
         t_delta_phases=14,  # number of days between second and third ramps
-        limit_t_delta_phases=[14, 60],  # good as of June 3, 2020 may need to update in the future
+        limit_t_delta_phases=[14, 100],  # good as of June 3, 2020 may need to update in the future
         error_t_delta_phases=1,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
@@ -460,9 +460,9 @@ class ModelFitter:
         model_kwargs = {k: l[k] for k in self.model_fit_keys}
 
         # Last data point used in Fit
-        last_data_point_used = t0 + t_break + 14 + t_delta_phases + 14
+        last_data_point_ramp_2 = t0 + t_break + 14 + t_delta_phases + 14
         # Number of future days used in second ramp period
-        number_of_future_days_used = last_data_point_used - self.days_since_ref_date
+        number_of_future_days_used = last_data_point_ramp_2 - self.days_since_ref_date
         # Multiplicative chi2 penalty if future_days are used in second ramp period (set to 1 by default)
         future_days_penalty = 1.0
 
@@ -470,12 +470,12 @@ class ModelFitter:
         if number_of_future_days_used > self.future_days_allowed:
             future_days_penalty = number_of_future_days_used
 
-        # Only run fit when last_data_point_used does not use more than max_future_days_fitted
-        if last_data_point_used < self.days_since_ref_date + self.max_future_days_fitted:
-            model = self.run_model(**model_kwargs)
+        # Only run fit when last_data_point_ramp_2 does not use more than max_future_days_fitted
+        # if last_data_point_ramp_2 < self.days_since_ref_date + self.max_future_days_fitted:
+        model = self.run_model(**model_kwargs)
         # Otherwise return chi2 = 1000, we could further optimize this, but this is functional
-        else:
-            return 1000
+        # else:
+        #    return 1000
         # -----------------------------------
         # Chi2 Cases
         # -----------------------------------
@@ -540,7 +540,7 @@ class ModelFitter:
 
         not_penalized_score = chi2_deaths + chi2_cases + chi2_hosp
         # Calculate the final score as the product of the future_days_penalty and not_penalized_score
-        score = future_days_penalty * (chi2_deaths + chi2_cases + chi2_hosp)
+        score = future_days_penalty + (chi2_deaths + chi2_cases + chi2_hosp)
 
         return score
 
