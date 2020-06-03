@@ -60,7 +60,6 @@ class WebUIDataAdaptorV1:
 
         state_timeseries = self.jhu_local.timeseries().get_subset(AggregationLevel.STATE)
         self.state_timeseries = state_timeseries.data["date"].dt.normalize()
-        # self.allowed_counties = model_fitter.build_county_list(self.state)
 
     @staticmethod
     def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
@@ -68,7 +67,7 @@ class WebUIDataAdaptorV1:
         Fetches the latest county hospitalization and icu utilization.
 
         If current data is available, we return that.
-        If not, current values are esimated from cumulative.
+        If not, current values are estimated from cumulative.
         """
         county_hosp = load_data.get_current_hospitalized_for_county(
             fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
@@ -92,10 +91,19 @@ class WebUIDataAdaptorV1:
 
     def _get_model_to_dataset_conversion_factors(self, t0_simulation, fips, pyseir_outputs):
         """
+        Return scaling factors to convert model hospitalization and model icu numbers to match
+        the most current values provided in combined_datasets.
+
+        Parameters
+        ----------
+        t0_simulation
+        fips
+        pyseir_outputs
 
         Returns
         -------
-
+        hosp_rescaling_factor
+        icu_rescaling_factor
         """
         t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized_for_state(
             state=self.state_abbreviation,
@@ -190,11 +198,6 @@ class WebUIDataAdaptorV1:
         """
         log.info("Mapping output to WebUI.", state=self.state, fips=fips)
         pyseir_outputs = load_data.load_ensemble_results(fips)
-
-        # # This is handled in the call to generate_state.
-        # if len(fips) == 5 and fips not in self.allowed_counties:
-        #     log.info("Excluding fips due to white list.", fips=fips)
-        #     return
 
         try:
             fit_results = load_inference_result(fips)
@@ -392,8 +395,8 @@ class WebUIDataAdaptorV1:
 
 if __name__ == "__main__":
     # Need to have a whitelist pre-generated
-    # Need to have a state output already built
+    # Need to have state output already built
     mapper = WebUIDataAdaptorV1(
         state="California", output_interval_days=4, run_mode="can-inference-derived"
     )
-    mapper.generate_state()
+    mapper.generate_state(whitelisted_county_fips=["06037", "06075", "06059"], states_only=False)
