@@ -91,10 +91,10 @@ class ModelFitter:
         limit_t_break=[5, 40],
         error_t_break=1,
         eps2=0.3,
-        limit_eps2=[0.20, 1.2],
+        limit_eps2=[0.20, 2.0],
         error_eps2=0.005,
         t_delta_phases=14,  # number of days between second and third ramps
-        limit_t_delta_phases=[14, 60],
+        limit_t_delta_phases=[14, 60],  # good as of June 3, 2020 may need to update in the future
         error_t_delta_phases=1,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
@@ -107,14 +107,9 @@ class ModelFitter:
     )
 
     PARAM_SETS = {
-        ("HI"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
-        ("AK"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
-        ("MT"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
-        ("ID"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
-        ("LA"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
-        ("ND"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
-        ("WV"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
-        ("WY"): dict(eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]),
+        ("HI", "AK", "MT", "ID", "LA", "ND", "WV", "WY"): dict(
+            eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]
+        ),
     }
 
     steady_state_exposed_to_infected_ratio = 1.2
@@ -138,7 +133,7 @@ class ModelFitter:
         self.fips = fips
         self.ref_date = ref_date
         # self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
-        self.ref_future_date = (dt.date.today() - ref_date.date()).days
+        self.days_since_ref_date = (dt.date.today() - ref_date.date()).days
         self.future_days_allowed = (
             7  # number of future days allowed in second ramp period without penalty on chi2 score
         )
@@ -467,7 +462,7 @@ class ModelFitter:
         # Last data point used in Fit
         last_data_point_used = t0 + t_break + 14 + t_delta_phases + 14
         # Number of future days used in second ramp period
-        number_of_future_days_used = last_data_point_used - self.ref_future_date
+        number_of_future_days_used = last_data_point_used - self.days_since_ref_date
         # Multiplicative chi2 penalty if future_days are used in second ramp period (set to 1 by default)
         future_days_penalty = 1.0
 
@@ -476,7 +471,7 @@ class ModelFitter:
             future_days_penalty = number_of_future_days_used
 
         # Only run fit when last_data_point_used does not use more than max_future_days_fitted
-        if last_data_point_used < self.ref_future_date + self.max_future_days_fitted:
+        if last_data_point_used < self.days_since_ref_date + self.max_future_days_fitted:
             model = self.run_model(**model_kwargs)
         # Otherwise return chi2 = 1000, we could further optimize this, but this is functional
         else:
