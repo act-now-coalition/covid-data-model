@@ -2,11 +2,7 @@ import logging
 import iminuit
 
 # TODO use JAX for numpy XLA acceleration
-# from jax.config import config
-# config.update("jax_enable_x64", True) # enable float64 precision
-import numpy as np
 
-# from jax import numpy as np
 import os
 import us
 import dill as pickle
@@ -14,7 +10,6 @@ import numpy as np
 from pprint import pformat
 import pandas as pd
 
-# from jax.scipy.stats import gamma, norm
 from scipy.stats import gamma, norm
 from copy import deepcopy
 from matplotlib import pyplot as plt
