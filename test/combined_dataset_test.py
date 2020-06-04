@@ -5,6 +5,7 @@ import pytest
 
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.sources.cmdc import CmdcDataSource
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import JHUDataset
@@ -53,7 +54,13 @@ def test_combined_county_has_some_timeseries_data(fips):
 
 @pytest.mark.parametrize(
     "data_source_cls",
-    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    [
+        JHUDataset,
+        CDSDataset,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        CmdcDataSource,
+    ],
 )
 def test_unique_timeseries(data_source_cls):
     data_source = data_source_cls.local()
@@ -68,7 +75,13 @@ def test_unique_timeseries(data_source_cls):
 
 @pytest.mark.parametrize(
     "data_source_cls",
-    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    [
+        JHUDataset,
+        CDSDataset,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        CmdcDataSource,
+    ],
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()
