@@ -133,7 +133,7 @@ def compare_snapshots(
         report_file.write(output_report)
 
     # send report to slack
-    slack_url = os.getenv("SLACK_WEBHOOK")
+    slack_url = os.getenv("SLACK_DEV_ALERTS_WEBHOOK")
     response = requests.post(
         slack_url,
         data=json.dumps({"text": output_report}),
