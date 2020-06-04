@@ -42,15 +42,19 @@ FeatureDataSourceMap = NewType(
 # to showingcasing a dependency graph of transformations.
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [JHUDataset],
+    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
-    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_VENTILATED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
@@ -58,8 +62,8 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
 }
 
