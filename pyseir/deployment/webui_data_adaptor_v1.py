@@ -185,7 +185,7 @@ class WebUIDataAdaptorV1:
         else:
             hosp_rescaling_factor = 1.0
             icu_rescaling_factor = 1.0
-        log.msg(
+        log.info(
             "Results for model to observed conversion:",
             fips=fips,
             hosp_rescaling_factor=hosp_rescaling_factor,
