@@ -7,6 +7,7 @@ import structlog
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
+from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
@@ -41,15 +42,19 @@ FeatureDataSourceMap = NewType(
 # to showingcasing a dependency graph of transformations.
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [JHUDataset],
+    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
-    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_VENTILATED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
@@ -57,30 +62,34 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
 }
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [JHUDataset],
+    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_VENTILATED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
     CommonFields.STAFFED_BEDS: [],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
     CommonFields.ICU_BEDS: [NevadaHospitalAssociationData],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
 }
 
