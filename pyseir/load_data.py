@@ -578,15 +578,15 @@ def _get_current_hospitalized(
     Given a DataFrame that contains values icu or hospitalization data
     for a single county/state, this function returns the latest value.
 
-    When only cummulative data is available,
-    a small model is used to estimate the latest current value from the cummulative.
+    When only cumulative data is available,
+    a small model is used to estimate the latest current value from the cumulative.
     This conversion only occurs if enough data is available.
 
     Parameters:
     @param df - dataframe containing either current_ or cumulative_ values for a single county or state
-    @param t0 - beggining of observation period
+    @param t0 - beginning of observation period
     @param category - the type of current data to be returned
-    @param min_cumulative_datapoints_to_convert - the required number of cummulative data points before conversion to current will be done.
+    @param min_cumulative_datapoints_to_convert - the required number of cumulative data points before conversion to current will be done.
 
     Returns:
     (times_new_latest, current_latest) - the date and value of the latest data for a given category.
@@ -605,7 +605,7 @@ def _get_current_hospitalized(
 
     # If data is available in cumulative, try to convert to current (not just daily)
     elif (df[f"cumulative_{category}"] > 0).any():
-        log.warning("Attempting to convert cummulative data to current.")
+        log.warning("Attempting to convert cumulative data to current.")
         # Remove Null & Enforce Monotonically Increasing Cumulatives
         df = df[df[f"cumulative_{category}"].notnull()]
         cumulative = df[f"cumulative_{category}"].values.clip(min=0)
@@ -990,7 +990,7 @@ def cache_all_data():
 
 def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None):
     """
-    Return the value of compartment at a specified date.
+    Return the value of compartment at a specified date from the inferred suppression policy.
 
     Parameters
     ----------

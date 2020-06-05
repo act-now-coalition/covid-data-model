@@ -185,6 +185,12 @@ class WebUIDataAdaptorV1:
         else:
             hosp_rescaling_factor = 1.0
             icu_rescaling_factor = 1.0
+        log.msg(
+            "Results for model to observed conversion:",
+            fips=fips,
+            hosp_rescaling_factor=hosp_rescaling_factor,
+            icu_rescaling_factor=icu_rescaling_factor,
+        )
         return hosp_rescaling_factor, icu_rescaling_factor
 
     def map_fips(self, fips: str) -> None:
