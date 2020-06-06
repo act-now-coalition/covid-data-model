@@ -207,9 +207,12 @@ class EnsembleRunner:
 
             # Rescale state values to the county population and replace county
             # specific params.
+            # TODO: get_average_seir_parameters should return the analytic solution when available
+            # right now it runs an average over the ensemble (with N_samples not consistently set
+            # across the code base).
             default_params = ParameterEnsembleGenerator(
                 self.fips,
-                N_samples=1,
+                N_samples=500,
                 t_list=model.t_list,
                 suppression_policy=model.suppression_policy,
             ).get_average_seir_parameters()
@@ -226,14 +229,15 @@ class EnsembleRunner:
         # Determine the appropriate future suppression policy based on the
         # scenario of interest.
         if scenario == "inferred":
-            eps_final = inferred_params["eps"]
+            eps_final = inferred_params["eps2"]
         else:
             eps_final = sp.get_future_suppression_from_r0(inferred_params["R0"], scenario=scenario)
 
-        model.suppression_policy = sp.generate_two_step_policy(
-            self.t_list,
+        model.suppression_policy = sp.get_epsilon_interpolator(
             eps=inferred_params["eps"],
             t_break=inferred_params["t_break"],
+            eps2=inferred_params["eps2"],
+            t_delta_phases=inferred_params["t_delta_phases"],
             t_break_final=(
                 datetime.datetime.today()
                 - datetime.datetime.fromisoformat(inferred_params["t0_date"])

@@ -143,7 +143,9 @@ def _map_outputs(
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(states_only=states_only)
+        web_ui_mapper.generate_state(
+            whitelisted_county_fips=[], states_only=states_only,
+        )
     else:
         for state_name in ALL_STATES:
             _map_outputs(
@@ -201,7 +203,7 @@ def _build_all_for_states(
     if not skip_whitelist:
         _generate_whitelist()
 
-    # do everything for just states in paralell
+    # do everything for just states in parallel
     p = Pool()
     states_only_func = partial(
         _state_only_pipeline,
@@ -216,7 +218,7 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    # run states in paralell
+    # run states in parallel
     all_county_fips = {}
     for state in states:
         state_county_fips = model_fitter.build_county_list(state)
@@ -262,7 +264,10 @@ def _build_all_for_states(
             cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(all_fips=all_county_fips.keys())
+        web_ui_mapper.generate_state(
+            whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
+            states_only=False,
+        )
     p.close()
     p.join()
 
@@ -282,7 +287,7 @@ def impute_start_dates(state, states_only):
 
 @entry_point.command()
 def generate_whitelist():
-    generate_whitelist()
+    _generate_whitelist()
 
 
 @entry_point.command()

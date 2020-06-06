@@ -50,6 +50,8 @@ class RtInferenceEngine:
         data from introducing pathological results.
     min_deaths: int
         Minimum number of deaths required to run death level inference.
+    include_testing_corrections: bool
+        If True, include a correction for testing increases and decreases.
     """
 
     def __init__(
@@ -63,6 +65,7 @@ class RtInferenceEngine:
         confidence_intervals=(0.68, 0.95),
         min_cases=5,
         min_deaths=5,
+        include_testing_correction=True,
     ):
         np.random.seed(
             NP_SEED
@@ -76,6 +79,7 @@ class RtInferenceEngine:
         self.confidence_intervals = confidence_intervals
         self.min_cases = min_cases
         self.min_deaths = min_deaths
+        self.include_testing_correction = include_testing_correction
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -86,7 +90,11 @@ class RtInferenceEngine:
                 self.times,
                 self.observed_new_cases,
                 self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_state(self.state, self.ref_date)
+            ) = load_data.load_new_case_data_by_state(
+                self.state,
+                self.ref_date,
+                include_testing_correction=self.include_testing_correction,
+            )
 
             (
                 self.hospital_times,
@@ -109,19 +117,22 @@ class RtInferenceEngine:
             else:
                 self.display_name = self.state
 
-            # TODO Swap for new data source.
             (
                 self.times,
                 self.observed_new_cases,
                 self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
+            ) = load_data.load_new_case_data_by_fips(
+                self.fips,
+                t0=self.ref_date,
+                include_testing_correction=self.include_testing_correction,
+            )
             (
                 self.hospital_times,
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
-        log.info(f"Running Rt Inference for {self.display_name}")
+        logging.info(f"Running Rt Inference for {self.display_name}")
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         if self.hospitalization_data_type:
@@ -310,7 +321,7 @@ class RtInferenceEngine:
         times: array-like
             Output integers since the reference date.
         posteriors: pd.DataFrame
-            Posterior estimiates for each timestamp with non-zero data.
+            Posterior estimates for each timestamp with non-zero data.
         """
         dates, times, timeseries = self.apply_gaussian_smoothing(timeseries_type)
         if len(timeseries) == 0:
@@ -460,12 +471,16 @@ class RtInferenceEngine:
                 else:
                     df_all = df_all.merge(df, left_index=True, right_index=True, how="outer")
 
-                # Compute the indicator lag using the curvature alignment method.
+                # ------------------------------------------------
+                # Compute the indicator lag using the curvature
+                # alignment method.
+                # ------------------------------------------------
                 if (
                     timeseries_type
                     in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS)
                     and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns
                 ):
+
                     # Go back upto 30 days or the max time series length we have if shorter.
                     last_idx = max(-21, -len(df))
                     series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
@@ -512,6 +527,20 @@ class RtInferenceEngine:
 
         if plot and df_all is not None:
             plt.figure(figsize=(10, 6))
+
+            if "Rt_MAP_composite" in df_all:
+                plt.scatter(
+                    df_all.index,
+                    df_all["Rt_MAP_composite"],
+                    alpha=1,
+                    s=25,
+                    color="yellow",
+                    label="Inferred $R_{t}$ Web",
+                    marker="d",
+                )
+            plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
+            plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
+            plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
 
             if "Rt_ci5__new_deaths" in df_all:
                 plt.fill_between(
@@ -565,16 +594,7 @@ class RtInferenceEngine:
                     label="New Hospitalizations",
                     marker="d",
                 )
-            if "Rt_MAP_composite" in df_all:
-                plt.scatter(
-                    df_all.index,
-                    df_all["Rt_MAP_composite"],
-                    alpha=1,
-                    s=25,
-                    color="yellow",
-                    label="Inferred $R_{t}$ Web",
-                    marker="d",
-                )
+
             plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
             plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
             plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
@@ -582,7 +602,7 @@ class RtInferenceEngine:
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(0, 5)
+            plt.ylim(-1, 4)
             plt.ylabel("$R_t$", fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
@@ -593,6 +613,28 @@ class RtInferenceEngine:
         if df_all is None or df_all.empty:
             log.warning("Inference not possible for fips: %s", self.fips)
         return df_all
+
+    @staticmethod
+    def ewma_smoothing(series, tau=5):
+        """
+        Exponentially weighted moving average of a series.
+
+        Parameters
+        ----------
+        series: array-like
+            Series to convolve.
+        tau: float
+            Decay factor.
+
+        Returns
+        -------
+        smoothed: array-like
+            Smoothed series.
+        """
+        exp_window = signal.exponential(2 * tau, 0, tau, False)[::-1]
+        exp_window /= exp_window.sum()
+        smoothed = signal.convolve(series, exp_window, mode="same")
+        return smoothed
 
     @staticmethod
     def align_time_series(series_a, series_b):
@@ -655,7 +697,8 @@ def run_state(state, states_only=False):
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
         log.error("Emtpy dataframe encountered! No RtInfernce results available for %s", state)
-    df.to_json(output_path)
+    else:
+        df.to_json(output_path)
 
     # Run the counties.
     if not states_only:
