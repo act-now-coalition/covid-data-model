@@ -11,6 +11,7 @@ from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
@@ -41,8 +42,8 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.DEATHS: [CmdcDataSource, NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -68,8 +69,8 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.DEATHS: [CmdcDataSource, NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -129,6 +130,18 @@ def get_us_latest_for_fips(fips) -> dict:
     """Gets latest values for a given fips code."""
     us_latest = build_us_latest_with_all_fields()
     return us_latest.get_record_for_fips(fips)
+
+
+def get_timeseries_for_fips(fips: str) -> TimeseriesDataset:
+    """Gets timeseries for a specific FIPS code.
+
+    Args:
+        fips: FIPS code.  Can be county (5 character) or state (2 character) code.
+
+    Returns: Timeseries for fips
+    """
+
+    return build_us_timeseries_with_all_fields().get_subset(None, fips=fips)
 
 
 def load_data_sources(

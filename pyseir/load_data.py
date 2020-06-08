@@ -10,7 +10,6 @@ import us
 import zipfile
 import json
 from datetime import datetime
-from libs.datasets import NYTimesDataset
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -372,8 +371,8 @@ def load_new_case_data_by_fips(
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-    _county_case_data = load_county_case_data()
-    county_case_data = _county_case_data[_county_case_data["fips"] == fips]
+    timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    county_case_data = timeseries.get_data(None, fips=fips)
     times_new = (county_case_data["date"] - t0).dt.days.iloc[1:]
     observed_new_cases = (
         county_case_data["cases"].values[1:] - county_case_data["cases"].values[:-1]

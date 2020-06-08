@@ -1,5 +1,6 @@
 import pandas as pd
-from pyseir.load_data import load_county_case_data
+from libs.datasets import combined_datasets
+from libs.datasets import CommonFields
 from pyseir.inference import fit_results
 
 
@@ -28,9 +29,10 @@ def infer_t0(fips, method="first_case", default=pd.Timestamp("2020-02-01")):
     if method == "impute":
         t0 = fit_results.load_t0(fips)
     elif method == "first_case":
-        case_data = load_county_case_data()
-        if fips in case_data.fips:
-            t0 = case_data[case_data.fips == fips].date.min()
+        us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+        fips_timeseries = us_timeseries.get_data(None, fips=fips)
+        if not fips_timeseries.empty:
+            t0 = fips_timeseries[CommonFields.DATE].min()
         else:
             t0 = default
     elif method == "reference_date":
