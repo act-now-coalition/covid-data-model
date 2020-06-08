@@ -132,7 +132,7 @@ class ModelFitter:
 
         self.fips = fips
         self.ref_date = ref_date
-        self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=0)).days
+        self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=7)).days
         self.days_allowed_beyond_ref = 0  # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
         # self.max_future_days_fitted = 14  # number of future days to allowed to be fitted, days beyond days_allowed_beyond_ref are penalized
         self.min_deaths = min_deaths
