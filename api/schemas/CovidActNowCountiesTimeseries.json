@@ -229,6 +229,21 @@
           "description": "Number of cumulative infections",
           "type": "integer"
         },
+        "currentInfected": {
+          "title": "Currentinfected",
+          "description": "Number of current infections",
+          "type": "integer"
+        },
+        "currentSusceptible": {
+          "title": "Currentsusceptible",
+          "description": "Number of people currently susceptible ",
+          "type": "integer"
+        },
+        "currentExposed": {
+          "title": "Currentexposed",
+          "description": "Number of people currently exposed",
+          "type": "integer"
+        },
         "cumulativePositiveTests": {
           "title": "Cumulativepositivetests",
           "description": "Number of positive test results to date",
@@ -252,6 +267,9 @@
         "RtIndicatorCI90",
         "cumulativeDeaths",
         "cumulativeInfected",
+        "currentInfected",
+        "currentSusceptible",
+        "currentExposed",
         "cumulativePositiveTests",
         "cumulativeNegativeTests"
       ]
