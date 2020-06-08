@@ -132,12 +132,9 @@ class ModelFitter:
 
         self.fips = fips
         self.ref_date = ref_date
-        # self.max_fit_date = (dt.date.today() - timedelta(days=7) - ref_date.date()).days  # natasha
-        self.days_since_ref_date = (dt.date.today() - ref_date.date()).days
-        self.future_days_allowed = (
-            7  # number of future days allowed in second ramp period without penalty on chi2 score
-        )
-        self.max_future_days_fitted = 14  # number of future days to allowed to be fitted, days beyond future_days_allowed are penalized
+        self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=0)).days
+        self.days_allowed_beyond_ref = 0  # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
+        # self.max_future_days_fitted = 14  # number of future days to allowed to be fitted, days beyond days_allowed_beyond_ref are penalized
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
@@ -462,20 +459,17 @@ class ModelFitter:
         # Last data point in ramp 2
         last_data_point_ramp_2 = t0 + t_break + 14 + t_delta_phases + 14
         # Number of future days used in second ramp period
-        number_of_future_days_used = last_data_point_ramp_2 - self.days_since_ref_date
+        number_of_not_allowed_days_used = last_data_point_ramp_2 - self.days_since_ref_date
         # Multiplicative chi2 penalty if future_days are used in second ramp period (set to 1 by default)
-        future_days_penalty = 1.0
+        not_allowed_days_penalty = 0.0
 
-        # If using more future days than allowed, updated future_days_penalty
-        if number_of_future_days_used > self.future_days_allowed:
-            future_days_penalty = number_of_future_days_used
+        # If using more future days than allowed, updated not_allowed_days_penalty
+        if number_of_not_allowed_days_used > self.days_allowed_beyond_ref:
+            not_allowed_days_penalty = 10 * number_of_not_allowed_days_used
 
         # Only run fit when last_data_point_ramp_2 does not use more than max_future_days_fitted
         # if last_data_point_ramp_2 < self.days_since_ref_date + self.max_future_days_fitted:
         model = self.run_model(**model_kwargs)
-        # Otherwise return chi2 = 1000, we could further optimize this, but this is functional
-        # else:
-        #    return 1000
         # -----------------------------------
         # Chi2 Cases
         # -----------------------------------
@@ -539,8 +533,8 @@ class ModelFitter:
         self.dof_cases = (self.observed_new_cases > 0).sum()
 
         not_penalized_score = chi2_deaths + chi2_cases + chi2_hosp
-        # Calculate the final score as the product of the future_days_penalty and not_penalized_score
-        score = future_days_penalty + (chi2_deaths + chi2_cases + chi2_hosp)
+        # Calculate the final score as the product of the not_allowed_days_penalty and not_penalized_score
+        score = not_allowed_days_penalty + (chi2_deaths + chi2_cases + chi2_hosp)
 
         return score
 
