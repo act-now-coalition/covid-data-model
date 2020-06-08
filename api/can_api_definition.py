@@ -130,9 +130,7 @@ class CANPredictionTimeseriesRow(pydantic.BaseModel):
     cumulativeInfected: Optional[int] = pydantic.Field(
         ..., description="Number of cumulative infections"
     )
-    currentInfected: Optional[int] = pydantic.Field(
-        ..., description="Number of current infections"
-    )
+    currentInfected: Optional[int] = pydantic.Field(..., description="Number of current infections")
     currentSusceptible: Optional[int] = pydantic.Field(
         ..., description="Number of people currently susceptible "
     )
