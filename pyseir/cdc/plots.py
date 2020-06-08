@@ -1,3 +1,5 @@
+import logging
+import os
 import us
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -15,8 +17,19 @@ LABELS = {Target.CUM_DEATH: 'cumulative death',
           Target.INC_DEATH: 'incident death'}
 
 
+def load_output_mapper_result(fips, forecast_date):
+    """
 
-def plot_results(fips, forecast_date, target, observations, pdf=None):
+    """
+
+    if isinstance(forecast_date, datetime):
+        forecast_date = datetime.strftime(forecast_date, DATE_FORMAT)
+
+    om_result = pd.read_csv(f'{REPORT_FOLDER}/{forecast_date}_{TEAM}_{MODEL}_{fips}.csv')
+    return om_result
+
+
+def plot_results(fips, om_result, target, observations, pdf=None):
     """
     Plot median and 95% confidence interval of the forecast and observations
     for a given type of target (cumulative death, incident death or incident
@@ -45,15 +58,12 @@ def plot_results(fips, forecast_date, target, observations, pdf=None):
         Pdf object to save the figures.
     """
 
-    if isinstance(forecast_date, datetime):
-        forecast_date = datetime.strftime(forecast_date, DATE_FORMAT)
-
-    df = pd.read_csv(f'{REPORT_FOLDER}/{forecast_date}_{TEAM}_{MODEL}_{fips}.csv')
+    target = Target(target)
 
     results = defaultdict(list)
 
     for unit in ['day', 'wk']:
-        df_by_unit = df[df.target.str.contains(f'{unit} ahead {target.value}')].copy()
+        df_by_unit = om_result[om_result.target.str.contains(f'{unit} ahead {target.value}')].copy()
         for target_name in df_by_unit.target.unique():
             sub_df = df_by_unit[df_by_unit.target == target_name]
             sub_df['quantile'] = sub_df['quantile'].apply(lambda x: float(x))
@@ -66,11 +76,12 @@ def plot_results(fips, forecast_date, target, observations, pdf=None):
                 'ci_025': [float(sub_df[sub_df['quantile'] == 0.025]['value'])],
                 'ci_975': [float(sub_df[sub_df['quantile'] == 0.975]['value'])]}))
 
+
     for unit in [ForecastTimeUnit.DAY.value, ForecastTimeUnit.WK.value]:
         results[unit] = pd.concat(results[unit])
         results[unit]['target_end_date'] = pd.to_datetime(results[unit]['target_end_date'])
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 4))
     for n, unit in enumerate([ForecastTimeUnit.DAY.value,
                               ForecastTimeUnit.WK.value]):
         plt.subplot(1, 2, n+1)
@@ -117,14 +128,17 @@ def run_all(forecast_date=FORECAST_DATE):
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
     fips_list = list(df_whitelist['fips'].str[:2].unique())
-    output_path = f'{REPORT_FOLDER}/report_{datetime.strftime(forecast_date, DATE_FORMAT)}.pdf'
+    output_path = os.path.join(f'{REPORT_FOLDER}',
+                               f'report_{datetime.strftime(forecast_date, DATE_FORMAT)}.pdf')
     pdf = backend_pdf.PdfPages(output_path)
     for fips in fips_list:
+        logging.info(f'plotting cdc submission for fips {fips}')
         observations = load_and_aggregate_observations(fips,
                                                        units=[ForecastTimeUnit.DAY, ForecastTimeUnit.WK],
                                                        targets=[Target.CUM_DEATH, Target.INC_DEATH],
                                                        smooth=False)
+        om_result = load_output_mapper_result(fips,
+                                              datetime.strftime(forecast_date, DATE_FORMAT))
         for target in [Target.CUM_DEATH, Target.INC_DEATH]:
-            plot_results(fips, datetime.strftime(forecast_date, DATE_FORMAT),
-                         target, observations, pdf)
+            plot_results(fips, om_result, target, observations, pdf)
     pdf.close()
