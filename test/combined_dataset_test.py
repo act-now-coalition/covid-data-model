@@ -9,6 +9,7 @@ from libs.datasets.sources.cmdc import CmdcDataSource
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import JHUDataset
+from libs.datasets import NYTimesDataset
 from libs.datasets import CDSDataset
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import NevadaHospitalAssociationData
@@ -66,6 +67,7 @@ def test_combined_county_has_some_timeseries_data(fips):
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
         CmdcDataSource,
+        NYTimesDataset,
     ],
 )
 def test_unique_timeseries(data_source_cls):
