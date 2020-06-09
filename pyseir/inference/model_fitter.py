@@ -1,21 +1,19 @@
-import logging
-import iminuit
-
-# TODO use JAX for numpy XLA acceleration
-
 import os
 import us
+import logging
+from pprint import pformat
+import datetime as dt
+from datetime import datetime, timedelta
+from multiprocessing import Pool
+from copy import deepcopy
+
+import pandas as pd
 import dill as pickle
 import numpy as np
-from pprint import pformat
-import pandas as pd
-
+import iminuit
 from scipy.stats import gamma, norm
-from copy import deepcopy
 from matplotlib import pyplot as plt
-from datetime import datetime, timedelta
-import datetime as dt
-from multiprocessing import Pool
+
 from pyseir.models import suppression_policies
 from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
@@ -27,7 +25,7 @@ from pyseir.load_data import HospitalizationDataType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
 
-_logger = logging.getLogger(__name__)
+log = logging.getLogger()
 
 
 def calc_chi_sq(obs, predicted, stddev):
@@ -109,6 +107,8 @@ class ModelFitter:
         ),
     }
 
+    REFF_LOWER_BOUND = 0.7
+
     steady_state_exposed_to_infected_ratio = 1.2
 
     def __init__(
@@ -130,7 +130,8 @@ class ModelFitter:
         self.fips = fips
         self.ref_date = ref_date
         self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=7)).days
-        self.days_allowed_beyond_ref = 0  # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
+        # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
+        self.days_allowed_beyond_ref = 0
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
@@ -337,7 +338,8 @@ class ModelFitter:
                 * hosp_data ** 0.5
                 * hosp_data.max() ** 0.5
             )
-            # Increase errors a bit for very low hospitalizations. There are clear outliers due to data quality.
+            # Increase errors a bit for very low hospitalizations.
+            # There are clear outliers due to data quality.
             hosp_stdev[hosp_data <= 2] *= 3
 
         elif self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
@@ -348,7 +350,8 @@ class ModelFitter:
                 * hosp_data ** 0.5
                 * hosp_data.max() ** 0.5
             )
-            # Increase errors a bit for very low hospitalizations. There are clear outliers due to data quality.
+            # Increase errors a bit for very low hospitalizations.
+            # There are clear outliers due to data quality.
             hosp_stdev[hosp_data <= 2] *= 3
         else:
             hosp_stdev = None
@@ -371,10 +374,13 @@ class ModelFitter:
         R0: float
             Basic reproduction number
         eps: float
-            Fraction of reduction in contact rates as result of  to suppression
-            policy projected into future.
+            Fraction of reduction in contact rates in the second stage.
         t_break: float
             Timing for the switch in suppression policy.
+        eps2: float
+            Fraction of reduction in contact rates in the third stage
+        t_delta_phases: float
+            Timing for the switch in from second to third stage.
         log10_I_initial:
             log10 initial infections.
 
@@ -527,31 +533,49 @@ class ModelFitter:
         self.dof_cases = (self.observed_new_cases > 0).sum()
 
         not_penalized_score = chi2_deaths + chi2_cases + chi2_hosp
+
         # Calculate the final score as the product of the not_allowed_days_penalty and not_penalized_score
         score = not_allowed_days_penalty + (chi2_deaths + chi2_cases + chi2_hosp)
 
         return score
 
-    def get_posterior_estimate_eps(self, R0, eps, eps_error, plot=False):
+    @staticmethod
+    def get_posterior_estimate_eps(R0, eps, eps_error, lower_bound_reff, plot=False):
         """
         Generate a posterior estimate for epsilon based on the inferred R0. This
         is a little weird right now since we actually want a prior on Reff. So
         in this case we use the inferred R0 to convert eps -> Reff, apply a
         prior, and invert this transform to get back to the epsilon Max
         A-Posteriori (MAP) estimate.
+
+        Parameters
+        ----------
+        R0:
+            Stage one reproductive rate
+        eps:
+            Current stage's relative ratio to R0
+        eps_error:
+            Error in eps estimate (currently from MIGRAD)
+        lower_bound_reff:
+            The lower bound on reff to be returned.
+
         Returns
         -------
         posterior_map_estimate: float
             Max A-Posteriori (MAP) estimate for epsilon.
         """
+        EPS_ERROR_FLOOR = 0.05  # Sometimes this is estimated to be way to small (incorrectly since
+        # we don't know the true error model). This is a problem for bayesian updates. Set a lower
+        # bound for the error here.
+
         R_eff = R0 * eps
-        R_eff_stdev = R0 * eps_error
+        R_eff_stdev = R0 * max(eps_error, EPS_ERROR_FLOOR)
 
         x = np.linspace(0.00, 10, 1001)
         delta_x = x[1] - x[0]
 
-        # This implements a hard lower limit of 0.80
-        prior = gamma.pdf((x - 0.80) / 1.5, 1.1)
+        # TODO: Extract and Label Gamma Scaling Factors So Others Can Understand
+        prior = gamma.pdf((x - lower_bound_reff) / 1.5, 1.1)
         # Add a tiny amount to the likelihood to prevent zero common support
         # between the prior and likelihood functions.
         likelihood = norm.pdf(x, R_eff, R_eff_stdev) + 0.0001
@@ -592,16 +616,16 @@ class ModelFitter:
                 f"Epsilon == 0 which implies lack of convergence."
             )
 
-        # Sometimes this is estimated to be way to small (incorrectly since we
-        # don't know the true error model). This is a problem for bayesian
-        # updates. Set a lower bound for the error here.
-        self.fit_results["eps_error"] = max(self.fit_results["eps_error"], 0.05)
-
-        self.fit_results["eps"] = self.get_posterior_estimate_eps(
-            R0=self.fit_results["R0"],
-            eps=self.fit_results["eps"],
-            eps_error=self.fit_results["eps_error"],
-        )
+        # Most naive constraints: apply the same constraint to both epsilon 2 and epsilon 3
+        for epsilon in ["eps", "eps2"]:
+            adjusted_epsilon = ModelFitter.get_posterior_estimate_eps(
+                R0=self.fit_results["R0"],
+                eps=self.fit_results[epsilon],
+                eps_error=self.fit_results[f"{epsilon}_error"],
+                lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
+            )
+            # TODO: Add structured logging if this change is significant
+            self.fit_results[epsilon] = adjusted_epsilon
 
         if np.isnan(self.fit_results["t0"]):
             logging.error(f"Could not compute MLE values for {self.display_name}")
@@ -958,17 +982,17 @@ class ModelFitter:
                     model_is_empty = False
             if retries_left <= 0 and model_is_empty:
                 raise RuntimeError(f"Could not converge after {n_retries} for fips {fips}")
+            return model_fitter
         except Exception:
             logging.exception(f"Failed to run {fips}")
             return None
-        return model_fitter
 
 
 def _execute_model_for_fips(fips):
     if fips:
         model_fitter = ModelFitter.run_for_fips(fips)
         return model_fitter
-    logging.warning(f"Not funning model run for ${fips}")
+    logging.warning(f"Not running model run for ${fips}")
     return None
 
 
