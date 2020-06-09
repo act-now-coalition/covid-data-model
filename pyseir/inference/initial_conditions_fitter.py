@@ -12,11 +12,13 @@ from sklearn.model_selection import cross_validate
 from multiprocessing import Pool
 from functools import partial
 import seaborn as sns
+from libs.datasets import combined_datasets
+from libs.datasets import CommonFields
 from pyseir import load_data
 from pyseir import OUTPUT_DIR
 
 
-class InitialConditionsFitter:
+class InitialConditionsFitter(object):
     """
     Fit an exponential model to observations assuming a binomial error on
     observations. Identify t0 at the threshold specified.
@@ -54,20 +56,23 @@ class InitialConditionsFitter:
         self.start_days_after_t0 = start_days_after_t0
         self.min_days_required = min_days_required
 
-        # Load case data
-        case_data = load_data.load_county_case_data()
-        self.cases = case_data[case_data["fips"] == fips]
+        timeseries = combined_datasets.get_timeseries_for_fips(fips)
+        latest_values = combined_datasets.get_us_latest_for_fips(fips)
+
+        self.cases = timeseries.data
+        # NOTE(chris): Should cases drop any empty rows? Thinking if there is a timeseries
+        # for one column, but no corresponding cases data point.
         n_days = len(self.cases)
         if n_days < min_days_required:
             raise ValueError(f"Only {n_days} observations for county. Cannot fit.")
         self.fips = fips
 
-        self.county = self.cases.county.values[0]
-        self.state = self.cases.state.values[0]
+        self.county = latest_values[CommonFields.COUNTY]
+        self.state = latest_values[CommonFields.STATE]
 
         self.t = (self.cases.date - self.cases.date.min()).dt.days.values
         self.data_start_date = self.cases.date.min()
-        self.y = self.cases.cases.values
+        self.y = self.cases[CommonFields.CASES].values
 
         self.fit_predictions = None
         self.t0 = None
