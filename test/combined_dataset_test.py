@@ -5,6 +5,7 @@ import pytest
 
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.sources.cmdc import CmdcDataSource
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import JHUDataset
@@ -49,11 +50,23 @@ def test_combined_county_has_some_timeseries_data(fips):
     df = latest.data.set_index(CommonFields.DATE)
     assert df.loc["2020-05-01", CommonFields.CASES] > 0
     assert df.loc["2020-05-01", CommonFields.DEATHS] > 0
+    if fips.startswith(
+        "06"
+    ):  # TODO(tom): Remove this condition when we have county data in TX too.
+        assert df.loc["2020-05-01", CommonFields.POSITIVE_TESTS] > 0
+        assert df.loc["2020-05-01", CommonFields.NEGATIVE_TESTS] > 0
+        assert df.loc["2020-05-01", CommonFields.CURRENT_ICU] > 0
 
 
 @pytest.mark.parametrize(
     "data_source_cls",
-    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    [
+        JHUDataset,
+        CDSDataset,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        CmdcDataSource,
+    ],
 )
 def test_unique_timeseries(data_source_cls):
     data_source = data_source_cls.local()
@@ -68,7 +81,13 @@ def test_unique_timeseries(data_source_cls):
 
 @pytest.mark.parametrize(
     "data_source_cls",
-    [JHUDataset, CDSDataset, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    [
+        JHUDataset,
+        CDSDataset,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        CmdcDataSource,
+    ],
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()
