@@ -56,6 +56,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     #     CovidTrackingDataSource,
     #     NevadaHospitalAssociationData,
     # ],
+    CommonFields.COUNTY: [FIPSPopulation],
     # CommonFields.POPULATION: [FIPSPopulation],
     # CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
     # CommonFields.LICENSED_BEDS: [CovidCareMapBeds],

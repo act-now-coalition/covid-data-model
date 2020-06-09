@@ -11,6 +11,7 @@ import zipfile
 import json
 from datetime import datetime
 from libs.datasets import combined_datasets
+from libs.datasets import NYTimesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonFields
