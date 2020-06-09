@@ -21,7 +21,7 @@ configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()
 log = structlog.get_logger(__name__)
 
 
-class InferRtConstants(Enum):
+class InferRtConstants:
     RNG_SEED = 42
     LOCAL_LOOKBACK_WINDOW = 14
     Z_THRESHOLD = 10
@@ -78,7 +78,7 @@ class RtInferenceEngine:
         min_deaths=5,
         include_testing_correction=True,
     ):
-        np.random.seed(InferRtConstants.RNG_SEED.value)
+        np.random.seed(InferRtConstants.RNG_SEED)
         # Param Generation used for Xcor in align_time_series, has some stochastic FFT elements.
         self.fips = fips
         self.r_list = r_list
@@ -672,7 +672,7 @@ class RtInferenceEngine:
         shifts = range(-21, 5)
         valid_shifts = []
         xcor = []
-        np.random.seed(InferRtConstants.RNG_SEED.value)  # Xcor has some stochastic FFT elements.
+        np.random.seed(InferRtConstants.RNG_SEED)  # Xcor has some stochastic FFT elements.
         _series_a = np.diff(series_a)
 
         for i in shifts:
@@ -698,9 +698,9 @@ class RtInferenceEngine:
 
 def replace_outliers(
     x,
-    local_lookback_window=InferRtConstants.LOCAL_LOOKBACK_WINDOW.value,
-    z_threshold=InferRtConstants.Z_THRESHOLD.value,
-    min_mean_to_consider=InferRtConstants.MIN_MEAN_TO_CONSIDER.value,
+    local_lookback_window=InferRtConstants.LOCAL_LOOKBACK_WINDOW,
+    z_threshold=InferRtConstants.Z_THRESHOLD,
+    min_mean_to_consider=InferRtConstants.MIN_MEAN_TO_CONSIDER,
 ):
     """
     Take a pandas.Series, apply an outlier filter, and return a pandas.Series.
