@@ -8,12 +8,21 @@ from scipy import stats as sps
 from scipy import signal
 from matplotlib import pyplot as plt
 import us
+import structlog
 from pyseir import load_data
 from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
-log = logging.getLogger(__name__)
+# log = structlog.getLogger(__name__)
+
+from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
+from structlog import configure
+
+configure(
+    processors=[merge_threadlocal, structlog.processors.KeyValueRenderer(),]
+)
+log = structlog.get_logger()
 NP_SEED = 42
 
 
@@ -131,8 +140,9 @@ class RtInferenceEngine:
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-
-        logging.info(f"Running Rt Inference for {self.display_name}")
+        clear_threadlocal()
+        bind_threadlocal(Rt_Inference_Target=self.display_name)
+        log.info("Running")
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         if self.hospitalization_data_type:
@@ -231,15 +241,20 @@ class RtInferenceEngine:
         """
         timeseries_type = TimeseriesType(timeseries_type)
         dates, times, timeseries = self.get_timeseries(timeseries_type)
+        bind_threadlocal(timeseries_type=timeseries_type.value)
 
-        # Hospitalizations have a strange effect in the first few data points across many states. Let's just drop those..
+        # Hospitalizations have a strange effect in the first few data points across many states.
+        # Let's just drop those..
         if timeseries_type in (
             TimeseriesType.CURRENT_HOSPITALIZATIONS,
             TimeseriesType.NEW_HOSPITALIZATIONS,
         ):
             dates, times, timeseries = dates[2:], times[:2], timeseries[2:]
 
-        timeseries = pd.Series(timeseries)
+        # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
+        # from the 14 day trailing mean and std
+        # log = structlog.getLogger(timeseries)
+        timeseries = replace_outliers(pd.Series(timeseries))
         smoothed = (
             timeseries.rolling(
                 self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
@@ -481,7 +496,7 @@ class RtInferenceEngine:
                     and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns
                 ):
 
-                    # Go back upto 30 days or the max time series length we have if shorter.
+                    # Go back up to 30 days or the max time series length we have if shorter.
                     last_idx = max(-21, -len(df))
                     series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
                     series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
@@ -489,7 +504,7 @@ class RtInferenceEngine:
                     shift_in_days = self.align_time_series(series_a=series_a, series_b=series_b,)
 
                     df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
-                    log.debug(
+                    logging.debug(
                         "Using timeshift of: %s for timeseries type: %s ",
                         shift_in_days,
                         timeseries_type,
@@ -505,7 +520,7 @@ class RtInferenceEngine:
                             # of the missing values: For any nans appearing in between valid
                             # elements of the series, an interpolated value is filled in.
                             # For values at the end of the series, the last *valid* value is used.
-                            log.debug("Filling in %s missing values", shift_in_days)
+                            logging.debug("Filling in %s missing values", shift_in_days)
                             df_all[col] = df_all[col].interpolate(
                                 limit_direction="forward", method="linear"
                             )
@@ -611,7 +626,7 @@ class RtInferenceEngine:
             plt.savefig(output_path, bbox_inches="tight")
             # plt.close()
         if df_all is None or df_all.empty:
-            log.warning("Inference not possible for fips: %s", self.fips)
+            logging.warning("Inference not possible for fips: %s", self.fips)
         return df_all
 
     @staticmethod
@@ -681,6 +696,63 @@ class RtInferenceEngine:
             return None
 
 
+def zscore(x, window):
+    """
+    :param x:
+    :param window:
+    :return:
+    """
+    r = x.rolling(window=window, min_periods=window, center=False)
+    m = r.mean().shift(1)
+    s = r.std(ddof=0).shift(1)
+    z = (x - m) / s
+    return z
+
+
+def replace_outliers(x):
+    """
+    :param x:
+    :return:
+    """
+    LOCAL_LOOKBACK_WINDOW = 14
+    Z_THRESHOLD = 10
+    MIN_MEAN_TO_CONSIDER = 5
+
+    # Calculate Z Score
+    r = x.rolling(window=LOCAL_LOOKBACK_WINDOW, min_periods=LOCAL_LOOKBACK_WINDOW, center=False)
+    m = r.mean().shift(1)
+    s = r.std(ddof=0).shift(1)
+    z_score = (x - m) / s
+
+    possible_changes_idx = np.where(z_score > Z_THRESHOLD)[0]
+    changed_idx = []
+    changed_value = []
+    changed_snippets = []
+
+    for idx in possible_changes_idx:
+        # Check if this is an initial condition (0s to 1)
+        if m[idx] > MIN_MEAN_TO_CONSIDER:
+            changed_idx.append(idx)
+            changed_value.append(int(x[idx]))
+            slicer = slice(idx - LOCAL_LOOKBACK_WINDOW, idx + LOCAL_LOOKBACK_WINDOW)
+            changed_snippets.append(x[slicer].astype(int).tolist())
+            try:
+                x[idx] = np.mean([x[idx - 1], x[idx + 1]])
+            except IndexError:  # Value to replace can be latest. If so, just use previous.
+                x[idx] = x[idx - 1]
+
+    if len(changed_idx) > 0:
+        log.info(
+            "Replacing Outliers with Linear Interpolation Between Nearest Neighbors",
+            outlier_values=changed_value,
+            z_score=z_score[changed_idx].astype(int).tolist(),
+            where=changed_idx,
+            snippets=changed_snippets,
+        )
+
+    return x
+
+
 def run_state(state, states_only=False):
     """
     Run the R_t inference for each county in a state.
@@ -696,7 +768,7 @@ def run_state(state, states_only=False):
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
-        log.error("Emtpy dataframe encountered! No RtInfernce results available for %s", state)
+        logging.error("Emtpy dataframe encountered! No RtInfernce results available for %s", state)
     else:
         df.to_json(output_path)
 
