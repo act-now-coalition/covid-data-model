@@ -12,6 +12,3 @@ def test_fips_metadata(nyc_fips):
     assert fitter.data_start_date == pd.Timestamp("2020-03-01")
     # Checking to make sure that y is a numpy array rather than a pandas DF.
     assert isinstance(fitter.y, numpy.ndarray)
-    print(fitter.y.shape)
-    print(fitter.y.sum())
-    assert 0
