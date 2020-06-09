@@ -134,7 +134,7 @@ class ModelFitter:
 
         self.fips = fips
         self.ref_date = ref_date
-        self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=14)).days
+        self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=7)).days
         self.days_allowed_beyond_ref = 0  # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
