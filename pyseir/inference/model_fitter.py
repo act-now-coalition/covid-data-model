@@ -28,7 +28,6 @@ from pyseir.inference.fit_results import load_inference_result
 log = logging.getLogger()
 
 
-
 def calc_chi_sq(obs, predicted, stddev):
     return np.sum((obs - predicted) ** 2 / stddev ** 2)
 
@@ -131,7 +130,8 @@ class ModelFitter:
         self.fips = fips
         self.ref_date = ref_date
         self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=7)).days
-        self.days_allowed_beyond_ref = 0  # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
+        # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
+        self.days_allowed_beyond_ref = 0
         self.min_deaths = min_deaths
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.cases_to_deaths_err_factor = cases_to_deaths_err_factor
@@ -374,10 +374,13 @@ class ModelFitter:
         R0: float
             Basic reproduction number
         eps: float
-            Fraction of reduction in contact rates as result of  to suppression
-            policy projected into future.
+            Fraction of reduction in contact rates in the second stage.
         t_break: float
             Timing for the switch in suppression policy.
+        eps2: float
+            Fraction of reduction in contact rates in the third stage
+        t_delta_phases: float
+            Timing for the switch in from second to third stage.
         log10_I_initial:
             log10 initial infections.
 
