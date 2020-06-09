@@ -39,6 +39,37 @@ def target_column_name(num, target, unit):
     for n in num:
         yield f'{int(n)} {unit.value} ahead {target.value}'
 
+def ppf_from_data(data, weights=None):
+    """
+
+    """
+    cdf = np.linspace(0, 1, len(data))
+    if weights is not None:
+        weights = np.array(weights)
+        pdf = np.append(cdf[0], np.diff(cdf))
+        pdf *= weights[np.argsort(data)]
+        cdf = pdf.cumsum()
+        cdf /= cdf.max()
+
+    return scipy.interpolate.interp1d(cdf,
+                                      sorted(data))
+
+def random_sample_from_ppf(ppf, size, percentile_bounds=(0, 1)):
+    """
+    Generate random samples from percentile point function.
+
+    Parameters
+    ----------
+    ppf: callable
+
+
+    """
+    rv = np.random.uniform(low=percentile_bounds[0],
+                           high=percentile_bounds[1],
+                           size=size)
+    return ppf(rv)
+
+
 def load_state_level_death_data(fips):
     """
     There has been some inconsistency between death data aggregated
@@ -51,6 +82,13 @@ def load_state_level_death_data(fips):
     ----------
     fips: str
         State 2-digit FIPS code
+
+
+    Returns
+    -------
+    dates:
+    cumulative_death:
+    incident_death:
     """
     states_data = pd.read_csv(os.path.join(DIR_PATH, 'data/us-states.csv'))
     states_data['fips'] = states_data['fips'].apply(lambda v: ('0' + str(v))[-2:])
@@ -59,7 +97,26 @@ def load_state_level_death_data(fips):
     dates = np.array([datetime.strptime(d, DATE_FORMAT) for d in dates])
     cumulative_death = states_data['deaths'].values
     incident_death = np.append(states_data['deaths'].iloc[0],
-                               np.diff(states_data['deaths']))
+                               np.diff(states_data['deaths'])).clip(min=0)
+    return dates, cumulative_death, incident_death
+
+
+def load_us_level_death_data():
+    """
+    Load us level death data from NYTimes state level data.
+
+    Returns
+    -------
+    dates:
+    cumulative_death:
+    incident_death:
+    """
+    states_data = pd.read_csv(os.path.join(DIR_PATH, 'data/us-states.csv'))
+    us_data = states_data.groupby('date')['deaths'].sum().reset_index()
+    dates = us_data['date'].values
+    cumulative_death = us_data['deaths'].values
+    incident_death = np.append(cumulative_death[0],
+                               np.diff(cumulative_death)).clip(min=0)
     return dates, cumulative_death, incident_death
 
 
@@ -226,6 +283,7 @@ def load_and_aggregate_observations(fips, units, targets, end_date=None, smooth=
     """
     state_level_dates, state_level_cumulative_death, state_level_incident_death = \
         load_state_level_death_data(fips)
+
     times, observed_new_cases, observed_new_deaths = \
         load_data.load_new_case_data_by_state(us.states.lookup(fips).name,
                                               REF_DATE)
@@ -239,6 +297,7 @@ def load_and_aggregate_observations(fips, units, targets, end_date=None, smooth=
     # here it enables blocking part of observations.
     end_date = end_date or datetime.today()
     maximum_time_step = (end_date.date() - REF_DATE.date()).days
+
 
     observed_new_cases = observed_new_cases[times <= maximum_time_step]
     observed_new_deaths = observed_new_deaths[times <= maximum_time_step]
@@ -298,16 +357,21 @@ def smooth_observations(observations):
     """
 
     """
-    smoothed = observations.copy()
+    smoothed = defaultdict(dict)
     for target_name in observations.keys():
         for unit_name in observations[target_name]:
-            if Target(target_name) in [Target.INC_DEATH, Target.INC_HOSP]:
-                if ForecastTimeUnit(unit_name) is ForecastTimeUnit.DAY:
-                    if observations[target_name][unit_name] is not None:
-                        smoothed[target_name][unit_name].update(
-                            pd.Series(smooth_timeseries(
-                                range(smoothed[target_name][unit_name].shape[0]),
-                                observations[target_name][unit_name].values).clip(min=0),
-                                      index=smoothed[target_name][unit_name].index))
+            if ((Target(target_name) in [Target.INC_DEATH, Target.INC_HOSP])
+               & (ForecastTimeUnit(unit_name) is ForecastTimeUnit.DAY)
+               & (observations[target_name][unit_name] is not None)):
+                smoothed[target_name][unit_name] = \
+                        pd.Series(smooth_timeseries(
+                            range(observations[target_name][unit_name].shape[0]),
+                            observations[target_name][unit_name].values).clip(min=0),
+                            index=observations[target_name][unit_name].index)
+            else:
+                if observations[target_name][unit_name] is not None:
+                    smoothed[target_name][unit_name] = observations[target_name][unit_name].copy()
+                else:
+                    smoothed[target_name][unit_name] = None
 
-    return smoothed
+    return dict(smoothed)
