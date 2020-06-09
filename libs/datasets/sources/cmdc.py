@@ -23,6 +23,7 @@ class CmdcDataSource(data_source.DataSource):
         CommonFields.NEGATIVE_TESTS: CommonFields.NEGATIVE_TESTS,
         CommonFields.POSITIVE_TESTS: CommonFields.POSITIVE_TESTS,
         CommonFields.CURRENT_VENTILATED: CommonFields.CURRENT_VENTILATED,
+        CommonFields.CURRENT_HOSPITALIZED: CommonFields.CURRENT_HOSPITALIZED,
     }
 
     @classmethod
