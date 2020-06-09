@@ -6,6 +6,7 @@ from pyseir.reports.pdf_report import PDFReport
 from pyseir import load_data
 import matplotlib.pyplot as plt
 from pyseir.reports.names import compartment_to_name_map
+from libs.datasets import combined_datasets
 
 
 class CountyReport:
@@ -46,8 +47,9 @@ class CountyReport:
         self.model_ensemble = model_ensemble
         self.county_metadata = load_data.load_county_metadata_by_fips(fips)
         self.summary = summary
-        _county_case_data = load_data.load_county_case_data()
-        self.county_case_data = _county_case_data[_county_case_data["fips"] == fips]
+
+        timeseries = combined_datasets.get_timeseries_for_fips(fips)
+        self.county_case_data = timeseries.data
         self.report = PDFReport(filename=filename)
         self.xlim = xlim
 

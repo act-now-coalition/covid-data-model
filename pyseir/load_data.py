@@ -11,7 +11,6 @@ import zipfile
 import json
 from datetime import datetime
 from libs.datasets import combined_datasets
-from libs.datasets import NYTimesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonFields
@@ -105,16 +104,6 @@ def load_zip_get_file(url, file, decoder="utf-8"):
         return io.BytesIO(byte_string)
 
 
-def cache_county_case_data():
-    """
-    Cache county covid case data from NYT in #PYSEIR_HOME/data.
-    """
-    log.info("Downloading covid case data")
-    # NYT dataset
-    county_case_data = load_county_case_data()
-    county_case_data.to_pickle(os.path.join(DATA_DIR, "covid_case_timeseries.pkl"))
-
-
 def cache_mobility_data():
     """
     Pulled from https://github.com/descarteslabs/DL-COVID-19
@@ -175,37 +164,6 @@ def cache_public_implementations_data():
     ]
     df.fips = df.fips.apply(lambda x: x.zfill(5))
     df.to_pickle(os.path.join(DATA_DIR, "public_implementations_data.pkl"))
-
-
-@lru_cache(maxsize=32)
-def load_county_case_data():
-    """
-    Return county level case data.
-
-    Returns
-    -------
-    : pd.DataFrame
-    """
-    county_case_data = (
-        NYTimesDataset.local().timeseries().get_data(AggregationLevel.COUNTY, country="USA")
-    )
-    return county_case_data
-
-
-@lru_cache(maxsize=1)
-def load_state_case_data():
-    """
-    Return county level case data.
-
-    Returns
-    -------
-    : pd.DataFrame
-    """
-
-    state_case_data = (
-        NYTimesDataset.local().timeseries().get_data(AggregationLevel.STATE, country="USA")
-    )
-    return state_case_data
 
 
 @lru_cache(maxsize=32)
@@ -761,10 +719,14 @@ def load_new_case_data_by_state(
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-    _state_case_data = load_state_case_data()
-    state_case_data = _state_case_data[_state_case_data["state"] == us.states.lookup(state).abbr]
-    times_new = (state_case_data["date"] - t0).dt.days.iloc[1:]
-    observed_new_cases = state_case_data["cases"].values[1:] - state_case_data["cases"].values[:-1]
+    state_abbrev = us.states.lookup(state).abbr
+    state_timeseries = combined_datasets.get_timeseries_for_state(state_abbrev)
+    state_case_data = state_timeseries.data
+    times_new = (state_case_data[CommonFields.DATE] - t0).dt.days.iloc[1:]
+    observed_new_cases = (
+        state_case_data[CommonFields.CASES].values[1:]
+        - state_case_data[CommonFields.CASES].values[:-1]
+    )
 
     if include_testing_correction:
         df_new_tests = load_new_test_data_by_fips(
@@ -776,7 +738,8 @@ def load_new_case_data_by_state(
         observed_new_cases = df_cases["new_cases"].values
 
     observed_new_deaths = (
-        state_case_data["deaths"].values[1:] - state_case_data["deaths"].values[:-1]
+        state_case_data[CommonFields.DEATHS].values[1:]
+        - state_case_data[CommonFields.DEATHS].values[:-1]
     )
 
     _, filter_idx = hampel_filter__low_outliers_only(observed_new_cases, window_size=5, n_sigmas=2)
@@ -983,7 +946,6 @@ def cache_all_data():
     """
     Download all datasets locally.
     """
-    cache_county_case_data()
     cache_mobility_data()
     cache_public_implementations_data()
 

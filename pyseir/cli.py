@@ -8,7 +8,6 @@ from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
 from functools import partial
 from libs.datasets import dataset_cache
-from pyseir.load_data import cache_county_case_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
 from pyseir.ensembles.ensemble_runner import run_state, RunMode, _run_county
@@ -68,11 +67,6 @@ def entry_point():
             structlog.dev.ConsoleRenderer(),
         ]
     )
-
-
-@entry_point.command()
-def download_data():
-    cache_county_case_data()
 
 
 def _generate_whitelist():
@@ -196,8 +190,6 @@ def _build_all_for_states(
 ):
     # prepare data
     _cache_global_datasets()
-    if not skip_download:
-        cache_county_case_data()
     if not skip_whitelist:
         _generate_whitelist()
 
@@ -403,9 +395,6 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-download", default=False, is_flag=True, type=bool, help="Skip the download phase.",
-)
-@click.option(
     "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
@@ -415,7 +404,6 @@ def build_all(
     run_mode,
     generate_reports,
     output_interval_days,
-    skip_download,
     output_dir,
     skip_whitelist,
     states_only,
@@ -434,7 +422,6 @@ def build_all(
         run_mode=DEFAULT_RUN_MODE,
         generate_reports=generate_reports,
         output_interval_days=output_interval_days,
-        skip_download=skip_download,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
         states_only=states_only,

@@ -7,6 +7,7 @@ import structlog
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
@@ -143,6 +144,18 @@ def get_timeseries_for_fips(fips: str) -> TimeseriesDataset:
     """
 
     return build_us_timeseries_with_all_fields().get_subset(None, fips=fips)
+
+
+def get_timeseries_for_state(state: str) -> TimeseriesDataset:
+    """Gets timeseries for a specific state abbreviation.
+
+    Args:
+        state: 2-letter state code
+
+    Returns: Timeseries for state
+    """
+
+    return build_us_timeseries_with_all_fields().get_subset(AggregationLevel.STATE, state=state)
 
 
 def load_data_sources(
