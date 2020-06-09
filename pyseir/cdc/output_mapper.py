@@ -735,7 +735,8 @@ def generate_us_result(targets=[Target.CUM_DEATH],
             ppf = scipy.interpolate.interp1d(QUANTILES, target_values.loc[target][n])
             rvs = random_sample_from_ppf(np.vectorize(ppf),
                                          size=5000,
-                                         bounds=(QUANTILES[0], QUANTILES[-1]))
+                                         percentile_bounds=(QUANTILES[0],
+                                                            QUANTILES[-1]))
             samples.append(rvs)
         samples = np.array(samples)
         # Get sample of US forecast as sum of random samples of States' forecast
