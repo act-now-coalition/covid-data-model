@@ -18,11 +18,14 @@ from pyseir.cdc.parameters import (TEAM, MODEL, TARGETS, TARGETS_TO_NAMES,
                                    ForecastUncertainty)
 from pyseir.cdc.utils import (target_column_name,
                               load_state_level_death_data,
+                              load_us_level_death_data,
                               aggregate_timeseries,
                               smooth_timeseries,
                               number_of_time_units,
                               load_and_aggregate_observations,
-                              smooth_observations)
+                              smooth_observations,
+                              ppf_from_data,
+                              random_sample_from_ppf)
 from pyseir.inference.fit_results import load_inference_result, load_mle_model
 
 
@@ -62,7 +65,8 @@ corresponding global variables.
 """
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-REPORT_FOLDER = os.path.join(DIR_PATH, 'report')
+REPORT_FOLDER = os.path.join(DIR_PATH, 'report',
+                             datetime.strftime(FORECAST_DATE, DATE_FORMAT))
 
 
 class OutputMapper:
@@ -145,7 +149,7 @@ class OutputMapper:
         - location: str
           2 digit FIPS code.
         - type: str
-          "quantile"
+          "quantile" or "point"
         - quantile: str
           quantiles of forecast target measure, with format 0.###.
         - value: float
@@ -214,8 +218,23 @@ class OutputMapper:
         self.errors = None
         self.result = None
 
+    @staticmethod
+    def forecast_format(forecast):
+        """
 
-    def generate_raw_forecast(self, start_date=None, align_with_observations=True):
+        """
+        for c in COLUMNS:
+            if c not in forecast.columns:
+                raise ValueError(f'column {c}' is missing)
+
+        if forecast['quantile'].dtype is float:
+            forecast['quantile'] = forecast['quantile'].apply(lambda v: '%.3f' % v)
+        else forecast['quantile'].dtype is float:
+            return
+
+
+
+    def generate_raw_forecast(self):
         """
         Generates a forecast ensemble given the model ensemble.
 
@@ -247,7 +266,8 @@ class OutputMapper:
         """
 
         # start date as one day before the forecast date
-        forecast_dates = [timedelta(self.fit_results['t0'] + t) + REF_DATE for t in self.model.t_list]
+        forecast_dates = [timedelta(self.fit_results['t0'] + t)
+                          + REF_DATE for t in self.model.t_list]
 
         forecast = defaultdict(dict)
         for target in self.targets:
@@ -338,7 +358,8 @@ class OutputMapper:
         units = units or self.forecast_time_units
         targets = targets or self.targets
         shifted_forecast = forecast.copy()
-        # align with observations (not including weekly cumulative death because)
+        # align with observations (not including weekly cumulative death
+        # since it be generated based on daily cumulative death).
         for target in targets:
             for unit in units:
                 if not ((target is Target.CUM_DEATH) & (unit is ForecastTimeUnit.WK)):
@@ -363,7 +384,7 @@ class OutputMapper:
         return shifted_forecast
 
 
-    def calculate_errors(self, unit=ForecastTimeUnit.DAY):
+    def calculate_errors(self, window=30, unit=ForecastTimeUnit.DAY):
         """
         Collect distribution of historical absolute errors 1-day forecast abs(
         y_t - y^hat_t|y_t-1) for t from second earliest available observation to
@@ -383,6 +404,7 @@ class OutputMapper:
             incident hospitalization.
         """
         self.errors = defaultdict(list)
+        window = window or 0
 
         for target in self.targets:
             if self.raw_observations[target.value][unit.value] is not None:
@@ -394,16 +416,20 @@ class OutputMapper:
                         forecast = self.align_forecast_with_observations(ref_date=date,
                                                                          targets=[target],
                                                                          units=[ForecastTimeUnit.DAY])
+
                         pred = forecast[target.value][unit.value]['value'].loc[next_date]
                         observ = self.raw_observations[target.value][unit.value].loc[next_date]
-                        self.errors[target.value].append(abs(pred - observ))
+                        self.errors[target.value].append(abs(observ - pred))
+
+                self.errors[target.value] = self.errors[target.value][-window:]
 
         self.errors = dict(self.errors)
 
         return self.errors
 
 
-    def _calculate_forecast_quantiles(self, forecast, error_std, h, quantiles, baseline=0):
+    def _calculate_forecast_quantiles(self, forecast, error_std, h,
+                                      quantiles, baseline=0):
         """
         Generate forecast quantiles based on standard deviation of historical
         forecast errors, forecast, number of days forward. Values for
@@ -440,8 +466,11 @@ class OutputMapper:
         else:
             raise ValueError(f'forecast accuracy adjustment {self.forecast_uncertainty} is not implemented')
 
-        values = scipy.stats.norm(loc=float(forecast),
-                                  scale=float(error_std * scale_factor)).ppf(quantiles)
+        error_std = float(error_std)
+        forecast = float(forecast)
+        values = scipy.stats.norm(loc=forecast,
+                                  scale=(error_std**2+forecast)**0.5*scale_factor)\
+                            .ppf(quantiles)
         values = values.clip(min=baseline)
 
         return values
@@ -459,7 +488,7 @@ class OutputMapper:
             <target>:
                 <unit>: pd.DataFrame
                  With columns:
-                    - target: forecat target name with format
+                    - target: forecast target name with format
                               '<n> <unit> ahead <target type>'
                               where n is the number of time units, unit can
                               be day or wk, and target type is 'cum death',
@@ -496,7 +525,8 @@ class OutputMapper:
             if target_name in self.errors:
                 error_std = np.std(self.errors[target_name])
             else:
-                error_std = np.sqrt(forecast[target_name]['day']['value'].iloc[0])
+                error_std = np.sqrt(forecast[target_name][
+                    'day']['value'].iloc[0])
 
             # For cumulative death forecast should not fall below the lastest
             #  observed death.
@@ -509,25 +539,25 @@ class OutputMapper:
                 baseline = 0
 
             for unit_name in forecast[target_name]:
-                rescale = 1
-                if ForecastTimeUnit(unit_name) is ForecastTimeUnit.WK:
-                    if Target(target_name) in [Target.INC_DEATH, Target.INC_HOSP]:
-                        rescale = 7
 
                 df = forecast[target_name][unit_name]\
-                    .set_index(['target', 'target_end_date'])\
-                    .apply(
+                    .set_index(['target', 'target_end_date'])
+
+                df = df[df['forecast_days'] > 0]
+
+                df = df.apply(
                     lambda r: self._calculate_forecast_quantiles(
                         forecast=r.value,
-                        error_std=error_std * rescale,
+                        error_std=error_std,
                         h=r.forecast_days,
                         quantiles=quantiles,
                         baseline=baseline),
                     axis=1).rename('value')
 
+                num_of_targets = df.shape[0]
+
                 df = df.explode().reset_index()
-                df['quantile'] = np.tile(self.quantiles,
-                                         forecast[target_name][unit_name].shape[0])
+                df['quantile'] = np.tile(self.quantiles, num_of_targets)
                 df['type'] = 'quantile'
                 df['quantile'] = df['quantile'].apply(lambda v: '%.3f' % v)
                 forecast_quantiles[target_name][unit_name] = df
@@ -584,19 +614,11 @@ class OutputMapper:
                      & (result['target_end_date'] <= self.forecast_time_range[-1])]
 
         result['location'] = str(self.fips)
-        result['location_name'] = us.states.lookup(self.fips).name
         result['forecast_date'] = self.forecast_date
         result['forecast_date'] = result['forecast_date'].dt.strftime('%Y-%m-%d')
         result = result[~result['target'].apply(lambda s: 'wk ahead inc hosp' in s)]
 
-        self.result = result[['forecast_date',
-                              'location',
-                              'location_name',
-                              'target',
-                              'target_end_date',
-                              'type',
-                              'quantile',
-                              'value']]
+        self.result = result[COLUMNS]
 
         forecast_date = self.forecast_date.strftime(DATE_FORMAT)
         self.result.to_csv(os.path.join(REPORT_FOLDER,
@@ -625,6 +647,7 @@ class OutputMapper:
         """
         kwargs = kwargs or {}
         om = cls(fips, **kwargs)
+        print(om.forecast_date)
         result = om.run()
         return result
 
@@ -652,11 +675,98 @@ class OutputMapper:
                  team_name=TEAM)
         )
 
-        print(metadata)
-
         output_f = open(os.path.join(REPORT_FOLDER, f'metadata-{TEAM}-{MODEL}.txt'), 'w')
         output_f.write(metadata)
         output_f.close()
+
+
+def generate_us_result(targets=[Target.CUM_DEATH],
+                       units=[ForecastTimeUnit.DAY, ForecastTimeUnit.WK],
+                       state_results=None,
+                       state_results_path=None):
+    """
+    Aggregates State level forecast to US level.
+
+    Parameters
+    ----------
+    targets: list
+        List of Target objects as the forecast targets to include for US
+        level.
+    units: list
+        List of forecast time unit as forecast time units to include for US
+        level.
+    state_results: pd.DataFrame
+        Table that contains the forecast at states level (all US states).
+        Contains columns:
+
+    results: pd.DataFrame
+        Results read from
+    """
+    # read US cumulative/incident death and
+    dates, cumulative_death, incident_death = load_us_level_death_data()
+
+    if state_results is None:
+        if state_results_path is not None:
+            state_results = pd.read_csv(state_results_path, dtype='str')
+        else:
+            raise ValueError('Neither State forecast table nor path of the '
+                             'States forecast is provided.')
+
+    state_results['value'] = state_results['value'].astype(float)
+    target_key_words = [f'{unit.value} ahead {target.value}' for
+                        unit in units for target in targets]
+
+    # get States forecast quantiles for given targets
+    with_right_target = state_results['target'].str.contains('|'.join(target_key_words))
+    with_quantiles = state_results['type'] == 'quantile'
+    results_with_target = state_results[with_right_target & with_quantiles]
+
+    target_values = results_with_target.groupby(['target', 'location'])['value'].apply(
+        list).reset_index().groupby('target')['value'].apply(
+        lambda l: np.array(list(l)))
+
+
+    us_result_quantiles = defaultdict(list)
+    for target in target_values.index:
+        # For each target, e.g. 1 day ahead cum death, collect each State's
+        # forecast quantiles and draw random sample from the distribution.
+        samples = list()
+        for n in range(len(target_values.loc[target])):
+            ppf = scipy.interpolate.interp1d(QUANTILES, target_values.loc[target][n])
+            rvs = random_sample_from_ppf(np.vectorize(ppf),
+                                         size=5000,
+                                         bounds=(QUANTILES[0], QUANTILES[-1]))
+            samples.append(rvs)
+        samples = np.array(samples)
+        # Get sample of US forecast as sum of random samples of States' forecast
+        sum_of_samples = samples.sum(axis=0)
+        us_result_quantiles['value'].append(ppf_from_data(sum_of_samples)(
+            QUANTILES))
+        us_result_quantiles['target'].append(target)
+
+    us_result_quantiles = pd.DataFrame(us_result_quantiles).set_index('target')
+    num_of_targets = us_result.shape[0]
+    us_result_quantiles = us_result_quantiles.explode('value').reset_index()
+    us_result_quantiles['quantile'] = np.tile(QUANTILES, num_of_targets)
+    us_result_quantiles['type'] = 'quantile'
+    us_result_quantiles['quantile'] = us_result['quantile'].apply(lambda v: '%.3f' % v)
+
+    us_result_point = us_result_quantiles[us_result_quantiles['quantile'] == '0.500'][
+        ['target', 'value']].copy()
+    us_result_point['type'] = 'point'
+    us_result = pd.concat([us_result_quantiles, us_result_point])
+    us_result = pd.merge(us_result,
+                         state_results[['target', 'target_end_date',
+                                        'forecast_date']].drop_duplicates(),
+                         on='target')
+    us_result['value'] = us_result.apply(
+        lambda r: np.maximum(cumulative_death[-1],
+                             r.value).round() if 'cum death' in r.target
+        else np.maximum(cumulative_death[-1], 0),
+        axis=1)
+    us_result['location'] = 'US'
+
+    return us_result[COLUMNS]
 
 
 def run_all(parallel=False, mapper_kwargs=None):
@@ -673,6 +783,7 @@ def run_all(parallel=False, mapper_kwargs=None):
         parameters (given in parameters.py).
     """
     mapper_kwargs = mapper_kwargs or {}
+
     if not os.path.exists(REPORT_FOLDER):
         os.mkdir(REPORT_FOLDER)
 
@@ -694,6 +805,8 @@ def run_all(parallel=False, mapper_kwargs=None):
 
     results = pd.concat(results)
     results = results[COLUMNS].sort_values(COLUMNS)
+    us_result = generate_us_result(state_results=results)
+    results = pd.concat([results, us_result])
     results.to_csv(os.path.join(REPORT_FOLDER, f'{forecast_date}-{TEAM}-{MODEL}.csv'),
                    index=False)
 
