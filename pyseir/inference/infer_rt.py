@@ -13,22 +13,24 @@ from pyseir import load_data
 from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-
-# log = structlog.getLogger(__name__)
-
 from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
 from structlog import configure
+from enum import Enum
 
-configure(
-    processors=[merge_threadlocal, structlog.processors.KeyValueRenderer(),]
-)
-log = structlog.get_logger()
-NP_SEED = 42
+configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
+log = structlog.get_logger(__name__)
+
+
+class InferRtConstants(Enum):
+    RNG_SEED = 42
+    LOCAL_LOOKBACK_WINDOW = 14
+    Z_THRESHOLD = 10
+    MIN_MEAN_TO_CONSIDER = 5
 
 
 class RtInferenceEngine:
     """
-    This class extends the analysis of Kevin Systrom to include mortality
+    This class extends the analysis of Bettencourt et al to include mortality
     and hospitalization data in a pseudo-non-parametric inference of R_t.
 
     Parameters
@@ -55,11 +57,11 @@ class RtInferenceEngine:
         intervals from 5% to 95%.
     min_cases: int
         Minimum number of cases required to run case level inference. These are
-        very conservaively weak filters, but prevent cases of basically zero
+        very conservatively weak filters, but prevent cases of basically zero
         data from introducing pathological results.
     min_deaths: int
         Minimum number of deaths required to run death level inference.
-    include_testing_corrections: bool
+    include_testing_correction: bool
         If True, include a correction for testing increases and decreases.
     """
 
@@ -76,9 +78,8 @@ class RtInferenceEngine:
         min_deaths=5,
         include_testing_correction=True,
     ):
-        np.random.seed(
-            NP_SEED
-        )  # Xcor, used in align_time_series,  has some stochastic FFT elements.
+        np.random.seed(InferRtConstants.RNG_SEED.value)
+        # Param Generation used for Xcor in align_time_series, has some stochastic FFT elements.
         self.fips = fips
         self.r_list = r_list
         self.window_size = window_size
@@ -253,7 +254,6 @@ class RtInferenceEngine:
 
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
         # from the 14 day trailing mean and std
-        # log = structlog.getLogger(timeseries)
         timeseries = replace_outliers(pd.Series(timeseries))
         smoothed = (
             timeseries.rolling(
@@ -514,7 +514,7 @@ class RtInferenceEngine:
                         if timeseries_type.value in col:
                             df_all[col] = df_all[col].shift(shift_in_days)
                             # Extend death and hopitalization rt signals beyond
-                            # shift to avoid sudden jumps in composit metric.
+                            # shift to avoid sudden jumps in composite metric.
                             #
                             # N.B interpolate() behaves differently depending on the location
                             # of the missing values: For any nans appearing in between valid
@@ -672,7 +672,7 @@ class RtInferenceEngine:
         shifts = range(-21, 5)
         valid_shifts = []
         xcor = []
-        np.random.seed(NP_SEED)  # Xcor has some stochastic FFT elements.
+        np.random.seed(InferRtConstants.RNG_SEED.value)  # Xcor has some stochastic FFT elements.
         _series_a = np.diff(series_a)
 
         for i in shifts:
@@ -696,49 +696,64 @@ class RtInferenceEngine:
             return None
 
 
-def zscore(x, window):
+def replace_outliers(
+    x,
+    local_lookback_window=InferRtConstants.LOCAL_LOOKBACK_WINDOW.value,
+    z_threshold=InferRtConstants.Z_THRESHOLD.value,
+    min_mean_to_consider=InferRtConstants.MIN_MEAN_TO_CONSIDER.value,
+):
     """
-    :param x:
-    :param window:
-    :return:
-    """
-    r = x.rolling(window=window, min_periods=window, center=False)
-    m = r.mean().shift(1)
-    s = r.std(ddof=0).shift(1)
-    z = (x - m) / s
-    return z
+    Take a pandas.Series, apply an outlier filter, and return a pandas.Series.
+
+    This outlier detector looks at the z score of the current value compared to the mean and std
+    derived from the previous N samples, where N is the local_lookback_window.
+
+    For points where the z score is greater than z_threshold, a check is made to make sure the mean
+    of the last N samples is at least min_mean_to_consider. This makes sure we don't filter on the
+    initial case where values go from all zeros to a one. If that threshold is met, the value is
+    then replaced with the linear interpolation between the two nearest neighbors.
 
 
-def replace_outliers(x):
+    Parameters
+    ----------
+    x
+        Input pandas.Series with the values to analyze
+    local_lookback_window
+        The length of the rolling window to look back and calculate the mean and std to baseline the
+        z score. NB: We require the window to be full before returning any result.
+    z_threshold
+        The minimum z score needed to trigger the replacement
+    min_mean_to_consider
+        Threshold to skip low n cases, especially the degenerate case where a long list of zeros
+        becomes a 1. This requires that the rolling mean of previous values must be greater than
+        or equal to min_mean_to_consider to be replaced.
+    Returns
+    -------
+    x
+        pandas.Series with any triggered outliers replaced
     """
-    :param x:
-    :return:
-    """
-    LOCAL_LOOKBACK_WINDOW = 14
-    Z_THRESHOLD = 10
-    MIN_MEAN_TO_CONSIDER = 5
 
     # Calculate Z Score
-    r = x.rolling(window=LOCAL_LOOKBACK_WINDOW, min_periods=LOCAL_LOOKBACK_WINDOW, center=False)
+    r = x.rolling(window=local_lookback_window, min_periods=local_lookback_window, center=False)
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
     z_score = (x - m) / s
 
-    possible_changes_idx = np.where(z_score > Z_THRESHOLD)[0]
+    possible_changes_idx = np.where(z_score > z_threshold)[0]
     changed_idx = []
     changed_value = []
     changed_snippets = []
 
     for idx in possible_changes_idx:
-        # Check if this is an initial condition (0s to 1)
-        if m[idx] > MIN_MEAN_TO_CONSIDER:
+        if m[idx] > min_mean_to_consider:
             changed_idx.append(idx)
             changed_value.append(int(x[idx]))
-            slicer = slice(idx - LOCAL_LOOKBACK_WINDOW, idx + LOCAL_LOOKBACK_WINDOW)
+            slicer = slice(idx - local_lookback_window, idx + local_lookback_window)
             changed_snippets.append(x[slicer].astype(int).tolist())
             try:
                 x[idx] = np.mean([x[idx - 1], x[idx + 1]])
-            except IndexError:  # Value to replace can be latest. If so, just use previous.
+            except IndexError:  # Value to replace can be newest and fail on x[idx+1].
+                # If so, just use previous.
                 x[idx] = x[idx - 1]
 
     if len(changed_idx) > 0:
@@ -791,10 +806,8 @@ def run_county(fips):
 
     Parameters
     ----------
-    state: str
-        State to run against.
-    states_only: bool
-        If True only run the state level.
+    fips: str
+        County fips to run against
     """
     if not fips:
         return None
