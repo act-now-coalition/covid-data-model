@@ -361,9 +361,12 @@ class RtInferenceEngine:
         # (3a) Normalize all rows to sum to 1
         process_matrix /= process_matrix.sum(axis=0)
 
-        # (4) Calculate the initial prior. Gamma mean of 3 over Rt
+        # (4) Calculate the initial prior. Gamma mean of "a" with mode of "a-1".
         prior0 = sps.gamma(a=2.5).pdf(self.r_list)
         prior0 /= prior0.sum()
+
+        reinit_prior = sps.gamma(a=2).pdf(self.r_list)
+        reinit_prior /= reinit_prior.sum()
 
         # Create a DataFrame that will hold our posteriors for each day
         # Insert our prior as the first posterior.
@@ -383,7 +386,7 @@ class RtInferenceEngine:
             # (5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
             numerator = likelihoods[current_day] * current_prior
 
-            # (5c) Calcluate the denominator of Bayes' Rule P(k)
+            # (5c) Calculate the denominator of Bayes' Rule P(k)
             denominator = np.sum(numerator)
 
             # Execute full Bayes' Rule
@@ -394,13 +397,13 @@ class RtInferenceEngine:
                 # a single (smoothed) zero value.
                 #
                 # We understand that restarting the posteriors with the
-                # initial prior may incur a start-up artifact as the posterior
+                # re-initial prior may incur a start-up artifact as the posterior
                 # restabilizes, but we believe it's the current best
                 # solution for municipalities that have smoothed cases and
                 # deaths that dip down to zero, but then start to increase
                 # again.
 
-                posteriors[current_day] = prior0
+                posteriors[current_day] = reinit_prior
             else:
                 posteriors[current_day] = numerator / denominator
 
