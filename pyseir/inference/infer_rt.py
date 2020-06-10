@@ -383,7 +383,7 @@ class RtInferenceEngine:
             # (5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
             numerator = likelihoods[current_day] * current_prior
 
-            # (5c) Calcluate the denominator of Bayes' Rule P(k)
+            # (5c) Calculate the denominator of Bayes' Rule P(k)
             denominator = np.sum(numerator)
 
             # Execute full Bayes' Rule
@@ -400,7 +400,7 @@ class RtInferenceEngine:
                 # deaths that dip down to zero, but then start to increase
                 # again.
 
-                posteriors[current_day] = prior0
+                posteriors[current_day] = posteriors[previous_day]
             else:
                 posteriors[current_day] = numerator / denominator
 
