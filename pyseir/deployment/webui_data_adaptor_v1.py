@@ -69,12 +69,12 @@ class WebUIDataAdaptorV1:
         If current data is available, we return that.
         If not, current values are estimated from cumulative.
         """
-        county_hosp = load_data.get_current_hospitalized_for_county(
+        _, county_hosp = load_data.get_current_hospitalized(
             fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
-        )[1]
-        county_icu = load_data.get_current_hospitalized_for_county(
+        )
+        _, county_icu = load_data.get_current_hospitalized(
             fips, t0_simulation, category=load_data.HospitalizationCategory.ICU
-        )[1]
+        )
 
         return county_hosp, county_icu
 
@@ -105,20 +105,19 @@ class WebUIDataAdaptorV1:
         hosp_rescaling_factor
         icu_rescaling_factor
         """
-        t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized_for_state(
-            state=self.state_abbreviation,
+        state_fips = fips[:2]
+
+        t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized(
+            fips=state_fips,
             t0=t0_simulation,
             category=load_data.HospitalizationCategory.HOSPITALIZED,
         )
 
-        _, current_state_icu = load_data.get_current_hospitalized_for_state(
-            state=self.state_abbreviation,
-            t0=t0_simulation,
-            category=load_data.HospitalizationCategory.ICU,
+        _, current_state_icu = load_data.get_current_hospitalized(
+            fips=state_fips, t0=t0_simulation, category=load_data.HospitalizationCategory.ICU,
         )
 
         if current_hosp_count is not None:
-            state_fips = fips[:2]
             t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
 
             state_hosp_gen = load_data.get_compartment_value_on_date(
@@ -141,7 +140,7 @@ class WebUIDataAdaptorV1:
                 inferred_county_hosp = load_data.get_compartment_value_on_date(
                     fips=fips,
                     compartment="HGen",
-                    date=t_latest_hosp_data_date,
+                    date=t_latest_hosp_data_date,  # this could be off by a day from the hosp data
                     ensemble_results=pyseir_outputs,
                 )
 
