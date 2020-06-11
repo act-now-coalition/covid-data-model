@@ -596,10 +596,7 @@ def get_current_hospitalized_for_county(fips: str, t0: datetime, category: Hospi
 
 
 def _get_current_hospitalized(
-    df: pd.DataFrame,
-    t0: datetime,
-    category: HospitalizationCategory,
-    # min_cumulative_datapoints_to_convert: int = MIN_CUMULATIVE_DATAPOINTS_TO_CONVERT,
+    df: pd.DataFrame, t0: datetime, category: HospitalizationCategory,
 ):
     """
     Given a DataFrame that contains values icu or hospitalization data
@@ -618,20 +615,27 @@ def _get_current_hospitalized(
     Returns:
     (times_new_latest, current_latest) - the date and value of the latest data for a given category.
 
-    #TODO: JUST RETURN A DATETIME AND MAKE THEM DEAL WITH IT.
-    #TODO: JUST A SIMPLE GETTER
+    #TODO: No need to pass t0 down and back up. Can pass a datetime that consumer converts.
     """
-    NUM_DAYS_TO_LOOK_BACK = 2  # How many days back to consider. This is for times when a single
-    # value may be not reported. If they stop reporting data, we will continue using that last day
-    # for this number of days going forward.
+    NUM_DAYS_TO_LOOK_BACK = 3
+    # Agencies will start and stop reporting values. Also, depending on the time of day some fields
+    # may have propagated before others. Therefore, we don't want to just take the most recent value
+    # which may be None, nor take just the most recent any value, which may be weeks ago.
+
+    # Pick a utc aware window and keep the most recent values.
+    date_minimum = pd.Timestamp.utcnow() - pd.Timedelta(days=NUM_DAYS_TO_LOOK_BACK)
+    date_mask = df["date"] > date_minimum.to_datetime64()
+    recent_days_index = df.index[date_mask]
 
     # Look back from most recent and find the first (latest) non-null value. If the loop drops out,
     # that means there were no non-null values in the window of interest, and we return Nones.
-
-    recent_days_index = df.index[-NUM_DAYS_TO_LOOK_BACK::]  # Tail of the dataframe index.
     for idx in reversed(recent_days_index):  # Iterate from most recent backwards
-        if pd.notnull(df[f"current_{category}"].iloc[idx]):
-            return df["date"].iloc[idx], df[f"current_{category}"].iloc[idx]
+        if pd.notnull(df[f"current_{category}"][idx]):
+            current_latest = df[f"current_{category}"][idx]
+
+            times_new = df["date"].dt.date - t0.date()
+            times_new_latest = times_new[idx].days
+            return times_new_latest, current_latest
     else:  # No not-null found so return None
         return None, None
 
