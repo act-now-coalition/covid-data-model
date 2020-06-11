@@ -46,10 +46,18 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
+    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_HOSPITALIZED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,
         CovidTrackingDataSource,
@@ -73,9 +81,17 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CovidTrackingDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_HOSPITALIZED: [CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_ICU: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
+    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_HOSPITALIZED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,

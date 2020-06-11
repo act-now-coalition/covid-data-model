@@ -1,0 +1,21 @@
+{
+  "title": "DatasetFilter",
+  "type": "object",
+  "properties": {
+    "country": {
+      "title": "Country",
+      "type": "string"
+    },
+    "states": {
+      "title": "States",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "country",
+    "states"
+  ]
+}

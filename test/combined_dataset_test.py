@@ -50,6 +50,12 @@ def test_combined_county_has_some_timeseries_data(fips):
     df = latest.data.set_index(CommonFields.DATE)
     assert df.loc["2020-05-01", CommonFields.CASES] > 0
     assert df.loc["2020-05-01", CommonFields.DEATHS] > 0
+    if fips.startswith(
+        "06"
+    ):  # TODO(tom): Remove this condition when we have county data in TX too.
+        assert df.loc["2020-05-01", CommonFields.POSITIVE_TESTS] > 0
+        assert df.loc["2020-05-01", CommonFields.NEGATIVE_TESTS] > 0
+        assert df.loc["2020-05-01", CommonFields.CURRENT_ICU] > 0
 
 
 @pytest.mark.parametrize(
