@@ -563,7 +563,7 @@ def get_current_hospitalized(fips, t0, category: HospitalizationCategory):
 
     if len(fips) == 2:
         kwargs = dict(
-            aggregation_level=AggregationLevel.State,
+            aggregation_level=AggregationLevel.STATE,
             country="USA",
             state=us.states.lookup(fips).abbr,
         )
