@@ -88,7 +88,7 @@ class ModelFitter:
         eps2=0.3,
         limit_eps2=[0.20, 2.0],
         error_eps2=0.005,
-        t_delta_phases=14,  # number of days between second and third ramps
+        t_delta_phases=30,  # number of days between second and third ramps
         limit_t_delta_phases=[14, 100],  # good as of June 3, 2020 may need to update in the future
         error_t_delta_phases=1,
         test_fraction=0.1,

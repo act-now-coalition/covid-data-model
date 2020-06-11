@@ -53,7 +53,11 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     ],
     CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.CURRENT_HOSPITALIZED: [CmdcDataSource, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_HOSPITALIZED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,
         CovidTrackingDataSource,
@@ -83,7 +87,11 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         NevadaHospitalAssociationData,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.CURRENT_HOSPITALIZED: [CmdcDataSource, CovidTrackingDataSource, NevadaHospitalAssociationData,],
+    CommonFields.CURRENT_HOSPITALIZED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+    ],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,
