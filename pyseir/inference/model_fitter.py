@@ -103,7 +103,7 @@ class ModelFitter:
     )
 
     PARAM_SETS = {
-        # ("HI", "AK", "MT", "ID", "LA", "ND", "WV", "WY"): dict(
+        ## ("HI", "AK", "MT", "ID", "LA", "ND", "WV", "WY"): dict(
         #    eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]
         # ),
         # ("LA"): dict(R0=4.23, t0=56, eps=0.27, t_break=17, eps2=0.2, t_delta_phases=17) #, test_fraction=0.033, hosp_fraction=0.984, log10_I_initial=1.43)
