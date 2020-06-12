@@ -1,4 +1,18 @@
-# Setting up python environment covid-data-model
+# Setting up dev environment for covid-data-model
+
+## Copy the source data
+
+Copy the source data from the `covid-data-public` repo to a sibling of your local `covid-data-model` directory. git-lfs must be
+installed to checkout a copy of `covid-data-public`.
+
+1. Install git-lfs
+  On mac, `brew install git-lfs`
+
+2. Clone the `covid-data-public` repo
+  ```
+  $ cd ..
+  $ git clone git@github.com:covid-projections/covid-data-public.git
+  $ cd -
 
 ## Install Virtualenv
 
@@ -30,9 +44,6 @@ These instructions use `pyenv` to install python `3.7.7` and create a virtualenv
 
   Optional: Add a `.python-version` file with the name of your virtualenv to the `covid-data-model/` root.
   This will automatically activate the virtualenv when you enter the directory.
-
-4. Install git-lfs
-  On mac, `brew install git-lfs`
 
 ## Install Requirements and pre-commit
 
