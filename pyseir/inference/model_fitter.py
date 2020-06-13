@@ -343,14 +343,14 @@ class ModelFitter:
         overrides.  As data becomes more sparse, we further constrain the fit,
         which improves stability substantially.
         """
-        log.info("about to SET INFERNECE PARAMS NATASHA")
-        out = subprocess.check_output(["pwd"])
-        log.info(out)
+        # log.info("about to SET INFERNECE PARAMS NATASHA")
+        # out = subprocess.check_output(["pwd"])
+        # log.info(out)
         self.fit_params = self.DEFAULT_FIT_PARAMS
         # Update any state specific params.
-        log.info("about to make initial params df")
+        # log.info("about to make initial params df")
         initial_params_df = pd.read_csv("./pyseir/inference/world_according_to_pyseir.csv")
-        log.info(initial_params_df)
+        # log.info(initial_params_df)
 
         INITIAL_PARAM_SETS = [
             "R0",
@@ -364,15 +364,15 @@ class ModelFitter:
             "log10_I_initial",
         ]
         # log.info(initial_params_pd["fips"])
-        log.info(initial_params_df.dtypes)
-        log.info(type(self.fips))
+        # log.info(initial_params_df.dtypes)
+        # log.info(type(self.fips))
         if int(self.fips) in initial_params_df["fips"]:
-            log.info(f"found fips in csv: self.fips")
+            # log.info(f"found fips in csv: self.fips")
             this_fips_df = initial_params_df.loc[initial_params_df["fips"] == int(self.fips)]
-            log.info(this_fips_df)
+            # log.info(this_fips_df)
             for param in INITIAL_PARAM_SETS:
                 self.fit_params[param] = this_fips_df[param]
-            log.info(self.fit_params)
+            # log.info(self.fit_params)
 
         for k, v in self.PARAM_SETS.items():
             if self.state_obj.abbr in k:
@@ -495,14 +495,14 @@ class ModelFitter:
 
         # If cumulative hospitalizations, differentiate.
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
-            log.info("Natasha this is cumlative hospitalizations")
+            # log.info("Natasha this is cumlative hospitalizations")
             hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(min=0)
-            log.info("cumlative hospitalizations")
-            log.info(self.hospitalizations)
-            log.info("current hospitalizatoins")
-            log.info(hosp_data)
-            log.info("hosp data max")
-            log.info(hosp_data.max)
+            # log.info("cumlative hospitalizations")
+            # log.info(self.hospitalizations)
+            # log.info("current hospitalizatoins")
+            # log.info(hosp_data)
+            # log.info("hosp data max")
+            # log.info(hosp_data.max)
 
             hosp_stdev = (
                 self.percent_error_on_max_observation
@@ -510,16 +510,16 @@ class ModelFitter:
                 * hosp_data ** 0.5
                 * hosp_data.max() ** 0.5
             )
-            log.info("hosp stddev not adjusted")
-            log.info(hosp_stdev)
+            # log.info("hosp stddev not adjusted")
+            # log.info(hosp_stdev)
             # Increase errors a bit for very low hospitalizations.
             # There are clear outliers due to data quality.
             hosp_stdev[hosp_data <= 2] *= 3
-            log.info("stddev adjusted hosp")
-            log.info(hosp_stdev)
+            # log.info("stddev adjusted hosp")
+            # log.info(hosp_stdev)
 
         elif self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
-            log.info("Natasha this is current hosp")
+            # log.info("Natasha this is current hosp")
             hosp_data = self.hospitalizations
             hosp_stdev = (
                 self.percent_error_on_max_observation
@@ -527,17 +527,17 @@ class ModelFitter:
                 * hosp_data ** 0.5
                 * hosp_data.max() ** 0.5
             )
-            log.info("current hospitalizatoins")
-            log.info(hosp_data)
-            log.info("hosp data max")
-            log.info(hosp_data.max())
-            log.info("hosp stddev not adjusted")
-            log.info(hosp_stdev)
+            # log.info("current hospitalizatoins")
+            # log.info(hosp_data)
+            # log.info("hosp data max")
+            # log.info(hosp_data.max())
+            # log.info("hosp stddev not adjusted")
+            # log.info(hosp_stdev)
             # Increase errors a bit for very low hospitalizations.
             # There are clear outliers due to data quality.
             hosp_stdev[hosp_data <= 2] *= 3
-            log.info("stddev adjusted hosp")
-            log.info(hosp_stdev)
+            # log.info("stddev adjusted hosp")
+            # log.info(hosp_stdev)
         else:
             hosp_stdev = None
 
@@ -681,8 +681,8 @@ class ModelFitter:
                 right=0,
             )
             # print('getting hospitalizations chi 2 NATASHA')
-            log.info("predicted hosp")
-            log.info(predicted_hosp)
+            # log.info("predicted hosp")
+            # log.info(predicted_hosp)
             chi2_hosp = calc_chi_sq(self.hospitalizations, predicted_hosp, self.hosp_stdev)
             self.dof_hosp = (self.observed_new_cases > 0).sum()
 
@@ -764,6 +764,9 @@ class ModelFitter:
         delta_x = x[1] - x[0]
 
         # TODO: Extract and Label Gamma Scaling Factors So Others Can Understand
+        # this is probably why things changed from computer to computer scipy might be using its own number generator --Natasha
+        # May need to do something like was suggested here if the scipy seed does not inherit from numpy https://stackoverflow.com/questions/16016959/scipy-stats-seed
+        # Natasha clean this comment up or do something later after more tests
         prior = gamma.pdf((x - lower_bound_reff) / 1.5, 1.1)
         # Add a tiny amount to the likelihood to prevent zero common support
         # between the prior and likelihood functions.
@@ -814,7 +817,8 @@ class ModelFitter:
                 lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
             )
             # TODO: Add structured logging if this change is significant
-            self.fit_results[epsilon] = adjusted_epsilon
+            # self.fit_results[epsilon] = adjusted_epsilon is this truly the line that created so many headaches-Natasha
+            log.info(f"epsilon: {self.fit_results[epsilon]} adjusted: {adjusted_epsilon}")
 
         if np.isnan(self.fit_results["t0"]):
             logging.error(f"Could not compute MLE values for {self.display_name}")
