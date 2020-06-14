@@ -817,9 +817,8 @@ class ModelFitter:
                 lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
             )
             # TODO: Add structured logging if this change is significant
-            self.fit_results[
-                epsilon
-            ] = adjusted_epsilon  # is this truly the line that created so many headaches-Natasha
+            self.fit_results[epsilon] = adjusted_epsilon
+            # line that caused headaches it seems
             log.info(f"epsilon: {self.fit_results[epsilon]} adjusted: {adjusted_epsilon}")
 
         if np.isnan(self.fit_results["t0"]):
