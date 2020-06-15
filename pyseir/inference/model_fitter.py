@@ -102,145 +102,11 @@ class ModelFitter:
         errordef=0.5,
     )
 
-    PARAM_SETS = {
-        ## ("HI", "AK", "MT", "ID", "LA", "ND", "WV", "WY"): dict(
-        #    eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]
-        # ),
-        # ("LA"): dict(R0=4.23, t0=56, eps=0.27, t_break=17, eps2=0.2, t_delta_phases=17) #, test_fraction=0.033, hosp_fraction=0.984, log10_I_initial=1.43)
-        # ("MD"): dict(R0=3.89, t0=65, eps=0.306, t_break=21, eps2=0.25, t_delta_phases=15, test_fraction=0.08, hosp_fraction=1, log10_I_initial=1.06)
-        ("AZ"): dict(
-            R0=3.6,
-            t0=60,
-            eps=0.306,
-            t_break=20.8,
-            eps2=0.472,
-            t_delta_phases=45.2,
-            test_fraction=0.044,
-            hosp_fraction=1,
-            log10_I_initial=1.039,
-        ),
-        ("MI"): dict(
-            R0=3.917,
-            t0=60,
-            eps=0.204,
-            t_break=22,
-            eps2=0.209,
-            t_delta_phases=15,
-            test_fraction=0.045,
-            hosp_fraction=0.98,
-            log10_I_initial=1.725,
-        ),
-        ("MO"): dict(
-            R0=3.486,
-            t0=61,
-            eps=0.278,
-            t_break=23,
-            eps2=0.3,
-            t_delta_phases=31,
-            test_fraction=0.031,
-            hosp_fraction=1.0,
-            log10_I_initial=1.264,
-        ),
-        ("NV"): dict(
-            R0=3.083,
-            t0=63,
-            eps=0.321,
-            t_break=20,
-            eps2=0.399,
-            t_delta_phases=34,
-            test_fraction=0.042,
-            hosp_fraction=1.0,
-            log10_I_initial=1.5,
-        ),
-        ("NH"): dict(
-            R0=3.707,
-            t0=62,
-            eps=0.316,
-            t_break=17,
-            eps2=0.256,
-            t_delta_phases=25,
-            test_fraction=0.037,
-            hosp_fraction=0.49,
-            log10_I_initial=0.832,
-        ),
-        ("NJ"): dict(
-            R0=3.898,
-            t0=59,
-            eps=0.259,
-            t_break=23,
-            eps2=0.244,
-            t_delta_phases=14,
-            test_fraction=0.062,
-            hosp_fraction=1.0,
-            log10_I_initial=1.801,
-        ),
-        ("NM"): dict(
-            R0=3.405,
-            t0=64,
-            eps=0.364,
-            t_break=18,
-            eps2=0.288,
-            t_delta_phases=20,
-            test_fraction=0.058,
-            hosp_fraction=0.744,
-            log10_I_initial=0.887,
-        ),
-        ("NC"): dict(
-            R0=3.705,
-            t0=60,
-            eps=0.289,
-            t_break=20,
-            eps2=0.354,
-            t_delta_phases=38,
-            test_fraction=0.082,
-            hosp_fraction=0.988,
-            log10_I_initial=0.987,
-        ),
-        ("OH"): dict(
-            R0=3.736,
-            t0=59.761,
-            eps=0.31,
-            t_break=20,
-            eps2=0.246,
-            t_delta_phases=22,
-            test_fraction=0.069,
-            hosp_fraction=0.968,
-            log10_I_initial=1.068,
-        ),
-        ("PA"): dict(
-            R0=3.8,
-            t0=61.338,
-            eps=0.253,
-            t_break=23,
-            eps2=0.229,
-            t_delta_phases=14,
-            test_fraction=0.063,
-            hosp_fraction=0.999,
-            log10_I_initial=1.413,
-        ),
-        ("RI"): dict(
-            R0=3.467,
-            t0=65.594,
-            eps=0.314,
-            t_break=21,
-            eps2=0.265,
-            t_delta_phases=14,
-            test_fraction=0.088,
-            hosp_fraction=0.857,
-            log10_I_initial=1.021,
-        ),
-        ("WA"): dict(
-            R0=3.301,
-            t0=55,
-            eps=0.227,
-            t_break=22,
-            eps2=0.309,
-            t_delta_phases=14,
-            test_fraction=0.071,
-            hosp_fraction=0.958,
-            log10_I_initial=1.496,
-        ),
-    }
+    # PARAM_SETS = {
+    ## ("HI", "AK", "MT", "ID", "LA", "ND", "WV", "WY"): dict(
+    #    eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]
+    # ),
+    # }
 
     REFF_LOWER_BOUND = 0.7
 
@@ -363,9 +229,9 @@ class ModelFitter:
             for param in INITIAL_PARAM_SETS:
                 self.fit_params[param] = this_fips_df[param]
 
-        for k, v in self.PARAM_SETS.items():
-            if self.state_obj.abbr in k:
-                self.fit_params.update(v)
+        # for k, v in self.PARAM_SETS.items():
+        #    if self.state_obj.abbr in k:
+        #        self.fit_params.update(v)
 
         self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
         if self.fit_params["fix_hosp_fraction"]:
@@ -964,7 +830,7 @@ class ModelFitter:
         start_intervention_date = self.ref_date + timedelta(
             days=self.fit_results["t_break"] + self.fit_results["t0"]
         )
-        stop_intervention_date = start_intervention_date + timedelta(days=14)
+        stop_intervention_date = start_intervention_date + timedelta(days=7)
 
         plt.fill_betweenx(
             [y_lim[0], y_lim[1]],
