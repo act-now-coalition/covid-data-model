@@ -204,8 +204,8 @@ class ModelFitter:
         """
         self.fit_params = self.DEFAULT_FIT_PARAMS
         # Update State specific SEIR initial guesses
-        initial_params_df = pd.read_csv(
-            "./pyseir_data/pyseir_fitter_initial_conditions_2020_06_10.csv"
+        overwrite_params_df = pd.read_csv(
+            "./pyseir_data/pyseir_fitter_initial_conditions_2020_06_10.csv", dtype={"fips": object}
         )
 
         INITIAL_PARAM_SETS = [
@@ -219,8 +219,8 @@ class ModelFitter:
             "hosp_fraction",
             "log10_I_initial",
         ]
-        if int(self.fips) in initial_params_df["fips"]:
-            this_fips_df = initial_params_df.loc[initial_params_df["fips"] == int(self.fips)]
+        if self.fips in overwrite_params_df["fips"].values:
+            this_fips_df = overwrite_params_df.loc[overwrite_params_df["fips"] == self.fips]
             for param in INITIAL_PARAM_SETS:
                 self.fit_params[param] = this_fips_df[param]
 
