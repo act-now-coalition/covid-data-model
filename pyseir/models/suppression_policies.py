@@ -22,16 +22,16 @@ distancing_measure_suppression = {
 }
 
 
-def get_future_suppression_from_r0(R0, scenario):
+def estimate_future_suppression_from_fits(inferred_params, scenario):
     """
-    Returns the future suppression level for a given R0 and a "future scenario". The
+    Returns the future suppression level for a given R0, R_eff2 and a "future scenario". The
     "no_intervention" scenario is capped at an effective R rate of 2.5 as suggested by the CDC
     planning scenarios (https://www.cdc.gov/coronavirus/2019-ncov/hcp/planning-scenarios.html).
 
     Parameters
     ----------
-    R0:float
-        Reproduction number
+    inferred_params: dict
+        Fit results including R0 and eps2 as keys
     scenario: str
         'no_intervention', 'flatten_the_curve', 'social_distancing'.
 
@@ -40,16 +40,21 @@ def get_future_suppression_from_r0(R0, scenario):
     epsilon: float
         Suppression fraction compared to R0.
     """
-    if scenario == "no_intervention":
-        # Return either 2.5 (https://www.cdc.gov/coronavirus/2019-ncov/hcp/planning-scenarios.html)
-        # or R0 (converted to epsilon) whichever is lower
-        fitted_r0 = 1.0
-        cdc_recommended_max = 2.5 / R0
-        return min(fitted_r0, cdc_recommended_max)
+    CDC_MAX = 2.5  # https://www.cdc.gov/coronavirus/2019-ncov/hcp/planning-scenarios.html
+    FLATTEN_THE_CURVE = 0.97
+    SOCIAL_DISTANCING = 1.7
+
+    R0 = inferred_params["R0"]
+    R_eff2 = inferred_params["eps2"] * R0
+
+    if scenario == "inferred":
+        return min(R_eff2, CDC_MAX) / R0
+    elif scenario == "no_intervention":
+        return min(R0, CDC_MAX) / R0
     elif scenario == "flatten_the_curve":
-        return 0.97 / R0
+        return FLATTEN_THE_CURVE / R0
     elif scenario == "social_distancing":
-        return 1.7 / R0
+        return SOCIAL_DISTANCING / R0
     else:
         raise ValueError(f"Suppression {scenario} not valid")
 
