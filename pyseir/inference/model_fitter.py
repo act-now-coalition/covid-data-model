@@ -203,8 +203,10 @@ class ModelFitter:
         which improves stability substantially.
         """
         self.fit_params = self.DEFAULT_FIT_PARAMS
-        # Update any state specific params.
-        initial_params_df = pd.read_csv("./pyseir/inference/world_according_to_pyseir.csv")
+        # Update State specific SEIR initial guesses
+        initial_params_df = pd.read_csv(
+            "./pyseir_data/pyseir_fitter_initial_conditions_2020_06_10.csv"
+        )
 
         INITIAL_PARAM_SETS = [
             "R0",
