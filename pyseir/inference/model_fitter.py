@@ -637,9 +637,8 @@ class ModelFitter:
                 eps_error=self.fit_results[f"{epsilon}_error"],
                 lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
             )
-            # TODO: Add structured logging if this change is significant
-            self.fit_results[epsilon] = adjusted_epsilon
             log.info(f"epsilon: {self.fit_results[epsilon]} adjusted: {adjusted_epsilon}")
+            self.fit_results[epsilon] = adjusted_epsilon
 
         if np.isnan(self.fit_results["t0"]):
             logging.error(f"Could not compute MLE values for {self.display_name}")
