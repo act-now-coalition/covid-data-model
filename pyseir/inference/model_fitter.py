@@ -6,7 +6,6 @@ import datetime as dt
 from datetime import datetime, timedelta
 from multiprocessing import Pool
 from copy import deepcopy
-import pdb, subprocess
 
 import pandas as pd
 import dill as pickle
@@ -89,7 +88,7 @@ class ModelFitter:
         eps2=0.3,
         limit_eps2=[0.20, 2.0],
         error_eps2=0.005,
-        t_delta_phases=40,  # number of days between second and third ramps
+        t_delta_phases=30,  # number of days between second and third ramps
         limit_t_delta_phases=[14, 100],  # good as of June 3, 2020 may need to update in the future
         error_t_delta_phases=1,
         test_fraction=0.1,
@@ -101,12 +100,6 @@ class ModelFitter:
         # Let's not fit this to start...
         errordef=0.5,
     )
-
-    # PARAM_SETS = {
-    ## ("HI", "AK", "MT", "ID", "LA", "ND", "WV", "WY"): dict(
-    #    eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]
-    # ),
-    # }
 
     REFF_LOWER_BOUND = 0.7
 
@@ -228,10 +221,6 @@ class ModelFitter:
             this_fips_df = initial_params_df.loc[initial_params_df["fips"] == int(self.fips)]
             for param in INITIAL_PARAM_SETS:
                 self.fit_params[param] = this_fips_df[param]
-
-        # for k, v in self.PARAM_SETS.items():
-        #    if self.state_obj.abbr in k:
-        #        self.fit_params.update(v)
 
         self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
         if self.fit_params["fix_hosp_fraction"]:
