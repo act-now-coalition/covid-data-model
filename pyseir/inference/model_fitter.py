@@ -819,7 +819,7 @@ class ModelFitter:
         start_intervention_date = self.ref_date + timedelta(
             days=self.fit_results["t_break"] + self.fit_results["t0"]
         )
-        stop_intervention_date = start_intervention_date + timedelta(days=7)
+        stop_intervention_date = start_intervention_date + timedelta(days=14)
 
         plt.fill_betweenx(
             [y_lim[0], y_lim[1]],
