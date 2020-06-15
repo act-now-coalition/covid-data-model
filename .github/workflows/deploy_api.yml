@@ -20,7 +20,8 @@ env:
   COVID_DATA_MODEL_REF: 'feature/make-seir-simple-ish'
 
   # To pin to an old data sets, put the branch/tag/commit here:
-  COVID_DATA_PUBLIC_REF: '14d31f3e5491d4bc4d99deed7edf192437e9964b' #goes to june 10 data
+  #COVID_DATA_PUBLIC_REF: '14d31f3e5491d4bc4d99deed7edf192437e9964b' #goes to june 10 data
+  COVID_DATA_PUBLIC_REF: 'master' #goes to june 10 data
 
   # S3 Bucket (used by s3-sync-action tasks) to store final API snapshot.
   AWS_S3_BUCKET: 'data.covidactnow.org'
@@ -81,8 +82,8 @@ jobs:
     #   run: |
     #     mkdir -p /data/api-results-${{env.SNAPSHOT_ID}}
     #     touch /data/api-results-${{env.SNAPSHOT_ID}}/deleteme
-    #- name: run raw data QA
-    #  run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_raw_data_qa
+    - name: run raw data QA
+      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_raw_data_qa
     - name: Build Model Results (run.sh .. .. execute_model)
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
