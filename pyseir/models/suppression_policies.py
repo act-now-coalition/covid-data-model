@@ -24,7 +24,9 @@ distancing_measure_suppression = {
 
 def get_future_suppression_from_r0(R0, scenario):
     """
-    Returns the future suppression level for a given R0 and a "future scenario".
+    Returns the future suppression level for a given R0 and a "future scenario". The
+    "no_intervention" scenario is capped at an effective R rate of 2.5 as suggested by the CDC
+    planning scenarios (https://www.cdc.gov/coronavirus/2019-ncov/hcp/planning-scenarios.html).
 
     Parameters
     ----------
@@ -36,10 +38,14 @@ def get_future_suppression_from_r0(R0, scenario):
     Returns
     -------
     epsilon: float
-        Suppression fraction.
+        Suppression fraction compared to R0.
     """
     if scenario == "no_intervention":
-        return 1
+        # Return either 2.5 (https://www.cdc.gov/coronavirus/2019-ncov/hcp/planning-scenarios.html)
+        # or R0 (converted to epsilon) whichever is lower
+        fitted_r0 = 1.0
+        cdc_recommended_max = 2.5 / R0
+        return min(fitted_r0, cdc_recommended_max)
     elif scenario == "flatten_the_curve":
         return 0.97 / R0
     elif scenario == "social_distancing":
