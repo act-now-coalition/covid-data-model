@@ -639,7 +639,9 @@ class ModelFitter:
                 eps_error=self.fit_results[f"{epsilon}_error"],
                 lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
             )
-            log.info(f"epsilon: {self.fit_results[epsilon]} adjusted: {adjusted_epsilon}")
+            log.info(
+                f"FIPS: {self.fips} epsilon: {self.fit_results[epsilon]} adjusted: {adjusted_epsilon}"
+            )
             self.fit_results[epsilon] = adjusted_epsilon
 
         if np.isnan(self.fit_results["t0"]):
