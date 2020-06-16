@@ -41,9 +41,10 @@ def download_model_artifact(github_token, run_number, output_dir):
     show_default=True,
     help="Filename template where CSV is written",
 )
-def save_combined_csv(csv_path_format):
+@click.option("--output-dir", "-o", type=pathlib.Path, default=pathlib.Path("."))
+def save_combined_csv(csv_path_format, output_dir):
     """Save the combined datasets DataFrame, cleaned up for easier comparisons."""
-    csv_path = csv_path_format.format(
+    csv_path = pathlib.Path(output_dir) / csv_path_format.format(
         git_sha=subprocess.check_output(
             ["git", "describe", "--dirty", "--always", "--long"], text=True
         ).strip(),
