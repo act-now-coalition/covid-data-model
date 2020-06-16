@@ -117,7 +117,7 @@ class WebUIDataAdaptorV1:
             fips=state_fips, t0=t0_simulation, category=load_data.HospitalizationCategory.ICU,
         )
 
-        if current_hosp_count is not None:
+        if self._is_valid_count_metric(current_hosp_count):
             t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
 
             state_hosp_gen = load_data.get_compartment_value_on_date(
@@ -182,6 +182,12 @@ class WebUIDataAdaptorV1:
             else:
                 icu_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
         else:
+            log.info(
+                "No valid current hospitalization to scale by. Using unity scaling factors.",
+                fips=fips,
+                current_hosp_count=current_hosp_count,
+                current_state_icu=current_state_icu,
+            )
             hosp_rescaling_factor = 1.0
             icu_rescaling_factor = 1.0
         return hosp_rescaling_factor, icu_rescaling_factor
