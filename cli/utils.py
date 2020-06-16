@@ -2,13 +2,11 @@ import logging
 import pathlib
 import subprocess
 from datetime import datetime
-import pandas as pd
-import numpy as np
 
 import click
 import structlog
 
-from covidactnow.datapublic.common_df import write_df_as_csv, sort_common_field_columns
+from covidactnow.datapublic import common_df
 from libs import github_utils
 from libs.datasets import combined_datasets
 
@@ -62,4 +60,4 @@ def save_combined_csv(csv_path_format, output_dir):
     timeseries = combined_datasets.build_us_timeseries_with_all_fields()
     timeseries_data = timeseries.data
 
-    write_df_as_csv(timeseries_data, csv_path, structlog.get_logger())
+    common_df.write_csv(timeseries_data, csv_path, structlog.get_logger())
