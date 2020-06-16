@@ -56,24 +56,4 @@ def save_combined_csv(csv_path_format):
     timeseries = combined_datasets.build_us_timeseries_with_all_fields()
     timeseries_data = timeseries.data
 
-    timeseries_data = cleanup_df(timeseries_data)
-    timeseries_data.info()
-
     write_df_as_csv(timeseries_data, csv_path, structlog.get_logger())
-
-
-def cleanup_df(df):
-    col_to_drop = [c for c in ["index"] if c in df.columns]
-    # Replace experimental NA object with conventional `nan`. Without this `convert_dtypes` leaves the
-    # negative_tests column with dtype=object and it is output as a mix of floats and ints, which makes
-    # diff-ing harder.
-    df = df.replace({pd.NA: np.nan})
-    df = df.drop(columns=col_to_drop).convert_dtypes()
-    # Make sure that columns that can be represented as an integer are converted to `Int64`. `int64` won't work
-    # because many of our columns have missing values.
-    for col in df.select_dtypes(include="number").columns:
-        as_ints = df[col].astype("Int64", copy=False)
-        error = (df[col] - as_ints).abs().sum()
-        if error < 0.001:
-            df[col] = as_ints
-    return sort_common_field_columns(df)
