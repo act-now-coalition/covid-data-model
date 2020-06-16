@@ -105,6 +105,9 @@ class RtInferenceEngine:
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+            _, self.not_corrected_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, False
+            )
 
             (
                 self.hospital_times,
@@ -201,6 +204,8 @@ class RtInferenceEngine:
 
         if timeseries_type is TimeseriesType.NEW_CASES:
             return self.case_dates, self.times, self.observed_new_cases
+        elif timeseries_type is TimeseriesType.RAW_CASES:
+            return self.case_dates, self.times, self.not_corrected_new_cases
         elif timeseries_type is TimeseriesType.NEW_DEATHS:
             return self.case_dates, self.times, self.observed_new_deaths
         elif timeseries_type in (
@@ -441,14 +446,18 @@ class RtInferenceEngine:
         """
         df_all = None
         available_timeseries = []
+
+        # Get case and death series (index two returned by get_timeseries() result)
         IDX_OF_COUNTS = 2
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+
         if self.hospitalization_data_type:
             hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
+            available_timeseries.append(TimeseriesType.RAW_CASES)
 
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
@@ -468,6 +477,15 @@ class RtInferenceEngine:
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
         for timeseries_type in available_timeseries:
+            log.info("timeseries_type")
+            log.info(timeseries_type)
+            dates, times, timeseries = self.get_timeseries(timeseries_type)
+            log.info("dates:")
+            log.info(dates)
+            log.info("times: ")
+            log.info(times)
+            log.info("timeseries: ")
+            log.info(timeseries)
 
             df = pd.DataFrame()
             dates, times, posteriors = self.get_posteriors(timeseries_type)
