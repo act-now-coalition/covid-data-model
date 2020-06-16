@@ -631,19 +631,19 @@ class ModelFitter:
                 f"Epsilon == 0 which implies lack of convergence."
             )
 
+        # For now we are not applying posterior updating after the fit, but trust the fit to find the best R values
         # Most naive constraints: apply the same constraint to both epsilon 2 and epsilon 3
-        for epsilon in ["eps", "eps2"]:
-            adjusted_epsilon = ModelFitter.get_posterior_estimate_eps(
-                R0=self.fit_results["R0"],
-                eps=self.fit_results[epsilon],
-                eps_error=self.fit_results[f"{epsilon}_error"],
-                lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
-            )
-            log.info(
-                f"FIPS: {self.fips} epsilon: {self.fit_results[epsilon]} adjusted: {adjusted_epsilon}"
-            )
-            self.fit_results[epsilon] = adjusted_epsilon
-
+        # for epsilon in ["eps", "eps2"]:
+        #    adjusted_epsilon = ModelFitter.get_posterior_estimate_eps(
+        #        R0=self.fit_results["R0"],
+        #        eps=self.fit_results[epsilon],
+        #        eps_error=self.fit_results[f"{epsilon}_error"],
+        #        lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
+        #    )
+        #    log.info(
+        #        f"FIPS: {self.fips} epsilon: {self.fit_results[epsilon]} adjusted: {adjusted_epsilon}"
+        #    )
+        #    self.fit_results[epsilon] = adjusted_epsilon
         if np.isnan(self.fit_results["t0"]):
             logging.error(f"Could not compute MLE values for {self.display_name}")
             self.fit_results["t0_date"] = (
