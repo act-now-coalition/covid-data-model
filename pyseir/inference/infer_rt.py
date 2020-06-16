@@ -139,6 +139,9 @@ class RtInferenceEngine:
                 t0=self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+            _, self.not_corrected_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, False
+            )
             (
                 self.hospital_times,
                 self.hospitalizations,
@@ -476,6 +479,14 @@ class RtInferenceEngine:
         ):
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
+        plt.close("all")
+        for timeseries_type in available_timeseries:
+            dates, times, timeseries = self.get_timeseries(timeseries_type)
+            plt.plot(dates, timeseries, label=timeseries_type, marker=".")
+        plt.legend()
+        plt.scale("log")
+        plt.savefig("rawdata.pdf")
+        plt.close("all")
         for timeseries_type in available_timeseries:
             log.info("timeseries_type")
             log.info(timeseries_type)
@@ -638,13 +649,28 @@ class RtInferenceEngine:
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(-1, 4)
+            # plt.ylim(-1, 4)
+            log.info("not changing ylim")
             plt.ylabel("$R_t$", fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
 
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
+            log.info("saving og rt plot")
             plt.savefig(output_path, bbox_inches="tight")
+            log.info("about to overlay timeseries")
+            plt.close("all")
+            for timeseries_type in available_timeseries:
+                dates, times, timeseries = self.get_timeseries(timeseries_type)
+                plt.plot(dates, timeseries, label=timeseries_type, marker=".")
+                log.info("adding time series")
+            plt.ylim(0.5, 1500)
+            # plt.scale('log')
+            plt.legend()
+            log.info("about to save")
+            plt.savefig("rawdata_rt.pdf")
+            log.info("saved")
+            plt.close("all")
             # plt.close()
         if df_all is None or df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
