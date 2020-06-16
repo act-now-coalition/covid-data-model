@@ -44,13 +44,18 @@ def download_model_artifact(github_token, run_number, output_dir):
 @click.option("--output-dir", "-o", type=pathlib.Path, default=pathlib.Path("."))
 def save_combined_csv(csv_path_format, output_dir):
     """Save the combined datasets DataFrame, cleaned up for easier comparisons."""
+    try:
+        git_branch = subprocess.check_output(
+            ["git", "symbolic-ref", "--short", "HEAD"], text=True
+        ).strip()
+    except subprocess.CalledProcessError:
+        git_branch = "no-HEAD-branch"
+
     csv_path = pathlib.Path(output_dir) / csv_path_format.format(
         git_sha=subprocess.check_output(
             ["git", "describe", "--dirty", "--always", "--long"], text=True
         ).strip(),
-        git_branch=subprocess.check_output(
-            ["git", "symbolic-ref", "--short", "HEAD"], text=True
-        ).strip(),
+        git_branch=git_branch,
         timestamp=datetime.now().strftime("%Y%m%dT%H%M%S"),
     )
 
