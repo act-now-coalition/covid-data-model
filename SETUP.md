@@ -9,10 +9,12 @@ installed to checkout a copy of `covid-data-public`.
   On mac, `brew install git-lfs`
 
 2. Clone the `covid-data-public` repo
-  ```
-  $ cd ..
-  $ git clone git@github.com:covid-projections/covid-data-public.git
-  $ cd -
+    ```
+    $ cd ..
+    $ git clone git@github.com:covid-projections/covid-data-public.git
+    $ cd -
+    ```
+If you clone the repo before installing git-lfs run `git lfs pull`[*](https://github.com/git-lfs/git-lfs/issues/325#issuecomment-149713215) to fetch the large data files.
 
 ## Install Virtualenv
 
