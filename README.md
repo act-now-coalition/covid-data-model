@@ -45,13 +45,6 @@ export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
 
 # Development
 
-### Run website data deploy
-
-This will run all models and generate data needed for the website, outputting to ``../covid-projections/public/data``.
-```bash
-./deploy_website.sh
-```
-
 # Sentry
 In order to have sentry run locally and report errors to the dev sentry
 instance, add the following to your .env
@@ -70,7 +63,6 @@ export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
 ./run.py utils download-model-artifact --run-number <optional run number>
 ```
 By default it downloads the last run, but you can choose a specific run with `--run-number`
-
 
 # PySEIR Setup
 
