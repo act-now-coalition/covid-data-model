@@ -27,12 +27,31 @@ class InferRtConstants:
     LOCAL_LOOKBACK_WINDOW = 14
     Z_THRESHOLD = 10
     MIN_MEAN_TO_CONSIDER = 5
+
+    # Window size used during smoothing of cases and deaths
+    # Originally 14 but odd is better and larger avoids edges that drive R unrealistically
     SMOOTHING_WINDOW_SIZE = 19
-    DISABLE_DEATHS = True
+
+    # Infer Rt only using cases if True
+    # Recommend True as deaths just confuse intepretability of Rt_eff and will muddy using its extrapolation
+    DISABLE_DEATHS = False
+
+    # Sets the default value for sigma before adustments
+    # Recommend .03 (was .05 before when not adjusted) as adjustment moves up
     DEFAULT_PROCESS_SIGMA = 0.03
-    SCALE_SIGMA_FROM_COUNT = 5000
-    MAX_SCALING_OF_SIGMA = 30
-    MIN_COUNTS_TO_INFER = 1.0
+
+    # Scale sigma up as sqrt(SCALE_SIGMA_FROM_COUNT/current_count)
+    # 5000 recommended
+    SCALE_SIGMA_FROM_COUNT = 5000.0
+
+    # Maximum increase (from DEFAULT_PROCESS_SIGMA) permitted for low counts
+    # Recommend range 20. - 50. 30. appears to be best
+    MAX_SCALING_OF_SIGMA = 30.0
+
+    # Override min_cases and min_deaths with this value.
+    # Recommend 1. - 5. range. 1. is allowing some counties to run that shouldn't (unphysical results)
+    MIN_COUNTS_TO_INFER = 5.0
+    # TODO really understand whether the min_cases and/or min_deaths compares to max, avg, or day to day counts
 
 
 class RtInferenceEngine:
