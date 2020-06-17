@@ -76,7 +76,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [JHUDataset],
+    CommonFields.CASES: [CmdcDataSource, JHUDataset],
     CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
@@ -98,7 +98,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
-    CommonFields.STAFFED_BEDS: [],
+    CommonFields.STAFFED_BEDS: [CmdcDataSource],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
     CommonFields.ICU_BEDS: [NevadaHospitalAssociationData],
@@ -107,6 +107,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(

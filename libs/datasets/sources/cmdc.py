@@ -18,10 +18,13 @@ class CmdcDataSource(data_source.DataSource):
 
     # Keep in sync with update_cmdc.py in the covid-data-public repo.
     COMMON_FIELD_MAP = {
+        CommonFields.CASES: CommonFields.CASES,
         CommonFields.DEATHS: CommonFields.DEATHS,
         CommonFields.CURRENT_ICU: CommonFields.CURRENT_ICU,
         CommonFields.NEGATIVE_TESTS: CommonFields.NEGATIVE_TESTS,
         CommonFields.POSITIVE_TESTS: CommonFields.POSITIVE_TESTS,
+        CommonFields.STAFFED_BEDS: CommonFields.STAFFED_BEDS,
+        CommonFields.HOSPITAL_BEDS_IN_USE_ANY: CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
         CommonFields.CURRENT_VENTILATED: CommonFields.CURRENT_VENTILATED,
         CommonFields.CURRENT_HOSPITALIZED: CommonFields.CURRENT_HOSPITALIZED,
     }
