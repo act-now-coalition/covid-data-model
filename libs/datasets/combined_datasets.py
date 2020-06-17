@@ -3,6 +3,7 @@ import logging
 import functools
 import pandas as pd
 import structlog
+from structlog.threadlocal import tmp_bind
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
@@ -46,12 +47,8 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CmdcDataSource,
@@ -66,7 +63,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds, NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
@@ -82,18 +79,10 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
-    CommonFields.CURRENT_HOSPITALIZED: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
-    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
+    CommonFields.CURRENT_HOSPITALIZED: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,
         CovidTrackingDataSource,
@@ -102,7 +91,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.STAFFED_BEDS: [CmdcDataSource],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
-    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds, NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
@@ -203,12 +192,13 @@ def build_combined_dataset_from_sources(
     for field, data_source_classes in feature_definition_config.items():
         for data_source_cls in data_source_classes:
             dataset = intermediate_datasets[data_source_cls]
-            data = dataset_utils.fill_fields_with_data_source(
-                log.bind(dataset_name=data_source_cls.SOURCE_NAME, field=field),
-                data,
-                dataset.data,
-                target_dataset_cls.INDEX_FIELDS,
-                [field],
-            )
+            with tmp_bind(log, dataset_name=data_source_cls.SOURCE_NAME, field=field) as log:
+                try:
+                    data = dataset_utils.fill_fields_with_data_source(
+                        log, data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field],
+                    )
+                except Exception:
+                    log.exception("trying to fill fields")
+                    raise
 
     return target_dataset_cls(data)

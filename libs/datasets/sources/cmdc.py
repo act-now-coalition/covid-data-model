@@ -26,12 +26,14 @@ class CmdcDataSource(data_source.DataSource):
             CommonFields.CASES,
             CommonFields.DEATHS,
             CommonFields.CURRENT_ICU,
+            CommonFields.CURRENT_ICU_TOTAL,
             CommonFields.NEGATIVE_TESTS,
             CommonFields.POSITIVE_TESTS,
             CommonFields.STAFFED_BEDS,
             CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
             CommonFields.CURRENT_VENTILATED,
             CommonFields.CURRENT_HOSPITALIZED,
+            CommonFields.ICU_BEDS,
         }
     }
 
