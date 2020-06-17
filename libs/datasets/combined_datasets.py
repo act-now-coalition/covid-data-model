@@ -41,7 +41,7 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [JHUDataset],
+    CommonFields.CASES: [CmdcDataSource, JHUDataset],
     CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
@@ -64,15 +64,16 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
         NevadaHospitalAssociationData,
     ],
     CommonFields.POPULATION: [FIPSPopulation],
-    CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
+    CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CovidCareMapBeds, NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds, NevadaHospitalAssociationData],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
@@ -101,7 +102,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.STAFFED_BEDS: [CmdcDataSource],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
-    CommonFields.ICU_BEDS: [NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource, NevadaHospitalAssociationData],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
