@@ -4,6 +4,7 @@ import functools
 import pandas as pd
 import structlog
 
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
@@ -17,7 +18,6 @@ from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
-from libs.datasets import CommonFields
 from libs.datasets import dataset_filter
 from libs.datasets import dataset_cache
 from libs import us_state_abbrev
@@ -42,7 +42,7 @@ FeatureDataSourceMap = NewType(
 # to showingcasing a dependency graph of transformations.
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
+    CommonFields.DEATHS: [JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -51,7 +51,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CmdcDataSource,
@@ -64,20 +64,21 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
         NevadaHospitalAssociationData,
     ],
     CommonFields.POPULATION: [FIPSPopulation],
-    CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
+    CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CovidCareMapBeds, NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds, NevadaHospitalAssociationData],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
+    CommonFields.DEATHS: [JHUDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -86,7 +87,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource, NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CmdcDataSource,
         CovidTrackingDataSource,
@@ -98,15 +99,16 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
-    CommonFields.STAFFED_BEDS: [],
+    CommonFields.STAFFED_BEDS: [CmdcDataSource],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
-    CommonFields.ICU_BEDS: [NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds, NevadaHospitalAssociationData],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(
