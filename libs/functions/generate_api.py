@@ -28,10 +28,6 @@ from libs.build_processed_dataset import get_testing_timeseries_by_fips
 import pandas as pd
 
 
-FRAMES = 32
-DAYS_PER_FRAME = 4
-
-
 def _format_date(input_date):
     if not input_date:
         raise Exception("Can't format a date that doesn't exist")
