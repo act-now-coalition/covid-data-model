@@ -16,6 +16,7 @@ from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGene
 from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
 from structlog import configure
 from enum import Enum
+from pyseir.inference.infer_utils import LagMonitor
 
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
 log = structlog.get_logger(__name__)
@@ -26,6 +27,12 @@ class InferRtConstants:
     LOCAL_LOOKBACK_WINDOW = 14
     Z_THRESHOLD = 10
     MIN_MEAN_TO_CONSIDER = 5
+    SMOOTHING_WINDOW_SIZE = 19
+    DISABLE_DEATHS = True
+    DEFAULT_PROCESS_SIGMA = 0.03
+    SCALE_SIGMA_FROM_COUNT = 5000
+    MAX_SCALING_OF_SIGMA = 30
+    MIN_COUNTS_TO_INFER = 1.0
 
 
 class RtInferenceEngine:
@@ -68,7 +75,7 @@ class RtInferenceEngine:
     def __init__(
         self,
         fips,
-        window_size=14,
+        window_size=InferRtConstants.SMOOTHING_WINDOW_SIZE,
         kernel_std=5,
         r_list=np.linspace(0, 10, 501),
         process_sigma=0.05,
@@ -90,6 +97,11 @@ class RtInferenceEngine:
         self.min_cases = min_cases
         self.min_deaths = min_deaths
         self.include_testing_correction = include_testing_correction
+
+        # Because rounding is disabled we don't need high min_deaths, min_cases anymore
+        self.min_cases = min(InferRtConstants.MIN_COUNTS_TO_INFER, self.min_cases)
+        if not InferRtConstants.DISABLE_DEATHS:
+            self.min_deaths = min(InferRtConstants.MIN_COUNTS_TO_INFER, self.min_deaths)
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -209,7 +221,7 @@ class RtInferenceEngine:
         ):
             return self.hospital_dates, self.hospital_times, self.hospitalizations
 
-    def apply_gaussian_smoothing(self, timeseries_type, plot=False, smoothed_max_threshold=5):
+    def apply_gaussian_smoothing(self, timeseries_type, plot=True, smoothed_max_threshold=5):
         """
         Apply a rolling Gaussian window to smooth the data. This signature and
         returns match get_time_series, but will return a subset of the input
@@ -258,12 +270,11 @@ class RtInferenceEngine:
         smoothed = (
             timeseries.rolling(
                 self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
-            )
-            .mean(std=self.kernel_std)
-            .round()
+            ).mean(std=self.kernel_std)
+            # .round() - no longer rounding
         )
 
-        nonzeros = [idx for idx, val in enumerate(smoothed) if val != 0]
+        nonzeros = [idx for idx, val in enumerate(smoothed.round()) if val != 0]
 
         if smoothed.empty:
             idx_start = 0
@@ -276,7 +287,8 @@ class RtInferenceEngine:
         smoothed = smoothed.iloc[idx_start:]
         original = timeseries.loc[smoothed.index]
 
-        if plot:
+        if plot and len(smoothed) > 0:
+            plt.figure(figsize=(10, 6))
             plt.scatter(
                 dates[-len(original) :],
                 original,
@@ -287,7 +299,10 @@ class RtInferenceEngine:
             plt.grid(True, which="both")
             plt.xticks(rotation=30)
             plt.xlim(min(dates[-len(original) :]), max(dates) + timedelta(days=2))
-            plt.legend()
+            # plt.legend()
+            output_path = get_run_artifact_path(self.fips, RunArtifact.RT_SMOOTHING_REPORT)
+            plt.savefig(output_path, bbox_inches="tight")
+            plt.close()
 
         return dates, times, smoothed
 
@@ -317,6 +332,47 @@ class RtInferenceEngine:
         ci_high = self.r_list[high_idx_list]
         return ci_low, ci_high
 
+    def make_process_matrix(self, timeseries_scale=InferRtConstants.SCALE_SIGMA_FROM_COUNT):
+        """ Externalizes process of generating the Gaussian process matrix adding the following:
+        1) Auto adjusts sigma from its default value for low counts
+        2) Ensures the smoothing (of the posterior when creating the prior) is symmetric
+           in R so that this process does not move argmax (the peak in probability)
+        """
+        use_sigma = (
+            min(
+                InferRtConstants.MAX_SCALING_OF_SIGMA,
+                max(1.0, math.sqrt(InferRtConstants.SCALE_SIGMA_FROM_COUNT / timeseries_scale)),
+            )
+            * InferRtConstants.DEFAULT_PROCESS_SIGMA
+        )
+
+        process_matrix = sps.norm(loc=self.r_list, scale=use_sigma).pdf(self.r_list[:, None])
+
+        # process_matrix applies gaussian smoothing to the previous posterior to make the prior.
+        # But when the gaussian is wide much of its distribution function can be outside of the
+        # range Reff = (0,10). When this happens the smoothing is not symmetric in R space. For
+        # R<1, when posteriors[previous_day]).argmax() < 50, this asymmetry can push the argmax of
+        # the prior >10 Reff bins (delta R = .2) on each new day. This was a large systematic error.
+
+        # Ensure smoothing window is symmetric in X direction around diagonal
+        # to avoid systematic drift towards middle (Reff = 5)
+        sz = len(self.r_list)
+        for row in range(0, sz):
+            if row < (sz - 1) / 2:
+                drop = range(2 * row + 1, sz)
+            elif row > (sz - 1) / 2:
+                drop = range(0, sz - 2 * (sz - row))
+            # print("y", y, "dropping x in", drop)
+            for col in drop:  # TODO do in bulk one row at a time
+                process_matrix[row, col] = 0.0
+
+        # (3a) Normalize all rows to sum to 1
+        row_sums = process_matrix.sum(axis=1)
+        for row in range(0, sz):
+            process_matrix[row] = process_matrix[row] / row_sums[row]
+
+        return (use_sigma, process_matrix)
+
     def get_posteriors(self, timeseries_type, plot=False):
         """
         Generate posteriors for R_t.
@@ -338,25 +394,51 @@ class RtInferenceEngine:
         posteriors: pd.DataFrame
             Posterior estimates for each timestamp with non-zero data.
         """
-        dates, times, timeseries = self.apply_gaussian_smoothing(timeseries_type)
+        # @Brett phase 1 not sure but you might need this. How self.min_[cases,deaths] is applied
+        # (compared to one day, or total, max day) to abort use of a timeseries is not that clear
+        # to me. I added this code and the updated call to apply_gaussian_smoothing.
+        smoothed_max_threshold = (
+            self.min_cases if TimeseriesType.NEW_CASES == timeseries_type else self.min_deaths
+        )
+        dates, times, timeseries = self.apply_gaussian_smoothing(
+            timeseries_type, smoothed_max_threshold=smoothed_max_threshold
+        )
+
         if len(timeseries) == 0:
+            log.info(
+                "%s: empty timeseries %s, skipping" % (self.display_name, timeseries_type.value)
+            )
             return None, None, None
+        else:
+            log.info(
+                "%s: Analyzing posteriors for timeseries %s"
+                % (self.display_name, timeseries_type.value)
+            )
 
         # (1) Calculate Lambda (the Poisson likelihood given the data) based on
         # the observed increase from t-1 cases to t cases.
         lam = timeseries[:-1].values * np.exp((self.r_list[:, None] - 1) / self.serial_period)
 
         # (2) Calculate each day's likelihood over R_t
-        likelihoods = pd.DataFrame(
-            data=sps.poisson.pmf(timeseries[1:].values, lam),
+        # Interpolating to avoid rounding which doesn't work well for low counts
+        ts_floor = timeseries.apply(np.floor).astype(int)
+        ts_ceil = timeseries.apply(np.ceil).astype(int)
+        ts_frac = timeseries - ts_floor
+
+        likelihoods_floor = pd.DataFrame(
+            data=sps.poisson.pmf(ts_floor[1:].values, lam),
             index=self.r_list,
             columns=timeseries.index[1:],
         )
-
-        # (3) Create the Gaussian Matrix
-        process_matrix = sps.norm(loc=self.r_list, scale=self.process_sigma).pdf(
-            self.r_list[:, None]
+        likelihoods_ceil = pd.DataFrame(
+            data=sps.poisson.pmf(ts_ceil[1:].values, lam),
+            index=self.r_list,
+            columns=timeseries.index[1:],
         )
+        likelihoods = ts_frac * likelihoods_ceil + (1 - ts_frac) * likelihoods_floor
+
+        # (3) Create the (now scaled up for low counts) Gaussian Matrix
+        (current_sigma, process_matrix) = self.make_process_matrix(timeseries.median())
 
         # (3a) Normalize all rows to sum to 1
         process_matrix /= process_matrix.sum(axis=0)
@@ -378,8 +460,19 @@ class RtInferenceEngine:
         # of the data for maximum likelihood calculation.
         log_likelihood = 0.0
 
+        # Initialize scaling (for auto sigma)
+        scale = timeseries.head(1).item()
+
+        # Setup monitoring for Reff lagging signal in daily likelihood
+        monitor = LagMonitor(debug=False)  # Set debug=True for detailed printout of daily lag
+
         # (5) Iteratively apply Bayes' rule
         for previous_day, current_day in zip(timeseries.index[:-1], timeseries.index[1:]):
+
+            # Calculate process matrix for each day
+            scale = 0.9 * scale + 0.1 * timeseries[current_day]
+            (current_sigma, process_matrix) = self.make_process_matrix(scale)
+
             # (5a) Calculate the new prior
             current_prior = process_matrix @ posteriors[previous_day]
 
@@ -407,6 +500,16 @@ class RtInferenceEngine:
             else:
                 posteriors[current_day] = numerator / denominator
 
+            # Monitors if posterior is lagging excessively behind signal in likelihood
+            monitor.evaluate_lag_using_argmaxes(
+                current_day,
+                current_sigma,
+                posteriors[previous_day].argmax(),
+                current_prior.argmax(),
+                likelihoods[current_day].argmax(),
+                numerator.argmax(),
+            )
+
             # Add to the running sum of log likelihoods
             log_likelihood += np.log(denominator)
 
@@ -418,6 +521,7 @@ class RtInferenceEngine:
             plt.grid(alpha=0.4)
             plt.xlabel("$R_t$", fontsize=16)
             plt.title("Posteriors", fontsize=18)
+            plt.close()
         start_idx = -len(posteriors.columns)
 
         return dates[start_idx:], times[start_idx:], posteriors
@@ -450,10 +554,12 @@ class RtInferenceEngine:
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
 
-        if np.sum(deaths) > self.min_deaths:
+        if np.sum(deaths) > self.min_deaths and not InferRtConstants.DISABLE_DEATHS:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
-        if (
+        if InferRtConstants.DISABLE_DEATHS:
+            pass  # ignore hospitalizations also
+        elif (
             self.hospitalization_data_type
             is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
             and len(hosps > 3)
@@ -627,7 +733,7 @@ class RtInferenceEngine:
 
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches="tight")
-            # plt.close()
+            plt.close()
         if df_all is None or df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
         return df_all
