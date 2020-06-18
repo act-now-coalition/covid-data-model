@@ -262,7 +262,16 @@ class RtInferenceEngine:
 
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
         # from the 14 day trailing mean and std
+        timeseries_og = timeseries
         timeseries = replace_outliers(pd.Series(timeseries))
+
+        not_round_smoothed = (
+            timeseries.rolling(
+                self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
+            ).mean(std=self.kernel_std)
+            # .round()
+        )
+
         smoothed = (
             timeseries.rolling(
                 self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
@@ -270,6 +279,25 @@ class RtInferenceEngine:
             .mean(std=self.kernel_std)
             .round()
         )
+
+        log.info("MADE IT HERE")
+        log.info("timeseries")
+        log.info(timeseries)
+        log.info("timeseries.rolling round")
+        log.info(smoothed)
+        log.info("timeseries.rolling not rounded")
+        log.info(not_round_smoothed)
+
+        plt.close("all")
+        plt.plot(dates, timeseries_og, label="OG")
+        plt.plot(dates, timeseries, label="+remove outliers")
+        plt.plot(dates, not_round_smoothed, label="+smoothed")
+        plt.plot(dates, smoothed, label="+round")
+
+        plt.legend()
+        plt.title(timeseries_type)
+
+        plt.savefig(str(timeseries_type) + "_cleaning.pdf")
 
         nonzeros = [idx for idx, val in enumerate(smoothed) if val != 0]
 
@@ -447,6 +475,7 @@ class RtInferenceEngine:
         inference_results: pd.DataFrame
             Columns containing MAP estimates and confidence intervals.
         """
+        log.info("NOW HERE")
         df_all = None
         available_timeseries = []
 
@@ -454,9 +483,15 @@ class RtInferenceEngine:
         IDX_OF_COUNTS = 2
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+        log.info("cases")
+        log.info(cases)
+        log.info("deaths")
+        log.info(deaths)
 
         if self.hospitalization_data_type:
             hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
+            log.info("hosps")
+            log.info(hosps)
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
@@ -464,6 +499,8 @@ class RtInferenceEngine:
 
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
+            log.info("deaths")
+            log.info(deaths)
 
         if (
             self.hospitalization_data_type
@@ -479,14 +516,19 @@ class RtInferenceEngine:
         ):
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
+        log.info("about to plot raw data")
         plt.close("all")
+        fig, ax = plt.subplots()
         for timeseries_type in available_timeseries:
             dates, times, timeseries = self.get_timeseries(timeseries_type)
-            plt.plot(dates, timeseries, label=timeseries_type, marker=".")
-        plt.legend()
-        plt.scale("log")
+            ax.plot(dates, timeseries, label=timeseries_type, marker=".")
+        ax.legend()
+        log.info("about to set scale")
+        # ax.y_scale("symlog")
+        log.info("scaled")
         plt.savefig("rawdata.pdf")
         plt.close("all")
+        log.info("plotted")
         for timeseries_type in available_timeseries:
             log.info("timeseries_type")
             log.info(timeseries_type)
@@ -737,6 +779,7 @@ class RtInferenceEngine:
     def run_for_fips(cls, fips):
         try:
             engine = cls(fips)
+            log.info("made class")
             return engine.infer_all()
         except Exception as e:
             sentry_sdk.capture_exception(e)
@@ -827,6 +870,7 @@ def run_state(state, states_only=False):
         If True only run the state level.
     """
     state_obj = us.states.lookup(state)
+    log.info("run_for_fips")
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
