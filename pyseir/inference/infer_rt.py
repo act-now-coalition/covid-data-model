@@ -30,11 +30,11 @@ class InferRtConstants:
 
     # Window size used during smoothing of cases and deaths
     # Originally 14 but odd is better and larger avoids edges that drive R unrealistically
-    SMOOTHING_WINDOW_SIZE = 19
+    SMOOTHING_WINDOW_SIZE = 14
 
     # Infer Rt only using cases if True
     # Recommend True as deaths just confuse intepretability of Rt_eff and will muddy using its extrapolation
-    DISABLE_DEATHS = False
+    DISABLE_DEATHS = True
 
     # Sets the default value for sigma before adustments
     # Recommend .03 (was .05 before when not adjusted) as adjustment moves up

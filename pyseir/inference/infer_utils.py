@@ -66,7 +66,7 @@ class LagMonitor:
         if noLag:  # End of lagging sequence of days
             if len(self.lag_days_running) >= self.days_threshold:  # Need 3 days running to warn
                 length = len(self.lag_days_running)
-                log.warn(
+                log.info(
                     "Reff lagged likelihood (max = %.2f, mean = %.2f) with sigma %.3f for %d days (from %d to %d)"
                     % (
                         0.02 * self.max_lag,
