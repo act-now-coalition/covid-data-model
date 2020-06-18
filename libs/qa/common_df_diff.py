@@ -10,6 +10,7 @@ values to be compared.
 from typing import Optional
 
 import pandas as pd
+import numpy as np
 from pydantic import BaseModel
 
 from covidactnow.datapublic.common_fields import CommonFields, COMMON_FIELDS_TIMESERIES_KEYS
@@ -41,7 +42,7 @@ TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.
         if not dups.empty:
             df = df.drop_duplicates()
 
-        df = df.reset_index()
+        df = df.reset_index().replace({pd.NA: np.nan}).convert_dtypes()
         # Drop columns that don't really contain timeseries values.
         columns_to_drop = {
             "index",
@@ -62,6 +63,9 @@ TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.
             .set_index(["variable"] + COMMON_FIELDS_TIMESERIES_KEYS)
             .dropna()
         )
+        # When Int64 and float64 columns are merged into one by melt the 'object' dtype is used, which
+        # is not supported by timeseries_diff. Force 'value' back to a numeric dtype.
+        melt["value"] = pd.to_numeric(melt["value"])
 
         all_variable_fips = melt.groupby("variable fips".split()).first().index
         return DatasetDiff(duplicates_dropped=dups, melt=melt, all_variable_fips=all_variable_fips)
@@ -94,16 +98,16 @@ TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.
         joined_ts_notna = joined_ts.notna()
         # Among the common timeseries, find points that appear in exactly one dataset.
         self.my_ts_points = joined_ts.loc[
-            joined_ts_notna["value_l"] & ~joined_ts_notna["value_r"], "value_r"
+            joined_ts_notna["value_l"] & ~joined_ts_notna["value_r"], "value_l"
         ]
         other.my_ts_points = joined_ts.loc[
-            joined_ts_notna["value_r"] & ~joined_ts_notna["value_l"], "value_l"
+            joined_ts_notna["value_r"] & ~joined_ts_notna["value_l"], "value_r"
         ]
         # Find some kind of measure of difference between each common timeseries.
         self.ts_diffs = joined_ts.groupby("variable fips".split()).apply(timeseries_diff)
 
 
-def timeseries_diff(ts: pd.DataFrame) -> float:
+def timeseries_diff(ts: pd.DataFrame) -> pd.Series:
     try:
         ts = ts.droplevel(["variable", CommonFields.FIPS])
         right = ts["value_r"]
@@ -121,12 +125,13 @@ def timeseries_diff(ts: pd.DataFrame) -> float:
             # if diff > 0.01:
             #    print(ts)
             #    print(f"from {start} to {end}")
-            return pd.Series(
+            rv = pd.Series(
                 [diff, len(right_common_ts), True], index=["diff", "points_overlap", "has_overlap"]
             )
+            return rv
         else:
             return pd.Series([1.0, 0, False], index=["diff", "points_overlap", "has_overlap"])
     except:
         ts.info()
         print(ts)
-        return float("NaN")
+        raise

@@ -23,9 +23,9 @@ def test_compare():
     assert differ1.my_ts.to_list() == [("only_1", "99")]
     assert differ2.my_ts.to_list() == [("only_2", "99")]
 
-    assert differ1.my_ts_points.to_list() == [("metric_b", "99", "2020-04-02")]
-    assert differ2.my_ts_points.to_list() == [("metric_a", "99", "2020-04-01")]
-    assert list(differ1.ts_diffs.reset_index().itertuples(index=False)) == [
-        ("metric_a", "99", 0),
-        ("metric_b", "99", 1 / 1.5),
-    ]
+    assert differ1.my_ts_points.index.to_list() == [("metric_b", "99", "2020-04-02")]
+    assert differ2.my_ts_points.index.to_list() == [("metric_a", "99", "2020-04-01")]
+    assert differ1.ts_diffs.to_dict(orient="index") == {
+        ("metric_a", "99"): dict(diff=0, has_overlap=True, points_overlap=1),
+        ("metric_b", "99"): dict(diff=1 / 1.5, has_overlap=True, points_overlap=1),
+    }
