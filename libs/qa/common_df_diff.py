@@ -51,7 +51,7 @@ TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.
             CommonFields.AGGREGATE_LEVEL,
         }.intersection(df.columns)
         # Drop string columns because timeseries_diff can't handle them yet.
-        for col in df.select_dtypes(include="object"):
+        for col in df.select_dtypes(include={"object", "string"}):
             if col != "fips":
                 print(f"dropping based on type {col}")
                 columns_to_drop.add(col)
