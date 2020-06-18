@@ -13,6 +13,8 @@ from libs import github_utils
 from libs.datasets import combined_datasets
 from pydantic import BaseModel
 import pandas as pd
+import numpy as np
+
 
 _logger = logging.getLogger(__name__)
 
@@ -62,17 +64,18 @@ def save_combined_csv(csv_path_format, output_dir):
     help="Filename template where CSV is written",
 )
 @click.option("--output-dir", "-o", type=pathlib.Path, default=pathlib.Path("."))
-def save_latest_csv(csv_path_format, output_dir):
-    """Save the combined datasets DataFrame, cleaned up for easier comparisons."""
+def save_combined_latest_csv(csv_path_format, output_dir):
+    """Save the combined datasets latest DataFrame, cleaned up for easier comparisons."""
     csv_path = form_path_name(csv_path_format, output_dir)
 
     latest = combined_datasets.build_us_latest_with_all_fields()
-    latest_data = latest.data
-
-    common_df.write_csv(latest_data, csv_path, structlog.get_logger())
+    # This is a hacky modification of common_df.write_csv because it requires a date index.
+    latest_data = latest.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
+    latest_data.to_csv(csv_path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
 
 
 def form_path_name(csv_path_format, output_dir):
+    """Create a path from a format string that may contain `{git_sha}` etc and output_dir."""
     try:
         git_branch = subprocess.check_output(
             ["git", "symbolic-ref", "--short", "HEAD"], text=True
