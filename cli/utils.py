@@ -187,8 +187,7 @@ def timeseries_diff(ts: pd.DataFrame) -> float:
             ).mean()
             if diff > 0.01:
                 print(ts)
-                print(right_common_ts)
-                print(left_common_ts)
+                print(f"from {start} to {end}")
             return pd.Series(
                 [diff, len(right_common_ts), True], index=["diff", "points_overlap", "has_overlap"]
             )
