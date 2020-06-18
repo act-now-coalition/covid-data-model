@@ -271,12 +271,12 @@ class WebUIDataAdaptorV1:
                 output_model[schema.Rt] = np.interp(
                     t_list_downsampled,
                     t_list,
-                    fit_results["eps"] * fit_results["R0"] * np.ones(len(t_list)),
+                    fit_results["eps2"] * fit_results["R0"] * np.ones(len(t_list)),
                 )
                 output_model[schema.Rt_ci90] = np.interp(
                     t_list_downsampled,
                     t_list,
-                    2 * fit_results["eps_error"] * fit_results["R0"] * np.ones(len(t_list)),
+                    2 * fit_results["eps2_error"] * fit_results["R0"] * np.ones(len(t_list)),
                 )
             else:
                 output_model[schema.Rt] = 0
