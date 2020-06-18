@@ -43,6 +43,7 @@ TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.
             df = df.drop_duplicates()
 
         df = df.reset_index().replace({pd.NA: np.nan}).convert_dtypes()
+        df[CommonFields.DATE] = pd.to_datetime(df[CommonFields.DATE])
         # Drop columns that don't really contain timeseries values.
         columns_to_drop = {
             "index",
@@ -53,7 +54,7 @@ TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.
         # Drop string columns because timeseries_diff can't handle them yet.
         for col in df.select_dtypes(include={"object", "string"}):
             if col != "fips":
-                print(f"dropping based on type {col}")
+                print(f"Dropping field '{col}' based on type")
                 columns_to_drop.add(col)
         if columns_to_drop:
             df = df.drop(columns=columns_to_drop)
