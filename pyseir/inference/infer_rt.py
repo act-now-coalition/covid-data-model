@@ -204,7 +204,6 @@ class RtInferenceEngine:
             The requested timeseries.
         """
         timeseries_type = TimeseriesType(timeseries_type)
-        log.info("getting series in def")
         if timeseries_type is TimeseriesType.NEW_CASES:
             return self.case_dates, self.times, self.observed_new_cases
         elif timeseries_type is TimeseriesType.RAW_CASES:
@@ -366,13 +365,17 @@ class RtInferenceEngine:
         posteriors: pd.DataFrame
             Posterior estimates for each timestamp with non-zero data.
         """
+        log.info("in def get_posteriors")
         dates, times, timeseries = self.apply_gaussian_smoothing(timeseries_type)
+        log.info("smoothed")
+        log.info(timeseries)
         if len(timeseries) == 0:
-            return None, None, None
+            return None, None, None, None
 
         # (1) Calculate Lambda (the Poisson likelihood given the data) based on
         # the observed increase from t-1 cases to t cases.
         lam = timeseries[:-1].values * np.exp((self.r_list[:, None] - 1) / self.serial_period)
+        log.info("get lam")
 
         # (2) Calculate each day's likelihood over R_t
         likelihoods = pd.DataFrame(
@@ -380,6 +383,8 @@ class RtInferenceEngine:
             index=self.r_list,
             columns=timeseries.index[1:],
         )
+        log.info("get likelihoods")
+        log.info(likelihoods)
 
         # (3) Create the Gaussian Matrix
         process_matrix = sps.norm(loc=self.r_list, scale=self.process_sigma).pdf(
@@ -448,26 +453,26 @@ class RtInferenceEngine:
             plt.title("Posteriors", fontsize=18)
         start_idx = -len(posteriors.columns)
 
-        return dates[start_idx:], times[start_idx:], posteriors
+        log.info("start index")
+        log.info(start_idx)
+        log.info("len(dates)")
+        log.info(len(dates))
+        log.info(dates)
+        log.info("shortedned")
+        log.info(dates[start_idx:])
+        log.info("returning from get_posteriors")
+        return dates[start_idx:], times[start_idx:], posteriors, start_idx
 
-    def get_all_timeseries(self, plot=False):
+    def get_available_timeseries(self, plot=False):
         available_timeseries = []
 
         # Get case and death series (index two returned by get_timeseries() result)
         IDX_OF_COUNTS = 2
-        log.info("about to get timeseries in get_all_timeseries")
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
-        log.info("got cases")
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
-        log.info("cases")
-        log.info(cases)
-        log.info("deaths")
-        log.info(deaths)
 
         if self.hospitalization_data_type:
             hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
-            log.info("hosps")
-            log.info(hosps)
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
@@ -475,8 +480,6 @@ class RtInferenceEngine:
 
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
-            log.info("deaths")
-            log.info(deaths)
 
         if (
             self.hospitalization_data_type
@@ -492,6 +495,19 @@ class RtInferenceEngine:
         ):
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
+        if plot:
+            plt.close("all")
+            fig, ax = plt.subplots()
+            for timeseries_type in available_timeseries:
+                dates, times, timeseries = self.get_timeseries(timeseries_type)
+                ax.plot(dates, timeseries, label=timeseries_type, marker=".")
+            ax.legend()
+            # ax.y_scale("symlog")
+            plt.savefig("rawdata.pdf")
+            plt.close("all")
+
+        log.info("available_timeseries")
+        log.info(available_timeseries)
         return available_timeseries
 
     def infer_all(self, plot=True, shift_deaths=0):
@@ -514,53 +530,50 @@ class RtInferenceEngine:
         log.info("NOW HERE")
         df_all = None
 
-        log.info("about to get timeseries")
-        available_timeseries = self.get_all_timeseries()
-        log.info("got timeseries")
+        # Get list of available timeseries types
+        # Which must meet minimum threshold requirements and determines if we have current/cumulative hospitalizations
+        available_timeseries = self.get_available_timeseries()
 
-        log.info("about to plot raw data")
-        plt.close("all")
-        fig, ax = plt.subplots()
         for timeseries_type in available_timeseries:
             dates, times, timeseries = self.get_timeseries(timeseries_type)
-            ax.plot(dates, timeseries, label=timeseries_type, marker=".")
-        ax.legend()
-        log.info("about to set scale")
-        # ax.y_scale("symlog")
-        log.info("scaled")
-        plt.savefig("rawdata.pdf")
-        plt.close("all")
-        log.info("plotted")
-        for timeseries_type in available_timeseries:
-            log.info("timeseries_type")
-            log.info(timeseries_type)
-            dates, times, timeseries = self.get_timeseries(timeseries_type)
-            log.info("dates:")
-            log.info(dates)
-            log.info("times: ")
-            log.info(times)
-            log.info("timeseries: ")
+            log.info("timeseries_type.value")
+            log.info(timeseries_type.value)
+            log.info("timeseries")
             log.info(timeseries)
 
-            df = pd.DataFrame()
-            dates, times, posteriors = self.get_posteriors(timeseries_type)
+            dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
+            log.info("posteriors")
+            log.info(posteriors)
             if posteriors is not None:
+
+                df = pd.DataFrame()
+                log.info("in posteriors")
                 df[f"Rt_MAP__{timeseries_type.value}"] = posteriors.idxmax()
+                log.info("added rt")
                 for ci in self.confidence_intervals:
                     ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
 
                     low_val = 1 - ci
                     high_val = ci
+                    log.info("creating df")
+
+                    log.info("added dates")
+                    df["date"] = dates
+                    df = df.set_index("date")
+                    log.info("added dates")
+                    df[f"{timeseries_type.value}"] = timeseries[start_idx:]
+                    log.info("added timeseries")
+                    log.info(df)
                     df[f"Rt_ci{int(math.floor(100 * low_val))}__{timeseries_type.value}"] = ci_low
                     df[f"Rt_ci{int(math.floor(100 * high_val))}__{timeseries_type.value}"] = ci_high
-
-                df["date"] = dates
-                df = df.set_index("date")
 
                 if df_all is None:
                     df_all = df
                 else:
                     df_all = df_all.merge(df, left_index=True, right_index=True, how="outer")
+
+                log.info("df_all")
+                log.info(df_all)
 
                 # ------------------------------------------------
                 # Compute the indicator lag using the curvature
@@ -718,6 +731,10 @@ class RtInferenceEngine:
             # plt.close()
         if df_all is None or df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
+
+        log.info("df_all")
+        log.info(df_all)
+        log.info(df_all.columns)
         return df_all
 
     @staticmethod
