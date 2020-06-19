@@ -543,8 +543,8 @@ class RtInferenceEngine:
 
             dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
             log.info("posteriors")
-            log.info(posteriors)
             if posteriors is not None:
+                log.info("there are posteriors")
 
                 df = pd.DataFrame()
                 log.info("in posteriors")
