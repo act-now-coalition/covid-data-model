@@ -204,7 +204,7 @@ class RtInferenceEngine:
             The requested timeseries.
         """
         timeseries_type = TimeseriesType(timeseries_type)
-
+        log.info("getting series in def")
         if timeseries_type is TimeseriesType.NEW_CASES:
             return self.case_dates, self.times, self.observed_new_cases
         elif timeseries_type is TimeseriesType.RAW_CASES:
@@ -279,14 +279,6 @@ class RtInferenceEngine:
             .mean(std=self.kernel_std)
             .round()
         )
-
-        log.info("MADE IT HERE")
-        log.info("timeseries")
-        log.info(timeseries)
-        log.info("timeseries.rolling round")
-        log.info(smoothed)
-        log.info("timeseries.rolling not rounded")
-        log.info(not_round_smoothed)
 
         plt.close("all")
         plt.plot(dates, timeseries_og, label="OG")
@@ -458,30 +450,14 @@ class RtInferenceEngine:
 
         return dates[start_idx:], times[start_idx:], posteriors
 
-    def infer_all(self, plot=True, shift_deaths=0):
-        """
-        Infer R_t from all available data sources.
-
-        Parameters
-        ----------
-        plot: bool
-            If True, generate a plot of the inference.
-        shift_deaths: int
-            Shift the death time series by this amount with respect to cases
-            (when plotting only, does not shift the returned result).
-
-        Returns
-        -------
-        inference_results: pd.DataFrame
-            Columns containing MAP estimates and confidence intervals.
-        """
-        log.info("NOW HERE")
-        df_all = None
+    def get_all_timeseries(self, plot=False):
         available_timeseries = []
 
         # Get case and death series (index two returned by get_timeseries() result)
         IDX_OF_COUNTS = 2
+        log.info("about to get timeseries in get_all_timeseries")
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
+        log.info("got cases")
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
         log.info("cases")
         log.info(cases)
@@ -515,6 +491,32 @@ class RtInferenceEngine:
             and len(hosps > 3)
         ):
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+
+        return available_timeseries
+
+    def infer_all(self, plot=True, shift_deaths=0):
+        """
+        Infer R_t from all available data sources.
+
+        Parameters
+        ----------
+        plot: bool
+            If True, generate a plot of the inference.
+        shift_deaths: int
+            Shift the death time series by this amount with respect to cases
+            (when plotting only, does not shift the returned result).
+
+        Returns
+        -------
+        inference_results: pd.DataFrame
+            Columns containing MAP estimates and confidence intervals.
+        """
+        log.info("NOW HERE")
+        df_all = None
+
+        log.info("about to get timeseries")
+        available_timeseries = self.get_all_timeseries()
+        log.info("got timeseries")
 
         log.info("about to plot raw data")
         plt.close("all")
