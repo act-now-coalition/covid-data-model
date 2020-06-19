@@ -13,12 +13,6 @@ from pyseir import load_data
 from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
-from structlog import configure
-from enum import Enum
-
-configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
-log = structlog.get_logger(__name__)
 
 
 class InferRtConstants:
@@ -141,9 +135,6 @@ class RtInferenceEngine:
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-        clear_threadlocal()
-        bind_threadlocal(Rt_Inference_Target=self.display_name)
-        log.info("Running")
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         if self.hospitalization_data_type:
@@ -178,6 +169,9 @@ class RtInferenceEngine:
             self.hospital_times = self.hospital_times[1:]
 
         self.log_likelihood = None
+
+        self.log = structlog.getLogger(Rt_Inference_Target=self.display_name)
+        self.log.info(event="Running:")
 
     def get_timeseries(self, timeseries_type):
         """
@@ -225,7 +219,7 @@ class RtInferenceEngine:
             This parameter allows you to filter out entire series
             (e.g. NEW_DEATHS) when they do not contain high enough
             numeric values. This has been added to account for low-level
-            constant smoothed values having a dispropotionate effect on
+            constant smoothed values having a disproportionate effect on
             our final R(t) calculation, when all of their values are below
             this parameter.
 
@@ -242,7 +236,7 @@ class RtInferenceEngine:
         """
         timeseries_type = TimeseriesType(timeseries_type)
         dates, times, timeseries = self.get_timeseries(timeseries_type)
-        bind_threadlocal(timeseries_type=timeseries_type.value)
+        self.log = self.log.bind(timeseries_type=timeseries_type.value)
 
         # Hospitalizations have a strange effect in the first few data points across many states.
         # Let's just drop those..
@@ -254,7 +248,7 @@ class RtInferenceEngine:
 
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
         # from the 14 day trailing mean and std
-        timeseries = replace_outliers(pd.Series(timeseries))
+        timeseries = replace_outliers(x=pd.Series(timeseries), log=self.log)
         smoothed = (
             timeseries.rolling(
                 self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
@@ -701,6 +695,7 @@ class RtInferenceEngine:
 
 def replace_outliers(
     x,
+    log,
     local_lookback_window=InferRtConstants.LOCAL_LOOKBACK_WINDOW,
     z_threshold=InferRtConstants.Z_THRESHOLD,
     min_mean_to_consider=InferRtConstants.MIN_MEAN_TO_CONSIDER,
@@ -721,6 +716,8 @@ def replace_outliers(
     ----------
     x
         Input pandas.Series with the values to analyze
+    log
+        Logger instance
     local_lookback_window
         The length of the rolling window to look back and calculate the mean and std to baseline the
         z score. NB: We require the window to be full before returning any result.
@@ -761,7 +758,7 @@ def replace_outliers(
 
     if len(changed_idx) > 0:
         log.info(
-            "Replacing Outliers with Linear Interpolation Between Nearest Neighbors",
+            event="Replacing Outliers:",
             outlier_values=changed_value,
             z_score=z_score[changed_idx].astype(int).tolist(),
             where=changed_idx,
@@ -786,7 +783,7 @@ def run_state(state, states_only=False):
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
-        logging.error("Emtpy dataframe encountered! No RtInfernce results available for %s", state)
+        logging.error("Emtpy dataframe encountered! No RtInference results available for %s", state)
     else:
         df.to_json(output_path)
 

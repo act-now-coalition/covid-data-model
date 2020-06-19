@@ -560,16 +560,11 @@ def get_current_hospitalized(fips, t0, category: HospitalizationCategory):
     current estimate: float
         The most recent provided value for the current occupied in the requested category.
     """
-
+    ts = combined_datasets.build_us_timeseries_with_all_fields()
     if len(fips) == 2:
-        kwargs = dict(
-            aggregation_level=AggregationLevel.STATE,
-            country="USA",
-            state=us.states.lookup(fips).abbr,
-        )
+        df = ts.get_data(AggregationLevel.STATE, country="USA", state=us.states.lookup(fips).abbr)
     else:
-        kwargs = dict(aggregation_level=AggregationLevel.COUNTY, country="USA", fips=fips)
-    df = combined_datasets.build_us_timeseries_with_all_fields().get_data(**kwargs)
+        df = ts.get_data(AggregationLevel.COUNTY, country="USA", fips=fips)
     return _get_current_hospitalized(df, t0, category)
 
 
@@ -599,14 +594,14 @@ def _get_current_hospitalized(
 
     # TODO: No need to pass t0 down and back up. Can return a datetime that consumer converts.
 
-    NUM_DAYS_TO_LOOK_BACK = 3
+    NUM_DAYS_LOOKBACK = 3
     # Agencies will start and stop reporting values. Also, depending on the time of day some columns
     # in a day row may propagate before others. Therefore, we don't want to just take the most
     # recent value which may be None, nor take just the most recent any value, which may be weeks
     # ago.
 
-    # Datetimes are in UTC. Look at possible values that are within this time window.
-    date_minimum = pd.Timestamp.utcnow() - pd.Timedelta(days=NUM_DAYS_TO_LOOK_BACK)
+    # Datetimes are in naive but UTC. Look at possible values that are within this time window.
+    date_minimum = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=NUM_DAYS_LOOKBACK)
     date_mask = df["date"] >= date_minimum.to_datetime64()
     recent_days_index = df.index[date_mask]
 
