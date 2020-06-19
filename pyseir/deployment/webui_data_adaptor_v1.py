@@ -212,7 +212,6 @@ class WebUIDataAdaptorV1:
             t0_simulation=t0_simulation, fips=fips, pyseir_outputs=pyseir_outputs,
         )
 
-        # Here is where we shimmy just for cumulative death right now.
         # We will shim all suppression policies by the same amount (since historical tracking error
         # for all policies is the same).
         baseline_policy = "suppression_policy__inferred"  # This could be any valid policy

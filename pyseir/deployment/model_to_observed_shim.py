@@ -6,9 +6,10 @@ import numpy as np
 def shim_deaths_model_to_observations(
     model_death_ts: Sequence, idx: int, observed_latest: dict, log
 ):
-    """Enforce the constraint that cumulative model deaths up to today equals cumulative observed
-    deaths up to today. Take model outputs and shim them s.t. the latest observed value matches the
-    same value for the outputted model.
+    """
+    Take model outputs and calculate a "shim" value that can be added to the entire modeled
+    cumulative deaths series to make them match the latest (i.e. today's) actual cumulative deaths.
+    As a consequence, this will shift the future values by the same amount.
 
     Parameters
     ----------
@@ -36,11 +37,11 @@ def shim_deaths_model_to_observations(
     if np.isnan(observed_latest_cum_deaths):
         death_shim = 0
     elif observed_latest_cum_deaths == 0:
+        # As of 19 June 2020, the observed dataset is still being validated for erroneous inputs.
+        # This includes cases of returning a 0 when we should be returning a np.nan/None.
+        # For now, we will not apply a shim if the result returned is 0.
         death_shim = 0
     else:
-        # To be consistent with the other shims coming, I will shim all values by the same amount
-        # so that the cumulative model today equals cumulative observed today. This will shift the
-        # future values by the same amount.
         death_shim = observed_latest_cum_deaths - model_latest_cum_deaths
 
     log.info(
