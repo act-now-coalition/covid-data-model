@@ -463,7 +463,7 @@ class RtInferenceEngine:
         log.info("returning from get_posteriors")
         return dates[start_idx:], times[start_idx:], posteriors, start_idx
 
-    def get_available_timeseries(self, plot=False):
+    def get_available_timeseries(self, plot=True):
         available_timeseries = []
 
         # Get case and death series (index two returned by get_timeseries() result)
@@ -500,6 +500,10 @@ class RtInferenceEngine:
             fig, ax = plt.subplots()
             for timeseries_type in available_timeseries:
                 dates, times, timeseries = self.get_timeseries(timeseries_type)
+                log.info("NATASHAHHHHHH")
+                log.info(timeseries_type)
+                log.info(dates)
+                log.info(timeseries)
                 ax.plot(dates, timeseries, label=timeseries_type, marker=".")
             ax.legend()
             # ax.y_scale("symlog")
@@ -562,7 +566,8 @@ class RtInferenceEngine:
                     df = df.set_index("date")
                     log.info("added dates")
                     df[f"{timeseries_type.value}"] = timeseries[start_idx:]
-                    log.info("added timeseries")
+                    log.info("added timeseries-----------------")
+                    log.info(timeseries[start_idx:])
                     log.info(df)
                     df[f"Rt_ci{int(math.floor(100 * low_val))}__{timeseries_type.value}"] = ci_low
                     df[f"Rt_ci{int(math.floor(100 * high_val))}__{timeseries_type.value}"] = ci_high
@@ -735,6 +740,7 @@ class RtInferenceEngine:
         log.info("df_all")
         log.info(df_all)
         log.info(df_all.columns)
+        df_all.to_csv("df_all.csv")
         return df_all
 
     @staticmethod
