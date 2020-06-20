@@ -30,7 +30,7 @@ class InferRtConstants:
 
     # Window size used during smoothing of cases and deaths
     # Originally 14 but odd is better and larger avoids edges that drive R unrealistically
-    SMOOTHING_WINDOW_SIZE = 14
+    COUNT_SMOOTHING_WINDOW_SIZE = 14
 
     # Infer Rt only using cases if True
     # Recommend True as deaths just confuse intepretability of Rt_eff and will muddy using its extrapolation
@@ -52,6 +52,11 @@ class InferRtConstants:
     # Recommend 1. - 5. range. 1. is allowing some counties to run that shouldn't (unphysical results)
     MIN_COUNTS_TO_INFER = 5.0
     # TODO really understand whether the min_cases and/or min_deaths compares to max, avg, or day to day counts
+
+    # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
+    # term shape correctly
+    SMOOTH_RT_MAP_COMPOSITE = 2
+    RT_SMOOTHING_WINDOW_SIZE = 25
 
 
 class RtInferenceEngine:
@@ -94,7 +99,7 @@ class RtInferenceEngine:
     def __init__(
         self,
         fips,
-        window_size=InferRtConstants.SMOOTHING_WINDOW_SIZE,
+        window_size=InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
         kernel_std=5,
         r_list=np.linspace(0, 10, 501),
         process_sigma=0.05,
@@ -668,22 +673,27 @@ class RtInferenceEngine:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
+        for i in range(0, InferRtConstants.SMOOTH_RT_MAP_COMPOSITE):
+            # Optionally Smooth just Rt_MAP_composite. Note this doesn't lag in time and preserves
+            # integral of Rteff over time
+            smoothed = (
+                df_all["Rt_MAP_composite"]
+                .rolling(
+                    InferRtConstants.RT_SMOOTHING_WINDOW_SIZE,
+                    win_type="gaussian",
+                    min_periods=self.kernel_std,
+                    center=True,
+                )
+                .mean(std=self.kernel_std)
+            )
+            df_all["Rt_MAP_composite"] = smoothed
+
         if plot and df_all is not None:
             plt.figure(figsize=(10, 6))
 
-            if "Rt_MAP_composite" in df_all:
-                plt.scatter(
-                    df_all.index,
-                    df_all["Rt_MAP_composite"],
-                    alpha=1,
-                    s=25,
-                    color="yellow",
-                    label="Inferred $R_{t}$ Web",
-                    marker="d",
-                )
-            plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
-            plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
-            plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
+            # plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
+            # plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
+            # plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
 
             if "Rt_ci5__new_deaths" in df_all:
                 plt.fill_between(
@@ -738,14 +748,25 @@ class RtInferenceEngine:
                     marker="d",
                 )
 
-            plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
+            if "Rt_MAP_composite" in df_all:
+                plt.scatter(
+                    df_all.index,
+                    df_all["Rt_MAP_composite"],
+                    alpha=1,
+                    s=25,
+                    color="black",
+                    label="Inferred $R_{t}$ Web",
+                    marker="d",
+                )
+
+            plt.hlines([0.9], *plt.xlim(), alpha=1, color="g")
             plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
-            plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
+            plt.hlines([1.4], *plt.xlim(), alpha=1, color="r")
 
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(-1, 4)
+            plt.ylim(0.0, 3.0)
             plt.ylabel("$R_t$", fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
