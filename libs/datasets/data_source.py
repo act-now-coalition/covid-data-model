@@ -23,6 +23,13 @@ class DataSource(object):
     # Indicates if NYC data is aggregated into one NYC county or not.
     HAS_AGGREGATED_NYC_BOROUGH = False
 
+    # Flag to indicate whether or not to fill missing state level data with county data
+    # when converting to either a TimeseriesDataset or LatestValuesDataset.
+    # Some data sources provide state level data, while others don't, however, due to how
+    # some data sources report data, aggregating on the county level data may lead to incorrect
+    # assumptions about missing vs data that is just zero.
+    FILL_MISSING_STATE_LEVEL_DATA = True
+
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
