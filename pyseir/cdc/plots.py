@@ -127,7 +127,7 @@ def run_all(forecast_date=FORECAST_DATE):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    fips_list = list(df_whitelist['fips'].str[:2].unique())
+    fips_list = list(df_whitelist['fips'].str[:2].unique())[:5]
     output_path = os.path.join(f'{REPORT_FOLDER}',
                                f'report_{datetime.strftime(forecast_date, DATE_FORMAT)}.pdf')
     pdf = backend_pdf.PdfPages(output_path)

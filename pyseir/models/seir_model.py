@@ -607,7 +607,7 @@ class SEIRModel:
             "steelblue",
             alpha=1,
             lw=2,
-            label="ICU Bed Capacity",
+            label="General Bed Capacity",
             linestyle="--",
         )
 
@@ -627,7 +627,7 @@ class SEIRModel:
             "firebrick",
             alpha=1,
             lw=2,
-            label="General Bed Capacity",
+            label="ICU Bed Capacity",
             linestyle="--",
         )
 

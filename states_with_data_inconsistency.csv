@@ -1,0 +1,39 @@
+,states,fips,cum_death_from_county_data,cum_death_at_state_level
+0,Alabama,01,615,618
+1,Arizona,04,899,903
+2,Arkansas,05,130,133
+3,Colorado,08,1415,1443
+4,Connecticut,09,3717,3912
+5,Delaware,10,360,361
+6,Florida,12,2386,2446
+7,Georgia,13,1920,1973
+8,Idaho,16,78,82
+9,Illinois,17,5226,5368
+10,Indiana,18,2094,2125
+11,Kentucky,21,439,441
+12,Maine,23,88,89
+13,Maryland,24,2253,2509
+14,Massachusetts,25,6554,6768
+15,Michigan,26,5370,5463
+16,Minnesota,27,980,1036
+17,Mississippi,28,711,723
+18,Nebraska,31,175,177
+19,Nevada,32,413,417
+20,New Hampshire,33,236,242
+21,New Jersey,34,11267,11634
+22,New Mexico,35,339,351
+23,New York,36,29304,29612
+24,North Carolina,37,895,903
+25,Oklahoma,40,331,334
+26,Oregon,41,143,153
+27,Pennsylvania,42,5510,5537
+28,Rhode Island,44,633,711
+29,South Carolina,45,483,487
+30,South Dakota,46,61,62
+31,Texas,48,1619,1676
+32,Utah,49,106,112
+33,Vermont,50,54,55
+34,Virginia,51,1368,1370
+35,Washington,53,1090,1126
+36,West Virginia,54,74,75
+37,Wisconsin,55,578,588

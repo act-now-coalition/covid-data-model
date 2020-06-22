@@ -101,12 +101,6 @@ class ModelFitter:
         errordef=0.5,
     )
 
-    PARAM_SETS = {
-        ("HI", "AK", "MT", "ID", "LA", "ND", "WV", "WY"): dict(
-            eps=0.25, t0=75, t_break=10, limit_t0=[50, 90]
-        ),
-    }
-
     REFF_LOWER_BOUND = 0.7
 
     steady_state_exposed_to_infected_ratio = 1.2
@@ -209,10 +203,26 @@ class ModelFitter:
         which improves stability substantially.
         """
         self.fit_params = self.DEFAULT_FIT_PARAMS
-        # Update any state specific params.
-        for k, v in self.PARAM_SETS.items():
-            if self.state_obj.abbr in k:
-                self.fit_params.update(v)
+        # Update State specific SEIR initial guesses
+        overwrite_params_df = pd.read_csv(
+            "./pyseir_data/pyseir_fitter_initial_conditions_2020_06_10.csv", dtype={"fips": object}
+        )
+
+        INITIAL_PARAM_SETS = [
+            "R0",
+            "t0",
+            "eps",
+            "t_break",
+            "eps2",
+            "t_delta_phases",
+            "test_fraction",
+            "hosp_fraction",
+            "log10_I_initial",
+        ]
+        if self.fips in overwrite_params_df["fips"].values:
+            this_fips_df = overwrite_params_df.loc[overwrite_params_df["fips"] == self.fips]
+            for param in INITIAL_PARAM_SETS:
+                self.fit_params[param] = this_fips_df[param]
 
         self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
         if self.fit_params["fix_hosp_fraction"]:
@@ -332,6 +342,7 @@ class ModelFitter:
         # If cumulative hospitalizations, differentiate.
         if self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             hosp_data = (self.hospitalizations[1:] - self.hospitalizations[:-1]).clip(min=0)
+
             hosp_stdev = (
                 self.percent_error_on_max_observation
                 * self.hospital_to_deaths_err_factor
@@ -481,6 +492,7 @@ class ModelFitter:
                 self.times, self.t_list + t0, model.results["total_new_infections"], left=0, right=0
             )
         )
+
         chi2_cases = calc_chi_sq(self.observed_new_cases, predicted_cases, self.cases_stdev)
 
         # -----------------------------------
@@ -575,6 +587,9 @@ class ModelFitter:
         delta_x = x[1] - x[0]
 
         # TODO: Extract and Label Gamma Scaling Factors So Others Can Understand
+        # this is probably why things changed from computer to computer scipy might be using its own number generator --Natasha
+        # May need to do something like was suggested here if the scipy seed does not inherit from numpy https://stackoverflow.com/questions/16016959/scipy-stats-seed
+        # Natasha clean this comment up or do something later after more tests
         prior = gamma.pdf((x - lower_bound_reff) / 1.5, 1.1)
         # Add a tiny amount to the likelihood to prevent zero common support
         # between the prior and likelihood functions.
@@ -616,17 +631,19 @@ class ModelFitter:
                 f"Epsilon == 0 which implies lack of convergence."
             )
 
+        # For now we are not applying posterior updating after the fit, but trust the fit to find the best R values
         # Most naive constraints: apply the same constraint to both epsilon 2 and epsilon 3
-        for epsilon in ["eps", "eps2"]:
-            adjusted_epsilon = ModelFitter.get_posterior_estimate_eps(
-                R0=self.fit_results["R0"],
-                eps=self.fit_results[epsilon],
-                eps_error=self.fit_results[f"{epsilon}_error"],
-                lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
-            )
-            # TODO: Add structured logging if this change is significant
-            self.fit_results[epsilon] = adjusted_epsilon
-
+        # for epsilon in ["eps", "eps2"]:
+        #    adjusted_epsilon = ModelFitter.get_posterior_estimate_eps(
+        #        R0=self.fit_results["R0"],
+        #        eps=self.fit_results[epsilon],
+        #        eps_error=self.fit_results[f"{epsilon}_error"],
+        #        lower_bound_reff=ModelFitter.REFF_LOWER_BOUND,
+        #    )
+        #    log.info(
+        #        f"FIPS: {self.fips} epsilon: {self.fit_results[epsilon]} adjusted: {adjusted_epsilon}"
+        #    )
+        #    self.fit_results[epsilon] = adjusted_epsilon
         if np.isnan(self.fit_results["t0"]):
             logging.error(f"Could not compute MLE values for {self.display_name}")
             self.fit_results["t0_date"] = (

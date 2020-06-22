@@ -1,7 +1,7 @@
 team_name: $team_name
 team_abbr: CAN
 institution_affil: covidactnow.org
-team_funding: ~
+team_funding:
 team_experience: Mathematical modeling of covid transmission at state/county level and UI reporting since Apr. 2020.
 
 model_name: $model_name
@@ -9,13 +9,13 @@ model_abbr: SEIR_CAN
 model_output: https://covidactnow.org/
 model_repo: https://github.com/covid-projections/covid-data-model
 
-model_contributors: Eric Carlson <eric.carlson@grandrounds.com> Max Henderson <max@maxhenderson.com>
-Chris Kelly <ghop02@gmail.com> Igor Kofman <kofman@gmail.com> Xinyu Zhang <xinyu.zhang@grandrounds.com>
+model_contributors: Eric Carlson <eric.carlson@grandrounds.com>, Max Henderson <max@maxhenderson.com>,
+Chris Kelly <ghop02@gmail.com>, Igor Kofman <kofman@gmail.com>, Xinyu Zhang <xinyu.zhang@grandrounds.com>
 
 Model_targets: $Model_targets
 
-Target_loc: some states
-time_horizon: ~
+Target_loc: state-level
+time_horizon:
 Data_format: all requested quantiles
 forecast_startdate: $forecast_startdate
 forecast_frequency: daily and weekly

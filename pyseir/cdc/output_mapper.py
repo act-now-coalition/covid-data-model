@@ -223,14 +223,15 @@ class OutputMapper:
         """
 
         """
-        for c in COLUMNS:
+        '''for c in COLUMNS:
             if c not in forecast.columns:
                 raise ValueError(f'column {c}' is missing)
 
         if forecast['quantile'].dtype is float:
             forecast['quantile'] = forecast['quantile'].apply(lambda v: '%.3f' % v)
         else forecast['quantile'].dtype is float:
-            return
+            return'''
+        return None
 
 
 
@@ -647,7 +648,6 @@ class OutputMapper:
         """
         kwargs = kwargs or {}
         om = cls(fips, **kwargs)
-        print(om.forecast_date)
         result = om.run()
         return result
 
@@ -746,11 +746,11 @@ def generate_us_result(targets=[Target.CUM_DEATH],
         us_result_quantiles['target'].append(target)
 
     us_result_quantiles = pd.DataFrame(us_result_quantiles).set_index('target')
-    num_of_targets = us_result.shape[0]
+    num_of_targets = us_result_quantiles.shape[0]
     us_result_quantiles = us_result_quantiles.explode('value').reset_index()
     us_result_quantiles['quantile'] = np.tile(QUANTILES, num_of_targets)
     us_result_quantiles['type'] = 'quantile'
-    us_result_quantiles['quantile'] = us_result['quantile'].apply(lambda v: '%.3f' % v)
+    us_result_quantiles['quantile'] = us_result_quantiles['quantile'].apply(lambda v: '%.3f' % v)
 
     us_result_point = us_result_quantiles[us_result_quantiles['quantile'] == '0.500'][
         ['target', 'value']].copy()

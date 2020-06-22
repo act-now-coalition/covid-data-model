@@ -228,10 +228,8 @@ class EnsembleRunner:
 
         # Determine the appropriate future suppression policy based on the
         # scenario of interest.
-        if scenario == "inferred":
-            eps_final = inferred_params["eps2"]
-        else:
-            eps_final = sp.get_future_suppression_from_r0(inferred_params["R0"], scenario=scenario)
+
+        eps_final = sp.estimate_future_suppression_from_fits(inferred_params, scenario=scenario)
 
         model.suppression_policy = sp.get_epsilon_interpolator(
             eps=inferred_params["eps"],

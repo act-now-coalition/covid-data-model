@@ -176,7 +176,7 @@ class HospitalShortageStartDate(QAMetric):
         value2_date = datetime.strptime(value2, "%Y-%m-%d")
 
         delta = value1_date - value1_date
-        return abs(delta.day)
+        return abs(delta.days)
 
 
 CURRENT_METRICS = [
@@ -198,5 +198,4 @@ TIMESERIES_METRICS = [
     CumulativePositiveTestsTS,
     CumulativeNegativeTestsTS,
     CumulativeInfectedTS,
-    CumulativeDeathsTS,
 ]
