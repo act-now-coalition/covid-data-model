@@ -225,7 +225,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
             raise ValueError("Index fields must match")
 
-        return cls.from_source(source)
+        return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
 
     def to_latest_values_dataset(self):
         from libs.datasets.latest_values_dataset import LatestValuesDataset
