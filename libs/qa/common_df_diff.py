@@ -1,9 +1,47 @@
 """
-CAUTION: UNREVIEWED BETA CODE
-
 Compare two dataframes loaded from CSV files. The files must have a single key column, currently
 named `fips` and a single time column named `date`. All other columns are treated as timeseries
-values to be compared.
+points to be compared. The column name of timeseries points is pivoted/stacked/melted to the
+`variable` column. A timeseries is the sequence of points from the same original column, with the
+same fips and is identified by the <fips, variable> pair. A file is said to contain a timeseries
+with identity <fips, variable> if the melted representation contains it contains at least one
+row for the <fips, variable> and a real (not NaN) value.
+
+This tool helps us find differences between files by aggregating the sets of timeseries in the files
+and outputting the differences.
+
+First timeseries points that appear in the same file more than once are dropped and output. A
+summary of the set of timeseries that appear in exactly one file is output. Then the common
+timeseries are compared. A summary of timeseries points that appear in exactly one file are output.
+sections of the timeseries that appear in both files are compared and the amount of difference is
+aggregated and output.
+
+
+Proposed output per variable:
+
+Variable: 'cases'
+
+Duplicate TS points dropped:
+    Left: FIPS xxyyy, xxyyy
+    Right: FIPS xxyyy, xxyyy
+Missing TS:
+    Left only: FIPS xxyyy, xxyyy
+    Right only: FIPS xxyyy, xxyyy
+TS Points Missing:
+    Left only Jun 21: FIPS xxyyy, xxyyy
+    Left only Jun 20: FIPS xxyyy, xxyyy
+    Left only Jun 19: FIPS xxyyy, xxyyy
+    Left only Jun 18-11: FIPS xxyyy, xxyyy
+    Left only Jun 10 - May 10: FIPS xxyyy, xxyyy
+Common TS:
+    No time range overlap: FIPS xxyyyy, ...
+    1-10 point overlap: most diff 0.4 FIPS xxyyy, median diff 0.2 FIPS xxyyy, least diff 0.01 FIPS xxyyy
+    11-21 point overlap: most diff 0.4 FIPS xxyyy, median diff 0.2 FIPS xxyyy, least diff 0.01 FIPS xxyyy
+
+
+Proposed way to print a bunch of FIPS:
+FIPS 5 states (xx, yy, zz, ...) and 6 counties (xxyyy, xxyyy, ... OR by state TX: 10, TN 10, ...)
+
 """
 
 
@@ -72,9 +110,6 @@ TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.
         return DatasetDiff(duplicates_dropped=dups, melt=melt, all_variable_fips=all_variable_fips)
 
     def compare(self, other: "DatasetDiff"):
-        # A timeseries is a set of <date, value> tuples identified by a <variable, fips> tuple. First
-        # find all the timeseries that have at least one real value in only one dataset. These are
-        # timeseries that appear in one file but not the other file.
         self.my_ts = self.all_variable_fips.difference(other.all_variable_fips)
         other.my_ts = other.all_variable_fips.difference(self.all_variable_fips)
 
