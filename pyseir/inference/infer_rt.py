@@ -22,6 +22,10 @@ class InferRtConstants:
     MIN_MEAN_TO_CONSIDER = 5
 
 
+# Small epsilon to prevent divide by 0 errors.
+EPSILON = 1e-8
+
+
 class RtInferenceEngine:
     """
     This class extends the analysis of Bettencourt et al to include mortality
@@ -737,8 +741,7 @@ def replace_outliers(
     r = x.rolling(window=local_lookback_window, min_periods=local_lookback_window, center=False)
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
-    z_score = (x - m) / s
-
+    z_score = (x - m) / (s + EPSILON)
     possible_changes_idx = np.where(z_score > z_threshold)[0]
     changed_idx = []
     changed_value = []

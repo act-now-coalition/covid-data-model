@@ -60,9 +60,7 @@ class InitialConditionsFitter(object):
         latest_values = combined_datasets.get_us_latest_for_fips(fips)
 
         self.cases = timeseries.data
-        # NOTE(chris): Should cases drop any empty rows? Thinking if there is a timeseries
-        # for one column, but no corresponding cases data point.
-        n_days = len(self.cases)
+        n_days = len(self.cases[CommonFields.CASES].dropna())
         if n_days < min_days_required:
             raise ValueError(f"Only {n_days} observations for county. Cannot fit.")
         self.fips = fips

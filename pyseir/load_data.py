@@ -331,8 +331,6 @@ def load_new_case_data_by_fips(
     """
     timeseries = combined_datasets.build_us_timeseries_with_all_fields()
     county_case_data = timeseries.get_data(None, fips=fips)
-    # Only including rows with cases reported.
-    county_case_data = county_case_data.loc[county_case_data[CommonFields.CASES].notnull(), :]
 
     times_new = (county_case_data["date"] - t0).dt.days.iloc[1:]
     observed_new_cases = (
@@ -611,8 +609,7 @@ def load_new_case_data_by_state(
     state_abbrev = us.states.lookup(state).abbr
     state_timeseries = combined_datasets.get_timeseries_for_state(state_abbrev)
     state_case_data = state_timeseries.data
-    # Only including rows with cases reported.
-    state_case_data = state_case_data.loc[state_case_data[CommonFields.CASES].notnull(), :]
+
     times_new = (state_case_data[CommonFields.DATE] - t0).dt.days.iloc[1:]
     observed_new_cases = (
         state_case_data[CommonFields.CASES].values[1:]
