@@ -105,7 +105,7 @@ class RtInferenceEngine:
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
-            _, self.not_corrected_new_cases, _ = load_data.load_new_case_data_by_state(
+            _, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
                 self.state, self.ref_date, False
             )
 
@@ -139,7 +139,7 @@ class RtInferenceEngine:
                 t0=self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
-            _, self.not_corrected_new_cases, _ = load_data.load_new_case_data_by_state(
+            _, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
                 self.state, self.ref_date, False
             )
             (
@@ -206,8 +206,8 @@ class RtInferenceEngine:
         timeseries_type = TimeseriesType(timeseries_type)
         if timeseries_type is TimeseriesType.NEW_CASES:
             return self.case_dates, self.times, self.observed_new_cases
-        elif timeseries_type is TimeseriesType.RAW_CASES:
-            return self.case_dates, self.times, self.not_corrected_new_cases
+        elif timeseries_type is TimeseriesType.RAW_NEW_CASES:
+            return self.case_dates, self.times, self.raw_new_cases
         elif timeseries_type is TimeseriesType.NEW_DEATHS:
             return self.case_dates, self.times, self.observed_new_deaths
         elif timeseries_type in (
@@ -476,7 +476,7 @@ class RtInferenceEngine:
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
-            available_timeseries.append(TimeseriesType.RAW_CASES)
+            available_timeseries.append(TimeseriesType.RAW_NEW_CASES)
 
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
@@ -536,7 +536,9 @@ class RtInferenceEngine:
 
         # Get list of available timeseries types
         # Which must meet minimum threshold requirements and determines if we have current/cumulative hospitalizations
+        log.info("getting timeseries")
         available_timeseries = self.get_available_timeseries()
+        log.info("got timeseriers")
 
         for timeseries_type in available_timeseries:
             dates, times, timeseries = self.get_timeseries(timeseries_type)
@@ -737,11 +739,47 @@ class RtInferenceEngine:
         if df_all is None or df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
 
-        log.info("df_all")
-        log.info(df_all)
-        log.info(df_all.columns)
         df_all.to_csv("df_all.csv")
+
+        log.info("about to forecast rt")
+        self.forecast_rt(df_all)
+        log.info("FORECAST")
         return df_all
+
+    def forecast_rt(self, df_all):
+        log.info("starting")
+        """
+        predict r_t for 14 days into the future
+        
+        Parameters
+        ___________
+        df_all: dataframe with dates, new_cases, new_deaths, and r_t values
+
+        Potential todo: add more features
+
+        Returns
+        __________
+        dates and forecast r_t values
+
+        """
+        log.info("beginning forecast")
+
+        # Convert dates to what day of 2020 it corresponds to for Forecast
+        SIM_DATE_NAME = "sim_day"
+        df_all["sim_day"] = (
+            df_all.index - self.ref_date
+        ).days + 1  # set first day of year to 1 not zero
+
+        # slim dataframe to only variables used in prediction
+        PREDICT_VARIABLE = "Rt_MAP_composite"
+        FORECAST_VARIABLES = ["raw_new_cases", "new_deaths", "Rt_MAP_composite", "sim_day"]
+        df_forecast = df_all[FORECAST_VARIABLES].copy()
+        log.info("forecast df")
+        log.info(df_forecast)
+
+        # Normalize input variables
+
+        return
 
     @staticmethod
     def ewma_smoothing(series, tau=5):
