@@ -16,6 +16,8 @@ from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGene
 from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
 from structlog import configure
 from enum import Enum
+from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
 
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
 log = structlog.get_logger(__name__)
@@ -783,6 +785,43 @@ class RtInferenceEngine:
         df_forecast.replace(r"\s+", np.nan, regex=True).replace("", np.nan)
 
         # Split into train and test before normalizing to avoid data leakage
+        # TODO: Test set will actually be entire series
+        TEST_SIZE = 0.2
+        train, test = train_test_split(df_forecast, test_size=TEST_SIZE, shuffle=False)
+        log.info("train set")
+        log.info(train)
+        log.info("test set")
+        log.info(test)
+        log.info(f"train_size: {len(train.index)} test_size: {len(test.index)}")
+
+        # Normalize Inputs for training
+        log.info("NORMALIZING")
+        scalers_dict = {}
+        for columnName, columnData in df_forecast.iteritems():
+            # there is probably a better way to do this
+            log.info("---------------")
+            log.info(columnName)
+            log.info(columnData.values)
+
+            log.info("getting scaler")
+            scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+            log.info("fitting scaler")
+            reshaped_data = columnData.values.reshape(-1, 1)
+            log.info("reshaped data")
+            log.info(reshaped_data)
+            log.info("shape of reshaped data")
+            log.info(reshaped_data.shape)
+
+            scaler = scaler.fit(reshaped_data)
+            log.info("transofmring values")
+            scaled_values = scaler.transform(reshaped_data)
+            log.info(scaled_values)
+
+            scalers_dict.update({columnName: scaler})
+
+        # check if dictionary of scalers works
+        log.info("scaled everything")
+        log.info(scalers_dict)
 
         return
 
