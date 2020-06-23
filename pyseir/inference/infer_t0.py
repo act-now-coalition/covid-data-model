@@ -29,8 +29,9 @@ def infer_t0(fips, method="first_case", default=pd.Timestamp("2020-02-01")):
     if method == "impute":
         t0 = fit_results.load_t0(fips)
     elif method == "first_case":
-        us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
-        fips_timeseries = us_timeseries.get_data(None, fips=fips)
+        fips_timeseries = combined_datasets.get_timeseries_for_fips(
+            fips, columns=[CommonFields.CASES], drop_padding_nans=True
+        )
         if not fips_timeseries.empty:
             t0 = fips_timeseries[CommonFields.DATE].min()
         else:

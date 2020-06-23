@@ -141,7 +141,19 @@ def get_us_latest_for_fips(fips) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
-def get_timeseries_for_fips(fips: str) -> TimeseriesDataset:
+def _remove_padded_nans(df, columns):
+    if df[columns].isna().all().all():
+        return df.loc[[False] * len(df), :]
+
+    first_valid_index = min(df[column].first_valid_index() for column in columns)
+    last_valid_index = max(df[column].last_valid_index() for column in columns)
+    df = df.iloc[first_valid_index:last_valid_index]
+    return df.reset_index(drop=True)
+
+
+def get_timeseries_for_fips(
+    fips: str, columns: List = None, remove_padding_nans: bool = False
+) -> TimeseriesDataset:
     """Gets timeseries for a specific FIPS code.
 
     Args:
@@ -150,19 +162,46 @@ def get_timeseries_for_fips(fips: str) -> TimeseriesDataset:
     Returns: Timeseries for fips
     """
 
-    return build_us_timeseries_with_all_fields().get_subset(None, fips=fips)
+    state_ts = build_us_timeseries_with_all_fields().get_subset(None, fips=fips)
+    if columns:
+        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
+            drop=True
+        )
+
+        if remove_padding_nans:
+            subset = _remove_padded_nans(subset, columns)
+
+        state_ts = TimeseriesDataset(subset)
+
+    return state_ts
 
 
-def get_timeseries_for_state(state: str) -> TimeseriesDataset:
+def get_timeseries_for_state(
+    state: str, columns: List = None, remove_padding_nans: bool = False
+) -> TimeseriesDataset:
     """Gets timeseries for a specific state abbreviation.
 
     Args:
         state: 2-letter state code
+        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
+        remove_padding_nans: If True, removes NaNs that pad values at beginning and end of
+            timeseries. Only applicable when columns are specified.
 
     Returns: Timeseries for state
     """
 
-    return build_us_timeseries_with_all_fields().get_subset(AggregationLevel.STATE, state=state)
+    state_ts = build_us_timeseries_with_all_fields().get_subset(AggregationLevel.STATE, state=state)
+    if columns:
+        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
+            drop=True
+        )
+
+        if remove_padding_nans:
+            subset = _remove_padded_nans(subset, columns)
+
+        state_ts = TimeseriesDataset(subset)
+
+    return state_ts
 
 
 def load_data_sources(
