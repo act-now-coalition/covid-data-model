@@ -1,21 +1,22 @@
-import numpy as np
-import pandas as pd
 import ujson as json
 import structlog
 import us
+from typing import Tuple
 from datetime import timedelta, datetime
+import numpy as np
+import pandas as pd
 from multiprocessing import Pool
 from pyseir import load_data
 from pyseir.inference.fit_results import load_inference_result, load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
 from libs.datasets import CommonFields
-from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset
+from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset, combined_datasets, dataset_cache
 from libs.datasets.dataset_utils import build_aggregate_county_data_frame
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.datasets.can_model_output_schema as schema
+import pyseir.deployment.model_to_observed_shim as shim
 
-from typing import Tuple
 
 log = structlog.get_logger()
 
@@ -69,12 +70,12 @@ class WebUIDataAdaptorV1:
         If current data is available, we return that.
         If not, current values are estimated from cumulative.
         """
-        county_hosp = load_data.get_current_hospitalized_for_county(
+        _, county_hosp = load_data.get_current_hospitalized(
             fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
-        )[1]
-        county_icu = load_data.get_current_hospitalized_for_county(
+        )
+        _, county_icu = load_data.get_current_hospitalized(
             fips, t0_simulation, category=load_data.HospitalizationCategory.ICU
-        )[1]
+        )
 
         return county_hosp, county_icu
 
@@ -105,20 +106,19 @@ class WebUIDataAdaptorV1:
         hosp_rescaling_factor
         icu_rescaling_factor
         """
-        t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized_for_state(
-            state=self.state_abbreviation,
+        state_fips = fips[:2]
+
+        t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized(
+            fips=state_fips,
             t0=t0_simulation,
             category=load_data.HospitalizationCategory.HOSPITALIZED,
         )
 
-        _, current_state_icu = load_data.get_current_hospitalized_for_state(
-            state=self.state_abbreviation,
-            t0=t0_simulation,
-            category=load_data.HospitalizationCategory.ICU,
+        _, current_state_icu = load_data.get_current_hospitalized(
+            fips=state_fips, t0=t0_simulation, category=load_data.HospitalizationCategory.ICU,
         )
 
         if current_hosp_count is not None:
-            state_fips = fips[:2]
             t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
 
             state_hosp_gen = load_data.get_compartment_value_on_date(
@@ -141,7 +141,7 @@ class WebUIDataAdaptorV1:
                 inferred_county_hosp = load_data.get_compartment_value_on_date(
                     fips=fips,
                     compartment="HGen",
-                    date=t_latest_hosp_data_date,
+                    date=t_latest_hosp_data_date,  # this could be off by a day from the hosp data
                     ensemble_results=pyseir_outputs,
                 )
 
@@ -212,6 +212,23 @@ class WebUIDataAdaptorV1:
             t0_simulation=t0_simulation, fips=fips, pyseir_outputs=pyseir_outputs,
         )
 
+        # We will shim all suppression policies by the same amount (since historical tracking error
+        # for all policies is the same).
+        baseline_policy = "suppression_policy__inferred"  # This could be any valid policy
+        model_death_ts = pyseir_outputs[baseline_policy]["total_deaths"]["ci_50"]
+        # We need the index in the model's temporal frame.
+        idx_offset = int(fit_results["t_today"] - fit_results["t0"])
+        # Get the latest observed values to shim to.
+        observed_latest_dict = combined_datasets.get_us_latest_for_fips(fips)
+        shim_log = structlog.getLogger(fips=fips)
+
+        death_shim = shim.shim_deaths_model_to_observations(
+            model_death_ts=model_death_ts,
+            idx=idx_offset,
+            observed_latest=observed_latest_dict,
+            log=shim_log,
+        )
+
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
         suppression_policies = [
@@ -257,9 +274,15 @@ class WebUIDataAdaptorV1:
                 output_model[schema.INFECTED_B], output_model[schema.INFECTED_C]
             )
             output_model[schema.ALL_INFECTED] = output_model[schema.INFECTED]
-            output_model[schema.DEAD] = np.interp(
-                t_list_downsampled, t_list, output_for_policy["total_deaths"]["ci_50"]
+
+            # Shim Deaths to Match Observed
+            raw_model_deaths_values = output_for_policy["total_deaths"]["ci_50"]
+            interp_model_deaths_values = np.interp(
+                t_list_downsampled, t_list, raw_model_deaths_values
             )
+            output_model[schema.DEAD] = (interp_model_deaths_values + death_shim).clip(min=0)
+
+            # Continue mapping
             final_beds = np.mean(output_for_policy["HGen"]["capacity"])
             output_model[schema.BEDS] = final_beds
             output_model[schema.CUMULATIVE_INFECTED] = np.interp(
@@ -272,12 +295,12 @@ class WebUIDataAdaptorV1:
                 output_model[schema.Rt] = np.interp(
                     t_list_downsampled,
                     t_list,
-                    fit_results["eps"] * fit_results["R0"] * np.ones(len(t_list)),
+                    fit_results["eps2"] * fit_results["R0"] * np.ones(len(t_list)),
                 )
                 output_model[schema.Rt_ci90] = np.interp(
                     t_list_downsampled,
                     t_list,
-                    2 * fit_results["eps_error"] * fit_results["R0"] * np.ones(len(t_list)),
+                    2 * fit_results["eps2_error"] * fit_results["R0"] * np.ones(len(t_list)),
                 )
             else:
                 output_model[schema.Rt] = 0
@@ -394,9 +417,10 @@ class WebUIDataAdaptorV1:
 
 
 if __name__ == "__main__":
+    dataset_cache.set_pickle_cache_dir()
     # Need to have a whitelist pre-generated
     # Need to have state output already built
     mapper = WebUIDataAdaptorV1(
-        state="California", output_interval_days=4, run_mode="can-inference-derived"
+        state="California", output_interval_days=1, run_mode="can-inference-derived"
     )
     mapper.generate_state(whitelisted_county_fips=["06037", "06075", "06059"], states_only=False)

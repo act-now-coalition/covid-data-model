@@ -247,7 +247,7 @@ def add_fips_using_county(data, fips_data) -> pd.Series:
     if len(non_matching):
         unique_counties = sorted(non_matching.county.unique())
         _logger.warning(f"Did not match {len(unique_counties)} counties to fips data.")
-        _logger.warning(f"{non_matching}")
+        # _logger.warning(f"{non_matching}")  # This is debugging info and crowding out the stdout
         # TODO: Make this an error?
 
     # Handles if a fips column already in the dataframe.
