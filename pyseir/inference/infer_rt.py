@@ -54,9 +54,9 @@ class InferRtConstants:
     # TODO really understand whether the min_cases and/or min_deaths compares to max, avg, or day to day counts
 
     # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
-    # term shape correctly
-    SMOOTH_RT_MAP_COMPOSITE = 1
-    RT_SMOOTHING_WINDOW_SIZE = 25
+    # term shape correctly.
+    SMOOTH_RT_MAP_COMPOSITE = 1  # number of times to apply soothing
+    RT_SMOOTHING_WINDOW_SIZE = 25  # also controls kernel_std
 
 
 class RtInferenceEngine:
