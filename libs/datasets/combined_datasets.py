@@ -1,6 +1,5 @@
 from typing import Dict, Type, List, NewType
 import logging
-import functools
 import pandas as pd
 import structlog
 from structlog.threadlocal import tmp_bind
