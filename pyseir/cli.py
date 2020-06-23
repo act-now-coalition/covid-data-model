@@ -208,7 +208,7 @@ def _build_all_for_states(
         _generate_whitelist()
 
     # do everything for just states in parallel
-    with Pool(maxtasksperchild=1) as p:
+    with Pool() as p:
         states_only_func = partial(
             _state_only_pipeline,
             run_mode=run_mode,
@@ -229,11 +229,11 @@ def _build_all_for_states(
         county_fips_per_state = {fips: state for fips in state_county_fips}
         all_county_fips.update(county_fips_per_state)
 
-    with Pool(maxtasksperchild=1) as p:
+    with Pool() as p:
         # calculate calculate county inference
         p.map(infer_rt_module.run_county, all_county_fips.keys())
 
-    with Pool(maxtasksperchild=1) as p:
+    with Pool() as p:
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
         fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
@@ -243,7 +243,7 @@ def _build_all_for_states(
     df["mle_model"] = [fit.mle_model for fit in fitters if fit]
     df.index = df.fips
 
-    with Pool(maxtasksperchild=1) as p:
+    with Pool() as p:
         state_dfs = [state_df for name, state_df in df.groupby("state")]
         p.map(model_fitter._persist_results_per_state, state_dfs)
 
@@ -253,7 +253,7 @@ def _build_all_for_states(
         ensemble_runner._run_county,
         ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
     )
-    with Pool(maxtasksperchild=1) as p:
+    with Pool() as p:
         p.map(ensemble_func, all_county_fips.keys())
 
     # output it all

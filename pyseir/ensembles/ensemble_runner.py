@@ -478,6 +478,6 @@ def run_state(state, ensemble_kwargs, states_only=False):
     if not states_only:
         # Run county level
         all_fips = load_data.get_all_fips_codes_for_a_state(state)
-        with Pool(maxtasksperchild=1, processes=2) as p:
+        with Pool() as p:
             f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
             p.map(f, all_fips)
