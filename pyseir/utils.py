@@ -18,6 +18,7 @@ REF_DATE = datetime(year=2020, month=1, day=1)
 
 class TimeseriesType(Enum):
     RAW_NEW_CASES = "raw_new_cases"
+    RAW_NEW_DEATHS = "raw_new_deaths"
     NEW_CASES = "new_cases"
     NEW_DEATHS = "new_deaths"
     NEW_HOSPITALIZATIONS = "new_hospitalizations"

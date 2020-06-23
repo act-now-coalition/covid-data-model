@@ -208,7 +208,7 @@ class RtInferenceEngine:
             return self.case_dates, self.times, self.observed_new_cases
         elif timeseries_type is TimeseriesType.RAW_NEW_CASES:
             return self.case_dates, self.times, self.raw_new_cases
-        elif timeseries_type is TimeseriesType.NEW_DEATHS:
+        elif timeseries_type is TimeseriesType.NEW_DEATHS or TimeseriesType.RAW_NEW_DEATHS:
             return self.case_dates, self.times, self.observed_new_deaths
         elif timeseries_type in (
             TimeseriesType.NEW_HOSPITALIZATIONS,
@@ -480,6 +480,7 @@ class RtInferenceEngine:
 
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
+            available_timeseries.append(TimeseriesType.RAW_NEW_DEATHS)
 
         if (
             self.hospitalization_data_type
@@ -774,6 +775,7 @@ class RtInferenceEngine:
         PREDICT_VARIABLE = "Rt_MAP_composite"
         FORECAST_VARIABLES = ["raw_new_cases", "new_deaths", "Rt_MAP_composite", "sim_day"]
         df_forecast = df_all[FORECAST_VARIABLES].copy()
+        df_forecast.to_csv("df_forecast.csv")
         log.info("forecast df")
         log.info(df_forecast)
 
