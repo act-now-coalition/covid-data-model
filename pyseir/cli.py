@@ -11,7 +11,9 @@ from libs.datasets import dataset_cache
 from pyseir.load_data import cache_county_case_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
-from pyseir.ensembles.ensemble_runner import run_state, RunMode, _run_county
+from pyseir.ensembles import ensemble_runner
+
+# from pyseir.ensembles.ensemble_runner import run_state, RunMode, _run_county
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
@@ -114,10 +116,12 @@ def _run_mle_fits(state=None, states_only=False):
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
     if state:
-        run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
+        ensemble_runner.run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
     else:
         for state_name in ALL_STATES:
-            run_state(state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
+            ensemble_runner.run_state(
+                state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only
+            )
 
 
 def _generate_state_reports(state=None):
@@ -246,7 +250,8 @@ def _build_all_for_states(
     # calculate ensemble
     root.info(f"running ensemble for {len(all_county_fips)} counties")
     ensemble_func = partial(
-        _run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+        ensemble_runner._run_county,
+        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
     )
     with Pool(maxtasksperchild=1) as p:
         p.map(ensemble_func, all_county_fips.keys())
@@ -255,7 +260,7 @@ def _build_all_for_states(
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
-    root.info(f"outputing web results for states and {len(all_county_fips)} counties")
+    root.info(f"outputting web results for states and {len(all_county_fips)} counties")
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
@@ -330,7 +335,7 @@ def run_mle_fits(state, states_only):
 @click.option(
     "--run-mode",
     default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in RunMode]),
+    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
@@ -367,7 +372,7 @@ def generate_state_report(state):
 @click.option(
     "--run-mode",
     default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in RunMode]),
+    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
@@ -390,7 +395,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option(
     "--run-mode",
     default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in RunMode]),
+    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option(
