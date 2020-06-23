@@ -17,7 +17,6 @@ from pyseir.reports.county_report import CountyReport
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from pyseir.inference import fit_results
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets import JHUDataset
 
 
 _logger = logging.getLogger(__name__)
@@ -99,19 +98,6 @@ class EnsembleRunner:
 
             self.output_file_report = None
             self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
-
-        county_fips = None if self.agg_level is AggregationLevel.STATE else self.fips
-
-        # if not covid_timeseries:
-        #     # TODO(tom): deprecate all code paths that get here. I'm trying to move towards loading all data
-        #     # once and passing it around in parameters.
-        #     covid_timeseries = JHUDataset.local().timeseries()
-        # else:
-        #     covid_timeseries = covid_timeseries.timeseries()
-        #
-        # self.covid_data = covid_timeseries.get_data(
-        #     aggregation_level=self.agg_level, country="USA", state=self.state_abbr, fips=county_fips
-        # ).sort_values("date")
 
         os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
         if self.output_file_report:
