@@ -30,7 +30,7 @@ class InferRtConstants:
 
     # Window size used during smoothing of cases and deaths
     # Originally 14 but odd is better and larger avoids edges that drive R unrealistically
-    COUNT_SMOOTHING_WINDOW_SIZE = 14
+    COUNT_SMOOTHING_WINDOW_SIZE = 19
 
     # Infer Rt only using cases if True
     # Recommend True as deaths just confuse intepretability of Rt_eff and will muddy using its extrapolation
@@ -55,7 +55,7 @@ class InferRtConstants:
 
     # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
     # term shape correctly
-    SMOOTH_RT_MAP_COMPOSITE = 2
+    SMOOTH_RT_MAP_COMPOSITE = 1
     RT_SMOOTHING_WINDOW_SIZE = 25
 
 
@@ -676,15 +676,16 @@ class RtInferenceEngine:
         for i in range(0, InferRtConstants.SMOOTH_RT_MAP_COMPOSITE):
             # Optionally Smooth just Rt_MAP_composite. Note this doesn't lag in time and preserves
             # integral of Rteff over time
+            kernel_width = round(InferRtConstants.RT_SMOOTHING_WINDOW_SIZE / 4)
             smoothed = (
                 df_all["Rt_MAP_composite"]
                 .rolling(
                     InferRtConstants.RT_SMOOTHING_WINDOW_SIZE,
                     win_type="gaussian",
-                    min_periods=self.kernel_std,
+                    min_periods=kernel_width,
                     center=True,
                 )
-                .mean(std=self.kernel_std)
+                .mean(std=kernel_width)
             )
             df_all["Rt_MAP_composite"] = smoothed
 
