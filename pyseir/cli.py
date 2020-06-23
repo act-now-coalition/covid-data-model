@@ -204,15 +204,15 @@ def _build_all_for_states(
         _generate_whitelist()
 
     # do everything for just states in parallel
-    p = Pool()
-    states_only_func = partial(
-        _state_only_pipeline,
-        run_mode=run_mode,
-        generate_reports=generate_reports,
-        output_interval_days=output_interval_days,
-        output_dir=output_dir,
-    )
-    p.map(states_only_func, states)
+    with Pool() as p:
+        states_only_func = partial(
+            _state_only_pipeline,
+            run_mode=run_mode,
+            generate_reports=generate_reports,
+            output_interval_days=output_interval_days,
+            output_dir=output_dir,
+        )
+        p.map(states_only_func, states)
 
     if states_only:
         root.info("Only executing for states. returning.")
@@ -225,27 +225,31 @@ def _build_all_for_states(
         county_fips_per_state = {fips: state for fips in state_county_fips}
         all_county_fips.update(county_fips_per_state)
 
-    # calculate calculate county inference
-    p.map(infer_rt_module.run_county, all_county_fips.keys())
+    with Pool() as p:
+        # calculate calculate county inference
+        p.map(infer_rt_module.run_county, all_county_fips.keys())
 
-    # calculate model fit
-    root.info(f"executing model for {len(all_county_fips)} counties")
-    fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
+    with Pool() as p:
+        # calculate model fit
+        root.info(f"executing model for {len(all_county_fips)} counties")
+        fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
 
     df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
     df["state"] = df.fips.replace(all_county_fips)
     df["mle_model"] = [fit.mle_model for fit in fitters if fit]
     df.index = df.fips
 
-    state_dfs = [state_df for name, state_df in df.groupby("state")]
-    p.map(model_fitter._persist_results_per_state, state_dfs)
+    with Pool() as p:
+        state_dfs = [state_df for name, state_df in df.groupby("state")]
+        p.map(model_fitter._persist_results_per_state, state_dfs)
 
     # calculate ensemble
     root.info(f"running ensemble for {len(all_county_fips)} counties")
     ensemble_func = partial(
         _run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
     )
-    p.map(ensemble_func, all_county_fips.keys())
+    with Pool() as p:
+        p.map(ensemble_func, all_county_fips.keys())
 
     # output it all
     output_interval_days = int(output_interval_days)
@@ -268,8 +272,6 @@ def _build_all_for_states(
             whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
             states_only=False,
         )
-    p.close()
-    p.join()
 
     return
 
