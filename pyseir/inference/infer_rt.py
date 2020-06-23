@@ -383,12 +383,14 @@ class RtInferenceEngine:
         sz = len(self.r_list)
         for row in range(0, sz):
             if row < (sz - 1) / 2:
-                drop = range(2 * row + 1, sz)
+                # drop = range(2 * row + 1, sz)
+                process_matrix[row, 2 * row + 1 : sz] = 0.0
             elif row > (sz - 1) / 2:
-                drop = range(0, sz - 2 * (sz - row))
+                # drop = range(0, sz - 2 * (sz - row))
+                process_matrix[row, 0 : sz - 2 * (sz - row)] = 0.0
             # print("y", y, "dropping x in", drop)
-            for col in drop:  # TODO do in bulk one row at a time
-                process_matrix[row, col] = 0.0
+            # for col in drop:  # TODO do in bulk one row at a time
+            # process_matrix[row, col] = 0.0
 
         # (3a) Normalize all rows to sum to 1
         row_sums = process_matrix.sum(axis=1)
