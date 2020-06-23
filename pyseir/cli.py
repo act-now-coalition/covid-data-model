@@ -1,9 +1,12 @@
-import sys, os
+import sys
+import os
 import click
 import us
 import logging
 import sentry_sdk
 import structlog
+import pandas as pd
+
 from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
 from functools import partial
@@ -12,16 +15,12 @@ from pyseir.load_data import cache_county_case_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
 from pyseir.ensembles import ensemble_runner
-
-# from pyseir.ensembles.ensemble_runner import run_state, RunMode, _run_county
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
-from libs.datasets import NYTimesDataset, CDSDataset
-from libs.datasets import combined_datasets
+from libs.datasets import NYTimesDataset, CDSDataset, combined_datasets
 from libs.us_state_abbrev import abbrev_us_state
 from pyseir.inference.whitelist_generator import WhitelistGenerator
-import pandas as pd
 
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -222,7 +221,7 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    # run states in parallel
+    # Build List of Counties
     all_county_fips = {}
     for state in states:
         state_county_fips = model_fitter.build_county_list(state)
@@ -232,28 +231,24 @@ def _build_all_for_states(
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
         p.map(infer_rt_module.run_county, all_county_fips.keys())
-
-    with Pool(maxtasksperchild=1) as p:
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
         fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
 
-    df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-    df["state"] = df.fips.replace(all_county_fips)
-    df["mle_model"] = [fit.mle_model for fit in fitters if fit]
-    df.index = df.fips
+        df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+        df["state"] = df.fips.replace(all_county_fips)
+        df["mle_model"] = [fit.mle_model for fit in fitters if fit]
+        df.index = df.fips
 
-    with Pool(maxtasksperchild=1) as p:
         state_dfs = [state_df for name, state_df in df.groupby("state")]
         p.map(model_fitter._persist_results_per_state, state_dfs)
 
-    # calculate ensemble
-    root.info(f"running ensemble for {len(all_county_fips)} counties")
-    ensemble_func = partial(
-        ensemble_runner._run_county,
-        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-    )
-    with Pool(maxtasksperchild=1) as p:
+        # calculate ensemble
+        root.info(f"running ensemble for {len(all_county_fips)} counties")
+        ensemble_func = partial(
+            ensemble_runner._run_county,
+            ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+        )
         p.map(ensemble_func, all_county_fips.keys())
 
     # output it all
