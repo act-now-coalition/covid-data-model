@@ -773,13 +773,16 @@ class RtInferenceEngine:
 
         # slim dataframe to only variables used in prediction
         PREDICT_VARIABLE = "Rt_MAP_composite"
-        FORECAST_VARIABLES = ["raw_new_cases", "new_deaths", "Rt_MAP_composite", "sim_day"]
+        FORECAST_VARIABLES = ["sim_day", "raw_new_cases", "raw_new_deaths", "Rt_MAP_composite"]
         df_forecast = df_all[FORECAST_VARIABLES].copy()
-        df_forecast.to_csv("df_forecast.csv")
+        df_forecast.to_csv("df_forecast.csv", na_rep="NaN")
         log.info("forecast df")
         log.info(df_forecast)
 
-        # Normalize input variables
+        # Fill empty values with zero
+        df_forecast.replace(r"\s+", np.nan, regex=True).replace("", np.nan)
+
+        # Split into train and test before normalizing to avoid data leakage
 
         return
 
