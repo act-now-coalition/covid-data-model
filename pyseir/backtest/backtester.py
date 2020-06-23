@@ -581,5 +581,5 @@ def run_for_fips_list(
     """
 
     kwargs = kwargs or {}
-    with Pool() as p:
+    with Pool(maxtasksperchild=1) as p:
         p.map(partial(Backtester.run_for_fips, kwargs), fips)
