@@ -13,6 +13,7 @@ from libs.datasets import combined_datasets
 import pandas as pd
 import numpy as np
 
+from libs.qa.common_df_diff import DatasetDiff
 
 _logger = logging.getLogger(__name__)
 
@@ -88,3 +89,21 @@ def form_path_name(csv_path_format, output_dir):
         timestamp=datetime.now().strftime("%Y%m%dT%H%M%S"),
     )
     return csv_path
+
+
+@main.command()
+@click.argument("csv_path_left", type=str, required=True)
+@click.argument("csv_path_right", type=str, required=True)
+def csv_diff(csv_path_left, csv_path_right):
+    """Compare 2 CSV files."""
+    df_l = common_df.read_csv(csv_path_left)
+    df_r = common_df.read_csv(csv_path_right)
+
+    differ_l = DatasetDiff.make(df_l)
+    differ_r = DatasetDiff.make(df_r)
+    differ_l.compare(differ_r)
+
+    print(f"File: {csv_path_left}")
+    print(differ_l)
+    print(f"File: {csv_path_right}")
+    print(differ_r)
