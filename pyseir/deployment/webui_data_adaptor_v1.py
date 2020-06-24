@@ -90,103 +90,6 @@ class WebUIDataAdaptorV1:
             CommonFields.POPULATION
         ]
 
-    def _get_model_to_dataset_conversion_factors(self, t0_simulation, fips, pyseir_outputs):
-        """
-        Return scaling factors to convert model hospitalization and model icu numbers to match
-        the most current values provided in combined_datasets.
-
-        Parameters
-        ----------
-        t0_simulation
-        fips
-        pyseir_outputs
-
-        Returns
-        -------
-        hosp_rescaling_factor
-        icu_rescaling_factor
-        """
-        state_fips = fips[:2]
-
-        t_latest_hosp_data, current_hosp_count = load_data.get_current_hospitalized(
-            fips=state_fips,
-            t0=t0_simulation,
-            category=load_data.HospitalizationCategory.HOSPITALIZED,
-        )
-
-        _, current_state_icu = load_data.get_current_hospitalized(
-            fips=state_fips, t0=t0_simulation, category=load_data.HospitalizationCategory.ICU,
-        )
-
-        if current_hosp_count is not None:
-            t_latest_hosp_data_date = t0_simulation + timedelta(days=int(t_latest_hosp_data))
-
-            state_hosp_gen = load_data.get_compartment_value_on_date(
-                fips=state_fips, compartment="HGen", date=t_latest_hosp_data_date
-            )
-            state_hosp_icu = load_data.get_compartment_value_on_date(
-                fips=state_fips, compartment="HICU", date=t_latest_hosp_data_date
-            )
-
-            if len(fips) == 5:
-                (current_county_hosp, current_county_icu,) = self._get_county_hospitalization(
-                    fips, t0_simulation
-                )
-                log.info(
-                    "Actual county hospitalizations",
-                    fips=fips,
-                    hospitalized=current_county_hosp,
-                    icu=current_county_icu,
-                )
-                inferred_county_hosp = load_data.get_compartment_value_on_date(
-                    fips=fips,
-                    compartment="HGen",
-                    date=t_latest_hosp_data_date,  # this could be off by a day from the hosp data
-                    ensemble_results=pyseir_outputs,
-                )
-
-                county_hosp = inferred_county_hosp
-
-                inferred_county_icu = load_data.get_compartment_value_on_date(
-                    fips=fips,
-                    compartment="HICU",
-                    date=t_latest_hosp_data_date,
-                    ensemble_results=pyseir_outputs,
-                )
-                log.info(
-                    "Inferred county hospitalized for fips.",
-                    fips=fips,
-                    hospitalized=inferred_county_hosp,
-                    icu=inferred_county_icu,
-                )
-                county_icu = inferred_county_icu
-                if self._is_valid_count_metric(current_county_hosp):
-                    # use actual instead of adjusted
-                    county_hosp = current_county_hosp
-
-                if self._is_valid_count_metric(current_county_icu):
-                    county_icu = current_county_icu
-
-                # Rescale the county level hospitalizations by the expected
-                # ratio of county / state hospitalizations from simulations.
-                # We use ICU data if available too.
-                current_hosp_count *= (county_hosp + county_icu) / (state_hosp_gen + state_hosp_icu)
-
-            hosp_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
-
-            # Some states have covidtracking issues. We shouldn't ground ICU cases
-            # to zero since so far these have all been bad reporting.
-            if len(fips) == 5 and self._is_valid_count_metric(current_county_icu):
-                icu_rescaling_factor = current_county_icu / inferred_county_icu
-            elif self._is_valid_count_metric(current_state_icu):
-                icu_rescaling_factor = current_state_icu / state_hosp_icu
-            else:
-                icu_rescaling_factor = current_hosp_count / (state_hosp_gen + state_hosp_icu)
-        else:
-            hosp_rescaling_factor = 1.0
-            icu_rescaling_factor = 1.0
-        return hosp_rescaling_factor, icu_rescaling_factor
-
     def map_fips(self, fips: str) -> None:
         """
         For a given fips code, for either a county or state, generate the CAN UI output format.
@@ -207,26 +110,51 @@ class WebUIDataAdaptorV1:
             return
         population = self._get_population(fips)
 
-        # Get multiplicative conversion factors to scale model output to fit dataset current values
-        hosp_rescaling_factor, icu_rescaling_factor = self._get_model_to_dataset_conversion_factors(
-            t0_simulation=t0_simulation, fips=fips, pyseir_outputs=pyseir_outputs,
-        )
-
         # We will shim all suppression policies by the same amount (since historical tracking error
         # for all policies is the same).
         baseline_policy = "suppression_policy__inferred"  # This could be any valid policy
-        model_death_ts = pyseir_outputs[baseline_policy]["total_deaths"]["ci_50"]
         # We need the index in the model's temporal frame.
         idx_offset = int(fit_results["t_today"] - fit_results["t0"])
-        # Get the latest observed values to shim to.
+        # Get the latest observed values to use in calculating shims
         observed_latest_dict = combined_datasets.get_us_latest_for_fips(fips)
         shim_log = structlog.getLogger(fips=fips)
 
-        death_shim = shim.shim_deaths_model_to_observations(
-            model_death_ts=model_death_ts,
-            idx=idx_offset,
-            observed_latest=observed_latest_dict,
-            log=shim_log,
+        # For Deaths
+        model_death_ts = pyseir_outputs[baseline_policy]["total_deaths"]["ci_50"]
+        model_death_latest = model_death_ts[idx_offset]
+        observed_death_latest = observed_latest_dict[CommonFields.DEATHS]
+
+        death_shim = shim.strict_shim(
+            model=model_death_latest,
+            observed=observed_death_latest,
+            log=shim_log.bind(type=CommonFields.DEATHS),
+        )
+
+        # For Total Hospitalizations
+        model_acute_ts = pyseir_outputs[baseline_policy]["HGen"]["ci_50"]
+        model_icu_ts = pyseir_outputs[baseline_policy]["HICU"]["ci_50"]
+        model_total_hosps_ts = model_acute_ts + model_icu_ts
+        model_total_hosps_latest = model_total_hosps_ts[idx_offset]
+        observed_total_hosps_latest = observed_latest_dict[CommonFields.CURRENT_HOSPITALIZED]
+
+        total_hosp_shim = shim.strict_shim(
+            model=model_total_hosps_latest,
+            observed=observed_total_hosps_latest,
+            log=shim_log.bind(type=CommonFields.CURRENT_HOSPITALIZED),
+        )
+
+        # For ICU
+        # This one is a little more interesting since we often don't have ICU.
+        model_acute_latest = model_acute_ts[idx_offset]
+        model_icu_latest = model_icu_ts[idx_offset]
+        observed_icu_latest = observed_latest_dict[CommonFields.CURRENT_ICU]
+
+        icu_shim = shim.intralevel_icu_shim(
+            model_acute_latest=model_acute_latest,
+            model_icu_latest=model_icu_latest,
+            observed_icu_latest=observed_icu_latest,
+            observed_total_hosps_latest=observed_total_hosps_latest,
+            log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
 
         # Iterate through each suppression policy.
@@ -259,20 +187,23 @@ class WebUIDataAdaptorV1:
                 np.add(output_for_policy["I"]["ci_50"], output_for_policy["A"]["ci_50"]),
             )  # Infected + Asympt.
             output_model[schema.INFECTED_A] = output_model[schema.INFECTED]
-            output_model[schema.INFECTED_B] = hosp_rescaling_factor * np.interp(
+
+            interpolated_model_acute_values = np.interp(
                 t_list_downsampled, t_list, output_for_policy["HGen"]["ci_50"]
-            )  # Hosp General
+            )
+            output_model[schema.INFECTED_B] = interpolated_model_acute_values
 
             raw_model_icu_values = output_for_policy["HICU"]["ci_50"]
             interpolated_model_icu_values = np.interp(
                 t_list_downsampled, t_list, raw_model_icu_values
             )
-            final_derived_model_value = icu_rescaling_factor * interpolated_model_icu_values
-            output_model[schema.INFECTED_C] = final_derived_model_value
+            output_model[schema.INFECTED_C] = icu_shim + interpolated_model_icu_values
+
             # General + ICU beds. don't include vent here because they are also counted in ICU
-            output_model[schema.ALL_HOSPITALIZED] = np.add(
-                output_model[schema.INFECTED_B], output_model[schema.INFECTED_C]
+            output_model[schema.ALL_HOSPITALIZED] = (
+                interpolated_model_acute_values + interpolated_model_icu_values + total_hosp_shim
             )
+
             output_model[schema.ALL_INFECTED] = output_model[schema.INFECTED]
 
             # Shim Deaths to Match Observed
@@ -306,7 +237,7 @@ class WebUIDataAdaptorV1:
                 output_model[schema.Rt] = 0
                 output_model[schema.Rt_ci90] = 0
 
-            output_model[schema.CURRENT_VENTILATED] = icu_rescaling_factor * np.interp(
+            output_model[schema.CURRENT_VENTILATED] = icu_shim + np.interp(
                 t_list_downsampled, t_list, output_for_policy["HVent"]["ci_50"]
             )
             output_model[schema.POPULATION] = population
