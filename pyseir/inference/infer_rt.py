@@ -827,6 +827,12 @@ class RtInferenceEngine:
         plt.legend()
         plt.savefig("scaledfig.pdf")
 
+        # Get features and labels
+        MIN_NUMBER_OF_DAYS = (
+            30  # I don't think it makes sense to predict anything until we have a month of data
+        )
+        # Create list of dataframes for testing
+
         # check if dictionary of scalers works
         log.info("scaled everything")
         log.info(scalers_dict)
