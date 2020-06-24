@@ -678,7 +678,7 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
         this value. There can be instability if case counts are very low.
     """
     fips_timeseries = combined_datasets.get_timeseries_for_fips(fips)
-    df = fips_timeseries.data
+    df = fips_timeseries.data.copy()
 
     # Aggregation level is None as fips is unique across aggregation levels.
     df = df.loc[
@@ -714,12 +714,11 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
             "new_positive",
         ]
     ]
-
-    df = df[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull()]
+    df = df.loc[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull(), :]
     df["expected_positives_from_test_increase"] = ewma_smoothing(
         df["expected_positives_from_test_increase"], smoothing_tau
     )
-    df["expected_positives_from_test_increase"][df["new_positive"] < 5] = 0
+    df.loc[df["new_positive"] < 5, "expected_positives_from_test_increase"] = 0
 
     df["times"] = [
         int((date - t0).days) for date in pd.to_datetime(df["date"].values).to_pydatetime()
