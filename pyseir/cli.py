@@ -55,8 +55,10 @@ def entry_point():
     structlog.configure(
         processors=[
             structlog.stdlib.add_log_level,  # required before SentryProcessor()
-            # sentry_sdk creates events for level >= ERROR and keeps level >= INFO as breadcrumbs.
-            SentryProcessor(level=logging.INFO),
+            # sentry_sdk creates events for level >= ERROR. Getting breadcrumbs from structlog
+            # isn't supported without a lot of custom work. See
+            # https://github.com/kiwicom/structlog-sentry/issues/25
+            SentryProcessor(level=logging.ERROR),
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.dev.ConsoleRenderer(),
         ]
