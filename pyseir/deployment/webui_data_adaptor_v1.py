@@ -197,12 +197,12 @@ class WebUIDataAdaptorV1:
             interpolated_model_icu_values = np.interp(
                 t_list_downsampled, t_list, raw_model_icu_values
             )
-            output_model[schema.INFECTED_C] = icu_shim + interpolated_model_icu_values
+            output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
 
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = (
                 interpolated_model_acute_values + interpolated_model_icu_values + total_hosp_shim
-            )
+            ).clip(min=0)
 
             output_model[schema.ALL_INFECTED] = output_model[schema.INFECTED]
 
@@ -237,9 +237,10 @@ class WebUIDataAdaptorV1:
                 output_model[schema.Rt] = 0
                 output_model[schema.Rt_ci90] = 0
 
-            output_model[schema.CURRENT_VENTILATED] = icu_shim + np.interp(
-                t_list_downsampled, t_list, output_for_policy["HVent"]["ci_50"]
-            )
+            output_model[schema.CURRENT_VENTILATED] = (
+                icu_shim
+                + np.interp(t_list_downsampled, t_list, output_for_policy["HVent"]["ci_50"])
+            ).clip(min=0)
             output_model[schema.POPULATION] = population
             # Average capacity.
             output_model[schema.ICU_BED_CAPACITY] = np.mean(output_for_policy["HICU"]["capacity"])
