@@ -690,6 +690,13 @@ class RtInferenceEngine:
                 .mean(std=kernel_width)
             )
             df_all["Rt_MAP_composite"] = smoothed
+            df_all["Rt_ci95_composite"] = (
+                (df_all["Rt_ci95_composite"] - df_all["Rt_MAP_composite"])
+                / math.sqrt(
+                    2.0 * kernel_width  # averaging over many points reduces confidence interval
+                )
+                + df_all["Rt_MAP_composite"]
+            )
 
         if plot and df_all is not None:
             plt.figure(figsize=(10, 6))
@@ -698,7 +705,7 @@ class RtInferenceEngine:
             # plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
             # plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
 
-            if "Rt_ci5__new_deaths" in df_all:
+            if "Rt_ci5__new_deaths" in df_all and not InferRtConstants.DISABLE_DEATHS:
                 plt.fill_between(
                     df_all.index,
                     df_all["Rt_ci5__new_deaths"],
@@ -716,13 +723,14 @@ class RtInferenceEngine:
                 )
 
             if "Rt_ci5__new_cases" in df_all:
-                plt.fill_between(
-                    df_all.index,
-                    df_all["Rt_ci5__new_cases"],
-                    df_all["Rt_ci95__new_cases"],
-                    alpha=0.2,
-                    color="steelblue",
-                )
+                if not InferRtConstants.DISABLE_DEATHS:
+                    plt.fill_between(
+                        df_all.index,
+                        df_all["Rt_ci5__new_cases"],
+                        df_all["Rt_ci95__new_cases"],
+                        alpha=0.2,
+                        color="steelblue",
+                    )
                 plt.scatter(
                     df_all.index,
                     df_all["Rt_MAP__new_cases"],
@@ -733,7 +741,7 @@ class RtInferenceEngine:
                     marker="s",
                 )
 
-            if "Rt_ci5__new_hospitalizations" in df_all:
+            if "Rt_ci5__new_hospitalizations" in df_all and not InferRtConstants.DISABLE_DEATHS:
                 plt.fill_between(
                     df_all.index,
                     df_all["Rt_ci5__new_hospitalizations"],
@@ -762,6 +770,15 @@ class RtInferenceEngine:
                     marker="d",
                 )
 
+            if "Rt_ci95_composite" in df_all:
+                plt.fill_between(
+                    df_all.index,
+                    df_all["Rt_ci95_composite"],
+                    2 * df_all["Rt_MAP_composite"] - df_all["Rt_ci95_composite"],
+                    alpha=0.2,
+                    color="gray",
+                )
+
             plt.hlines([0.9], *plt.xlim(), alpha=1, color="g")
             plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
             plt.hlines([1.4], *plt.xlim(), alpha=1, color="r")
@@ -769,7 +786,7 @@ class RtInferenceEngine:
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(0.0, 3.0)
+            plt.ylim(0.5, 2.5)
             plt.ylabel("$R_t$", fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
