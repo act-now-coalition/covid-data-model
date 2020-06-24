@@ -113,6 +113,7 @@ class WebUIDataAdaptorV1:
         # We will shim all suppression policies by the same amount (since historical tracking error
         # for all policies is the same).
         baseline_policy = "suppression_policy__inferred"  # This could be any valid policy
+
         # We need the index in the model's temporal frame.
         idx_offset = int(fit_results["t_today"] - fit_results["t0"])
         # Get the latest observed values to use in calculating shims
