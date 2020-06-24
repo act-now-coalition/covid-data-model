@@ -396,10 +396,9 @@ class WebUIDataAdaptorV1:
         if states_only:
             return
         else:
-            p = Pool()
-            p.map(self.map_fips, whitelisted_county_fips)
-            p.close()
-            p.join()
+            with Pool(maxtasksperchild=1) as p:
+                p.map(self.map_fips, whitelisted_county_fips)
+
             return
 
 

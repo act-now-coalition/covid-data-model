@@ -189,7 +189,7 @@ def add_county_using_fips(data, fips_data):
     if len(non_matching):
         unique_fips = sorted(non_matching.fips.unique())
         _logger.warning(f"Did not match {len(unique_fips)} codes to county data.")
-        _logger.warning(f"{unique_fips}")
+        _logger.debug(f"{unique_fips}")
 
     if "county_r" in data.columns:
         data = data.drop(columns="county").rename({"county_r": "county"}, axis=1)

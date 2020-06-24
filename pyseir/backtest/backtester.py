@@ -569,7 +569,7 @@ def run_for_fips_list(
           for defails, check: https://pandas.pydata.org/pandas-docs/version/0
           .23.4/generated/pandas.Series.rolling.html
         - ts_rolling_kernel_args:  dict, parameters for
-          pandas.Series.rolling window kernel, for defails, check description
+          pandas.Series.rolling window kernel, for details, check description
           of win_type in: https://pandas.pydata.org/pandas-docs/version/0.23
           .4/generated/pandas.Series.rolling.html
         - prediction_window_size
@@ -581,6 +581,5 @@ def run_for_fips_list(
     """
 
     kwargs = kwargs or {}
-    p = Pool()
-    p.map(partial(Backtester.run_for_fips, kwargs), fips)
-    p.close()
+    with Pool(maxtasksperchild=1) as p:
+        p.map(partial(Backtester.run_for_fips, kwargs), fips)
