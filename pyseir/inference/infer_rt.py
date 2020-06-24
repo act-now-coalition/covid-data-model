@@ -786,7 +786,7 @@ def run_state(state, states_only=False):
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
-        logging.error("Emtpy dataframe encountered! No RtInference results available for %s", state)
+        logging.error("Empty dataframe encountered! No RtInference results available for %s", state)
     else:
         df.to_json(output_path)
 

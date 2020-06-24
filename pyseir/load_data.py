@@ -330,7 +330,7 @@ def load_new_case_data_by_fips(
         Array of new deaths observed each day.
     """
     county_case_timeseries = combined_datasets.get_timeseries_for_fips(
-        fips, columns=[CommonFields.CASES, CommonFields.DEATHS], remove_padding_nans=True
+        fips, columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
     )
     county_case_data = county_case_timeseries.data
 
@@ -389,7 +389,9 @@ def load_new_case_data_by_state(
     """
     state_abbrev = us.states.lookup(state).abbr
     state_timeseries = combined_datasets.get_timeseries_for_state(
-        state_abbrev, columns=[CommonFields.CASES, CommonFields.DEATHS], remove_padding_nans=True
+        state_abbrev,
+        columns=[CommonFields.CASES, CommonFields.DEATHS],
+        min_range_with_some_value=True,
     )
     state_case_data = state_timeseries.data
 

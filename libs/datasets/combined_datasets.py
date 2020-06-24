@@ -152,12 +152,15 @@ def _remove_padded_nans(df, columns):
 
 
 def get_timeseries_for_fips(
-    fips: str, columns: List = None, remove_padding_nans: bool = False
+    fips: str, columns: List = None, min_range_with_some_value: bool = False
 ) -> TimeseriesDataset:
     """Gets timeseries for a specific FIPS code.
 
     Args:
         fips: FIPS code.  Can be county (5 character) or state (2 character) code.
+        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
+        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
+            timeseries. Only applicable when columns are specified.
 
     Returns: Timeseries for fips
     """
@@ -168,7 +171,7 @@ def get_timeseries_for_fips(
             drop=True
         )
 
-        if remove_padding_nans:
+        if min_range_with_some_value:
             subset = _remove_padded_nans(subset, columns)
 
         state_ts = TimeseriesDataset(subset)
@@ -177,14 +180,14 @@ def get_timeseries_for_fips(
 
 
 def get_timeseries_for_state(
-    state: str, columns: List = None, remove_padding_nans: bool = False
+    state: str, columns: List = None, min_range_with_some_value: bool = False
 ) -> TimeseriesDataset:
     """Gets timeseries for a specific state abbreviation.
 
     Args:
         state: 2-letter state code
         columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-        remove_padding_nans: If True, removes NaNs that pad values at beginning and end of
+        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
             timeseries. Only applicable when columns are specified.
 
     Returns: Timeseries for state
@@ -196,7 +199,7 @@ def get_timeseries_for_state(
             drop=True
         )
 
-        if remove_padding_nans:
+        if min_range_with_some_value:
             subset = _remove_padded_nans(subset, columns)
 
         state_ts = TimeseriesDataset(subset)

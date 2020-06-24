@@ -50,7 +50,7 @@ class CountyReport:
         self.summary = summary
 
         timeseries = combined_datasets.get_timeseries_for_fips(
-            fips, columns=[CommonFields.CASES, CommonFields.DEATHS], remove_padding_nans=True
+            fips, columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
         )
         self.county_case_data = timeseries.data
         self.report = PDFReport(filename=filename)

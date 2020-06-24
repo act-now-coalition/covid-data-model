@@ -57,7 +57,7 @@ class InitialConditionsFitter(object):
         self.min_days_required = min_days_required
 
         timeseries = combined_datasets.get_timeseries_for_fips(
-            fips, columns=[CommonFields.CASES], remove_padding_nans=True
+            fips, columns=[CommonFields.CASES], min_range_with_some_value=True
         )
         latest_values = combined_datasets.get_us_latest_for_fips(fips)
         self.cases = timeseries.data
