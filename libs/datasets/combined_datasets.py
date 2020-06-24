@@ -8,10 +8,12 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
@@ -41,8 +43,8 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [JHUDataset],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -59,6 +61,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
+    CommonFields.COUNTY: [FIPSPopulation],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
@@ -73,8 +76,8 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [JHUDataset],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -135,6 +138,72 @@ def get_us_latest_for_fips(fips) -> dict:
     """Gets latest values for a given fips code."""
     us_latest = build_us_latest_with_all_fields()
     return us_latest.get_record_for_fips(fips)
+
+
+def _remove_padded_nans(df, columns):
+    if df[columns].isna().all().all():
+        return df.loc[[False] * len(df), :].reset_index(drop=True)
+
+    first_valid_index = min(df[column].first_valid_index() for column in columns)
+    last_valid_index = max(df[column].last_valid_index() for column in columns)
+    df = df.iloc[first_valid_index:last_valid_index]
+    return df.reset_index(drop=True)
+
+
+def get_timeseries_for_fips(
+    fips: str, columns: List = None, min_range_with_some_value: bool = False
+) -> TimeseriesDataset:
+    """Gets timeseries for a specific FIPS code.
+
+    Args:
+        fips: FIPS code.  Can be county (5 character) or state (2 character) code.
+        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
+        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
+            timeseries. Only applicable when columns are specified.
+
+    Returns: Timeseries for fips
+    """
+
+    state_ts = build_us_timeseries_with_all_fields().get_subset(None, fips=fips)
+    if columns:
+        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
+            drop=True
+        )
+
+        if min_range_with_some_value:
+            subset = _remove_padded_nans(subset, columns)
+
+        state_ts = TimeseriesDataset(subset)
+
+    return state_ts
+
+
+def get_timeseries_for_state(
+    state: str, columns: List = None, min_range_with_some_value: bool = False
+) -> TimeseriesDataset:
+    """Gets timeseries for a specific state abbreviation.
+
+    Args:
+        state: 2-letter state code
+        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
+        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
+            timeseries. Only applicable when columns are specified.
+
+    Returns: Timeseries for state
+    """
+
+    state_ts = build_us_timeseries_with_all_fields().get_subset(AggregationLevel.STATE, state=state)
+    if columns:
+        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
+            drop=True
+        )
+
+        if min_range_with_some_value:
+            subset = _remove_padded_nans(subset, columns)
+
+        state_ts = TimeseriesDataset(subset)
+
+    return state_ts
 
 
 def load_data_sources(

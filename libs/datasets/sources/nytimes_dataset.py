@@ -52,5 +52,6 @@ class NYTimesDataset(data_source.DataSource):
         # Super hacky way of filling in new york.
         data.loc[data[cls.Fields.COUNTY] == "New York City", "county"] = "New York County"
         data.loc[data[cls.Fields.COUNTY] == "New York County", "fips"] = "36061"
+        data.loc[data[cls.Fields.COUNTY] == "Unknown", "fips"] = "99999"
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
         return data

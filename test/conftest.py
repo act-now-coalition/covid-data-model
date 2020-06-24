@@ -7,3 +7,8 @@ def set_timeseries_dataset_cache():
     # Forcing cache to use a new folder to always regenerate cache
     # during tests.
     dataset_cache.set_pickle_cache_dir(force=True, cache_dir=None)
+
+
+@pytest.fixture
+def nyc_fips():
+    return "36061"
