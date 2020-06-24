@@ -82,8 +82,8 @@ def _whitelist_candidates_per_fips(fips):
     )
     record = dict(
         fips=fips,
-        total_cases=observed_new_cases[observed_new_cases > 0].sum(),
-        total_deaths=observed_new_deaths[observed_new_deaths > 0].sum(),
+        total_cases=observed_new_cases.sum(),
+        total_deaths=observed_new_deaths.sum(),
         nonzero_case_datapoints=np.sum(observed_new_cases > 0),
         nonzero_death_datapoints=np.sum(observed_new_deaths > 0),
     )

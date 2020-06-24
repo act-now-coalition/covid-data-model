@@ -143,7 +143,7 @@ def get_us_latest_for_fips(fips) -> dict:
 
 def _remove_padded_nans(df, columns):
     if df[columns].isna().all().all():
-        return df.loc[[False] * len(df), :]
+        return df.loc[[False] * len(df), :].reset_index(drop=True)
 
     first_valid_index = min(df[column].first_valid_index() for column in columns)
     last_valid_index = max(df[column].last_valid_index() for column in columns)
@@ -256,7 +256,6 @@ def build_combined_dataset_from_sources(
     # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
     log = structlog.get_logger()
     for field, data_source_classes in feature_definition_config.items():
-        print(field, data_source_classes)
         for data_source_cls in data_source_classes:
             dataset = intermediate_datasets[data_source_cls]
             with tmp_bind(log, dataset_name=data_source_cls.SOURCE_NAME, field=field) as log:

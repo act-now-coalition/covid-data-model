@@ -392,7 +392,6 @@ def load_new_case_data_by_state(
         state_abbrev, columns=[CommonFields.CASES, CommonFields.DEATHS], remove_padding_nans=True
     )
     state_case_data = state_timeseries.data
-    print(state_case_data)
 
     times_new = (state_case_data[CommonFields.DATE] - t0).dt.days.iloc[1:]
     observed_new_cases = (
@@ -680,10 +679,11 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
     df = fips_timeseries.data
 
     # Aggregation level is None as fips is unique across aggregation levels.
-    df = df[
+    df = df.loc[
         (df[CommonFields.POSITIVE_TESTS].notnull())
         & (df[CommonFields.NEGATIVE_TESTS].notnull())
-        & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0)
+        & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0),
+        :,
     ]
 
     df["positivity_rate"] = df[CommonFields.POSITIVE_TESTS] / (
