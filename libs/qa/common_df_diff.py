@@ -55,18 +55,28 @@ from covidactnow.datapublic.common_fields import CommonFields, COMMON_FIELDS_TIM
 
 
 class DatasetDiff(BaseModel):
+    # Duplicates that are dropped from consideration for the diff
     duplicates_dropped: pd.DataFrame
+    # The non-duplicated values pivoted/stacked/melted with new column 'value' and new index level
+    # 'variable'
     melt: pd.DataFrame
+    # MultiIndex with levels 'variable' and 'fips'. Since a timeseries in a dataset is identified
+    # by a <variable, fips> pair this is usable as the set of all timeseries in this dataset.
     all_variable_fips: pd.MultiIndex
+    # The subset of all_variable_fips that appears in this dataset but not the other one
     my_ts: Optional[pd.MultiIndex] = None
+    # The timeseries that appear in both this dataset and the other one
     common_fips: Optional[pd.DataFrame] = None
+    # Timeseries points that appear in this dataset but not the other one
     my_ts_points: Optional[pd.DataFrame] = None
+    # Diffs of overlapping parts of the timeseries, only set on the left dataset
     ts_diffs: Optional[pd.DataFrame] = None
 
     class Config:
         arbitrary_types_allowed = True
 
     def __str__(self):
+        # TODO(tom): Make this easier to read. See idea in docstring at top of this file.
         return f"""Duplicate rows in this file: {self.duplicates_dropped}
 TS only in this file: {self.my_ts}
 TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()}
