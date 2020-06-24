@@ -1032,7 +1032,6 @@ def build_county_list(state):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-
     all_fips = df_whitelist[
         df_whitelist["state"].str.lower() == state_obj.name.lower()
     ].fips.tolist()
