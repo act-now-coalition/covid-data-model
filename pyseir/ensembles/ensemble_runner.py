@@ -55,8 +55,6 @@ class EnsembleRunner:
     hospitalization_to_confirmed_case_ratio: float
         When hospitalization data is not available directly, this fraction of
         confirmed cases defines the initial number of hospitalizations.
-    covid_timeseries: NoneType or DataSet
-        Can be optionally passed in to prevent reloading.
     """
 
     def __init__(
@@ -71,7 +69,6 @@ class EnsembleRunner:
         run_mode=RunMode.DEFAULT,
         min_hospitalization_threshold=5,
         hospitalization_to_confirmed_case_ratio=1 / 4,
-        covid_timeseries=None,
     ):
 
         self.fips = fips

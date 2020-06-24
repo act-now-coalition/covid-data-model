@@ -35,9 +35,6 @@ formatter = logging.Formatter(
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
-nyt_dataset = None
-cds_dataset = None
-
 DEFAULT_RUN_MODE = "can-inference-derived"
 ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
 
@@ -48,10 +45,6 @@ def _cache_global_datasets():
     # is not needed as the only goal is to populate the cache.
     combined_datasets.build_us_latest_with_all_fields()
     combined_datasets.build_us_timeseries_with_all_fields()
-
-    global nyt_dataset, cds_dataset
-    if cds_dataset is None:
-        cds_dataset = CDSDataset.local()
 
 
 @click.group()
@@ -162,9 +155,7 @@ def _state_only_pipeline(
     _run_mle_fits(state, states_only=states_only)
     _run_ensembles(
         state,
-        ensemble_kwargs=dict(
-            run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
-        ),
+        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
         states_only=states_only,
     )
     if generate_reports:
