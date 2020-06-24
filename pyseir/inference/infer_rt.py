@@ -797,6 +797,7 @@ class RtInferenceEngine:
         # Normalize Inputs for training
         log.info("NORMALIZING")
         scalers_dict = {}
+        scaled_values_dict = {}
         for columnName, columnData in df_forecast.iteritems():
             # there is probably a better way to do this
             log.info("---------------")
@@ -818,6 +819,13 @@ class RtInferenceEngine:
             log.info(scaled_values)
 
             scalers_dict.update({columnName: scaler})
+            scaled_values_dict.update({columnName: scaled_values})
+
+        plt.close("all")
+        for variable in scaled_values_dict:
+            plt.plot(scaled_values_dict["sim_day"], scaled_values_dict[variable], label=variable)
+        plt.legend()
+        plt.savefig("scaledfig.pdf")
 
         # check if dictionary of scalers works
         log.info("scaled everything")
