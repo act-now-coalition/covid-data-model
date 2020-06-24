@@ -693,6 +693,7 @@ class RtInferenceEngine:
             engine = cls(fips)
             return engine.infer_all()
         except Exception as e:
+            raise
             sentry_sdk.capture_exception(e)
             return None
 
