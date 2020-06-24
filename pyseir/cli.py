@@ -132,8 +132,6 @@ def _map_outputs(
             state,
             output_interval_days=output_interval_days,
             run_mode=run_mode,
-            jhu_dataset=nyt_dataset,
-            cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(
@@ -251,8 +249,6 @@ def _build_all_for_states(
             state,
             output_interval_days=output_interval_days,
             run_mode=run_mode,
-            jhu_dataset=nyt_dataset,
-            cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(

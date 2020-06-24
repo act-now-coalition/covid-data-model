@@ -71,27 +71,6 @@ def plot_grouped_data(data, group, series="source", values="cases"):
     cases_by_source.plot(kind="bar", figsize=(15, 7), title=f"{values} by data source vs date")
 
 
-def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
-    """Combines JHU and CDS county data."""
-    data = jhu_data_source.timeseries()
-    jhu_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
-
-    data = cds_data_source.timeseries()
-    cds_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
-
-    # TODO(chris): Better handling of counties that are not consistent.
-    # Can we move this logic to combined_datasets?
-
-    # Before 3-22, CDS has mostly consistent county level numbers - except for
-    # 3-12, where there are no numbers reported. Still need to fill that in.
-    return pd.concat(
-        [
-            cds_usa_data[cds_usa_data.date < "2020-03-22"],
-            jhu_usa_data[jhu_usa_data.date >= "2020-03-22"],
-        ]
-    )
-
-
 def check_index_values_are_unique(data, index=None, duplicates_as_error=True):
     """Checks index for duplicate rows.
 
