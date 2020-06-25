@@ -13,6 +13,7 @@ from pyseir import load_data
 from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
+import logging
 
 
 class InferRtConstants:
@@ -103,6 +104,11 @@ class RtInferenceEngine:
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, False
+            )
+            # logging.info('RAW CASES')
+            # logging.info(self.raw_new_cases)
 
             (
                 self.hospital_times,
@@ -134,6 +140,9 @@ class RtInferenceEngine:
                 t0=self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, False
+            )
             (
                 self.hospital_times,
                 self.hospitalizations,
@@ -141,6 +150,9 @@ class RtInferenceEngine:
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
+        self.raw_new_case_dates = [
+            ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
+        ]
         if self.hospitalization_data_type:
             self.hospital_dates = [ref_date + timedelta(days=int(t)) for t in self.hospital_times]
 
@@ -199,7 +211,11 @@ class RtInferenceEngine:
 
         if timeseries_type is TimeseriesType.NEW_CASES:
             return self.case_dates, self.times, self.observed_new_cases
-        elif timeseries_type is TimeseriesType.NEW_DEATHS:
+        elif timeseries_type is TimeseriesType.RAW_NEW_CASES:
+            return self.raw_new_case_dates, self.times_raw_new_cases, self.raw_new_cases
+        elif timeseries_type is TimeseriesType.NEW_DEATHS or TimeseriesType.RAW_NEW_DEATHS:
+            # logging.info('getting deaths')
+            # logging.info(self.observed_new_deaths)
             return self.case_dates, self.times, self.observed_new_deaths
         elif timeseries_type in (
             TimeseriesType.NEW_HOSPITALIZATIONS,
@@ -252,7 +268,15 @@ class RtInferenceEngine:
 
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
         # from the 14 day trailing mean and std
+        timeseries_og = timeseries
         timeseries = replace_outliers(x=pd.Series(timeseries), log=self.log)
+
+        not_round_smoothed = (
+            timeseries.rolling(
+                self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
+            ).mean(std=self.kernel_std)
+            # .round()
+        )
         smoothed = (
             timeseries.rolling(
                 self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
@@ -260,6 +284,17 @@ class RtInferenceEngine:
             .mean(std=self.kernel_std)
             .round()
         )
+
+        plt.close("all")
+        plt.plot(dates, timeseries_og, label="OG")
+        plt.plot(dates, timeseries, label="+remove outliers")
+        plt.plot(dates, not_round_smoothed, label="+smoothed")
+        plt.plot(dates, smoothed, label="+round")
+
+        plt.legend()
+        plt.title(timeseries_type)
+
+        plt.savefig(str(timeseries_type) + "_cleaning.pdf")
 
         nonzeros = [idx for idx, val in enumerate(smoothed) if val != 0]
 
@@ -338,7 +373,7 @@ class RtInferenceEngine:
         """
         dates, times, timeseries = self.apply_gaussian_smoothing(timeseries_type)
         if len(timeseries) == 0:
-            return None, None, None
+            return None, None, None, None
 
         # (1) Calculate Lambda (the Poisson likelihood given the data) based on
         # the observed increase from t-1 cases to t cases.
@@ -418,7 +453,64 @@ class RtInferenceEngine:
             plt.title("Posteriors", fontsize=18)
         start_idx = -len(posteriors.columns)
 
-        return dates[start_idx:], times[start_idx:], posteriors
+        return dates[start_idx:], times[start_idx:], posteriors, start_idx
+
+    def get_available_timeseries(self, plot=True):
+        # logging.info('GETTING TIMESERIES')
+        available_timeseries = []
+
+        # Get case and death series (index two returned by get_timeseries() result)
+        IDX_OF_COUNTS = 2
+        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
+        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+
+        if self.hospitalization_data_type:
+            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
+
+        if np.sum(cases) > self.min_cases:
+            available_timeseries.append(TimeseriesType.NEW_CASES)
+            available_timeseries.append(TimeseriesType.RAW_NEW_CASES)
+
+        if np.sum(deaths) > self.min_deaths:
+            # logging.info('adding deaths')
+            available_timeseries.append(TimeseriesType.NEW_DEATHS)
+            available_timeseries.append(TimeseriesType.RAW_NEW_DEATHS)
+            # logging.info('added deaths')
+
+        if (
+            self.hospitalization_data_type
+            is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+            and len(hosps > 3)
+        ):
+            # We have converted this timeseries to new hospitalizations.
+            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+        elif (
+            self.hospitalization_data_type
+            is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+            and len(hosps > 3)
+        ):
+            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+
+        # logging.info(available_timeseries)
+        # logging.info('about to plot')
+        if plot:
+            plt.close("all")
+            for timeseries_type in available_timeseries:
+                dates, times, timeseries = self.get_timeseries(timeseries_type)
+                # logging.info('plotting')
+                # logging.info(timeseries_type)
+                # logging.info(timeseries)
+                logging.info(f"series length:{len(timeseries)} date length: {len(dates)}")
+                # logging.info(dates)
+                plt.plot(dates, timeseries, label=timeseries_type, marker=".")
+            plt.legend()
+            # ax.y_scale("symlog")
+            # logging.info('saved')
+            plt.savefig("rawdata.pdf")
+            plt.close("all")
+        logging.info("PLOTTED")
+
+        return available_timeseries
 
     def infer_all(self, plot=True, shift_deaths=0):
         """
@@ -437,38 +529,17 @@ class RtInferenceEngine:
         inference_results: pd.DataFrame
             Columns containing MAP estimates and confidence intervals.
         """
+        logging.info("STARTING")
         df_all = None
         available_timeseries = []
-        IDX_OF_COUNTS = 2
-        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
-        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
-        if self.hospitalization_data_type:
-            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
+        available_timeseries = self.get_available_timeseries()
+        logging.info("timeseries: ")
 
-        if np.sum(cases) > self.min_cases:
-            available_timeseries.append(TimeseriesType.NEW_CASES)
-
-        if np.sum(deaths) > self.min_deaths:
-            available_timeseries.append(TimeseriesType.NEW_DEATHS)
-
-        if (
-            self.hospitalization_data_type
-            is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-            and len(hosps > 3)
-        ):
-            # We have converted this timeseries to new hospitalizations.
-            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
-        elif (
-            self.hospitalization_data_type
-            is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
-            and len(hosps > 3)
-        ):
-            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
-
+        logging.info(available_timeseries)
         for timeseries_type in available_timeseries:
-
+            dates, times, timeseries = self.get_timeseries(timeseries_type)
             df = pd.DataFrame()
-            dates, times, posteriors = self.get_posteriors(timeseries_type)
+            dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
             if posteriors is not None:
                 df[f"Rt_MAP__{timeseries_type.value}"] = posteriors.idxmax()
                 for ci in self.confidence_intervals:
@@ -481,6 +552,9 @@ class RtInferenceEngine:
 
                 df["date"] = dates
                 df = df.set_index("date")
+                df[f"{timeseries_type.value}"] = timeseries[start_idx:]
+                # logging.info('DATAFRAME: ')
+                # logging.info(df)
 
                 if df_all is None:
                     df_all = df
@@ -626,9 +700,113 @@ class RtInferenceEngine:
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches="tight")
             # plt.close()
+
         if df_all is None or df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
+
+        df_all.to_csv("df_all.csv")
+
+        logging.info("about to run forecast rt")
+
+        self.forecast_rt(df_all)
         return df_all
+
+    def forecast_rt(self, df_all):
+        logging.info("starting")
+        """
+        predict r_t for 14 days into the future
+        
+        Parameters
+        ___________
+        df_all: dataframe with dates, new_cases, new_deaths, and r_t values
+
+        Potential todo: add more features
+
+        Returns
+        __________
+        dates and forecast r_t values
+
+        """
+        logging.info("beginning forecast")
+
+        # Convert dates to what day of 2020 it corresponds to for Forecast
+        SIM_DATE_NAME = "sim_day"
+        df_all["sim_day"] = (
+            df_all.index - self.ref_date
+        ).days + 1  # set first day of year to 1 not zero --- check why this varies for Idaho number of entries not the same for corrected/notcorrected
+        logging.info("df all now")
+        logging.info(df_all)
+        logging.info(df_all.columns)
+        # slim dataframe to only variables used in prediction
+        PREDICT_VARIABLE = "Rt_MAP_composite"
+        FORECAST_VARIABLES = ["sim_day", "raw_new_cases", "raw_new_deaths", "Rt_MAP_composite"]
+
+        logging.info("about to copydf")
+        df_forecast = df_all[FORECAST_VARIABLES].copy()
+        logging.info(df_forecast)
+
+        df_forecast.to_csv("df_forecast.csv", na_rep="NaN")
+        logging.info("forecast df")
+        logging.info(df_forecast)
+
+        # Fill empty values with zero
+        return
+        df_forecast.replace(r"\s+", np.nan, regex=True).replace("", np.nan)
+
+        # Split into train and test before normalizing to avoid data leakage
+        # TODO: Test set will actually be entire series
+        TEST_SIZE = 0.2
+        train, test = train_test_split(df_forecast, test_size=TEST_SIZE, shuffle=False)
+        logging.info("train set")
+        logging.info(train)
+        logging.info("test set")
+        logging.info(test)
+        logging.info(f"train_size: {len(train.index)} test_size: {len(test.index)}")
+
+        # Normalize Inputs for training
+        logging.info("NORMALIZING")
+        scalers_dict = {}
+        scaled_values_dict = {}
+        for columnName, columnData in df_forecast.iteritems():
+            # there is probably a better way to do this
+            logging.info("---------------")
+            logging.info(columnName)
+            logging.info(columnData.values)
+
+            logging.info("getting scaler")
+            scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+            logging.info("fitting scaler")
+            reshaped_data = columnData.values.reshape(-1, 1)
+            logging.info("reshaped data")
+            logging.info(reshaped_data)
+            logging.info("shape of reshaped data")
+            logging.info(reshaped_data.shape)
+
+            scaler = scaler.fit(reshaped_data)
+            logging.info("transofmring values")
+            scaled_values = scaler.transform(reshaped_data)
+            logging.info(scaled_values)
+
+            scalers_dict.update({columnName: scaler})
+            scaled_values_dict.update({columnName: scaled_values})
+
+        plt.close("all")
+        for variable in scaled_values_dict:
+            plt.plot(scaled_values_dict["sim_day"], scaled_values_dict[variable], label=variable)
+        plt.legend()
+        plt.savefig("scaledfig.pdf")
+
+        # Get features and labels
+        MIN_NUMBER_OF_DAYS = (
+            30  # I don't think it makes sense to predict anything until we have a month of data
+        )
+        # Create list of dataframes for testing
+
+        # check if dictionary of scalers works
+        logging.info("scaled everything")
+        logging.info(scalers_dict)
+
+        return
 
     @staticmethod
     def ewma_smoothing(series, tau=5):

@@ -20,6 +20,7 @@ from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 from libs.us_state_abbrev import abbrev_us_state
 from pyseir.inference.whitelist_generator import WhitelistGenerator
+import logging
 
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -153,13 +154,14 @@ def _state_only_pipeline(
     output_dir=None,
 ):
     states_only = True
+    logging.info("ABOUT TO INFER")
     _infer_rt(state, states_only=states_only)
-    _run_mle_fits(state, states_only=states_only)
-    _run_ensembles(
-        state,
-        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-        states_only=states_only,
-    )
+    # _run_mle_fits(state, states_only=states_only)
+    # _run_ensembles(
+    #    state,
+    #    ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+    #    states_only=states_only,
+    # )
     if generate_reports:
         _generate_state_reports(state)
     # remove outputs atm. just output at the end
@@ -180,7 +182,7 @@ def _build_all_for_states(
     skip_download=False,
     output_dir=None,
     skip_whitelist=False,
-    states_only=False,
+    states_only=True,
 ):
     # prepare data
     _cache_global_datasets()
