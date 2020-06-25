@@ -24,6 +24,11 @@ log = structlog.get_logger(__name__)
 
 class InferRtConstants:
     RNG_SEED = 42
+
+    # Don't try to infer Rt for timeseries shorter than this
+    MIN_TIMESERIES_LENGTH = 20
+
+    # Settings for outlier removal
     LOCAL_LOOKBACK_WINDOW = 14
     Z_THRESHOLD = 10
     MIN_MEAN_TO_CONSIDER = 5
@@ -57,6 +62,10 @@ class InferRtConstants:
     # term shape correctly.
     SMOOTH_RT_MAP_COMPOSITE = 1  # number of times to apply soothing
     RT_SMOOTHING_WINDOW_SIZE = 25  # also controls kernel_std
+
+    # Minimum (half) width of confidence interval in composite Rt
+    # Avoids too narrow values when averaging over timeseries that already have high confidence
+    MIN_CONF_WIDTH = 0.1
 
 
 class RtInferenceEngine:
@@ -280,6 +289,10 @@ class RtInferenceEngine:
         dates, times, timeseries = self.get_timeseries(timeseries_type)
         bind_threadlocal(timeseries_type=timeseries_type.value)
 
+        # Don't even try if the timeseries is too short (Florida hospitalizations failing with length=6)
+        if len(timeseries) < InferRtConstants.MIN_TIMESERIES_LENGTH:
+            return [], [], []
+
         # Hospitalizations have a strange effect in the first few data points across many states.
         # Let's just drop those..
         if timeseries_type in (
@@ -291,13 +304,13 @@ class RtInferenceEngine:
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
         # from the 14 day trailing mean and std
         timeseries = replace_outliers(pd.Series(timeseries))
-        smoothed = (
-            timeseries.rolling(
-                self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
-            ).mean(std=self.kernel_std)
-            # .round() - no longer rounding
-        )
 
+        # Smoothing no longer involves rounding
+        smoothed = timeseries.rolling(
+            self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
+        ).mean(std=self.kernel_std)
+
+        # Retain logic for detecting what would be nonzero values if rounded
         nonzeros = [idx for idx, val in enumerate(smoothed.round()) if val != 0]
 
         if smoothed.empty:
@@ -311,7 +324,8 @@ class RtInferenceEngine:
         smoothed = smoothed.iloc[idx_start:]
         original = timeseries.loc[smoothed.index]
 
-        if plot and len(smoothed) > 0:
+        # Only plot counts and smoothed timeseries for cases
+        if plot and timeseries_type == TimeseriesType.NEW_CASES and len(smoothed) > 0:
             plt.figure(figsize=(10, 6))
             plt.scatter(
                 dates[-len(original) :],
@@ -358,7 +372,8 @@ class RtInferenceEngine:
 
     def make_process_matrix(self, timeseries_scale=InferRtConstants.SCALE_SIGMA_FROM_COUNT):
         """ Externalizes process of generating the Gaussian process matrix adding the following:
-        1) Auto adjusts sigma from its default value for low counts
+        1) Auto adjusts sigma from its default value for low counts - scales sigma up as
+           1/sqrt(count) up to a maximum factor of MAX_SCALING_OF_SIGMA
         2) Ensures the smoothing (of the posterior when creating the prior) is symmetric
            in R so that this process does not move argmax (the peak in probability)
         """
@@ -379,18 +394,23 @@ class RtInferenceEngine:
         # the prior >10 Reff bins (delta R = .2) on each new day. This was a large systematic error.
 
         # Ensure smoothing window is symmetric in X direction around diagonal
-        # to avoid systematic drift towards middle (Reff = 5)
+        # to avoid systematic drift towards middle (Reff = 5). This is done by
+        # ensuring the following matrix values are 0:
+        # 1 0 0 0 0 0 ... 0 0 0 0 0 0
+        # * * * 0 0 0 ... 0 0 0 0 0 0
+        # ...
+        # * * * * * * ... * * * * 0 0
+        # * * * * * * ... * * * * * *
+        # 0 0 * * * * ... * * * * * *
+        # ...
+        # 0 0 0 0 0 0 ... 0 0 0 * * *
+        # 0 0 0 0 0 0 ... 0 0 0 0 0 1
         sz = len(self.r_list)
         for row in range(0, sz):
             if row < (sz - 1) / 2:
-                # drop = range(2 * row + 1, sz)
                 process_matrix[row, 2 * row + 1 : sz] = 0.0
             elif row > (sz - 1) / 2:
-                # drop = range(0, sz - 2 * (sz - row))
                 process_matrix[row, 0 : sz - 2 * (sz - row)] = 0.0
-            # print("y", y, "dropping x in", drop)
-            # for col in drop:  # TODO do in bulk one row at a time
-            # process_matrix[row, col] = 0.0
 
         # (3a) Normalize all rows to sum to 1
         row_sums = process_matrix.sum(axis=1)
@@ -420,9 +440,8 @@ class RtInferenceEngine:
         posteriors: pd.DataFrame
             Posterior estimates for each timestamp with non-zero data.
         """
-        # @Brett phase 1 not sure but you might need this. How self.min_[cases,deaths] is applied
-        # (compared to one day, or total, max day) to abort use of a timeseries is not that clear
-        # to me. I added this code and the updated call to apply_gaussian_smoothing.
+        # Propagate self.min_[cases,deaths] into apply_gaussian_smoothing where used to abort
+        # processing of timeseries without high enough counts
         smoothed_max_threshold = (
             self.min_cases if TimeseriesType.NEW_CASES == timeseries_type else self.min_deaths
         )
@@ -446,7 +465,9 @@ class RtInferenceEngine:
         lam = timeseries[:-1].values * np.exp((self.r_list[:, None] - 1) / self.serial_period)
 
         # (2) Calculate each day's likelihood over R_t
-        # Interpolating to avoid rounding which doesn't work well for low counts
+        # Originally smoothed counts were rounded (as needed for sps.poisson.pmf below) which doesn't
+        # work well for low counts and introduces artifacts at rounding transitions. Now calculate for
+        # both ceiling and floor values and interpolate between to get smooth behaviour
         ts_floor = timeseries.apply(np.floor).astype(int)
         ts_ceil = timeseries.apply(np.ceil).astype(int)
         ts_frac = timeseries - ts_floor
@@ -461,6 +482,7 @@ class RtInferenceEngine:
             index=self.r_list,
             columns=timeseries.index[1:],
         )
+        # Interpolate between value for ceiling and floor of smoothed counts
         likelihoods = ts_frac * likelihoods_ceil + (1 - ts_frac) * likelihoods_floor
 
         # (3) Create the (now scaled up for low counts) Gaussian Matrix
@@ -486,7 +508,7 @@ class RtInferenceEngine:
         # of the data for maximum likelihood calculation.
         log_likelihood = 0.0
 
-        # Initialize scaling (for auto sigma)
+        # Initialize timeseries scale (used for auto sigma)
         scale = timeseries.head(1).item()
 
         # Setup monitoring for Reff lagging signal in daily likelihood
@@ -495,8 +517,10 @@ class RtInferenceEngine:
         # (5) Iteratively apply Bayes' rule
         for previous_day, current_day in zip(timeseries.index[:-1], timeseries.index[1:]):
 
-            # Calculate process matrix for each day
+            # Keep track of exponential moving average of scale of counts of timeseries
             scale = 0.9 * scale + 0.1 * timeseries[current_day]
+
+            # Calculate process matrix for each day
             (current_sigma, process_matrix) = self.make_process_matrix(scale)
 
             # (5a) Calculate the new prior
@@ -527,6 +551,7 @@ class RtInferenceEngine:
                 posteriors[current_day] = numerator / denominator
 
             # Monitors if posterior is lagging excessively behind signal in likelihood
+            # TODO future can return cumulative lag and use to scale sigma up only when needed
             monitor.evaluate_lag_using_argmaxes(
                 current_day,
                 current_sigma,
@@ -580,12 +605,10 @@ class RtInferenceEngine:
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
 
-        if np.sum(deaths) > self.min_deaths and not InferRtConstants.DISABLE_DEATHS:
+        if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
-        if InferRtConstants.DISABLE_DEATHS:
-            pass  # ignore hospitalizations also
-        elif (
+        if (
             self.hospitalization_data_type
             is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
             and len(hosps > 3)
@@ -603,6 +626,11 @@ class RtInferenceEngine:
 
             df = pd.DataFrame()
             dates, times, posteriors = self.get_posteriors(timeseries_type)
+
+            # Note that it is possible for the dates to be missing days
+            # This can cause problems when:
+            #   1) computing posteriors that assume continuous data (above),
+            #   2) when merging data with variable keys
             if posteriors is not None:
                 df[f"Rt_MAP__{timeseries_type.value}"] = posteriors.idxmax()
                 for ci in self.confidence_intervals:
@@ -619,7 +647,9 @@ class RtInferenceEngine:
                 if df_all is None:
                     df_all = df
                 else:
-                    df_all = df_all.merge(df, left_index=True, right_index=True, how="outer")
+                    # To avoid any surprises merging the data, keep only the keys from the case data
+                    # which will be the first added to df_all. So merge with how ="left" rather than "outer"
+                    df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
 
                 # ------------------------------------------------
                 # Compute the indicator lag using the curvature
@@ -660,7 +690,12 @@ class RtInferenceEngine:
                                 limit_direction="forward", method="linear"
                             )
 
-        if df_all is not None and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
+        if (
+            df_all is not None
+            and not InferRtConstants.DISABLE_DEATHS
+            and "Rt_MAP__new_deaths" in df_all
+            and "Rt_MAP__new_cases" in df_all
+        ):
             df_all["Rt_MAP_composite"] = np.nanmean(
                 df_all[["Rt_MAP__new_cases", "Rt_MAP__new_deaths"]], axis=1
             )
@@ -675,9 +710,9 @@ class RtInferenceEngine:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
+        # Optionally Smooth just Rt_MAP_composite.
+        # Note this doesn't lag in time and preserves integral of Rteff over time
         for i in range(0, InferRtConstants.SMOOTH_RT_MAP_COMPOSITE):
-            # Optionally Smooth just Rt_MAP_composite. Note this doesn't lag in time and preserves
-            # integral of Rteff over time
             kernel_width = round(InferRtConstants.RT_SMOOTHING_WINDOW_SIZE / 4)
             smoothed = (
                 df_all["Rt_MAP_composite"]
@@ -689,14 +724,15 @@ class RtInferenceEngine:
                 )
                 .mean(std=kernel_width)
             )
+
+            # Adjust down confidence interval due to count smoothing over kernel_width values but not below .2
             df_all["Rt_MAP_composite"] = smoothed
             df_all["Rt_ci95_composite"] = (
                 (df_all["Rt_ci95_composite"] - df_all["Rt_MAP_composite"])
                 / math.sqrt(
                     2.0 * kernel_width  # averaging over many points reduces confidence interval
                 )
-                + df_all["Rt_MAP_composite"]
-            )
+            ).apply(lambda v: max(v, InferRtConstants.MIN_CONF_WIDTH)) + df_all["Rt_MAP_composite"]
 
         if plot and df_all is not None:
             plt.figure(figsize=(10, 6))
@@ -705,14 +741,16 @@ class RtInferenceEngine:
             # plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
             # plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
 
-            if "Rt_ci5__new_deaths" in df_all and not InferRtConstants.DISABLE_DEATHS:
-                plt.fill_between(
-                    df_all.index,
-                    df_all["Rt_ci5__new_deaths"],
-                    df_all["Rt_ci95__new_deaths"],
-                    alpha=0.2,
-                    color="firebrick",
-                )
+            if "Rt_ci5__new_deaths" in df_all:
+                if not InferRtConstants.DISABLE_DEATHS:
+                    plt.fill_between(
+                        df_all.index,
+                        df_all["Rt_ci5__new_deaths"],
+                        df_all["Rt_ci95__new_deaths"],
+                        alpha=0.2,
+                        color="firebrick",
+                    )
+                # Show for reference even if not used
                 plt.scatter(
                     df_all.index,
                     df_all["Rt_MAP__new_deaths"].shift(periods=shift_deaths),
@@ -741,14 +779,16 @@ class RtInferenceEngine:
                     marker="s",
                 )
 
-            if "Rt_ci5__new_hospitalizations" in df_all and not InferRtConstants.DISABLE_DEATHS:
-                plt.fill_between(
-                    df_all.index,
-                    df_all["Rt_ci5__new_hospitalizations"],
-                    df_all["Rt_ci95__new_hospitalizations"],
-                    alpha=0.4,
-                    color="darkseagreen",
-                )
+            if "Rt_ci5__new_hospitalizations" in df_all:
+                if not InferRtConstants.DISABLE_DEATHS:
+                    plt.fill_between(
+                        df_all.index,
+                        df_all["Rt_ci5__new_hospitalizations"],
+                        df_all["Rt_ci95__new_hospitalizations"],
+                        alpha=0.4,
+                        color="darkseagreen",
+                    )
+                # Show for reference even if not used
                 plt.scatter(
                     df_all.index,
                     df_all["Rt_MAP__new_hospitalizations"],
@@ -786,7 +826,7 @@ class RtInferenceEngine:
             plt.xticks(rotation=30)
             plt.grid(True)
             plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(0.5, 2.5)
+            plt.ylim(0.0, 3.0)
             plt.ylabel("$R_t$", fontsize=16)
             plt.legend()
             plt.title(self.display_name, fontsize=16)
