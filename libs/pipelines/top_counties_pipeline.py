@@ -38,6 +38,7 @@ def run_projections(input_file, run_validation=True) -> TopCountiesPipelineProje
     counties_df = build_processed_dataset.get_usa_by_county_with_projection_df(
         input_file, intervention.value
     )
+
     if run_validation:
         validate_results.validate_counties_df(counties_key_name, counties_df, intervention)
 
