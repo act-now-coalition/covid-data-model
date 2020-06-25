@@ -16,7 +16,7 @@ jobs:
 
   build:
     env:
-      COVID_DATA_PUBLIC_REF: 'master'
+      COVID_DATA_PUBLIC_REF: 'add-texas-tsa-data'
 
     runs-on: ubuntu-latest
     strategy:
