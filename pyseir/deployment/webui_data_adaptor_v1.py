@@ -112,7 +112,7 @@ class WebUIDataAdaptorV1:
         model_death_latest = model_death_ts[idx_offset]
         observed_death_latest = observed_latest_dict[CommonFields.DEATHS]
 
-        death_shim = shim.strict_shim(
+        death_shim = shim.calculate_strict_shim(
             model=model_death_latest,
             observed=observed_death_latest,
             log=shim_log.bind(type=CommonFields.DEATHS),
@@ -125,7 +125,7 @@ class WebUIDataAdaptorV1:
         model_total_hosps_latest = model_total_hosps_ts[idx_offset]
         observed_total_hosps_latest = observed_latest_dict[CommonFields.CURRENT_HOSPITALIZED]
 
-        total_hosp_shim = shim.strict_shim(
+        total_hosp_shim = shim.calculate_strict_shim(
             model=model_total_hosps_latest,
             observed=observed_total_hosps_latest,
             log=shim_log.bind(type=CommonFields.CURRENT_HOSPITALIZED),
@@ -137,11 +137,11 @@ class WebUIDataAdaptorV1:
         model_icu_latest = model_icu_ts[idx_offset]
         observed_icu_latest = observed_latest_dict[CommonFields.CURRENT_ICU]
 
-        icu_shim = shim.intralevel_icu_shim(
-            model_acute_latest=model_acute_latest,
-            model_icu_latest=model_icu_latest,
-            observed_icu_latest=observed_icu_latest,
-            observed_total_hosps_latest=observed_total_hosps_latest,
+        icu_shim = shim.calculate_intralevel_icu_shim(
+            model_acute=model_acute_latest,
+            model_icu=model_icu_latest,
+            observed_icu=observed_icu_latest,
+            observed_total_hosps=observed_total_hosps_latest,
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
 

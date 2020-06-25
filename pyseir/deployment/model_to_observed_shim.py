@@ -1,11 +1,11 @@
 import numpy as np
 
 
-def strict_shim(model: float, observed: float, log) -> float:
+def calculate_strict_shim(model: float, observed: float, log) -> float:
     """
     Take model outputs and calculate a "shim" value that can be added to the entire modeled
-    cumulative deaths series to make them match the latest (i.e. today's) actual cumulative deaths.
-    As a consequence, this will shift the future values by the same amount.
+    series to make it match the latest (i.e. today's) actual reported value.
+    As a consequence, this will shift any future forecasted values by the same amount.
 
     Parameters
     ----------
@@ -35,31 +35,29 @@ def strict_shim(model: float, observed: float, log) -> float:
     else:
         shim = observed - model
 
-    log.info(event="strict_shim", shim=np.round(shim), observed=observed, model=np.round(model))
+    log.info(
+        event="calculate_strict_shim", shim=np.round(shim), observed=observed, model=np.round(model)
+    )
     return shim
 
 
-def intralevel_icu_shim(
-    model_acute_latest: float,
-    model_icu_latest: float,
-    observed_icu_latest: float,
-    observed_total_hosps_latest: float,
-    log,
-):
+def calculate_intralevel_icu_shim(
+    model_acute: float, model_icu: float, observed_icu: float, observed_total_hosps: float, log,
+) -> float:
     """
     Take model outputs and calculate a "shim" value that can be added to the icu series to make it
     match the latest (i.e. today's) actual icu.
 
     Parameters
     ----------
-    model_acute_latest
-        model estimate for acute hospitalized for latest date
-    model_icu_latest
-        model estimate for icu hospitalized for latest date
-    observed_icu_latest
-        observed for icu hospitalized for latest date
-    observed_total_hosps_latest
-        observed for total hospitalized for latest date
+    model_acute: float
+        model estimate value for acute hospitalized
+    model_icu: float
+        model estimate value for icu hospitalized
+    observed_icu: float
+        observed value for icu hospitalized
+    observed_total_hosps: float
+        observed value for total hospitalized
     log
         Log Instance
     Return
@@ -68,26 +66,26 @@ def intralevel_icu_shim(
         Value to shim icu data by
     """
     # There are inconsistent None/"NaN" -> force all to np.nan for this scope.
-    if observed_icu_latest is None:
-        observed_icu_latest = np.nan
+    if observed_icu is None:
+        observed_icu = np.nan
 
-    if np.isnan(observed_icu_latest):
+    if np.isnan(observed_icu):
         # We don't have ICU specific data but let's try to have a shim informed by the shim used
         # for total hospitalization. This will maintain the same icu/total_hosp ratio that was
         # originally in the model.
-        model_total_hosps_latest = model_acute_latest + model_icu_latest
-        total_hosp_shim = strict_shim(
+        model_total_hosps_latest = model_acute + model_icu
+        total_hosp_shim = calculate_strict_shim(
             model=model_total_hosps_latest,
-            observed=observed_total_hosps_latest,
+            observed=observed_total_hosps,
             log=log.bind(note="via_intralevel_icu_shim"),
         )
         # total_hosp_shim is how much we shim the combined acute and icu data. We can apportion that
         # as a function of the relative weight. NB: If there is no total hospitalization data, then
         # total_hosp_shim will be 0 and this icu shim will also be 0. So this handles the check of
         # whether observed_total_hosps_latest is not None/np.nan in the strict shim function.
-        model_icu_fraction = model_icu_latest / model_total_hosps_latest
+        model_icu_fraction = model_icu / model_total_hosps_latest
         shim = model_icu_fraction * total_hosp_shim
-    elif observed_icu_latest == 0:
+    elif observed_icu == 0:
         # As of 19 June 2020, the observed dataset is still being validated for erroneous inputs.
         # This includes cases of returning a 0 when we should be returning a np.nan/None.
         # For now, we will not apply a shim if the result returned is 0.
@@ -95,12 +93,12 @@ def intralevel_icu_shim(
     else:
         # We have ICU observed. In this case we will overwrite the natural model ratio of ICU to
         # total hospitalizations.
-        shim = observed_icu_latest - model_icu_latest
+        shim = observed_icu - model_icu
 
     log.info(
-        event="intralevel_icu_shim",
+        event="calculate_intralevel_icu_shim",
         shim=np.round(shim),
-        observed=observed_icu_latest,
-        model=np.round(model_icu_latest),
+        observed=observed_icu,
+        model=np.round(model_icu),
     )
     return shim
