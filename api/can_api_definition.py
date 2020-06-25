@@ -81,6 +81,8 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
     fips: str = pydantic.Field(..., description="Fips for State + County. Five character code")
     lat: float = pydantic.Field(..., description="Latitude of point within the state or county")
     long: float = pydantic.Field(..., description="Longitude of point within the state or county")
+    stateName: str = pydantic.Field(..., description="The state name")
+    countyName: Optional[str] = pydantic.Field(default=None, description="The county name")
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
     projections: Optional[_Projections] = pydantic.Field(...)
     actuals: Optional[_Actuals] = pydantic.Field(...)
@@ -89,13 +91,11 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
 
 # TODO(igor): countyName *must* be None
 class CovidActNowStateSummary(CovidActNowAreaSummary):
-    stateName: str = pydantic.Field(..., description="The state name")
-    countyName: Optional[str] = pydantic.Field(default=None, description="The county name")
+    pass
 
 
 class CovidActNowCountySummary(CovidActNowAreaSummary):
-    stateName: str = pydantic.Field(..., description="The state name")
-    countyName: str = pydantic.Field(..., description="The county name")
+    pass
 
 
 class CANActualsTimeseriesRow(_Actuals):
@@ -154,6 +154,24 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
     lat: float = pydantic.Field(..., description="Latitude of point within the state or county")
     long: float = pydantic.Field(..., description="Longitude of point within the state or county")
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
+
+
+class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
+    timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+    actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
+
+    @property
+    def area_summary(self) -> CovidActNowAreaSummary:
+
+        data = {}
+        # Iterating through self does not force any conversion
+        # https://pydantic-docs.helpmanual.io/usage/exporting_models/#dictmodel-and-iteration
+        for field, value in self:
+            if field not in CovidActNowAreaSummary.__fields__:
+                continue
+            data[field] = value
+
+        return CovidActNowAreaSummary(**data)
 
 
 class CovidActNowStateTimeseries(CovidActNowStateSummary):

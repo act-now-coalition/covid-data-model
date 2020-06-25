@@ -16,7 +16,7 @@ from libs import validate_results
 from libs import build_processed_dataset
 from libs import dataset_deployer
 from libs.us_state_abbrev import US_STATE_ABBREV
-
+from libs.datasets import combined_datasets
 from libs.datasets import results_schema as rc
 from libs.functions import generate_api as api
 
@@ -261,3 +261,8 @@ def build_prediction_header_timeseries_data(data: APIOutput):
 
 def deploy_prediction_timeseries_csvs(data: APIOutput, output):
     dataset_deployer.write_nested_csv([row.dict() for row in data.data], data.file_stem, output)
+
+
+def build_timeseries_api_for_fips(fips):
+    timeseries = combined_datasets.get_timeseries_for_fips(fips)
+    latest_values = combined_datasets.get_us_latest_for_fips(fips)

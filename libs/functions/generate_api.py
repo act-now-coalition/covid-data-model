@@ -1,3 +1,4 @@
+from typing import Optional
 from datetime import datetime, timedelta
 from api.can_api_definition import (
     CovidActNowCountiesAPI,
@@ -20,9 +21,11 @@ from libs.enums import Intervention
 from libs.functions import get_can_projection
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.us_state_abbrev import US_STATE_ABBREV
+from libs import us_state_abbrev
 from libs.datasets import can_model_output_schema as can_schema
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import CDSDataset
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.build_processed_dataset import get_testing_timeseries_by_state
 from libs.build_processed_dataset import get_testing_timeseries_by_fips
 import pandas as pd
@@ -299,12 +302,12 @@ def generate_api_for_county_projection_row(projection_row):
         population=fips_actuals[CommonFields.POPULATION],
         lat=projection_row[rc.LATITUDE],
         long=projection_row[rc.LONGITUDE],
-        actuals=_generate_actuals(fips_actuals, state_intervention),
         stateName=projection_row[rc.STATE_FULL_NAME],
         countyName=projection_row[rc.COUNTY],
         fips=projection_row[rc.FIPS],
         lastUpdatedDate=_format_date(projection_row[rc.LAST_UPDATED]),
         projections=projections,
+        actuals=_generate_actuals(fips_actuals, state_intervention),
     )
     return county_result
 
@@ -316,3 +319,32 @@ def generate_api_for_county_projection(projection) -> CovidActNowCountiesAPI:
         county_result = generate_api_for_county_projection_row(county_row)
         api_results.append(county_result)
     return CovidActNowCountiesAPI(__root__=api_results)
+
+
+def generate_area_timeseries(
+    fips: str,
+    intervention: Intervention,
+    latest_values: dict,
+    timeseries: TimeseriesDataset,
+    projection_row: Optional[dict],
+    raw_timeseries: Optional[dict],
+):
+    state = latest_values[CommonFields.STATE]
+    state_intervention = get_can_projection.get_intervention_for_state(state)
+    actuals = _generate_actuals(latest_values, state_intervention)
+
+    projections = None
+    if projection_row:
+        projections = _generate_api_for_projections(projection_row)
+
+    return CovidActNowAreaSummary(
+        population=latest_values[CommonFields.POPULATION],
+        stateName=us_state_abbrev.ABBREV_US_STATE[state],
+        countyName=latest_values.get(CommonFields.COUNTY),
+        fips=fips,
+        lat=latest_values.get(CommonFields.LATITUDE),
+        long=latest_values.get(CommonFields.LONGITUDE),
+        actuals=actuals,
+        lastUpdatedDate="",
+        projections=projections,
+    )

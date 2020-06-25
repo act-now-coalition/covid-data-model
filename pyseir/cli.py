@@ -219,7 +219,7 @@ def _build_all_for_states(
         p.map(infer_rt_module.run_county, all_county_fips.keys())
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
-        fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
+        fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
 
         df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
         df["state"] = df.fips.replace(all_county_fips)
