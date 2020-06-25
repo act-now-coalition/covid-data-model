@@ -1,7 +1,6 @@
 import math
 from datetime import datetime, timedelta
 import numpy as np
-import sentry_sdk
 import logging
 import pandas as pd
 from scipy import stats as sps
@@ -20,6 +19,10 @@ class InferRtConstants:
     LOCAL_LOOKBACK_WINDOW = 14
     Z_THRESHOLD = 10
     MIN_MEAN_TO_CONSIDER = 5
+
+
+# Small epsilon to prevent divide by 0 errors.
+EPSILON = 1e-8
 
 
 class RtInferenceEngine:
@@ -688,8 +691,8 @@ class RtInferenceEngine:
         try:
             engine = cls(fips)
             return engine.infer_all()
-        except Exception as e:
-            sentry_sdk.capture_exception(e)
+        except Exception:
+            logging.exception("run_for_fips failed")
             return None
 
 
@@ -737,8 +740,7 @@ def replace_outliers(
     r = x.rolling(window=local_lookback_window, min_periods=local_lookback_window, center=False)
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
-    z_score = (x - m) / s
-
+    z_score = (x - m) / (s + EPSILON)
     possible_changes_idx = np.where(z_score > z_threshold)[0]
     changed_idx = []
     changed_value = []
@@ -783,7 +785,7 @@ def run_state(state, states_only=False):
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
-        logging.error("Emtpy dataframe encountered! No RtInference results available for %s", state)
+        logging.error("Empty dataframe encountered! No RtInference results available for %s", state)
     else:
         df.to_json(output_path)
 

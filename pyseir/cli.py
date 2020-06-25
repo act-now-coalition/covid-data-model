@@ -3,22 +3,20 @@ import os
 import click
 import us
 import logging
-import sentry_sdk
-import structlog
 import pandas as pd
+from covidactnow.datapublic import common_init
 
 from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
 from functools import partial
 from libs.datasets import dataset_cache
-from pyseir.load_data import cache_county_case_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
 from pyseir.ensembles import ensemble_runner
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
-from libs.datasets import NYTimesDataset, CDSDataset, combined_datasets
+from libs.datasets import combined_datasets
 from libs.us_state_abbrev import abbrev_us_state
 from pyseir.inference.whitelist_generator import WhitelistGenerator
 
@@ -36,9 +34,6 @@ formatter = logging.Formatter(
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
-nyt_dataset = None
-cds_dataset = None
-
 DEFAULT_RUN_MODE = "can-inference-derived"
 ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
 
@@ -50,32 +45,12 @@ def _cache_global_datasets():
     combined_datasets.build_us_latest_with_all_fields()
     combined_datasets.build_us_timeseries_with_all_fields()
 
-    global nyt_dataset, cds_dataset
-    if cds_dataset is None:
-        cds_dataset = CDSDataset.local()
-    if nyt_dataset is None:
-        nyt_dataset = NYTimesDataset.local()
-
 
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
     dataset_cache.set_pickle_cache_dir()
-    sentry_sdk.init(os.getenv("SENTRY_DSN"))
-    structlog.configure(
-        processors=[
-            structlog.stdlib.add_log_level,  # required before SentryProcessor()
-            # sentry_sdk creates events for level >= ERROR and keeps level >= INFO as breadcrumbs.
-            SentryProcessor(level=logging.INFO),
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),
-        ]
-    )
-
-
-@entry_point.command()
-def download_data():
-    cache_county_case_data()
+    common_init.configure_logging()
 
 
 def _generate_whitelist():
@@ -142,8 +117,6 @@ def _map_outputs(
             state,
             output_interval_days=output_interval_days,
             run_mode=run_mode,
-            jhu_dataset=nyt_dataset,
-            cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(
@@ -172,9 +145,7 @@ def _state_only_pipeline(
     _run_mle_fits(state, states_only=states_only)
     _run_ensembles(
         state,
-        ensemble_kwargs=dict(
-            run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
-        ),
+        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
         states_only=states_only,
     )
     if generate_reports:
@@ -201,8 +172,6 @@ def _build_all_for_states(
 ):
     # prepare data
     _cache_global_datasets()
-    if not skip_download:
-        cache_county_case_data()
     if not skip_whitelist:
         _generate_whitelist()
 
@@ -264,8 +233,6 @@ def _build_all_for_states(
             state,
             output_interval_days=output_interval_days,
             run_mode=run_mode,
-            jhu_dataset=nyt_dataset,
-            cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(
@@ -407,9 +374,6 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-download", default=False, is_flag=True, type=bool, help="Skip the download phase.",
-)
-@click.option(
     "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
@@ -419,7 +383,6 @@ def build_all(
     run_mode,
     generate_reports,
     output_interval_days,
-    skip_download,
     output_dir,
     skip_whitelist,
     states_only,
@@ -438,7 +401,6 @@ def build_all(
         run_mode=DEFAULT_RUN_MODE,
         generate_reports=generate_reports,
         output_interval_days=output_interval_days,
-        skip_download=skip_download,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
         states_only=states_only,
@@ -446,4 +408,10 @@ def build_all(
 
 
 if __name__ == "__main__":
-    entry_point()
+    try:
+        entry_point()  # pylint: disable=no-value-for-parameter
+    except Exception:
+        # According to https://github.com/getsentry/sentry-python/issues/480 Sentry is expected
+        # to create an event when this is called.
+        logging.exception("Exception reached __main__")
+        raise
