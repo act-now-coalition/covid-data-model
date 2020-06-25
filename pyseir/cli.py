@@ -3,9 +3,8 @@ import os
 import click
 import us
 import logging
-import sentry_sdk
-import structlog
 import pandas as pd
+from covidactnow.datapublic import common_init
 
 from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
@@ -51,18 +50,7 @@ def _cache_global_datasets():
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
     dataset_cache.set_pickle_cache_dir()
-    sentry_sdk.init(os.getenv("SENTRY_DSN"))
-    structlog.configure(
-        processors=[
-            structlog.stdlib.add_log_level,  # required before SentryProcessor()
-            # sentry_sdk creates events for level >= ERROR. Getting breadcrumbs from structlog
-            # isn't supported without a lot of custom work. See
-            # https://github.com/kiwicom/structlog-sentry/issues/25
-            SentryProcessor(level=logging.ERROR),
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),
-        ]
-    )
+    common_init.configure_logging()
 
 
 def _generate_whitelist():
@@ -420,4 +408,10 @@ def build_all(
 
 
 if __name__ == "__main__":
-    entry_point()
+    try:
+        entry_point()  # pylint: disable=no-value-for-parameter
+    except Exception:
+        # According to https://github.com/getsentry/sentry-python/issues/480 Sentry is expected
+        # to create an event when this is called.
+        logging.exception("Exception reached __main__")
+        raise
