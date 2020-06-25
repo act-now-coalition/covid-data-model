@@ -17,7 +17,7 @@ on:
 
 env:
   # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'adding-texas-hospitalization-override'
+  COVID_DATA_MODEL_REF: 'shim-total-hospitalized'
 
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'add-texas-tsa-data'
