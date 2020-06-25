@@ -155,7 +155,7 @@ def _state_only_pipeline(
 ):
     states_only = True
     logging.info("ABOUT TO INFER")
-    _infer_rt(state, states_only=states_only)
+    df_all = _infer_rt(state, states_only=states_only)
     # _run_mle_fits(state, states_only=states_only)
     # _run_ensembles(
     #    state,

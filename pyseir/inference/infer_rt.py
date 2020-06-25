@@ -14,6 +14,7 @@ from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import logging
+from sklearn import preprocessing
 
 
 class InferRtConstants:
@@ -708,7 +709,7 @@ class RtInferenceEngine:
 
         logging.info("about to run forecast rt")
 
-        self.forecast_rt(df_all)
+        # self.forecast_rt(df_all)
         return df_all
 
     def forecast_rt(self, df_all):
@@ -734,65 +735,54 @@ class RtInferenceEngine:
         df_all["sim_day"] = (
             df_all.index - self.ref_date
         ).days + 1  # set first day of year to 1 not zero --- check why this varies for Idaho number of entries not the same for corrected/notcorrected
-        logging.info("df all now")
-        logging.info(df_all)
-        logging.info(df_all.columns)
         # slim dataframe to only variables used in prediction
         PREDICT_VARIABLE = "Rt_MAP_composite"
         FORECAST_VARIABLES = ["sim_day", "raw_new_cases", "raw_new_deaths", "Rt_MAP_composite"]
 
-        logging.info("about to copydf")
         df_forecast = df_all[FORECAST_VARIABLES].copy()
-        logging.info(df_forecast)
 
         df_forecast.to_csv("df_forecast.csv", na_rep="NaN")
-        logging.info("forecast df")
-        logging.info(df_forecast)
 
         # Fill empty values with zero
-        return
         df_forecast.replace(r"\s+", np.nan, regex=True).replace("", np.nan)
 
         # Split into train and test before normalizing to avoid data leakage
         # TODO: Test set will actually be entire series
-        TEST_SIZE = 0.2
-        train, test = train_test_split(df_forecast, test_size=TEST_SIZE, shuffle=False)
+        TRAIN_SIZE = 0.8
+        train_set_length = int(len(df_forecast) * TRAIN_SIZE)
+        train_set = df_forecast[:train_set_length]
+        test_set = df_forecast[
+            train_set_length:
+        ]  # this is really the entire series TODO maybe find a better way to code this
         logging.info("train set")
-        logging.info(train)
+        logging.info(train_set)
         logging.info("test set")
-        logging.info(test)
-        logging.info(f"train_size: {len(train.index)} test_size: {len(test.index)}")
+        logging.info(test_set)
+        logging.info(f"train_size: {len(train_set.index)} test_size: {len(test_set.index)}")
 
         # Normalize Inputs for training
-        logging.info("NORMALIZING")
         scalers_dict = {}
         scaled_values_dict = {}
-        for columnName, columnData in df_forecast.iteritems():
+        for columnName, columnData in train_set.iteritems():
             # there is probably a better way to do this
-            logging.info("---------------")
-            logging.info(columnName)
-            logging.info(columnData.values)
-
-            logging.info("getting scaler")
             scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
-            logging.info("fitting scaler")
             reshaped_data = columnData.values.reshape(-1, 1)
-            logging.info("reshaped data")
-            logging.info(reshaped_data)
-            logging.info("shape of reshaped data")
-            logging.info(reshaped_data.shape)
 
             scaler = scaler.fit(reshaped_data)
-            logging.info("transofmring values")
             scaled_values = scaler.transform(reshaped_data)
-            logging.info(scaled_values)
 
+            # add these columns to dataframe
+            train_set.loc[:, f"{columnName}_scaled"] = scaled_values
+
+            # update dictionary for later use to unscale data
             scalers_dict.update({columnName: scaler})
             scaled_values_dict.update({columnName: scaled_values})
 
+        train_set.to_csv("train_set_scaled.csv")
         plt.close("all")
         for variable in scaled_values_dict:
             plt.plot(scaled_values_dict["sim_day"], scaled_values_dict[variable], label=variable)
+
         plt.legend()
         plt.savefig("scaledfig.pdf")
 
@@ -800,13 +790,28 @@ class RtInferenceEngine:
         MIN_NUMBER_OF_DAYS = (
             30  # I don't think it makes sense to predict anything until we have a month of data
         )
+        PREDICT_DAYS = 7
         # Create list of dataframes for testing
+        logging.info("creating dataset list")
+        train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
+        logging.info("done")
 
         # check if dictionary of scalers works
         logging.info("scaled everything")
         logging.info(scalers_dict)
 
         return
+
+    @staticmethod
+    def create_df_list(df, min_days, predict_days):
+        logging.info("CREATING DF LIST")
+        df_list = list()
+        for i in range(len(df.index)):
+            if i < predict_days + min_days:  # only keep df if it has min number of entries
+                continue
+            else:
+                df_list.append(df[0:i].copy())  # here could also create week and month predictions
+        return df_list
 
     @staticmethod
     def ewma_smoothing(series, tau=5):
