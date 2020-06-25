@@ -7,7 +7,7 @@ from functools import lru_cache
 from libs.datasets.combined_datasets import build_us_timeseries_with_all_fields
 from libs.enums import Intervention
 from libs.us_state_abbrev import US_STATE_ABBREV
-from libs.us_state_abbrev import abbrev_us_state
+from libs.us_state_abbrev import ABBREV_US_STATE
 from libs.us_state_abbrev import us_fips
 
 
@@ -220,7 +220,7 @@ def get_usa_by_states_df(input_dir: str, intervention: Intervention):
 
     states_remapped = states_abbrev.rename(columns=STATE_COLS_REMAP)
     states_remapped[CommonFields.STATE_FULL_NAME] = states_remapped[CommonFields.STATE].map(
-        abbrev_us_state
+        ABBREV_US_STATE
     )
     states_final = pd.DataFrame(states_remapped, columns=RESULT_DATA_COLUMNS_STATES)
 

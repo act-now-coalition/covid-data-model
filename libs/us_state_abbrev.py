@@ -185,12 +185,12 @@ us_fips = {
 ABBREV_US_FIPS = {US_STATE_ABBREV[state]: fips for state, fips in us_fips.items()}
 
 # thank you to @kinghelix and @trevormarburger for this idea
-abbrev_us_state = dict(map(reversed, US_STATE_ABBREV.items()))
+ABBREV_US_STATE = dict(map(reversed, US_STATE_ABBREV.items()))
 
 # Simple test examples
 if __name__ == "__main__":
     print("Wisconin --> WI?", US_STATE_ABBREV["Wisconsin"] == "WI")
-    print("WI --> Wisconin?", abbrev_us_state["WI"] == "Wisconsin")
+    print("WI --> Wisconin?", ABBREV_US_STATE["WI"] == "Wisconsin")
     print(
         "Number of entries (50 states, DC, 5 Territories) == 56? ", 56 == len(US_STATE_ABBREV),
     )
