@@ -18,7 +18,7 @@ from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
-from libs.us_state_abbrev import abbrev_us_state
+from libs.us_state_abbrev import ABBREV_US_STATE
 from pyseir.inference.whitelist_generator import WhitelistGenerator
 
 
@@ -417,7 +417,7 @@ def build_all(
     states = [c.strip() for c in states]
     # Convert abbreviated states to the full state name, allowing states passed in
     # to be the full name or the abbreviated name.
-    states = [abbrev_us_state.get(state, state) for state in states]
+    states = [ABBREV_US_STATE.get(state, state) for state in states]
     states = [state for state in states if state in ALL_STATES]
     if not len(states):
         states = ALL_STATES
