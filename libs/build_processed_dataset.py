@@ -7,7 +7,7 @@ from libs.datasets.combined_datasets import build_us_timeseries_with_all_fields
 from libs.enums import Intervention
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.us_state_abbrev import ABBREV_US_STATE
-from libs.us_state_abbrev import us_fips
+from libs.us_state_abbrev import US_FIPS
 
 
 from libs.datasets import FIPSPopulation
@@ -226,7 +226,7 @@ def get_usa_by_states_df(input_dir: str, intervention: Intervention):
     # Keep nulls as nulls
     states_final = states_final.fillna(NULL_VALUE)
     states_final["Combined Key"] = states_final[CommonFields.STATE_FULL_NAME]
-    states_final[CommonFields.FIPS] = states_final[CommonFields.STATE_FULL_NAME].map(us_fips)
+    states_final[CommonFields.FIPS] = states_final[CommonFields.STATE_FULL_NAME].map(US_FIPS)
 
     states_final.index.name = "OBJECTID"
 

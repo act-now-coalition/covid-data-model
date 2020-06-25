@@ -122,7 +122,7 @@ STATES_50 = {
     "Wyoming": "WY",
 }
 
-us_fips = {
+US_FIPS = {
     "Alabama": "01",
     "Alaska": "02",
     "Arizona": "04",
@@ -182,7 +182,7 @@ us_fips = {
 }
 
 
-ABBREV_US_FIPS = {US_STATE_ABBREV[state]: fips for state, fips in us_fips.items()}
+ABBREV_US_FIPS = {US_STATE_ABBREV[state]: fips for state, fips in US_FIPS.items()}
 
 # thank you to @kinghelix and @trevormarburger for this idea
 ABBREV_US_STATE = dict(map(reversed, US_STATE_ABBREV.items()))
