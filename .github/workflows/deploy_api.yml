@@ -16,7 +16,7 @@ on:
     types: publish-api
 
 env:
-  # !!! Change this to your BRANCH if you want to test it !!!
+  # !! Change this to your BRANCH if you want to test it !!
   COVID_DATA_MODEL_REF: 'github-runner-queue'
 
   # To pin to an old data sets, put the branch/tag/commit here:
