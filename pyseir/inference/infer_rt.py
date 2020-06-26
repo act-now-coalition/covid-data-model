@@ -817,20 +817,7 @@ class RtInferenceEngine:
 
         logging.info("done")
         n_batch = 1
-        model, history = self.build_model(MASK_VALUE, 1, n_batch, 10, 0.01, X_train, Y_train)
-        plot = True
-        if plot:
-            plt.close("all")
-            logging.info("plotting")
-            plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
-            logging.info("plotted history")
-            # plt.plot(history.history['val_loss'], color = 'green', linestyle = 'solid', linewidth = args.linewidth, label = 'Validation Set')
-            logging.info("plotted more")
-            plt.legend()
-            plt.xlabel("Epochs")
-            plt.ylabel("RMSE")
-            plt.savefig("lstm_loss_final.png")
-            plt.close("all")
+        model, history = self.build_model(MASK_VALUE, 5, n_batch, 10, 0.01, X_train, Y_train)
 
         logging.info("built model")
 
@@ -896,6 +883,26 @@ class RtInferenceEngine:
         )
         logging.info("fit")
 
+        plot = True
+        if plot:
+            plt.close("all")
+            logging.info("plotting")
+            plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
+            logging.info("plotted history")
+            plt.plot(
+                history.history["val_loss"],
+                color="green",
+                linestyle="solid",
+                linewidth=args.linewidth,
+                label="Validation Set",
+            )
+            logging.info("plotted more")
+            plt.legend()
+            plt.xlabel("Epochs")
+            plt.ylabel("RMSE")
+            plt.savefig("lstm_loss_final.png")
+            plt.close("all")
+
         return model, history
 
     @staticmethod
@@ -928,6 +935,8 @@ class RtInferenceEngine:
         final_test_X = np.array(X_train_list)
         final_test_Y = np.array(Y_train_list)
         final_test_Y = np.squeeze(final_test_Y)
+        logging.info("TEST Y")
+        logging.info(final_test_Y)
         return final_test_X, final_test_Y
 
     @staticmethod
