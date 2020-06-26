@@ -21,6 +21,9 @@ Check It Out in Jupyter
 ### Data Sources
 See [covid-data-public](https://github.com/covid-projections/covid-data-public) for data sources being used or considered.
 
+Some code in the `covid-data-model` repo depends on there being a copy of the `covid-data-public` repo at
+`../covid-data-public`.
+
 
 ## [Setup](./SETUP.md)
 

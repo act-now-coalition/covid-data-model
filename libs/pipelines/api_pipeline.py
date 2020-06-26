@@ -215,6 +215,9 @@ def deploy_results(results: List[APIOutput], output: str, write_csv=False):
         data = remove_root_wrapper(api_row.data.dict())
         # Encoding approach based on Pydantic's implementation of .json():
         # https://github.com/samuelcolvin/pydantic/pull/210/files
+        # `json` isn't in `pydantic/__init__py` which I think means it doesn't intend to export
+        # it. We use it anyway and pylint started complaining.
+        # pylint: disable=no-member
         data_as_json = simplejson.dumps(
             data, ignore_nan=True, default=pydantic.json.pydantic_encoder
         )

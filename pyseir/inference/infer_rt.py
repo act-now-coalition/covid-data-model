@@ -1,7 +1,6 @@
 import math
 from datetime import datetime, timedelta
 import numpy as np
-import sentry_sdk
 import logging
 import pandas as pd
 from scipy import stats as sps
@@ -66,6 +65,10 @@ class InferRtConstants:
     # Minimum (half) width of confidence interval in composite Rt
     # Avoids too narrow values when averaging over timeseries that already have high confidence
     MIN_CONF_WIDTH = 0.1
+
+
+# Small epsilon to prevent divide by 0 errors.
+EPSILON = 1e-8
 
 
 class RtInferenceEngine:
@@ -186,9 +189,6 @@ class RtInferenceEngine:
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-        clear_threadlocal()
-        bind_threadlocal(Rt_Inference_Target=self.display_name)
-        log.info("Running")
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         if self.hospitalization_data_type:
@@ -223,6 +223,9 @@ class RtInferenceEngine:
             self.hospital_times = self.hospital_times[1:]
 
         self.log_likelihood = None
+
+        self.log = structlog.getLogger(Rt_Inference_Target=self.display_name)
+        self.log.info(event="Running:")
 
     def get_timeseries(self, timeseries_type):
         """
@@ -270,7 +273,7 @@ class RtInferenceEngine:
             This parameter allows you to filter out entire series
             (e.g. NEW_DEATHS) when they do not contain high enough
             numeric values. This has been added to account for low-level
-            constant smoothed values having a dispropotionate effect on
+            constant smoothed values having a disproportionate effect on
             our final R(t) calculation, when all of their values are below
             this parameter.
 
@@ -287,7 +290,7 @@ class RtInferenceEngine:
         """
         timeseries_type = TimeseriesType(timeseries_type)
         dates, times, timeseries = self.get_timeseries(timeseries_type)
-        bind_threadlocal(timeseries_type=timeseries_type.value)
+        self.log = self.log.bind(timeseries_type=timeseries_type.value)
 
         # Don't even try if the timeseries is too short (Florida hospitalizations failing with length=6)
         if len(timeseries) < InferRtConstants.MIN_TIMESERIES_LENGTH:
@@ -303,7 +306,7 @@ class RtInferenceEngine:
 
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
         # from the 14 day trailing mean and std
-        timeseries = replace_outliers(pd.Series(timeseries))
+        timeseries = replace_outliers(pd.Series(timeseries), log=self.log)
 
         # Smoothing no longer involves rounding
         smoothed = timeseries.rolling(
@@ -900,13 +903,14 @@ class RtInferenceEngine:
         try:
             engine = cls(fips)
             return engine.infer_all()
-        except Exception as e:
-            sentry_sdk.capture_exception(e)
+        except Exception:
+            logging.exception("run_for_fips failed")
             return None
 
 
 def replace_outliers(
     x,
+    log,
     local_lookback_window=InferRtConstants.LOCAL_LOOKBACK_WINDOW,
     z_threshold=InferRtConstants.Z_THRESHOLD,
     min_mean_to_consider=InferRtConstants.MIN_MEAN_TO_CONSIDER,
@@ -927,6 +931,8 @@ def replace_outliers(
     ----------
     x
         Input pandas.Series with the values to analyze
+    log
+        Logger instance
     local_lookback_window
         The length of the rolling window to look back and calculate the mean and std to baseline the
         z score. NB: We require the window to be full before returning any result.
@@ -946,8 +952,7 @@ def replace_outliers(
     r = x.rolling(window=local_lookback_window, min_periods=local_lookback_window, center=False)
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
-    z_score = (x - m) / s
-
+    z_score = (x - m) / (s + EPSILON)
     possible_changes_idx = np.where(z_score > z_threshold)[0]
     changed_idx = []
     changed_value = []
@@ -967,7 +972,7 @@ def replace_outliers(
 
     if len(changed_idx) > 0:
         log.info(
-            "Replacing Outliers with Linear Interpolation Between Nearest Neighbors",
+            event="Replacing Outliers:",
             outlier_values=changed_value,
             z_score=z_score[changed_idx].astype(int).tolist(),
             where=changed_idx,
@@ -992,7 +997,7 @@ def run_state(state, states_only=False):
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
-        logging.error("Emtpy dataframe encountered! No RtInfernce results available for %s", state)
+        logging.error("Empty dataframe encountered! No RtInference results available for %s", state)
     else:
         df.to_json(output_path)
 

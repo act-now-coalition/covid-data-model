@@ -1,23 +1,26 @@
 from typing import Dict, Type, List, NewType
 import logging
-import functools
 import pandas as pd
 import structlog
+from structlog.threadlocal import tmp_bind
 
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources.cmdc import CmdcDataSource
+from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
-from libs.datasets import CommonFields
 from libs.datasets import dataset_filter
 from libs.datasets import dataset_cache
 from libs import us_state_abbrev
@@ -41,72 +44,68 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CmdcDataSource,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
+        TexasHospitalizations,
     ],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
+    CommonFields.COUNTY: [FIPSPopulation],
     CommonFields.POPULATION: [FIPSPopulation],
-    CommonFields.STAFFED_BEDS: [CovidCareMapBeds],
+    CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CovidCareMapBeds, NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [JHUDataset],
-    CommonFields.DEATHS: [CmdcDataSource, JHUDataset],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
-    CommonFields.CURRENT_ICU_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
         CmdcDataSource,
         CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
+        TexasHospitalizations,
     ],
-    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
-    CommonFields.STAFFED_BEDS: [],
+    CommonFields.STAFFED_BEDS: [CmdcDataSource],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
-    CommonFields.ICU_BEDS: [NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(
@@ -145,6 +144,72 @@ def get_us_latest_for_fips(fips) -> dict:
     """Gets latest values for a given fips code."""
     us_latest = build_us_latest_with_all_fields()
     return us_latest.get_record_for_fips(fips)
+
+
+def _remove_padded_nans(df, columns):
+    if df[columns].isna().all().all():
+        return df.loc[[False] * len(df), :].reset_index(drop=True)
+
+    first_valid_index = min(df[column].first_valid_index() for column in columns)
+    last_valid_index = max(df[column].last_valid_index() for column in columns)
+    df = df.iloc[first_valid_index:last_valid_index]
+    return df.reset_index(drop=True)
+
+
+def get_timeseries_for_fips(
+    fips: str, columns: List = None, min_range_with_some_value: bool = False
+) -> TimeseriesDataset:
+    """Gets timeseries for a specific FIPS code.
+
+    Args:
+        fips: FIPS code.  Can be county (5 character) or state (2 character) code.
+        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
+        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
+            timeseries. Only applicable when columns are specified.
+
+    Returns: Timeseries for fips
+    """
+
+    state_ts = build_us_timeseries_with_all_fields().get_subset(None, fips=fips)
+    if columns:
+        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
+            drop=True
+        )
+
+        if min_range_with_some_value:
+            subset = _remove_padded_nans(subset, columns)
+
+        state_ts = TimeseriesDataset(subset)
+
+    return state_ts
+
+
+def get_timeseries_for_state(
+    state: str, columns: List = None, min_range_with_some_value: bool = False
+) -> TimeseriesDataset:
+    """Gets timeseries for a specific state abbreviation.
+
+    Args:
+        state: 2-letter state code
+        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
+        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
+            timeseries. Only applicable when columns are specified.
+
+    Returns: Timeseries for state
+    """
+
+    state_ts = build_us_timeseries_with_all_fields().get_subset(AggregationLevel.STATE, state=state)
+    if columns:
+        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
+            drop=True
+        )
+
+        if min_range_with_some_value:
+            subset = _remove_padded_nans(subset, columns)
+
+        state_ts = TimeseriesDataset(subset)
+
+    return state_ts
 
 
 def load_data_sources(
@@ -201,12 +266,13 @@ def build_combined_dataset_from_sources(
     for field, data_source_classes in feature_definition_config.items():
         for data_source_cls in data_source_classes:
             dataset = intermediate_datasets[data_source_cls]
-            data = dataset_utils.fill_fields_with_data_source(
-                log.bind(dataset_name=data_source_cls.SOURCE_NAME, field=field),
-                data,
-                dataset.data,
-                target_dataset_cls.INDEX_FIELDS,
-                [field],
-            )
+            with tmp_bind(log, dataset_name=data_source_cls.SOURCE_NAME, field=field) as log:
+                try:
+                    data = dataset_utils.fill_fields_with_data_source(
+                        log, data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field],
+                    )
+                except Exception:
+                    log.exception("trying to fill fields")
+                    raise
 
     return target_dataset_cls(data)

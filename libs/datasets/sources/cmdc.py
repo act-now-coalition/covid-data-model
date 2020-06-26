@@ -1,12 +1,19 @@
 import pandas as pd
+
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
-from libs.datasets.common_fields import CommonFields
 
 
 class CmdcDataSource(data_source.DataSource):
     DATA_PATH = "data/cases-cmdc/timeseries-common.csv"
     SOURCE_NAME = "CMDC"
+
+    # CMDC data reports values at both the state and county level. However, state values
+    # are not reported until complete values from states are received.  The latest
+    # row may contain some county data but not state data - instead of aggregating and returning
+    # incomplete state data, we are choosing to not aggregate.
+    FILL_MISSING_STATE_LEVEL_DATA = False
 
     INDEX_FIELD_MAP = {
         CommonFields.DATE: CommonFields.DATE,
@@ -17,13 +24,23 @@ class CmdcDataSource(data_source.DataSource):
     }
 
     # Keep in sync with update_cmdc.py in the covid-data-public repo.
+    # DataSource objects must have a map from CommonFields to fields in the source file. For CMDC the
+    # conversion is done in the covid-data-public repo so the map here doesn't represent any field renaming.
     COMMON_FIELD_MAP = {
-        CommonFields.DEATHS: CommonFields.DEATHS,
-        CommonFields.CURRENT_ICU: CommonFields.CURRENT_ICU,
-        CommonFields.NEGATIVE_TESTS: CommonFields.NEGATIVE_TESTS,
-        CommonFields.POSITIVE_TESTS: CommonFields.POSITIVE_TESTS,
-        CommonFields.CURRENT_VENTILATED: CommonFields.CURRENT_VENTILATED,
-        CommonFields.CURRENT_HOSPITALIZED: CommonFields.CURRENT_HOSPITALIZED,
+        f: f
+        for f in {
+            CommonFields.CASES,
+            CommonFields.DEATHS,
+            CommonFields.CURRENT_ICU,
+            CommonFields.CURRENT_ICU_TOTAL,
+            CommonFields.NEGATIVE_TESTS,
+            CommonFields.POSITIVE_TESTS,
+            CommonFields.STAFFED_BEDS,
+            CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
+            CommonFields.CURRENT_VENTILATED,
+            CommonFields.CURRENT_HOSPITALIZED,
+            CommonFields.ICU_BEDS,
+        }
     }
 
     @classmethod

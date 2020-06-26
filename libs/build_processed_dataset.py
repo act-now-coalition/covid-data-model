@@ -1,7 +1,6 @@
 import pandas as pd
 import requests
 import logging
-import sentry_sdk
 from functools import lru_cache
 
 from libs.datasets.combined_datasets import build_us_timeseries_with_all_fields
