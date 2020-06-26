@@ -1,7 +1,6 @@
-import csv
 import sys
 
-from libs.datasets import CommonFields
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.enums import Intervention
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets.results_schema import (

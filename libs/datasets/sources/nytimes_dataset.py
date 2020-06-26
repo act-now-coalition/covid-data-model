@@ -1,7 +1,9 @@
 import pandas as pd
+
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
-from libs.datasets.common_fields import CommonFields, CommonIndexFields
+from libs.datasets.common_fields import CommonIndexFields
 
 
 class NYTimesDataset(data_source.DataSource):
