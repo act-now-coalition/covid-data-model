@@ -105,6 +105,7 @@ class RtInferenceEngine:
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+
             self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
                 self.state, self.ref_date, False
             )
@@ -539,6 +540,9 @@ class RtInferenceEngine:
         logging.info(available_timeseries)
         for timeseries_type in available_timeseries:
             dates, times, timeseries = self.get_timeseries(timeseries_type)
+            logging.info("dates")
+            logging.info(dates)
+            logging.info(timeseries)
             df = pd.DataFrame()
             dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
             if posteriors is not None:
@@ -709,7 +713,7 @@ class RtInferenceEngine:
 
         logging.info("about to run forecast rt")
 
-        # self.forecast_rt(df_all)
+        self.forecast_rt(df_all)
         return df_all
 
     def forecast_rt(self, df_all):
@@ -771,7 +775,7 @@ class RtInferenceEngine:
             scaler = scaler.fit(reshaped_data)
             scaled_values = scaler.transform(reshaped_data)
 
-            # add these columns to dataframe
+            # add scaled columns to dataframe
             train_set.loc[:, f"{columnName}_scaled"] = scaled_values
 
             # update dictionary for later use to unscale data
@@ -794,6 +798,9 @@ class RtInferenceEngine:
         # Create list of dataframes for testing
         logging.info("creating dataset list")
         train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
+        logging.info("getting X Y")
+        X_train, Y_train = self.get_X_Y(train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE)
+
         logging.info("done")
 
         # check if dictionary of scalers works
@@ -801,6 +808,26 @@ class RtInferenceEngine:
         logging.info(scalers_dict)
 
         return
+
+    @staticmethod
+    def get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE):
+        logging.info("starting to get X Y")
+        logging.info(len(sample_list))
+        for i in range(len(sample_list)):
+            logging.info("df")
+            df = sample_list[i]
+            logging.info(df)
+
+            train = df.iloc[:-PREDICT_DAYS, :]  # exclude last n entries of df to use for prediction
+            logging.info("got train set")
+            test = df.iloc[-PREDICT_DAYS:, :]
+            logging.info("got test set")
+            # test = test[PREDICT_VARIABLE].to_numpy()
+            # test = pd.DataFrame(data = test)
+            logging.info("train")
+            logging.info(train)
+            logging.info("label")
+            logging.info(test)
 
     @staticmethod
     def create_df_list(df, min_days, predict_days):
@@ -811,6 +838,7 @@ class RtInferenceEngine:
                 continue
             else:
                 df_list.append(df[0:i].copy())  # here could also create week and month predictions
+        logging.info("doen creating df list")
         return df_list
 
     @staticmethod
