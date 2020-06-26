@@ -87,6 +87,7 @@ class WebUIDataAdaptorV1:
             FIPS code to map.
         """
         log.info("Mapping output to WebUI.", state=self.state, fips=fips)
+        shim_log = structlog.getLogger(fips=fips)
         pyseir_outputs = load_data.load_ensemble_results(fips)
 
         try:
@@ -103,14 +104,19 @@ class WebUIDataAdaptorV1:
 
         # We need the index in the model's temporal frame.
         idx_offset = int(fit_results["t_today"] - fit_results["t0"])
+
         # Get the latest observed values to use in calculating shims
         observed_latest_dict = combined_datasets.get_us_latest_for_fips(fips)
-        shim_log = structlog.getLogger(fips=fips)
+
+        observed_death_latest = observed_latest_dict[CommonFields.DEATHS]
+        observed_total_hosps_latest = observed_latest_dict[CommonFields.CURRENT_HOSPITALIZED]
+        observed_icu_latest = observed_latest_dict[CommonFields.CURRENT_ICU]
 
         # For Deaths
-        model_death_ts = pyseir_outputs[baseline_policy]["total_deaths"]["ci_50"]
-        model_death_latest = model_death_ts[idx_offset]
-        observed_death_latest = observed_latest_dict[CommonFields.DEATHS]
+        model_death_latest = pyseir_outputs[baseline_policy]["total_deaths"]["ci_50"][idx_offset]
+        model_acute_latest = pyseir_outputs[baseline_policy]["HGen"]["ci_50"][idx_offset]
+        model_icu_latest = pyseir_outputs[baseline_policy]["HICU"]["ci_50"][idx_offset]
+        model_total_hosps_latest = model_acute_latest + model_icu_latest
 
         death_shim = shim.calculate_strict_shim(
             model=model_death_latest,
@@ -118,25 +124,15 @@ class WebUIDataAdaptorV1:
             log=shim_log.bind(type=CommonFields.DEATHS),
         )
 
-        # For Total Hospitalizations
-        model_acute_ts = pyseir_outputs[baseline_policy]["HGen"]["ci_50"]
-        model_icu_ts = pyseir_outputs[baseline_policy]["HICU"]["ci_50"]
-        model_total_hosps_ts = model_acute_ts + model_icu_ts
-        model_total_hosps_latest = model_total_hosps_ts[idx_offset]
-        observed_total_hosps_latest = observed_latest_dict[CommonFields.CURRENT_HOSPITALIZED]
-
         total_hosp_shim = shim.calculate_strict_shim(
             model=model_total_hosps_latest,
             observed=observed_total_hosps_latest,
             log=shim_log.bind(type=CommonFields.CURRENT_HOSPITALIZED),
         )
 
-        # For ICU
-        # This one is a little more interesting since we often don't have ICU.
-        model_acute_latest = model_acute_ts[idx_offset]
-        model_icu_latest = model_icu_ts[idx_offset]
-        observed_icu_latest = observed_latest_dict[CommonFields.CURRENT_ICU]
-
+        # For ICU This one is a little more interesting since we often don't have ICU. In this case
+        # we use information from the same aggregation level (intralevel) to keep the ratios
+        # between general hospitalization and icu hospitalization
         icu_shim = shim.calculate_intralevel_icu_shim(
             model_acute=model_acute_latest,
             model_icu=model_icu_latest,
@@ -340,6 +336,6 @@ if __name__ == "__main__":
     # Need to have a whitelist pre-generated
     # Need to have state output already built
     mapper = WebUIDataAdaptorV1(
-        state="California", output_interval_days=1, run_mode="can-inference-derived"
+        state="Texas", output_interval_days=1, run_mode="can-inference-derived"
     )
-    mapper.generate_state(whitelisted_county_fips=["06037", "06075", "06059"], states_only=False)
+    mapper.generate_state(whitelisted_county_fips=["48201"], states_only=False)
