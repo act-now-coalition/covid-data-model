@@ -45,7 +45,7 @@ env:
 
 
 jobs:
-  execute-model:
+  end-to-end:
     runs-on: self-hosted
     steps:
     - name: Checkout covid-data-model
@@ -77,7 +77,7 @@ jobs:
     - name: Install Dependencies
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
-
+#
     # - name: create temp file
     #   run: |
     #     mkdir -p /data/api-results-${{env.SNAPSHOT_ID}}
@@ -93,40 +93,40 @@ jobs:
       with:
         name: model-results-${{env.SNAPSHOT_ID}}
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
-
-  execute-api:
-    runs-on: self-hosted
-    needs: execute-model
-    steps:
-    - name: Checkout covid-data-model
-      uses: actions/checkout@v2
-      with:
-        repository: covid-projections/covid-data-model
-        path: covid-data-model
-        ref: '${{env.COVID_DATA_MODEL_REF}}'
-    - name: Checkout covid-data-public
-      uses: actions/checkout@v2
-      with:
-        repository: covid-projections/covid-data-public
-        path: covid-data-public
-        lfs: true
-        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
-    - name: Setup Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: '3.7.6'
-        architecture: 'x64'
-    - name: Cache Pip
-      uses: actions/cache@v1
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          ${{ runner.os }}-
-    - name: Install Dependencies
-      working-directory: ./covid-data-model
-      run: pip install -r requirements.txt
+#
+#  execute-api:
+#    runs-on: self-hosted
+#    needs: execute-model
+#    steps:
+#    - name: Checkout covid-data-model
+#      uses: actions/checkout@v2
+#      with:
+#        repository: covid-projections/covid-data-model
+#        path: covid-data-model
+#        ref: '${{env.COVID_DATA_MODEL_REF}}'
+#    - name: Checkout covid-data-public
+#      uses: actions/checkout@v2
+#      with:
+#        repository: covid-projections/covid-data-public
+#        path: covid-data-public
+#        lfs: true
+#        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
+#    - name: Setup Python
+#      uses: actions/setup-python@v1
+#      with:
+#        python-version: '3.7.6'
+#        architecture: 'x64'
+#    - name: Cache Pip
+#      uses: actions/cache@v1
+#      with:
+#        path: ~/.cache/pip
+#        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+#        restore-keys: |
+#          ${{ runner.os }}-pip-
+#          ${{ runner.os }}-
+#    - name: Install Dependencies
+#      working-directory: ./covid-data-model
+#      run: pip install -r requirements.txt
 
     # - uses: actions/download-artifact@v1
     #   with:
@@ -139,14 +139,14 @@ jobs:
     #   with:
     #     name: model-results-with-api
     #     path: ./api-results
-
-  push-snapshot-to-s3:
-    runs-on: self-hosted
-    needs:
-      - execute-model
-      - execute-api
-
-    steps:
+#
+#  push-snapshot-to-s3:
+#    runs-on: self-hosted
+#    needs:
+#      - execute-model
+#      - execute-api
+#
+#    steps:
     - name: make and copy to local tmp directory
       run: |
         mkdir -p ./tmp/data/
@@ -165,13 +165,13 @@ jobs:
     - name: remove local tmp directory
       run: |
         rm -rf ./tmp/data/
-
-  finish:
-    runs-on: self-hosted
-    needs:
-      - push-snapshot-to-s3
-
-    steps:
+#
+#  finish:
+#    runs-on: self-hosted
+#    needs:
+#      - push-snapshot-to-s3
+#
+#    steps:
     - name: Maybe trigger covid-projections repo to use new snapshot.
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
