@@ -816,8 +816,8 @@ class RtInferenceEngine:
         )
 
         logging.info("done")
-
-        model, history = self.build_model(MASK_VALUE, 1, 1, 10, 0.01, X_train, Y_train)
+        n_batch = 1
+        model, history = self.build_model(MASK_VALUE, 1, n_batch, 10, 0.01, X_train, Y_train)
         plot = True
         if plot:
             plt.close("all")
@@ -834,6 +834,20 @@ class RtInferenceEngine:
 
         logging.info("built model")
 
+        # Plot predictions for test and train sets
+        forecasts = list()
+        dates = list()
+        for i, j in zip(X_train, Y_train):
+            original_df = get_reshaped_X(i, n_batch, X_scaler)
+            i = i.reshape(n_batch, i.shape[0], i.shape[1])
+            thisforecast = Y_scaler.inverse_transform(model.predict(i, batch_size=n_batch))
+            forecasts.append(Y_scaler.inverse_transform(model.predict(i, batch_size=n_batch)))
+            last_day = round(
+                original_df.iloc[-1][0] + 1
+            )  # not sure why rounding is necessary here, but without arrays come out with different shapes
+            predicted_days = np.arange(last_day, last_day + args.days_of_cv_predict)
+            dates.append(predicted_days)
+
         # check if dictionary of scalers works
 
         return
@@ -844,16 +858,13 @@ class RtInferenceEngine:
     ):
         patience = 50
         validation_split = 0.1
-        logging.info("in build model")
         model = Sequential()
-        logging.info("made sequential model")
         model.add(
             Masking(
                 mask_value=MASK_VALUE,
                 batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
             )
         )
-        logging.info("added masking")
         model.add(
             LSTM(
                 hidden_layer_dimensions,
@@ -862,7 +873,6 @@ class RtInferenceEngine:
                 return_sequences=True,
             )
         )
-        logging.info("first layer")
         model.add(
             LSTM(
                 hidden_layer_dimensions,
@@ -870,15 +880,10 @@ class RtInferenceEngine:
                 stateful=True,
             )
         )
-        logging.info("second layer")
         model.add(Dropout(dropout))
-        logging.info("dropout")
         model.add(Dense(final_train_Y.shape[1]))
-        logging.info("dense layer")
         es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=patience)
-        logging.info("early stopping")
         model.compile(loss="mean_squared_error", optimizer="adam")
-        logging.info("mse adam")
         history = model.fit(
             final_train_X,
             final_train_Y,
