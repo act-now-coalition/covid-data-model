@@ -19,6 +19,7 @@ from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import combined_datasets
 from libs.datasets import results_schema as rc
 from libs.functions import generate_api as api
+from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 
 logger = logging.getLogger(__name__)
 PROD_BUCKET = "data.covidactnow.org"
@@ -141,32 +142,13 @@ def generate_api(projection_result: APIPipelineProjectionResult, input_dir: str)
     return summaries, timeseries
 
 
-def build_states_summary(state_data: List[APIOutput], intervention) -> APIOutput:
-    data = [output.data for output in state_data]
-    state_api_data = CovidActNowStatesSummary(__root__=data)
-    key = f"states.{intervention.name}"
-    return APIOutput(key, state_api_data, intervention)
+def generate_area_summary_for_fips_intervention(
+    fips: str, intervention, us_latest: LatestValuesDataset
+) -> CovidActNowAreaTimeseries:
 
-
-def build_states_timeseries(state_data: List[APIOutput], intervention) -> APIOutput:
-    data = [output.data for output in state_data]
-    state_api_data = CovidActNowStatesTimeseries(__root__=data)
-    key = f"states.{intervention.name}.timeseries"
-    return APIOutput(key, state_api_data, intervention)
-
-
-def build_counties_summary(counties_data: List[APIOutput], intervention) -> APIOutput:
-    county_summaries = [output.data for output in counties_data]
-    county_api_data = CovidActNowCountiesSummary(__root__=county_summaries)
-    key = f"counties.{intervention.name}"
-    return APIOutput(key, county_api_data, intervention)
-
-
-def build_counties_timeseries(counties_data: List[APIOutput], intervention) -> APIOutput:
-    county_summaries = [output.data for output in counties_data]
-    county_api_data = CovidActNowCountiesTimeseries(__root__=county_summaries)
-    key = f"counties.{intervention.name}.timeseries"
-    return APIOutput(key, county_api_data, intervention)
+    fips_latest = us_latest.get_subset(None, fips=fips)
+    model_output = CANPyseirLocationOutput.load_projection(fips, intervention, None)
+    generate_api.generate_area_summary(fips, intervention, fips_latest, model_output)
 
 
 def remove_root_wrapper(obj: dict):

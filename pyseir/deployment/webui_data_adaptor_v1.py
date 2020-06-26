@@ -224,7 +224,7 @@ class WebUIDataAdaptorV1:
         for suppression_policy in suppression_policies:
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
-
+            output_model[schema.FIPS] = fips
             t_list = output_for_policy["t_list"]
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
 
@@ -369,10 +369,11 @@ class WebUIDataAdaptorV1:
             )
 
             # Convert the records format to just list(list(values))
-            output_model = [
-                [val for val in timestep.values()]
-                for timestep in output_model.to_dict(orient="records")
-            ]
+
+            # output_model = [
+            #     [val for val in timestep.values()]
+            #     for timestep in output_model.to_dict(orient="records")
+            # ]
 
             output_path = get_run_artifact_path(
                 fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir

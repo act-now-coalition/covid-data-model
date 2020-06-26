@@ -1,4 +1,5 @@
 from typing import List, Optional
+from libs.enums import Intervention
 import pydantic
 import datetime
 
@@ -78,7 +79,10 @@ class _Actuals(pydantic.BaseModel):
 
 class CovidActNowAreaSummary(pydantic.BaseModel):
     countryName: str = "US"
-    fips: str = pydantic.Field(..., description="Fips for State + County. Five character code")
+    fips: str = pydantic.Field(
+        ...,
+        description="Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+    )
     lat: float = pydantic.Field(..., description="Latitude of point within the state or county")
     long: float = pydantic.Field(..., description="Longitude of point within the state or county")
     stateName: str = pydantic.Field(..., description="The state name")
@@ -88,14 +92,12 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
     actuals: Optional[_Actuals] = pydantic.Field(...)
     population: int = pydantic.Field(..., description="Total Population in geographic area.", gt=0)
 
+    @property
+    def intervention(self) -> Optional[Intervention]:
+        if not actuals:
+            return None
 
-# TODO(igor): countyName *must* be None
-class CovidActNowStateSummary(CovidActNowAreaSummary):
-    pass
-
-
-class CovidActNowCountySummary(CovidActNowAreaSummary):
-    pass
+        return Intervention(self.actuals.intervention)
 
 
 class CANActualsTimeseriesRow(_Actuals):
@@ -205,7 +207,21 @@ class CovidActNowStateTimeseries(CovidActNowStateSummary):
         return rows
 
 
+# TODO(igor): countyName *must* be None
+class CovidActNowStateSummary(CovidActNowAreaSummary):
+    pass
+
+
+class CovidActNowCountySummary(CovidActNowAreaSummary):
+    pass
+
+
 class CovidActNowCountyTimeseries(CovidActNowCountySummary):
+    timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+    actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
+
+
+class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
     actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 

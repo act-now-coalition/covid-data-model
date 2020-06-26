@@ -6,6 +6,7 @@ from api.can_api_definition import (
     CovidActNowStateSummary,
     CovidActNowAreaSummary,
     CovidActNowCountyTimeseries,
+    CovidActNowAreaTimeseries,
     CovidActNowStateTimeseries,
     CANPredictionTimeseriesRow,
     CANActualsTimeseriesRow,
@@ -85,8 +86,14 @@ def _generate_api_for_projections(projection_row):
     return projections
 
 
-def _generate_actuals(actual_data, intervention) -> _Actuals:
+def _generate_actuals(actual_data: dict, intervention: Intervention) -> _Actuals:
+    """Generate actuals entry.
 
+    Args:
+        actual_data: Dictionary of data, generally derived one of the combined datasets.
+        intervention: Current state level intervention.
+
+    """
     total_bed_capacity = actual_data.get(CommonFields.MAX_BED_COUNT)
     typical_usage_rate = actual_data.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE)
     capacity = None
@@ -132,36 +139,7 @@ def _generate_actuals_timeseries(actuals_timeseries_dataset, intervention):
     return actual_timeseries_api_response
 
 
-def _generate_state_timeseries_row(json_data_row):
-
-    return CANPredictionTimeseriesRow(
-        date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
-        hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
-        hospitalBedCapacity=json_data_row[can_schema.BEDS],
-        ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
-        ICUBedCapacity=json_data_row[can_schema.ICU_BED_CAPACITY],
-        cumulativeDeaths=json_data_row[can_schema.DEAD],
-        cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        currentInfected=json_data_row[can_schema.ALL_INFECTED],
-        currentSusceptible=json_data_row[can_schema.TOTAL_SUSCEPTIBLE],
-        currentExposed=json_data_row[can_schema.EXPOSED],
-        ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
-        ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
-        RtIndicator=json_data_row[can_schema.RT_INDICATOR],
-        RtIndicatorCI90=json_data_row[can_schema.RT_INDICATOR_CI90],
-        cumulativePositiveTests=_get_or_none(
-            json_data_row[CovidTrackingDataSource.Fields.POSITIVE_TESTS]
-        ),
-        cumulativeNegativeTests=_get_or_none(
-            json_data_row[CovidTrackingDataSource.Fields.NEGATIVE_TESTS]
-        ),
-    )
-
-
-def _generate_county_timeseries_row(json_data_row):
-    tested = _get_or_none(json_data_row[CDSDataset.Fields.TESTED])
-    cases = _get_or_none(json_data_row[CDSDataset.Fields.CASES])
-    negative = tested and cases and (tested - cases)
+def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeseriesRow:
 
     return CANPredictionTimeseriesRow(
         date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
@@ -178,8 +156,9 @@ def _generate_county_timeseries_row(json_data_row):
         currentExposed=json_data_row[can_schema.EXPOSED],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        cumulativePositiveTests=cases,
-        cumulativeNegativeTests=negative,
+        # TODO: Either deprecate this field or figure out how to pass test data through.
+        # cumulativePositiveTests=cases,
+        # cumulativeNegativeTests=negative,
     )
 
 
@@ -321,13 +300,8 @@ def generate_api_for_county_projection(projection) -> CovidActNowCountiesAPI:
     return CovidActNowCountiesAPI(__root__=api_results)
 
 
-def generate_area_timeseries(
-    fips: str,
-    intervention: Intervention,
-    latest_values: dict,
-    timeseries: TimeseriesDataset,
-    projection_row: Optional[dict],
-    raw_timeseries: Optional[dict],
+def generate_area_summary(
+    fips: str, intervention: Intervention, latest_values: dict, projection_row: Optional[dict],
 ):
     state = latest_values[CommonFields.STATE]
     state_intervention = get_can_projection.get_intervention_for_state(state)
@@ -347,4 +321,33 @@ def generate_area_timeseries(
         actuals=actuals,
         lastUpdatedDate="",
         projections=projections,
+    )
+
+
+def generate_area_timeseries(
+    area_summary: CovidActNowAreaSummary,
+    timeseries: TimeseriesDataset,
+    model_timeseries: pd.DataFrame,
+) -> CovidActNowAreaTimeseries:
+    if not area_summary.intervention:
+        # All area summaries here are expected to have actuals values.
+        # It's a bit unclear why the actuals value is optional in the first place,
+        # but at this point we expect actuals to have been included.
+        raise AssertionError("Area summary missing actuals")
+
+    actuals_timeseries = []
+
+    for row in timeseries.records:
+        actual = _generate_actuals(row, area_summary.intervention)
+        timeseries_row = CANActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
+        actuals_timeseries.append(timeseries_actual)
+
+    model_timeseries = [
+        _generate_prediction_timeseries_row(row)
+        for row in model_timeseries.to_dict(orient="records")
+    ]
+
+    area_summary_data = {key: getattr(area_summary, key) for (key, _) in CovidActNowAreaSummary}
+    return CovidActNowAreaTimeseries(
+        **area_summary_data, timeseries=model_timeseries, actualsTimeseries=actuals_timeseries
     )
