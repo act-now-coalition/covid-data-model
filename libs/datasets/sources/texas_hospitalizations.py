@@ -1,6 +1,8 @@
 import pandas as pd
 
+
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic import common_df
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 
@@ -20,14 +22,12 @@ class TexasHospitalizations(data_source.DataSource):
     }
 
     COMMON_FIELD_MAP = {
-        CommonFields.CURRENT_HOSPITALIZED: CommonFields.CURRENT_HOSPITALIZED,
+        CommonFields.CURRENT_HOSPITALIZED: Fields.CURRENT_HOSPITALIZED,
     }
 
     @classmethod
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        data = pd.read_csv(
-            input_path, parse_dates=[CommonFields.DATE], dtype={CommonFields.FIPS: str}
-        )
+        data = common_df.read_csv(input_path).reset_index()
         return cls(data)
