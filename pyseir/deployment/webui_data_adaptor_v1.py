@@ -368,13 +368,6 @@ class WebUIDataAdaptorV1:
                 .astype(str)
             )
 
-            # Convert the records format to just list(list(values))
-
-            # output_model = [
-            #     [val for val in timestep.values()]
-            #     for timestep in output_model.to_dict(orient="records")
-            # ]
-
             output_path = get_run_artifact_path(
                 fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
