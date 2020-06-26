@@ -813,21 +813,43 @@ class RtInferenceEngine:
     def get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE):
         logging.info("starting to get X Y")
         logging.info(len(sample_list))
+        PREDICT_VAR = PREDICT_VARIABLE + "_scaled"
+        SEQUENCE_LENGTH = 300
+        MASK_VALUE = -10
+        X_train_list = list()
+        Y_train_list = list()
         for i in range(len(sample_list)):
             logging.info("df")
             df = sample_list[i]
+            # df = df[df.columns.drop(list(df.filter(regex="scaled")))]
+            df = df.filter(regex="scaled")
+            logging.info("now df")
             logging.info(df)
+            logging.info(df)
+            logging.info(df[f"{PREDICT_VARIABLE}_scaled"])
 
             train = df.iloc[:-PREDICT_DAYS, :]  # exclude last n entries of df to use for prediction
             logging.info("got train set")
             test = df.iloc[-PREDICT_DAYS:, :]
             logging.info("got test set")
-            # test = test[PREDICT_VARIABLE].to_numpy()
-            # test = pd.DataFrame(data = test)
-            logging.info("train")
-            logging.info(train)
+
+            logging.info("padding")
+            logging.info(train.shape[0])
+            n_rows_train = train.shape[0]
+            n_rows_to_add = SEQUENCE_LENGTH - n_rows_train
+            pad_rows = np.empty((n_rows_to_add, train.shape[1]), float)
+            pad_rows[:] = MASK_VALUE
+            padded_train = np.concatenate((pad_rows, train))
+            logging.info("PADDED")
+            logging.info(padded_train)
+
+            test = np.array(test[PREDICT_VAR])
             logging.info("label")
             logging.info(test)
+
+            X_train_list.append(padded_train)
+            Y_train_list.append(test)
+        return X_train_list, Y_train_list
 
     @staticmethod
     def create_df_list(df, min_days, predict_days):
