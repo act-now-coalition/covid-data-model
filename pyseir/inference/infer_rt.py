@@ -13,8 +13,12 @@ from pyseir import load_data
 from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
+
 import logging
 from sklearn import preprocessing
+from keras.models import Sequential
+from keras.layers import *
+from keras.callbacks import EarlyStopping
 
 
 class InferRtConstants:
@@ -546,6 +550,9 @@ class RtInferenceEngine:
             df = pd.DataFrame()
             dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
             if posteriors is not None:
+                logging.info("NATASHA:")
+                logging.info(f"Rt_MAP__{timeseries_type.value}")
+
                 df[f"Rt_MAP__{timeseries_type.value}"] = posteriors.idxmax()
                 for ci in self.confidence_intervals:
                     ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
@@ -740,15 +747,20 @@ class RtInferenceEngine:
             df_all.index - self.ref_date
         ).days + 1  # set first day of year to 1 not zero --- check why this varies for Idaho number of entries not the same for corrected/notcorrected
         # slim dataframe to only variables used in prediction
-        PREDICT_VARIABLE = "Rt_MAP_composite"
-        FORECAST_VARIABLES = ["sim_day", "raw_new_cases", "raw_new_deaths", "Rt_MAP_composite"]
+        PREDICT_VARIABLE = "raw_new_cases"
+        FORECAST_VARIABLES = [
+            "sim_day",
+            "raw_new_cases",
+        ]  # , "Rt_MAP__new_cases"] #raw_new_deaths SERIOUS TODO add back deaths because rn nan values break lstm
+        MASK_VALUE = -10
 
         df_forecast = df_all[FORECAST_VARIABLES].copy()
 
-        df_forecast.to_csv("df_forecast.csv", na_rep="NaN")
-
         # Fill empty values with zero
-        df_forecast.replace(r"\s+", np.nan, regex=True).replace("", np.nan)
+        df_forecast.replace(r"\s+", MASK_VALUE, regex=True).replace("", MASK_VALUE)
+        df_forecast.replace(np.nan, MASK_VALUE, regex=True).replace(np.nan, MASK_VALUE)
+
+        df_forecast.to_csv("df_forecast.csv")  # , na_rep="NaN")
 
         # Split into train and test before normalizing to avoid data leakage
         # TODO: Test set will actually be entire series
@@ -758,11 +770,13 @@ class RtInferenceEngine:
         test_set = df_forecast[
             train_set_length:
         ]  # this is really the entire series TODO maybe find a better way to code this
+        """
         logging.info("train set")
         logging.info(train_set)
         logging.info("test set")
         logging.info(test_set)
         logging.info(f"train_size: {len(train_set.index)} test_size: {len(test_set.index)}")
+        """
 
         # Normalize Inputs for training
         scalers_dict = {}
@@ -794,62 +808,122 @@ class RtInferenceEngine:
         MIN_NUMBER_OF_DAYS = (
             30  # I don't think it makes sense to predict anything until we have a month of data
         )
-        PREDICT_DAYS = 7
+        PREDICT_DAYS = 2
         # Create list of dataframes for testing
-        logging.info("creating dataset list")
         train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
-        logging.info("getting X Y")
-        X_train, Y_train = self.get_X_Y(train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE)
+        X_train, Y_train = self.get_X_Y(
+            train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
+        )
 
         logging.info("done")
 
+        model, history = self.build_model(MASK_VALUE, 1, 1, 10, 0.01, X_train, Y_train)
+        plot = True
+        if plot:
+            plt.close("all")
+            logging.info("plotting")
+            plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
+            logging.info("plotted history")
+            # plt.plot(history.history['val_loss'], color = 'green', linestyle = 'solid', linewidth = args.linewidth, label = 'Validation Set')
+            logging.info("plotted more")
+            plt.legend()
+            plt.xlabel("Epochs")
+            plt.ylabel("RMSE")
+            plt.savefig("lstm_loss_final.png")
+            plt.close("all")
+
+        logging.info("built model")
+
         # check if dictionary of scalers works
-        logging.info("scaled everything")
-        logging.info(scalers_dict)
 
         return
 
     @staticmethod
-    def get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE):
+    def build_model(
+        MASK_VALUE, epochs, n_batch, hidden_layer_dimensions, dropout, final_train_X, final_train_Y
+    ):
+        patience = 50
+        validation_split = 0.1
+        logging.info("in build model")
+        model = Sequential()
+        logging.info("made sequential model")
+        model.add(
+            Masking(
+                mask_value=MASK_VALUE,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+            )
+        )
+        logging.info("added masking")
+        model.add(
+            LSTM(
+                hidden_layer_dimensions,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                stateful=True,
+                return_sequences=True,
+            )
+        )
+        logging.info("first layer")
+        model.add(
+            LSTM(
+                hidden_layer_dimensions,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                stateful=True,
+            )
+        )
+        logging.info("second layer")
+        model.add(Dropout(dropout))
+        logging.info("dropout")
+        model.add(Dense(final_train_Y.shape[1]))
+        logging.info("dense layer")
+        es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=patience)
+        logging.info("early stopping")
+        model.compile(loss="mean_squared_error", optimizer="adam")
+        logging.info("mse adam")
+        history = model.fit(
+            final_train_X,
+            final_train_Y,
+            epochs=epochs,
+            batch_size=n_batch,
+            verbose=1,
+            shuffle=False,
+            validation_split=validation_split,
+            callbacks=[es],
+        )
+        logging.info("fit")
+
+        return model, history
+
+    @staticmethod
+    def get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE):
         logging.info("starting to get X Y")
         logging.info(len(sample_list))
         PREDICT_VAR = PREDICT_VARIABLE + "_scaled"
         SEQUENCE_LENGTH = 300
-        MASK_VALUE = -10
         X_train_list = list()
         Y_train_list = list()
         for i in range(len(sample_list)):
-            logging.info("df")
             df = sample_list[i]
             # df = df[df.columns.drop(list(df.filter(regex="scaled")))]
             df = df.filter(regex="scaled")
-            logging.info("now df")
-            logging.info(df)
-            logging.info(df)
-            logging.info(df[f"{PREDICT_VARIABLE}_scaled"])
 
             train = df.iloc[:-PREDICT_DAYS, :]  # exclude last n entries of df to use for prediction
-            logging.info("got train set")
             test = df.iloc[-PREDICT_DAYS:, :]
-            logging.info("got test set")
 
-            logging.info("padding")
-            logging.info(train.shape[0])
             n_rows_train = train.shape[0]
             n_rows_to_add = SEQUENCE_LENGTH - n_rows_train
             pad_rows = np.empty((n_rows_to_add, train.shape[1]), float)
             pad_rows[:] = MASK_VALUE
             padded_train = np.concatenate((pad_rows, train))
-            logging.info("PADDED")
-            logging.info(padded_train)
 
             test = np.array(test[PREDICT_VAR])
-            logging.info("label")
-            logging.info(test)
 
             X_train_list.append(padded_train)
             Y_train_list.append(test)
-        return X_train_list, Y_train_list
+
+        final_test_X = np.array(X_train_list)
+        final_test_Y = np.array(Y_train_list)
+        final_test_Y = np.squeeze(final_test_Y)
+        return final_test_X, final_test_Y
 
     @staticmethod
     def create_df_list(df, min_days, predict_days):
