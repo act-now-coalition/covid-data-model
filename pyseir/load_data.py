@@ -417,11 +417,17 @@ def load_new_case_data_by_state(
 
     _, filter_idx = hampel_filter__low_outliers_only(observed_new_cases, window_size=5, n_sigmas=2)
     keep_idx = np.array([i for i in range(len(times_new)) if i not in list(filter_idx)])
-    times_new = [int(list(times_new)[idx]) for idx in keep_idx]
+    # times_new = [int(list(times_new)[idx]) for idx in keep_idx]
+    # return (
+    #    times_new,
+    #    np.array(observed_new_cases[keep_idx]).clip(min=0),
+    #    observed_new_deaths.clip(min=0)[keep_idx],
+    # )
+
     return (
         times_new,
-        np.array(observed_new_cases[keep_idx]).clip(min=0),
-        observed_new_deaths.clip(min=0)[keep_idx],
+        np.array(observed_new_cases.clip(min=0)),
+        observed_new_deaths.clip(min=0),
     )
 
 
