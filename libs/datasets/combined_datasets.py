@@ -10,6 +10,7 @@ from libs.datasets import dataset_base
 from libs.datasets import data_source
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources.cmdc import CmdcDataSource
+from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
@@ -55,6 +56,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CmdcDataSource,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
+        TexasHospitalizations,
     ],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,
@@ -83,7 +85,11 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
     CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
-    CommonFields.CURRENT_HOSPITALIZED: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_HOSPITALIZED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        TexasHospitalizations,
+    ],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,

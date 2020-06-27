@@ -8,14 +8,13 @@ from libs.datasets.common_fields import CommonIndexFields
 
 
 class NevadaHospitalAssociationData(data_source.DataSource):
-    DATA_PATH = "data/misc/nha_hospitalization_county.csv"
+    DATA_PATH = "data/states/nv/nha_hospitalization_county.csv"
     SOURCE_NAME = "NHA"
 
     class Fields(object):
+        FIPS = "fips"
         DATE = "date"
-        STATE = "state_code"
-        COUNTY = "county_name"
-        FIPS = "fips_code"
+        COUNTY = "county"
         ACCUTE_STAFFED = "acute_staffed"
         ACCUTE_OCCUPIED = "acute_occupied"
         ICU_STAFFED = "icu_staffed"
@@ -29,12 +28,11 @@ class NevadaHospitalAssociationData(data_source.DataSource):
 
         CURRENT_HOSPITALIZED_TOTAL = "current_hospitalized_total"
         AGGREGATE_LEVEL = "aggregate_level"
-        COUNTRY = "country"
 
     INDEX_FIELD_MAP = {
         CommonIndexFields.DATE: Fields.DATE,
-        CommonIndexFields.COUNTRY: Fields.COUNTRY,
-        CommonIndexFields.STATE: Fields.STATE,
+        CommonIndexFields.COUNTRY: CommonFields.COUNTRY,
+        CommonIndexFields.STATE: CommonFields.STATE,
         CommonIndexFields.FIPS: Fields.FIPS,
         CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
@@ -50,7 +48,8 @@ class NevadaHospitalAssociationData(data_source.DataSource):
 
     @classmethod
     def standardize_data(cls, data):
-        data[cls.Fields.COUNTRY] = "USA"
+        data[CommonFields.COUNTRY] = "USA"
+        data[CommonFields.STATE] = "NV"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.COUNTY.value
         data[cls.Fields.CURRENT_HOSPITALIZED_TOTAL] = (
             data[cls.Fields.ACCUTE_OCCUPIED] + data[cls.Fields.ICU_OCCUPIED]

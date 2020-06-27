@@ -7,6 +7,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources.cmdc import CmdcDataSource
+from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import JHUDataset
@@ -69,6 +70,7 @@ def test_combined_county_has_some_timeseries_data(fips):
         NevadaHospitalAssociationData,
         CmdcDataSource,
         NYTimesDataset,
+        TexasHospitalizations,
     ],
 )
 def test_unique_timeseries(data_source_cls):
