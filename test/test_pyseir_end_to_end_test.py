@@ -32,6 +32,7 @@ def test__pyseir_end_to_end():
 
 @pytest.mark.parametrize("fips,expected_results", [(None, True), ("16013", True), ("26013", False)])
 def test_filters_counties_properly(fips, expected_results):
+    cli._generate_whitelist()
     results = cli.build_counties_to_run_per_state(["Idaho"], fips=fips)
     if fips and expected_results:
         assert results == {fips: "Idaho"}
