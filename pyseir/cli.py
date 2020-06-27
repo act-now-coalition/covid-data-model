@@ -193,11 +193,11 @@ def _build_all_for_states(
 ):
     # prepare data
     _cache_global_datasets()
-    # do everything for just states in parallel
 
     if not skip_whitelist:
         _generate_whitelist()
 
+    # do everything for just states in parallel
     with Pool(maxtasksperchild=1) as p:
         states_only_func = partial(
             _state_only_pipeline,
