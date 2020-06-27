@@ -882,7 +882,8 @@ class RtInferenceEngine:
             callbacks=[es],
         )
         logging.info("fit")
-
+        logging.info(history.history["loss"])
+        logging.info(history.history["val_loss"])
         plot = True
         if plot:
             plt.close("all")
@@ -893,7 +894,6 @@ class RtInferenceEngine:
                 history.history["val_loss"],
                 color="green",
                 linestyle="solid",
-                linewidth=args.linewidth,
                 label="Validation Set",
             )
             logging.info("plotted more")
