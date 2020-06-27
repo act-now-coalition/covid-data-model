@@ -24,15 +24,6 @@ from pyseir.inference.whitelist_generator import WhitelistGenerator
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
 root = logging.getLogger()
-root.setLevel(logging.INFO)
-
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
-    "%(asctime)s - %(filename)s - %(lineno)d - %(levelname)s - %(message)s"
-)
-handler.setFormatter(formatter)
-root.addHandler(handler)
 
 DEFAULT_RUN_MODE = "can-inference-derived"
 ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
