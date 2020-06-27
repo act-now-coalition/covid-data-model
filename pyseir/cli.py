@@ -194,6 +194,10 @@ def _build_all_for_states(
     # prepare data
     _cache_global_datasets()
     # do everything for just states in parallel
+
+    if not skip_whitelist:
+        _generate_whitelist()
+
     with Pool(maxtasksperchild=1) as p:
         states_only_func = partial(
             _state_only_pipeline,
@@ -207,9 +211,6 @@ def _build_all_for_states(
     if states_only:
         root.info("Only executing for states. returning.")
         return
-
-    if not skip_whitelist:
-        _generate_whitelist()
 
     all_county_fips = build_counties_to_run_per_state(states, fips=fips)
 
