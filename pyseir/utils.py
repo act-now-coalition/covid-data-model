@@ -50,7 +50,7 @@ class RunArtifact(Enum):
     BACKTEST_RESULT = "backtest_result"
 
 
-def get_run_artifact_path(fips, artifact, output_dir=None):
+def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
     """
     Get an artifact path for a given locale and artifact type.
 

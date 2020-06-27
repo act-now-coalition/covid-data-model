@@ -38,40 +38,6 @@ class HospitalizationDataType(Enum):
     CURRENT_HOSPITALIZATIONS = "current_hospitalizations"
 
 
-def hampel_filter__low_outliers_only(input_series, window_size=5, n_sigmas=2):
-    """
-    Filter out points with median absolute deviation greater than n_sigma from a
-    nearest set of window-size neighbors. This is a very conservative filter to
-    clean out some case / death data like Arkansas.  We apply this only to drops
-    in counts that should be positive (e.g. Arkansas).
-
-    Parameters
-    ----------
-    input_series: array
-    window_size: int
-    n_sigmas: float
-
-    Returns
-    -------
-
-    """
-    n = len(input_series)
-    new_series = input_series.copy()
-    k = 1.4826  # scale factor for Gaussian distribution
-
-    indices = []
-
-    # possibly use np.nanmedian
-    for i in range(window_size, n - window_size):
-        x0 = np.median(input_series[(i - window_size) : (i + window_size)])
-        S0 = k * np.median(np.abs(input_series[(i - window_size) : (i + window_size)] - x0))
-        if -(input_series[i] - x0) > n_sigmas * S0:
-            new_series[i] = x0
-            indices.append(i)
-
-    return new_series, indices
-
-
 def load_zip_get_file(url, file, decoder="utf-8"):
     """
     Load a zipfile from a URL and extract a single file.  Note that this is
@@ -415,13 +381,10 @@ def load_new_case_data_by_state(
         - state_case_data[CommonFields.DEATHS].values[:-1]
     )
 
-    _, filter_idx = hampel_filter__low_outliers_only(observed_new_cases, window_size=5, n_sigmas=2)
-    keep_idx = np.array([i for i in range(len(times_new)) if i not in list(filter_idx)])
-    times_new = [int(list(times_new)[idx]) for idx in keep_idx]
     return (
         times_new,
-        np.array(observed_new_cases[keep_idx]).clip(min=0),
-        observed_new_deaths.clip(min=0)[keep_idx],
+        np.array(observed_new_cases).clip(min=0),
+        observed_new_deaths.clip(min=0)
     )
 
 
