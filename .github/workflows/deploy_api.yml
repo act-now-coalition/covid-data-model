@@ -7,7 +7,7 @@ on:
   # covid-data-public fetches data at 00:00 and 12:00 UTC.
   # So we rebuild / publish the API at 00:30 and 12:30 UTC.
   schedule:
-   - cron: '30 0,12 * * *'
+   - cron: '30 1,16 * * *'
 
   # push:
   # Hook to trigger a manual run.
