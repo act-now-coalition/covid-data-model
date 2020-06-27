@@ -749,7 +749,7 @@ class RtInferenceEngine:
         # slim dataframe to only variables used in prediction
         PREDICT_VARIABLE = "raw_new_cases"
         FORECAST_VARIABLES = [
-            "sim_day",
+            "sim_day",  # must leave date in this position!!!!
             "raw_new_cases",
         ]  # , "Rt_MAP__new_cases"] #raw_new_deaths SERIOUS TODO add back deaths because rn nan values break lstm
         MASK_VALUE = -10
@@ -770,13 +770,6 @@ class RtInferenceEngine:
         test_set = df_forecast[
             train_set_length:
         ]  # this is really the entire series TODO maybe find a better way to code this
-        """
-        logging.info("train set")
-        logging.info(train_set)
-        logging.info("test set")
-        logging.info(test_set)
-        logging.info(f"train_size: {len(train_set.index)} test_size: {len(test_set.index)}")
-        """
 
         # Normalize Inputs for training
         scalers_dict = {}
@@ -808,7 +801,7 @@ class RtInferenceEngine:
         MIN_NUMBER_OF_DAYS = (
             30  # I don't think it makes sense to predict anything until we have a month of data
         )
-        PREDICT_DAYS = 2
+        PREDICT_DAYS = 5
         # Create list of dataframes for testing
         train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
         X_train, Y_train = self.get_X_Y(
@@ -817,7 +810,7 @@ class RtInferenceEngine:
 
         logging.info("done")
         n_batch = 1
-        model, history = self.build_model(MASK_VALUE, 5, n_batch, 10, 0.01, X_train, Y_train)
+        model, history = self.build_model(MASK_VALUE, 1, n_batch, 10, 0.01, X_train, Y_train)
 
         logging.info("built model")
 
@@ -825,19 +818,47 @@ class RtInferenceEngine:
         forecasts = list()
         dates = list()
         for i, j in zip(X_train, Y_train):
-            original_df = get_reshaped_X(i, n_batch, X_scaler)
+            # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
+            logging.info("df")
+            logging.info(i)
+            logging.info(i[0])
             i = i.reshape(n_batch, i.shape[0], i.shape[1])
-            thisforecast = Y_scaler.inverse_transform(model.predict(i, batch_size=n_batch))
-            forecasts.append(Y_scaler.inverse_transform(model.predict(i, batch_size=n_batch)))
-            last_day = round(
-                original_df.iloc[-1][0] + 1
-            )  # not sure why rounding is necessary here, but without arrays come out with different shapes
-            predicted_days = np.arange(last_day, last_day + args.days_of_cv_predict)
-            dates.append(predicted_days)
-
+            scaled_df = pd.DataFrame(np.squeeze(i))
+            logging.info("dataframe")
+            logging.info(scaled_df)
+            logging.info("dates")
+            logging.info(scaled_df[0])
+            thisforecast = scalers_dict[PREDICT_VARIABLE].inverse_transform(
+                model.predict(i, batch_size=n_batch)
+            )
+            logging.info("NATASHA THIS IS THE TYPE")
+            logging.info(type(model.predict(i, batch_size=n_batch)))
+            logging.info("appended forecast")
+            forecasts.append(thisforecast)
+            logging.info(scalers_dict[SIM_DATE_NAME])
+            logging.info("og dates")
+            # dates = scalers_dict[SIM_DATE_NAME].inverse_transform(scaled_df[0].to_numpy())
+            last_day = scaled_df.iloc[-1][0]
+            logging.info("last day")
+            # last_day_unscaled = scalers_dict[SIM_DATE_NAME].inverse_transform([[last_day]])
+            # logging.info('last day unscaled')
+            # logging.info(last_day_unscaled)
+            # predicted_days = np.arange(last_day, last_day + PREDICT_DAYS)
+            # dates.append(predicted_days)
+        logging.info("forecasts")
+        logging.info(forecasts)
+        logging.info("dates")
+        logging.info(dates)
         # check if dictionary of scalers works
 
         return
+
+    @staticmethod
+    def get_reshaped_X(input_X, n_batch, X_scaler):
+        i = input_X.reshape(n_batch, input_X.shape[0], input_X.shape[1])
+        output_df = pd.DataFrame(np.squeeze(input_X))
+        # original_df = pd.DataFrame(X_scaler.inverse_transform(output_df))
+        return original_df
 
     @staticmethod
     def build_model(
