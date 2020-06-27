@@ -381,11 +381,7 @@ def load_new_case_data_by_state(
         - state_case_data[CommonFields.DEATHS].values[:-1]
     )
 
-    return (
-        times_new,
-        np.array(observed_new_cases).clip(min=0),
-        observed_new_deaths.clip(min=0)
-    )
+    return (times_new, np.array(observed_new_cases).clip(min=0), observed_new_deaths.clip(min=0))
 
 
 def get_hospitalization_data():
