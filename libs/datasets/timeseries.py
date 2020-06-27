@@ -4,6 +4,7 @@ from typing import List, Optional
 import pandas as pd
 import structlog
 from covidactnow.datapublic import common_df
+from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
@@ -28,6 +29,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         CommonIndexFields.STATE,
         CommonIndexFields.FIPS,
     ]
+
+    NEW_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
     def __init__(self, data: pd.DataFrame):
         self.data = data
@@ -128,8 +131,9 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None
         """
-        subset = self.get_subset(AggregationLevel.COUNTY, fips=fips)
-        return subset.records
+        pd_data = self.get_data(aggregation_level=AggregationLevel.COUNTY, fips=fips)
+        pd_data = pd_data.where(pd.notnull(pd_data), None)
+        return pd_data.to_dict(orient="records")
 
     def get_records_for_state(self, state) -> List[dict]:
         """Get data for state.
@@ -139,14 +143,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None.
         """
-        subset = self.get_subset(AggregationLevel.STATE, state=state)
-        return subset.records
-
-    @property
-    def records(self) -> List[dict]:
-        """Returns rows in current data."""
-        data = self.data
-        return data.where(pd.notnull(data), None).to_dict(orient="records")
+        pd_data = self.get_data(aggregation_level=AggregationLevel.STATE, state=state)
+        return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
 
     def get_data(
         self,
@@ -220,8 +218,19 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
+        dups = (
+            data.groupby(COMMON_FIELDS_TIMESERIES_KEYS)
+            .filter(lambda group: len(group) > 1)
+            .sort_index()
+        )
+        print(source.SOURCE_NAME)
+        if not dups.empty:
+            print(f"Dups in ts {source.SOURCE_NAME}:\n{dups}")
+            data.drop_duplicates(COMMON_FIELDS_TIMESERIES_KEYS, inplace=True)
+
         # Choosing to sort by date
         data = data.sort_values(CommonFields.DATE)
+        data = data.convert_dtypes()
         return cls(data)
 
     @classmethod

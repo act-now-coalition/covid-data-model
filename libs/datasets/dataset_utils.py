@@ -341,9 +341,9 @@ def fill_fields_and_timeseries_from_column(
         # From here down treat the date as part of the index label for joining rows of existing_df and new_df
         index_fields.append(date_field)
 
-    new_df.set_index(index_fields, inplace=True)
+    new_df.set_index(index_fields, inplace=True, verify_integrity=True)
     if not existing_df.empty:
-        existing_df.set_index(index_fields, inplace=True)
+        existing_df.set_index(index_fields, inplace=True, verify_integrity=True)
         common_labels = existing_df.index.intersection(new_df.index)
     else:
         # Treat an empty existing_df the same as one that has no rows in common with new_df
@@ -455,6 +455,12 @@ def make_binary_array(
     # get all data in the USA, at all aggregation levels.
     if aggregation_level:
         query_parts.append(f'aggregate_level == "{aggregation_level.value}"')
+        # if aggregation_level == AggregationLevel.COUNTY:
+        #    query_parts.append(f'aggregate_level.str.len() == "5"')
+        # elif aggregation_level == AggregationLevel.STATE:
+        #    query_parts.append(f'aggregate_level.str.len() == "2"')
+        # else:
+        #    raise AssertionError(f"Unexpected aggregation_level {aggregation_level}")
     if country:
         query_parts.append("country == @country")
     if state:

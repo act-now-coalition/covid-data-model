@@ -8,6 +8,7 @@ from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS, ABBREV_US_UNKN
 from libs import enums
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.common_fields import CommonFields
 
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 
