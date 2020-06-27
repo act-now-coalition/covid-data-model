@@ -32,6 +32,7 @@ class RunMode(Enum):
 
 
 class RunArtifact(Enum):
+    RT_SMOOTHING_REPORT = "rt_smoothing_report"
     RT_INFERENCE_RESULT = "rt_inference_result"
     RT_INFERENCE_REPORT = "rt_inference_report"
 
@@ -89,6 +90,19 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
                 f"Rt_results__{state_obj.name}__{fips}.pdf",
+            )
+
+    elif artifact is RunArtifact.RT_SMOOTHING_REPORT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(
+                REPORTS_FOLDER(output_dir, state_obj.name),
+                f"Rt_smoothing__{state_obj.name}__{county}__{fips}.pdf",
+            )
+        else:
+            path = os.path.join(
+                STATE_SUMMARY_FOLDER(output_dir),
+                "reports",
+                f"Rt_smoothing__{state_obj.name}__{fips}.pdf",
             )
 
     elif artifact is RunArtifact.RT_INFERENCE_RESULT:
