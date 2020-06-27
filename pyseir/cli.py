@@ -1,3 +1,4 @@
+from typing import Dict, List
 import sys
 import os
 import click
@@ -151,6 +152,34 @@ def _state_only_pipeline(
     )
 
 
+def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict[str, str]:
+    """Builds mapping from fips to state of counties to run.
+
+    Restricts counties to those in the county whitelist.
+
+    Args:
+        states: List of states to run on.
+        fips: Optional county fips code to restrict results to.
+
+    Returns: Map of counties to run with associated state.
+    """
+    # Build List of Counties
+    all_county_fips = {}
+    for state in states:
+        state_county_fips = model_fitter.build_county_list(state)
+        county_fips_per_state = {fips: state for fips in state_county_fips}
+
+        if not fips:
+            all_county_fips.update(county_fips_per_state)
+            continue
+
+        if fips in county_fips_per_state:
+            root.info(f"Found {fips}, restricting run to found fips")
+            all_county_fips.update({fips: state})
+
+    return all_county_fips
+
+
 def _build_all_for_states(
     states=[],
     run_mode=DEFAULT_RUN_MODE,
@@ -160,12 +189,10 @@ def _build_all_for_states(
     output_dir=None,
     skip_whitelist=False,
     states_only=False,
+    fips=None,
 ):
     # prepare data
     _cache_global_datasets()
-    if not skip_whitelist:
-        _generate_whitelist()
-
     # do everything for just states in parallel
     with Pool(maxtasksperchild=1) as p:
         states_only_func = partial(
@@ -181,12 +208,10 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    # Build List of Counties
-    all_county_fips = {}
-    for state in states:
-        state_county_fips = model_fitter.build_county_list(state)
-        county_fips_per_state = {fips: state for fips in state_county_fips}
-        all_county_fips.update(county_fips_per_state)
+    if not skip_whitelist:
+        _generate_whitelist()
+
+    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
 
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
@@ -367,6 +392,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option(
     "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
 )
+@click.option("--fips", help="County level fips code to restrict runs to.")
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
@@ -377,6 +403,7 @@ def build_all(
     output_dir,
     skip_whitelist,
     states_only,
+    fips,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -395,6 +422,7 @@ def build_all(
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
         states_only=states_only,
+        fips=fips,
     )
 
 

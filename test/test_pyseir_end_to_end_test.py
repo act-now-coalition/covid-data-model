@@ -28,3 +28,15 @@ def test__pyseir_end_to_end():
 
     assert (output[rt_col].astype(float) > 0).any()
     assert (output.loc[output[rt_col].astype(float).notnull(), rt_col].astype(float) < 6).all()
+
+
+@pytest.mark.parametrize("fips,expected_results", [(None, True), ("16013", True), ("26013", False)])
+def test_filters_counties_properly(fips, expected_results):
+    results = cli.build_counties_to_run_per_state(["Idaho"], fips=fips)
+    if fips and expected_results:
+        assert results == {fips: "Idaho"}
+    elif expected_results:
+        assert results
+
+    if not expected_results:
+        assert results == {}
