@@ -969,7 +969,7 @@ def replace_outliers(
             changed_snippets.append(x[slicer].astype(int).tolist())
             try:
                 x[idx] = np.mean([x[idx - 1], x[idx + 1]])
-            except IndexError:  # Value to replace can be newest and fail on x[idx+1].
+            except KeyError:  # Value to replace can be newest and fail on x[idx+1].
                 # If so, just use previous.
                 x[idx] = x[idx - 1]
 
