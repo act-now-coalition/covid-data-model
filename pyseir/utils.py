@@ -35,6 +35,7 @@ class RunArtifact(Enum):
     RT_SMOOTHING_REPORT = "rt_smoothing_report"
     RT_INFERENCE_RESULT = "rt_inference_result"
     RT_INFERENCE_REPORT = "rt_inference_report"
+    RT_SMOOTHING_REPORT = "rt_smoothing_report"
 
     MLE_FIT_RESULT = "mle_fit_result"
     MLE_FIT_MODEL = "mle_fit_model"

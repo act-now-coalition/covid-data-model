@@ -1,4 +1,5 @@
 import math
+import sys
 from datetime import datetime, timedelta
 import numpy as np
 import logging
@@ -8,7 +9,14 @@ from scipy import signal
 from matplotlib import pyplot as plt
 import us
 import structlog
-from pyseir import load_data
+
+# from pyseir import load_data
+from pyseir.load_data import (
+    HospitalizationDataType,
+    load_county_metadata,
+    get_all_fips_codes_for_a_state,
+)
+
 from pyseir.utils import AggregationLevel, TimeseriesType
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
@@ -118,9 +126,19 @@ class RtInferenceEngine:
         ref_date=datetime(year=2020, month=1, day=1),
         confidence_intervals=(0.68, 0.95),
         min_cases=5,
-        min_deaths=5,
+        min_deaths=100000,
         include_testing_correction=True,
+        load_data_parent="pyseir",
+        parameter_ensemble_generator_parent="pyseir.parameters",
+        default_parameters=None,
     ):
+
+        # Support injection of module that we use for loading data
+        if "load_data" not in sys.modules:
+            _temp = __import__(load_data_parent, globals(), locals(), ["load_data"], 0)
+            self.load_data = _temp.load_data
+        self.default_parameters = default_parameters
+
         np.random.seed(InferRtConstants.RNG_SEED)
         # Param Generation used for Xcor in align_time_series, has some stochastic FFT elements.
         self.fips = fips
@@ -148,7 +166,7 @@ class RtInferenceEngine:
                 self.times,
                 self.observed_new_cases,
                 self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_state(
+            ) = self.load_data.load_new_case_data_by_state(
                 self.state,
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
@@ -158,15 +176,13 @@ class RtInferenceEngine:
                 self.hospital_times,
                 self.hospitalizations,
                 self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data_by_state(
+            ) = self.load_data.load_hospitalization_data_by_state(
                 state=self.state_obj.abbr, t0=self.ref_date
             )
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
-            self.geo_metadata = (
-                load_data.load_county_metadata().set_index("fips").loc[fips].to_dict()
-            )
+            self.geo_metadata = load_county_metadata().set_index("fips").loc[fips].to_dict()
             self.state = self.geo_metadata["state"]
             self.state_obj = us.states.lookup(self.state)
             self.county = self.geo_metadata["county"]
@@ -179,7 +195,7 @@ class RtInferenceEngine:
                 self.times,
                 self.observed_new_cases,
                 self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_fips(
+            ) = self.load_data.load_new_case_data_by_fips(
                 self.fips,
                 t0=self.ref_date,
                 include_testing_correction=self.include_testing_correction,
@@ -194,21 +210,21 @@ class RtInferenceEngine:
         if self.hospitalization_data_type:
             self.hospital_dates = [ref_date + timedelta(days=int(t)) for t in self.hospital_times]
 
-        self.default_parameters = ParameterEnsembleGenerator(
-            fips=self.fips, N_samples=500, t_list=np.linspace(0, 365, 366)
-        ).get_average_seir_parameters()
+        if self.default_parameters is None:
+            self.default_parameters = ParameterEnsembleGenerator(
+                fips=self.fips, N_samples=500, t_list=np.linspace(0, 365, 366)
+            ).get_average_seir_parameters()
 
+        # TODO This code should move out of infer_rt.py
         # Serial period = Incubation + 0.5 * Infections
         self.serial_period = (
             1 / self.default_parameters["sigma"] + 0.5 * 1 / self.default_parameters["delta"]
         )
 
+        # TODO This code should be moved out of infer_rt.py
         # If we only receive current hospitalizations, we need to account for
         # the outflow to reconstruct new admissions.
-        if (
-            self.hospitalization_data_type
-            is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-        ):
+        if self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
             los_general = self.default_parameters["hospitalization_length_of_stay_general"]
             los_icu = self.default_parameters["hospitalization_length_of_stay_icu"]
             hosp_rate_general = self.default_parameters["hospitalization_rate_general"]
@@ -612,15 +628,13 @@ class RtInferenceEngine:
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
         if (
-            self.hospitalization_data_type
-            is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+            self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
             and len(hosps > 3)
         ):
             # We have converted this timeseries to new hospitalizations.
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
         elif (
-            self.hospitalization_data_type
-            is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+            self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
             and len(hosps > 3)
         ):
             available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
@@ -1003,7 +1017,7 @@ def run_state(state, states_only=False):
 
     # Run the counties.
     if not states_only:
-        all_fips = load_data.get_all_fips_codes_for_a_state(state)
+        all_fips = get_all_fips_codes_for_a_state(state)
 
         # Something in here doesn't like multiprocessing...
         rt_inferences = all_fips.map(lambda x: RtInferenceEngine.run_for_fips(x)).tolist()
