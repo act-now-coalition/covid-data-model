@@ -393,7 +393,14 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option(
     "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
 )
-@click.option("--fips", help="County level fips code to restrict runs to.")
+@click.option(
+    "--fips",
+    help=(
+        "County level fips code to restrict runs to. "
+        "This does not restrict the states that run, so also specifying states with "
+        "`--states` is recommended."
+    ),
+)
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
