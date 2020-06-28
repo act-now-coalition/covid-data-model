@@ -143,12 +143,14 @@ def generate_api(projection_result: APIPipelineProjectionResult, input_dir: str)
 
 
 def generate_area_summary_for_fips_intervention(
-    fips: str, intervention, us_latest: LatestValuesDataset
+    fips: str,
+    intervention,
+    us_latest: LatestValuesDataset,
+    model_output: Optional[CANPyseirLocationOutput],
 ) -> CovidActNowAreaTimeseries:
 
     fips_latest = us_latest.get_subset(None, fips=fips)
-    model_output = CANPyseirLocationOutput.load_projection(fips, intervention, None)
-    generate_api.generate_area_summary(fips, intervention, fips_latest, model_output)
+    return generate_api.generate_area_summary(fips, intervention, fips_latest, model_output)
 
 
 def remove_root_wrapper(obj: dict):
