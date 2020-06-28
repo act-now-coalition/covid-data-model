@@ -956,7 +956,7 @@ def replace_outliers(
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
     z_score = (x - m) / (s + EPSILON)
-    possible_changes_idx = np.where(z_score > z_threshold)[0]
+    possible_changes_idx = np.flatnonzero(z_score > z_threshold)
     changed_idx = []
     changed_value = []
     changed_snippets = []
@@ -968,8 +968,8 @@ def replace_outliers(
             slicer = slice(idx - local_lookback_window, idx + local_lookback_window)
             changed_snippets.append(x[slicer].astype(int).tolist())
             try:
-                x[idx] = np.mean([x[idx - 1], x[idx + 1]])
-            except KeyError:  # Value to replace can be newest and fail on x[idx+1].
+                x[idx] = np.mean([x.iloc[idx - 1], x.iloc[idx + 1]])
+            except IndexError:  # Value to replace can be newest and fail on x[idx+1].
                 # If so, just use previous.
                 x[idx] = x[idx - 1]
 
