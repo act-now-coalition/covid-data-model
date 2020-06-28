@@ -716,6 +716,13 @@ class RtInferenceEngine:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
+        if "Rt_MAP_composite" not in df_all.columns:
+            # Lacking a composite Rt indicates that there was not case or death data for fips,
+            # but there may be other timeseries (such as hospitalizations).
+            # Returning early here assumes we don't want to just report only hospitalization Rt.
+            log.warning("Rt composite not found, skipping", fips=self.fips)
+            return None
+
         # Optionally Smooth just Rt_MAP_composite.
         # Note this doesn't lag in time and preserves integral of Rteff over time
         for i in range(0, InferRtConstants.SMOOTH_RT_MAP_COMPOSITE):
