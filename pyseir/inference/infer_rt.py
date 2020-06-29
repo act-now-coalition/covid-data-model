@@ -641,16 +641,12 @@ class RtInferenceEngine:
             Columns containing MAP estimates and confidence intervals.
         """
         df_all = None
-        log.info("getting available timeseries")
         available_timeseries = self.get_available_timeseries()
-        log.info("got series")
 
         for timeseries_type in available_timeseries:
             dates, times, timeseries = self.get_timeseries(timeseries_type)
-            log.info(f"timeseries: {timeseries_type}")
             df = pd.DataFrame()
             dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
-            log.info("got posteriors")
             # Note that it is possible for the dates to be missing days
             # This can cause problems when:
             #   1) computing posteriors that assume continuous data (above),
@@ -866,7 +862,6 @@ class RtInferenceEngine:
         if df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
 
-        log.info("about to save df_all.csv")
         df_all.to_csv("df_all.csv")
         return df_all
 
