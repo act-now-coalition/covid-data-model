@@ -1,42 +1,30 @@
-import sys, os
+from typing import Dict, List
+import sys
+import os
 import click
 import us
 import logging
-import sentry_sdk
-import structlog
+import pandas as pd
+from covidactnow.datapublic import common_init
+
 from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
 from functools import partial
 from libs.datasets import dataset_cache
-from pyseir.load_data import cache_county_case_data
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.inference import infer_rt as infer_rt_module
-from pyseir.ensembles.ensemble_runner import run_state, RunMode, _run_county
+from pyseir.ensembles import ensemble_runner
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
-from libs.datasets import NYTimesDataset, CDSDataset
 from libs.datasets import combined_datasets
 from libs.us_state_abbrev import abbrev_us_state
 from pyseir.inference.whitelist_generator import WhitelistGenerator
-import pandas as pd
 
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
 root = logging.getLogger()
-root.setLevel(logging.INFO)
-
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
-    "%(asctime)s - %(filename)s - %(lineno)d - %(levelname)s - %(message)s"
-)
-handler.setFormatter(formatter)
-root.addHandler(handler)
-
-nyt_dataset = None
-cds_dataset = None
 
 DEFAULT_RUN_MODE = "can-inference-derived"
 ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
@@ -49,32 +37,12 @@ def _cache_global_datasets():
     combined_datasets.build_us_latest_with_all_fields()
     combined_datasets.build_us_timeseries_with_all_fields()
 
-    global nyt_dataset, cds_dataset
-    if cds_dataset is None:
-        cds_dataset = CDSDataset.local()
-    if nyt_dataset is None:
-        nyt_dataset = NYTimesDataset.local()
-
 
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
     dataset_cache.set_pickle_cache_dir()
-    sentry_sdk.init(os.getenv("SENTRY_DSN"))
-    structlog.configure(
-        processors=[
-            structlog.stdlib.add_log_level,  # required before SentryProcessor()
-            # sentry_sdk creates events for level >= ERROR and keeps level >= INFO as breadcrumbs.
-            SentryProcessor(level=logging.INFO),
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),
-        ]
-    )
-
-
-@entry_point.command()
-def download_data():
-    cache_county_case_data()
+    common_init.configure_logging()
 
 
 def _generate_whitelist():
@@ -114,10 +82,12 @@ def _run_mle_fits(state=None, states_only=False):
 
 def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
     if state:
-        run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
+        ensemble_runner.run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
     else:
         for state_name in ALL_STATES:
-            run_state(state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
+            ensemble_runner.run_state(
+                state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only
+            )
 
 
 def _generate_state_reports(state=None):
@@ -139,8 +109,6 @@ def _map_outputs(
             state,
             output_interval_days=output_interval_days,
             run_mode=run_mode,
-            jhu_dataset=nyt_dataset,
-            cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(
@@ -169,9 +137,7 @@ def _state_only_pipeline(
     _run_mle_fits(state, states_only=states_only)
     _run_ensembles(
         state,
-        ensemble_kwargs=dict(
-            run_mode=run_mode, generate_report=generate_reports, covid_timeseries=nyt_dataset,
-        ),
+        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
         states_only=states_only,
     )
     if generate_reports:
@@ -186,6 +152,34 @@ def _state_only_pipeline(
     )
 
 
+def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict[str, str]:
+    """Builds mapping from fips to state of counties to run.
+
+    Restricts counties to those in the county whitelist.
+
+    Args:
+        states: List of states to run on.
+        fips: Optional county fips code to restrict results to.
+
+    Returns: Map of counties to run with associated state.
+    """
+    # Build List of Counties
+    all_county_fips = {}
+    for state in states:
+        state_county_fips = model_fitter.build_county_list(state)
+        county_fips_per_state = {fips: state for fips in state_county_fips}
+
+        if not fips:
+            all_county_fips.update(county_fips_per_state)
+            continue
+
+        if fips in county_fips_per_state:
+            root.info(f"Found {fips}, restricting run to found fips")
+            all_county_fips.update({fips: state})
+
+    return all_county_fips
+
+
 def _build_all_for_states(
     states=[],
     run_mode=DEFAULT_RUN_MODE,
@@ -195,63 +189,59 @@ def _build_all_for_states(
     output_dir=None,
     skip_whitelist=False,
     states_only=False,
+    fips=None,
 ):
     # prepare data
     _cache_global_datasets()
-    if not skip_download:
-        cache_county_case_data()
+
     if not skip_whitelist:
         _generate_whitelist()
 
     # do everything for just states in parallel
-    p = Pool()
-    states_only_func = partial(
-        _state_only_pipeline,
-        run_mode=run_mode,
-        generate_reports=generate_reports,
-        output_interval_days=output_interval_days,
-        output_dir=output_dir,
-    )
-    p.map(states_only_func, states)
+    with Pool(maxtasksperchild=1) as p:
+        states_only_func = partial(
+            _state_only_pipeline,
+            run_mode=run_mode,
+            generate_reports=generate_reports,
+            output_interval_days=output_interval_days,
+            output_dir=output_dir,
+        )
+        p.map(states_only_func, states)
 
     if states_only:
         root.info("Only executing for states. returning.")
         return
 
-    # run states in parallel
-    all_county_fips = {}
-    for state in states:
-        state_county_fips = model_fitter.build_county_list(state)
-        county_fips_per_state = {fips: state for fips in state_county_fips}
-        all_county_fips.update(county_fips_per_state)
+    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
 
-    # calculate calculate county inference
-    p.map(infer_rt_module.run_county, all_county_fips.keys())
+    with Pool(maxtasksperchild=1) as p:
+        # calculate calculate county inference
+        p.map(infer_rt_module.run_county, all_county_fips.keys())
+        # calculate model fit
+        root.info(f"executing model for {len(all_county_fips)} counties")
+        fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
 
-    # calculate model fit
-    root.info(f"executing model for {len(all_county_fips)} counties")
-    fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
+        df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+        df["state"] = df.fips.replace(all_county_fips)
+        df["mle_model"] = [fit.mle_model for fit in fitters if fit]
+        df.index = df.fips
 
-    df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-    df["state"] = df.fips.replace(all_county_fips)
-    df["mle_model"] = [fit.mle_model for fit in fitters if fit]
-    df.index = df.fips
+        state_dfs = [state_df for name, state_df in df.groupby("state")]
+        p.map(model_fitter._persist_results_per_state, state_dfs)
 
-    state_dfs = [state_df for name, state_df in df.groupby("state")]
-    p.map(model_fitter._persist_results_per_state, state_dfs)
-
-    # calculate ensemble
-    root.info(f"running ensemble for {len(all_county_fips)} counties")
-    ensemble_func = partial(
-        _run_county, ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-    )
-    p.map(ensemble_func, all_county_fips.keys())
+        # calculate ensemble
+        root.info(f"running ensemble for {len(all_county_fips)} counties")
+        ensemble_func = partial(
+            ensemble_runner._run_county,
+            ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+        )
+        p.map(ensemble_func, all_county_fips.keys())
 
     # output it all
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
-    root.info(f"outputing web results for states and {len(all_county_fips)} counties")
+    root.info(f"outputting web results for states and {len(all_county_fips)} counties")
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
@@ -260,16 +250,12 @@ def _build_all_for_states(
             state,
             output_interval_days=output_interval_days,
             run_mode=run_mode,
-            jhu_dataset=nyt_dataset,
-            cds_dataset=cds_dataset,
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(
             whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
             states_only=False,
         )
-    p.close()
-    p.join()
 
     return
 
@@ -328,7 +314,7 @@ def run_mle_fits(state, states_only):
 @click.option(
     "--run-mode",
     default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in RunMode]),
+    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
@@ -365,7 +351,7 @@ def generate_state_report(state):
 @click.option(
     "--run-mode",
     default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in RunMode]),
+    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
@@ -388,7 +374,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option(
     "--run-mode",
     default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in RunMode]),
+    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option(
@@ -405,10 +391,15 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-download", default=False, is_flag=True, type=bool, help="Skip the download phase.",
+    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
 )
 @click.option(
-    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
+    "--fips",
+    help=(
+        "County level fips code to restrict runs to. "
+        "This does not restrict the states that run, so also specifying states with "
+        "`--states` is recommended."
+    ),
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
@@ -417,10 +408,10 @@ def build_all(
     run_mode,
     generate_reports,
     output_interval_days,
-    skip_download,
     output_dir,
     skip_whitelist,
     states_only,
+    fips,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -436,12 +427,18 @@ def build_all(
         run_mode=DEFAULT_RUN_MODE,
         generate_reports=generate_reports,
         output_interval_days=output_interval_days,
-        skip_download=skip_download,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
         states_only=states_only,
+        fips=fips,
     )
 
 
 if __name__ == "__main__":
-    entry_point()
+    try:
+        entry_point()  # pylint: disable=no-value-for-parameter
+    except Exception:
+        # According to https://github.com/getsentry/sentry-python/issues/480 Sentry is expected
+        # to create an event when this is called.
+        logging.exception("Exception reached __main__")
+        raise

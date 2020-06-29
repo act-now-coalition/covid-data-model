@@ -3,13 +3,10 @@
 Entry point for covid-data-model CLI.
 
 """
-import os
 import logging
 import click
-import sentry_sdk
+from covidactnow.datapublic import common_init
 from pandarallel import pandarallel
-import structlog
-from structlog_sentry import SentryProcessor
 
 from cli import api
 from cli import run_top_counties_dataset
@@ -25,20 +22,10 @@ from libs.datasets import dataset_cache
 # Disable pylint warning as suggested by https://stackoverflow.com/a/49680253
 def entry_point(ctx):  # pylint: disable=no-value-for-parameter
     """Entry point for covid-data-model CLI."""
-    with sentry_sdk.configure_scope() as scope:
-        scope.set_tag("command", ctx.invoked_subcommand)
-        # changes applied to scope remain after scope exits. See
-        # https://github.com/getsentry/sentry-python/issues/184
+    common_init.configure_logging(command=ctx.invoked_subcommand)
 
-    structlog.configure(
-        processors=[
-            structlog.stdlib.add_log_level,  # required before SentryProcessor()
-            # sentry_sdk creates events for level >= ERROR and keeps level >= INFO as breadcrumbs.
-            SentryProcessor(level=logging.INFO),
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),
-        ]
-    )
+    dataset_cache.set_pickle_cache_dir()
+    pandarallel.initialize(progress_bar=False)
 
 
 # adding the QA command
@@ -55,14 +42,10 @@ entry_point.add_command(utils.main)
 # want to add run.py to setup.py entry_points console_scripts. See
 # https://github.com/pallets/click/issues/571#issuecomment-216261699
 if __name__ == "__main__":
-    sentry_sdk.init(os.getenv("SENTRY_DSN"))
-
-    logging.basicConfig(level=logging.INFO)
-    dataset_cache.set_pickle_cache_dir()
-    pandarallel.initialize(progress_bar=False)
     try:
         entry_point()  # pylint: disable=no-value-for-parameter
-    except Exception as e:
-        # blanket catch exceptions at the entry point and send them to sentry
-        sentry_sdk.capture_exception(e)
-        raise e
+    except Exception:
+        # According to https://github.com/getsentry/sentry-python/issues/480 Sentry is expected
+        # to create an event when this is called.
+        logging.exception("Exception reached __main__")
+        raise

@@ -71,27 +71,6 @@ def plot_grouped_data(data, group, series="source", values="cases"):
     cases_by_source.plot(kind="bar", figsize=(15, 7), title=f"{values} by data source vs date")
 
 
-def build_aggregate_county_data_frame(jhu_data_source, cds_data_source):
-    """Combines JHU and CDS county data."""
-    data = jhu_data_source.timeseries()
-    jhu_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
-
-    data = cds_data_source.timeseries()
-    cds_usa_data = data.get_data(AggregationLevel.COUNTY, country="USA", after="2020-03-01")
-
-    # TODO(chris): Better handling of counties that are not consistent.
-    # Can we move this logic to combined_datasets?
-
-    # Before 3-22, CDS has mostly consistent county level numbers - except for
-    # 3-12, where there are no numbers reported. Still need to fill that in.
-    return pd.concat(
-        [
-            cds_usa_data[cds_usa_data.date < "2020-03-22"],
-            jhu_usa_data[jhu_usa_data.date >= "2020-03-22"],
-        ]
-    )
-
-
 def check_index_values_are_unique(data, index=None, duplicates_as_error=True):
     """Checks index for duplicate rows.
 
@@ -210,7 +189,7 @@ def add_county_using_fips(data, fips_data):
     if len(non_matching):
         unique_fips = sorted(non_matching.fips.unique())
         _logger.warning(f"Did not match {len(unique_fips)} codes to county data.")
-        _logger.warning(f"{unique_fips}")
+        _logger.debug(f"{unique_fips}")
 
     if "county_r" in data.columns:
         data = data.drop(columns="county").rename({"county_r": "county"}, axis=1)
@@ -360,7 +339,14 @@ def fill_fields_and_timeseries_from_column(
         existing_df.loc[common_labels.values, column_to_fill] = new_df.loc[
             common_labels.values, column_to_fill
         ]
-        missing_new_data = new_df.loc[new_df.index.difference(common_labels), [column_to_fill]]
+        diff = new_df.index.difference(common_labels)
+
+        # If there are no missing fields, simply return existing dataframe (by this point all fields
+        # have been merged in).
+        if not diff.size:
+            return existing_df.reset_index()
+
+        missing_new_data = new_df.loc[diff, [column_to_fill]]
     else:
         # There are no labels in common so all rows of new_df are to be appended to existing_df.
         missing_new_data = new_df.loc[:, [column_to_fill]]
@@ -368,7 +354,6 @@ def fill_fields_and_timeseries_from_column(
     # Revert 'fips', 'state' etc back to regular columns
     existing_df.reset_index(inplace=True)
     missing_new_data.reset_index(inplace=True)
-
     # Concat the existing data with new rows from new_data, creating a new integer index
     return pd.concat([existing_df, missing_new_data], ignore_index=True)
 

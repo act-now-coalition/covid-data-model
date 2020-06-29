@@ -14,7 +14,6 @@ from enum import Enum
 import pandas as pd
 import numpy as np
 
-from libs.datasets import NYTimesDataset
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -37,40 +36,6 @@ class HospitalizationCategory(Enum):
 class HospitalizationDataType(Enum):
     CUMULATIVE_HOSPITALIZATIONS = "cumulative_hospitalizations"
     CURRENT_HOSPITALIZATIONS = "current_hospitalizations"
-
-
-def hampel_filter__low_outliers_only(input_series, window_size=5, n_sigmas=2):
-    """
-    Filter out points with median absolute deviation greater than n_sigma from a
-    nearest set of window-size neighbors. This is a very conservative filter to
-    clean out some case / death data like Arkansas.  We apply this only to drops
-    in counts that should be positive (e.g. Arkansas).
-
-    Parameters
-    ----------
-    input_series: array
-    window_size: int
-    n_sigmas: float
-
-    Returns
-    -------
-
-    """
-    n = len(input_series)
-    new_series = input_series.copy()
-    k = 1.4826  # scale factor for Gaussian distribution
-
-    indices = []
-
-    # possibly use np.nanmedian
-    for i in range(window_size, n - window_size):
-        x0 = np.median(input_series[(i - window_size) : (i + window_size)])
-        S0 = k * np.median(np.abs(input_series[(i - window_size) : (i + window_size)] - x0))
-        if -(input_series[i] - x0) > n_sigmas * S0:
-            new_series[i] = x0
-            indices.append(i)
-
-    return new_series, indices
 
 
 def load_zip_get_file(url, file, decoder="utf-8"):
@@ -102,16 +67,6 @@ def load_zip_get_file(url, file, decoder="utf-8"):
         return io.StringIO(string)
     else:
         return io.BytesIO(byte_string)
-
-
-def cache_county_case_data():
-    """
-    Cache county covid case data from NYT in #PYSEIR_HOME/data.
-    """
-    log.info("Downloading covid case data")
-    # NYT dataset
-    county_case_data = load_county_case_data()
-    county_case_data.to_pickle(os.path.join(DATA_DIR, "covid_case_timeseries.pkl"))
 
 
 def cache_mobility_data():
@@ -174,37 +129,6 @@ def cache_public_implementations_data():
     ]
     df.fips = df.fips.apply(lambda x: x.zfill(5))
     df.to_pickle(os.path.join(DATA_DIR, "public_implementations_data.pkl"))
-
-
-@lru_cache(maxsize=32)
-def load_county_case_data():
-    """
-    Return county level case data.
-
-    Returns
-    -------
-    : pd.DataFrame
-    """
-    county_case_data = (
-        NYTimesDataset.local().timeseries().get_data(AggregationLevel.COUNTY, country="USA")
-    )
-    return county_case_data
-
-
-@lru_cache(maxsize=1)
-def load_state_case_data():
-    """
-    Return county level case data.
-
-    Returns
-    -------
-    : pd.DataFrame
-    """
-
-    state_case_data = (
-        NYTimesDataset.local().timeseries().get_data(AggregationLevel.STATE, country="USA")
-    )
-    return state_case_data
 
 
 @lru_cache(maxsize=32)
@@ -371,8 +295,11 @@ def load_new_case_data_by_fips(
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-    _county_case_data = load_county_case_data()
-    county_case_data = _county_case_data[_county_case_data["fips"] == fips]
+    county_case_timeseries = combined_datasets.get_timeseries_for_fips(
+        fips, columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
+    )
+    county_case_data = county_case_timeseries.data
+
     times_new = (county_case_data["date"] - t0).dt.days.iloc[1:]
     observed_new_cases = (
         county_case_data["cases"].values[1:] - county_case_data["cases"].values[:-1]
@@ -395,6 +322,66 @@ def load_new_case_data_by_fips(
     # corrections in case count. These are always tiny so we just make
     # downstream easier to work with by clipping.
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
+
+
+@lru_cache(maxsize=32)
+def load_new_case_data_by_state(
+    state, t0, include_testing_correction=False, testing_correction_smoothing_tau=5
+):
+    """
+    Get data for new cases at state level.
+
+    Parameters
+    ----------
+    state: str
+        State full name.
+    t0: datetime
+        Datetime to offset by.
+    include_testing_correction: bool
+        If True, include a correction for new expanded or decreaseed test
+        coverage.
+    testing_correction_smoothing_tau: float
+        expected_positives_from_test_increase is smoothed based on an
+        exponentially weighted moving average of decay factor specified here.
+
+    Returns
+    -------
+    times: array(float)
+        List of float days since t0 for the case and death counts below
+    observed_new_cases: array(int)
+        Array of new cases observed each day.
+    observed_new_deaths: array(int)
+        Array of new deaths observed each day.
+    """
+    state_abbrev = us.states.lookup(state).abbr
+    state_timeseries = combined_datasets.get_timeseries_for_state(
+        state_abbrev,
+        columns=[CommonFields.CASES, CommonFields.DEATHS],
+        min_range_with_some_value=True,
+    )
+    state_case_data = state_timeseries.data
+
+    times_new = (state_case_data[CommonFields.DATE] - t0).dt.days.iloc[1:]
+    observed_new_cases = (
+        state_case_data[CommonFields.CASES].values[1:]
+        - state_case_data[CommonFields.CASES].values[:-1]
+    )
+
+    if include_testing_correction:
+        df_new_tests = load_new_test_data_by_fips(
+            us.states.lookup(state).fips, t0, smoothing_tau=testing_correction_smoothing_tau
+        )
+        df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
+        df_cases = df_cases.merge(df_new_tests, how="left", on="times")
+        df_cases["new_cases"] -= df_cases["expected_positives_from_test_increase"].fillna(0)
+        observed_new_cases = df_cases["new_cases"].values
+
+    observed_new_deaths = (
+        state_case_data[CommonFields.DEATHS].values[1:]
+        - state_case_data[CommonFields.DEATHS].values[:-1]
+    )
+
+    return (times_new, np.array(observed_new_cases).clip(min=0), observed_new_deaths.clip(min=0))
 
 
 def get_hospitalization_data():
@@ -560,11 +547,7 @@ def get_current_hospitalized(fips, t0, category: HospitalizationCategory):
     current estimate: float
         The most recent provided value for the current occupied in the requested category.
     """
-    ts = combined_datasets.build_us_timeseries_with_all_fields()
-    if len(fips) == 2:
-        df = ts.get_data(AggregationLevel.STATE, country="USA", state=us.states.lookup(fips).abbr)
-    else:
-        df = ts.get_data(AggregationLevel.COUNTY, country="USA", fips=fips)
+    df = combined_datasets.get_timeseries_for_fips(fips).data
     return _get_current_hospitalized(df, t0, category)
 
 
@@ -619,63 +602,6 @@ def _get_current_hospitalized(
 
 
 @lru_cache(maxsize=32)
-def load_new_case_data_by_state(
-    state, t0, include_testing_correction=False, testing_correction_smoothing_tau=5
-):
-    """
-    Get data for new cases at state level.
-
-    Parameters
-    ----------
-    state: str
-        State full name.
-    t0: datetime
-        Datetime to offset by.
-    include_testing_correction: bool
-        If True, include a correction for new expanded or decreaseed test
-        coverage.
-    testing_correction_smoothing_tau: float
-        expected_positives_from_test_increase is smoothed based on an
-        exponentially weighted moving average of decay factor specified here.
-
-    Returns
-    -------
-    times: array(float)
-        List of float days since t0 for the case and death counts below
-    observed_new_cases: array(int)
-        Array of new cases observed each day.
-    observed_new_deaths: array(int)
-        Array of new deaths observed each day.
-    """
-    _state_case_data = load_state_case_data()
-    state_case_data = _state_case_data[_state_case_data["state"] == us.states.lookup(state).abbr]
-    times_new = (state_case_data["date"] - t0).dt.days.iloc[1:]
-    observed_new_cases = state_case_data["cases"].values[1:] - state_case_data["cases"].values[:-1]
-
-    if include_testing_correction:
-        df_new_tests = load_new_test_data_by_fips(
-            us.states.lookup(state).fips, t0, smoothing_tau=testing_correction_smoothing_tau
-        )
-        df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
-        df_cases = df_cases.merge(df_new_tests, how="left", on="times")
-        df_cases["new_cases"] -= df_cases["expected_positives_from_test_increase"].fillna(0)
-        observed_new_cases = df_cases["new_cases"].values
-
-    observed_new_deaths = (
-        state_case_data["deaths"].values[1:] - state_case_data["deaths"].values[:-1]
-    )
-
-    _, filter_idx = hampel_filter__low_outliers_only(observed_new_cases, window_size=5, n_sigmas=2)
-    keep_idx = np.array([i for i in range(len(times_new)) if i not in list(filter_idx)])
-    times_new = [int(list(times_new)[idx]) for idx in keep_idx]
-    return (
-        times_new,
-        np.array(observed_new_cases[keep_idx]).clip(min=0),
-        observed_new_deaths.clip(min=0)[keep_idx],
-    )
-
-
-@lru_cache(maxsize=32)
 def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
@@ -710,16 +636,15 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
         Do not apply a correction if the incident cases per day is lower than
         this value. There can be instability if case counts are very low.
     """
-    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    fips_timeseries = combined_datasets.get_timeseries_for_fips(fips)
+    df = fips_timeseries.data.copy()
 
-    if len(fips) == 2:
-        df = us_timeseries.get_data(AggregationLevel.STATE, state=us.states.lookup(fips).abbr)
-    else:
-        df = us_timeseries.get_data(AggregationLevel.COUNTY, fips=fips)
-    df = df[
+    # Aggregation level is None as fips is unique across aggregation levels.
+    df = df.loc[
         (df[CommonFields.POSITIVE_TESTS].notnull())
         & (df[CommonFields.NEGATIVE_TESTS].notnull())
-        & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0)
+        & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0),
+        :,
     ]
 
     df["positivity_rate"] = df[CommonFields.POSITIVE_TESTS] / (
@@ -748,12 +673,11 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
             "new_positive",
         ]
     ]
-
-    df = df[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull()]
+    df = df.loc[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull(), :]
     df["expected_positives_from_test_increase"] = ewma_smoothing(
         df["expected_positives_from_test_increase"], smoothing_tau
     )
-    df["expected_positives_from_test_increase"][df["new_positive"] < 5] = 0
+    df.loc[df["new_positive"] < 5, "expected_positives_from_test_increase"] = 0
 
     df["times"] = [
         int((date - t0).days) for date in pd.to_datetime(df["date"].values).to_pydatetime()
@@ -869,7 +793,6 @@ def cache_all_data():
     """
     Download all datasets locally.
     """
-    cache_county_case_data()
     cache_mobility_data()
     cache_public_implementations_data()
 

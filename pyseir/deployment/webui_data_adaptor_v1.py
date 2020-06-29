@@ -7,15 +7,13 @@ import numpy as np
 import pandas as pd
 from multiprocessing import Pool
 from pyseir import load_data
+from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.inference.fit_results import load_inference_result, load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
 from libs.datasets import CommonFields
-from libs.datasets import FIPSPopulation, JHUDataset, CDSDataset, combined_datasets, dataset_cache
-from libs.datasets.dataset_utils import build_aggregate_county_data_frame
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import FIPSPopulation, combined_datasets, dataset_cache
 import libs.datasets.can_model_output_schema as schema
-import pyseir.deployment.model_to_observed_shim as shim
 
 
 log = structlog.get_logger()
@@ -40,8 +38,6 @@ class WebUIDataAdaptorV1:
         output_interval_days=4,
         run_mode="can-before",
         output_dir=None,
-        jhu_dataset=None,
-        cds_dataset=None,
         include_imputed=False,
     ):
 
@@ -52,15 +48,6 @@ class WebUIDataAdaptorV1:
         self.state_abbreviation = us.states.lookup(state).abbr
         self.population_data = FIPSPopulation.local().population()
         self.output_dir = output_dir
-
-        self.jhu_local = jhu_dataset or JHUDataset.local()
-        self.cds_dataset = cds_dataset or CDSDataset.local()
-
-        self.county_timeseries = build_aggregate_county_data_frame(self.jhu_local, self.cds_dataset)
-        self.county_timeseries["date"] = self.county_timeseries["date"].dt.normalize()
-
-        state_timeseries = self.jhu_local.timeseries().get_subset(AggregationLevel.STATE)
-        self.state_timeseries = state_timeseries.data["date"].dt.normalize()
 
     @staticmethod
     def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
@@ -325,8 +312,8 @@ class WebUIDataAdaptorV1:
             output_model = output_model.fillna(0)
 
             # Fill in results for the Rt indicator.
-            try:
-                rt_results = load_Rt_result(fips)
+            rt_results = load_Rt_result(fips)
+            if rt_results is not None:
                 rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%m/%d/%y")
                 merged = output_model.merge(
                     rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
@@ -341,8 +328,12 @@ class WebUIDataAdaptorV1:
                 output_model[schema.RT_INDICATOR_CI90] = (
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
-            except (ValueError, KeyError) as e:
-                log.warning("Clearing Rt in output for fips.", fips=fips, exc_info=e)
+            else:
+                log.warning(
+                    "No Rt Results found, clearing Rt in output.",
+                    fips=fips,
+                    suppression_policy=suppression_policy,
+                )
                 output_model[schema.RT_INDICATOR] = "NaN"
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
@@ -409,10 +400,9 @@ class WebUIDataAdaptorV1:
         if states_only:
             return
         else:
-            p = Pool()
-            p.map(self.map_fips, whitelisted_county_fips)
-            p.close()
-            p.join()
+            with Pool(maxtasksperchild=1) as p:
+                p.map(self.map_fips, whitelisted_county_fips)
+
             return
 
 

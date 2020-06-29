@@ -1032,7 +1032,6 @@ def build_county_list(state):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-
     all_fips = df_whitelist[
         df_whitelist["state"].str.lower() == state_obj.name.lower()
     ].fips.tolist()
@@ -1081,9 +1080,8 @@ def run_state(state, states_only=False, with_age_structure=False):
         ].fips.values
 
         if len(all_fips) > 0:
-            p = Pool()
-            fitters = p.map(ModelFitter.run_for_fips, all_fips)
-            p.close()
+            with Pool(maxtasksperchild=1) as p:
+                fitters = p.map(ModelFitter.run_for_fips, all_fips)
 
             county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
             data = pd.DataFrame([fit.fit_results for fit in fitters if fit])

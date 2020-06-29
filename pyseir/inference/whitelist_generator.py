@@ -60,7 +60,6 @@ class WhitelistGenerator:
             right_on="fips",
             how="inner",
         )
-
         df_candidates["inference_ok"] = (
             (df_candidates.nonzero_case_datapoints >= self.nonzero_case_datapoints)
             & (df_candidates.nonzero_death_datapoints >= self.nonzero_death_datapoints)
@@ -81,7 +80,6 @@ def _whitelist_candidates_per_fips(fips):
     times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
         fips, t0=datetime(day=1, month=1, year=2020)
     )
-
     record = dict(
         fips=fips,
         total_cases=observed_new_cases.sum(),
