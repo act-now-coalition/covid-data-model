@@ -21,6 +21,8 @@ Tests of Rt inference code using synthetically generated data for 100 days where
 Note that smoothing of values smears out the transitions +/- window_size/2 days
 """
 
+FAILURE_ERROR_FRACTION = 0.15
+
 
 def test__cases_only_large_count_rising_falling_exponential():
     rt1 = 1.5
@@ -48,8 +50,12 @@ def test__cases_only_large_count_rising_falling_exponential():
     rt = df_all["Rt_MAP_composite"]
 
     # Check expected values are within 10%
-    assert pytest.approx(rt[t_switch - 10], 0.1) == rt1  # settle into first rate change
-    assert pytest.approx(rt[t_switch + 20], 0.1) == rt2  # settle into 2nd rate change
+    assert (
+        pytest.approx(rt[t_switch - 15] - 1.0, FAILURE_ERROR_FRACTION) == rt1 - 1.0
+    )  # settle into first rate change
+    assert (
+        pytest.approx(rt[t_switch + 15] - 1.0, FAILURE_ERROR_FRACTION) == rt2 - 1.0
+    )  # settle into 2nd rate change
 
 
 def test__cases_only_small_count_falling_exponential():
@@ -79,8 +85,8 @@ def test__cases_only_small_count_falling_exponential():
     rt = df_all["Rt_MAP_composite"]
 
     # Check expected values are within 10%
-    assert pytest.approx(rt[t0 - 10], 0.1) == rt1  # agree first rate
-    # TODO when fixed - assert (pytest.approx(rt[t0 + 10], 0.1) == rt2) # agree 2nd rate
+    assert pytest.approx(rt[t0 - 10] - 1.0, FAILURE_ERROR_FRACTION) == rt1 - 1.0  # agree first rate
+    assert pytest.approx(rt[t0 + 10] - 1.0, FAILURE_ERROR_FRACTION) == rt2 - 1.0  # agree 2nd rate
 
 
 def test__cases_only_small_count_late_rising_exponential():
@@ -105,21 +111,20 @@ def test__cases_only_small_count_late_rising_exponential():
         load_data_parent="test.mocks.inference",
         default_parameters=pyseir_default_parameters,
     )
+
+    tail_sup = engine.evaluate_head_tail_suppression()
+
+    assert len(tail_sup) <= engine.window_size / 2
+    assert len(tail_sup[tail_sup < 1.0]) == len(tail_sup)
+    assert len(tail_sup[tail_sup > 0.0]) == len(tail_sup)
+    assert tail_sup.sum() > 0.5 * len(tail_sup) and tail_sup.sum() < 0.8 * len(tail_sup)
+
     df_all = engine.infer_all()
 
     rt = df_all["Rt_MAP_composite"]
 
-    # Calculate rt suppression by smoothing delay at tail of sequence
-    tail_suppression = np.concatenate(
-        [1.0 * np.ones(len(rt) - 7), np.array([1.0, 0.72, 0.67, 0.62, 0.56, 0.52, 0.48])]
-    )
-    # Adjust rt by undoing the supppression
-    rt_adj = (rt - 1.0) / tail_suppression + 1.0
-
-    print("last 20 adjusted", rt_adj.tail(20).apply(lambda v: f"%.2f" % v).values)
-
     # Check expected values are within 10%
     # TODO remove adjustment here when incorporated in rt calculation
     assert (
-        pytest.approx(rt_adj[99], 0.05) == rt2
+        pytest.approx(rt[99] - 1.0, FAILURE_ERROR_FRACTION) == rt2 - 1.0
     )  # settle into 2nd specified rate at low case count

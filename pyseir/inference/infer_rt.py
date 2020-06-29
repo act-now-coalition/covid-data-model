@@ -65,6 +65,10 @@ class InferRtConstants:
     MIN_COUNTS_TO_INFER = 5.0
     # TODO really understand whether the min_cases and/or min_deaths compares to max, avg, or day to day counts
 
+    # Correct for tail suppression due to case smoothing window converting from centered to lagging
+    # as approach curren time
+    CORRECT_TAIL_SUPRESSION = 0.75
+
     # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
     # term shape correctly.
     SMOOTH_RT_MAP_COMPOSITE = 1  # number of times to apply soothing
@@ -272,6 +276,18 @@ class RtInferenceEngine:
             TimeseriesType.CURRENT_HOSPITALIZATIONS,
         ):
             return self.hospital_dates, self.hospital_times, self.hospitalizations
+
+    def evaluate_head_tail_suppression(self):
+        """
+        Evaluates how much time slows down (which suppresses Rt) as series approaches latest date
+        """
+        timeseries = pd.Series(1.0 * np.arange(0, 2 * self.window_size))
+        smoothed = timeseries.rolling(
+            self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
+        ).mean(std=self.kernel_std)
+        delta = (smoothed - smoothed.shift()).tail(math.ceil(self.window_size / 2))
+
+        return delta[delta < 1.0]
 
     def apply_gaussian_smoothing(self, timeseries_type, plot=True, smoothed_max_threshold=5):
         """
@@ -684,6 +700,7 @@ class RtInferenceEngine:
                     series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
 
                     shift_in_days = self.align_time_series(series_a=series_a, series_b=series_b,)
+                    shift_in_days = 0  # disable for now
 
                     df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
                     logging.debug(
@@ -727,6 +744,19 @@ class RtInferenceEngine:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
+        # Correct for tail suppression
+        suppression = 1.0 * np.ones(len(df_all))
+        if InferRtConstants.CORRECT_TAIL_SUPRESSION > 0.0:
+            tail_sup = self.evaluate_head_tail_suppression()
+            # Calculate rt suppression by smoothing delay at tail of sequence
+            suppression = np.concatenate(
+                [1.0 * np.ones(len(df_all) - len(tail_sup)), tail_sup.values]
+            )
+            # Adjust rt by undoing the supppression
+            df_all["Rt_MAP_composite"] = (df_all["Rt_MAP_composite"] - 1.0) / np.power(
+                suppression, InferRtConstants.CORRECT_TAIL_SUPRESSION
+            ) + 1.0
+
         # Optionally Smooth just Rt_MAP_composite.
         # Note this doesn't lag in time and preserves integral of Rteff over time
         for i in range(0, InferRtConstants.SMOOTH_RT_MAP_COMPOSITE):
@@ -749,6 +779,7 @@ class RtInferenceEngine:
                 / math.sqrt(
                     2.0 * kernel_width  # averaging over many points reduces confidence interval
                 )
+                / np.power(suppression, InferRtConstants.CORRECT_TAIL_SUPRESSION / 2)
             ).apply(lambda v: max(v, InferRtConstants.MIN_CONF_WIDTH)) + df_all["Rt_MAP_composite"]
 
         if plot and df_all is not None:
@@ -846,7 +877,7 @@ class RtInferenceEngine:
             plt.ylim(0.0, 3.0)
             plt.ylabel("$R_t$", fontsize=16)
             plt.legend()
-            plt.title(self.display_name, fontsize=16)
+            plt.title(self.display_name, fontsize=14)
 
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches="tight")
