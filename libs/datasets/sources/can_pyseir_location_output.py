@@ -1,3 +1,7 @@
+import pathlib
+import datetime
+
+import pandas as pd
 
 
 def get_can_projection_path(input_dir, fips, intervention) -> pathlib.Path:
@@ -7,7 +11,6 @@ def get_can_projection_path(input_dir, fips, intervention) -> pathlib.Path:
 
 
 class CANPyseirLocationOutput(object):
-
     def __init__(self, fips, data, intervention):
         self.fips = fips
         self.data = data
@@ -15,7 +18,7 @@ class CANPyseirLocationOutput(object):
 
     @classmethod
     def load_projection(cls, fips, intervention, input_dir):
-        path = get_can_projection_path(input_dir, fips, intervention)n
+        path = get_can_projection_path(input_dir, fips, intervention)
         data = pd.read_json(path)
         return cls(fips, data, intervention)
 

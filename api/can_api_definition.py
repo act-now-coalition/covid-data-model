@@ -83,8 +83,12 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
         ...,
         description="Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
     )
-    lat: float = pydantic.Field(..., description="Latitude of point within the state or county")
-    long: float = pydantic.Field(..., description="Longitude of point within the state or county")
+    lat: Optional[float] = pydantic.Field(
+        ..., description="Latitude of point within the state or county"
+    )
+    long: Optional[float] = pydantic.Field(
+        ..., description="Longitude of point within the state or county"
+    )
     stateName: str = pydantic.Field(..., description="The state name")
     countyName: Optional[str] = pydantic.Field(default=None, description="The county name")
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
@@ -153,8 +157,12 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
     countyName: Optional[str] = pydantic.Field(..., description="The county name")
     intervention: str = pydantic.Field(..., description="Name of high-level intervention in-place")
     fips: str = pydantic.Field(..., description="Fips for State + County. Five character code")
-    lat: float = pydantic.Field(..., description="Latitude of point within the state or county")
-    long: float = pydantic.Field(..., description="Longitude of point within the state or county")
+    lat: Optional[float] = pydantic.Field(
+        ..., description="Latitude of point within the state or county"
+    )
+    long: Optional[float] = pydantic.Field(
+        ..., description="Longitude of point within the state or county"
+    )
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 
 
@@ -176,7 +184,7 @@ class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
         return CovidActNowAreaSummary(**data)
 
 
-class CovidActNowStateTimeseries(CovidActNowStateSummary):
+class CovidActNowStateTimeseries(CovidActNowAreaSummary):
     timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
     actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 

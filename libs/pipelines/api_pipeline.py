@@ -1,9 +1,11 @@
-from typing import List
+from typing import List, Optional
 import pathlib
 from collections import namedtuple
 import logging
 import pydantic
 import simplejson
+from api.can_api_definition import CovidActNowAreaSummary
+from api.can_api_definition import CovidActNowAreaTimeseries
 from api.can_api_definition import CovidActNowCountiesSummary
 from api.can_api_definition import CovidActNowCountiesTimeseries
 from api.can_api_definition import CovidActNowCountyTimeseries
@@ -17,6 +19,7 @@ from libs import build_processed_dataset
 from libs import dataset_deployer
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import combined_datasets
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets import results_schema as rc
 from libs.functions import generate_api as api
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
@@ -149,8 +152,8 @@ def generate_area_summary_for_fips_intervention(
     model_output: Optional[CANPyseirLocationOutput],
 ) -> CovidActNowAreaTimeseries:
 
-    fips_latest = us_latest.get_subset(None, fips=fips)
-    return generate_api.generate_area_summary(fips, intervention, fips_latest, model_output)
+    fips_latest = us_latest.get_record_for_fips(fips)
+    return api.generate_area_summary(fips, intervention, fips_latest, model_output)
 
 
 def remove_root_wrapper(obj: dict):

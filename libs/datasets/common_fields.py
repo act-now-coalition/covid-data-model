@@ -45,6 +45,8 @@ class CommonFields(object):
     CURRENT_ICU_TOTAL = "current_icu_total"
 
     CONTACT_TRACERS_COUNT = "contact_tracers_count"
+    LATITUDE = "latitude"
+    LONGITUDE = "longitude"
 
 
 class CommonIndexFields(object):
