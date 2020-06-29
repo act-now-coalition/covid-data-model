@@ -2,8 +2,9 @@ from unittest.mock import patch
 
 import pytest
 
+from covidactnow.datapublic.common_fields import CommonFields
 from libs import build_processed_dataset, validate_results
-from libs.datasets import CommonFields, CDSDataset, CovidTrackingDataSource
+from libs.datasets import CDSDataset, CovidTrackingDataSource
 import pandas as pd
 from libs.datasets.results_schema import CUMULATIVE_POSITIVE_TESTS, CUMULATIVE_NEGATIVE_TESTS
 
