@@ -1,9 +1,10 @@
 import pandas as pd
+
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.dataset_utils import AggregationLevel
 from functools import lru_cache
-from libs.datasets.common_fields import CommonFields
 
 
 class DataSource(object):

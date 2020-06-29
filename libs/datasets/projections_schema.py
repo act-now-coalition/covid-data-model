@@ -1,4 +1,4 @@
-from libs.datasets import CommonFields
+from covidactnow.datapublic.common_fields import CommonFields
 
 OUTPUT_COLUMN_REMAP_TO_RESULT_DATA = {
     "intervention": "State Intervention",
