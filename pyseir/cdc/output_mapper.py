@@ -219,7 +219,7 @@ class OutputMapper:
         self.result = None
 
     @staticmethod
-    def forecast_format(forecast):
+    def standardize_format(result):
         """
 
         """
@@ -231,7 +231,13 @@ class OutputMapper:
             forecast['quantile'] = forecast['quantile'].apply(lambda v: '%.3f' % v)
         else forecast['quantile'].dtype is float:
             return'''
-        return None
+
+        result['location'] = result['location'].apply(lambda s: ('0' + str(
+            s))[-2:])
+        result['quantile'] = result['quantile'].astype(float).apply(lambda s:
+        '%.3f' % s)
+
+        return result
 
 
 
@@ -768,6 +774,25 @@ def generate_us_result(targets=[Target.CUM_DEATH],
     us_result['location'] = 'US'
 
     return us_result[COLUMNS]
+
+
+def filter_out_locations(result=None, result_path=None, locations=[]):
+    """
+    Remove States or US forecast from results.
+    """
+
+    if result is None:
+        if result_path is not None:
+            result = pd.read_csv(result_path, dtype='str')
+        else:
+            raise ValueError('Neither forecast table nor path of the '
+                             'forecast is provided.')
+
+    result = OutputMapper.standardize_format(result)
+
+    result = result[~result['location'].isin(locations)]
+
+    return result
 
 
 def run_all(parallel=False, mapper_kwargs=None):
