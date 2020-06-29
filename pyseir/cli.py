@@ -1,11 +1,11 @@
+from typing import Dict, List
 import sys
 import os
 import click
 import us
 import logging
-import sentry_sdk
-import structlog
 import pandas as pd
+from covidactnow.datapublic import common_init
 
 from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
@@ -20,21 +20,11 @@ from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 from libs.us_state_abbrev import abbrev_us_state
 from pyseir.inference.whitelist_generator import WhitelistGenerator
-import logging
 
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
 root = logging.getLogger()
-root.setLevel(logging.INFO)
-
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
-    "%(asctime)s - %(filename)s - %(lineno)d - %(levelname)s - %(message)s"
-)
-handler.setFormatter(formatter)
-root.addHandler(handler)
 
 DEFAULT_RUN_MODE = "can-inference-derived"
 ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
@@ -52,18 +42,7 @@ def _cache_global_datasets():
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
     dataset_cache.set_pickle_cache_dir()
-    sentry_sdk.init(os.getenv("SENTRY_DSN"))
-    structlog.configure(
-        processors=[
-            structlog.stdlib.add_log_level,  # required before SentryProcessor()
-            # sentry_sdk creates events for level >= ERROR. Getting breadcrumbs from structlog
-            # isn't supported without a lot of custom work. See
-            # https://github.com/kiwicom/structlog-sentry/issues/25
-            SentryProcessor(level=logging.ERROR),
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),
-        ]
-    )
+    common_init.configure_logging()
 
 
 def _generate_whitelist():
@@ -154,14 +133,13 @@ def _state_only_pipeline(
     output_dir=None,
 ):
     states_only = True
-    logging.info("ABOUT TO INFER")
-    df_all = _infer_rt(state, states_only=states_only)
-    # _run_mle_fits(state, states_only=states_only)
-    # _run_ensembles(
+    _infer_rt(state, states_only=states_only)
+    #_run_mle_fits(state, states_only=states_only)
+    #_run_ensembles(
     #    state,
     #    ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
     #    states_only=states_only,
-    # )
+    #)
     if generate_reports:
         _generate_state_reports(state)
     # remove outputs atm. just output at the end
@@ -174,6 +152,34 @@ def _state_only_pipeline(
     )
 
 
+def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict[str, str]:
+    """Builds mapping from fips to state of counties to run.
+
+    Restricts counties to those in the county whitelist.
+
+    Args:
+        states: List of states to run on.
+        fips: Optional county fips code to restrict results to.
+
+    Returns: Map of counties to run with associated state.
+    """
+    # Build List of Counties
+    all_county_fips = {}
+    for state in states:
+        state_county_fips = model_fitter.build_county_list(state)
+        county_fips_per_state = {fips: state for fips in state_county_fips}
+
+        if not fips:
+            all_county_fips.update(county_fips_per_state)
+            continue
+
+        if fips in county_fips_per_state:
+            root.info(f"Found {fips}, restricting run to found fips")
+            all_county_fips.update({fips: state})
+
+    return all_county_fips
+
+
 def _build_all_for_states(
     states=[],
     run_mode=DEFAULT_RUN_MODE,
@@ -182,10 +188,12 @@ def _build_all_for_states(
     skip_download=False,
     output_dir=None,
     skip_whitelist=False,
-    states_only=True,
+    states_only=False,
+    fips=None,
 ):
     # prepare data
     _cache_global_datasets()
+
     if not skip_whitelist:
         _generate_whitelist()
 
@@ -204,12 +212,7 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    # Build List of Counties
-    all_county_fips = {}
-    for state in states:
-        state_county_fips = model_fitter.build_county_list(state)
-        county_fips_per_state = {fips: state for fips in state_county_fips}
-        all_county_fips.update(county_fips_per_state)
+    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
 
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
@@ -390,6 +393,14 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option(
     "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
 )
+@click.option(
+    "--fips",
+    help=(
+        "County level fips code to restrict runs to. "
+        "This does not restrict the states that run, so also specifying states with "
+        "`--states` is recommended."
+    ),
+)
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
@@ -400,6 +411,7 @@ def build_all(
     output_dir,
     skip_whitelist,
     states_only,
+    fips,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -418,8 +430,15 @@ def build_all(
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
         states_only=states_only,
+        fips=fips,
     )
 
 
 if __name__ == "__main__":
-    entry_point()
+    try:
+        entry_point()  # pylint: disable=no-value-for-parameter
+    except Exception:
+        # According to https://github.com/getsentry/sentry-python/issues/480 Sentry is expected
+        # to create an event when this is called.
+        logging.exception("Exception reached __main__")
+        raise

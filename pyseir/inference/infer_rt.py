@@ -720,7 +720,7 @@ class RtInferenceEngine:
 
         logging.info("about to run forecast rt")
 
-        self.forecast_rt(df_all)
+        #self.forecast_rt(df_all)
         return df_all
 
     def forecast_rt(self, df_all):
