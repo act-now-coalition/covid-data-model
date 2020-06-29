@@ -25,7 +25,8 @@ def load_output_mapper_result(fips, forecast_date):
     if isinstance(forecast_date, datetime):
         forecast_date = datetime.strftime(forecast_date, DATE_FORMAT)
 
-    om_result = pd.read_csv(f'{REPORT_FOLDER}/{forecast_date}_{TEAM}_{MODEL}_{fips}.csv')
+    om_result = pd.read_csv(f'{REPORT_FOLDER}/{forecast_date}/'
+                            f'{forecast_date}_{TEAM}_{MODEL}_{fips}.csv')
     return om_result
 
 
@@ -128,8 +129,10 @@ def run_all(forecast_date=FORECAST_DATE):
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
     fips_list = list(df_whitelist['fips'].str[:2].unique())[:5]
+    date_string = datetime.strftime(forecast_date, DATE_FORMAT)
     output_path = os.path.join(f'{REPORT_FOLDER}',
-                               f'report_{datetime.strftime(forecast_date, DATE_FORMAT)}.pdf')
+                               date_string,
+                               f'report_{date_string}.pdf')
     pdf = backend_pdf.PdfPages(output_path)
     for fips in fips_list:
         logging.info(f'plotting cdc submission for fips {fips}')
