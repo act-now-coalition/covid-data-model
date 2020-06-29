@@ -3,8 +3,9 @@ import logging
 import functools
 import pandas as pd
 import structlog
+import sys
+sys.path.append('../covid-data-public')
 from structlog.threadlocal import tmp_bind
-
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
