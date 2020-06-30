@@ -77,18 +77,23 @@ class DatasetDiff(BaseModel):
 
     def __str__(self):
         # TODO(tom): Make this easier to read. See idea in docstring at top of this file.
-        return f"""Duplicate rows in this file: {self.duplicates_dropped}
+        return f"""Duplicate rows in this file: {self.duplicates_dropped.index.unique(level='fips')}
+{self.duplicates_dropped}
 TS only in this file: {self.my_ts}
 TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()}
-TS diffs: {self.ts_diffs if self.ts_diffs is not None else ''}
-TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.ts_diffs is not None else ''}
+""" + (
+            f"""TS diffs:\n{self.ts_diffs.sort_values('diff', ascending=False)}
+TS diffs by variable and has_overlap:\n{self.ts_diffs.groupby('variable has_overlap'.split()).mean()}
 """
+            if not (self.ts_diffs is None or self.ts_diffs.empty)
+            else ""
+        )
 
     @staticmethod
     def make(df: pd.DataFrame) -> "DatasetDiff":
-        dups = df.loc[df.index.duplicated(keep=False)]
-        if not dups.empty:
-            df = df.drop_duplicates()
+        dups_bool_array = df.index.duplicated(keep=False)
+        dups = df.loc[dups_bool_array, :]
+        df = df.loc[~dups_bool_array, :]
 
         df = df.reset_index().replace({pd.NA: np.nan}).convert_dtypes()
         df[CommonFields.DATE] = pd.to_datetime(df[CommonFields.DATE])
@@ -153,24 +158,34 @@ TS diffs: {self.ts_diffs.groupby('variable has_overlap'.split()).mean() if self.
         self.ts_diffs = joined_ts.groupby("variable fips".split()).apply(timeseries_diff)
 
 
-def timeseries_diff(ts: pd.DataFrame) -> pd.Series:
+def timeseries_diff(group_subframe: pd.DataFrame) -> pd.Series:
     try:
-        ts = ts.droplevel(["variable", CommonFields.FIPS])
+        ts = group_subframe.droplevel(["variable", CommonFields.FIPS])
         right = ts["value_r"]
         left = ts["value_l"]
         # Ignoring gaps of NaN between real values, find the longest range of dates where the right
         # and left overlap.
-        start = max(right.idxmin(), left.idxmin())
-        end = min(right.idxmax(), left.idxmax())
+        start = max(right.first_valid_index(), left.first_valid_index())
+        end = min(right.last_valid_index(), left.last_valid_index())
+
         if start <= end:
             right_common_ts = right.loc[start:end].interpolate(method="time")
             left_common_ts = left.loc[start:end].interpolate(method="time")
-            diff = (
-                (right_common_ts - left_common_ts).abs() / ((right_common_ts + left_common_ts) / 2)
-            ).mean()
-            # if diff > 0.01:
-            #    print(ts)
+            # Sum before divide suggest by formula for SMAPE at
+            # https://en.wikipedia.org/wiki/Symmetric_mean_absolute_percentage_error
+            common_sum = right_common_ts.sum() + left_common_ts.sum()
+            common_abs_diff = (right_common_ts - left_common_ts).abs().sum()
+            if abs(common_sum) > 0.0001:
+                diff = common_abs_diff / common_sum
+            else:
+                # Hack to avoid dividing by a tiny number (or 0, bomb!) when common_sum is small.
+                diff = 0.0 if abs(common_abs_diff) < 0.0001 else 1.0
+
+            # if diff > 0.04:
+            #    print(f"diff over 0.04")
+            #    print(group_subframe)
             #    print(f"from {start} to {end}")
+            #    print(f"common sum {common_sum} and diff {common_abs_diff}")
             rv = pd.Series(
                 [diff, len(right_common_ts), True], index=["diff", "points_overlap", "has_overlap"]
             )
