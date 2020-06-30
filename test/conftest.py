@@ -19,4 +19,4 @@ def nyc_fips():
 def nyc_model_output_path() -> pathlib.Path:
     # generated from running pyseir model output.  To update, run
     test_root = pathlib.Path(__file__).parent
-    return test_root / "data" / "pyseir" / "36061.2.json"
+    return test_root / "data" / "pyseir" / "36061.1.json"

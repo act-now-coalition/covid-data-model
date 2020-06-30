@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Iterator, Tuple
 import pathlib
 from collections import namedtuple
 import logging
@@ -13,6 +13,7 @@ from api.can_api_definition import CovidActNowStatesSummary
 from api.can_api_definition import CovidActNowStatesTimeseries
 from api.can_api_definition import PredictionTimeseriesRowWithHeader
 from libs.enums import Intervention
+from libs.datasets import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import validate_results
 from libs import build_processed_dataset
@@ -61,46 +62,6 @@ def _get_api_prefix(aggregation_level, row):
         raise ValueError("Only County and State Aggregate Levels supported")
 
 
-def run_projections(
-    input_file, aggregation_level, intervention: Intervention, run_validation=True
-) -> APIPipelineProjectionResult:
-    """Run the projections for the given intervention for states
-    in order to generate the api.
-
-    Args:
-        input_file: Input file to load model output results from.
-        intervention: Intervention Enum to be used to generate results
-        run_validation: If true runs validation on generated shapefiles
-            and dataframes.
-
-    Returns: APIPipelineProjectionResult objects for county data.
-    """
-
-    if aggregation_level == AggregationLevel.STATE:
-        states_key_name = f"states.{intervention.name}"
-        states_df = build_processed_dataset.get_usa_by_states_df(input_file, intervention)
-        if run_validation:
-            validate_results.validate_states_df(states_key_name, states_df)
-
-        state_results = APIPipelineProjectionResult(intervention, AggregationLevel.STATE, states_df)
-        return state_results
-    elif aggregation_level == AggregationLevel.COUNTY:
-        # Run County level projections
-        counties_key_name = f"counties.{intervention.name}"
-        counties_df = build_processed_dataset.get_usa_by_county_with_projection_df(
-            input_file, intervention.value
-        )
-        if run_validation:
-            validate_results.validate_counties_df(counties_key_name, counties_df, intervention)
-
-        county_results = APIPipelineProjectionResult(
-            intervention, AggregationLevel.COUNTY, counties_df
-        )
-        return county_results
-    else:
-        raise ValueError("Non-valid aggreation level specified")
-
-
 def _generate_api_without_ts(projection_result, row, input_dir):
     if projection_result.aggregation_level == AggregationLevel.STATE:
         generated_data = api.generate_api_for_state_projection_row(row)
@@ -145,15 +106,38 @@ def generate_api(projection_result: APIPipelineProjectionResult, input_dir: str)
     return summaries, timeseries
 
 
-def generate_area_summary_for_fips_intervention(
-    fips: str,
-    intervention,
-    us_latest: LatestValuesDataset,
-    model_output: Optional[CANPyseirLocationOutput],
-) -> CovidActNowAreaTimeseries:
+def load_model_output_and_run_summary_on_fips(
+    fips, intervention, us_latest, model_output_dir: pathlib.Path
+) -> Tuple[CANPyseirLocationOutput, CovidActNowAreaSummary]:
+    model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
+        fips, intervention, model_output_dir
+    )
+    if not model_output and intervention is not Intervention.OBSERVED_INTERVENTION:
+        # All model output is currently tied to a specific intervention. However,
+        # we want to generate results for areas that don't have a fit result, but we're not
+        # duplicating non-model outputs.
+        return None, None
 
     fips_latest = us_latest.get_record_for_fips(fips)
-    return api.generate_area_summary(fips, intervention, fips_latest, model_output)
+    area_summary = api.generate_area_summary(
+        fips_latest[CommonFields.FIPS], intervention, fips_latest, model_output
+    )
+    return area_summary, model_output
+
+
+def run_summary_on_all_fips_for_intervention(
+    latest_values: LatestValuesDataset, intervention: Intervention, model_output_dir
+) -> Iterator[Tuple[CANPyseirLocationOutput, CovidActNowAreaSummary]]:
+    def run_fips(fips):
+        return load_model_output_and_run_summary_on_fips(
+            fips, intervention, us_latest, model_output_dir
+        )
+
+    pool = Pool()
+    results = pool.map(us_latest.all_fips, run_fips)
+    for api_summary, model_output in results:
+        if api_summary:
+            yield api_summary, model_output
 
 
 def remove_root_wrapper(obj: dict):

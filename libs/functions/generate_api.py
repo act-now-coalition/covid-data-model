@@ -34,43 +34,6 @@ from libs.build_processed_dataset import get_testing_timeseries_by_fips
 import pandas as pd
 
 
-def _format_date(input_date):
-    if not input_date:
-        raise Exception("Can't format a date that doesn't exist")
-    if isinstance(input_date, str):
-        # note if this is already in iso format it will be grumpy. maybe use dateutil
-        datetime_obj = datetime.strptime(input_date, "%m/%d/%Y %H:%M")
-        return datetime_obj
-    if isinstance(input_date, datetime):
-        return input_date
-    raise Exception("Invalid date type when converting to api")
-
-
-def _get_date_or_none(panda_date_or_none):
-    """ Projection Null value is a string NULL so if this date value is a string,
-     make it none. Otherwise convert to the python datetime. Example
-     of this being null is when there is no bed shortfall, the shortfall dates is none """
-    if isinstance(panda_date_or_none, str):
-        return None
-    return panda_date_or_none.to_pydatetime()
-
-
-def _get_or_none(value):
-    if isinstance(value, str) and value == NULL_VALUE:
-        return None
-    elif pd.isna(value):
-        return None
-    else:
-        return value
-
-
-def _get_or_zero(value):
-    if isinstance(value, str) and value == NULL_VALUE:
-        return 0
-    else:
-        return value
-
-
 def _generate_api_for_projections(model_output: CANPyseirLocationOutput):
     _hospital_beds = _ResourceUsageProjection(
         peakDate=model_output.peak_hospitalizations_date,
@@ -142,7 +105,7 @@ def _generate_actuals_timeseries(actuals_timeseries_dataset, intervention):
 def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeseriesRow:
 
     return CANPredictionTimeseriesRow(
-        date=datetime.strptime(json_data_row[can_schema.DATE], "%m/%d/%y"),
+        date=json_data_row[can_schema.DATE].to_pydatetime(),
         hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
         hospitalBedCapacity=json_data_row[can_schema.BEDS],
         ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
@@ -164,7 +127,7 @@ def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeserie
 
 def generate_area_summary(
     fips: str, intervention: Intervention, latest_values: dict, projection_row: Optional[dict],
-):
+) -> CovidActNowAreaSummary:
     state = latest_values[CommonFields.STATE]
     state_intervention = get_can_projection.get_intervention_for_state(state)
     actuals = _generate_actuals(latest_values, state_intervention)

@@ -28,9 +28,16 @@ class CANPyseirLocationOutput(object):
         return cls(data)
 
     @classmethod
-    def load_from_model_output(cls, fips, intervention, input_dir):
+    def load_from_model_output_if_exists(
+        cls, fips, intervention, input_dir
+    ) -> Optional["CANPyseirLocationOutput"]:
         path = get_can_projection_path(input_dir, fips, intervention)
-        return cls.load_from_path(fips, intervention, path)
+        print(path)
+        if not path.exists():
+            print(intervention)
+            return None
+
+        return cls.load_from_path(path)
 
     @property
     def peak_hospitalizations_date(self) -> datetime.datetime:

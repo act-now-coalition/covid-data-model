@@ -16,14 +16,13 @@ from pyseir import cli
 NYC_FIPS = "36061"
 
 
-@pytest.fixture(scope="module")
-def pyseir_output_path():
-    with tempfile.TemporaryDirectory() as tempdir:
-        cli._build_all_for_states(
-            states=["New York"], generate_reports=False, output_dir=tempdir, fips="36061"
-        )
-
-        yield fips, pathlib.Path(tempdir)
+# @pytest.fixture(scope="module")
+# def pyseir_output_path():
+#     with tempfile.TemporaryDirectory() as tempdir:
+#         cli._build_all_for_states(
+#             states=["New York"], generate_reports=False, output_dir=tempdir, fips="36061"
+#         )
+#         yield fips, pathlib.Path(tempdir)
 
 
 @pytest.mark.parametrize("include_projections", [True, False])
@@ -34,6 +33,7 @@ def test_generate_summary_for_fips(include_projections, nyc_model_output_path):
     model_output = None
     expected_projections = None
 
+    intervention = Intervention.OBSERVED_INTERVENTION
     if include_projections:
         model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
         expected_projections = _Projections(
@@ -44,9 +44,10 @@ def test_generate_summary_for_fips(include_projections, nyc_model_output_path):
             Rt=model_output.latest_rt,
             RtCI90=model_output.latest_rt_ci90,
         )
+        intervention = Intervention.STRONG_INTERVENTION
 
-    summary = api_pipeline.generate_area_summary_for_fips_intervention(
-        NYC_FIPS, Intervention.OBSERVED_INTERVENTION, us_latest, model_output
+    summary, _ = api_pipeline.load_model_output_and_run_summary_on_fips(
+        NYC_FIPS, intervention, us_latest, nyc_model_output_path.parent
     )
 
     expected = CovidActNowAreaSummary(
@@ -83,5 +84,7 @@ def test_generate_summary_for_fips(include_projections, nyc_model_output_path):
         lastUpdatedDate=datetime.datetime.utcnow(),
         projections=expected_projections,
     )
-    print(summary.projections)
-    assert expected == summary
+    assert expected.dict() == summary.dict()
+
+
+# def test_run_summary
