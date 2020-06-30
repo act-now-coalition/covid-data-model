@@ -126,7 +126,9 @@ class RtInferenceEngine:
         min_cases=5,
         min_deaths=5,
         include_testing_correction=True,
+        SCALED_NAME="_scaled",
     ):
+
         np.random.seed(InferRtConstants.RNG_SEED)
         # Param Generation used for Xcor in align_time_series, has some stochastic FFT elements.
         self.fips = fips
@@ -139,6 +141,8 @@ class RtInferenceEngine:
         self.min_cases = min_cases
         self.min_deaths = min_deaths
         self.include_testing_correction = include_testing_correction
+
+        self.SCALED_NAME = SCALED_NAME
 
         # Because rounding is disabled we don't need high min_deaths, min_cases anymore
         self.min_cases = min(InferRtConstants.MIN_COUNTS_TO_INFER, self.min_cases)
@@ -896,6 +900,38 @@ class RtInferenceEngine:
         self.forecast_rt(df_all)
         return df_all
 
+    def get_scaling_dictionary(self, train_scaling_set):
+        log.info("getting scaling dictionary")
+        scalers_dict = {}
+        for columnName, columnData in train_scaling_set.iteritems():
+            scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+            reshaped_data = columnData.values.reshape(-1, 1)
+
+            scaler = scaler.fit(reshaped_data)
+            scaled_values = scaler.transform(reshaped_data)
+
+            # add scaled columns to dataframe
+            # train_set.loc[:, f"{columnName}_scaled"] = scaled_values
+
+            # update dictionary for later use to unscale data
+            scalers_dict.update({columnName: scaler})
+
+        return scalers_dict
+
+    def get_scaled_X_Y(self, samples, scalers_dict, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE):
+        log.info("getting X and Y")
+        sample_list = list()
+        for sample in samples:
+            for columnName, columnData in sample.iteritems():
+                scaled_values = scalers_dict[columnName].transform(columnData.values.reshape(-1, 1))
+                sample.loc[:, f"{columnName}{self.SCALED_NAME}"] = scaled_values
+            sample_list.append(sample)
+            log.info("scaled samples")
+
+            X, Y, df_list = self.get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE)
+            log.info("got X,Y")
+            return X, Y, df_list
+
     def forecast_rt(self, df_all):
         logging.info("starting")
         """
@@ -916,16 +952,25 @@ class RtInferenceEngine:
 
         # Convert dates to what day of 2020 it corresponds to for Forecast
         SIM_DATE_NAME = "sim_day"
-        df_all["sim_day"] = (
+        df_all[SIM_DATE_NAME] = (
             df_all.index - self.ref_date
-        ).days + 1  # set first day of year to 1 not zero --- check why this varies for Idaho number of entries not the same for corrected/notcorrected
-        # slim dataframe to only variables used in prediction
-        PREDICT_VARIABLE = "raw_new_cases"
+        ).days + 1  # set first day of year to 1 not 0
+
+        # TODO only use variables that exist?
+        PREDICT_VARIABLE = "Rt_MAP__new_cases"
         FORECAST_VARIABLES = [
             "sim_day",  # must leave date in this position!!!!
             "raw_new_cases",
-        ]  # , "Rt_MAP__new_cases"] #raw_new_deaths SERIOUS TODO add back deaths because rn nan values break lstm
+            "raw_new_deaths",
+            "Rt_MAP__new_cases",
+        ]  # raw_new_deaths SERIOUS TODO add back deaths because rn nan values break lstm
         MASK_VALUE = -10
+        # Get features and labels
+        MIN_NUMBER_OF_DAYS = (
+            30  # I don't think it makes sense to predict anything until we have a month of data
+        )
+        PREDICT_DAYS = 3
+        SCALED_NAME = "_scaled"
 
         df_forecast = df_all[FORECAST_VARIABLES].copy()
 
@@ -937,30 +982,55 @@ class RtInferenceEngine:
 
         # Split into train and test before normalizing to avoid data leakage
         # TODO: Test set will actually be entire series
+        df_samples = self.create_df_list(df_forecast, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
         TRAIN_SIZE = 0.8
-        train_set_length = int(len(df_forecast) * TRAIN_SIZE)
-        train_set = df_forecast[:train_set_length]
-        test_set = df_forecast[
-            train_set_length:
-        ]  # this is really the entire series TODO maybe find a better way to code this
+        train_set_length = int(len(df_samples) * TRAIN_SIZE)
+        train_scaling_set = df_samples[train_set_length]
+        train_samples = df_samples[:train_set_length]
+        test_samples = df_samples[train_set_length + 1 :]
+
+        log.info("train scaling set")
+        log.info(train_scaling_set)
+        log.info("first test set")
+        log.info(test_samples[0])
+        log.info("first train set")
+        log.info(train_samples[0])
+
+        # train_set_length = int(len(df_forecast) * TRAIN_SIZE)
+        # train_set = df_forecast[:train_set_length]
+        # test_set = df_forecast[
+        #    train_set_length:
+        # ]  # this is really the entire series TODO maybe find a better way to code this
         # Normalize Inputs for training
-        scalers_dict = {}
-        scaled_values_dict = {}
-        for columnName, columnData in train_set.iteritems():
-            log.info(columnName)
-            # there is probably a better way to do this
-            scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
-            reshaped_data = columnData.values.reshape(-1, 1)
 
-            scaler = scaler.fit(reshaped_data)
-            scaled_values = scaler.transform(reshaped_data)
+        scalers_dict = self.get_scaling_dictionary(train_scaling_set)
+        # scale all samples:
+        log.info("scale samples")
+        log.info("scalers dict")
+        log.info(scalers_dict)
 
-            # add scaled columns to dataframe
-            train_set.loc[:, f"{columnName}_scaled"] = scaled_values
+        train_X, train_Y, df_list = self.get_scaled_X_Y(
+            train_samples, scalers_dict, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
+        )
+        log.info("got train x y")
 
-            # update dictionary for later use to unscale data
-            scalers_dict.update({columnName: scaler})
-            scaled_values_dict.update({columnName: scaled_values})
+        for i, j, k in zip(train_X, train_Y, df_list):
+            log.info(i)
+            log.info(j)
+            log.info(k)
+
+        # for sample in train_samples:
+        #  for columnName, columnData in sample.iteritems():
+        #      scaled_values = scalers_dict[columnName].transform(columnData.values.reshape(-1,1))
+        #      sample.loc[:, f"{columnName}{SCALED_NAME}"] = scaled_values
+
+        exit()
+
+        # Create list of dataframes for testing
+        # train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
+        X_train, Y_train, df_list = self.get_X_Y(
+            train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
+        )
 
         train_set.to_csv("train_set_scaled.csv")
         plt.close("all")
@@ -969,17 +1039,6 @@ class RtInferenceEngine:
 
         plt.legend()
         plt.savefig("scaledfig.pdf")
-
-        # Get features and labels
-        MIN_NUMBER_OF_DAYS = (
-            30  # I don't think it makes sense to predict anything until we have a month of data
-        )
-        PREDICT_DAYS = 3
-        # Create list of dataframes for testing
-        train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
-        X_train, Y_train, df_list = self.get_X_Y(
-            train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
-        )
 
         logging.info("done")
         n_batch = 1
