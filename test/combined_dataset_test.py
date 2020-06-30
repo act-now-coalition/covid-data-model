@@ -3,7 +3,8 @@ import re
 
 import pytest
 
-from libs.datasets import combined_datasets, CommonFields
+from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations

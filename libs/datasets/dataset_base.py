@@ -5,9 +5,6 @@ from libs.datasets.dataset_utils import AggregationLevel
 
 class DatasetBase(object):
 
-    # Class of Fields in this dataset
-    Fields = None
-
     INDEX_FIELDS: List[str] = []
 
     def __init__(self, data: pd.DataFrame):

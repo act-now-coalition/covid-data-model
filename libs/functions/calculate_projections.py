@@ -3,10 +3,9 @@ import datetime
 import os.path
 import simplejson
 
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import FIPSPopulation
-from libs.datasets import CommonFields
-from libs.datasets import can_model_output_schema as schema
 from libs.datasets.can_model_output_schema import (
     CAN_MODEL_OUTPUT_SCHEMA,
     CAN_MODEL_OUTPUT_SCHEMA_EXCLUDED_COLUMNS,

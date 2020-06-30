@@ -46,7 +46,7 @@ class InferRtConstants:
 
     # Infer Rt only using cases if True
     # Recommend True as deaths just confuse intepretability of Rt_eff and will muddy using its extrapolation
-    DISABLE_DEATHS = True
+    DISABLE_DEATHS = False
 
     # Sets the default value for sigma before adustments
     # Recommend .03 (was .05 before when not adjusted) as adjustment moves up
@@ -58,7 +58,7 @@ class InferRtConstants:
 
     # Maximum increase (from DEFAULT_PROCESS_SIGMA) permitted for low counts
     # Recommend range 20. - 50. 30. appears to be best
-    MAX_SCALING_OF_SIGMA = 30.0
+    MAX_SCALING_OF_SIGMA = 1.0
 
     # Override min_cases and min_deaths with this value.
     # Recommend 1. - 5. range. 1. is allowing some counties to run that shouldn't (unphysical results)
@@ -175,6 +175,9 @@ class RtInferenceEngine:
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, False
+            )
 
             (
                 self.hospital_times,
@@ -204,6 +207,9 @@ class RtInferenceEngine:
                 t0=self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, False
+            )
             (
                 self.hospital_times,
                 self.hospitalizations,
@@ -211,6 +217,9 @@ class RtInferenceEngine:
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
+        self.raw_new_case_dates = [
+            ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
+        ]
         if self.hospitalization_data_type:
             self.hospital_dates = [ref_date + timedelta(days=int(t)) for t in self.hospital_times]
 
@@ -269,7 +278,9 @@ class RtInferenceEngine:
 
         if timeseries_type is TimeseriesType.NEW_CASES:
             return self.case_dates, self.times, self.observed_new_cases
-        elif timeseries_type is TimeseriesType.NEW_DEATHS:
+        elif timeseries_type is TimeseriesType.RAW_NEW_CASES:
+            return self.raw_new_case_dates, self.times_raw_new_cases, self.raw_new_cases
+        elif timeseries_type is TimeseriesType.NEW_DEATHS or TimeseriesType.RAW_NEW_DEATHS:
             return self.case_dates, self.times, self.observed_new_deaths
         elif timeseries_type in (
             TimeseriesType.NEW_HOSPITALIZATIONS,
@@ -474,6 +485,10 @@ class RtInferenceEngine:
             Output integers since the reference date.
         posteriors: pd.DataFrame
             Posterior estimates for each timestamp with non-zero data.
+        start_idx: int
+            Index of first Rt value calculated from input data series
+            #TODO figure out why this value sometimes truncates the series
+            
         """
         # Propagate self.min_[cases,deaths] into apply_gaussian_smoothing where used to abort
         # processing of timeseries without high enough counts
@@ -488,7 +503,7 @@ class RtInferenceEngine:
             log.info(
                 "%s: empty timeseries %s, skipping" % (self.display_name, timeseries_type.value)
             )
-            return None, None, None
+            return None, None, None, None
         else:
             log.info(
                 "%s: Analyzing posteriors for timeseries %s"
@@ -610,7 +625,46 @@ class RtInferenceEngine:
             plt.close()
         start_idx = -len(posteriors.columns)
 
-        return dates[start_idx:], times[start_idx:], posteriors
+        return dates[start_idx:], times[start_idx:], posteriors, start_idx
+
+    def get_available_timeseries(self):
+        """
+        Determine available timeseries for Rt inference calculation 
+        with constraints below
+
+        Returns
+        -------
+        available_timeseries: 
+          array of available timeseries saved as TimeseriesType
+        """
+        available_timeseries = []
+        IDX_OF_COUNTS = 2
+        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
+        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+        if self.hospitalization_data_type:
+            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
+
+        if np.sum(cases) > self.min_cases:
+            available_timeseries.append(TimeseriesType.NEW_CASES)
+            available_timeseries.append(TimeseriesType.RAW_NEW_CASES)
+
+        if np.sum(deaths) > self.min_deaths:
+            available_timeseries.append(TimeseriesType.RAW_NEW_DEATHS)
+            available_timeseries.append(TimeseriesType.NEW_DEATHS)
+
+        if (
+            self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+            and len(hosps > 3)
+        ):
+            # We have converted this timeseries to new hospitalizations.
+            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+        elif (
+            self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+            and len(hosps > 3)
+        ):
+            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+
+        return available_timeseries
 
     def infer_all(self, plot=True, shift_deaths=0):
         """
@@ -630,103 +684,89 @@ class RtInferenceEngine:
             Columns containing MAP estimates and confidence intervals.
         """
         df_all = None
-        available_timeseries = []
-        IDX_OF_COUNTS = 2
-        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
-        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
-        if self.hospitalization_data_type:
-            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
-
-        if np.sum(cases) > self.min_cases:
-            available_timeseries.append(TimeseriesType.NEW_CASES)
-
-        if np.sum(deaths) > self.min_deaths:
-            available_timeseries.append(TimeseriesType.NEW_DEATHS)
-
-        if (
-            self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-            and len(hosps > 3)
-        ):
-            # We have converted this timeseries to new hospitalizations.
-            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
-        elif (
-            self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
-            and len(hosps > 3)
-        ):
-            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+        available_timeseries = self.get_available_timeseries()
 
         for timeseries_type in available_timeseries:
+            # Add Raw Data Output to Output Dataframe
+            dates_raw, times_raw, timeseries_raw = self.get_timeseries(timeseries_type)
+            df_raw = pd.DataFrame()
+            df_raw["date"] = dates_raw
+            df_raw = df_raw.set_index("date")
+            df_raw[f"{timeseries_type.value}"] = timeseries_raw
 
             df = pd.DataFrame()
-            dates, times, posteriors = self.get_posteriors(timeseries_type)
-
+            dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
             # Note that it is possible for the dates to be missing days
             # This can cause problems when:
             #   1) computing posteriors that assume continuous data (above),
             #   2) when merging data with variable keys
-            if posteriors is not None:
-                df[f"Rt_MAP__{timeseries_type.value}"] = posteriors.idxmax()
-                for ci in self.confidence_intervals:
-                    ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
+            if posteriors is None:
+                continue
 
-                    low_val = 1 - ci
-                    high_val = ci
-                    df[f"Rt_ci{int(math.floor(100 * low_val))}__{timeseries_type.value}"] = ci_low
-                    df[f"Rt_ci{int(math.floor(100 * high_val))}__{timeseries_type.value}"] = ci_high
+            df[f"Rt_MAP__{timeseries_type.value}"] = posteriors.idxmax()
+            for ci in self.confidence_intervals:
+                ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
 
-                df["date"] = dates
-                df = df.set_index("date")
+                low_val = 1 - ci
+                high_val = ci
+                df[f"Rt_ci{int(math.floor(100 * low_val))}__{timeseries_type.value}"] = ci_low
+                df[f"Rt_ci{int(math.floor(100 * high_val))}__{timeseries_type.value}"] = ci_high
 
-                if df_all is None:
-                    df_all = df
-                else:
-                    # To avoid any surprises merging the data, keep only the keys from the case data
-                    # which will be the first added to df_all. So merge with how ="left" rather than "outer"
-                    df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
+            df["date"] = dates
+            df = df.set_index("date")
 
-                # ------------------------------------------------
-                # Compute the indicator lag using the curvature
-                # alignment method.
-                # ------------------------------------------------
-                if (
-                    timeseries_type
-                    in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS)
-                    and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns
-                ):
+            if df_all is None:
+                df_all = df
+            else:
+                # To avoid any surprises merging the data, keep only the keys from the case data
+                # which will be the first added to df_all. So merge with how ="left" rather than "outer"
+                df_all = df_all.merge(df_raw, left_index=True, right_index=True, how="left")
+                df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
 
-                    # Go back up to 30 days or the max time series length we have if shorter.
-                    last_idx = max(-21, -len(df))
-                    series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
-                    series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
+            # ------------------------------------------------
+            # Compute the indicator lag using the curvature
+            # alignment method.
+            # ------------------------------------------------
+            if (
+                timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS)
+                and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns
+            ):
 
-                    shift_in_days = self.align_time_series(series_a=series_a, series_b=series_b,)
-                    shift_in_days = 0  # disable for now
+                # Go back up to 30 days or the max time series length we have if shorter.
+                last_idx = max(-21, -len(df))
+                series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
+                series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
 
-                    df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
-                    logging.debug(
-                        "Using timeshift of: %s for timeseries type: %s ",
-                        shift_in_days,
-                        timeseries_type,
-                    )
-                    # Shift all the columns.
-                    for col in df_all.columns:
-                        if timeseries_type.value in col:
-                            df_all[col] = df_all[col].shift(shift_in_days)
-                            # Extend death and hopitalization rt signals beyond
-                            # shift to avoid sudden jumps in composite metric.
-                            #
-                            # N.B interpolate() behaves differently depending on the location
-                            # of the missing values: For any nans appearing in between valid
-                            # elements of the series, an interpolated value is filled in.
-                            # For values at the end of the series, the last *valid* value is used.
-                            logging.debug("Filling in %s missing values", shift_in_days)
-                            df_all[col] = df_all[col].interpolate(
-                                limit_direction="forward", method="linear"
-                            )
+                shift_in_days = self.align_time_series(series_a=series_a, series_b=series_b,)
+
+                df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
+                logging.debug(
+                    "Using timeshift of: %s for timeseries type: %s ",
+                    shift_in_days,
+                    timeseries_type,
+                )
+                # Shift all the columns.
+                for col in df_all.columns:
+                    if timeseries_type.value in col:
+                        df_all[col] = df_all[col].shift(shift_in_days)
+                        # Extend death and hopitalization rt signals beyond
+                        # shift to avoid sudden jumps in composite metric.
+                        #
+                        # N.B interpolate() behaves differently depending on the location
+                        # of the missing values: For any nans appearing in between valid
+                        # elements of the series, an interpolated value is filled in.
+                        # For values at the end of the series, the last *valid* value is used.
+                        logging.debug("Filling in %s missing values", shift_in_days)
+                        df_all[col] = df_all[col].interpolate(
+                            limit_direction="forward", method="linear"
+                        )
+
+        if df_all is None:
+            logging.warning("Inference not possible for fips: %s", self.fips)
+            return None
 
         if (
-            df_all is not None
-            and not InferRtConstants.DISABLE_DEATHS
+            not InferRtConstants.DISABLE_DEATHS
             and "Rt_MAP__new_deaths" in df_all
             and "Rt_MAP__new_cases" in df_all
         ):
@@ -740,7 +780,7 @@ class RtInferenceEngine:
             # any case.
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
-        elif df_all is not None and "Rt_MAP__new_cases" in df_all:
+        elif "Rt_MAP__new_cases" in df_all:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
@@ -782,7 +822,7 @@ class RtInferenceEngine:
                 / np.power(suppression, InferRtConstants.CORRECT_TAIL_SUPRESSION / 2)
             ).apply(lambda v: max(v, InferRtConstants.MIN_CONF_WIDTH)) + df_all["Rt_MAP_composite"]
 
-        if plot and df_all is not None:
+        if plot:
             plt.figure(figsize=(10, 6))
 
             # plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
@@ -882,7 +922,7 @@ class RtInferenceEngine:
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
             plt.savefig(output_path, bbox_inches="tight")
             plt.close()
-        if df_all is None or df_all.empty:
+        if df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
         return df_all
 
@@ -998,7 +1038,7 @@ def replace_outliers(
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
     z_score = (x - m) / (s + EPSILON)
-    possible_changes_idx = np.where(z_score > z_threshold)[0]
+    possible_changes_idx = np.flatnonzero(z_score > z_threshold)
     changed_idx = []
     changed_value = []
     changed_snippets = []
@@ -1010,7 +1050,7 @@ def replace_outliers(
             slicer = slice(idx - local_lookback_window, idx + local_lookback_window)
             changed_snippets.append(x[slicer].astype(int).tolist())
             try:
-                x[idx] = np.mean([x[idx - 1], x[idx + 1]])
+                x[idx] = np.mean([x.iloc[idx - 1], x.iloc[idx + 1]])
             except IndexError:  # Value to replace can be newest and fail on x[idx+1].
                 # If so, just use previous.
                 x[idx] = x[idx - 1]
