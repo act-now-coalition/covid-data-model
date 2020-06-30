@@ -57,6 +57,8 @@ class NYTimesDataset(data_source.DataSource):
         # Super hacky way of filling in new york.
         data.loc[data[cls.Fields.COUNTY] == "New York City", "county"] = "New York County"
         data.loc[data[cls.Fields.COUNTY] == "New York County", "fips"] = "36061"
+
+        # UNKNOWN_FIPS is overwritten with values from ABBREV_US_UNKNOWN_COUNTY_FIPS below.
         data.loc[data[cls.Fields.COUNTY] == "Unknown", "fips"] = enums.UNKNOWN_FIPS
 
         # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions

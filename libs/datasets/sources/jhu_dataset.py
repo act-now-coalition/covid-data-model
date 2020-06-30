@@ -137,7 +137,7 @@ class JHUDataset(data_source.DataSource):
             rows_to_replace, cls.Fields.STATE
         ].map(ABBREV_US_UNKNOWN_COUNTY_FIPS)
         still_no_fips = has_county & data[cls.Fields.FIPS].isnull()
-        if still_no_fips.sum() > 0:
+        if still_no_fips.any():
             _logger.warning(
                 f"County rows without FIPS: {data.loc[still_no_fips, [cls.Fields.STATE, cls.Fields.COUNTY]]}"
             )
