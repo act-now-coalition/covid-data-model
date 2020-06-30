@@ -4,10 +4,10 @@
 name: Build & Publish API artifacts to data.covidactnow.org
 
 on:
-  # covid-data-public fetches data at 00:00 and 12:00 UTC.
-  # So we rebuild / publish the API at 00:30 and 12:30 UTC.
+  # covid-data-public fetches data at 01:00 and 16:00 UTC.
+  # So we rebuild / publish the API at 01:30 and 16:30 UTC.
   schedule:
-   - cron: '30 0,12 * * *'
+   - cron: '30 1,16 * * *'
 
   # push:
   # Hook to trigger a manual run.
@@ -16,7 +16,7 @@ on:
     types: publish-api
 
 env:
-  # !!! Change this to your BRANCH if you want to test it !!!
+  # !!! Change this to your BRANCH if you want to test it
   COVID_DATA_MODEL_REF: 'master'
 
   # To pin to an old data sets, put the branch/tag/commit here:

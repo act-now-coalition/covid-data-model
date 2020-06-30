@@ -1,12 +1,13 @@
 import pathlib
 import pandas as pd
+
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS
 from libs import enums
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
 
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 

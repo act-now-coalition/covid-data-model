@@ -1,11 +1,12 @@
 import logging
 import numpy
 import pandas as pd
+
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
 
 _logger = logging.getLogger(__name__)
 

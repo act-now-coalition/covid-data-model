@@ -3,6 +3,7 @@ import requests
 import logging
 from functools import lru_cache
 
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.combined_datasets import build_us_timeseries_with_all_fields
 from libs.enums import Intervention
 from libs.us_state_abbrev import US_STATE_ABBREV
@@ -14,7 +15,6 @@ from libs.datasets import FIPSPopulation
 from libs.datasets import JHUDataset
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import CDSDataset
-from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.functions.calculate_projections import (
     get_state_projections_df,

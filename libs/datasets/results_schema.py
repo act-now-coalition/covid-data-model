@@ -1,5 +1,4 @@
-from libs.datasets import CommonFields
-from libs.datasets import can_model_output_schema
+from covidactnow.datapublic.common_fields import CommonFields
 
 STATE_FULL_NAME = CommonFields.STATE_FULL_NAME
 COUNTRY = "Country/Region"

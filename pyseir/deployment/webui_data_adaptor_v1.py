@@ -312,8 +312,8 @@ class WebUIDataAdaptorV1:
             output_model = output_model.fillna(0)
 
             # Fill in results for the Rt indicator.
-            try:
-                rt_results = load_Rt_result(fips)
+            rt_results = load_Rt_result(fips)
+            if rt_results is not None:
                 rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%m/%d/%y")
                 merged = output_model.merge(
                     rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
@@ -328,8 +328,12 @@ class WebUIDataAdaptorV1:
                 output_model[schema.RT_INDICATOR_CI90] = (
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
-            except (ValueError, KeyError) as e:
-                log.warning("Clearing Rt in output for fips.", fips=fips, exc_info=e)
+            else:
+                log.warning(
+                    "No Rt Results found, clearing Rt in output.",
+                    fips=fips,
+                    suppression_policy=suppression_policy,
+                )
                 output_model[schema.RT_INDICATOR] = "NaN"
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
