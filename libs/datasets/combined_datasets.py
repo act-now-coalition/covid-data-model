@@ -152,7 +152,7 @@ def _remove_padded_nans(df, columns):
 
     first_valid_index = min(df[column].first_valid_index() for column in columns)
     last_valid_index = max(df[column].last_valid_index() for column in columns)
-    df = df.iloc[first_valid_index:last_valid_index]
+    df = df.iloc[first_valid_index : last_valid_index + 1]
     return df.reset_index(drop=True)
 
 
