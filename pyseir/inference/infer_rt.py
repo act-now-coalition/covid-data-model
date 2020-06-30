@@ -920,17 +920,19 @@ class RtInferenceEngine:
 
     def get_scaled_X_Y(self, samples, scalers_dict, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE):
         log.info("getting X and Y")
+        log.info(samples)
+        log.info(f"sample_length: {len(samples)}")
         sample_list = list()
         for sample in samples:
             for columnName, columnData in sample.iteritems():
                 scaled_values = scalers_dict[columnName].transform(columnData.values.reshape(-1, 1))
                 sample.loc[:, f"{columnName}{self.SCALED_NAME}"] = scaled_values
             sample_list.append(sample)
-            log.info("scaled samples")
+        log.info(f"scaled samples SCALED: {len(sample_list)}")
 
-            X, Y, df_list = self.get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE)
-            log.info("got X,Y")
-            return X, Y, df_list
+        X, Y, df_list = self.get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE)
+        log.info("got X,Y")
+        return X, Y, df_list
 
     def forecast_rt(self, df_all):
         logging.info("starting")
@@ -989,13 +991,18 @@ class RtInferenceEngine:
         train_samples = df_samples[:train_set_length]
         test_samples = df_samples[train_set_length + 1 :]
 
+        log.info(
+            f"number of training samples: {len(train_samples)} number test samples: {len(test_samples)}"
+        )
+
+        """
         log.info("train scaling set")
         log.info(train_scaling_set)
         log.info("first test set")
         log.info(test_samples[0])
         log.info("first train set")
         log.info(train_samples[0])
-
+        """
         # train_set_length = int(len(df_forecast) * TRAIN_SIZE)
         # train_set = df_forecast[:train_set_length]
         # test_set = df_forecast[
@@ -1009,55 +1016,83 @@ class RtInferenceEngine:
         log.info("scalers dict")
         log.info(scalers_dict)
 
-        train_X, train_Y, df_list = self.get_scaled_X_Y(
+        train_X, train_Y, train_df_list = self.get_scaled_X_Y(
             train_samples, scalers_dict, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
         )
         log.info("got train x y")
+        test_X, test_Y, test_df_list = self.get_scaled_X_Y(
+            test_samples, scalers_dict, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
+        )
 
-        for i, j, k in zip(train_X, train_Y, df_list):
-            log.info(i)
-            log.info(j)
-            log.info(k)
+        log.info("got test x y")
 
-        # for sample in train_samples:
-        #  for columnName, columnData in sample.iteritems():
-        #      scaled_values = scalers_dict[columnName].transform(columnData.values.reshape(-1,1))
-        #      sample.loc[:, f"{columnName}{SCALED_NAME}"] = scaled_values
+        log.info(f"train samples: {len(train_X)} {len(train_df_list)}")
+        log.info(f"test samples: {len(test_X)} {len(test_df_list)}")
 
+        """
+        for n in range(len(test_X)):
+          log.info(f'------------------------   {n} ----------------')
+          if n == 0 or n == 1 or n == len(test_X)-2 or n== len(test_X)-1:
+              log.info('----------------------')
+              log.info('train X')
+              log.info(train_X[n])
+              log.info('train Y')
+              log.info(train_Y[n])
+              log.info('DF')
+              log.info(train_df_list[n])
         exit()
+
+
+        for i, j, k in zip(test_X, test_Y, test_df_list):
+            log.info('----------------------')
+            log.info('test X')
+            log.info(i)
+            log.info('test Y')
+            log.info(j)
+            log.info('DF')
+            log.info(k)
+        """
 
         # Create list of dataframes for testing
         # train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
-        X_train, Y_train, df_list = self.get_X_Y(
-            train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
-        )
+        # X_train, Y_train, df_list = self.get_X_Y(
+        #    train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
+        # )
 
-        train_set.to_csv("train_set_scaled.csv")
-        plt.close("all")
-        for variable in scaled_values_dict:
-            plt.plot(scaled_values_dict["sim_day"], scaled_values_dict[variable], label=variable)
+        # train_set.to_csv("train_set_scaled.csv")
+        # plt.close("all")
+        # for variable in scaled_values_dict:
+        #    plt.plot(scaled_values_dict["sim_day"], scaled_values_dict[variable], label=variable)
 
-        plt.legend()
-        plt.savefig("scaledfig.pdf")
+        # plt.legend()
+        # plt.savefig("scaledfig.pdf")
 
         logging.info("done")
         n_batch = 1
         n_epochs = 1
-        model, history = self.build_model(MASK_VALUE, n_epochs, n_batch, 10, 0.01, X_train, Y_train)
+        model, history = self.build_model(MASK_VALUE, n_epochs, n_batch, 10, 0.01, train_X, train_Y)
 
         logging.info("built model")
 
         # Plot predictions for test and train sets
-        forecasts = list()
-        dates = list()
-        for i, j, k in zip(X_train, Y_train, df_list):
+
+        """
+        logging.info("forecasts")
+        logging.info(forecasts)
+        logging.info("dates")
+        logging.info(dates)
+        """
+
+        forecasts_train = list()
+        dates_train = list()
+        for i, j, k in zip(train_X, train_Y, train_df_list):
             # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
             i = i.reshape(n_batch, i.shape[0], i.shape[1])
             scaled_df = pd.DataFrame(np.squeeze(i))
             thisforecast = scalers_dict[PREDICT_VARIABLE].inverse_transform(
                 model.predict(i, batch_size=n_batch)
             )
-            forecasts.append(thisforecast)
+            forecasts_train.append(thisforecast)
 
             last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
 
@@ -1068,36 +1103,38 @@ class RtInferenceEngine:
             predicted_days = np.arange(
                 unscaled_first_test_day, unscaled_first_test_day + PREDICT_DAYS
             )
-            dates.append(predicted_days)
+            dates_train.append(predicted_days)
 
-            """
-            logging.info('----------------------------------------')
-            logging.info('UNSCALED LAST DAY')
-            logging.info(dates)
-            logging.info('INPUTS')
-            logging.info(i)
-            logging.info('LABELS')
-            logging.info(j)
-            logging.info('FULL DF')
-            logging.info(k)
-            logging.info(f"last day: {last_train_day} first_predict_day: {unscaled_first_test_day}")
-            logging.info(predicted_days)
-            """
-        """
-        logging.info("forecasts")
-        logging.info(forecasts)
-        logging.info("dates")
-        logging.info(dates)
-        """
+        forecasts_test = list()
+        dates_test = list()
+        for i, j, k in zip(test_X, test_Y, test_df_list):
+            # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
+            i = i.reshape(n_batch, i.shape[0], i.shape[1])
+            scaled_df = pd.DataFrame(np.squeeze(i))
+            thisforecast = scalers_dict[PREDICT_VARIABLE].inverse_transform(
+                model.predict(i, batch_size=n_batch)
+            )
+            forecasts_test.append(thisforecast)
+
+            last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
+
+            unscaled_first_test_day = (
+                int(scalers_dict[SIM_DATE_NAME].inverse_transform(last_train_day)) + 1
+            )
+
+            predicted_days = np.arange(
+                unscaled_first_test_day, unscaled_first_test_day + PREDICT_DAYS
+            )
+            dates_test.append(predicted_days)
 
         logging.info("about to plot")
         LINEWIDTH = 1
         # plot training predictions
-        for n in range(len(dates)):
-            i = dates[n]
-            j = np.squeeze(forecasts[n])
+        for n in range(len(dates_train)):
+            i = dates_train[n]
+            j = np.squeeze(forecasts_train[n])
             # newdates = convert_to_2020_date(i,args)
-            newdates = dates[n]
+            newdates = dates_train[n]
             logging.info(i)
             logging.info(j)
             logging.info(newdates)
@@ -1110,9 +1147,29 @@ class RtInferenceEngine:
                 plt.plot(newdates, j, color="blue", linewidth=LINEWIDTH, markersize=0)
             # check if dictionary of scalers works
             logging.info("plotted one")
+
+        for n in range(len(dates_test)):
+            i = dates_test[n]
+            j = np.squeeze(forecasts_test[n])
+            # newdates = convert_to_2020_date(i,args)
+            newdates = dates_test[n]
+            logging.info(i)
+            logging.info(j)
+            logging.info(newdates)
+            logging.info("got inputs for plotting")
+            if n == 0:
+                plt.plot(
+                    newdates, j, color="orange", label="Test Set", linewidth=LINEWIDTH, markersize=0
+                )
+            else:
+                plt.plot(newdates, j, color="orange", linewidth=LINEWIDTH, markersize=0)
+            # check if dictionary of scalers works
+            logging.info("plotted one")
+
+        full_data = test_df_list[-1]
         plt.plot(
-            train_set[SIM_DATE_NAME],
-            train_set[PREDICT_VARIABLE],
+            full_data[SIM_DATE_NAME],
+            full_data[PREDICT_VARIABLE],
             linewidth=LINEWIDTH,
             markersize=1,
             label="Data",
@@ -1205,6 +1262,8 @@ class RtInferenceEngine:
         X_train_list = list()
         Y_train_list = list()
         df_list = list()
+        log.info("SAMPLE LIST LENGTH")
+        log.info(len(sample_list))
         for i in range(len(sample_list)):
             df = sample_list[i]
             df_list.append(df)
@@ -1223,6 +1282,9 @@ class RtInferenceEngine:
 
             X_train_list.append(padded_train)
             Y_train_list.append(test)
+            log.info("PADDED TRAIN")
+            log.info(padded_train)
+            log.info(test)
 
         final_test_X = np.array(X_train_list)
         final_test_Y = np.array(Y_train_list)
