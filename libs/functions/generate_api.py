@@ -1,13 +1,8 @@
 from typing import Optional
 from datetime import datetime, timedelta
 from api.can_api_definition import (
-    CovidActNowCountiesAPI,
-    CovidActNowCountySummary,
-    CovidActNowStateSummary,
     CovidActNowAreaSummary,
-    CovidActNowCountyTimeseries,
     CovidActNowAreaTimeseries,
-    CovidActNowStateTimeseries,
     CANPredictionTimeseriesRow,
     CANActualsTimeseriesRow,
     _Projections,
@@ -126,15 +121,18 @@ def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeserie
 
 
 def generate_area_summary(
-    fips: str, intervention: Intervention, latest_values: dict, projection_row: Optional[dict],
+    intervention: Intervention,
+    latest_values: dict,
+    model_output: Optional[CANPyseirLocationOutput],
 ) -> CovidActNowAreaSummary:
+    fips = latest_values[CommonFields.FIPS]
     state = latest_values[CommonFields.STATE]
     state_intervention = get_can_projection.get_intervention_for_state(state)
     actuals = _generate_actuals(latest_values, state_intervention)
 
     projections = None
-    if projection_row:
-        projections = _generate_api_for_projections(projection_row)
+    if model_output:
+        projections = _generate_api_for_projections(model_output)
 
     return CovidActNowAreaSummary(
         population=latest_values[CommonFields.POPULATION],
@@ -152,7 +150,7 @@ def generate_area_summary(
 def generate_area_timeseries(
     area_summary: CovidActNowAreaSummary,
     timeseries: TimeseriesDataset,
-    model_timeseries: pd.DataFrame,
+    model_output: Optional[CANPyseirLocationOutput],
 ) -> CovidActNowAreaTimeseries:
     if not area_summary.intervention:
         # All area summaries here are expected to have actuals values.
@@ -165,14 +163,16 @@ def generate_area_timeseries(
     for row in timeseries.records:
         actual = _generate_actuals(row, area_summary.intervention)
         timeseries_row = CANActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
-        actuals_timeseries.append(timeseries_actual)
+        actuals_timeseries.append(timeseries_row)
 
-    model_timeseries = [
-        _generate_prediction_timeseries_row(row)
-        for row in model_timeseries.to_dict(orient="records")
-    ]
+    model_timeseries = []
+    if model_output:
+        model_timeseries = [
+            _generate_prediction_timeseries_row(row)
+            for row in model_output.data.to_dict(orient="records")
+        ]
 
-    area_summary_data = {key: getattr(area_summary, key) for (key, _) in CovidActNowAreaSummary}
+    area_summary_data = {key: getattr(area_summary, key) for (key, _) in area_summary}
     return CovidActNowAreaTimeseries(
         **area_summary_data, timeseries=model_timeseries, actualsTimeseries=actuals_timeseries
     )

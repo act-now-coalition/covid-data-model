@@ -6,11 +6,8 @@ import pydantic
 import simplejson
 from api.can_api_definition import CovidActNowAreaSummary
 from api.can_api_definition import CovidActNowAreaTimeseries
-from api.can_api_definition import CovidActNowCountiesSummary
-from api.can_api_definition import CovidActNowCountiesTimeseries
-from api.can_api_definition import CovidActNowCountyTimeseries
-from api.can_api_definition import CovidActNowStatesSummary
-from api.can_api_definition import CovidActNowStatesTimeseries
+from api.can_api_definition import CovidActNowBulkSummary
+from api.can_api_definition import CovidActNowBulkTimeseries
 from api.can_api_definition import PredictionTimeseriesRowWithHeader
 from libs.enums import Intervention
 from libs.datasets import CommonFields
@@ -21,6 +18,7 @@ from libs import dataset_deployer
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import combined_datasets
 from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import results_schema as rc
 from libs.functions import generate_api as api
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
@@ -62,53 +60,24 @@ def _get_api_prefix(aggregation_level, row):
         raise ValueError("Only County and State Aggregate Levels supported")
 
 
-def _generate_api_without_ts(projection_result, row, input_dir):
-    if projection_result.aggregation_level == AggregationLevel.STATE:
-        generated_data = api.generate_api_for_state_projection_row(row)
-    elif projection_result.aggregation_level == AggregationLevel.COUNTY:
-        generated_data = api.generate_api_for_county_projection_row(row)
-    else:
-        raise ValueError("Aggregate Level not supported by api generation")
-    key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
-    generated_key = f"{key_prefix}.{projection_result.intervention.name}"
-    return APIOutput(generated_key, generated_data, projection_result.intervention)
-
-
-def _generate_api_with_ts(projection_result, row, input_dir):
-    if projection_result.aggregation_level == AggregationLevel.STATE:
-        generated_data = api.generate_state_timeseries(
-            row, projection_result.intervention, input_dir
+def run_summary_on_all_fips_for_intervention(
+    latest_values: LatestValuesDataset, intervention: Intervention, model_output_dir
+) -> Iterator[Tuple[CovidActNowAreaSummary, CovidActNowAreaTimeseries]]:
+    def run_fips(fips):
+        return build_summary_and_timeseries_for_fips(
+            fips, intervention, us_latest, model_output_dir
         )
-    elif projection_result.aggregation_level == AggregationLevel.COUNTY:
-        generated_data = api.generate_county_timeseries(
-            row, projection_result.intervention, input_dir
-        )
-    else:
-        raise ValueError("Aggregate Level not supported by api generation")
-    key_prefix = _get_api_prefix(projection_result.aggregation_level, row)
-    generated_key = f"{key_prefix}.{projection_result.intervention.name}.timeseries"
-    return APIOutput(generated_key, generated_data, projection_result.intervention)
+
+    pool = Pool()
+    results = pool.map(us_latest.all_fips, run_fips)
+    for area_summary, area_timeseries in results:
+        if area_summary:
+            yield area_summary, area_timeseries
 
 
-def generate_api(projection_result: APIPipelineProjectionResult, input_dir: str) -> List[APIOutput]:
-    """
-    pipethrough the rows of the projection
-    if it's a county generate the key for counties:
-        /us/counties/{FIPS_CODE}.{INTERVENTION}.json
-    if it's a state generate the key for states
-        /us/states/{STATE_ABBREV}.{INTERVENTION}.json
-    """
-    summaries = []
-    timeseries = []
-    for index, row in projection_result.projection_df.iterrows():
-        summaries.append(_generate_api_without_ts(projection_result, row, input_dir))
-        timeseries.append(_generate_api_with_ts(projection_result, row, input_dir))
-    return summaries, timeseries
-
-
-def load_model_output_and_run_summary_on_fips(
-    fips, intervention, us_latest, model_output_dir: pathlib.Path
-) -> Tuple[CANPyseirLocationOutput, CovidActNowAreaSummary]:
+def build_summary_and_timeseries_for_fips(
+    fips, intervention, us_latest, us_timeseries, model_output_dir
+) -> Tuple[Optional[CovidActNowAreaSummary], Optional[CovidActNowAreaTimeseries]]:
     model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
         fips, intervention, model_output_dir
     )
@@ -119,25 +88,11 @@ def load_model_output_and_run_summary_on_fips(
         return None, None
 
     fips_latest = us_latest.get_record_for_fips(fips)
-    area_summary = api.generate_area_summary(
-        fips_latest[CommonFields.FIPS], intervention, fips_latest, model_output
-    )
-    return area_summary, model_output
+    area_summary = api.generate_area_summary(intervention, fips_latest, model_output)
+    fips_timeseries = us_timeseries.get_subset(None, fips=fips)
+    area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
 
-
-def run_summary_on_all_fips_for_intervention(
-    latest_values: LatestValuesDataset, intervention: Intervention, model_output_dir
-) -> Iterator[Tuple[CANPyseirLocationOutput, CovidActNowAreaSummary]]:
-    def run_fips(fips):
-        return load_model_output_and_run_summary_on_fips(
-            fips, intervention, us_latest, model_output_dir
-        )
-
-    pool = Pool()
-    results = pool.map(us_latest.all_fips, run_fips)
-    for api_summary, model_output in results:
-        if api_summary:
-            yield api_summary, model_output
+    return area_summary, area_timeseries
 
 
 def remove_root_wrapper(obj: dict):
@@ -232,8 +187,3 @@ def build_prediction_header_timeseries_data(data: APIOutput):
 
 def deploy_prediction_timeseries_csvs(data: APIOutput, output):
     dataset_deployer.write_nested_csv([row.dict() for row in data.data], data.file_stem, output)
-
-
-def build_timeseries_api_for_fips(fips):
-    timeseries = combined_datasets.get_timeseries_for_fips(fips)
-    latest_values = combined_datasets.get_us_latest_for_fips(fips)
