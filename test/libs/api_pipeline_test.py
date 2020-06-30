@@ -26,4 +26,37 @@ NYC_FIPS = "36061"
 #         yield fips, pathlib.Path(tempdir)
 
 
-# def test_run_summary
+@pytest.mark.parametrize(
+    "intervention",
+    [
+        Intervention.OBSERVED_INTERVENTION,
+        Intervention.STRONG_INTERVENTION,
+        Intervention.NO_INTERVENTION,
+    ],
+)
+def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, intervention):
+
+    us_latest = combined_datasets.build_us_latest_with_all_fields()
+    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+
+    summary, timeseries = api_pipeline.build_summary_and_timeseries_for_fips(
+        nyc_fips, intervention, us_latest, us_timeseries, nyc_model_output_path.parent
+    )
+
+    if intervention is Intervention.NO_INTERVENTION:
+        # Test data does not contain no intervention model, should not output any results.
+        assert not summary
+        assert not timeseries
+        return
+
+    assert summary
+    assert timeseries
+
+    if intervention is Intervention.STRONG_INTERVENTION:
+        assert summary.projections
+        assert timeseries.projections
+        assert timeseries.timeseries
+    elif intervention is Intervention.OBSERVED_INTERVENTION:
+        assert not summary.projections
+        assert not timeseries.projections
+        assert not timeseries.timeseries

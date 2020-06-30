@@ -115,8 +115,8 @@ def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeserie
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
         # TODO: Either deprecate this field or figure out how to pass test data through.
-        # cumulativePositiveTests=cases,
-        # cumulativeNegativeTests=negative,
+        cumulativePositiveTests=None,
+        cumulativeNegativeTests=None,
     )
 
 
