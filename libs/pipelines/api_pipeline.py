@@ -15,7 +15,6 @@ from libs.enums import Intervention
 from libs.datasets import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import validate_results
-from libs import build_processed_dataset
 from libs import dataset_deployer
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import combined_datasets

@@ -24,8 +24,6 @@ from libs.datasets import CDSDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.build_processed_dataset import get_testing_timeseries_by_state
-from libs.build_processed_dataset import get_testing_timeseries_by_fips
 import pandas as pd
 
 

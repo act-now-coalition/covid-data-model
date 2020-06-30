@@ -3,7 +3,8 @@ import logging
 
 from libs.enums import Intervention
 from libs import validate_results
-from libs import build_processed_dataset
+
+# from libs import build_processed_dataset
 from libs import dataset_deployer
 
 from libs.datasets import results_schema as rc
@@ -15,8 +16,6 @@ PROD_BUCKET = "data.covidactnow.org"
 TopCountiesPipelineProjectionResult = namedtuple(
     "TopCountiesPipelineProjectionResult", ["projection_df",]
 )
-
-TopCountiesPipelineResult = namedtuple("TopCountiesPipelineResult", ["api"])
 
 
 def run_projections(input_file, run_validation=True) -> TopCountiesPipelineProjectionResult:
@@ -51,13 +50,13 @@ def generate_api(
     projection_result: TopCountiesPipelineProjectionResult,
     sort_fields=[rc.PEAK_HOSPITALIZATION_SHORTFALL],
     length=100,
-) -> TopCountiesPipelineResult:
+):
     projection = projection_result.projection_df
     sorted_limited = projection.sort_values(by=sort_fields, ascending=False).head(length)
     return TopCountiesPipelineResult(api.generate_api_for_county_projection(sorted_limited))
 
 
-def deploy_results(result: TopCountiesPipelineResult, key: str, output: str):
+def deploy_results(result, key: str, output: str):
     """Deploys results from the top counties to specified output directory.
 
     Args:
