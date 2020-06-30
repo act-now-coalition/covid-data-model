@@ -153,6 +153,9 @@ class RtInferenceEngine:
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, False
+            )
 
             (
                 self.hospital_times,
@@ -184,6 +187,9 @@ class RtInferenceEngine:
                 t0=self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, False
+            )
             (
                 self.hospital_times,
                 self.hospitalizations,
@@ -191,6 +197,9 @@ class RtInferenceEngine:
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
+        self.raw_new_case_dates = [
+            ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
+        ]
         if self.hospitalization_data_type:
             self.hospital_dates = [ref_date + timedelta(days=int(t)) for t in self.hospital_times]
 
@@ -249,7 +258,9 @@ class RtInferenceEngine:
 
         if timeseries_type is TimeseriesType.NEW_CASES:
             return self.case_dates, self.times, self.observed_new_cases
-        elif timeseries_type is TimeseriesType.NEW_DEATHS:
+        elif timeseries_type is TimeseriesType.RAW_NEW_CASES:
+            return self.raw_new_case_dates, self.times_raw_new_cases, self.raw_new_cases
+        elif timeseries_type is TimeseriesType.NEW_DEATHS or TimeseriesType.RAW_NEW_DEATHS:
             return self.case_dates, self.times, self.observed_new_deaths
         elif timeseries_type in (
             TimeseriesType.NEW_HOSPITALIZATIONS,
@@ -442,6 +453,10 @@ class RtInferenceEngine:
             Output integers since the reference date.
         posteriors: pd.DataFrame
             Posterior estimates for each timestamp with non-zero data.
+        start_idx: int
+            Index of first Rt value calculated from input data series
+            #TODO figure out why this value sometimes truncates the series
+            
         """
         # Propagate self.min_[cases,deaths] into apply_gaussian_smoothing where used to abort
         # processing of timeseries without high enough counts
@@ -456,7 +471,7 @@ class RtInferenceEngine:
             log.info(
                 "%s: empty timeseries %s, skipping" % (self.display_name, timeseries_type.value)
             )
-            return None, None, None
+            return None, None, None, None
         else:
             log.info(
                 "%s: Analyzing posteriors for timeseries %s"
@@ -578,7 +593,48 @@ class RtInferenceEngine:
             plt.close()
         start_idx = -len(posteriors.columns)
 
-        return dates[start_idx:], times[start_idx:], posteriors
+        return dates[start_idx:], times[start_idx:], posteriors, start_idx
+
+    def get_available_timeseries(self):
+        """
+        Determine available timeseries for Rt inference calculation 
+        with constraints below
+
+        Returns
+        -------
+        available_timeseries: 
+          array of available timeseries saved as TimeseriesType
+        """
+        available_timeseries = []
+        IDX_OF_COUNTS = 2
+        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
+        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+        if self.hospitalization_data_type:
+            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
+
+        if np.sum(cases) > self.min_cases:
+            available_timeseries.append(TimeseriesType.NEW_CASES)
+            available_timeseries.append(TimeseriesType.RAW_NEW_CASES)
+
+        if np.sum(deaths) > self.min_deaths:
+            available_timeseries.append(TimeseriesType.RAW_NEW_DEATHS)
+            available_timeseries.append(TimeseriesType.NEW_DEATHS)
+
+        if (
+            self.hospitalization_data_type
+            is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
+            and len(hosps > 3)
+        ):
+            # We have converted this timeseries to new hospitalizations.
+            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+        elif (
+            self.hospitalization_data_type
+            is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
+            and len(hosps > 3)
+        ):
+            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+
+        return available_timeseries
 
     def infer_all(self, plot=True, shift_deaths=0):
         """
@@ -598,37 +654,18 @@ class RtInferenceEngine:
             Columns containing MAP estimates and confidence intervals.
         """
         df_all = None
-        available_timeseries = []
-        IDX_OF_COUNTS = 2
-        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
-        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
-        if self.hospitalization_data_type:
-            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
-
-        if np.sum(cases) > self.min_cases:
-            available_timeseries.append(TimeseriesType.NEW_CASES)
-
-        if np.sum(deaths) > self.min_deaths:
-            available_timeseries.append(TimeseriesType.NEW_DEATHS)
-
-        if (
-            self.hospitalization_data_type
-            is load_data.HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-            and len(hosps > 3)
-        ):
-            # We have converted this timeseries to new hospitalizations.
-            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
-        elif (
-            self.hospitalization_data_type
-            is load_data.HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
-            and len(hosps > 3)
-        ):
-            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
+        available_timeseries = self.get_available_timeseries()
 
         for timeseries_type in available_timeseries:
+            # Add Raw Data Output to Output Dataframe
+            dates_raw, times_raw, timeseries_raw = self.get_timeseries(timeseries_type)
+            df_raw = pd.DataFrame()
+            df_raw["date"] = dates_raw
+            df_raw = df_raw.set_index("date")
+            df_raw[f"{timeseries_type.value}"] = timeseries_raw
 
             df = pd.DataFrame()
-            dates, times, posteriors = self.get_posteriors(timeseries_type)
+            dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
             # Note that it is possible for the dates to be missing days
             # This can cause problems when:
             #   1) computing posteriors that assume continuous data (above),
@@ -653,6 +690,7 @@ class RtInferenceEngine:
             else:
                 # To avoid any surprises merging the data, keep only the keys from the case data
                 # which will be the first added to df_all. So merge with how ="left" rather than "outer"
+                df_all = df_all.merge(df_raw, left_index=True, right_index=True, how="left")
                 df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
 
             # ------------------------------------------------
