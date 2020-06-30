@@ -49,10 +49,11 @@ def run_on_all_fips_for_intervention(
     )
 
     pool = pool or multiprocessing.Pool()
-    results = pool.map(run_fips, latest_values.all_fips)
-
+    all_fips = latest_values.all_fips
+    all_fips = [fips for fips in all_fips if not (fips.startswith("90") or fips.startswith("800"))]
+    results = pool.map(run_fips, all_fips)
     for area_summary, area_timeseries in results:
-        if area_timeseries:
+        if area_summary:
             yield area_summary, area_timeseries
 
 
@@ -75,7 +76,7 @@ def build_summary_and_timeseries_for_fips(
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
         area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
     except Exception:
-        logger.exception("failed to run output")
+        logger.exception(f"failed to run output {fips}")
         return None, None
 
     return area_summary, area_timeseries

@@ -86,15 +86,6 @@ def _generate_actuals(actual_data: dict, intervention: Intervention) -> _Actuals
     )
 
 
-def _generate_actuals_timeseries(actuals_timeseries_dataset, intervention):
-    actual_timeseries_api_response = []
-    for row in actuals_timeseries_dataset:
-        actual = _generate_actuals(row, intervention)
-        timeseries_actual = CANActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
-        actual_timeseries_api_response.append(timeseries_actual)
-    return actual_timeseries_api_response
-
-
 def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeseriesRow:
 
     return CANPredictionTimeseriesRow(
@@ -126,6 +117,7 @@ def generate_area_summary(
     fips = latest_values[CommonFields.FIPS]
     state = latest_values[CommonFields.STATE]
     state_intervention = get_can_projection.get_intervention_for_state(state)
+
     actuals = _generate_actuals(latest_values, state_intervention)
 
     projections = None
@@ -159,7 +151,9 @@ def generate_area_timeseries(
     actuals_timeseries = []
 
     for row in timeseries.records:
-        actual = _generate_actuals(row, area_summary.intervention)
+        # Timeseries records don't have population
+        row[CommonFields.POPULATION] = area_summary.population
+        actual = _generate_actuals(row, area_summary.intervention,)
         timeseries_row = CANActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
