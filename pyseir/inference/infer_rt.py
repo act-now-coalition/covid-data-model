@@ -46,7 +46,7 @@ class InferRtConstants:
 
     # Infer Rt only using cases if True
     # Recommend True as deaths just confuse intepretability of Rt_eff and will muddy using its extrapolation
-    DISABLE_DEATHS = False
+    DISABLE_DEATHS = True
 
     # Sets the default value for sigma before adustments
     # Recommend .03 (was .05 before when not adjusted) as adjustment moves up
@@ -58,7 +58,7 @@ class InferRtConstants:
 
     # Maximum increase (from DEFAULT_PROCESS_SIGMA) permitted for low counts
     # Recommend range 20. - 50. 30. appears to be best
-    MAX_SCALING_OF_SIGMA = 1.0
+    MAX_SCALING_OF_SIGMA = 30.0
 
     # Override min_cases and min_deaths with this value.
     # Recommend 1. - 5. range. 1. is allowing some counties to run that shouldn't (unphysical results)
@@ -175,9 +175,11 @@ class RtInferenceEngine:
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
-            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
-                self.state, self.ref_date, False
-            )
+            (
+                self.times_raw_new_cases,
+                self.raw_new_cases,
+                _,
+            ) = self.load_data.load_new_case_data_by_state(self.state, self.ref_date, False)
 
             (
                 self.hospital_times,
@@ -207,14 +209,16 @@ class RtInferenceEngine:
                 t0=self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
-            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
-                self.state, self.ref_date, False
-            )
+            (
+                self.times_raw_new_cases,
+                self.raw_new_cases,
+                _,
+            ) = self.load_data.load_new_case_data_by_state(self.state, self.ref_date, False)
             (
                 self.hospital_times,
                 self.hospitalizations,
                 self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
+            ) = self.load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         self.raw_new_case_dates = [

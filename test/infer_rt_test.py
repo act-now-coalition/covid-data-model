@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from pyseir.inference.infer_rt import RtInferenceEngine
 from test.mocks.inference.pyseir_default_parameters import pyseir_default_parameters
@@ -8,8 +9,6 @@ from test.mocks.inference.load_data import (
     DataSpec,
     RateChange,
 )
-
-import pytest
 
 """
 Tests of Rt inference code using synthetically generated data for 100 days where the following are specified
