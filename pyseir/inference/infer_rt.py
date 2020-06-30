@@ -154,7 +154,7 @@ class RtInferenceEngine:
                 include_testing_correction=self.include_testing_correction,
             )
             self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
-                self.state, self.ref_date, False
+                self.state, self.ref_date, include_testing_correction=False
             )
 
             (
@@ -187,8 +187,12 @@ class RtInferenceEngine:
                 t0=self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
-            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
-                self.state, self.ref_date, False
+            (
+                self.times_raw_new_cases,
+                self.raw_new_cases,
+                _,
+            ) = load_data.load_new_case_data_by_fips(
+                self.fips, t0=self.ref_date, include_testing_correction=False,
             )
             (
                 self.hospital_times,
@@ -200,6 +204,7 @@ class RtInferenceEngine:
         self.raw_new_case_dates = [
             ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
         ]
+
         if self.hospitalization_data_type:
             self.hospital_dates = [ref_date + timedelta(days=int(t)) for t in self.hospital_times]
 
@@ -662,7 +667,7 @@ class RtInferenceEngine:
             df_raw = pd.DataFrame()
             df_raw["date"] = dates_raw
             df_raw = df_raw.set_index("date")
-            df_raw[f"{timeseries_type.value}"] = timeseries_raw
+            df_raw[timeseries_type.value] = timeseries_raw
 
             df = pd.DataFrame()
             dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
