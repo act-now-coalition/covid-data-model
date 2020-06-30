@@ -1,5 +1,7 @@
 from typing import List, Optional
 from libs.enums import Intervention
+from libs.datasets.dataset_utils import AggregationLevel
+from libs import us_state_abbrev
 import pydantic
 import datetime
 
@@ -103,6 +105,26 @@ class CovidActNowAreaSummary(pydantic.BaseModel):
 
         return Intervention[self.actuals.intervention]
 
+    @property
+    def aggregate_level(self) -> AggregationLevel:
+        if len(self.fips) == 2:
+            return AggregationLevel.STATE
+
+        if len(self.fips) == 5:
+            return AggregationLevel.COUNTY
+
+    @property
+    def state(self) -> str:
+        """State abbreviation."""
+        return us_state_abbrev.US_STATE_ABBREV[self.stateName]
+
+    def output_key(self, intervention: Intervention):
+        if self.aggregate_level is AggregationLevel.STATE:
+            return f"{self.state}.{intervention.name}"
+
+        if self.aggregate_level is AggregationLevel.COUNTY:
+            return f"{self.fips}.{intervention.name}"
+
 
 class CANActualsTimeseriesRow(_Actuals):
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
@@ -183,11 +205,6 @@ class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
 
         return CovidActNowAreaSummary(**data)
 
-
-class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
-    timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
-    actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
-
     # pylint: disable=no-self-argument
     @pydantic.validator("timeseries")
     def check_timeseries_have_cumulative_test_data(cls, rows, values):
@@ -215,6 +232,9 @@ class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
             )
 
         return rows
+
+    def output_key(self, intervention: Intervention) -> str:
+        return super().output_key(intervention) + ".timeseries"
 
 
 class CovidActNowBulkSummary(pydantic.BaseModel):

@@ -32,9 +32,7 @@ class CANPyseirLocationOutput(object):
         cls, fips, intervention, input_dir
     ) -> Optional["CANPyseirLocationOutput"]:
         path = get_can_projection_path(input_dir, fips, intervention)
-        print(path)
         if not path.exists():
-            print(intervention)
             return None
 
         return cls.load_from_path(path)
