@@ -26,6 +26,7 @@ from libs import us_state_abbrev
 from libs.datasets import can_model_output_schema as can_schema
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import CDSDataset
+from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.build_processed_dataset import get_testing_timeseries_by_state
@@ -70,19 +71,17 @@ def _get_or_zero(value):
         return value
 
 
-def _generate_api_for_projections(projection_row):
-    peak_date = _get_date_or_none(projection_row[rc.PEAK_HOSPITALIZATIONS])
-    shortage_start_date = _get_date_or_none(projection_row[rc.HOSPITAL_SHORTFALL_DATE])
+def _generate_api_for_projections(model_output: CANPyseirLocationOutput):
     _hospital_beds = _ResourceUsageProjection(
-        peakDate=_get_or_none(peak_date),
-        shortageStartDate=shortage_start_date,
-        peakShortfall=_get_or_zero(projection_row[rc.PEAK_HOSPITALIZATION_SHORTFALL]),
+        peakDate=model_output.peak_hospitalizations_date,
+        shortageStartDate=model_output.hospitals_shortfall_date,
+        peakShortfall=model_output.peak_hospitalizations_shortfall,
     )
     projections = _Projections(
         totalHospitalBeds=_hospital_beds,
         ICUBeds=None,
-        Rt=_get_or_zero(projection_row[rc.RT]),
-        RtCI90=_get_or_zero(projection_row[rc.RT_CI90]),
+        Rt=model_output.latest_rt,
+        RtCI90=model_output.latest_rt_ci90,
     )
     return projections
 
