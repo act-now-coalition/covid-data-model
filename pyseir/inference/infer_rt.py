@@ -661,7 +661,13 @@ class RtInferenceEngine:
         available_timeseries = self.get_available_timeseries()
 
         for timeseries_type in available_timeseries:
-            dates, times, timeseries = self.get_timeseries(timeseries_type)
+            # Add Raw Data Output to Output Dataframe
+            dates_raw, times_raw, timeseries_raw = self.get_timeseries(timeseries_type)
+            df_raw = pd.DataFrame()
+            df_raw["date"] = dates_raw
+            df_raw = df_raw.set_index("date")
+            df_raw[f"{timeseries_type.value}"] = timeseries_raw
+
             df = pd.DataFrame()
             dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
             # Note that it is possible for the dates to be missing days
@@ -682,13 +688,13 @@ class RtInferenceEngine:
 
             df["date"] = dates
             df = df.set_index("date")
-            df[f"{timeseries_type.value}"] = timeseries[start_idx:]
 
             if df_all is None:
                 df_all = df
             else:
                 # To avoid any surprises merging the data, keep only the keys from the case data
                 # which will be the first added to df_all. So merge with how ="left" rather than "outer"
+                df_all = df_all.merge(df_raw, left_index=True, right_index=True, how="left")
                 df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
 
             # ------------------------------------------------
