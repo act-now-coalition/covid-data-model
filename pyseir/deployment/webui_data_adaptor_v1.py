@@ -224,7 +224,6 @@ class WebUIDataAdaptorV1:
         for suppression_policy in suppression_policies:
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
-            output_model[schema.FIPS] = fips
             t_list = output_for_policy["t_list"]
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
 
@@ -351,6 +350,7 @@ class WebUIDataAdaptorV1:
                     schema.Rt_ci90,
                     schema.RT_INDICATOR,
                     schema.RT_INDICATOR_CI90,
+                    schema.FIPS,
                 )
             ]
             output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int)
@@ -362,11 +362,13 @@ class WebUIDataAdaptorV1:
                 0
             )
 
+            output_model[schema.FIPS] = fips
+            intervention = Intervention.from_webui_data_adaptor(suppression_policy)
+            output_model[schema.INTERVENTION] = intervention.value
             output_path = get_run_artifact_path(
                 fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
-            policy_enum = Intervention.from_webui_data_adaptor(suppression_policy)
-            output_path = output_path.replace("__INTERVENTION_IDX__", str(policy_enum.value))
+            output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path)
 
     def generate_state(self, whitelisted_county_fips: list, states_only=False):

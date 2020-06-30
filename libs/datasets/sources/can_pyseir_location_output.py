@@ -3,6 +3,9 @@ import datetime
 
 import pandas as pd
 
+from libs.datasets import can_model_output_schema as schema
+from libs.enums import Intervention
+
 
 def get_can_projection_path(input_dir, fips, intervention) -> pathlib.Path:
     file_name = f"{fips}.{intervention.value}.json"
@@ -11,17 +14,21 @@ def get_can_projection_path(input_dir, fips, intervention) -> pathlib.Path:
 
 
 class CANPyseirLocationOutput(object):
-    def __init__(self, fips, data, intervention):
-        self.fips = fips
+    def __init__(self, data):
+        self.fips = data[schema.FIPS].iloc[0]
         self.data = data
-        self.intervention = intervention
+        self.intervention = Intervention(data[schema.INTERVENTION].iloc[0])
 
     @classmethod
-    def load_projection(cls, fips, intervention, input_dir):
+    def load_from_path(cls, path):
+        data = pd.read_json(path, convert_dates=[schema.DATE], dtype={schema.FIPS: str})
+        return cls(data)
+
+    @classmethod
+    def load_from_model_output(cls, fips, intervention, input_dir):
         path = get_can_projection_path(input_dir, fips, intervention)
-        data = pd.read_json(path)
-        return cls(fips, data, intervention)
+        return cls.load_from_path(fips, intervention, path)
 
     @property
     def peak_hospitalizations_date(self) -> datetime.datetime:
-        return self.data.iloc[self.data.all_hospitalized.idxmax()].date
+        return self.data.iloc[self.data.all_hospitalized.idxmax()].date.to_pydatetime()
