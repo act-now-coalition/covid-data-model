@@ -19,7 +19,7 @@ from pyseir.models.seir_model_age import SEIRModelAge
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsembleGeneratorAge
-from pyseir.load_data import HospitalizationDataType
+from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
 
@@ -148,6 +148,15 @@ class ModelFitter:
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
+
+            (
+                self.icu_times,
+                self.icu,
+                self.icu_data_type,
+            ) = load_data.load_hospitalization_data_by_state(
+                self.state_obj.abbr, t0=self.ref_date, category=HospitalizationCategory.ICU
+            )
+
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
@@ -170,6 +179,9 @@ class ModelFitter:
                 self.hospitalizations,
                 self.hospitalization_data_type,
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
+            (self.icu_times, self.icu, self.icu_data_type,) = load_data.load_hospitalization_data(
+                self.fips, t0=self.ref_date, category=HospitalizationCategory.ICU
+            )
 
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
@@ -591,6 +603,7 @@ class ModelFitter:
         if self.hospitalizations is not None:
             self.fit_results["chi2_hosps"] = self.chi2_hosp
         self.fit_results["chi2_deaths"] = self.chi2_deaths
+        self.fit_results["chi2_total"] = self.chi2_cases + self.chi2_deaths + self.chi2_hosp
 
         if self.hospitalization_data_type:
             self.fit_results["hospitalization_data_type"] = self.hospitalization_data_type.value

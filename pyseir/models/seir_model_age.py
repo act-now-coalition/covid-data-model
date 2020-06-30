@@ -965,7 +965,7 @@ class SEIRModelAge:
         self.results["by_age"]["HICU"] = HICU
         self.results["by_age"]["HVent"] = HICUVent
 
-    def plot_results(self, y_scale="log", by_age_group=False, xlim=None):
+    def plot_results(self, y_scale="log", by_age_group=False, xlim=None) -> plt.Figure:
         """
         Generate a summary plot for the simulation.
 

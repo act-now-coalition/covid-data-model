@@ -10,11 +10,40 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 
 def plot_fitting_results(result) -> None:
     """
-    Take a model_fitter.ModuleFitter instance and produce the plots. 
+
+    """
+    # Entry point from model_fitter
+    output_file = get_run_artifact_path(result.fips, RunArtifact.MLE_FIT_REPORT)
+
+    # Save the mle fitter
+    fig = result.mle_model.plot_results()
+    fig.savefig(output_file.replace("mle_fit_results", "mle_fit_model"), bbox_inches="tight")
+
+    # Save the model in log mode
+    fig = _plot_ModelFitter_results(result)
+    fig.gca().set_yscale("log")
+    fig.savefig(output_file, bbox_inches="tight")
+
+    # Save the model in linear mode
+    fig = _plot_ModelFitter_results(result)
+    fig.gca().set_yscale("linear")
+
+    fig.savefig(
+        output_file.replace("mle_fit_results", "mle_fit_results_linear"), bbox_inches="tight"
+    )
+    return
+
+
+def _plot_ModelFitter_results(result) -> plt.Figure:
+    """
+    Take a model_fitter.ModelFitter instance and produce the plots.
     """
     data_dates = [result.ref_date + timedelta(days=t) for t in result.times]
     if result.hospital_times is not None:
         hosp_dates = [result.ref_date + timedelta(days=float(t)) for t in result.hospital_times]
+    if result.icu_times is not None:
+        icu_dates = [result.ref_date + timedelta(days=float(t)) for t in result.icu_times]
+
     model_dates = [
         result.ref_date + timedelta(days=t + result.fit_results["t0"]) for t in result.t_list
     ]
@@ -28,7 +57,9 @@ def plot_fitting_results(result) -> None:
         hosp_stdev = deepcopy(result.hosp_stdev)
         hosp_stdev[hosp_stdev > 1e5] = 0
 
-    plt.figure(figsize=(18, 12))
+    # PLOT DATA
+    fig, ax = plt.subplots(figsize=(18, 12))
+
     plt.errorbar(
         data_dates,
         result.observed_new_cases,
@@ -41,6 +72,7 @@ def plot_fitting_results(result) -> None:
         alpha=0.4,
         markersize=10,
     )
+
     plt.errorbar(
         data_dates,
         result.observed_new_deaths,
@@ -49,6 +81,19 @@ def plot_fitting_results(result) -> None:
         linestyle="",
         label="Observed Deaths Per Day",
         color="firebrick",
+        capsize=3,
+        alpha=0.4,
+        markersize=10,
+    )
+
+    plt.errorbar(
+        icu_dates,
+        result.icu,
+        yerr=None,
+        marker="o",
+        linestyle="",
+        label="Observed Current ICU",
+        color="goldenrod",
         capsize=3,
         alpha=0.4,
         markersize=10,
@@ -134,7 +179,7 @@ def plot_fitting_results(result) -> None:
         label="Estimated ICU Occupancy",
         linestyle=":",
         lw=6,
-        color="black",
+        color="goldenrod",
     )
     plt.plot(
         model_dates,
@@ -146,76 +191,30 @@ def plot_fitting_results(result) -> None:
         alpha=0.4,
     )
 
-    plt.yscale("log")
-    y_lim = plt.ylim(0.8e0)
+    TRANSITION = timedelta(days=14)
+    FORECAST_WINDOW = timedelta(days=60)
+    YSCALE_MULTIPLIER = 2
+    model_days_to_t_break = timedelta(days=result.fit_results["t_break"] + result.fit_results["t0"])
 
-    start_intervention_date = result.ref_date + timedelta(
-        days=result.fit_results["t_break"] + result.fit_results["t0"]
-    )
-    stop_intervention_date = start_intervention_date + timedelta(days=14)
+    start_date_p1 = result.ref_date + model_days_to_t_break
+    stop_date_p1 = start_date_p1 + TRANSITION
 
-    plt.fill_betweenx(
-        [y_lim[0], y_lim[1]],
-        [start_intervention_date, start_intervention_date],
-        [stop_intervention_date, stop_intervention_date],
-        alpha=0.2,
-        label="Estimated Intervention",
-    )
+    start_date_p2 = stop_date_p1 + timedelta(days=result.fit_results["t_delta_phases"])
+    stop_date_p2 = start_date_p2 + TRANSITION
 
-    start_intervention2_date = (
-        result.ref_date
-        + timedelta(
-            days=result.fit_results["t_break"]
-            + result.fit_results["t_delta_phases"]
-            + result.fit_results["t0"]
-        )
-        + timedelta(days=14)
-    )
-    stop_intervention2_date = start_intervention2_date + timedelta(days=14)
+    for start, stop, label in [
+        (start_date_p1, stop_date_p1, "Phase 1 Transition"),
+        (start_date_p2, stop_date_p2, "Phase 2 Transition"),
+    ]:
+        plt.axvspan(start, stop, alpha=0.2, label=label)
 
-    plt.fill_betweenx(
-        [y_lim[0], y_lim[1]],
-        [start_intervention2_date, start_intervention2_date],
-        [stop_intervention2_date, stop_intervention2_date],
-        alpha=0.2,
-        label="Estimated Intervention2",
-    )
-
-    running_total = timedelta(days=0)
-    for i_label, k in enumerate(
-        (
-            "symptoms_to_hospital_days",
-            "hospitalization_length_of_stay_general",
-            "hospitalization_length_of_stay_icu",
-        )
-    ):
-        end_time = timedelta(days=result.SEIR_kwargs[k])
-        x = start_intervention_date + running_total
-        y = 1.5 ** (i_label + 1)
-        plt.errorbar(
-            x=[x],
-            y=[y],
-            xerr=[[timedelta(days=0)], [end_time]],
-            marker="",
-            capsize=8,
-            color="k",
-            elinewidth=3,
-            capthick=3,
-        )
-        plt.text(x + (end_time + timedelta(days=2)), y, k.replace("_", " ").title(), fontsize=14)
-        running_total += end_time
-
+    first_nonzero_date = data_dates[np.argmax(result.observed_new_cases > 0)]
     if result.SEIR_kwargs["beds_ICU"] > 0:
-        plt.hlines(
-            result.SEIR_kwargs["beds_ICU"],
-            *plt.xlim(),
-            color="k",
-            linestyles="-",
-            linewidths=6,
-            alpha=0.2,
+        plt.axhline(
+            result.SEIR_kwargs["beds_ICU"], color="k", linestyle="-", linewidth=6, alpha=0.2
         )
         plt.text(
-            data_dates[0] + timedelta(days=5),
+            first_nonzero_date + timedelta(days=5),
             result.SEIR_kwargs["beds_ICU"] * 1.1,
             "Available ICU Capacity",
             color="k",
@@ -223,59 +222,42 @@ def plot_fitting_results(result) -> None:
             fontsize=15,
         )
 
-    plt.ylim(*y_lim)
-    plt.xlim(min(model_dates[0], data_dates[0]), data_dates[-1] + timedelta(days=150))
+    ax.set_ylim(bottom=1, top=YSCALE_MULTIPLIER * max(result.observed_new_cases))
+    ax.set_xlim(left=first_nonzero_date, right=data_dates[-1] + FORECAST_WINDOW)
     plt.xticks(rotation=30, fontsize=14)
     plt.yticks(fontsize=14)
-    plt.legend(loc=4, fontsize=14)
+    ax.legend(loc="best", fontsize=14)
     plt.grid(which="both", alpha=0.5)
     plt.title(result.display_name, fontsize=60)
 
-    chi_total = 0
-    for i, (k, v) in enumerate(result.fit_results.items()):
-        if k in ("chi2_cases", "chi2_deaths", "chi2_hosps"):
-            chi_total += v
+    def fmt_txt(value):
+        if np.isscalar(value) and not isinstance(value, str):
+            return f"{value:1.2f}"
+        else:
+            return f"{value}"
 
-    for i, (k, v) in enumerate(result.fit_results.items()):
+    TXT_OFFSET = 0.02
+    LINE_HEIGHT = 0.032
+    SUMMARY_START = 0.95
+    DEBUG_START = 0.65
+    SHARED_KWARGS = dict(x=1 + TXT_OFFSET, transform=plt.gca().transAxes, fontsize=15, alpha=0.6,)
 
-        fontweight = (
-            "bold" if k in ("R0", "Reff", "Reff2", "eps", "eps2", "t_delta_phases") else "normal"
+    # Plot Headline Results. We want these ordered.
+    summary_fields = ("chi2_total", "R0", "Reff", "Reff2", "eps", "eps2", "t_delta_phases", "fips")
+    for i, key in enumerate(summary_fields):
+        value = result.fit_results[key]
+        plt.text(
+            y=SUMMARY_START - LINE_HEIGHT * i,
+            s=f"{key}={fmt_txt(value)}",
+            fontweight="bold",
+            **SHARED_KWARGS,
         )
 
-        if np.isscalar(v) and not isinstance(v, str):
-            plt.text(
-                1.05,
-                0.7 - 0.032 * i,
-                f"{k}={v:1.3f}",
-                transform=plt.gca().transAxes,
-                fontsize=15,
-                alpha=0.6,
-                fontweight=fontweight,
-            )
+    # Plot Debug Results. These can be unordered.
+    i = 0
+    for key, value in result.fit_results.items():
+        if key not in summary_fields:
+            plt.text(y=DEBUG_START - LINE_HEIGHT * i, s=f"{key}={fmt_txt(value)}", **SHARED_KWARGS)
+            i += 1
 
-        else:
-            plt.text(
-                1.05,
-                0.7 - 0.032 * i,
-                f"{k}={v}",
-                transform=plt.gca().transAxes,
-                fontsize=15,
-                alpha=0.6,
-                fontweight=fontweight,
-            )
-    plt.text(
-        1.05,
-        0.75,
-        f"total_chi2:{chi_total:1.3f}",
-        transform=plt.gca().transAxes,
-        fontsize=15,
-        alpha=0.6,
-        fontweight="bold",
-    )
-    output_file = get_run_artifact_path(result.fips, RunArtifact.MLE_FIT_REPORT)
-    plt.savefig(output_file, bbox_inches="tight")
-    plt.close()
-
-    result.mle_model.plot_results()
-    plt.savefig(output_file.replace("mle_fit_results", "mle_fit_model"), bbox_inches="tight")
-    plt.close()
+    return plt.gcf()
