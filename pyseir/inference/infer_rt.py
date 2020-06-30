@@ -17,6 +17,11 @@ from structlog import configure
 from enum import Enum
 from pyseir.inference.infer_utils import LagMonitor
 
+from sklearn import preprocessing
+from keras.models import Sequential
+from keras.layers import *
+from keras.callbacks import EarlyStopping
+
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
 log = structlog.get_logger(__name__)
 
@@ -885,7 +890,260 @@ class RtInferenceEngine:
             plt.close()
         if df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
+
+        df_all.to_csv("df_all_" + self.display_name + ".csv")
+        self.forecast_rt(df_all)
         return df_all
+
+    def forecast_rt(self, df_all):
+        logging.info("starting")
+        """
+        predict r_t for 14 days into the future
+        
+        Parameters
+        ___________
+        df_all: dataframe with dates, new_cases, new_deaths, and r_t values
+
+        Potential todo: add more features
+
+        Returns
+        __________
+        dates and forecast r_t values
+
+        """
+        logging.info("beginning forecast")
+
+        # Convert dates to what day of 2020 it corresponds to for Forecast
+        SIM_DATE_NAME = "sim_day"
+        df_all["sim_day"] = (
+            df_all.index - self.ref_date
+        ).days + 1  # set first day of year to 1 not zero --- check why this varies for Idaho number of entries not the same for corrected/notcorrected
+        # slim dataframe to only variables used in prediction
+        PREDICT_VARIABLE = "raw_new_cases"
+        FORECAST_VARIABLES = [
+            "sim_day",  # must leave date in this position!!!!
+            "raw_new_cases",
+        ]  # , "Rt_MAP__new_cases"] #raw_new_deaths SERIOUS TODO add back deaths because rn nan values break lstm
+        MASK_VALUE = -10
+
+        df_forecast = df_all[FORECAST_VARIABLES].copy()
+
+        # Fill empty values with zero
+        df_forecast.replace(r"\s+", MASK_VALUE, regex=True).replace("", MASK_VALUE)
+        df_forecast.replace(np.nan, MASK_VALUE, regex=True).replace(np.nan, MASK_VALUE)
+
+        df_forecast.to_csv("df_forecast.csv")  # , na_rep="NaN")
+
+        # Split into train and test before normalizing to avoid data leakage
+        # TODO: Test set will actually be entire series
+        TRAIN_SIZE = 0.8
+        train_set_length = int(len(df_forecast) * TRAIN_SIZE)
+        train_set = df_forecast[:train_set_length]
+        test_set = df_forecast[
+            train_set_length:
+        ]  # this is really the entire series TODO maybe find a better way to code this
+        # Normalize Inputs for training
+        scalers_dict = {}
+        scaled_values_dict = {}
+        for columnName, columnData in train_set.iteritems():
+            log.info(columnName)
+            # there is probably a better way to do this
+            scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+            reshaped_data = columnData.values.reshape(-1, 1)
+
+            scaler = scaler.fit(reshaped_data)
+            scaled_values = scaler.transform(reshaped_data)
+
+            # add scaled columns to dataframe
+            train_set.loc[:, f"{columnName}_scaled"] = scaled_values
+
+            # update dictionary for later use to unscale data
+            scalers_dict.update({columnName: scaler})
+            scaled_values_dict.update({columnName: scaled_values})
+
+        train_set.to_csv("train_set_scaled.csv")
+        plt.close("all")
+        for variable in scaled_values_dict:
+            plt.plot(scaled_values_dict["sim_day"], scaled_values_dict[variable], label=variable)
+
+        plt.legend()
+        plt.savefig("scaledfig.pdf")
+
+        # Get features and labels
+        MIN_NUMBER_OF_DAYS = (
+            30  # I don't think it makes sense to predict anything until we have a month of data
+        )
+        PREDICT_DAYS = 5
+        # Create list of dataframes for testing
+        train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
+        X_train, Y_train = self.get_X_Y(
+            train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
+        )
+
+        logging.info("done")
+        n_batch = 1
+        n_epochs = 5
+        model, history = self.build_model(MASK_VALUE, n_epochs, n_batch, 10, 0.01, X_train, Y_train)
+
+        logging.info("built model")
+
+        # Plot predictions for test and train sets
+        forecasts = list()
+        dates = list()
+        for i, j in zip(X_train, Y_train):
+            # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
+            logging.info("df")
+            logging.info(i)
+            logging.info(i[0])
+            i = i.reshape(n_batch, i.shape[0], i.shape[1])
+            scaled_df = pd.DataFrame(np.squeeze(i))
+            logging.info("dataframe")
+            logging.info(scaled_df)
+            logging.info("dates")
+            logging.info(scaled_df[0])
+            thisforecast = scalers_dict[PREDICT_VARIABLE].inverse_transform(
+                model.predict(i, batch_size=n_batch)
+            )
+            logging.info("NATASHA THIS IS THE TYPE")
+            logging.info(type(model.predict(i, batch_size=n_batch)))
+            logging.info("appended forecast")
+            forecasts.append(thisforecast)
+            logging.info(scalers_dict[SIM_DATE_NAME])
+            logging.info("og dates")
+            # dates = scalers_dict[SIM_DATE_NAME].inverse_transform(scaled_df[0].to_numpy())
+            last_day = scaled_df.iloc[-1][0]
+            logging.info("last day")
+            # last_day_unscaled = scalers_dict[SIM_DATE_NAME].inverse_transform([[last_day]])
+            # logging.info('last day unscaled')
+            # logging.info(last_day_unscaled)
+            # predicted_days = np.arange(last_day, last_day + PREDICT_DAYS)
+            # dates.append(predicted_days)
+        logging.info("forecasts")
+        logging.info(forecasts)
+        logging.info("dates")
+        logging.info(dates)
+        # check if dictionary of scalers works
+
+        return
+
+    @staticmethod
+    def get_reshaped_X(input_X, n_batch, X_scaler):
+        i = input_X.reshape(n_batch, input_X.shape[0], input_X.shape[1])
+        output_df = pd.DataFrame(np.squeeze(input_X))
+        # original_df = pd.DataFrame(X_scaler.inverse_transform(output_df))
+        return original_df
+
+    @staticmethod
+    def build_model(
+        MASK_VALUE, epochs, n_batch, hidden_layer_dimensions, dropout, final_train_X, final_train_Y
+    ):
+        patience = 50
+        validation_split = 0.1
+        model = Sequential()
+        model.add(
+            Masking(
+                mask_value=MASK_VALUE,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+            )
+        )
+        model.add(
+            LSTM(
+                hidden_layer_dimensions,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                stateful=True,
+                return_sequences=True,
+            )
+        )
+        model.add(
+            LSTM(
+                hidden_layer_dimensions,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                stateful=True,
+            )
+        )
+        model.add(Dropout(dropout))
+        model.add(Dense(final_train_Y.shape[1]))
+        es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=patience)
+        model.compile(loss="mean_squared_error", optimizer="adam")
+        history = model.fit(
+            final_train_X,
+            final_train_Y,
+            epochs=epochs,
+            batch_size=n_batch,
+            verbose=1,
+            shuffle=False,
+            validation_split=validation_split,
+            callbacks=[es],
+        )
+        logging.info("fit")
+        logging.info(history.history["loss"])
+        logging.info(history.history["val_loss"])
+        plot = True
+        if plot:
+            plt.close("all")
+            logging.info("plotting")
+            plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
+            logging.info("plotted history")
+            plt.plot(
+                history.history["val_loss"],
+                color="green",
+                linestyle="solid",
+                label="Validation Set",
+            )
+            logging.info("plotted more")
+            plt.legend()
+            plt.xlabel("Epochs")
+            plt.ylabel("RMSE")
+            plt.savefig("lstm_loss_final.png")
+            plt.close("all")
+
+        return model, history
+
+    @staticmethod
+    def get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE):
+        logging.info("starting to get X Y")
+        logging.info(len(sample_list))
+        PREDICT_VAR = PREDICT_VARIABLE + "_scaled"
+        SEQUENCE_LENGTH = 300
+        X_train_list = list()
+        Y_train_list = list()
+        for i in range(len(sample_list)):
+            df = sample_list[i]
+            # df = df[df.columns.drop(list(df.filter(regex="scaled")))]
+            df = df.filter(regex="scaled")
+
+            train = df.iloc[:-PREDICT_DAYS, :]  # exclude last n entries of df to use for prediction
+            test = df.iloc[-PREDICT_DAYS:, :]
+
+            n_rows_train = train.shape[0]
+            n_rows_to_add = SEQUENCE_LENGTH - n_rows_train
+            pad_rows = np.empty((n_rows_to_add, train.shape[1]), float)
+            pad_rows[:] = MASK_VALUE
+            padded_train = np.concatenate((pad_rows, train))
+
+            test = np.array(test[PREDICT_VAR])
+
+            X_train_list.append(padded_train)
+            Y_train_list.append(test)
+
+        final_test_X = np.array(X_train_list)
+        final_test_Y = np.array(Y_train_list)
+        final_test_Y = np.squeeze(final_test_Y)
+        logging.info("TEST Y")
+        logging.info(final_test_Y)
+        return final_test_X, final_test_Y
+
+    @staticmethod
+    def create_df_list(df, min_days, predict_days):
+        logging.info("CREATING DF LIST")
+        df_list = list()
+        for i in range(len(df.index)):
+            if i < predict_days + min_days:  # only keep df if it has min number of entries
+                continue
+            else:
+                df_list.append(df[0:i].copy())  # here could also create week and month predictions
+        logging.info("doen creating df list")
+        return df_list
 
     @staticmethod
     def ewma_smoothing(series, tau=5):
