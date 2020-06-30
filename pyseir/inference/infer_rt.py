@@ -17,6 +17,7 @@ from structlog import configure
 from enum import Enum
 from pyseir.inference.infer_utils import LagMonitor
 
+from tensorflow import keras
 from sklearn import preprocessing
 from keras.models import Sequential
 from keras.layers import *
@@ -973,16 +974,16 @@ class RtInferenceEngine:
         MIN_NUMBER_OF_DAYS = (
             30  # I don't think it makes sense to predict anything until we have a month of data
         )
-        PREDICT_DAYS = 5
+        PREDICT_DAYS = 3
         # Create list of dataframes for testing
         train_df_samples = self.create_df_list(train_set, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
-        X_train, Y_train = self.get_X_Y(
+        X_train, Y_train, df_list = self.get_X_Y(
             train_df_samples, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
         )
 
         logging.info("done")
         n_batch = 1
-        n_epochs = 5
+        n_epochs = 1
         model, history = self.build_model(MASK_VALUE, n_epochs, n_batch, 10, 0.01, X_train, Y_train)
 
         logging.info("built model")
@@ -990,39 +991,78 @@ class RtInferenceEngine:
         # Plot predictions for test and train sets
         forecasts = list()
         dates = list()
-        for i, j in zip(X_train, Y_train):
+        for i, j, k in zip(X_train, Y_train, df_list):
             # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
-            logging.info("df")
-            logging.info(i)
-            logging.info(i[0])
             i = i.reshape(n_batch, i.shape[0], i.shape[1])
             scaled_df = pd.DataFrame(np.squeeze(i))
-            logging.info("dataframe")
-            logging.info(scaled_df)
-            logging.info("dates")
-            logging.info(scaled_df[0])
             thisforecast = scalers_dict[PREDICT_VARIABLE].inverse_transform(
                 model.predict(i, batch_size=n_batch)
             )
-            logging.info("NATASHA THIS IS THE TYPE")
-            logging.info(type(model.predict(i, batch_size=n_batch)))
-            logging.info("appended forecast")
             forecasts.append(thisforecast)
-            logging.info(scalers_dict[SIM_DATE_NAME])
-            logging.info("og dates")
-            # dates = scalers_dict[SIM_DATE_NAME].inverse_transform(scaled_df[0].to_numpy())
-            last_day = scaled_df.iloc[-1][0]
-            logging.info("last day")
-            # last_day_unscaled = scalers_dict[SIM_DATE_NAME].inverse_transform([[last_day]])
-            # logging.info('last day unscaled')
-            # logging.info(last_day_unscaled)
-            # predicted_days = np.arange(last_day, last_day + PREDICT_DAYS)
-            # dates.append(predicted_days)
+
+            last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
+
+            unscaled_first_test_day = (
+                int(scalers_dict[SIM_DATE_NAME].inverse_transform(last_train_day)) + 1
+            )
+
+            predicted_days = np.arange(
+                unscaled_first_test_day, unscaled_first_test_day + PREDICT_DAYS
+            )
+            dates.append(predicted_days)
+
+            """
+            logging.info('----------------------------------------')
+            logging.info('UNSCALED LAST DAY')
+            logging.info(dates)
+            logging.info('INPUTS')
+            logging.info(i)
+            logging.info('LABELS')
+            logging.info(j)
+            logging.info('FULL DF')
+            logging.info(k)
+            logging.info(f"last day: {last_train_day} first_predict_day: {unscaled_first_test_day}")
+            logging.info(predicted_days)
+            """
+        """
         logging.info("forecasts")
         logging.info(forecasts)
         logging.info("dates")
         logging.info(dates)
-        # check if dictionary of scalers works
+        """
+
+        logging.info("about to plot")
+        LINEWIDTH = 1
+        # plot training predictions
+        for n in range(len(dates)):
+            i = dates[n]
+            j = np.squeeze(forecasts[n])
+            # newdates = convert_to_2020_date(i,args)
+            newdates = dates[n]
+            logging.info(i)
+            logging.info(j)
+            logging.info(newdates)
+            logging.info("got inputs for plotting")
+            if n == 0:
+                plt.plot(
+                    newdates, j, color="blue", label="Train Set", linewidth=LINEWIDTH, markersize=0
+                )
+            else:
+                plt.plot(newdates, j, color="blue", linewidth=LINEWIDTH, markersize=0)
+            # check if dictionary of scalers works
+            logging.info("plotted one")
+        plt.plot(
+            train_set[SIM_DATE_NAME],
+            train_set[PREDICT_VARIABLE],
+            linewidth=LINEWIDTH,
+            markersize=1,
+            label="Data",
+        )
+        plt.xlabel(SIM_DATE_NAME)
+        plt.ylabel(PREDICT_VARIABLE)
+        plt.legend()
+
+        plt.savefig("train_plot.pdf")
 
         return
 
@@ -1101,15 +1141,14 @@ class RtInferenceEngine:
 
     @staticmethod
     def get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE):
-        logging.info("starting to get X Y")
-        logging.info(len(sample_list))
         PREDICT_VAR = PREDICT_VARIABLE + "_scaled"
         SEQUENCE_LENGTH = 300
         X_train_list = list()
         Y_train_list = list()
+        df_list = list()
         for i in range(len(sample_list)):
             df = sample_list[i]
-            # df = df[df.columns.drop(list(df.filter(regex="scaled")))]
+            df_list.append(df)
             df = df.filter(regex="scaled")
 
             train = df.iloc[:-PREDICT_DAYS, :]  # exclude last n entries of df to use for prediction
@@ -1129,20 +1168,20 @@ class RtInferenceEngine:
         final_test_X = np.array(X_train_list)
         final_test_Y = np.array(Y_train_list)
         final_test_Y = np.squeeze(final_test_Y)
+        logging.info("TEST X")
+        logging.info(final_test_X)
         logging.info("TEST Y")
         logging.info(final_test_Y)
-        return final_test_X, final_test_Y
+        return final_test_X, final_test_Y, df_list
 
     @staticmethod
     def create_df_list(df, min_days, predict_days):
-        logging.info("CREATING DF LIST")
         df_list = list()
         for i in range(len(df.index)):
             if i < predict_days + min_days:  # only keep df if it has min number of entries
                 continue
             else:
                 df_list.append(df[0:i].copy())  # here could also create week and month predictions
-        logging.info("doen creating df list")
         return df_list
 
     @staticmethod
