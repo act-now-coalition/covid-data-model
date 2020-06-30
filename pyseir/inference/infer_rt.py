@@ -197,7 +197,6 @@ class RtInferenceEngine:
             ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
-        log.info(self.case_dates)
         self.raw_new_case_dates = [
             ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
         ]
@@ -456,6 +455,7 @@ class RtInferenceEngine:
             Posterior estimates for each timestamp with non-zero data.
         start_idx: int
             Index of first Rt value calculated from input data series
+            #TODO figure out why this value sometimes truncates the series
             
         """
         # Propagate self.min_[cases,deaths] into apply_gaussian_smoothing where used to abort
@@ -592,10 +592,6 @@ class RtInferenceEngine:
             plt.title("Posteriors", fontsize=18)
             plt.close()
         start_idx = -len(posteriors.columns)
-
-        log.info(
-            f"DATES length: {len(dates)} posteriors length: {len(posteriors.columns)} start_idx: {start_idx}"
-        )
 
         return dates[start_idx:], times[start_idx:], posteriors, start_idx
 
@@ -884,7 +880,6 @@ class RtInferenceEngine:
             plt.close()
         if df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
-        df_all.to_csv("df_all" + self.display_name + ".csv")
         return df_all
 
     @staticmethod
