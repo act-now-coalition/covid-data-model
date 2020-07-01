@@ -3,6 +3,7 @@ import pathlib
 import functools
 from collections import namedtuple
 import logging
+import structlog
 import multiprocessing
 import pydantic
 import simplejson
@@ -24,7 +25,7 @@ from libs.datasets import results_schema as rc
 from libs.functions import generate_api as api
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 
-logger = logging.getLogger(__name__)
+logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
 
 
@@ -35,11 +36,6 @@ def run_on_all_fips_for_intervention(
     model_output_dir: pathlib.Path,
     pool: multiprocessing.Pool = None,
 ) -> Iterator[CovidActNowAreaTimeseries]:
-    # def run_fips(fips):
-    #     return build_summary_and_timeseries_for_fips(
-    #         fips, intervention, latest_values, timeseries, model_output_dir
-    #     )
-
     run_fips = functools.partial(
         build_summary_and_timeseries_for_fips,
         intervention,
@@ -76,10 +72,38 @@ def build_summary_and_timeseries_for_fips(
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
         area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
     except Exception:
-        logger.exception(f"failed to run output {fips}")
+        logger.error(f"failed to run output", fips=fips)
         return None, None
 
     return area_summary, area_timeseries
+
+
+def build_api_output_for_intervention(
+    intervention: Intervention,
+    us_latest: LatestValuesDataset,
+    us_timeseries: TimeseriesDataset,
+    input_dir: pathlib.Path,
+):
+    logger.info(f"Building API output for intervention", intervention=intervention.name)
+
+    api_processing_results = api_pipeline.run_on_all_fips_for_intervention(
+        us_latest, us_timeseries, intervention, input_dir
+    )
+    if api_processing_results is None:
+        logger.warning("No results for intervention", intervention=intervention)
+
+    all_summaries, all_timeseries = zip(*api_processing_results)
+
+    all_summaries = [
+        api_pipeline.deploy_single_region(intervention, area_result, output)
+        for area_result in all_summaries
+    ]
+    all_timeseries = [
+        api_pipeline.deploy_single_region(intervention, area_result, output)
+        for area_result in all_timeseries
+    ]
+    bulk_summaries = CovidActNowBulkSummary(all_summaries)
+    bulk_timeseries = CovidActNowBulkSummary(all_timeseries)
 
 
 def remove_root_wrapper(obj: dict):
