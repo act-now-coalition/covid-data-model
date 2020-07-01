@@ -27,7 +27,8 @@ class ForecastRt:
     Write doc string
     """
 
-    def __init__(self):
+    def __init__(self, df_all):
+        self.df_all
         self.ref_date = datetime(year=2020, month=1, day=1)
 
         # Variable Names
@@ -52,33 +53,8 @@ class ForecastRt:
         self.n_epochs = 1
         self.n_hidden_dimensions = 100
         self.dropout = 0.01
-
-    def get_scaling_dictionary(self, train_scaling_set):
-        log.info("getting scaling dictionary")
-        scalers_dict = {}
-        for columnName, columnData in train_scaling_set.iteritems():
-            scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
-            reshaped_data = columnData.values.reshape(-1, 1)
-
-            scaler = scaler.fit(reshaped_data)
-            scaled_values = scaler.transform(reshaped_data)
-
-            scalers_dict.update({columnName: scaler})
-
-        return scalers_dict
-
-    def get_scaled_X_Y(self, samples, scalers_dict, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE):
-        sample_list = list()
-        for sample in samples:
-            for columnName, columnData in sample.iteritems():
-                scaled_values = scalers_dict[columnName].transform(columnData.values.reshape(-1, 1))
-                sample.loc[:, f"{columnName}{self.scaled_variable_suffix}"] = scaled_values
-            sample_list.append(sample)
-
-        X, Y, df_list = self.get_X_Y(
-            sample_list, self.predict_days, self.predict_variable, self.mask_value
-        )
-        return X, Y, df_list
+        self.patience = 50
+        self.validation_split = 0.1
 
     def forecast_rt(self, df_all):
         logging.info("starting")
@@ -104,7 +80,7 @@ class ForecastRt:
             df_all.index - self.ref_date
         ).days + 1  # set first day of year to 1 not 0
 
-        df_forecast = df_all[FORECAST_VARIABLES].copy()
+        df_forecast = df_all[self.forecast_variables].copy()
 
         # Fill empty values with zero
         df_forecast.replace(r"\s+", self.mask_value, regex=True).replace("", self.mask_value)
@@ -114,21 +90,17 @@ class ForecastRt:
 
         # Split into train and test before normalizing to avoid data leakage
         # TODO: Test set will actually be entire series
-        df_samples = self.create_df_list(df_forecast, MIN_NUMBER_OF_DAYS, PREDICT_DAYS)
+        df_samples = self.create_df_list(df_forecast)
 
-        train_set_length = int(len(df_samples) * TRAIN_SIZE)
+        train_set_length = int(len(df_samples) * self.train_size)
         train_scaling_set = df_samples[train_set_length]
         train_samples = df_samples[:train_set_length]
         test_samples = df_samples[train_set_length + 1 :]
 
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
 
-        train_X, train_Y, train_df_list = self.get_scaled_X_Y(
-            train_samples, scalers_dict, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
-        )
-        test_X, test_Y, test_df_list = self.get_scaled_X_Y(
-            test_samples, scalers_dict, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE
-        )
+        train_X, train_Y, train_df_list = self.get_scaled_X_Y(train_samples, scalers_dict)
+        test_X, test_Y, test_df_list = self.get_scaled_X_Y(test_samples, scalers_dict)
 
         log.info(f"train samples: {len(train_X)} {len(train_df_list)}")
         log.info(f"test samples: {len(test_X)} {len(test_df_list)}")
@@ -157,9 +129,7 @@ class ForecastRt:
             log.info(k)
         """
 
-        model, history = self.build_model(
-            MASK_VALUE, n_epochs, n_batch, hidden_dimension, dropout, train_X, train_Y
-        )
+        model, history = self.build_model(train_X, train_Y)
 
         logging.info("built model")
 
@@ -172,6 +142,7 @@ class ForecastRt:
         logging.info(dates)
         """
 
+        exit()
         forecasts_train = list()
         dates_train = list()
         for i, j, k in zip(train_X, train_Y, train_df_list):
@@ -272,46 +243,66 @@ class ForecastRt:
 
         return
 
-    @staticmethod
-    def build_model(
-        MASK_VALUE, epochs, n_batch, hidden_layer_dimensions, dropout, final_train_X, final_train_Y
-    ):
-        patience = 50
-        validation_split = 0.1
+    def get_scaling_dictionary(self, train_scaling_set):
+        log.info("getting scaling dictionary")
+        scalers_dict = {}
+        for columnName, columnData in train_scaling_set.iteritems():
+            scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+            reshaped_data = columnData.values.reshape(-1, 1)
+
+            scaler = scaler.fit(reshaped_data)
+            scaled_values = scaler.transform(reshaped_data)
+
+            scalers_dict.update({columnName: scaler})
+
+        return scalers_dict
+
+    def get_scaled_X_Y(self, samples, scalers_dict):
+        sample_list = list()
+        for sample in samples:
+            for columnName, columnData in sample.iteritems():
+                scaled_values = scalers_dict[columnName].transform(columnData.values.reshape(-1, 1))
+                sample.loc[:, f"{columnName}{self.scaled_variable_suffix}"] = scaled_values
+            sample_list.append(sample)
+
+        X, Y, df_list = self.get_X_Y(sample_list)
+        return X, Y, df_list
+
+    def build_model(self, final_train_X, final_train_Y):
         model = Sequential()
         model.add(
             Masking(
-                mask_value=MASK_VALUE,
-                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                mask_value=self.MASK_VALUE,
+                batch_input_shape=(self.n_batch, final_train_X.shape[1], final_train_X.shape[2]),
             )
         )
         model.add(
             LSTM(
-                hidden_layer_dimensions,
-                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                self.n_hidden_layer_dimensions,
+                batch_input_shape=(self.n_batch, final_train_X.shape[1], final_train_X.shape[2]),
                 stateful=True,
                 return_sequences=True,
             )
         )
         model.add(
             LSTM(
-                hidden_layer_dimensions,
-                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                self.n_hidden_layer_dimensions,
+                batch_input_shape=(self.n_batch, final_train_X.shape[1], final_train_X.shape[2]),
                 stateful=True,
             )
         )
-        model.add(Dropout(dropout))
+        model.add(Dropout(self.dropout))
         model.add(Dense(final_train_Y.shape[1]))
-        es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=patience)
+        es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=self.patience)
         model.compile(loss="mean_squared_error", optimizer="adam")
         history = model.fit(
             final_train_X,
             final_train_Y,
-            epochs=epochs,
-            batch_size=n_batch,
+            epochs=self.epochs,
+            batch_size=self.n_batch,
             verbose=1,
             shuffle=False,
-            validation_split=validation_split,
+            validation_split=self.validation_split,
             callbacks=[es],
         )
         logging.info("fit")
@@ -338,10 +329,8 @@ class ForecastRt:
 
         return model, history
 
-    @staticmethod
-    def get_X_Y(sample_list, PREDICT_DAYS, PREDICT_VARIABLE, MASK_VALUE):
-        PREDICT_VAR = PREDICT_VARIABLE + "_scaled"
-        SEQUENCE_LENGTH = 300
+    def get_X_Y(self, sample_list):
+        PREDICT_VAR = self.predict_variable + self.scaled_variable_suffix
         X_train_list = list()
         Y_train_list = list()
         df_list = list()
@@ -352,13 +341,15 @@ class ForecastRt:
             df_list.append(df)
             df = df.filter(regex="scaled")
 
-            train = df.iloc[:-PREDICT_DAYS, :]  # exclude last n entries of df to use for prediction
-            test = df.iloc[-PREDICT_DAYS:, :]
+            train = df.iloc[
+                : -self.predict_days, :
+            ]  # exclude last n entries of df to use for prediction
+            test = df.iloc[-self.predict_days :, :]
 
             n_rows_train = train.shape[0]
-            n_rows_to_add = SEQUENCE_LENGTH - n_rows_train
+            n_rows_to_add = self.sequence_length - n_rows_train
             pad_rows = np.empty((n_rows_to_add, train.shape[1]), float)
-            pad_rows[:] = MASK_VALUE
+            pad_rows[:] = self.mask_value
             padded_train = np.concatenate((pad_rows, train))
 
             test = np.array(test[PREDICT_VAR])
@@ -371,17 +362,18 @@ class ForecastRt:
         final_test_Y = np.squeeze(final_test_Y)
         return final_test_X, final_test_Y, df_list
 
-    @staticmethod
-    def create_df_list(df, min_days, predict_days):
+    def create_df_list(self, df):
         df_list = list()
         for i in range(len(df.index)):
-            if i < predict_days + min_days:  # only keep df if it has min number of entries
+            if (
+                i < self.predict_days + self.min_number_of_days
+            ):  # only keep df if it has min number of entries
                 continue
             else:
-                if self.SAMPLE_LENGTH == -1:  # use all historical data for every sample
+                if self.sample_train_length == -1:  # use all historical data for every sample
                     df_list.append(df[:i].copy())
                 else:  # use only SAMPLE_LENGTH historical days of data
-                    df_list.append(df[i - self.SAMPLE_LENGTH : i].copy())
+                    df_list.append(df[i - self.sample_train_length : i].copy())
         return df_list
 
     @staticmethod
