@@ -121,7 +121,6 @@ class RtInferenceEngine:
         min_cases=5,
         min_deaths=5,
         include_testing_correction=True,
-        SCALED_NAME="_scaled",
     ):
 
         np.random.seed(InferRtConstants.RNG_SEED)
@@ -136,8 +135,6 @@ class RtInferenceEngine:
         self.min_cases = min_cases
         self.min_deaths = min_deaths
         self.include_testing_correction = include_testing_correction
-
-        self.SCALED_NAME = SCALED_NAME
 
         # Because rounding is disabled we don't need high min_deaths, min_cases anymore
         self.min_cases = min(InferRtConstants.MIN_COUNTS_TO_INFER, self.min_cases)
