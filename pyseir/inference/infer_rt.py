@@ -42,8 +42,8 @@ class InferRtConstants:
 
     # Window size used during smoothing of cases and deaths
     # Originally 14 but odd is better and larger avoids edges that drive R unrealistically
-    COUNT_SMOOTHING_WINDOW_SIZE = 23
-    COUNT_SMOOTHING_KERNEL_STD = 7
+    COUNT_SMOOTHING_WINDOW_SIZE = 19
+    COUNT_SMOOTHING_KERNEL_STD = 5
 
     # Infer Rt only using cases if True
     # Recommend True as deaths just confuse intepretability of Rt_eff and will muddy using its extrapolation
@@ -66,14 +66,14 @@ class InferRtConstants:
     MIN_COUNTS_TO_INFER = 5.0
     # TODO really understand whether the min_cases and/or min_deaths compares to max, avg, or day to day counts
 
-    # Correct for tail suppression due to case smoothing window converting from centered to lagging
-    # as approach curren time
+    # Correct for tail suppression (if > 0.) due to case smoothing window converting from centered to lagging
+    # as approach curren time. Disabled for now until more review possible
     CORRECT_TAIL_SUPRESSION = 0.75
 
     # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
     # term shape correctly.
     SMOOTH_RT_MAP_COMPOSITE = 1  # number of times to apply soothing
-    RT_SMOOTHING_WINDOW_SIZE = 14  # also controls kernel_std
+    RT_SMOOTHING_WINDOW_SIZE = 25  # also controls kernel_std
 
     # Minimum (half) width of confidence interval in composite Rt
     # Avoids too narrow values when averaging over timeseries that already have high confidence

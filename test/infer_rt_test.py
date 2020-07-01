@@ -20,7 +20,7 @@ Tests of Rt inference code using synthetically generated data for 100 days where
 Note that smoothing of values smears out the transitions +/- window_size/2 days
 """
 
-FAILURE_ERROR_FRACTION = 0.15
+FAILURE_ERROR_FRACTION = 0.2
 
 
 def test__cases_only_large_count_rising_falling_exponential():
@@ -122,7 +122,6 @@ def test__cases_only_small_count_late_rising_exponential():
 
     rt = df_all["Rt_MAP_composite"]
 
-    # Check expected values are within 10%
     # TODO remove adjustment here when incorporated in rt calculation
     assert (
         pytest.approx(rt[99] - 1.0, FAILURE_ERROR_FRACTION) == rt2 - 1.0
