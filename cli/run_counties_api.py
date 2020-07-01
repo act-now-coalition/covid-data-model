@@ -32,6 +32,7 @@ def deploy_counties_api(disable_validation, input_dir, output, summary_output):
             raise NotADirectoryError(directory)
 
     for intervention in list(Intervention):
+        api_pipeline.generate_area_summary_for_fips_intervention
         county_result = api_pipeline.run_projections(
             input_dir, AggregationLevel.COUNTY, intervention, run_validation=not disable_validation,
         )

@@ -39,24 +39,37 @@ def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, i
     us_latest = combined_datasets.build_us_latest_with_all_fields()
     us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
 
-    summary, timeseries = api_pipeline.build_summary_and_timeseries_for_fips(
-        nyc_fips, intervention, us_latest, us_timeseries, nyc_model_output_path.parent
+    timeseries = api_pipeline.build_timeseries_for_fips(
+        intervention, us_latest, us_timeseries, nyc_model_output_path.parent, nyc_fips
     )
 
     if intervention is Intervention.NO_INTERVENTION:
         # Test data does not contain no intervention model, should not output any results.
-        assert not summary
         assert not timeseries
         return
 
-    assert summary
     assert timeseries
 
     if intervention is Intervention.STRONG_INTERVENTION:
-        assert summary.projections
         assert timeseries.projections
         assert timeseries.timeseries
     elif intervention is Intervention.OBSERVED_INTERVENTION:
-        assert not summary.projections
         assert not timeseries.projections
         assert not timeseries.timeseries
+
+
+def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_path):
+    print(tmp_path)
+    us_latest = combined_datasets.build_us_latest_with_all_fields()
+    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+
+    nyc_latest = us_latest.get_subset(None, fips=nyc_fips)
+    nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
+    all_timeseries_api = api_pipeline.run_on_all_fips_for_intervention(
+        nyc_latest, nyc_timeseries, Intervention.STRONG_INTERVENTION, nyc_model_output_path.parent,
+    )
+
+    api_pipeline.deploy_single_level(
+        Intervention.STRONG_INTERVENTION, all_timeseries_api, tmp_path, tmp_path
+    )
+    assert 0

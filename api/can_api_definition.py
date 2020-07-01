@@ -187,9 +187,17 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
     )
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 
+    @property
+    def aggregate_level(self) -> AggregationLevel:
+        if len(self.fips) == 2:
+            return AggregationLevel.STATE
+
+        if len(self.fips) == 5:
+            return AggregationLevel.COUNTY
+
 
 class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
-    timeseries: List[CANPredictionTimeseriesRow] = pydantic.Field(...)
+    timeseries: Optional[List[CANPredictionTimeseriesRow]] = pydantic.Field(...)
     actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 
     @property
@@ -240,6 +248,31 @@ class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
 class CovidActNowBulkSummary(pydantic.BaseModel):
     __root__: List[CovidActNowAreaSummary] = pydantic.Field(...)
 
+    def output_key(self, intervention):
+        aggregate_level = self.__root__[0].aggregate_level
+        if aggregate_level is AggregationLevel.COUNTY:
+            return f"counties.{intervention.name}"
+        if aggregate_level is AggregationLevel.STATE:
+            return f"states.{intervention.name}"
+
 
 class CovidActNowBulkTimeseries(pydantic.BaseModel):
     __root__: List[CovidActNowAreaTimeseries] = pydantic.Field(...)
+
+    def output_key(self, intervention):
+        aggregate_level = self.__root__[0].aggregate_level
+        if aggregate_level is AggregationLevel.COUNTY:
+            return f"counties.{intervention.name}.timeseries"
+        if aggregate_level is AggregationLevel.STATE:
+            return f"states.{intervention.name}.timeseries"
+
+
+class CovidActNowBulkFlattenedTimeseries(pydantic.BaseModel):
+    __root__: List[PredictionTimeseriesRowWithHeader] = pydantic.Field(...)
+
+    def output_key(self, intervention):
+        aggregate_level = self.__root__[0].aggregate_level
+        if aggregate_level is AggregationLevel.COUNTY:
+            return f"counties.{intervention.name}"
+        if aggregate_level is AggregationLevel.STATE:
+            return f"states.{intervention.name}"

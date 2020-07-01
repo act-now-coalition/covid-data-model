@@ -34,10 +34,14 @@ PROD_BUCKET = "data.covidactnow.org"
     type=pathlib.Path,
 )
 @click.option(
-    "--summary-output", default="results/output", help="Output directory for state summaries.",
+    "--summary-output",
+    default="results/output",
+    help="Output directory for state summaries.",
+    type=pathlib.Path,
 )
 @click.option("--aggregation-level", "-l", type=AggregationLevel)
-def deploy_api(disable_validation, input_dir, output, summary_output, aggregation_level):
+@click.option("--state")
+def deploy_api(disable_validation, input_dir, output, summary_output, aggregation_level, state):
     """The entry function for invocation"""
 
     # check that the dirs exist before starting
@@ -45,9 +49,11 @@ def deploy_api(disable_validation, input_dir, output, summary_output, aggregatio
     #     if not os.path.isdir(directory):
     #         raise NotADirectoryError(directory)
 
-    us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(aggregation_level)
+    us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
+        aggregation_level, state=state
+    )
     us_timeseries = combined_datasets.build_us_timeseries_with_all_fields().get_subset(
-        aggregation_level
+        aggregation_level, state=state
     )
 
     for intervention in list(Intervention):
@@ -55,22 +61,18 @@ def deploy_api(disable_validation, input_dir, output, summary_output, aggregatio
             continue
 
         logger.info(f"Running intervention {intervention.name}")
-        api_processing_results = api_pipeline.run_on_all_fips_for_intervention(
+        all_timeseries = api_pipeline.run_on_all_fips_for_intervention(
             us_latest, us_timeseries, intervention, input_dir
         )
-
-        try:
-            all_summaries, all_timeseries = zip(*api_processing_results)
-        except Exception:
-            raise
-            # no results were found for intervention type, continuing
-            continue
-
-        all_summaries = [
-            api_pipeline.deploy_single_region(intervention, area_result, output)
-            for area_result in all_summaries
+        county_timeseries = [
+            output for output in all_timeseries if output.aggregate_level is AggregationLevel.COUNTY
         ]
-        all_timeseries = [
-            api_pipeline.deploy_single_region(intervention, area_result, output)
-            for area_result in all_timeseries
+        api_pipeline.deploy_single_level(
+            intervention, county_timeseries, summary_output, summary_output
+        )
+        state_timeseries = [
+            output for output in all_timeseries if output.aggregate_level is AggregationLevel.STATE
         ]
+        api_pipeline.deploy_single_level(
+            intervention, state_timeseries, summary_output, summary_output
+        )

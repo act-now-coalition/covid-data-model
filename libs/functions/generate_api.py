@@ -1,8 +1,11 @@
 from typing import Optional
 from datetime import datetime, timedelta
 from api.can_api_definition import (
+    CovidActNowBulkSummary,
     CovidActNowAreaSummary,
     CovidActNowAreaTimeseries,
+    CovidActNowBulkFlattenedTimeseries,
+    PredictionTimeseriesRowWithHeader,
     CANPredictionTimeseriesRow,
     CANActualsTimeseriesRow,
     _Projections,
@@ -132,6 +135,7 @@ def generate_area_summary(
         lat=latest_values.get(CommonFields.LATITUDE),
         long=latest_values.get(CommonFields.LONGITUDE),
         actuals=actuals,
+        # TODO(chris): change this to reflect latest time data updated?
         lastUpdatedDate=datetime.utcnow(),
         projections=projections,
     )
@@ -168,3 +172,31 @@ def generate_area_timeseries(
     return CovidActNowAreaTimeseries(
         **area_summary_data, timeseries=model_timeseries, actualsTimeseries=actuals_timeseries
     )
+
+
+def generate_bulk_flattened_timeseries(
+    bulk_timeseries: CovidActNowBulkSummary,
+) -> CovidActNowBulkFlattenedTimeseries:
+    rows = []
+    for area_timeseries in bulk_timeseries.__root__:
+        # Iterate through each state or county in data, adding summary data to each
+        # timeseries row.
+        summary_data = {
+            "countryName": area_timeseries.countryName,
+            "countyName": area_timeseries.countyName,
+            "stateName": area_timeseries.stateName,
+            "fips": area_timeseries.fips,
+            "lat": area_timeseries.lat,
+            "long": area_timeseries.long,
+            "intervention": area_timeseries.intervention.name,
+            # TODO(chris): change this to reflect latest time data updated?
+            "lastUpdatedDate": datetime.utcnow(),
+        }
+
+        for timeseries_data in area_timeseries.timeseries:
+            timeseries_row = PredictionTimeseriesRowWithHeader(
+                **summary_data, **timeseries_data.dict()
+            )
+            rows.append(timeseries_row)
+
+    return CovidActNowBulkFlattenedTimeseries(__root__=rows)

@@ -11,6 +11,7 @@ from api.can_api_definition import CovidActNowAreaSummary
 from api.can_api_definition import CovidActNowAreaTimeseries
 from api.can_api_definition import CovidActNowBulkSummary
 from api.can_api_definition import CovidActNowBulkTimeseries
+from api.can_api_definition import CovidActNowBulkFlattenedTimeseries
 from api.can_api_definition import PredictionTimeseriesRowWithHeader
 from libs.enums import Intervention
 from libs.datasets import CommonFields
@@ -37,23 +38,29 @@ def run_on_all_fips_for_intervention(
     pool: multiprocessing.Pool = None,
 ) -> Iterator[CovidActNowAreaTimeseries]:
     run_fips = functools.partial(
-        build_summary_and_timeseries_for_fips,
-        intervention,
-        latest_values,
-        timeseries,
-        model_output_dir,
+        build_timeseries_for_fips, intervention, latest_values, timeseries, model_output_dir,
     )
 
     pool = pool or multiprocessing.Pool()
     all_fips = latest_values.all_fips
-    all_fips = [fips for fips in all_fips if not (fips.startswith("90") or fips.startswith("800"))]
+    all_fips = [
+        fips
+        for fips in all_fips
+        if not (fips.startswith("90") or fips.startswith("800") or fips.startswith("99"))
+    ]
     results = pool.map(run_fips, all_fips)
-    for area_summary, area_timeseries in results:
-        if area_summary:
-            yield area_summary, area_timeseries
+    all_timeseries = []
+
+    for area_timeseries in results:
+        if not area_timeseries:
+            continue
+
+        all_timeseries.append(area_timeseries)
+
+    return all_timeseries
 
 
-def build_summary_and_timeseries_for_fips(
+def build_timeseries_for_fips(
     intervention, us_latest, us_timeseries, model_output_dir, fips,
 ) -> Tuple[Optional[CovidActNowAreaSummary], Optional[CovidActNowAreaTimeseries]]:
     model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
@@ -63,7 +70,7 @@ def build_summary_and_timeseries_for_fips(
         # All model output is currently tied to a specific intervention. However,
         # we want to generate results for areas that don't have a fit result, but we're not
         # duplicating non-model outputs.
-        return None, None
+        return None
 
     fips_latest = us_latest.get_record_for_fips(fips)
 
@@ -73,71 +80,34 @@ def build_summary_and_timeseries_for_fips(
         area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
     except Exception:
         logger.error(f"failed to run output", fips=fips)
-        return None, None
+        raise
+        return None
 
-    return area_summary, area_timeseries
-
-
-def build_api_output_for_intervention(
-    intervention: Intervention,
-    us_latest: LatestValuesDataset,
-    us_timeseries: TimeseriesDataset,
-    input_dir: pathlib.Path,
-):
-    logger.info(f"Building API output for intervention", intervention=intervention.name)
-
-    api_processing_results = api_pipeline.run_on_all_fips_for_intervention(
-        us_latest, us_timeseries, intervention, input_dir
-    )
-    if api_processing_results is None:
-        logger.warning("No results for intervention", intervention=intervention)
-
-    all_summaries, all_timeseries = zip(*api_processing_results)
-
-    all_summaries = [
-        api_pipeline.deploy_single_region(intervention, area_result, output)
-        for area_result in all_summaries
-    ]
-    all_timeseries = [
-        api_pipeline.deploy_single_region(intervention, area_result, output)
-        for area_result in all_timeseries
-    ]
-    bulk_summaries = CovidActNowBulkSummary(all_summaries)
-    bulk_timeseries = CovidActNowBulkSummary(all_timeseries)
+    return area_timeseries
 
 
-def remove_root_wrapper(obj: dict):
-    """Removes __root__ and replaces with __root__ value.
+def deploy_single_level(intervention, all_timeseries, summary_folder, region_folder):
+    if not all_timeseries:
+        return
+    all_summaries = []
+    for timeseries in all_timeseries:
+        area_summary = timeseries.area_summary
+        all_summaries.append(area_summary)
+        deploy_json_api_output(intervention, area_summary, region_folder)
+        deploy_json_api_output(intervention, timeseries, region_folder)
 
-    When pydantic models are used to wrap lists this is done using a property __root__.
-    When this is serialized using `model.json()`, it will return a json list. However,
-    calling `model.dict()` will return a dictionary with a single key `__root__`.
-    This function removes that __root__ key (and all sub pydantic models with a
-    similar structure) to have a similar hierarchy to the json output.
+    bulk_timeseries = CovidActNowBulkTimeseries(__root__=all_timeseries)
+    bulk_summaries = CovidActNowBulkSummary(__root__=all_summaries)
+    flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
 
-    A dictionary {"__root__": []} will return [].
-
-    Args:
-        obj: pydantic model as dict.
-
-    Returns: object with __root__ removed.
-    """
-    # Objects with __root__ should have it as the only key.
-    if len(obj) == 1 and "__root__" in obj:
-        return obj["__root__"]
-
-    results = {}
-    for key, value in obj.items():
-        if isinstance(value, dict):
-            value = remove_root_wrapper(value)
-
-        results[key] = value
-
-    return results
+    deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
+    deploy_json_api_output(intervention, bulk_summaries, summary_folder)
+    deploy_csv_api_output(intervention, bulk_summaries, summary_folder)
+    deploy_csv_api_output(intervention, flattened_timeseries, summary_folder)
 
 
-def deploy_single_region(
-    intervention: Intervention, area_result: CovidActNowAreaSummary, output_dir: pathlib.Path
+def deploy_json_api_output(
+    intervention: Intervention, area_result: pydantic.BaseModel, output_dir: pathlib.Path
 ):
     if not output_dir.exists():
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -145,6 +115,32 @@ def deploy_single_region(
     output_path = output_dir / (area_result.output_key(intervention) + ".json")
     output_path.write_text(area_result.json())
     return area_result
+
+
+def deploy_csv_api_output(
+    intervention: Intervention, api_output: pydantic.BaseModel, output_dir: pathlib.Path
+):
+    if not hasattr(api_output, "__root__"):
+        raise AssertionError("Missing root data")
+
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_path = output_dir / (api_output.output_key(intervention) + ".csv")
+    rows = dataset_deployer.remove_root_wrapper(api_output.dict())
+    dataset_deployer.write_nested_csv(rows, output_path)
+
+
+def deploy_bulk_summary(
+    intervention: Intervention, data: pydantic.BaseModel, output_dir: pathlib.Path, as_csv=False
+):
+
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_path = output_dir / (data.output_key(intervention) + ".json")
+    json_rows = dataset_deployer.remove_root_wrapper(data.json())
+    output_path.write_text(area_result.json())
 
 
 # def deploy_results(results: List[APIOutput], output: str, write_csv=False):
