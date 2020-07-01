@@ -8,6 +8,7 @@ from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import data_source
 from libs.datasets.common_fields import CommonIndexFields
+from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 
 _logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ def match_county_to_fips(data, fips_data, county_key="county", state_key="state"
                 break
 
         if not match and state == "VI":
-            matched[key] = enums.UNKNOWN_FIPS
+            matched[key] = ABBREV_US_UNKNOWN_COUNTY_FIPS[state]
         elif not match:
             _logger.warning(f"Could not match {key}")
             if not counties_by_state[state]:
@@ -151,7 +152,7 @@ class DHBeds(data_source.DataSource):
         # Backfilling FIPS data based on county names.
         fips_data = dataset_utils.build_fips_data_frame()
         fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
-        fips_data = fips_data[fips_data.fips != "99999"]
+        fips_data = fips_data[fips_data.fips != enums.UNKNOWN_FIPS]
         data = match_county_to_fips(data, fips_data)
 
         data[cls.Fields.MAX_BED_COUNT] = data[
