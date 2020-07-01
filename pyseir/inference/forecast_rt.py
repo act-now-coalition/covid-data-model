@@ -28,7 +28,8 @@ class ForecastRt:
     """
 
     def __init__(self, df_all):
-        self.df_all
+        log.info("init!")
+        self.df_all = df_all
         self.ref_date = datetime(year=2020, month=1, day=1)
 
         # Variable Names
@@ -55,8 +56,20 @@ class ForecastRt:
         self.dropout = 0.01
         self.patience = 50
         self.validation_split = 0.1
+        log.info("DONE INIT")
 
-    def forecast_rt(self, df_all):
+    @classmethod
+    def run_forecast(cls, df_all):
+        try:
+            log.info("CREATE CLASS")
+            engine = cls(df_all)
+            log.info("created class")
+            return engine.forecast_rt()
+        except Exception:
+            logging.exception("forecast")
+            return None
+
+    def forecast_rt(self):
         logging.info("starting")
         """
         predict r_t for 14 days into the future
@@ -72,9 +85,13 @@ class ForecastRt:
         dates and forecast r_t values
 
         """
-        logging.info("beginning forecast")
+        log.info("beginning forecast")
 
         # Convert dates to what day of 2020 it corresponds to for Forecast
+        log.info("saving dfall")
+        log.info(self.df_all)
+        df_all = self.df_all
+        log.info(df_all)
 
         df_all[self.sim_date_name] = (
             df_all.index - self.ref_date

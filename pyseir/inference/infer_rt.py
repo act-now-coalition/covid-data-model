@@ -16,6 +16,7 @@ from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_thr
 from structlog import configure
 from enum import Enum
 from pyseir.inference.infer_utils import LagMonitor
+from pyseir.inference.forecast_rt import ForecastRt
 
 
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
@@ -577,14 +578,14 @@ class RtInferenceEngine:
 
             # Monitors if posterior is lagging excessively behind signal in likelihood
             # TODO future can return cumulative lag and use to scale sigma up only when needed
-            monitor.evaluate_lag_using_argmaxes(
-                current_day,
-                current_sigma,
-                posteriors[previous_day].argmax(),
-                current_prior.argmax(),
-                likelihoods[current_day].argmax(),
-                numerator.argmax(),
-            )
+            # monitor.evaluate_lag_using_argmaxes(
+            #    current_day,
+            #    current_sigma,
+            #    posteriors[previous_day].argmax(),
+            #    current_prior.argmax(),
+            #    likelihoods[current_day].argmax(),
+            #    numerator.argmax(),
+            # )
 
             # Add to the running sum of log likelihoods
             log_likelihood += np.log(denominator)
@@ -889,7 +890,12 @@ class RtInferenceEngine:
             logging.warning("Inference not possible for fips: %s", self.fips)
 
         df_all["state"] = self.display_name
+        df_all["fips"] = self.fips
         df_all.to_csv("df_all_" + self.display_name + ".csv")
+
+        log.info("run forecast")
+        # ForecastRt.run_forecast(df_all)
+        log.info("done running forecast")
         return df_all
 
     @staticmethod
