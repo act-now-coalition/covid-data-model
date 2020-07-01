@@ -51,8 +51,8 @@ class ForecastRt:
         self.predict_days = 3
         self.train_size = 0.8
         self.n_batch = 1
-        self.n_epochs = 1
-        self.n_hidden_dimensions = 100
+        self.n_epochs = 2
+        self.n_hidden_layer_dimensions = 100
         self.dropout = 0.01
         self.patience = 50
         self.validation_split = 0.1
@@ -99,7 +99,7 @@ class ForecastRt:
 
         df_forecast = df_all[self.forecast_variables].copy()
 
-        # Fill empty values with zero
+        # Fill empty values with mask value
         df_forecast.replace(r"\s+", self.mask_value, regex=True).replace("", self.mask_value)
         df_forecast.replace(np.nan, self.mask_value, regex=True).replace(np.nan, self.mask_value)
 
@@ -159,26 +159,25 @@ class ForecastRt:
         logging.info(dates)
         """
 
-        exit()
         forecasts_train = list()
         dates_train = list()
         for i, j, k in zip(train_X, train_Y, train_df_list):
             # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
-            i = i.reshape(n_batch, i.shape[0], i.shape[1])
+            i = i.reshape(self.n_batch, i.shape[0], i.shape[1])
             scaled_df = pd.DataFrame(np.squeeze(i))
-            thisforecast = scalers_dict[PREDICT_VARIABLE].inverse_transform(
-                model.predict(i, batch_size=n_batch)
+            thisforecast = scalers_dict[self.predict_variable].inverse_transform(
+                model.predict(i, batch_size=self.n_batch)
             )
             forecasts_train.append(thisforecast)
 
             last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
 
             unscaled_first_test_day = (
-                int(scalers_dict[SIM_DATE_NAME].inverse_transform(last_train_day)) + 1
+                int(scalers_dict[self.sim_date_name].inverse_transform(last_train_day)) + 1
             )
 
             predicted_days = np.arange(
-                unscaled_first_test_day, unscaled_first_test_day + PREDICT_DAYS
+                unscaled_first_test_day, unscaled_first_test_day + self.predict_days
             )
             dates_train.append(predicted_days)
 
@@ -186,21 +185,21 @@ class ForecastRt:
         dates_test = list()
         for i, j, k in zip(test_X, test_Y, test_df_list):
             # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
-            i = i.reshape(n_batch, i.shape[0], i.shape[1])
+            i = i.reshape(self.n_batch, i.shape[0], i.shape[1])
             scaled_df = pd.DataFrame(np.squeeze(i))
-            thisforecast = scalers_dict[PREDICT_VARIABLE].inverse_transform(
-                model.predict(i, batch_size=n_batch)
+            thisforecast = scalers_dict[self.predict_variable].inverse_transform(
+                model.predict(i, batch_size=self.n_batch)
             )
             forecasts_test.append(thisforecast)
 
             last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
 
             unscaled_first_test_day = (
-                int(scalers_dict[SIM_DATE_NAME].inverse_transform(last_train_day)) + 1
+                int(scalers_dict[self.sim_date_name].inverse_transform(last_train_day)) + 1
             )
 
             predicted_days = np.arange(
-                unscaled_first_test_day, unscaled_first_test_day + PREDICT_DAYS
+                unscaled_first_test_day, unscaled_first_test_day + self.predict_days
             )
             dates_test.append(predicted_days)
 
@@ -246,14 +245,14 @@ class ForecastRt:
         # full_data = test_df_list[-1]
         full_data = df_forecast
         plt.plot(
-            full_data[SIM_DATE_NAME],
-            full_data[PREDICT_VARIABLE],
+            full_data[self.sim_date_name],
+            full_data[self.predict_variable],
             linewidth=LINEWIDTH,
             markersize=1,
             label="Data",
         )
-        plt.xlabel(SIM_DATE_NAME)
-        plt.ylabel(PREDICT_VARIABLE)
+        plt.xlabel(self.sim_date_name)
+        plt.ylabel(self.predict_variable)
         plt.legend()
 
         plt.savefig("train_plot.pdf")
@@ -289,7 +288,7 @@ class ForecastRt:
         model = Sequential()
         model.add(
             Masking(
-                mask_value=self.MASK_VALUE,
+                mask_value=self.mask_value,
                 batch_input_shape=(self.n_batch, final_train_X.shape[1], final_train_X.shape[2]),
             )
         )
@@ -315,7 +314,7 @@ class ForecastRt:
         history = model.fit(
             final_train_X,
             final_train_Y,
-            epochs=self.epochs,
+            epochs=self.n_epochs,
             batch_size=self.n_batch,
             verbose=1,
             shuffle=False,
