@@ -1,6 +1,6 @@
 import pandas as pd
 import structlog
-from pyseir.inference import infer_rt
+from pyseir.rt import infer_rt
 
 
 def test_replace_outliers_on_last_day():

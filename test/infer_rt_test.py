@@ -1,7 +1,6 @@
-import numpy as np
 import pytest
 
-from pyseir.inference.infer_rt import RtInferenceEngine
+from pyseir.rt.infer_rt import RtInferenceEngine
 from test.mocks.inference.pyseir_default_parameters import pyseir_default_parameters
 from test.mocks.inference.load_data import (
     initializeStateDataGenerator,

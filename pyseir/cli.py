@@ -7,12 +7,11 @@ import logging
 import pandas as pd
 from covidactnow.datapublic import common_init
 
-from structlog_sentry import SentryProcessor
 from multiprocessing import Pool
 from functools import partial
 from libs.datasets import dataset_cache
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
-from pyseir.inference import infer_rt as infer_rt_module
+from pyseir.rt import infer_rt as infer_rt_module
 from pyseir.ensembles import ensemble_runner
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
