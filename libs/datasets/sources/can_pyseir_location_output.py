@@ -14,14 +14,23 @@ def get_can_projection_path(input_dir, fips, intervention) -> pathlib.Path:
     return file_path
 
 
+def _calculate_shortfall(beds: pd.Series, hospitalized: pd.Series) -> pd.Series:
+    shortfall = hospitalized - beds
+    shortfall[shortfall > 0] = 0
+    return shortfall.abs()
+
+
 class CANPyseirLocationOutput(object):
     def __init__(self, data):
-        self.fips = data[schema.FIPS].iloc[0]
         data = data.reset_index(drop=True)
+
+        self.fips = data[schema.FIPS].iloc[0]
         self.data = data
         self.intervention = Intervention(data[schema.INTERVENTION].iloc[0])
 
-        self.data["short_fall"] = self.data[schema.BEDS] - self.data[schema.ALL_HOSPITALIZED]
+        self.data["short_fall"] = _calculate_shortfall(
+            self.data[schema.ALL_HOSPITALIZED], self.data[schema.BEDS]
+        )
 
     @classmethod
     def load_from_path(cls, path):
@@ -44,16 +53,16 @@ class CANPyseirLocationOutput(object):
 
     @property
     def hospitals_shortfall_date(self) -> Optional[datetime.datetime]:
-        is_short_fall = self.data["short_fall"] < 0
-
-        if not sum(is_short_fall):
+        if not self.peak_hospitalizations_shortfall:
             return None
-        return self.data.loc[is_short_fall, schema.DATE].iloc[0]
+
+        shortfall = self.data["short_fall"]
+        return self.data.loc[shortfall.idxmax()].date.to_pydatetime()
 
     @property
     def peak_hospitalizations_shortfall(self):
         # Need to predict this.
-        return self.data.iloc[self.data[schema.ALL_HOSPITALIZED].idxmax()].short_fall or 0
+        return self.data["short_fall"].max()
 
     @property
     def latest_rt(self) -> float:

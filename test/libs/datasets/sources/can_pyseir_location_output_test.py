@@ -50,7 +50,7 @@ def test_shortfall():
     data = _build_input_df(rows)
     model_output = CANPyseirLocationOutput(data)
     # Check that it picks first date of max.
-    expected_date = datetime.date.fromisoformat("2020-12-14")
+    expected_date = datetime.datetime.fromisoformat("2020-12-14")
     assert model_output.hospitals_shortfall_date == expected_date
 
     # No shortfall
@@ -69,5 +69,7 @@ def test_load_from_path(nyc_model_output_path):
     output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
     assert output.fips == "36061"
     assert output.intervention == Intervention.STRONG_INTERVENTION
+    # manually checked values
     assert output.peak_hospitalizations_date == datetime.datetime(2020, 4, 15)
-    assert 0
+    assert not output.hospitals_shortfall_date
+    assert output.latest_rt == pytest.approx(1.238822)
