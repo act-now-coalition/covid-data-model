@@ -13,7 +13,7 @@ import us
 from pyseir.load_data import load_county_metadata, get_all_fips_codes_for_a_state
 from pyseir.utils import AggregationLevel, TimeseriesType, get_run_artifact_path, RunArtifact
 from pyseir.rt.constants import InferRtConstants
-from pyseir.rt import rt_plotting, utils
+from pyseir.rt import plotting, utils
 
 rt_log = structlog.get_logger(__name__)
 
@@ -228,7 +228,7 @@ class RtInferenceEngine:
 
         # Only plot counts and smoothed timeseries for cases
         if plot and timeseries_type == TimeseriesType.NEW_CASES and len(smoothed) > 0:
-            fig = rt_plotting.plot_smoothing(
+            fig = plotting.plot_smoothing(
                 x=dates,
                 original=timeseries.loc[smoothed.index],
                 processed=smoothed,
@@ -468,7 +468,7 @@ class RtInferenceEngine:
         self.log_likelihood = log_likelihood
 
         if plot:
-            rt_plotting.plot_posteriors(x=posteriors)  # Returns Figure.
+            plotting.plot_posteriors(x=posteriors)  # Returns Figure.
             # The interpreter will handle this as it sees fit. Normal builds never call plot flag.
 
         start_idx = -len(posteriors.columns)
@@ -655,7 +655,7 @@ class RtInferenceEngine:
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
         if plot:
-            fig = rt_plotting.plot_rt(
+            fig = plotting.plot_rt(
                 df=df_all,
                 include_deaths=self.include_deaths,
                 shift_deaths=shift_deaths,

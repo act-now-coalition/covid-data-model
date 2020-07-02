@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import structlog
-from pyseir.rt import infer_rt
+from pyseir.rt import utils
 
 from pyseir.rt.infer_rt import RtInferenceEngine
 from test.mocks.inference.load_data import (
@@ -15,7 +15,7 @@ from test.mocks.inference.load_data import (
 def test_replace_outliers_on_last_day():
     x = pd.Series([10, 10, 10, 500], [0, 1, 2, 3])
 
-    results = infer_rt.replace_outliers(x, structlog.getLogger(), local_lookback_window=3)
+    results = utils.replace_outliers(x, structlog.getLogger(), local_lookback_window=3)
 
     expected = pd.Series([10, 10, 10, 10], [0, 1, 2, 3])
     pd.testing.assert_series_equal(results, expected)

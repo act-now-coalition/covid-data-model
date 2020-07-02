@@ -1,6 +1,10 @@
 import logging
 
-log = logging.getLogger(__name__)
+import numpy as np
+
+from pyseir.rt.constants import InferRtConstants
+
+utils_log = logging.getLogger(__name__)
 
 
 class LagMonitor:
@@ -49,7 +53,10 @@ class LagMonitor:
         if self.debug:
             ind = "ok" if noLag else "LAGGING"
             print(
-                "day {d} {ind}... prior = {pr}, likelihood drive {dd} -> update {up} (remaining lag = {lag} vs {cmp}) yielding posterior = {po}".format(
+                (
+                    "day {d} {ind}... prior = {pr}, likelihood drive {dd} -> update {up} (remaining "
+                    "lag = {lag} vs {cmp}) yielding posterior = {po}"
+                ).format(
                     d=current_day,
                     pr=p_po_am,
                     dd=driving_likelihood,
@@ -63,8 +70,11 @@ class LagMonitor:
         if noLag:  # End of lagging sequence of days
             if len(self.lag_days_running) >= self.days_threshold:  # Need 3 days running to warn
                 length = len(self.lag_days_running)
-                log.info(
-                    "Reff lagged likelihood (max = %.2f, mean = %.2f) with sigma %.3f for %d days (from %d to %d)"
+                utils_log.info(
+                    (
+                        "Reff lagged likelihood (max = %.2f, mean = %.2f) with sigma %.3f for %d days"
+                        "(from %d to %d)"
+                    )
                     % (
                         0.02 * self.max_lag,
                         0.02 * self.total_lag / length,

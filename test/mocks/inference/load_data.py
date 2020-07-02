@@ -4,16 +4,12 @@ from collections import namedtuple
 from enum import Enum
 
 from pyseir.load_data import HospitalizationDataType
-from test.mocks.inference.pyseir_default_parameters import pyseir_default_parameters
+from pyseir.rt.constants import InferRtConstants
 
 """
 This module stubs out pyseir.load_data for testing purposes. It returns special data examples
 for specific tests. Different state names will be used to control this.
 """
-
-SERIAL_PERIOD = (
-    1 / pyseir_default_parameters["sigma"] + 0.5 * 1 / pyseir_default_parameters["delta"]
-)
 
 
 class DataGeneratorType(Enum):
@@ -54,7 +50,7 @@ class DataGenerator:
             if change is None:
                 continue
             if self.generator_type == DataGeneratorType.EXP:
-                self.rate_at[change.t0] = (change.reff - 1.0) / SERIAL_PERIOD
+                self.rate_at[change.t0] = (change.reff - 1.0) / InferRtConstants.SERIAL_PERIOD
             else:
                 self.rate_at[change.t0] = change.reff
 

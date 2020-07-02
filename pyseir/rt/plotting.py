@@ -5,7 +5,7 @@ from datetime import timedelta
 def plot_smoothing(x, original, processed, timeseries_type) -> plt.Figure:
     """
     """
-    fig, ax = plt.subplot(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     ax.scatter(
         x[-len(original) :],
         original,
@@ -23,7 +23,7 @@ def plot_smoothing(x, original, processed, timeseries_type) -> plt.Figure:
 def plot_posteriors(x) -> plt.Figure:
     """
     """
-    fig, ax = plt.subplot(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(12, 8))
     ax.plot(x, alpha=0.1, color="k")
     plt.grid(alpha=0.4)
     plt.xlabel("$R_t$", fontsize=16)
@@ -33,7 +33,7 @@ def plot_posteriors(x) -> plt.Figure:
 
 def plot_rt(df, include_deaths, shift_deaths, display_name) -> plt.Figure:
     """"""
-    fig, ax = plt.subplot(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
 
     if "Rt_ci5__new_deaths" in df:
         if include_deaths:
