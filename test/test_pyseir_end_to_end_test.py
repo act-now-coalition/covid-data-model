@@ -23,10 +23,10 @@ def test_pyseir_end_to_end():
     assert path.exists()
     output = CANPyseirLocationOutput.load_from_path(path)
     data = output.data
-    assert (data[schema.RT_INDICATOR].astype(float) > 0).any()
-    assert (
-        data.loc[data[schema.RT_INDICATOR].astype(float).notnull(), rt_col].astype(float) < 6
-    ).all()
+    with_values = data[schema.RT_INDICATOR].dropna()
+    assert len(with_values) > 10
+    assert (with_values > 0).all()
+    assert (with_values < 6).all()
 
 
 @pytest.mark.parametrize("fips,expected_results", [(None, True), ("16013", True), ("26013", False)])
