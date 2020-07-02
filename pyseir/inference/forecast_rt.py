@@ -44,9 +44,9 @@ class ForecastRt:
         self.scaled_variable_suffix = "_scaled"
 
         # Seq2Seq Parameters
-        self.sequence_length = 5
         self.mask_value = -10
         self.min_number_of_days = 30
+        self.sequence_length = 30
         self.sample_train_length = 30  # Set to -1 to use all historical data
         self.predict_days = 3
         self.train_size = 0.8
@@ -66,7 +66,7 @@ class ForecastRt:
             log.info("created class")
             return engine.forecast_rt()
         except Exception:
-            logging.exception("forecast")
+            logging.exception("forecast failed : ( something unintended occured")
             return None
 
     def forecast_rt(self):
@@ -165,7 +165,7 @@ class ForecastRt:
         logging.info("built model")
 
         # Plot predictions for test and train sets
-
+        log.info("TRAIN FORECASTS")
         forecasts_train, dates_train = self.get_forecasts(
             train_X, train_Y, train_df_list, scalers_dict, model
         )
@@ -173,6 +173,7 @@ class ForecastRt:
         # log.info(forecasts_train)
         # log.info('train dates')
         # log.info(dates_train)
+        log.info("TEST FORECASTS")
         forecasts_test, dates_test = self.get_forecasts(
             test_X, test_Y, test_df_list, scalers_dict, model
         )
@@ -185,15 +186,16 @@ class ForecastRt:
             newdates = dates_train[n]
             # newdates = convert_to_2020_date(i,args)
             j = np.squeeze(forecasts_train[n])
+            log.info("dates")
+            log.info(newdates)
+            log.info(j)
             if n == 0:
                 plt.plot(
                     newdates, j, color="blue", label="Train Set", linewidth=LINEWIDTH, markersize=0
                 )
             else:
                 plt.plot(newdates, j, color="blue", linewidth=LINEWIDTH, markersize=0)
-            log.info("dates")
-            log.info(newdates)
-            log.info(j)
+
             logging.info("plotted TRAIN")
 
         log.info("TEST___________")
@@ -242,14 +244,23 @@ class ForecastRt:
             forecasts.append(thisforecast)
 
             last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
+            log.info(f"last train day: {last_train_day}")
 
-            unscaled_first_test_day = (
-                int(scalers_dict[self.sim_date_name].inverse_transform(last_train_day)) + 1
+            unscaled_last_train_day = scalers_dict[self.sim_date_name].inverse_transform(
+                last_train_day
             )
 
-            predicted_days = np.arange(
-                unscaled_first_test_day, unscaled_first_test_day + self.predict_days
+            unscaled_first_test_day = unscaled_last_train_day + 1
+            unscaled_last_test_day = int(unscaled_first_test_day) + self.predict_days - 1
+            # TODO not putting int here creates weird issues that are possibly worth later investigation
+
+            log.info(
+                f"unscaled_last_train_day: {unscaled_last_train_day} first test day: {unscaled_first_test_day} last_predict_day: {unscaled_last_test_day}"
             )
+
+            predicted_days = np.arange(unscaled_first_test_day, unscaled_last_test_day + 1.0)
+            log.info("predict days")
+            log.info(predicted_days)
             dates.append(predicted_days)
         return forecasts, dates
 
