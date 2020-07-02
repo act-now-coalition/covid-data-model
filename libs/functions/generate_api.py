@@ -12,7 +12,6 @@ from api.can_api_definition import (
     _Actuals,
     _ResourceUsageProjection,
 )
-from libs.constants import NULL_VALUE
 from libs.datasets import results_schema as rc
 from libs.datasets.common_fields import CommonFields
 from libs.datasets import combined_datasets

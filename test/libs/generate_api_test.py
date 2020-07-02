@@ -87,10 +87,10 @@ def test_generate_timeseries_for_fips(include_projections, nyc_model_output_path
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
     nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
     intervention = Intervention.OBSERVED_INTERVENTION
+    model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
 
-    area_summary = generate_api.generate_area_summary(intervention, nyc_latest, None)
-    area_timeseries = generate_api.generate_area_timeseries(area_summary, nyc_timeseries, None)
+    area_summary = generate_api.generate_area_summary(intervention, nyc_latest, model_output)
+    area_timeseries = generate_api.generate_area_timeseries(area_summary, nyc_timeseries, model_output)
 
-    print(area_timeseries.actualsTimeseries[-1].dict())
-
-    assert 0
+    summary = generate_api.generate_area_summary(intervention, nyc_latest, model_output)
+    assert summary.dict() == area_timeseries.area_summary.dict()

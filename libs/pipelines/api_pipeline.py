@@ -62,7 +62,7 @@ def run_on_all_fips_for_intervention(
 
 def build_timeseries_for_fips(
     intervention, us_latest, us_timeseries, model_output_dir, fips,
-) -> Tuple[Optional[CovidActNowAreaSummary], Optional[CovidActNowAreaTimeseries]]:
+) -> Optional[CovidActNowAreaTimeseries]:
     model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
         fips, intervention, model_output_dir
     )
@@ -80,7 +80,6 @@ def build_timeseries_for_fips(
         area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
     except Exception:
         logger.error(f"failed to run output", fips=fips)
-        raise
         return None
 
     return area_timeseries
@@ -141,67 +140,3 @@ def deploy_bulk_summary(
     output_path = output_dir / (data.output_key(intervention) + ".json")
     json_rows = dataset_deployer.remove_root_wrapper(data.json())
     output_path.write_text(area_result.json())
-
-
-# def deploy_results(results: List[APIOutput], output: str, write_csv=False):
-#     """Deploys results from the top counties to specified output directory.
-
-#     Args:
-#         result: Top Counties Pipeline result.
-#         key: Name for the file to be uploaded
-#         output: output folder to save results in.
-#     """
-#     output_path = pathlib.Path(output)
-#     if not output_path.exists():
-#         output_path.mkdir(parents=True, exist_ok=True)
-
-#     for api_row in results:
-#         data = remove_root_wrapper(api_row.data.dict())
-#         # Encoding approach based on Pydantic's implementation of .json():
-#         # https://github.com/samuelcolvin/pydantic/pull/210/files
-#         # `json` isn't in `pydantic/__init__py` which I think means it doesn't intend to export
-#         # it. We use it anyway and pylint started complaining.
-#         # pylint: disable=no-member
-#         data_as_json = simplejson.dumps(
-#             data, ignore_nan=True, default=pydantic.json.pydantic_encoder
-#         )
-#         dataset_deployer.upload_json(api_row.file_stem, data_as_json, output)
-#         if write_csv:
-#             if not isinstance(data, list):
-#                 raise ValueError("Cannot find list data for csv export.")
-#             dataset_deployer.write_nested_csv(data, api_row.file_stem, output)
-
-
-# def build_prediction_header_timeseries_data(data: APIOutput):
-
-#     rows = []
-#     api_data = data.data
-#     # Iterate through each state or county in data, adding summary data to each
-#     # timeseries row.
-#     for row in api_data.__root__:
-#         county_name = None
-#         if isinstance(row, CovidActNowCountyTimeseries):
-#             county_name = row.countyName
-
-#         summary_data = {
-#             "countryName": row.countryName,
-#             "countyName": county_name,
-#             "stateName": row.stateName,
-#             "fips": row.fips,
-#             "lat": row.lat,
-#             "long": row.long,
-#             "intervention": data.intervention.name,
-#             "lastUpdatedDate": row.lastUpdatedDate,
-#         }
-
-#         for timeseries_data in row.timeseries:
-#             timeseries_row = PredictionTimeseriesRowWithHeader(
-#                 **summary_data, **timeseries_data.dict()
-#             )
-#             rows.append(timeseries_row)
-
-#     return APIOutput(data.file_stem, rows, data.intervention)
-
-
-# def deploy_prediction_timeseries_csvs(data: APIOutput, output):
-#     dataset_deployer.write_nested_csv([row.dict() for row in data.data], data.file_stem, output)
