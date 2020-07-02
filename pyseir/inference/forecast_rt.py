@@ -44,10 +44,10 @@ class ForecastRt:
         self.scaled_variable_suffix = "_scaled"
 
         # Seq2Seq Parameters
-        self.sequence_length = 300
+        self.sequence_length = 5
         self.mask_value = -10
         self.min_number_of_days = 30
-        self.sample_train_length = -1  # Set to -1 to use all historical data
+        self.sample_train_length = 30  # Set to -1 to use all historical data
         self.predict_days = 3
         self.train_size = 0.8
         self.n_batch = 1
@@ -92,6 +92,8 @@ class ForecastRt:
         log.info(self.df_all)
         df_all = self.df_all
         log.info(df_all)
+        log.info("STATE NAME")
+        state_name = df_all["state"][0]
 
         df_all[self.sim_date_name] = (
             df_all.index - self.ref_date
@@ -117,6 +119,10 @@ class ForecastRt:
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
 
         train_X, train_Y, train_df_list = self.get_scaled_X_Y(train_samples, scalers_dict)
+        log.info("TRAIN X")
+        log.info(train_X)
+        log.info("TRAIN Y")
+        log.info(train_Y)
         test_X, test_Y, test_df_list = self.get_scaled_X_Y(test_samples, scalers_dict)
 
         log.info(f"train samples: {len(train_X)} {len(train_df_list)}")
@@ -163,6 +169,10 @@ class ForecastRt:
         forecasts_train, dates_train = self.get_forecasts(
             train_X, train_Y, train_df_list, scalers_dict, model
         )
+        # log.info('train forecasts')
+        # log.info(forecasts_train)
+        # log.info('train dates')
+        # log.info(dates_train)
         forecasts_test, dates_test = self.get_forecasts(
             test_X, test_Y, test_df_list, scalers_dict, model
         )
@@ -172,23 +182,27 @@ class ForecastRt:
         # plot training predictions
         for n in range(len(dates_train)):
             i = dates_train[n]
-            j = np.squeeze(forecasts_train[n])
-            # newdates = convert_to_2020_date(i,args)
             newdates = dates_train[n]
+            # newdates = convert_to_2020_date(i,args)
+            j = np.squeeze(forecasts_train[n])
             if n == 0:
                 plt.plot(
                     newdates, j, color="blue", label="Train Set", linewidth=LINEWIDTH, markersize=0
                 )
             else:
                 plt.plot(newdates, j, color="blue", linewidth=LINEWIDTH, markersize=0)
+            log.info("dates")
+            log.info(newdates)
+            log.info(j)
             logging.info("plotted TRAIN")
 
+        log.info("TEST___________")
         for n in range(len(dates_test)):
             i = dates_test[n]
-            j = np.squeeze(forecasts_test[n])
-            # newdates = convert_to_2020_date(i,args)
             newdates = dates_test[n]
-            logging.info(i)
+            # newdates = convert_to_2020_date(i,args)
+            j = np.squeeze(forecasts_test[n])
+
             logging.info(j)
             logging.info(newdates)
             logging.info("got inputs for plotting")
@@ -211,8 +225,8 @@ class ForecastRt:
         plt.xlabel(self.sim_date_name)
         plt.ylabel(self.predict_variable)
         plt.legend()
-
-        plt.savefig("train_plot.pdf")
+        plt.title(state_name + ": epochs: " + str(self.n_epochs))
+        plt.savefig("train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf")
 
         return
 
