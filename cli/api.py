@@ -56,11 +56,17 @@ def update_schemas(output_dir):
     type=pathlib.Path,
 )
 @click.option(
-    "--summary-output", default="results/output", help="Output directory for state summaries.", type=pathlib.Path
+    "--summary-output",
+    default="results/output",
+    help="Output directory for state summaries.",
+    type=pathlib.Path,
 )
 @click.option("--aggregation-level", "-l", type=AggregationLevel)
 @click.option("--state")
-def generate_api(disable_validation, input_dir, output, summary_output, aggregation_level, state):
+@click.option("--fips")
+def generate_api(
+    disable_validation, input_dir, output, summary_output, aggregation_level, state, fips
+):
     """The entry function for invocation"""
 
     # check that the dirs exist before starting
@@ -68,15 +74,14 @@ def generate_api(disable_validation, input_dir, output, summary_output, aggregat
     #     if not os.path.isdir(directory):
     #         raise NotADirectoryError(directory)
 
-    us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(aggregation_level, state=state)
+    us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
+        aggregation_level, state=state, fips=fips
+    )
     us_timeseries = combined_datasets.build_us_timeseries_with_all_fields().get_subset(
-        aggregation_level, state=state
+        aggregation_level, state=state, fips=fips
     )
 
     for intervention in list(Intervention):
-        # if intervention is not Intervention.OBSERVED_INTERVENTION:
-        #     continue
-
         _logger.info(f"Running intervention {intervention.name}")
         all_timeseries = api_pipeline.run_on_all_fips_for_intervention(
             us_latest, us_timeseries, intervention, input_dir
@@ -84,11 +89,15 @@ def generate_api(disable_validation, input_dir, output, summary_output, aggregat
         county_timeseries = [
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.COUNTY
         ]
-        api_pipeline.deploy_single_level(intervention, county_timeseries, summary_output, summary_output)
+        api_pipeline.deploy_single_level(
+            intervention, county_timeseries, summary_output, summary_output
+        )
         state_timeseries = [
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.STATE
         ]
-        api_pipeline.deploy_single_level(intervention, state_timeseries, summary_output, summary_output)
+        api_pipeline.deploy_single_level(
+            intervention, state_timeseries, summary_output, summary_output
+        )
 
 
 @main.command("generate-top-counties")

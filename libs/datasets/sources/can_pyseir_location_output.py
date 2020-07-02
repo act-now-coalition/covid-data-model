@@ -17,6 +17,7 @@ def get_can_projection_path(input_dir, fips, intervention) -> pathlib.Path:
 class CANPyseirLocationOutput(object):
     def __init__(self, data):
         self.fips = data[schema.FIPS].iloc[0]
+        data = data.reset_index(drop=True)
         self.data = data
         self.intervention = Intervention(data[schema.INTERVENTION].iloc[0])
 

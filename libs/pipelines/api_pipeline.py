@@ -16,7 +16,6 @@ from api.can_api_definition import PredictionTimeseriesRowWithHeader
 from libs.enums import Intervention
 from libs.datasets import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
-from libs import validate_results
 from libs import dataset_deployer
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets import combined_datasets
@@ -80,6 +79,7 @@ def build_timeseries_for_fips(
         area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
     except Exception:
         logger.error(f"failed to run output", fips=fips)
+        raise
         return None
 
     return area_timeseries
