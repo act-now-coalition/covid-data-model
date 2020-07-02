@@ -1,11 +1,8 @@
-import math
-import numpy as np
 import logging
-import pandas as pd
 
 log = logging.getLogger(__name__)
 
-# @Brett phase 1 you definitely want this. It could be cleaned up more later.
+
 class LagMonitor:
     """
     Monitors lag in posterior relative to driving likelihood as Bayesian update is repeatedly
@@ -93,3 +90,79 @@ class LagMonitor:
             if abs(lag_after_update) > abs(self.max_lag):
                 self.max_lag = lag_after_update
         self.last_lag = lag_after_update
+
+
+def replace_outliers(
+    x,
+    log,
+    local_lookback_window=InferRtConstants.LOCAL_LOOKBACK_WINDOW,
+    z_threshold=InferRtConstants.Z_THRESHOLD,
+    min_mean_to_consider=InferRtConstants.MIN_MEAN_TO_CONSIDER,
+):
+    """
+    Take a pandas.Series, apply an outlier filter, and return a pandas.Series.
+
+    This outlier detector looks at the z score of the current value compared to the mean and std
+    derived from the previous N samples, where N is the local_lookback_window.
+
+    For points where the z score is greater than z_threshold, a check is made to make sure the mean
+    of the last N samples is at least min_mean_to_consider. This makes sure we don't filter on the
+    initial case where values go from all zeros to a one. If that threshold is met, the value is
+    then replaced with the linear interpolation between the two nearest neighbors.
+
+
+    Parameters
+    ----------
+    x
+        Input pandas.Series with the values to analyze
+    log
+        Logger instance
+    local_lookback_window
+        The length of the rolling window to look back and calculate the mean and std to baseline the
+        z score. NB: We require the window to be full before returning any result.
+    z_threshold
+        The minimum z score needed to trigger the replacement
+    min_mean_to_consider
+        Threshold to skip low n cases, especially the degenerate case where a long list of zeros
+        becomes a 1. This requires that the rolling mean of previous values must be greater than
+        or equal to min_mean_to_consider to be replaced.
+    Returns
+    -------
+    x
+        pandas.Series with any triggered outliers replaced
+    """
+    # Small epsilon to prevent divide by 0 errors.
+    EPSILON = 1e-8
+
+    # Calculate Z Score
+    r = x.rolling(window=local_lookback_window, min_periods=local_lookback_window, center=False)
+    m = r.mean().shift(1)
+    s = r.std(ddof=0).shift(1)
+    z_score = (x - m) / (s + EPSILON)
+    possible_changes_idx = np.flatnonzero(z_score > z_threshold)
+    changed_idx = []
+    changed_value = []
+    changed_snippets = []
+
+    for idx in possible_changes_idx:
+        if m[idx] > min_mean_to_consider:
+            changed_idx.append(idx)
+            changed_value.append(int(x[idx]))
+            slicer = slice(idx - local_lookback_window, idx + local_lookback_window)
+            changed_snippets.append(x[slicer].astype(int).tolist())
+            try:
+                x[idx] = np.mean([x.iloc[idx - 1], x.iloc[idx + 1]])
+            except IndexError:  # Value to replace can be newest and fail on x[idx+1].
+                # If so, just use previous.
+                x[idx] = x[idx - 1]
+
+    if len(changed_idx) > 0:
+        log.info(
+            event="Replacing Outliers:",
+            outlier_values=changed_value,
+            z_score=z_score[changed_idx].astype(int).tolist(),
+            where=changed_idx,
+            snippets=changed_snippets,
+        )
+
+    return x

@@ -1,6 +1,6 @@
 import math
 import sys
-from datetime import datetime, timedelta
+from datetime import timedelta
 import logging
 import structlog
 
@@ -8,89 +8,20 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 from scipy import signal
-from matplotlib import pyplot as plt
 import us
 
 from pyseir.load_data import load_county_metadata, get_all_fips_codes_for_a_state
 from pyseir.utils import AggregationLevel, TimeseriesType, get_run_artifact_path, RunArtifact
-from pyseir.rt.infer_utils import LagMonitor
+from pyseir.rt.constants import InferRtConstants
+from pyseir.rt import rt_plotting, utils
 
 rt_log = structlog.get_logger(__name__)
 
 
-class InferRtConstants:
-    RNG_SEED = 42
-
-    # Don't try to infer Rt for timeseries shorter than this
-    MIN_TIMESERIES_LENGTH = 20
-
-    # Settings for outlier removal
-    LOCAL_LOOKBACK_WINDOW = 14
-    Z_THRESHOLD = 10
-    MIN_MEAN_TO_CONSIDER = 5
-
-    # Window size used during smoothing of cases and deaths
-    # Originally 14 but odd is better and larger avoids edges that drive R unrealistically
-    # Size of the sliding Gaussian window to compute. Note that kernel std sets the width of the
-    # kernel weight.
-    COUNT_SMOOTHING_WINDOW_SIZE = 19
-    COUNT_SMOOTHING_KERNEL_STD = 5
-
-    # Sets the default value for sigma before adjustments
-    # Recommend .03 (was .05 before when not adjusted) as adjustment moves up
-    # Stdev of the process model. Increasing this allows for larger
-    # instant deltas in R_t, shrinking it smooths things, but allows for
-    # less rapid change. Can be interpreted as the std of the allowed
-    # shift in R_t day-to-day.
-    DEFAULT_PROCESS_SIGMA = 0.03
-
-    # Scale sigma up as sqrt(SCALE_SIGMA_FROM_COUNT/current_count)
-    # 5000 recommended
-    SCALE_SIGMA_FROM_COUNT = 5000.0
-
-    # Maximum increase (from DEFAULT_PROCESS_SIGMA) permitted for low counts
-    # Recommend range 20. - 50. 30. appears to be best
-    MAX_SCALING_OF_SIGMA = 30.0
-
-    # Override min_cases and min_deaths with this value.
-    # Recommend 1. - 5. range.
-    # 1. is allowing some counties to run that shouldn't (unphysical results)
-    MIN_COUNTS_TO_INFER = 5.0
-    # TODO really understand whether the min_cases and/or min_deaths compares to max,
-    #  avg, or day to day counts
-
-    # Correct for tail suppression due to case smoothing window converting from centered to lagging
-    # as approach current time
-    TAIL_SUPPRESSION_CORRECTION = 0.75
-
-    # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
-    # term shape correctly.
-    SMOOTH_RT_MAP_COMPOSITE = 1  # number of times to apply soothing
-    RT_SMOOTHING_WINDOW_SIZE = 25  # also controls kernel_std
-
-    # Minimum (half) width of confidence interval in composite Rt
-    # Avoids too narrow values when averaging over timeseries that already have high confidence
-    MIN_CONF_WIDTH = 0.1
-
-    # Serial period = Incubation + 0.5 * Infections
-    _sigma = 0.333  # Mirrored from assumptions doc
-    _delta = 0.25  # Mirrored from assumptions doc
-    SERIAL_PERIOD = 1 / _sigma + 0.5 * 1 / _delta
-
-    # The quantization of the R Buckets
-    R_BUCKETS = np.linspace(0, 10, 501)
-
-    # Reference date to compute from.
-    REF_DATE = datetime(year=2020, month=1, day=1)
-
-    # Confidence interval to compute. 0.95 would be 90% credible intervals from 5% to 95%.
-    CONFIDENCE_INTERVALS = (0.68, 0.95)
-
-
 class RtInferenceEngine:
     """
-    This class extends the analysis of Bettencourt et al to include mortality
-    and hospitalization data in a pseudo-non-parametric inference of R_t.
+    This class extends the analysis of Bettencourt et al to include mortality data in a
+    pseudo-non-parametric inference of R_t.
 
     Parameters
     ----------
@@ -275,7 +206,7 @@ class RtInferenceEngine:
 
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
         # from the 14 day trailing mean and std
-        timeseries = replace_outliers(pd.Series(timeseries), log=self.log)
+        timeseries = utils.replace_outliers(pd.Series(timeseries), log=self.log)
 
         # Smoothing no longer involves rounding
         smoothed = timeseries.rolling(
@@ -294,25 +225,17 @@ class RtInferenceEngine:
             idx_start = nonzeros[0]
 
         smoothed = smoothed.iloc[idx_start:]
-        original = timeseries.loc[smoothed.index]
 
         # Only plot counts and smoothed timeseries for cases
         if plot and timeseries_type == TimeseriesType.NEW_CASES and len(smoothed) > 0:
-            plt.figure(figsize=(10, 6))
-            plt.scatter(
-                dates[-len(original) :],
-                original,
-                alpha=0.3,
-                label=timeseries_type.value.replace("_", " ").title() + "Shifted",
+            fig = rt_plotting.plot_smoothing(
+                x=dates,
+                original=timeseries.loc[smoothed.index],
+                processed=smoothed,
+                timeseries_type=timeseries_type,
             )
-            plt.plot(dates[-len(original) :], smoothed)
-            plt.grid(True, which="both")
-            plt.xticks(rotation=30)
-            plt.xlim(min(dates[-len(original) :]), max(dates) + timedelta(days=2))
-            # plt.legend()
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_SMOOTHING_REPORT)
-            plt.savefig(output_path, bbox_inches="tight")
-            plt.close()
+            fig.savefig(output_path, bbox_inches="tight")
 
         return dates, times, smoothed
 
@@ -490,7 +413,7 @@ class RtInferenceEngine:
         scale = timeseries.head(1).item()
 
         # Setup monitoring for Reff lagging signal in daily likelihood
-        monitor = LagMonitor(debug=False)  # Set debug=True for detailed printout of daily lag
+        monitor = utils.LagMonitor(debug=False)  # Set debug=True for detailed printout of daily lag
 
         # (5) Iteratively apply Bayes' rule
         for previous_day, current_day in zip(timeseries.index[:-1], timeseries.index[1:]):
@@ -545,12 +468,9 @@ class RtInferenceEngine:
         self.log_likelihood = log_likelihood
 
         if plot:
-            plt.figure(figsize=(12, 8))
-            plt.plot(posteriors, alpha=0.1, color="k")
-            plt.grid(alpha=0.4)
-            plt.xlabel("$R_t$", fontsize=16)
-            plt.title("Posteriors", fontsize=18)
-            plt.close()
+            rt_plotting.plot_posteriors(x=posteriors)  # Returns Figure.
+            # The interpreter will handle this as it sees fit. Normal builds never call plot flag.
+
         start_idx = -len(posteriors.columns)
 
         return dates[start_idx:], times[start_idx:], posteriors, start_idx
@@ -601,7 +521,7 @@ class RtInferenceEngine:
         available_timeseries = self.get_available_timeseries()
 
         for timeseries_type in available_timeseries:
-            # Add Raw Data Output to Output Dataframe
+            # Add Raw Data Output to Output DataFrame
             dates_raw, times_raw, timeseries_raw = self.get_timeseries(timeseries_type)
             df_raw = pd.DataFrame()
             df_raw["date"] = dates_raw
@@ -735,84 +655,14 @@ class RtInferenceEngine:
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
         if plot:
-            plt.figure(figsize=(10, 6))
-
-            # plt.hlines([1.0], *plt.xlim(), alpha=1, color="g")
-            # plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
-            # plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
-
-            if "Rt_ci5__new_deaths" in df_all:
-                if self.include_deaths:
-                    plt.fill_between(
-                        df_all.index,
-                        df_all["Rt_ci5__new_deaths"],
-                        df_all["Rt_ci95__new_deaths"],
-                        alpha=0.2,
-                        color="firebrick",
-                    )
-                # Show for reference even if not used
-                plt.scatter(
-                    df_all.index,
-                    df_all["Rt_MAP__new_deaths"].shift(periods=shift_deaths),
-                    alpha=1,
-                    s=25,
-                    color="firebrick",
-                    label="New Deaths",
-                )
-
-            if "Rt_ci5__new_cases" in df_all:
-                plt.fill_between(
-                    df_all.index,
-                    df_all["Rt_ci5__new_cases"],
-                    df_all["Rt_ci95__new_cases"],
-                    alpha=0.2,
-                    color="steelblue",
-                )
-                plt.scatter(
-                    df_all.index,
-                    df_all["Rt_MAP__new_cases"],
-                    alpha=1,
-                    s=25,
-                    color="steelblue",
-                    label="New Cases",
-                    marker="s",
-                )
-
-            if "Rt_MAP_composite" in df_all:
-                plt.scatter(
-                    df_all.index,
-                    df_all["Rt_MAP_composite"],
-                    alpha=1,
-                    s=25,
-                    color="black",
-                    label="Inferred $R_{t}$ Web",
-                    marker="d",
-                )
-
-            if "Rt_ci95_composite" in df_all:
-                plt.fill_between(
-                    df_all.index,
-                    df_all["Rt_ci95_composite"],
-                    2 * df_all["Rt_MAP_composite"] - df_all["Rt_ci95_composite"],
-                    alpha=0.2,
-                    color="gray",
-                )
-
-            plt.hlines([0.9], *plt.xlim(), alpha=1, color="g")
-            plt.hlines([1.1], *plt.xlim(), alpha=1, color="gold")
-            plt.hlines([1.4], *plt.xlim(), alpha=1, color="r")
-
-            plt.xticks(rotation=30)
-            plt.grid(True)
-            plt.xlim(df_all.index.min() - timedelta(days=2), df_all.index.max() + timedelta(days=2))
-            plt.ylim(0.0, 3.0)
-            plt.ylabel("$R_t$", fontsize=16)
-            plt.legend()
-            plt.title(self.display_name, fontsize=14)
-
+            fig = rt_plotting.plot_rt(
+                df=df_all,
+                include_deaths=self.include_deaths,
+                shift_deaths=shift_deaths,
+                display_name=self.display_name,
+            )
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
-            plt.savefig(output_path, bbox_inches="tight")
-            plt.close()
+            fig.savefig(output_path, bbox_inches="tight")
         if df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
         return df_all
@@ -882,82 +732,6 @@ class RtInferenceEngine:
         except Exception:
             logging.exception("run_for_fips failed")
             return None
-
-
-def replace_outliers(
-    x,
-    log,
-    local_lookback_window=InferRtConstants.LOCAL_LOOKBACK_WINDOW,
-    z_threshold=InferRtConstants.Z_THRESHOLD,
-    min_mean_to_consider=InferRtConstants.MIN_MEAN_TO_CONSIDER,
-):
-    """
-    Take a pandas.Series, apply an outlier filter, and return a pandas.Series.
-
-    This outlier detector looks at the z score of the current value compared to the mean and std
-    derived from the previous N samples, where N is the local_lookback_window.
-
-    For points where the z score is greater than z_threshold, a check is made to make sure the mean
-    of the last N samples is at least min_mean_to_consider. This makes sure we don't filter on the
-    initial case where values go from all zeros to a one. If that threshold is met, the value is
-    then replaced with the linear interpolation between the two nearest neighbors.
-
-
-    Parameters
-    ----------
-    x
-        Input pandas.Series with the values to analyze
-    log
-        Logger instance
-    local_lookback_window
-        The length of the rolling window to look back and calculate the mean and std to baseline the
-        z score. NB: We require the window to be full before returning any result.
-    z_threshold
-        The minimum z score needed to trigger the replacement
-    min_mean_to_consider
-        Threshold to skip low n cases, especially the degenerate case where a long list of zeros
-        becomes a 1. This requires that the rolling mean of previous values must be greater than
-        or equal to min_mean_to_consider to be replaced.
-    Returns
-    -------
-    x
-        pandas.Series with any triggered outliers replaced
-    """
-    # Small epsilon to prevent divide by 0 errors.
-    EPSILON = 1e-8
-
-    # Calculate Z Score
-    r = x.rolling(window=local_lookback_window, min_periods=local_lookback_window, center=False)
-    m = r.mean().shift(1)
-    s = r.std(ddof=0).shift(1)
-    z_score = (x - m) / (s + EPSILON)
-    possible_changes_idx = np.flatnonzero(z_score > z_threshold)
-    changed_idx = []
-    changed_value = []
-    changed_snippets = []
-
-    for idx in possible_changes_idx:
-        if m[idx] > min_mean_to_consider:
-            changed_idx.append(idx)
-            changed_value.append(int(x[idx]))
-            slicer = slice(idx - local_lookback_window, idx + local_lookback_window)
-            changed_snippets.append(x[slicer].astype(int).tolist())
-            try:
-                x[idx] = np.mean([x.iloc[idx - 1], x.iloc[idx + 1]])
-            except IndexError:  # Value to replace can be newest and fail on x[idx+1].
-                # If so, just use previous.
-                x[idx] = x[idx - 1]
-
-    if len(changed_idx) > 0:
-        log.info(
-            event="Replacing Outliers:",
-            outlier_values=changed_value,
-            z_score=z_score[changed_idx].astype(int).tolist(),
-            where=changed_idx,
-            snippets=changed_snippets,
-        )
-
-    return x
 
 
 def run_state(state, states_only=False):

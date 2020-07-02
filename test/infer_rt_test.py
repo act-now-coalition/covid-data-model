@@ -1,13 +1,25 @@
 import pytest
+import pandas as pd
+import structlog
+from pyseir.rt import infer_rt
 
 from pyseir.rt.infer_rt import RtInferenceEngine
-from test.mocks.inference.pyseir_default_parameters import pyseir_default_parameters
 from test.mocks.inference.load_data import (
     initializeStateDataGenerator,
     DataGeneratorType,
     DataSpec,
     RateChange,
 )
+
+
+def test_replace_outliers_on_last_day():
+    x = pd.Series([10, 10, 10, 500], [0, 1, 2, 3])
+
+    results = infer_rt.replace_outliers(x, structlog.getLogger(), local_lookback_window=3)
+
+    expected = pd.Series([10, 10, 10, 10], [0, 1, 2, 3])
+    pd.testing.assert_series_equal(results, expected)
+
 
 """
 Tests of Rt inference code using synthetically generated data for 100 days where the following are specified
@@ -38,11 +50,7 @@ def test__cases_only_large_count_rising_falling_exponential():
             ratechange2=RateChange(t_switch, rt2),
         ),
     )
-    engine = RtInferenceEngine(
-        "36",  # fips for NY
-        load_data_parent="test.mocks.inference",
-        default_parameters=pyseir_default_parameters,
-    )
+    engine = RtInferenceEngine("36", load_data_parent="test.mocks.inference",)  # fips for NY
     df_all = engine.infer_all()
 
     rt = df_all["Rt_MAP_composite"]
@@ -73,11 +81,7 @@ def test__cases_only_small_count_falling_exponential():
             ratechange2=RateChange(t0, rt2),
         ),
     )
-    engine = RtInferenceEngine(
-        "15",  # fips for HI
-        load_data_parent="test.mocks.inference",
-        default_parameters=pyseir_default_parameters,
-    )
+    engine = RtInferenceEngine("15", load_data_parent="test.mocks.inference",)  # fips for HI
     df_all = engine.infer_all()
 
     rt = df_all["Rt_MAP_composite"]
@@ -104,11 +108,7 @@ def test__cases_only_small_count_late_rising_exponential():
             ratechange2=RateChange(t0, rt2),
         ),
     )
-    engine = RtInferenceEngine(
-        "02",  # fips for AK
-        load_data_parent="test.mocks.inference",
-        default_parameters=pyseir_default_parameters,
-    )
+    engine = RtInferenceEngine("02", load_data_parent="test.mocks.inference",)  # fips for AK
 
     tail_sup = engine.evaluate_head_tail_suppression()
 
