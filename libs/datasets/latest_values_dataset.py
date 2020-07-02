@@ -24,12 +24,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         CommonIndexFields.STATE,
     ]
 
-    class Fields(CommonFields):
-        COUNTRY = CommonIndexFields.COUNTRY
-        STATE = CommonIndexFields.STATE
-        AGGREGATE_LEVEL = CommonIndexFields.AGGREGATE_LEVEL
-        FIPS = CommonIndexFields.FIPS
-
     def __init__(self, data):
         self.data = data
 
@@ -66,9 +60,9 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data = dataset_utils.add_county_using_fips(data, fips_data)
 
         # Add state fips
-        is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
-        data.loc[is_state, cls.Fields.FIPS] = state_fips
+        is_state = data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
+        state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
+        data.loc[is_state, CommonFields.FIPS] = state_fips
 
         return cls(data)
 
@@ -89,22 +83,22 @@ class LatestValuesDataset(dataset_base.DatasetBase):
     def _aggregate_new_york_data(cls, data):
         # When grouping nyc data, we don't want to count the generated field
         # as a value to sum.
-        nyc_data = data[data[cls.Fields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
+        nyc_data = data[data[CommonFields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
         if not len(nyc_data):
             return data
         group = cls.STATE_GROUP_KEY
         weighted_all_bed_occupancy = None
 
-        if cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE in data.columns:
-            licensed_beds = nyc_data[cls.Fields.LICENSED_BEDS]
-            occupancy_rates = nyc_data[cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+        if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in data.columns:
+            licensed_beds = nyc_data[CommonFields.LICENSED_BEDS]
+            occupancy_rates = nyc_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
             weighted_all_bed_occupancy = (
                 licensed_beds * occupancy_rates
             ).sum() / licensed_beds.sum()
         weighted_icu_occupancy = None
-        if cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE in data.columns:
-            icu_beds = nyc_data[cls.Fields.ICU_BEDS]
-            occupancy_rates = nyc_data[cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE]
+        if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in data.columns:
+            icu_beds = nyc_data[CommonFields.ICU_BEDS]
+            occupancy_rates = nyc_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
             weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
 
         data = custom_aggregations.update_with_combined_new_york_counties(
@@ -114,12 +108,12 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
         if weighted_all_bed_occupancy:
             data.loc[
-                data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+                data[CommonFields.FIPS] == nyc_fips, CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
             ] = weighted_all_bed_occupancy
 
         if weighted_icu_occupancy:
             data.loc[
-                data[cls.Fields.FIPS] == nyc_fips, cls.Fields.ICU_TYPICAL_OCCUPANCY_RATE
+                data[CommonFields.FIPS] == nyc_fips, CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
             ] = weighted_icu_occupancy
 
         return data
@@ -128,13 +122,13 @@ class LatestValuesDataset(dataset_base.DatasetBase):
     def state_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only state data."""
 
-        is_state = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
+        is_state = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         return self.data[is_state]
 
     @property
     def county_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only county data."""
-        is_county = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        is_county = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         return self.data[is_county]
 
     @property
@@ -175,7 +169,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         """
         # we map NaNs to none here so that they can be generated via the API easier
         data = self.state_data.where(pd.notnull(self.state_data), None)
-        row = data[data[self.Fields.STATE] == state]
+        row = data[data[CommonFields.STATE] == state]
         if not len(row):
             return {}
 
@@ -190,7 +184,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         Returns: Dictionary with all data for a given fips code.
         """
         # we map NaNs to none here so that they can be generated via the API easier
-        row = self.data[self.data[self.Fields.FIPS] == fips].where(pd.notnull(self.data), None)
+        row = self.data[self.data[CommonFields.FIPS] == fips].where(pd.notnull(self.data), None)
         if not len(row):
             return {}
 

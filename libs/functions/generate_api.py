@@ -12,10 +12,9 @@ from api.can_api_definition import (
     _Actuals,
     _ResourceUsageProjection,
 )
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import results_schema as rc
-from libs.datasets.common_fields import CommonFields
 from libs.datasets import combined_datasets
-from libs.enums import Intervention
 from libs.functions import get_can_projection
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.us_state_abbrev import US_STATE_ABBREV
