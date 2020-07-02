@@ -44,14 +44,15 @@ class ForecastRt:
         self.scaled_variable_suffix = "_scaled"
 
         # Seq2Seq Parameters
+        self.days_between_samples = 7
         self.mask_value = -10
         self.min_number_of_days = 30
         self.sequence_length = 30
         self.sample_train_length = 30  # Set to -1 to use all historical data
-        self.predict_days = 3
+        self.predict_days = 7
         self.train_size = 0.8
         self.n_batch = 1
-        self.n_epochs = 100
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -227,6 +228,24 @@ class ForecastRt:
         plt.xlabel(self.sim_date_name)
         plt.ylabel(self.predict_variable)
         plt.legend()
+
+        # Seq2Seq Parameters
+        """
+        self.days_between_samples = 7
+        self.mask_value = -10
+        self.min_number_of_days = 30
+        self.sequence_length = 30
+        self.sample_train_length = 30  # Set to -1 to use all historical data
+        self.predict_days = 7
+        self.train_size = 0.8
+        self.n_batch = 1
+        self.n_epochs = 100
+        self.n_hidden_layer_dimensions = 100
+        self.dropout = 0
+        self.patience = 50
+        self.validation_split = 0.1
+        """
+        # plt.text(4,1,t,ha='left', 'days between samples: ')
         plt.title(state_name + ": epochs: " + str(self.n_epochs))
         plt.savefig("train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf")
 
@@ -386,7 +405,7 @@ class ForecastRt:
     def create_df_list(self, df):
         df_list = list()
         for index in range(len(df.index)):
-            i = index * 3
+            i = index * self.days_between_samples
             if i > len(df.index):
                 continue
 
@@ -402,10 +421,3 @@ class ForecastRt:
                 else:  # use only SAMPLE_LENGTH historical days of data
                     df_list.append(df[i - self.sample_train_length : i].copy())
         return df_list
-
-    @staticmethod
-    def get_reshaped_X(input_X, n_batch, X_scaler):
-        i = input_X.reshape(n_batch, input_X.shape[0], input_X.shape[1])
-        output_df = pd.DataFrame(np.squeeze(input_X))
-        # original_df = pd.DataFrame(X_scaler.inverse_transform(output_df))
-        return original_df
