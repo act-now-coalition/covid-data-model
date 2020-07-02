@@ -1,3 +1,4 @@
+pytest
 scipy
 astroid==2.4.1
 certifi==2019.11.28

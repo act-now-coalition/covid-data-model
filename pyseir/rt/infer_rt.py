@@ -31,16 +31,17 @@ class InferRtConstants:
 
     # Window size used during smoothing of cases and deaths
     # Originally 14 but odd is better and larger avoids edges that drive R unrealistically
+    # Size of the sliding Gaussian window to compute. Note that kernel std sets the width of the
+    # kernel weight.
     COUNT_SMOOTHING_WINDOW_SIZE = 19
     COUNT_SMOOTHING_KERNEL_STD = 5
 
-    # Infer Rt only using cases if True
-    # Recommend True as deaths just confuse interpretability of Rt_eff and will muddy using its
-    # extrapolation
-    DISABLE_DEATHS = True
-
     # Sets the default value for sigma before adjustments
     # Recommend .03 (was .05 before when not adjusted) as adjustment moves up
+    # Stdev of the process model. Increasing this allows for larger
+    # instant deltas in R_t, shrinking it smooths things, but allows for
+    # less rapid change. Can be interpreted as the std of the allowed
+    # shift in R_t day-to-day.
     DEFAULT_PROCESS_SIGMA = 0.03
 
     # Scale sigma up as sqrt(SCALE_SIGMA_FROM_COUNT/current_count)
@@ -60,7 +61,7 @@ class InferRtConstants:
 
     # Correct for tail suppression due to case smoothing window converting from centered to lagging
     # as approach current time
-    CORRECT_TAIL_SUPPRESSION = 0.75
+    TAIL_SUPPRESSION_CORRECTION = 0.75
 
     # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
     # term shape correctly.
@@ -76,6 +77,15 @@ class InferRtConstants:
     _delta = 0.25  # Mirrored from assumptions doc
     SERIAL_PERIOD = 1 / _sigma + 0.5 * 1 / _delta
 
+    # The quantization of the R Buckets
+    R_BUCKETS = np.linspace(0, 10, 501)
+
+    # Reference date to compute from.
+    REF_DATE = datetime(year=2020, month=1, day=1)
+
+    # Confidence interval to compute. 0.95 would be 90% credible intervals from 5% to 95%.
+    CONFIDENCE_INTERVALS = (0.68, 0.95)
+
 
 class RtInferenceEngine:
     """
@@ -86,73 +96,49 @@ class RtInferenceEngine:
     ----------
     fips: str
         State or County fips code
-    window_size: int
-        Size of the sliding Gaussian window to compute. Note that kernel std
-        sets the width of the kernel weight.
-    kernel_std: int
-        Width of the Gaussian kernel.
-    r_list: array-like
-        Array of R_t to compute posteriors over. Doesn't really need to be
-        configured.
-    process_sigma: float
-        Stdev of the process model. Increasing this allows for larger
-        instant deltas in R_t, shrinking it smooths things, but allows for
-        less rapid change. Can be interpreted as the std of the allowed
-        shift in R_t day-to-day.
-    ref_date:
-        Reference date to compute from.
-    confidence_intervals: list(float)
-        Confidence interval to compute. 0.95 would be 90% credible
-        intervals from 5% to 95%.
-    min_cases: int
-        Minimum number of cases required to run case level inference. These are
-        very conservatively weak filters, but prevent cases of basically zero
-        data from introducing pathological results.
-    min_deaths: int
-        Minimum number of deaths required to run death level inference.
     include_testing_correction: bool
         If True, include a correction for testing increases and decreases.
+    include_deaths: bool
+        If True, include the deaths timeseries in the calculation. XCorrelated and Averaged
     """
 
     def __init__(
         self,
         fips,
-        window_size=InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
-        kernel_std=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD,
-        r_list=np.linspace(0, 10, 501),
-        process_sigma=0.05,
-        ref_date=datetime(year=2020, month=1, day=1),
-        confidence_intervals=(0.68, 0.95),
-        min_cases=5,
-        min_deaths=100000,
         include_testing_correction=True,
+        include_deaths=False,
         load_data_parent="pyseir",
-        default_parameters=None,
     ):
 
         # Support injection of module that we use for loading data
         if "load_data" not in sys.modules:
             _temp = __import__(load_data_parent, globals(), locals(), ["load_data"], 0)
             self.load_data = _temp.load_data
-        self.default_parameters = default_parameters
 
-        np.random.seed(InferRtConstants.RNG_SEED)
-        # Param Generation used for Xcor in align_time_series, has some stochastic FFT elements.
         self.fips = fips
-        self.r_list = r_list
-        self.window_size = window_size
-        self.kernel_std = kernel_std
-        self.process_sigma = process_sigma
-        self.ref_date = ref_date
-        self.confidence_intervals = confidence_intervals
-        self.min_cases = min_cases
-        self.min_deaths = min_deaths
         self.include_testing_correction = include_testing_correction
+        self.include_deaths = include_deaths
 
-        # Because rounding is disabled we don't need high min_deaths, min_cases anymore
-        self.min_cases = min(InferRtConstants.MIN_COUNTS_TO_INFER, self.min_cases)
-        if not InferRtConstants.DISABLE_DEATHS:
-            self.min_deaths = min(InferRtConstants.MIN_COUNTS_TO_INFER, self.min_deaths)
+        # Load the InferRtConstants
+        self.r_list = InferRtConstants.R_BUCKETS
+        self.window_size = InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE
+        self.kernel_std = InferRtConstants.COUNT_SMOOTHING_KERNEL_STD
+        self.default_process_sigma = InferRtConstants.DEFAULT_PROCESS_SIGMA
+        self.ref_date = InferRtConstants.REF_DATE
+        self.confidence_intervals = InferRtConstants.CONFIDENCE_INTERVALS
+        self.min_cases = InferRtConstants.MIN_COUNTS_TO_INFER
+        self.min_deaths = InferRtConstants.MIN_COUNTS_TO_INFER
+        self.min_ts_length = InferRtConstants.MIN_TIMESERIES_LENGTH
+        self.serial_period = InferRtConstants.SERIAL_PERIOD
+        self.max_scaling_sigma = InferRtConstants.MAX_SCALING_OF_SIGMA
+        self.scale_sigma_from_count = InferRtConstants.SCALE_SIGMA_FROM_COUNT
+        self.tail_suppression_correction = InferRtConstants.TAIL_SUPPRESSION_CORRECTION
+        self.smooth_rt_map_composite = InferRtConstants.SMOOTH_RT_MAP_COMPOSITE
+        self.rt_smoothing_window_size = InferRtConstants.RT_SMOOTHING_WINDOW_SIZE
+        self.min_conf_width = InferRtConstants.MIN_CONF_WIDTH
+        self.log = structlog.getLogger(Rt_Inference_Target="Test self.display_name")
+        self.log_likelihood = None  # TODO: Add this later. Not in init.
+        self.log.info(event="Running:")
 
         if len(fips) == 2:  # State FIPS are 2 digits
             self.agg_level = AggregationLevel.STATE
@@ -201,17 +187,10 @@ class RtInferenceEngine:
                 _,
             ) = self.load_data.load_new_case_data_by_state(self.state, self.ref_date, False)
 
-        self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
+        self.case_dates = [self.ref_date + timedelta(days=int(t)) for t in self.times]
         self.raw_new_case_dates = [
-            ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
+            self.ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
         ]
-
-        self.serial_period = InferRtConstants.SERIAL_PERIOD
-
-        self.log_likelihood = None
-
-        self.log = structlog.getLogger(Rt_Inference_Target=self.display_name)
-        self.log.info(event="Running:")
 
     def get_timeseries(self, timeseries_type):
         """
@@ -291,7 +270,7 @@ class RtInferenceEngine:
 
         # Don't even try if the timeseries is too short.
         # TODO: This referenced a quirk of hospitalizations. So may be stale as of 1 July 2020.
-        if len(timeseries) < InferRtConstants.MIN_TIMESERIES_LENGTH:
+        if len(timeseries) < self.min_ts_length:
             return [], [], []
 
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
@@ -370,12 +349,13 @@ class RtInferenceEngine:
         2) Ensures the smoothing (of the posterior when creating the prior) is symmetric
            in R so that this process does not move argmax (the peak in probability)
         """
+        # TODO FOR ALEX: Please expand this and describe more clearly these cutoffs
         use_sigma = (
             min(
-                InferRtConstants.MAX_SCALING_OF_SIGMA,
-                max(1.0, math.sqrt(InferRtConstants.SCALE_SIGMA_FROM_COUNT / timeseries_scale)),
+                self.max_scaling_sigma,
+                max(1.0, math.sqrt(self.scale_sigma_from_count / timeseries_scale)),
             )
-            * InferRtConstants.DEFAULT_PROCESS_SIGMA
+            * self.default_process_sigma
         )
 
         process_matrix = sps.norm(loc=self.r_list, scale=use_sigma).pdf(self.r_list[:, None])
@@ -700,11 +680,7 @@ class RtInferenceEngine:
             logging.warning("Inference not possible for fips: %s", self.fips)
             return None
 
-        if (
-            not InferRtConstants.DISABLE_DEATHS
-            and "Rt_MAP__new_deaths" in df_all
-            and "Rt_MAP__new_cases" in df_all
-        ):
+        if self.include_deaths and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
             df_all["Rt_MAP_composite"] = np.nanmean(
                 df_all[["Rt_MAP__new_cases", "Rt_MAP__new_deaths"]], axis=1
             )
@@ -721,7 +697,7 @@ class RtInferenceEngine:
 
         # Correct for tail suppression
         suppression = 1.0 * np.ones(len(df_all))
-        if InferRtConstants.CORRECT_TAIL_SUPPRESSION > 0.0:
+        if self.tail_suppression_correction > 0.0:
             tail_sup = self.evaluate_head_tail_suppression()
             # Calculate rt suppression by smoothing delay at tail of sequence
             suppression = np.concatenate(
@@ -729,17 +705,17 @@ class RtInferenceEngine:
             )
             # Adjust rt by undoing the suppression
             df_all["Rt_MAP_composite"] = (df_all["Rt_MAP_composite"] - 1.0) / np.power(
-                suppression, InferRtConstants.CORRECT_TAIL_SUPPRESSION
+                suppression, self.tail_suppression_correction
             ) + 1.0
 
         # Optionally Smooth just Rt_MAP_composite.
         # Note this doesn't lag in time and preserves integral of Rteff over time
-        for i in range(0, InferRtConstants.SMOOTH_RT_MAP_COMPOSITE):
-            kernel_width = round(InferRtConstants.RT_SMOOTHING_WINDOW_SIZE / 4)
+        for i in range(0, self.smooth_rt_map_composite):
+            kernel_width = round(self.rt_smoothing_window_size / 4)
             smoothed = (
                 df_all["Rt_MAP_composite"]
                 .rolling(
-                    InferRtConstants.RT_SMOOTHING_WINDOW_SIZE,
+                    self.rt_smoothing_window_size,
                     win_type="gaussian",
                     min_periods=kernel_width,
                     center=True,
@@ -755,8 +731,8 @@ class RtInferenceEngine:
                 / math.sqrt(
                     2.0 * kernel_width  # averaging over many points reduces confidence interval
                 )
-                / np.power(suppression, InferRtConstants.CORRECT_TAIL_SUPPRESSION / 2)
-            ).apply(lambda v: max(v, InferRtConstants.MIN_CONF_WIDTH)) + df_all["Rt_MAP_composite"]
+                / np.power(suppression, self.tail_suppression_correction / 2)
+            ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
         if plot:
             plt.figure(figsize=(10, 6))
@@ -766,7 +742,7 @@ class RtInferenceEngine:
             # plt.hlines([1.3], *plt.xlim(), alpha=1, color="r")
 
             if "Rt_ci5__new_deaths" in df_all:
-                if not InferRtConstants.DISABLE_DEATHS:
+                if self.include_deaths:
                     plt.fill_between(
                         df_all.index,
                         df_all["Rt_ci5__new_deaths"],
@@ -785,14 +761,13 @@ class RtInferenceEngine:
                 )
 
             if "Rt_ci5__new_cases" in df_all:
-                if not InferRtConstants.DISABLE_DEATHS:
-                    plt.fill_between(
-                        df_all.index,
-                        df_all["Rt_ci5__new_cases"],
-                        df_all["Rt_ci95__new_cases"],
-                        alpha=0.2,
-                        color="steelblue",
-                    )
+                plt.fill_between(
+                    df_all.index,
+                    df_all["Rt_ci5__new_cases"],
+                    df_all["Rt_ci95__new_cases"],
+                    alpha=0.2,
+                    color="steelblue",
+                )
                 plt.scatter(
                     df_all.index,
                     df_all["Rt_MAP__new_cases"],
