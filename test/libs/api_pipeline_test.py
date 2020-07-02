@@ -17,15 +17,6 @@ from pyseir import cli
 NYC_FIPS = "36061"
 
 
-# @pytest.fixture(scope="module")
-# def pyseir_output_path():
-#     with tempfile.TemporaryDirectory() as tempdir:
-#         cli._build_all_for_states(
-#             states=["New York"], generate_reports=False, output_dir=tempdir, fips="36061"
-#         )
-#         yield fips, pathlib.Path(tempdir)
-
-
 @pytest.mark.parametrize(
     "intervention",
     [
@@ -59,7 +50,7 @@ def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, i
 
 
 def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_path):
-    print(tmp_path)
+    county_output = tmp_path / "county"
     us_latest = combined_datasets.build_us_latest_with_all_fields()
     us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
 
@@ -70,6 +61,18 @@ def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_
     )
 
     api_pipeline.deploy_single_level(
-        Intervention.STRONG_INTERVENTION, all_timeseries_api, tmp_path, tmp_path
+        Intervention.STRONG_INTERVENTION, all_timeseries_api, tmp_path, county_output
     )
-    assert 0
+    expected_outputs = [
+        "counties.STRONG_INTERVENTION.timeseries.json",
+        "counties.STRONG_INTERVENTION.csv",
+        "counties.STRONG_INTERVENTION.timeseries.csv",
+        "counties.STRONG_INTERVENTION.json",
+        "county/36061.STRONG_INTERVENTION.json",
+        "county/36061.STRONG_INTERVENTION.timeseries.json",
+    ]
+
+    output_paths = [
+        str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
+    ]
+    assert sorted(output_paths) == sorted(expected_outputs)

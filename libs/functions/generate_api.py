@@ -13,6 +13,7 @@ from api.can_api_definition import (
     _ResourceUsageProjection,
 )
 from covidactnow.datapublic.common_fields import CommonFields
+from libs.enums import Intervention
 from libs.datasets import results_schema as rc
 from libs.datasets import combined_datasets
 from libs.functions import get_can_projection
@@ -104,9 +105,6 @@ def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeserie
         currentExposed=json_data_row[can_schema.EXPOSED],
         cumulativeDeaths=json_data_row[can_schema.DEAD],
         cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
-        # TODO: Either deprecate this field or figure out how to pass test data through.
-        cumulativePositiveTests=None,
-        cumulativeNegativeTests=None,
     )
 
 
