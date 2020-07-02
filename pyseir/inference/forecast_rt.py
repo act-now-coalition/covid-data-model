@@ -182,6 +182,7 @@ class ForecastRt:
         logging.info("about to plot")
         LINEWIDTH = 1
         # plot training predictions
+        plt.figure(figsize=(18, 12))
         for n in range(len(dates_train)):
             i = dates_train[n]
             newdates = dates_train[n]
@@ -228,7 +229,7 @@ class ForecastRt:
         plt.xlabel(self.sim_date_name)
         plt.ylabel(self.predict_variable)
         plt.legend()
-
+        plt.grid(which="both", alpha=0.5)
         # Seq2Seq Parameters
         """
         self.days_between_samples = 7
@@ -245,9 +246,52 @@ class ForecastRt:
         self.patience = 50
         self.validation_split = 0.1
         """
+        seq_params_dict = {
+            "days_between_samples": self.days_between_samples,
+            "min_number_days": self.min_number_of_days,
+            "sequence_length": self.sequence_length,
+            "train_length": self.sample_train_length,
+            "% train": self.train_size,
+            "batch size": self.n_batch,
+            "epochs": self.n_epochs,
+            "hidden layer dimensions": self.n_hidden_layer_dimensions,
+            "dropout": self.dropout,
+            "patience": self.patience,
+            "validation split": self.validation_split,
+            "mask value": self.mask_value,
+        }
+        for i, (k, v) in enumerate(seq_params_dict.items()):
+
+            fontweight = "bold" if k in ("important variables") else "normal"
+
+            if np.isscalar(v) and not isinstance(v, str):
+                plt.text(
+                    1.0,
+                    0.7 - 0.032 * i,
+                    f"{k}={v:1.1f}",
+                    transform=plt.gca().transAxes,
+                    fontsize=15,
+                    alpha=0.6,
+                    fontweight=fontweight,
+                )
+
+            else:
+                plt.text(
+                    1.0,
+                    0.7 - 0.032 * i,
+                    f"{k}={v}",
+                    transform=plt.gca().transAxes,
+                    fontsize=15,
+                    alpha=0.6,
+                    fontweight=fontweight,
+                )
+
         # plt.text(4,1,t,ha='left', 'days between samples: ')
         plt.title(state_name + ": epochs: " + str(self.n_epochs))
-        plt.savefig("train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf")
+        plt.savefig(
+            "train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf",
+            bbox_inches="tight",
+        )
 
         return
 
