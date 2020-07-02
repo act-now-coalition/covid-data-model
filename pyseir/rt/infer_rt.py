@@ -10,23 +10,16 @@ from matplotlib import pyplot as plt
 import us
 import structlog
 
-# from pyseir import load_data
 from pyseir.load_data import (
-    HospitalizationDataType,
     load_county_metadata,
     get_all_fips_codes_for_a_state,
 )
 
-from pyseir.utils import AggregationLevel, TimeseriesType
-from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import AggregationLevel, TimeseriesType, get_run_artifact_path, RunArtifact
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
-from structlog import configure
-from enum import Enum
-from pyseir.inference.infer_utils import LagMonitor
+from pyseir.rt.infer_utils import LagMonitor
 
-configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
-log = structlog.get_logger(__name__)
+rt_log = structlog.get_logger(__name__)
 
 
 class InferRtConstants:
@@ -46,10 +39,11 @@ class InferRtConstants:
     COUNT_SMOOTHING_KERNEL_STD = 7
 
     # Infer Rt only using cases if True
-    # Recommend True as deaths just confuse intepretability of Rt_eff and will muddy using its extrapolation
+    # Recommend True as deaths just confuse interpretability of Rt_eff and will muddy using its
+    # extrapolation
     DISABLE_DEATHS = True
 
-    # Sets the default value for sigma before adustments
+    # Sets the default value for sigma before adjustments
     # Recommend .03 (was .05 before when not adjusted) as adjustment moves up
     DEFAULT_PROCESS_SIGMA = 0.03
 
@@ -62,13 +56,15 @@ class InferRtConstants:
     MAX_SCALING_OF_SIGMA = 30.0
 
     # Override min_cases and min_deaths with this value.
-    # Recommend 1. - 5. range. 1. is allowing some counties to run that shouldn't (unphysical results)
+    # Recommend 1. - 5. range.
+    # 1. is allowing some counties to run that shouldn't (unphysical results)
     MIN_COUNTS_TO_INFER = 5.0
-    # TODO really understand whether the min_cases and/or min_deaths compares to max, avg, or day to day counts
+    # TODO really understand whether the min_cases and/or min_deaths compares to max,
+    #  avg, or day to day counts
 
     # Correct for tail suppression due to case smoothing window converting from centered to lagging
-    # as approach curren time
-    CORRECT_TAIL_SUPRESSION = 0.75
+    # as approach current time
+    CORRECT_TAIL_SUPPRESSION = 0.75
 
     # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
     # term shape correctly.
@@ -78,10 +74,6 @@ class InferRtConstants:
     # Minimum (half) width of confidence interval in composite Rt
     # Avoids too narrow values when averaging over timeseries that already have high confidence
     MIN_CONF_WIDTH = 0.1
-
-
-# Small epsilon to prevent divide by 0 errors.
-EPSILON = 1e-8
 
 
 class RtInferenceEngine:
@@ -182,13 +174,6 @@ class RtInferenceEngine:
                 _,
             ) = self.load_data.load_new_case_data_by_state(self.state, self.ref_date, False)
 
-            (
-                self.hospital_times,
-                self.hospitalizations,
-                self.hospitalization_data_type,
-            ) = self.load_data.load_hospitalization_data_by_state(
-                state=self.state_obj.abbr, t0=self.ref_date
-            )
             self.display_name = self.state
         else:
             self.agg_level = AggregationLevel.COUNTY
@@ -215,18 +200,11 @@ class RtInferenceEngine:
                 self.raw_new_cases,
                 _,
             ) = self.load_data.load_new_case_data_by_state(self.state, self.ref_date, False)
-            (
-                self.hospital_times,
-                self.hospitalizations,
-                self.hospitalization_data_type,
-            ) = self.load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
 
         self.case_dates = [ref_date + timedelta(days=int(t)) for t in self.times]
         self.raw_new_case_dates = [
             ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
         ]
-        if self.hospitalization_data_type:
-            self.hospital_dates = [ref_date + timedelta(days=int(t)) for t in self.hospital_times]
 
         if self.default_parameters is None:
             self.default_parameters = ParameterEnsembleGenerator(
@@ -239,23 +217,6 @@ class RtInferenceEngine:
             1 / self.default_parameters["sigma"] + 0.5 * 1 / self.default_parameters["delta"]
         )
 
-        # TODO This code should be moved out of infer_rt.py
-        # If we only receive current hospitalizations, we need to account for
-        # the outflow to reconstruct new admissions.
-        if self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS:
-            los_general = self.default_parameters["hospitalization_length_of_stay_general"]
-            los_icu = self.default_parameters["hospitalization_length_of_stay_icu"]
-            hosp_rate_general = self.default_parameters["hospitalization_rate_general"]
-            hosp_rate_icu = self.default_parameters["hospitalization_rate_icu"]
-            icu_rate = hosp_rate_icu / hosp_rate_general
-            flow_out_of_hosp = self.hospitalizations[:-1] * (
-                (1 - icu_rate) / los_general + icu_rate / los_icu
-            )
-            # We are attempting to reconstruct the cumulative hospitalizations.
-            self.hospitalizations = np.diff(self.hospitalizations) + flow_out_of_hosp
-            self.hospital_dates = self.hospital_dates[1:]
-            self.hospital_times = self.hospital_times[1:]
-
         self.log_likelihood = None
 
         self.log = structlog.getLogger(Rt_Inference_Target=self.display_name)
@@ -263,7 +224,7 @@ class RtInferenceEngine:
 
     def get_timeseries(self, timeseries_type):
         """
-        Given a timeseries type, return the dates, times, and hospitalizations.
+        Given a timeseries type, return the dates, times, and requested values.
 
         Parameters
         ----------
@@ -287,11 +248,8 @@ class RtInferenceEngine:
             return self.raw_new_case_dates, self.times_raw_new_cases, self.raw_new_cases
         elif timeseries_type is TimeseriesType.NEW_DEATHS or TimeseriesType.RAW_NEW_DEATHS:
             return self.case_dates, self.times, self.observed_new_deaths
-        elif timeseries_type in (
-            TimeseriesType.NEW_HOSPITALIZATIONS,
-            TimeseriesType.CURRENT_HOSPITALIZATIONS,
-        ):
-            return self.hospital_dates, self.hospital_times, self.hospitalizations
+        else:
+            raise
 
     def evaluate_head_tail_suppression(self):
         """
@@ -340,17 +298,10 @@ class RtInferenceEngine:
         dates, times, timeseries = self.get_timeseries(timeseries_type)
         self.log = self.log.bind(timeseries_type=timeseries_type.value)
 
-        # Don't even try if the timeseries is too short (Florida hospitalizations failing with length=6)
+        # Don't even try if the timeseries is too short.
+        # TODO: This referenced a quirk of hospitalizations. So may be stale as of 1 July 2020.
         if len(timeseries) < InferRtConstants.MIN_TIMESERIES_LENGTH:
             return [], [], []
-
-        # Hospitalizations have a strange effect in the first few data points across many states.
-        # Let's just drop those..
-        if timeseries_type in (
-            TimeseriesType.CURRENT_HOSPITALIZATIONS,
-            TimeseriesType.NEW_HOSPITALIZATIONS,
-        ):
-            dates, times, timeseries = dates[2:], times[:2], timeseries[2:]
 
         # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
         # from the 14 day trailing mean and std
@@ -505,12 +456,12 @@ class RtInferenceEngine:
         )
 
         if len(timeseries) == 0:
-            log.info(
+            rt_log.info(
                 "%s: empty timeseries %s, skipping" % (self.display_name, timeseries_type.value)
             )
             return None, None, None, None
         else:
-            log.info(
+            rt_log.info(
                 "%s: Analyzing posteriors for timeseries %s"
                 % (self.display_name, timeseries_type.value)
             )
@@ -520,9 +471,10 @@ class RtInferenceEngine:
         lam = timeseries[:-1].values * np.exp((self.r_list[:, None] - 1) / self.serial_period)
 
         # (2) Calculate each day's likelihood over R_t
-        # Originally smoothed counts were rounded (as needed for sps.poisson.pmf below) which doesn't
-        # work well for low counts and introduces artifacts at rounding transitions. Now calculate for
-        # both ceiling and floor values and interpolate between to get smooth behaviour
+        # Originally smoothed counts were rounded (as needed for sps.poisson.pmf below) which
+        # doesn't work well for low counts and introduces artifacts at rounding transitions. Now
+        # calculate for both ceiling and floor values and interpolate between to get smooth
+        # behaviour
         ts_floor = timeseries.apply(np.floor).astype(int)
         ts_ceil = timeseries.apply(np.ceil).astype(int)
         ts_frac = timeseries - ts_floor
@@ -646,8 +598,6 @@ class RtInferenceEngine:
         IDX_OF_COUNTS = 2
         cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
         deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
-        if self.hospitalization_data_type:
-            hosps = self.get_timeseries(TimeseriesType.NEW_HOSPITALIZATIONS.value)[IDX_OF_COUNTS]
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
@@ -656,18 +606,6 @@ class RtInferenceEngine:
         if np.sum(deaths) > self.min_deaths:
             available_timeseries.append(TimeseriesType.RAW_NEW_DEATHS)
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
-
-        if (
-            self.hospitalization_data_type is HospitalizationDataType.CURRENT_HOSPITALIZATIONS
-            and len(hosps > 3)
-        ):
-            # We have converted this timeseries to new hospitalizations.
-            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
-        elif (
-            self.hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
-            and len(hosps > 3)
-        ):
-            available_timeseries.append(TimeseriesType.NEW_HOSPITALIZATIONS)
 
         return available_timeseries
 
@@ -724,7 +662,8 @@ class RtInferenceEngine:
                 df_all = df
             else:
                 # To avoid any surprises merging the data, keep only the keys from the case data
-                # which will be the first added to df_all. So merge with how ="left" rather than "outer"
+                # which will be the first added to df_all. So merge with how ="left" rather than
+                # "outer"
                 df_all = df_all.merge(df_raw, left_index=True, right_index=True, how="left")
                 df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
 
@@ -733,7 +672,7 @@ class RtInferenceEngine:
             # alignment method.
             # ------------------------------------------------
             if (
-                timeseries_type in (TimeseriesType.NEW_DEATHS, TimeseriesType.NEW_HOSPITALIZATIONS)
+                timeseries_type in (TimeseriesType.NEW_DEATHS,)
                 and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns
             ):
 
@@ -791,15 +730,15 @@ class RtInferenceEngine:
 
         # Correct for tail suppression
         suppression = 1.0 * np.ones(len(df_all))
-        if InferRtConstants.CORRECT_TAIL_SUPRESSION > 0.0:
+        if InferRtConstants.CORRECT_TAIL_SUPPRESSION > 0.0:
             tail_sup = self.evaluate_head_tail_suppression()
             # Calculate rt suppression by smoothing delay at tail of sequence
             suppression = np.concatenate(
                 [1.0 * np.ones(len(df_all) - len(tail_sup)), tail_sup.values]
             )
-            # Adjust rt by undoing the supppression
+            # Adjust rt by undoing the suppression
             df_all["Rt_MAP_composite"] = (df_all["Rt_MAP_composite"] - 1.0) / np.power(
-                suppression, InferRtConstants.CORRECT_TAIL_SUPRESSION
+                suppression, InferRtConstants.CORRECT_TAIL_SUPPRESSION
             ) + 1.0
 
         # Optionally Smooth just Rt_MAP_composite.
@@ -817,14 +756,15 @@ class RtInferenceEngine:
                 .mean(std=kernel_width)
             )
 
-            # Adjust down confidence interval due to count smoothing over kernel_width values but not below .2
+            # Adjust down confidence interval due to count smoothing over kernel_width values but
+            # not below .2
             df_all["Rt_MAP_composite"] = smoothed
             df_all["Rt_ci95_composite"] = (
                 (df_all["Rt_ci95_composite"] - df_all["Rt_MAP_composite"])
                 / math.sqrt(
                     2.0 * kernel_width  # averaging over many points reduces confidence interval
                 )
-                / np.power(suppression, InferRtConstants.CORRECT_TAIL_SUPRESSION / 2)
+                / np.power(suppression, InferRtConstants.CORRECT_TAIL_SUPPRESSION / 2)
             ).apply(lambda v: max(v, InferRtConstants.MIN_CONF_WIDTH)) + df_all["Rt_MAP_composite"]
 
         if plot:
@@ -870,26 +810,6 @@ class RtInferenceEngine:
                     color="steelblue",
                     label="New Cases",
                     marker="s",
-                )
-
-            if "Rt_ci5__new_hospitalizations" in df_all:
-                if not InferRtConstants.DISABLE_DEATHS:
-                    plt.fill_between(
-                        df_all.index,
-                        df_all["Rt_ci5__new_hospitalizations"],
-                        df_all["Rt_ci95__new_hospitalizations"],
-                        alpha=0.4,
-                        color="darkseagreen",
-                    )
-                # Show for reference even if not used
-                plt.scatter(
-                    df_all.index,
-                    df_all["Rt_MAP__new_hospitalizations"],
-                    alpha=1,
-                    s=25,
-                    color="darkseagreen",
-                    label="New Hospitalizations",
-                    marker="d",
                 )
 
             if "Rt_MAP_composite" in df_all:
@@ -1037,6 +957,8 @@ def replace_outliers(
     x
         pandas.Series with any triggered outliers replaced
     """
+    # Small epsilon to prevent divide by 0 errors.
+    EPSILON = 1e-8
 
     # Calculate Z Score
     r = x.rolling(window=local_lookback_window, min_periods=local_lookback_window, center=False)
@@ -1087,7 +1009,7 @@ def run_state(state, states_only=False):
     df = RtInferenceEngine.run_for_fips(state_obj.fips)
     output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
     if df is None or df.empty:
-        logging.error("Empty dataframe encountered! No RtInference results available for %s", state)
+        logging.error("Empty DataFrame encountered! No RtInference results available for %s", state)
     else:
         df.to_json(output_path)
 
