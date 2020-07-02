@@ -273,6 +273,6 @@ class CovidActNowBulkFlattenedTimeseries(pydantic.BaseModel):
     def output_key(self, intervention):
         aggregate_level = self.__root__[0].aggregate_level
         if aggregate_level is AggregationLevel.COUNTY:
-            return f"counties.{intervention.name}"
+            return f"counties.{intervention.name}.timeseries"
         if aggregate_level is AggregationLevel.STATE:
-            return f"states.{intervention.name}"
+            return f"states.{intervention.name}.timeseries"
