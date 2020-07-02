@@ -9,6 +9,7 @@ from libs.enums import Intervention
 pd.options.display.max_rows = 3000
 pd.options.display.max_columns = 15
 
+
 def _build_row(**updates):
 
     data = {

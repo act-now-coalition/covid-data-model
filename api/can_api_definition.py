@@ -13,7 +13,7 @@ Documentation at https://github.com/covid-projections/covid-data-model/tree/mast
 """
 
 
-class _ResourceUsageProjection(pydantic.BaseModel):
+class _ResourceUsageProjection(base_model.BaseModel):
     peakShortfall: int = pydantic.Field(
         ..., description="Shortfall of resource needed at the peek utilization"
     )
@@ -25,7 +25,7 @@ class _ResourceUsageProjection(pydantic.BaseModel):
     )
 
 
-class _Projections(pydantic.BaseModel):
+class _Projections(base_model.BaseModel):
     totalHospitalBeds: _ResourceUsageProjection = pydantic.Field(
         ..., description="Projection about total hospital bed utilization"
     )
@@ -36,7 +36,7 @@ class _Projections(pydantic.BaseModel):
     RtCI90: float = pydantic.Field(..., description="Rt standard deviation")
 
 
-class _ResourceUtilization(pydantic.BaseModel):
+class _ResourceUtilization(base_model.BaseModel):
     capacity: Optional[int] = pydantic.Field(
         ...,
         description=(
@@ -57,7 +57,7 @@ class _ResourceUtilization(pydantic.BaseModel):
     )
 
 
-class _Actuals(pydantic.BaseModel):
+class _Actuals(base_model.BaseModel):
     population: Optional[int] = pydantic.Field(
         ...,
         description="Total population in geographic area [*deprecated*: refer to summary for this]",
@@ -131,7 +131,7 @@ class CANActualsTimeseriesRow(_Actuals):
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
 
 
-class CANPredictionTimeseriesRow(pydantic.BaseModel):
+class CANPredictionTimeseriesRow(base_model.BaseModel):
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
     hospitalBedsRequired: int = pydantic.Field(
         ...,

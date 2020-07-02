@@ -90,7 +90,13 @@ def test_generate_timeseries_for_fips(include_projections, nyc_model_output_path
     model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
 
     area_summary = generate_api.generate_area_summary(intervention, nyc_latest, model_output)
-    area_timeseries = generate_api.generate_area_timeseries(area_summary, nyc_timeseries, model_output)
+    area_timeseries = generate_api.generate_area_timeseries(
+        area_summary, nyc_timeseries, model_output
+    )
 
     summary = generate_api.generate_area_summary(intervention, nyc_latest, model_output)
+
     assert summary.dict() == area_timeseries.area_summary.dict()
+    # Double checking that serialized json does not contain NaNs, all values should
+    # be serialized using the simplejson wrapper.
+    assert ": NaN" not in area_timeseries.json()
