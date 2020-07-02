@@ -1,22 +1,18 @@
 import math
 import sys
 from datetime import datetime, timedelta
-import numpy as np
 import logging
+import structlog
+
+import numpy as np
 import pandas as pd
 from scipy import stats as sps
 from scipy import signal
 from matplotlib import pyplot as plt
 import us
-import structlog
 
-from pyseir.load_data import (
-    load_county_metadata,
-    get_all_fips_codes_for_a_state,
-)
-
+from pyseir.load_data import load_county_metadata, get_all_fips_codes_for_a_state
 from pyseir.utils import AggregationLevel, TimeseriesType, get_run_artifact_path, RunArtifact
-from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.rt.infer_utils import LagMonitor
 
 rt_log = structlog.get_logger(__name__)
@@ -75,6 +71,11 @@ class InferRtConstants:
     # Avoids too narrow values when averaging over timeseries that already have high confidence
     MIN_CONF_WIDTH = 0.1
 
+    # Serial period = Incubation + 0.5 * Infections
+    _sigma = 0.333  # Mirrored from assumptions doc
+    _delta = 0.25  # Mirrored from assumptions doc
+    SERIAL_PERIOD = 1 / _sigma + 0.5 * 1 / _delta
+
 
 class RtInferenceEngine:
     """
@@ -126,7 +127,6 @@ class RtInferenceEngine:
         min_deaths=100000,
         include_testing_correction=True,
         load_data_parent="pyseir",
-        parameter_ensemble_generator_parent="pyseir.parameters",
         default_parameters=None,
     ):
 
@@ -206,16 +206,7 @@ class RtInferenceEngine:
             ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
         ]
 
-        if self.default_parameters is None:
-            self.default_parameters = ParameterEnsembleGenerator(
-                fips=self.fips, N_samples=500, t_list=np.linspace(0, 365, 366)
-            ).get_average_seir_parameters()
-
-        # TODO This code should move out of infer_rt.py
-        # Serial period = Incubation + 0.5 * Infections
-        self.serial_period = (
-            1 / self.default_parameters["sigma"] + 0.5 * 1 / self.default_parameters["delta"]
-        )
+        self.serial_period = InferRtConstants.SERIAL_PERIOD
 
         self.log_likelihood = None
 
@@ -249,7 +240,7 @@ class RtInferenceEngine:
         elif timeseries_type is TimeseriesType.NEW_DEATHS or TimeseriesType.RAW_NEW_DEATHS:
             return self.case_dates, self.times, self.observed_new_deaths
         else:
-            raise
+            raise ValueError
 
     def evaluate_head_tail_suppression(self):
         """
@@ -419,7 +410,7 @@ class RtInferenceEngine:
         for row in range(0, sz):
             process_matrix[row] = process_matrix[row] / row_sums[row]
 
-        return (use_sigma, process_matrix)
+        return use_sigma, process_matrix
 
     def get_posteriors(self, timeseries_type, plot=False):
         """
