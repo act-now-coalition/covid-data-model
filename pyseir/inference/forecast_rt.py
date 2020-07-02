@@ -47,11 +47,11 @@ class ForecastRt:
         self.sequence_length = 300
         self.mask_value = -10
         self.min_number_of_days = 30
-        self.sample_train_length = 30  # Set to -1 to use all historical data
+        self.sample_train_length = -1  # Set to -1 to use all historical data
         self.predict_days = 3
         self.train_size = 0.8
         self.n_batch = 1
-        self.n_epochs = 2
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0.01
         self.patience = 50
@@ -121,11 +121,10 @@ class ForecastRt:
 
         log.info(f"train samples: {len(train_X)} {len(train_df_list)}")
         log.info(f"test samples: {len(test_X)} {len(test_df_list)}")
-
         """
-        for n in range(len(test_X)):
+        for n in range(len(train_X)):
           log.info(f'------------------------   {n} ----------------')
-          if n == 0 or n == 1 or n == len(test_X)-2 or n== len(test_X)-1:
+          if n == 0 or n == 1 or n == len(train_X)-2 or n== len(train_X)-1:
               log.info('----------------------')
               log.info('train X')
               log.info(train_X[n])
@@ -133,8 +132,17 @@ class ForecastRt:
               log.info(train_Y[n])
               log.info('DF')
               log.info(train_df_list[n])
-        exit()
 
+        for n in range(len(test_X)):
+          log.info(f'------------------------   {n} ----------------')
+          if n == 0 or n == 1 or n == len(test_X)-2 or n== len(test_X)-1:
+              log.info('----------------------')
+              log.info('test X')
+              log.info(test_X[n])
+              log.info('test Y')
+              log.info(test_Y[n])
+              log.info('DF')
+              log.info(test_df_list[n])
 
         for i, j, k in zip(test_X, test_Y, test_df_list):
             log.info('----------------------')
@@ -144,7 +152,7 @@ class ForecastRt:
             log.info(j)
             log.info('DF')
             log.info(k)
-        """
+      """
 
         model, history = self.build_model(train_X, train_Y)
 
@@ -152,56 +160,12 @@ class ForecastRt:
 
         # Plot predictions for test and train sets
 
-        """
-        logging.info("forecasts")
-        logging.info(forecasts)
-        logging.info("dates")
-        logging.info(dates)
-        """
-
-        forecasts_train = list()
-        dates_train = list()
-        for i, j, k in zip(train_X, train_Y, train_df_list):
-            # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
-            i = i.reshape(self.n_batch, i.shape[0], i.shape[1])
-            scaled_df = pd.DataFrame(np.squeeze(i))
-            thisforecast = scalers_dict[self.predict_variable].inverse_transform(
-                model.predict(i, batch_size=self.n_batch)
-            )
-            forecasts_train.append(thisforecast)
-
-            last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
-
-            unscaled_first_test_day = (
-                int(scalers_dict[self.sim_date_name].inverse_transform(last_train_day)) + 1
-            )
-
-            predicted_days = np.arange(
-                unscaled_first_test_day, unscaled_first_test_day + self.predict_days
-            )
-            dates_train.append(predicted_days)
-
-        forecasts_test = list()
-        dates_test = list()
-        for i, j, k in zip(test_X, test_Y, test_df_list):
-            # original_df = self.get_reshaped_X(i, n_batch, X_scaler)
-            i = i.reshape(self.n_batch, i.shape[0], i.shape[1])
-            scaled_df = pd.DataFrame(np.squeeze(i))
-            thisforecast = scalers_dict[self.predict_variable].inverse_transform(
-                model.predict(i, batch_size=self.n_batch)
-            )
-            forecasts_test.append(thisforecast)
-
-            last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
-
-            unscaled_first_test_day = (
-                int(scalers_dict[self.sim_date_name].inverse_transform(last_train_day)) + 1
-            )
-
-            predicted_days = np.arange(
-                unscaled_first_test_day, unscaled_first_test_day + self.predict_days
-            )
-            dates_test.append(predicted_days)
+        forecasts_train, dates_train = self.get_forecasts(
+            train_X, train_Y, train_df_list, scalers_dict, model
+        )
+        forecasts_test, dates_test = self.get_forecasts(
+            test_X, test_Y, test_df_list, scalers_dict, model
+        )
 
         logging.info("about to plot")
         LINEWIDTH = 1
@@ -211,18 +175,13 @@ class ForecastRt:
             j = np.squeeze(forecasts_train[n])
             # newdates = convert_to_2020_date(i,args)
             newdates = dates_train[n]
-            logging.info(i)
-            logging.info(j)
-            logging.info(newdates)
-            logging.info("got inputs for plotting")
             if n == 0:
                 plt.plot(
                     newdates, j, color="blue", label="Train Set", linewidth=LINEWIDTH, markersize=0
                 )
             else:
                 plt.plot(newdates, j, color="blue", linewidth=LINEWIDTH, markersize=0)
-            # check if dictionary of scalers works
-            logging.info("plotted one")
+            logging.info("plotted TRAIN")
 
         for n in range(len(dates_test)):
             i = dates_test[n]
@@ -239,10 +198,8 @@ class ForecastRt:
                 )
             else:
                 plt.plot(newdates, j, color="orange", linewidth=LINEWIDTH, markersize=0)
-            # check if dictionary of scalers works
-            logging.info("plotted one")
+            logging.info("plotted TEST")
 
-        # full_data = test_df_list[-1]
         full_data = df_forecast
         plt.plot(
             full_data[self.sim_date_name],
@@ -258,6 +215,29 @@ class ForecastRt:
         plt.savefig("train_plot.pdf")
 
         return
+
+    def get_forecasts(self, X, Y, df_list, scalers_dict, model):
+        forecasts = list()
+        dates = list()
+        for i, j, k in zip(X, Y, df_list):
+            i = i.reshape(self.n_batch, i.shape[0], i.shape[1])
+            scaled_df = pd.DataFrame(np.squeeze(i))
+            thisforecast = scalers_dict[self.predict_variable].inverse_transform(
+                model.predict(i, batch_size=self.n_batch)
+            )
+            forecasts.append(thisforecast)
+
+            last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
+
+            unscaled_first_test_day = (
+                int(scalers_dict[self.sim_date_name].inverse_transform(last_train_day)) + 1
+            )
+
+            predicted_days = np.arange(
+                unscaled_first_test_day, unscaled_first_test_day + self.predict_days
+            )
+            dates.append(predicted_days)
+        return forecasts, dates
 
     def get_scaling_dictionary(self, train_scaling_set):
         log.info("getting scaling dictionary")
