@@ -2,6 +2,7 @@ from typing import List, Optional
 from libs.enums import Intervention
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import us_state_abbrev
+from libs import base_model
 import pydantic
 import datetime
 
@@ -79,7 +80,7 @@ class _Actuals(pydantic.BaseModel):
     contactTracers: Optional[int] = pydantic.Field(default=None, description="# of Contact Tracers")
 
 
-class CovidActNowAreaSummary(pydantic.BaseModel):
+class CovidActNowAreaSummary(base_model.BaseModel):
     countryName: str = "US"
     fips: str = pydantic.Field(
         ...,
@@ -245,7 +246,7 @@ class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
         return super().output_key(intervention) + ".timeseries"
 
 
-class CovidActNowBulkSummary(pydantic.BaseModel):
+class CovidActNowBulkSummary(base_model.BaseModel):
     __root__: List[CovidActNowAreaSummary] = pydantic.Field(...)
 
     def output_key(self, intervention):
@@ -256,7 +257,7 @@ class CovidActNowBulkSummary(pydantic.BaseModel):
             return f"states.{intervention.name}"
 
 
-class CovidActNowBulkTimeseries(pydantic.BaseModel):
+class CovidActNowBulkTimeseries(base_model.BaseModel):
     __root__: List[CovidActNowAreaTimeseries] = pydantic.Field(...)
 
     def output_key(self, intervention):
@@ -267,7 +268,7 @@ class CovidActNowBulkTimeseries(pydantic.BaseModel):
             return f"states.{intervention.name}.timeseries"
 
 
-class CovidActNowBulkFlattenedTimeseries(pydantic.BaseModel):
+class CovidActNowBulkFlattenedTimeseries(base_model.BaseModel):
     __root__: List[PredictionTimeseriesRowWithHeader] = pydantic.Field(...)
 
     def output_key(self, intervention):

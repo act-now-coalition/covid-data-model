@@ -27,7 +27,7 @@ def test_build_summary_for_fips(include_projections, nyc_model_output_path, nyc_
         model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
         expected_projections = _Projections(
             totalHospitalBeds=_ResourceUsageProjection(
-                peakShortfall=10020, peakDate=datetime.date(2020, 4, 23), shortageStartDate=None
+                peakShortfall=9763, peakDate=datetime.date(2020, 4, 15), shortageStartDate=None
             ),
             ICUBeds=None,
             Rt=model_output.latest_rt,

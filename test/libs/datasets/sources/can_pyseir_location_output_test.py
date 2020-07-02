@@ -6,6 +6,8 @@ from libs.datasets import can_model_output_schema as schema
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
 
+pd.options.display.max_rows = 3000
+pd.options.display.max_columns = 15
 
 def _build_row(**updates):
 
@@ -65,5 +67,6 @@ def test_load_from_path(nyc_model_output_path):
 
     output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
     assert output.fips == "36061"
-    assert output.intervention == Intervention.OBSERVED_INTERVENTION
-    assert output.peak_hospitalizations_date == datetime.datetime(2020, 4, 23)
+    assert output.intervention == Intervention.STRONG_INTERVENTION
+    assert output.peak_hospitalizations_date == datetime.datetime(2020, 4, 15)
+    assert 0

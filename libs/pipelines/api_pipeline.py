@@ -41,13 +41,7 @@ def run_on_all_fips_for_intervention(
     )
 
     pool = pool or multiprocessing.Pool()
-    all_fips = latest_values.all_fips
-    all_fips = [
-        fips
-        for fips in all_fips
-        if not (fips.startswith("90") or fips.startswith("800") or fips.startswith("99"))
-    ]
-    results = pool.map(run_fips, all_fips)
+    results = pool.map(run_fips, latest_values.all_fips)
     all_timeseries = []
 
     for area_timeseries in results:

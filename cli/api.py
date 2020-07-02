@@ -3,7 +3,7 @@ import logging
 import pathlib
 import click
 import itertools
-
+import us
 from libs.pipelines import api_pipeline
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import combined_datasets
@@ -73,12 +73,12 @@ def generate_api(
     # for directory in [input_dir, output]:
     #     if not os.path.isdir(directory):
     #         raise NotADirectoryError(directory)
-
+    active_states = [state.abbr for state in us.STATES]
     us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
-        aggregation_level, state=state, fips=fips
+        aggregation_level, state=state, fips=fips, states=active_states
     )
     us_timeseries = combined_datasets.build_us_timeseries_with_all_fields().get_subset(
-        aggregation_level, state=state, fips=fips
+        aggregation_level, state=state, fips=fips, states=active_states
     )
 
     for intervention in list(Intervention):
