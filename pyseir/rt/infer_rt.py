@@ -18,6 +18,7 @@ from pyseir.rt import plotting, utils
 rt_log = structlog.get_logger(__name__)
 
 
+
 class RtInferenceEngine:
     """
     This class extends the analysis of Bettencourt et al to include mortality data in a
@@ -85,6 +86,11 @@ class RtInferenceEngine:
                 self.ref_date,
                 include_testing_correction=self.include_testing_correction,
             )
+
+            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
+                self.state, self.ref_date, include_testing_correction=False
+            )
+
             (
                 self.times_raw_new_cases,
                 self.raw_new_cases,
@@ -116,12 +122,20 @@ class RtInferenceEngine:
                 self.times_raw_new_cases,
                 self.raw_new_cases,
                 _,
+            ) = load_data.load_new_case_data_by_fips(
+                self.fips, t0=self.ref_date, include_testing_correction=False,
+            )
+            (
+                self.times_raw_new_cases,
+                self.raw_new_cases,
+                _,
             ) = self.load_data.load_new_case_data_by_state(self.state, self.ref_date, False)
 
         self.case_dates = [self.ref_date + timedelta(days=int(t)) for t in self.times]
         self.raw_new_case_dates = [
             self.ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
         ]
+
 
     def get_timeseries(self, timeseries_type):
         """
@@ -526,7 +540,7 @@ class RtInferenceEngine:
             df_raw = pd.DataFrame()
             df_raw["date"] = dates_raw
             df_raw = df_raw.set_index("date")
-            df_raw[f"{timeseries_type.value}"] = timeseries_raw
+            df_raw[timeseries_type.value] = timeseries_raw
 
             df = pd.DataFrame()
             dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
