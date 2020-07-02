@@ -17,7 +17,7 @@ from structlog import configure
 from enum import Enum
 from pyseir.inference.infer_utils import LagMonitor
 
-# from pyseir.inference.forecast_rt import ForecastRt
+from pyseir.inference.forecast_rt import ForecastRt
 
 
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
@@ -895,7 +895,7 @@ class RtInferenceEngine:
         df_all.to_csv("df_all_" + self.display_name + ".csv")
 
         log.info("run forecast")
-        # ForecastRt.run_forecast(df_all)
+        ForecastRt.run_forecast(df_all)
         log.info("done running forecast")
         return df_all
 

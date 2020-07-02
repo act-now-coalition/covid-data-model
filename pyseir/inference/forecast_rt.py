@@ -51,9 +51,9 @@ class ForecastRt:
         self.predict_days = 3
         self.train_size = 0.8
         self.n_batch = 1
-        self.n_epochs = 1
+        self.n_epochs = 100
         self.n_hidden_layer_dimensions = 100
-        self.dropout = 0.01
+        self.dropout = 0
         self.patience = 50
         self.validation_split = 0.1
         log.info("DONE INIT")
@@ -385,7 +385,13 @@ class ForecastRt:
 
     def create_df_list(self, df):
         df_list = list()
-        for i in range(len(df.index)):
+        for index in range(len(df.index)):
+            i = index * 3
+            if i > len(df.index):
+                continue
+
+            log.info("i is")
+            log.info(i)
             if (
                 i < self.predict_days + self.min_number_of_days
             ):  # only keep df if it has min number of entries
