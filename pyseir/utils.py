@@ -17,6 +17,8 @@ REF_DATE = datetime(year=2020, month=1, day=1)
 
 
 class TimeseriesType(Enum):
+    RAW_NEW_CASES = "raw_new_cases"
+    RAW_NEW_DEATHS = "raw_new_deaths"
     NEW_CASES = "new_cases"
     NEW_DEATHS = "new_deaths"
     NEW_HOSPITALIZATIONS = "new_hospitalizations"
@@ -32,6 +34,7 @@ class RunMode(Enum):
 
 
 class RunArtifact(Enum):
+    RT_SMOOTHING_REPORT = "rt_smoothing_report"
     RT_INFERENCE_RESULT = "rt_inference_result"
     RT_INFERENCE_REPORT = "rt_inference_report"
 
@@ -49,7 +52,7 @@ class RunArtifact(Enum):
     BACKTEST_RESULT = "backtest_result"
 
 
-def get_run_artifact_path(fips, artifact, output_dir=None):
+def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
     """
     Get an artifact path for a given locale and artifact type.
 
@@ -89,6 +92,19 @@ def get_run_artifact_path(fips, artifact, output_dir=None):
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
                 f"Rt_results__{state_obj.name}__{fips}.pdf",
+            )
+
+    elif artifact is RunArtifact.RT_SMOOTHING_REPORT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(
+                REPORTS_FOLDER(output_dir, state_obj.name),
+                f"Rt_smoothing__{state_obj.name}__{county}__{fips}.pdf",
+            )
+        else:
+            path = os.path.join(
+                STATE_SUMMARY_FOLDER(output_dir),
+                "reports",
+                f"Rt_smoothing__{state_obj.name}__{fips}.pdf",
             )
 
     elif artifact is RunArtifact.RT_INFERENCE_RESULT:

@@ -2,10 +2,12 @@ import logging
 import re
 
 import pytest
-
-from libs.datasets import combined_datasets, CommonFields
+import pandas as pd
+from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources.cmdc import CmdcDataSource
+from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import JHUDataset
@@ -68,6 +70,7 @@ def test_combined_county_has_some_timeseries_data(fips):
         NevadaHospitalAssociationData,
         CmdcDataSource,
         NYTimesDataset,
+        TexasHospitalizations,
     ],
 )
 def test_unique_timeseries(data_source_cls):
@@ -112,3 +115,24 @@ def test_expected_field_in_sources(data_source_cls):
             else:
                 logging.info(f"Ignoring {state} in {data_source.SOURCE_NAME}")
         assert len(good_state) >= 48
+
+
+@pytest.mark.parametrize("include_na_at_end", [False, True])
+def test_remove_padded_nans(include_na_at_end):
+    rows = [
+        {"date": "2020-02-01", "cases": pd.NA},
+        {"date": "2020-02-02", "cases": pd.NA},
+        {"date": "2020-02-03", "cases": 1},
+        {"date": "2020-02-04", "cases": pd.NA},
+        {"date": "2020-02-05", "cases": 2},
+        {"date": "2020-02-06", "cases": 3},
+    ]
+    if include_na_at_end:
+        rows += [{"date": "2020-02-07", "cases": pd.NA}]
+
+    df = pd.DataFrame(rows)
+
+    results = combined_datasets._remove_padded_nans(df, ["cases"])
+    expected_series = pd.Series([1, pd.NA, 2, 3], name="cases")
+
+    pd.testing.assert_series_equal(results.cases, expected_series)

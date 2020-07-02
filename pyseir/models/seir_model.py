@@ -503,7 +503,7 @@ class SEIRModel:
             HAdmissions_ICU
         )  # Derivative of the cumulative.
 
-    def plot_results(self, y_scale="log", xlim=None):
+    def plot_results(self, y_scale="log", xlim=None) -> plt.Figure:
         """
         Generate a summary plot for the simulation.
 
