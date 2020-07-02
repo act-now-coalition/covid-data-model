@@ -64,10 +64,12 @@ def _impute_start_dates(state=None, states_only=False):
 
 def _infer_rt(state=None, states_only=False):
     if state:
-        infer_rt_module.run_state(state=state, states_only=states_only)
+        fips = us.states.lookup(state).fips
+        infer_rt_module.run_rt_for_fips(fips=fips)
     else:
         for state_name in ALL_STATES:
-            _infer_rt(state=state_name, states_only=states_only)
+            fips = us.states.lookup(state_name).fips
+            infer_rt_module.run_rt_for_fips(fips=fips)
 
 
 def _run_mle_fits(state=None, states_only=False):
@@ -184,7 +186,6 @@ def _build_all_for_states(
     run_mode=DEFAULT_RUN_MODE,
     generate_reports=False,
     output_interval_days=4,
-    skip_download=False,
     output_dir=None,
     skip_whitelist=False,
     states_only=False,
@@ -215,7 +216,7 @@ def _build_all_for_states(
 
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
-        p.map(infer_rt_module.run_county, all_county_fips.keys())
+        p.map(infer_rt_module.run_rt_for_fips, all_county_fips.keys())
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
         fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())

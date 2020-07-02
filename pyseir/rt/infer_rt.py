@@ -1,5 +1,4 @@
 import math
-import sys
 from datetime import timedelta
 import logging
 import structlog
@@ -7,16 +6,55 @@ import structlog
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
-from scipy import signal
-import us
 
-from pyseir.load_data import load_county_metadata, get_all_fips_codes_for_a_state
-from pyseir.utils import AggregationLevel, TimeseriesType, get_run_artifact_path, RunArtifact
+from pyseir import load_data
+from pyseir.utils import TimeseriesType, get_run_artifact_path, RunArtifact
 from pyseir.rt.constants import InferRtConstants
 from pyseir.rt import plotting, utils
 
 rt_log = structlog.get_logger(__name__)
 
+
+def run_rt_for_fips(fips):
+    """Entry Point for Infer Rt"""
+
+    # Generate the Data Packet to Pass to RtInferenceEngine
+    input_df = _generate_input_data(fips, include_testing_correction=True)
+
+    # Save a reference to instantiated engine (eventually I want to pull out the figure generation
+    # and saving so that I don't have to pass a display_name and fips into the class
+    engine = RtInferenceEngine(
+        data=input_df, display_name=_get_display_name(fips), fips=fips, include_deaths=False
+    )
+
+    # Generate the output DataFrame (consider renaming the function infer_all to make it clearer)
+    output_df = engine.infer_all()
+
+    # Save the output to json for downstream repacking and incorporation.
+    county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
+    if output_df is not None and not output_df.empty:
+        output_df.to_json(county_output_file)
+
+
+def _get_display_name(fips) -> str:
+    """Need to find the right function for this. Right now just return the fips"""
+    return str(fips)
+
+
+def _generate_input_data(fips, include_testing_correction=True):
+    """
+    Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
+
+    include_testing_correction: bool
+        If True, include a correction for testing increases and decreases.
+    """
+    times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
+        fips, t0=InferRtConstants.REF_DATE, include_testing_correction=include_testing_correction,
+    )
+
+    date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
+    df = pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date)
+    return df
 
 
 class RtInferenceEngine:
@@ -26,32 +64,30 @@ class RtInferenceEngine:
 
     Parameters
     ----------
-    fips: str
-        State or County fips code
-    include_testing_correction: bool
-        If True, include a correction for testing increases and decreases.
+    data: DataFrame
+        DataFrame with a Date index and at least one "cases" column.
     include_deaths: bool
         If True, include the deaths timeseries in the calculation. XCorrelated and Averaged
+    display_name: str
+        Needed for Figures. Should just return figures along with dataframe and then deal with title
+        and save location somewhere downstream.
+    fips: str
+        Just used for output paths. Should remove with display_name later.
     """
 
     def __init__(
-        self,
-        fips,
-        include_testing_correction=True,
-        include_deaths=False,
-        load_data_parent="pyseir",
+        self, data, display_name, fips, include_deaths=False,
     ):
 
-        # Support injection of module that we use for loading data
-        if "load_data" not in sys.modules:
-            _temp = __import__(load_data_parent, globals(), locals(), ["load_data"], 0)
-            self.load_data = _temp.load_data
+        self.dates = data.index
+        self.cases = data.cases
+        self.deaths = data.deaths if "deaths" in data else None
 
-        self.fips = fips
-        self.include_testing_correction = include_testing_correction
         self.include_deaths = include_deaths
+        self.display_name = display_name
+        self.fips = fips
 
-        # Load the InferRtConstants
+        # Load the InferRtConstants (TODO: turn into class constants)
         self.r_list = InferRtConstants.R_BUCKETS
         self.window_size = InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE
         self.kernel_std = InferRtConstants.COUNT_SMOOTHING_KERNEL_STD
@@ -68,74 +104,9 @@ class RtInferenceEngine:
         self.smooth_rt_map_composite = InferRtConstants.SMOOTH_RT_MAP_COMPOSITE
         self.rt_smoothing_window_size = InferRtConstants.RT_SMOOTHING_WINDOW_SIZE
         self.min_conf_width = InferRtConstants.MIN_CONF_WIDTH
-        self.log = structlog.getLogger(Rt_Inference_Target="Test self.display_name")
+        self.log = structlog.getLogger(Rt_Inference_Target=self.display_name)
         self.log_likelihood = None  # TODO: Add this later. Not in init.
         self.log.info(event="Running:")
-
-        if len(fips) == 2:  # State FIPS are 2 digits
-            self.agg_level = AggregationLevel.STATE
-            self.state_obj = us.states.lookup(self.fips)
-            self.state = self.state_obj.name
-
-            (
-                self.times,
-                self.observed_new_cases,
-                self.observed_new_deaths,
-            ) = self.load_data.load_new_case_data_by_state(
-                self.state,
-                self.ref_date,
-                include_testing_correction=self.include_testing_correction,
-            )
-
-            self.times_raw_new_cases, self.raw_new_cases, _ = load_data.load_new_case_data_by_state(
-                self.state, self.ref_date, include_testing_correction=False
-            )
-
-            (
-                self.times_raw_new_cases,
-                self.raw_new_cases,
-                _,
-            ) = self.load_data.load_new_case_data_by_state(self.state, self.ref_date, False)
-
-            self.display_name = self.state
-        else:
-            self.agg_level = AggregationLevel.COUNTY
-            self.geo_metadata = load_county_metadata().set_index("fips").loc[fips].to_dict()
-            self.state = self.geo_metadata["state"]
-            self.state_obj = us.states.lookup(self.state)
-            self.county = self.geo_metadata["county"]
-            if self.county:
-                self.display_name = self.county + ", " + self.state
-            else:
-                self.display_name = self.state
-
-            (
-                self.times,
-                self.observed_new_cases,
-                self.observed_new_deaths,
-            ) = self.load_data.load_new_case_data_by_fips(
-                self.fips,
-                t0=self.ref_date,
-                include_testing_correction=self.include_testing_correction,
-            )
-            (
-                self.times_raw_new_cases,
-                self.raw_new_cases,
-                _,
-            ) = load_data.load_new_case_data_by_fips(
-                self.fips, t0=self.ref_date, include_testing_correction=False,
-            )
-            (
-                self.times_raw_new_cases,
-                self.raw_new_cases,
-                _,
-            ) = self.load_data.load_new_case_data_by_state(self.state, self.ref_date, False)
-
-        self.case_dates = [self.ref_date + timedelta(days=int(t)) for t in self.times]
-        self.raw_new_case_dates = [
-            self.ref_date + timedelta(days=int(t)) for t in self.times_raw_new_cases
-        ]
-
 
     def get_timeseries(self, timeseries_type):
         """
@@ -150,19 +121,15 @@ class RtInferenceEngine:
         -------
         dates: list(datetime)
             Dates for each observation
-        times: list(int)
-            Integer days since the reference date.
         timeseries:
             The requested timeseries.
         """
         timeseries_type = TimeseriesType(timeseries_type)
 
         if timeseries_type is TimeseriesType.NEW_CASES:
-            return self.case_dates, self.times, self.observed_new_cases
-        elif timeseries_type is TimeseriesType.RAW_NEW_CASES:
-            return self.raw_new_case_dates, self.times_raw_new_cases, self.raw_new_cases
-        elif timeseries_type is TimeseriesType.NEW_DEATHS or TimeseriesType.RAW_NEW_DEATHS:
-            return self.case_dates, self.times, self.observed_new_deaths
+            return self.dates, self.cases
+        elif timeseries_type is TimeseriesType.NEW_DEATHS:
+            return self.dates, self.deaths
         else:
             raise ValueError
 
@@ -210,7 +177,7 @@ class RtInferenceEngine:
 
         """
         timeseries_type = TimeseriesType(timeseries_type)
-        dates, times, timeseries = self.get_timeseries(timeseries_type)
+        dates, timeseries = self.get_timeseries(timeseries_type)
         self.log = self.log.bind(timeseries_type=timeseries_type.value)
 
         # Don't even try if the timeseries is too short.
@@ -251,7 +218,7 @@ class RtInferenceEngine:
             output_path = get_run_artifact_path(self.fips, RunArtifact.RT_SMOOTHING_REPORT)
             fig.savefig(output_path, bbox_inches="tight")
 
-        return dates, times, smoothed
+        return dates, smoothed
 
     def highest_density_interval(self, posteriors, ci):
         """
@@ -359,7 +326,7 @@ class RtInferenceEngine:
         smoothed_max_threshold = (
             self.min_cases if TimeseriesType.NEW_CASES == timeseries_type else self.min_deaths
         )
-        dates, times, timeseries = self.apply_gaussian_smoothing(
+        dates, timeseries = self.apply_gaussian_smoothing(
             timeseries_type, smoothed_max_threshold=smoothed_max_threshold
         )
 
@@ -487,12 +454,13 @@ class RtInferenceEngine:
 
         start_idx = -len(posteriors.columns)
 
-        return dates[start_idx:], times[start_idx:], posteriors, start_idx
+        return dates[start_idx:], posteriors, start_idx
 
     def get_available_timeseries(self):
         """
         Determine available timeseries for Rt inference calculation 
-        with constraints below
+        with constraints below.
+
 
         Returns
         -------
@@ -500,16 +468,13 @@ class RtInferenceEngine:
           array of available timeseries saved as TimeseriesType
         """
         available_timeseries = []
-        IDX_OF_COUNTS = 2
-        cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)[IDX_OF_COUNTS]
-        deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)[IDX_OF_COUNTS]
+        _, cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)
+        _, deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
-            available_timeseries.append(TimeseriesType.RAW_NEW_CASES)
 
         if np.sum(deaths) > self.min_deaths:
-            available_timeseries.append(TimeseriesType.RAW_NEW_DEATHS)
             available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
         return available_timeseries
@@ -536,14 +501,14 @@ class RtInferenceEngine:
 
         for timeseries_type in available_timeseries:
             # Add Raw Data Output to Output DataFrame
-            dates_raw, times_raw, timeseries_raw = self.get_timeseries(timeseries_type)
+            dates_raw, timeseries_raw = self.get_timeseries(timeseries_type)
             df_raw = pd.DataFrame()
             df_raw["date"] = dates_raw
             df_raw = df_raw.set_index("date")
             df_raw[timeseries_type.value] = timeseries_raw
 
             df = pd.DataFrame()
-            dates, times, posteriors, start_idx = self.get_posteriors(timeseries_type)
+            dates, posteriors, start_idx = self.get_posteriors(timeseries_type)
             # Note that it is possible for the dates to be missing days
             # This can cause problems when:
             #   1) computing posteriors that assume continuous data (above),
@@ -586,7 +551,7 @@ class RtInferenceEngine:
                 series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
                 series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
 
-                shift_in_days = self.align_time_series(series_a=series_a, series_b=series_b,)
+                shift_in_days = utils.align_time_series(series_a=series_a, series_b=series_b,)
 
                 df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
                 logging.debug(
@@ -598,7 +563,7 @@ class RtInferenceEngine:
                 for col in df_all.columns:
                     if timeseries_type.value in col:
                         df_all[col] = df_all[col].shift(shift_in_days)
-                        # Extend death and hopitalization rt signals beyond
+                        # Extend death rt signals beyond
                         # shift to avoid sudden jumps in composite metric.
                         #
                         # N.B interpolate() behaves differently depending on the location
@@ -680,119 +645,3 @@ class RtInferenceEngine:
         if df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
         return df_all
-
-    @staticmethod
-    def ewma_smoothing(series, tau=5):
-        """
-        Exponentially weighted moving average of a series.
-
-        Parameters
-        ----------
-        series: array-like
-            Series to convolve.
-        tau: float
-            Decay factor.
-
-        Returns
-        -------
-        smoothed: array-like
-            Smoothed series.
-        """
-        exp_window = signal.exponential(2 * tau, 0, tau, False)[::-1]
-        exp_window /= exp_window.sum()
-        smoothed = signal.convolve(series, exp_window, mode="same")
-        return smoothed
-
-    @staticmethod
-    def align_time_series(series_a, series_b):
-        """
-        Identify the optimal time shift between two data series based on
-        maximal cross-correlation of their derivatives.
-
-        Parameters
-        ----------
-        series_a: pd.Series
-            Reference series to cross-correlate against.
-        series_b: pd.Series
-            Reference series to shift and cross-correlate against.
-
-        Returns
-        -------
-        shift: int
-            A shift period applied to series b that aligns to series a
-        """
-        shifts = range(-21, 5)
-        valid_shifts = []
-        xcor = []
-        np.random.seed(InferRtConstants.RNG_SEED)  # Xcor has some stochastic FFT elements.
-        _series_a = np.diff(series_a)
-
-        for i in shifts:
-            series_b_shifted = np.diff(series_b.shift(i))
-            valid = ~np.isnan(_series_a) & ~np.isnan(series_b_shifted)
-            if len(series_b_shifted[valid]) > 0:
-                xcor.append(signal.correlate(_series_a[valid], series_b_shifted[valid]).mean())
-                valid_shifts.append(i)
-        if len(valid_shifts) > 0:
-            return valid_shifts[np.argmax(xcor)]
-        else:
-            return 0
-
-    @classmethod
-    def run_for_fips(cls, fips):
-        try:
-            engine = cls(fips)
-            return engine.infer_all()
-        except Exception:
-            logging.exception("run_for_fips failed")
-            return None
-
-
-def run_state(state, states_only=False):
-    """
-    Run the R_t inference for each county in a state.
-
-    Parameters
-    ----------
-    state: str
-        State to run against.
-    states_only: bool
-        If True only run the state level.
-    """
-    state_obj = us.states.lookup(state)
-    df = RtInferenceEngine.run_for_fips(state_obj.fips)
-    output_path = get_run_artifact_path(state_obj.fips, RunArtifact.RT_INFERENCE_RESULT)
-    if df is None or df.empty:
-        logging.error("Empty DataFrame encountered! No RtInference results available for %s", state)
-    else:
-        df.to_json(output_path)
-
-    # Run the counties.
-    if not states_only:
-        all_fips = get_all_fips_codes_for_a_state(state)
-
-        # Something in here doesn't like multiprocessing...
-        rt_inferences = all_fips.map(lambda x: RtInferenceEngine.run_for_fips(x)).tolist()
-
-        for fips, rt_inference in zip(all_fips, rt_inferences):
-            county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
-            if rt_inference is not None:
-                rt_inference.to_json(county_output_file)
-
-
-def run_county(fips):
-    """
-    Run the R_t inference for each county in a state.
-
-    Parameters
-    ----------
-    fips: str
-        County fips to run against
-    """
-    if not fips:
-        return None
-
-    df = RtInferenceEngine.run_for_fips(fips)
-    county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
-    if df is not None and not df.empty:
-        df.to_json(county_output_file)

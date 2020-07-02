@@ -70,3 +70,6 @@ class InferRtConstants:
 
     # Confidence interval to compute. 0.95 would be 90% credible intervals from 5% to 95%.
     CONFIDENCE_INTERVALS = (0.68, 0.95)
+
+    # The Possible Cross Correlation Shifts Allowed to Align Cases and Deaths
+    XCOR_DAY_RANGE = range(-21, 5)

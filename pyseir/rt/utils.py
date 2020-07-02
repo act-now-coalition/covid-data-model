@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+from scipy import signal
 
 from pyseir.rt.constants import InferRtConstants
 
@@ -176,3 +177,60 @@ def replace_outliers(
         )
 
     return x
+
+
+def ewma_smoothing(series, tau=5):
+    """
+    Exponentially weighted moving average of a series.
+
+    Parameters
+    ----------
+    series: array-like
+        Series to convolve.
+    tau: float
+        Decay factor.
+
+    Returns
+    -------
+    smoothed: array-like
+        Smoothed series.
+    """
+    exp_window = signal.exponential(2 * tau, 0, tau, False)[::-1]
+    exp_window /= exp_window.sum()
+    smoothed = signal.convolve(series, exp_window, mode="same")
+    return smoothed
+
+
+def align_time_series(series_a, series_b):
+    """
+    Identify the optimal time shift between two data series based on
+    maximal cross-correlation of their derivatives.
+
+    Parameters
+    ----------
+    series_a: pd.Series
+        Reference series to cross-correlate against.
+    series_b: pd.Series
+        Reference series to shift and cross-correlate against.
+
+    Returns
+    -------
+    shift: int
+        A shift period applied to series b that aligns to series a
+    """
+    shifts = InferRtConstants.XCOR_DAY_RANGE
+    valid_shifts = []
+    xcor = []
+    np.random.seed(InferRtConstants.RNG_SEED)  # Xcor has some stochastic FFT elements.
+    _series_a = np.diff(series_a)
+
+    for i in shifts:
+        series_b_shifted = np.diff(series_b.shift(i))
+        valid = ~np.isnan(_series_a) & ~np.isnan(series_b_shifted)
+        if len(series_b_shifted[valid]) > 0:
+            xcor.append(signal.correlate(_series_a[valid], series_b_shifted[valid]).mean())
+            valid_shifts.append(i)
+    if len(valid_shifts) > 0:
+        return valid_shifts[np.argmax(xcor)]
+    else:
+        return 0
