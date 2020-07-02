@@ -166,12 +166,6 @@ class CANPredictionTimeseriesRow(base_model.BaseModel):
     currentExposed: Optional[int] = pydantic.Field(
         ..., description="Number of people currently exposed"
     )
-    cumulativePositiveTests: Optional[int] = pydantic.Field(
-        ..., description="Number of positive test results to date"
-    )
-    cumulativeNegativeTests: Optional[int] = pydantic.Field(
-        ..., description="Number of negative test results to date"
-    )
 
 
 class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
