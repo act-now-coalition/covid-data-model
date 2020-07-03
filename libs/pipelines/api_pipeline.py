@@ -88,7 +88,6 @@ def build_timeseries_for_fips(
         area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
     except Exception:
         logger.error(f"failed to run output", fips=fips)
-        raise
         return None
 
     return area_timeseries
