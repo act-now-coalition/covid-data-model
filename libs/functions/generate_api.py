@@ -14,15 +14,9 @@ from api.can_api_definition import (
 )
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.enums import Intervention
-from libs.datasets import results_schema as rc
-from libs.datasets import combined_datasets
 from libs.functions import get_can_projection
-from libs.datasets.dataset_utils import AggregationLevel
-from libs.us_state_abbrev import US_STATE_ABBREV
 from libs import us_state_abbrev
 from libs.datasets import can_model_output_schema as can_schema
-from libs.datasets import CovidTrackingDataSource
-from libs.datasets import CDSDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset

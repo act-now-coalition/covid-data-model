@@ -36,6 +36,8 @@ def run_on_all_fips_for_intervention(
     intervention: Intervention,
     model_output_dir: pathlib.Path,
     pool: multiprocessing.Pool = None,
+    sort_func=None,
+    limit=None,
 ) -> Iterator[CovidActNowAreaTimeseries]:
     run_fips = functools.partial(
         build_timeseries_for_fips, intervention, latest_values, timeseries, model_output_dir,
@@ -52,6 +54,12 @@ def run_on_all_fips_for_intervention(
             continue
 
         all_timeseries.append(area_timeseries)
+
+    if sort_func:
+        all_timeseries.sort(key=sort_func)
+
+    if limit:
+        all_timeseries = all_timeseries[:limit]
 
     return all_timeseries
 
@@ -107,18 +115,25 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
 
 
 def deploy_json_api_output(
-    intervention: Intervention, area_result: pydantic.BaseModel, output_dir: pathlib.Path
+    intervention: Intervention,
+    area_result: pydantic.BaseModel,
+    output_dir: pathlib.Path,
+    filename_override=None,
 ):
     if not output_dir.exists():
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    output_path = output_dir / (area_result.output_key(intervention) + ".json")
+    filename = filename_override or (area_result.output_key(intervention) + ".json")
+    output_path = output_dir / filename
     output_path.write_text(area_result.json())
     return area_result
 
 
 def deploy_csv_api_output(
-    intervention: Intervention, api_output: pydantic.BaseModel, output_dir: pathlib.Path
+    intervention: Intervention,
+    api_output: pydantic.BaseModel,
+    output_dir: pathlib.Path,
+    filename_override=None,
 ):
     if not hasattr(api_output, "__root__"):
         raise AssertionError("Missing root data")
@@ -126,7 +141,8 @@ def deploy_csv_api_output(
     if not output_dir.exists():
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    output_path = output_dir / (api_output.output_key(intervention) + ".csv")
+    filename = filename_override or (api_output.output_key(intervention) + ".json")
+    output_path = output_dir / filename
     rows = dataset_deployer.remove_root_wrapper(api_output.dict())
     dataset_deployer.write_nested_csv(rows, output_path)
 

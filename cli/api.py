@@ -4,6 +4,8 @@ import pathlib
 import click
 import itertools
 import us
+from api.can_api_definition import CovidActNowAreaTimeseries
+from api.can_api_definition import CovidActNowBulkTimeseries
 from libs.pipelines import api_pipeline
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import combined_datasets
@@ -95,15 +97,41 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
     "--input-dir", "-i", default="results", help="Input directory of state/county projections",
 )
 @click.option(
-    "--output", "-o", default="results/top_counties", help="Output directory for artifacts",
+    "--output",
+    "-o",
+    default="results/top_counties",
+    help="Output directory for artifacts",
+    type=pathlib.Path,
 )
-def generate_top_counties(disable_validation, input_dir, output):
+@click.option("--state")
+@click.option("--fips")
+def generate_top_counties(disable_validation, input_dir, output, state, fips):
     """The entry function for invocation"""
-
-    county_result = top_counties_pipeline.run_projections(
-        input_dir, run_validation=not disable_validation
+    intervention = Intervention.SELECTED_INTERVENTION
+    active_states = [state.abbr for state in us.STATES]
+    us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
+        AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
     )
-    county_results_api = top_counties_pipeline.generate_api(county_result)
-    top_counties_pipeline.deploy_results(county_results_api, "counties_top_100", output)
+    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields().get_subset(
+        AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
+    )
 
-    _logger.info("finished top counties job")
+    def sort_func(output: CovidActNowAreaTimeseries):
+        return -output.projections.totalHospitalBeds.peakShortfall
+
+    all_timeseries = api_pipeline.run_on_all_fips_for_intervention(
+        us_latest,
+        us_timeseries,
+        Intervention.SELECTED_INTERVENTION,
+        input_dir,
+        sort_func=sort_func,
+        limit=100,
+    )
+    bulk_timeseries = CovidActNowBulkTimeseries(__root__=all_timeseries)
+
+    api_pipeline.deploy_json_api_output(
+        intervention, bulk_timeseries, output, filename_override="counties_top_100.json"
+    )
+    # top_counties_pipeline.deploy_results(county_results_api, "counties_top_100", output)
+
+    # _logger.info("finished top counties job")
