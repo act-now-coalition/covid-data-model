@@ -109,9 +109,7 @@ def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeserie
 
 
 def generate_area_summary(
-    intervention: Intervention,
-    latest_values: dict,
-    model_output: Optional[CANPyseirLocationOutput],
+    latest_values: dict, model_output: Optional[CANPyseirLocationOutput],
 ) -> CovidActNowAreaSummary:
     fips = latest_values[CommonFields.FIPS]
     state = latest_values[CommonFields.STATE]

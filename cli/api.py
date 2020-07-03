@@ -39,9 +39,6 @@ def update_schemas(output_dir):
 
 @main.command()
 @click.option(
-    "--disable-validation", "-dv", is_flag=True, help="Run the validation on the deploy command",
-)
-@click.option(
     "--input-dir",
     "-i",
     default="results",
@@ -64,15 +61,9 @@ def update_schemas(output_dir):
 @click.option("--aggregation-level", "-l", type=AggregationLevel)
 @click.option("--state")
 @click.option("--fips")
-def generate_api(
-    disable_validation, input_dir, output, summary_output, aggregation_level, state, fips
-):
+def generate_api(input_dir, output, summary_output, aggregation_level, state, fips):
     """The entry function for invocation"""
 
-    # check that the dirs exist before starting
-    # for directory in [input_dir, output]:
-    #     if not os.path.isdir(directory):
-    #         raise NotADirectoryError(directory)
     active_states = [state.abbr for state in us.STATES]
     us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
@@ -89,15 +80,11 @@ def generate_api(
         county_timeseries = [
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.COUNTY
         ]
-        api_pipeline.deploy_single_level(
-            intervention, county_timeseries, summary_output, summary_output
-        )
+        api_pipeline.deploy_single_level(intervention, county_timeseries, summary_output, output)
         state_timeseries = [
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.STATE
         ]
-        api_pipeline.deploy_single_level(
-            intervention, state_timeseries, summary_output, summary_output
-        )
+        api_pipeline.deploy_single_level(intervention, state_timeseries, summary_output, output)
 
 
 @main.command("generate-top-counties")
@@ -113,7 +100,7 @@ def generate_api(
 def generate_top_counties(disable_validation, input_dir, output):
     """The entry function for invocation"""
 
-    county_result = top_counties_pipeline.run_gprojections(
+    county_result = top_counties_pipeline.run_projections(
         input_dir, run_validation=not disable_validation
     )
     county_results_api = top_counties_pipeline.generate_api(county_result)

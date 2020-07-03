@@ -7,6 +7,7 @@ import structlog
 import multiprocessing
 import pydantic
 import simplejson
+from libs.functions import get_can_projection
 from api.can_api_definition import CovidActNowAreaSummary
 from api.can_api_definition import CovidActNowAreaTimeseries
 from api.can_api_definition import CovidActNowBulkSummary
@@ -40,6 +41,8 @@ def run_on_all_fips_for_intervention(
         build_timeseries_for_fips, intervention, latest_values, timeseries, model_output_dir,
     )
 
+    # Load interventions outside of subprocesses to properly cache.
+    get_can_projection.get_interventions()
     pool = pool or multiprocessing.Pool()
     results = pool.map(run_fips, latest_values.all_fips)
     all_timeseries = []
@@ -56,6 +59,12 @@ def run_on_all_fips_for_intervention(
 def build_timeseries_for_fips(
     intervention, us_latest, us_timeseries, model_output_dir, fips,
 ) -> Optional[CovidActNowAreaTimeseries]:
+    fips_latest = us_latest.get_record_for_fips(fips)
+
+    if intervention is Intervention.SELECTED_INTERVENTION:
+        state = fips_latest[CommonFields.STATE]
+        intervention = get_can_projection.get_intervention_for_state(state)
+
     model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
         fips, intervention, model_output_dir
     )
@@ -65,10 +74,8 @@ def build_timeseries_for_fips(
         # duplicating non-model outputs.
         return None
 
-    fips_latest = us_latest.get_record_for_fips(fips)
-
     try:
-        area_summary = api.generate_area_summary(intervention, fips_latest, model_output)
+        area_summary = api.generate_area_summary(fips_latest, model_output)
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
         area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
     except Exception:
