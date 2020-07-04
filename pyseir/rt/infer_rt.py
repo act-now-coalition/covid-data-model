@@ -53,7 +53,51 @@ def _generate_input_data(fips, include_testing_correction=True):
     )
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
-    df = pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date)
+
+    df = filter_and_smooth_input_data(
+        df=pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date)
+    )
+    return df
+
+
+def filter_and_smooth_input_data(df: [pd.DataFrame], include_deaths=False) -> pd.DataFrame:
+    """Do Everything Strange Here Before it Gets to the Inference Engine"""
+    MIN_CUMULATIVE_COUNTS = dict(cases=20, deaths=10)
+    MIN_INCIDENT_COUNTS = dict(cases=5, deaths=5)
+
+    # Apply Business Logic To Filter Raw Data
+    for column in ["cases", "deaths"]:
+        requirements = [  # All Must Be True
+            df[column].count() > InferRtConstants.MIN_TIMESERIES_LENGTH,
+            df[column].sum() > MIN_CUMULATIVE_COUNTS[column],
+            df[column].max() > MIN_INCIDENT_COUNTS[column],
+        ]
+        # Now Apply Input Outlier Detection and Smoothing
+        filtered = utils.replace_outliers(df[column], log=rt_log)
+        assert len(filtered) == len(df[column])
+        smoothed = filtered.rolling(
+            InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
+            win_type="gaussian",
+            min_periods=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD,
+            center=True,
+        ).mean(std=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD)
+        # TODO: Only start once non-zero to maintain backwards compatibility?
+
+        # Check if the Post Smoothed Meets the Requirements
+        requirements.append(smoothed.max() > MIN_INCIDENT_COUNTS[column])
+
+        # Check include_deaths Flag
+        if column == "deaths" and not include_deaths:
+            requirements.append(False)
+        else:
+            requirements.append(True)
+
+        if all(requirements):
+            df[column] = smoothed
+            # TODO: save_input_data_smoothing()
+        else:
+            df = df.drop(columns=column, inplace=False)
+
     return df
 
 
@@ -144,81 +188,6 @@ class RtInferenceEngine:
         delta = (smoothed - smoothed.shift()).tail(math.ceil(self.window_size / 2))
 
         return delta[delta < 1.0]
-
-    def apply_gaussian_smoothing(self, timeseries_type, plot=True, smoothed_max_threshold=5):
-        """
-        Apply a rolling Gaussian window to smooth the data. This signature and
-        returns match get_time_series, but will return a subset of the input
-        time-series starting at the first non-zero value.
-
-        Parameters
-        ----------
-        timeseries_type: TimeseriesType
-            Which type of time-series to use.
-        plot: bool
-            If True, plot smoothed and original data.
-        smoothed_max_threshold: int
-            This parameter allows you to filter out entire series
-            (e.g. NEW_DEATHS) when they do not contain high enough
-            numeric values. This has been added to account for low-level
-            constant smoothed values having a disproportionate effect on
-            our final R(t) calculation, when all of their values are below
-            this parameter.
-
-        Returns
-        -------
-        dates: array-like
-            Input data over a subset of indices available after windowing.
-        times: array-like
-            Output integers since the reference date.
-        smoothed: array-like
-            Gaussian smoothed data.
-
-
-        """
-        timeseries_type = TimeseriesType(timeseries_type)
-        dates, timeseries = self.get_timeseries(timeseries_type)
-        self.log = self.log.bind(timeseries_type=timeseries_type.value)
-
-        # Don't even try if the timeseries is too short.
-        # TODO: This referenced a quirk of hospitalizations. So may be stale as of 1 July 2020.
-        if len(timeseries) < self.min_ts_length:
-            return [], [], []
-
-        # Remove Outliers Before Smoothing. Replaces a value if the current is more than 10 std
-        # from the 14 day trailing mean and std
-        timeseries = utils.replace_outliers(pd.Series(timeseries), log=self.log)
-
-        # Smoothing no longer involves rounding
-        smoothed = timeseries.rolling(
-            self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
-        ).mean(std=self.kernel_std)
-
-        # Retain logic for detecting what would be nonzero values if rounded
-        nonzeros = [idx for idx, val in enumerate(smoothed.round()) if val != 0]
-
-        if smoothed.empty:
-            idx_start = 0
-        elif max(smoothed) < smoothed_max_threshold:
-            # skip the entire array.
-            idx_start = len(smoothed)
-        else:
-            idx_start = nonzeros[0]
-
-        smoothed = smoothed.iloc[idx_start:]
-
-        # Only plot counts and smoothed timeseries for cases
-        if plot and timeseries_type == TimeseriesType.NEW_CASES and len(smoothed) > 0:
-            fig = plotting.plot_smoothing(
-                x=dates,
-                original=timeseries.loc[smoothed.index],
-                processed=smoothed,
-                timeseries_type=timeseries_type,
-            )
-            output_path = get_run_artifact_path(self.fips, RunArtifact.RT_SMOOTHING_REPORT)
-            fig.savefig(output_path, bbox_inches="tight")
-
-        return dates, smoothed
 
     def highest_density_interval(self, posteriors, ci):
         """
@@ -321,14 +290,7 @@ class RtInferenceEngine:
             #TODO figure out why this value sometimes truncates the series
             
         """
-        # Propagate self.min_[cases,deaths] into apply_gaussian_smoothing where used to abort
-        # processing of timeseries without high enough counts
-        smoothed_max_threshold = (
-            self.min_cases if TimeseriesType.NEW_CASES == timeseries_type else self.min_deaths
-        )
-        dates, timeseries = self.apply_gaussian_smoothing(
-            timeseries_type, smoothed_max_threshold=smoothed_max_threshold
-        )
+        dates, timeseries = self.get_timeseries(timeseries_type=timeseries_type)
 
         if len(timeseries) == 0:
             rt_log.info(
