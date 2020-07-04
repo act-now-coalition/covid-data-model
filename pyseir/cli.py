@@ -11,7 +11,7 @@ from multiprocessing import Pool
 from functools import partial
 from libs.datasets import dataset_cache
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
-from pyseir.rt import infer_rt as infer_rt_module
+from pyseir.rt import infer_rt
 from pyseir.ensembles import ensemble_runner
 from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
@@ -62,14 +62,14 @@ def _impute_start_dates(state=None, states_only=False):
             _impute_start_dates(state_name)
 
 
-def _infer_rt(state=None, states_only=False):
+def _run_infer_rt(state=None, states_only=False):
     if state:
         fips = us.states.lookup(state).fips
-        infer_rt_module.run_rt_for_fips(fips=fips)
+        infer_rt.run_rt_for_fips(fips=fips)
     else:
         for state_name in ALL_STATES:
             fips = us.states.lookup(state_name).fips
-            infer_rt_module.run_rt_for_fips(fips=fips)
+            infer_rt.run_rt_for_fips(fips=fips)
 
 
 def _run_mle_fits(state=None, states_only=False):
@@ -134,7 +134,7 @@ def _state_only_pipeline(
     output_dir=None,
 ):
     states_only = True
-    _infer_rt(state, states_only=states_only)
+    _run_infer_rt(state, states_only=states_only)
     _run_mle_fits(state, states_only=states_only)
     _run_ensembles(
         state,
@@ -216,7 +216,7 @@ def _build_all_for_states(
 
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
-        p.map(infer_rt_module.run_rt_for_fips, all_county_fips.keys())
+        p.map(infer_rt.run_rt_for_fips, all_county_fips.keys())
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
         fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
@@ -283,8 +283,8 @@ def generate_whitelist():
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def infer_rt(state, states_only):
-    _infer_rt(state, states_only=states_only)
+def run_infer_rt(state, states_only):
+    _run_infer_rt(state, states_only=states_only)
 
 
 @entry_point.command()
