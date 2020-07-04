@@ -108,9 +108,10 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
 
     deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
+    deploy_csv_api_output(intervention, flattened_timeseries, summary_folder)
+
     deploy_json_api_output(intervention, bulk_summaries, summary_folder)
     deploy_csv_api_output(intervention, bulk_summaries, summary_folder)
-    deploy_csv_api_output(intervention, flattened_timeseries, summary_folder)
 
 
 def deploy_json_api_output(
@@ -140,19 +141,7 @@ def deploy_csv_api_output(
     if not output_dir.exists():
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = filename_override or (api_output.output_key(intervention) + ".json")
+    filename = filename_override or (api_output.output_key(intervention) + ".csv")
     output_path = output_dir / filename
     rows = dataset_deployer.remove_root_wrapper(api_output.dict())
     dataset_deployer.write_nested_csv(rows, output_path)
-
-
-def deploy_bulk_summary(
-    intervention: Intervention, data: pydantic.BaseModel, output_dir: pathlib.Path, as_csv=False
-):
-
-    if not output_dir.exists():
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-    output_path = output_dir / (data.output_key(intervention) + ".json")
-    json_rows = dataset_deployer.remove_root_wrapper(data.json())
-    output_path.write_text(area_result.json())
