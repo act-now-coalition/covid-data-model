@@ -34,7 +34,9 @@ def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, i
         intervention, us_latest, us_timeseries, nyc_model_output_path.parent, nyc_fips
     )
 
-    if intervention is Intervention.NO_INTERVENTION:
+    # TODO(chris): Uncomment and replace when API is outputting for all counties.
+    # if intervention is Intervention.NO_INTERVENTION:
+    if intervention is not Intervention.STRONG_INTERVENTION:
         # Test data does not contain no intervention model, should not output any results.
         assert not timeseries
         return
@@ -44,9 +46,10 @@ def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, i
     if intervention is Intervention.STRONG_INTERVENTION:
         assert timeseries.projections
         assert timeseries.timeseries
-    elif intervention is Intervention.OBSERVED_INTERVENTION:
-        assert not timeseries.projections
-        assert not timeseries.timeseries
+    # TODO(chris): Uncomment when API is outputting for all counties
+    # elif intervention is Intervention.OBSERVED_INTERVENTION:
+    #     assert not timeseries.projections
+    #     assert not timeseries.timeseries
 
 
 def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_path):
