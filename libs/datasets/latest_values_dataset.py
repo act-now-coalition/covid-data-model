@@ -79,30 +79,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
         return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
 
-    def get_subset(
-        self,
-        aggregation_level,
-        country=None,
-        fips: Optional[str] = None,
-        state: Optional[str] = None,
-        states: Optional[List[str]] = None,
-        on: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-    ) -> "LatestValuesDataset":
-        rows_binary_array = make_binary_array(
-            self.data,
-            aggregation_level=aggregation_level,
-            country=country,
-            fips=fips,
-            state=state,
-            states=states,
-            on=on,
-            after=after,
-            before=before,
-        )
-        return self.__class__(self.data.loc[rows_binary_array, :])
-
     @classmethod
     def _aggregate_new_york_data(cls, data):
         # When grouping nyc data, we don't want to count the generated field
@@ -154,6 +130,34 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         """Returns a new BedsDataset containing only county data."""
         is_county = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         return self.data[is_county]
+
+    @property
+    def all_fips(self) -> List[str]:
+        return list(self.data.fips.unique())
+
+    def get_subset(
+        self,
+        aggregation_level,
+        country=None,
+        fips: Optional[str] = None,
+        state: Optional[str] = None,
+        states: Optional[List[str]] = None,
+        on: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+    ) -> "LatestValuesDataset":
+        rows_binary_array = make_binary_array(
+            self.data,
+            aggregation_level=aggregation_level,
+            country=country,
+            fips=fips,
+            state=state,
+            states=states,
+            on=on,
+            after=after,
+            before=before,
+        )
+        return self.__class__(self.data.loc[rows_binary_array, :])
 
     def get_record_for_state(self, state) -> dict:
         """Gets all data for a given state.

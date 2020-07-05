@@ -121,9 +121,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None
         """
-        pd_data = self.get_data(aggregation_level=AggregationLevel.COUNTY, fips=fips)
-        pd_data = pd_data.where(pd.notnull(pd_data), None)
-        return pd_data.to_dict(orient="records")
+        subset = self.get_subset(AggregationLevel.COUNTY, fips=fips)
+        return subset.records
 
     def get_records_for_state(self, state) -> List[dict]:
         """Get data for state.
@@ -133,8 +132,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None.
         """
-        pd_data = self.get_data(aggregation_level=AggregationLevel.STATE, state=state)
-        return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
+        subset = self.get_subset(AggregationLevel.STATE, state=state)
+        return subset.records
+
+    @property
+    def records(self) -> List[dict]:
+        """Returns rows in current data."""
+        data = self.data
+        return data.where(pd.notnull(data), None).to_dict(orient="records")
 
     def get_data(
         self,
