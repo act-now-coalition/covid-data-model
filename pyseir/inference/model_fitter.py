@@ -670,7 +670,7 @@ class ModelFitter:
             return None
 
 
-def _execute_model_for_fips(fips):
+def execute_model_for_fips(fips):
     if fips:
         model_fitter = ModelFitter.run_for_fips(fips)
         return model_fitter

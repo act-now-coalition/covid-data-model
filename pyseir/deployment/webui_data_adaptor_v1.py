@@ -224,13 +224,12 @@ class WebUIDataAdaptorV1:
         for suppression_policy in suppression_policies:
             output_for_policy = pyseir_outputs[suppression_policy]
             output_model = pd.DataFrame()
-
             t_list = output_for_policy["t_list"]
             t_list_downsampled = range(0, int(max(t_list)), self.output_interval_days)
 
             output_model[schema.DAY_NUM] = t_list_downsampled
             output_model[schema.DATE] = [
-                (t0_simulation + timedelta(days=t)).date().strftime("%m/%d/%y")
+                (t0_simulation + timedelta(days=t)).date().strftime("%Y-%m-%d")
                 for t in t_list_downsampled
             ]
             output_model[schema.TOTAL] = population
@@ -314,7 +313,7 @@ class WebUIDataAdaptorV1:
             # Fill in results for the Rt indicator.
             rt_results = load_Rt_result(fips)
             if rt_results is not None:
-                rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%m/%d/%y")
+                rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%Y-%m-%d")
                 merged = output_model.merge(
                     rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
                     right_index=True,
@@ -341,7 +340,6 @@ class WebUIDataAdaptorV1:
                 [schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
             ].fillna("NaN")
 
-            # Truncate floats and cast as strings to match data model.
             int_columns = [
                 col
                 for col in output_model.columns
@@ -352,35 +350,26 @@ class WebUIDataAdaptorV1:
                     schema.Rt_ci90,
                     schema.RT_INDICATOR,
                     schema.RT_INDICATOR_CI90,
+                    schema.FIPS,
                 )
             ]
-            output_model.loc[:, int_columns] = (
-                output_model[int_columns].fillna(0).astype(int).astype(str)
-            )
+            output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int)
             output_model.loc[
                 :, [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
-            ] = (
-                output_model[
-                    [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
-                ]
-                .fillna(0)
-                .round(decimals=4)
-                .astype(str)
+            ] = output_model[
+                [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
+            ].fillna(
+                0
             )
 
-            # Convert the records format to just list(list(values))
-            output_model = [
-                [val for val in timestep.values()]
-                for timestep in output_model.to_dict(orient="records")
-            ]
-
+            output_model[schema.FIPS] = fips
+            intervention = Intervention.from_webui_data_adaptor(suppression_policy)
+            output_model[schema.INTERVENTION] = intervention.value
             output_path = get_run_artifact_path(
                 fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
-            policy_enum = Intervention.from_webui_data_adaptor(suppression_policy)
-            output_path = output_path.replace("__INTERVENTION_IDX__", str(policy_enum.value))
-            with open(output_path, "w") as f:
-                json.dump(output_model, f)
+            output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
+            output_model.to_json(output_path)
 
     def generate_state(self, whitelisted_county_fips: list, states_only=False):
         """

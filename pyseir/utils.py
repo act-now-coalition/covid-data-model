@@ -187,17 +187,7 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
             )
 
     elif artifact is RunArtifact.WEB_UI_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-
-            path = os.path.join(
-                WEB_UI_FOLDER(output_dir),
-                "county",
-                f"{state_obj.abbr}.{fips}.__INTERVENTION_IDX__.json",
-            )
-        else:
-            path = os.path.join(
-                WEB_UI_FOLDER(output_dir), "state", f"{state_obj.abbr}.__INTERVENTION_IDX__.json"
-            )
+        path = os.path.join(WEB_UI_FOLDER(output_dir), f"{fips}.__INTERVENTION_IDX__.json",)
 
     elif artifact is RunArtifact.WHITELIST_RESULT:
         path = os.path.join(output_dir, "api_whitelist.json")
