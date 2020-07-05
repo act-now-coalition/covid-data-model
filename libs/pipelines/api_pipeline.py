@@ -93,16 +93,22 @@ def build_timeseries_for_fips(
     return area_timeseries
 
 
+def _deploy_timeseries(intervention, region_folder, timeseries):
+    area_summary = timeseries.area_summary
+    deploy_json_api_output(intervention, area_summary, region_folder)
+    deploy_json_api_output(intervention, timeseries, region_folder)
+    return area_summary
+
+
 def deploy_single_level(intervention, all_timeseries, summary_folder, region_folder):
     if not all_timeseries:
         return
-    all_summaries = []
-    for timeseries in all_timeseries:
-        area_summary = timeseries.area_summary
-        all_summaries.append(area_summary)
-        deploy_json_api_output(intervention, area_summary, region_folder)
-        deploy_json_api_output(intervention, timeseries, region_folder)
+    logger.info(f"Deploying {intervention.name}")
 
+    all_summaries = []
+    pool = multiprocessing.Pool()
+    deploy_timeseries_partial = functools.partial(_deploy_timeseries, intervention, region_folder)
+    all_summaries = pool.map(deploy_timeseries_partial, all_timeseries)
     bulk_timeseries = CovidActNowBulkTimeseries(__root__=all_timeseries)
     bulk_summaries = CovidActNowBulkSummary(__root__=all_summaries)
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
