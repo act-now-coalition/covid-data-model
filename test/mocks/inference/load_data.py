@@ -3,12 +3,14 @@ from math import exp
 from collections import namedtuple
 from enum import Enum
 
+import pandas as pd
+
 from pyseir.load_data import HospitalizationDataType
 from pyseir.rt.constants import InferRtConstants
 
 """
 This module stubs out pyseir.load_data for testing purposes. It returns special data examples
-for specific tests. Different state names will be used to control this.
+for specific tests.
 """
 
 
@@ -19,15 +21,6 @@ class DataGeneratorType(Enum):
 
 RateChange = namedtuple("RateChange", "t0 reff")
 DataSpec = namedtuple("DataSpec", "generator_type disable_deaths scale ratechange1 ratechange2")
-
-# Need this because API for cases and hospitalizations use different state identifiers
-# Each of these state generators is defined in a specific unit test
-state_to_code = {"New York": "NY", "Hawaii": "HI", "Alaska": "AK", "Alabama": "AL"}
-
-specs = {}
-# Initialize a data generator and associate it with a state so can be picked up with regular processing
-def initializeStateDataGenerator(state, dataspec):
-    specs[state] = dataspec
 
 
 class DataGenerator:
@@ -71,32 +64,33 @@ def _get_cases_for_times(generator, times):
     return np.array(list(map(generator.generate_data, times)))
 
 
-def load_new_case_data_by_state(state, ref_date, include_testing_correction):
+def create_synthetic_df(data_generator):
     """
     Generates case and death data.
-    Note stupidly called with full name of state
     """
-    data_generator = DataGenerator(specs[state_to_code[state]])
     times = list(range(0, 100))
+    dates = pd.date_range("2020-01-01", periods=100)
     observed_new_cases = _get_cases_for_times(data_generator, times)
 
     if data_generator.disable_deaths:
         observed_new_deaths = np.zeros(len(times))
     else:
         observed_new_deaths = 0.03 * observed_new_cases
-    return (times, observed_new_cases, observed_new_deaths)
+
+    df = pd.DataFrame(data=dict(cases=observed_new_cases, deaths=observed_new_deaths), index=dates)
+    return df
 
 
-def load_hospitalization_data_by_state(state, t0=None):
-    data_generator = DataGenerator(specs[state])
-    times = list(range(0, 100))
-    observed_new_cases = _get_cases_for_times(data_generator, times)
-
-    if data_generator.disable_deaths:
-        hospitalizations = np.zeros(len(times))
-    else:
-        hospitalizations = 0.12 * observed_new_cases
-    return (times, hospitalizations, HospitalizationDataType.CURRENT_HOSPITALIZATIONS)
+# def load_hospitalization_data_by_state(state, t0=None):
+#     data_generator = DataGenerator(specs[state])
+#     times = list(range(0, 100))
+#     observed_new_cases = _get_cases_for_times(data_generator, times)
+#
+#     if data_generator.disable_deaths:
+#         hospitalizations = np.zeros(len(times))
+#     else:
+#         hospitalizations = 0.12 * observed_new_cases
+#     return (times, hospitalizations, HospitalizationDataType.CURRENT_HOSPITALIZATIONS)
 
 
 # _________________Other methods to mock__________________

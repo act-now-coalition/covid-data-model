@@ -41,7 +41,7 @@ def _get_display_name(fips) -> str:
     return str(fips)
 
 
-def _generate_input_data(fips, include_testing_correction=True):
+def _generate_input_data(fips, include_testing_correction=True, include_deaths=True):
     """
     Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
 
@@ -55,7 +55,8 @@ def _generate_input_data(fips, include_testing_correction=True):
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
 
     df = filter_and_smooth_input_data(
-        df=pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date)
+        df=pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date),
+        include_deaths=include_deaths,
     )
     return df
 
@@ -94,9 +95,10 @@ def filter_and_smooth_input_data(df: [pd.DataFrame], include_deaths=False) -> pd
 
         if all(requirements):
             df[column] = smoothed
-            # TODO: save_input_data_smoothing()
+            # TODO: save_input_data_smoothing() Figures
         else:
             df = df.drop(columns=column, inplace=False)
+            rt_log.info("Dropping:", columns=column, requirements=requirements)
 
     return df
 
@@ -124,7 +126,7 @@ class RtInferenceEngine:
     ):
 
         self.dates = data.index
-        self.cases = data.cases
+        self.cases = data.cases if "cases" in data else None
         self.deaths = data.deaths if "deaths" in data else None
 
         self.include_deaths = include_deaths
@@ -359,6 +361,7 @@ class RtInferenceEngine:
         monitor = utils.LagMonitor(debug=False)  # Set debug=True for detailed printout of daily lag
 
         # (5) Iteratively apply Bayes' rule
+        loop_idx = 0
         for previous_day, current_day in zip(timeseries.index[:-1], timeseries.index[1:]):
 
             # Keep track of exponential moving average of scale of counts of timeseries
@@ -397,16 +400,17 @@ class RtInferenceEngine:
             # Monitors if posterior is lagging excessively behind signal in likelihood
             # TODO future can return cumulative lag and use to scale sigma up only when needed
             monitor.evaluate_lag_using_argmaxes(
-                current_day,
-                current_sigma,
-                posteriors[previous_day].argmax(),
-                current_prior.argmax(),
-                likelihoods[current_day].argmax(),
-                numerator.argmax(),
+                current_day=loop_idx,
+                current_sigma=current_sigma,
+                prev_post_am=posteriors[previous_day].argmax(),
+                prior_am=current_prior.argmax(),
+                like_am=likelihoods[current_day].argmax(),
+                post_am=numerator.argmax(),
             )
 
             # Add to the running sum of log likelihoods
             log_likelihood += np.log(denominator)
+            loop_idx += 1
 
         self.log_likelihood = log_likelihood
 
@@ -459,7 +463,11 @@ class RtInferenceEngine:
             Columns containing MAP estimates and confidence intervals.
         """
         df_all = None
-        available_timeseries = self.get_available_timeseries()
+        available_timeseries = []
+        if self.cases is not None:
+            available_timeseries.append(TimeseriesType.NEW_CASES)
+        if self.deaths is not None:  # We drop deaths in the data loader so don't need to check here
+            available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
         for timeseries_type in available_timeseries:
             # Add Raw Data Output to Output DataFrame
