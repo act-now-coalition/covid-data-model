@@ -57,7 +57,7 @@ class CANPyseirLocationOutput(object):
             return None
 
         shortfall = self.data["short_fall"]
-        return self.data.loc[shortfall.idxmax()].date.to_pydatetime()
+        return self.data[shortfall > 0].iloc[0].date.to_pydatetime()
 
     @property
     def peak_hospitalizations_shortfall(self):

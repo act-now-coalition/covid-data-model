@@ -46,12 +46,14 @@ def test_shortfall():
     rows = [
         _build_row(date="2020-12-13", all_hospitalized=10, beds=11),
         _build_row(date="2020-12-14", all_hospitalized=12, beds=11),
+        _build_row(date="2020-12-15", all_hospitalized=13, beds=11),
     ]
     data = _build_input_df(rows)
     model_output = CANPyseirLocationOutput(data)
     # Check that it picks first date of max.
     expected_date = datetime.datetime.fromisoformat("2020-12-14")
     assert model_output.hospitals_shortfall_date == expected_date
+    assert model_output.peak_hospitalizations_shortfall == 2
 
     # No shortfall
     rows = [
