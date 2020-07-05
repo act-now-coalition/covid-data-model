@@ -128,7 +128,10 @@ def compare_snapshots(
     )
 
     formatted_report = "\n--" + "\n\n--".join(report)
-    output_report = f"Applied dif from {input_snapshot if input_snapshot else input_dir} to {compare_snapshot}: {formatted_report} {output_report}"
+    output_report = (
+        f"Applied dif from {input_snapshot if input_snapshot else input_dir} to "
+        f"{compare_snapshot}: {formatted_report} {output_report}"
+    )
     # write report to a file
     output_path = output_dir / f"report.txt"
     with output_path.open("w") as report_file:
