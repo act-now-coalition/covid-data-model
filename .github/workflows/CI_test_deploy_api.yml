@@ -47,7 +47,7 @@ env:
 
 jobs:
   ci-test-build-snapshot:
-    runs-on: self-hosted
+    runs-on: self-hosted targeted-runner
     steps:
 
     - name: Checkout covid-data-model
