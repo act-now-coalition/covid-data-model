@@ -14,6 +14,8 @@ from enum import Enum
 import pandas as pd
 import numpy as np
 
+import sys
+sys.path.append('../covid-data-public')
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
