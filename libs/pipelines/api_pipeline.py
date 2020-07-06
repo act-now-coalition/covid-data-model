@@ -45,7 +45,10 @@ def run_on_all_fips_for_intervention(
 
     # Load interventions outside of subprocesses to properly cache.
     get_can_projection.get_interventions()
-    pool = pool or multiprocessing.Pool()
+
+    # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
+    # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
+    pool = pool or multiprocessing.Pool(maxtasksperchild=1)
     results = pool.map(run_fips, latest_values.all_fips)
     all_timeseries = []
 
@@ -111,7 +114,9 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
     logger.info(f"Deploying {intervention.name}")
 
     all_summaries = []
-    pool = multiprocessing.Pool()
+    # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
+    # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
+    pool = multiprocessing.Pool(maxtasksperchild=1)
     deploy_timeseries_partial = functools.partial(_deploy_timeseries, intervention, region_folder)
     all_summaries = pool.map(deploy_timeseries_partial, all_timeseries)
     bulk_timeseries = CovidActNowBulkTimeseries(__root__=all_timeseries)
