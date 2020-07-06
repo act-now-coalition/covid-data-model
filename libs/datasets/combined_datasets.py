@@ -110,7 +110,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(
-    country="USA", states=list(us_state_abbrev.abbrev_us_state.keys())
+    country="USA", states=list(us_state_abbrev.ABBREV_US_STATE.keys())
 )
 
 
@@ -153,7 +153,7 @@ def _remove_padded_nans(df, columns):
 
     first_valid_index = min(df[column].first_valid_index() for column in columns)
     last_valid_index = max(df[column].last_valid_index() for column in columns)
-    df = df.iloc[first_valid_index:last_valid_index]
+    df = df.iloc[first_valid_index : last_valid_index + 1]
     return df.reset_index(drop=True)
 
 

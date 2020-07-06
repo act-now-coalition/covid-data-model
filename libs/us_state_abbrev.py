@@ -9,6 +9,8 @@
 # Roger Allen has waived all copyright and related or neighboring
 # rights to this code.
 
+import us
+
 US_STATE_ABBREV = {
     "Alabama": "AL",
     "Alaska": "AK",
@@ -122,7 +124,7 @@ STATES_50 = {
     "Wyoming": "WY",
 }
 
-us_fips = {
+US_FIPS = {
     "Alabama": "01",
     "Alaska": "02",
     "Arizona": "04",
@@ -182,15 +184,11 @@ us_fips = {
 }
 
 
-ABBREV_US_FIPS = {US_STATE_ABBREV[state]: fips for state, fips in us_fips.items()}
+ABBREV_US_FIPS = {US_STATE_ABBREV[state]: fips for state, fips in US_FIPS.items()}
+
+# Map from 2 letter state abbreviation to 5 digit FIPS code of the unknown county of that state.
+# This is not an official FIPS code but lets us aggregate values within a state using FIPS codes.
+ABBREV_US_UNKNOWN_COUNTY_FIPS = {abbrev: f"{fips}999" for abbrev, fips in ABBREV_US_FIPS.items()}
 
 # thank you to @kinghelix and @trevormarburger for this idea
-abbrev_us_state = dict(map(reversed, US_STATE_ABBREV.items()))
-
-# Simple test examples
-if __name__ == "__main__":
-    print("Wisconin --> WI?", US_STATE_ABBREV["Wisconsin"] == "WI")
-    print("WI --> Wisconin?", abbrev_us_state["WI"] == "Wisconsin")
-    print(
-        "Number of entries (50 states, DC, 5 Territories) == 56? ", 56 == len(US_STATE_ABBREV),
-    )
+ABBREV_US_STATE = dict(map(reversed, US_STATE_ABBREV.items()))

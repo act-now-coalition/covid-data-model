@@ -14,10 +14,10 @@ from enum import Enum
 import pandas as pd
 import numpy as np
 
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.common_fields import CommonFields
 from pyseir.utils import get_run_artifact_path, RunArtifact, ewma_smoothing
 
 log = logging.getLogger(__name__)
@@ -219,11 +219,11 @@ def load_ensemble_results(fips):
     ensemble_results: dict
     """
     output_filename = get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT)
-    if os.path.exists(output_filename):
-        with open(output_filename) as f:
-            fit_results = json.load(f)
-        return fit_results
-    return None
+    if not os.path.exists(output_filename):
+        return None
+
+    with open(output_filename) as f:
+        return json.load(f)
 
 
 @lru_cache(maxsize=32)
@@ -395,8 +395,8 @@ def get_hospitalization_data():
     TimeseriesDataset
     """
     data = combined_datasets.build_us_timeseries_with_all_fields().data
-    has_current_hospital = data[TimeseriesDataset.Fields.CURRENT_HOSPITALIZED].notnull()
-    has_cumulative_hospital = data[TimeseriesDataset.Fields.CUMULATIVE_HOSPITALIZED].notnull()
+    has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
+    has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
     return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
 
 

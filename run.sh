@@ -70,14 +70,8 @@ execute_model() {
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/state/* ${API_OUTPUT_DIR}/
+  mv ${API_OUTPUT_DIR}/web_ui/* ${API_OUTPUT_DIR}/
 
-  # Move county output to the expected location.
-  mkdir -p ${API_OUTPUT_DIR}/county
-  mv ${API_OUTPUT_DIR}/web_ui/county ${API_OUTPUT_DIR}/
-
-  # Clean up original output directories.
-  rmdir ${API_OUTPUT_DIR}/web_ui/state/
   rmdir ${API_OUTPUT_DIR}/web_ui/
 
   # Capture all the PDFs pyseir creates in output/pyseir since they are
@@ -97,17 +91,17 @@ execute_api() {
 
   echo ">>> Generating Top 100 Counties json to ${API_OUTPUT_COUNTIES}/counties_top_100.json"
   mkdir -p "${API_OUTPUT_COUNTIES}"
-  ./run.py deploy-top-counties -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}"
+  ./run.py api generate-top-counties -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
   mkdir -p "${API_OUTPUT_STATES}"
-  ./run.py deploy-states-api -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_STATES}" --summary-output "${API_OUTPUT_US}"
+  ./run.py api generate-api  -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_STATES}" --summary-output "${API_OUTPUT_US}" -l state
 
   echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
-  ./run.py deploy-counties-api -i "${API_OUTPUT_DIR}/county" -o "${API_OUTPUT_COUNTIES}" --summary-output "${API_OUTPUT_US}"
+  ./run.py api generate-api  -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_COUNTIES}" --summary-output "${API_OUTPUT_US}" -l county
 
-  echo ">>> Generate an QA doc for states to ${API_OUTPUT_DIR}/qa"
-  ./run.py compare-snapshots -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_DIR}/qa"
+  # echo ">>> Generate an QA doc for states to ${API_OUTPUT_DIR}/qa"
+  # ./run.py compare-snapshots -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_DIR}/qa"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }

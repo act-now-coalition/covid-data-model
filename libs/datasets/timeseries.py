@@ -18,13 +18,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     in the `from_source` method.
     """
 
-    class Fields(CommonFields):
-        COUNTRY = CommonIndexFields.COUNTRY
-        STATE = CommonIndexFields.STATE
-        AGGREGATE_LEVEL = CommonIndexFields.AGGREGATE_LEVEL
-        FIPS = CommonIndexFields.FIPS
-        DATE = CommonIndexFields.DATE
-
     INDEX_FIELDS = [
         CommonIndexFields.DATE,
         CommonIndexFields.AGGREGATE_LEVEL,
@@ -38,7 +31,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     @property
     def states(self) -> List:
-        return self.data[self.Fields.STATE].dropna().unique().tolist()
+        return self.data[CommonFields.STATE].dropna().unique().tolist()
 
     @property
     def state_data(self) -> pd.DataFrame:
@@ -56,11 +49,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             DeprecationWarning,
             stacklevel=2,
         )
-        county_values = self.data[self.Fields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+        county_values = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         county_data = self.data[county_values]
 
         data = county_data.set_index(
-            [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.COUNTY, self.Fields.FIPS,]
+            [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.COUNTY, CommonFields.FIPS,]
         )
         values = set(data.index.to_list())
         return sorted(values)
@@ -80,14 +73,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             return pd.concat([county, state])
 
         if aggregation_level == AggregationLevel.COUNTY:
-            group = [self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS]
+            group = [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS]
         if aggregation_level == AggregationLevel.STATE:
-            group = [self.Fields.COUNTRY, self.Fields.STATE]
+            group = [CommonFields.COUNTRY, CommonFields.STATE]
         if aggregation_level == AggregationLevel.COUNTRY:
-            group = [self.Fields.COUNTRY]
+            group = [CommonFields.COUNTRY]
 
         data = self.data[
-            self.data[self.Fields.AGGREGATE_LEVEL] == aggregation_level.value
+            self.data[CommonFields.AGGREGATE_LEVEL] == aggregation_level.value
         ].reset_index()
         # If the groupby raises a ValueError check the dtype of date. If it was loaded
         # by read_csv did you set parse_dates=["date"]?
@@ -128,9 +121,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None
         """
-        pd_data = self.get_data(aggregation_level=AggregationLevel.COUNTY, fips=fips)
-        pd_data = pd_data.where(pd.notnull(pd_data), None)
-        return pd_data.to_dict(orient="records")
+        subset = self.get_subset(AggregationLevel.COUNTY, fips=fips)
+        return subset.records
 
     def get_records_for_state(self, state) -> List[dict]:
         """Get data for state.
@@ -140,8 +132,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None.
         """
-        pd_data = self.get_data(aggregation_level=AggregationLevel.STATE, state=state)
-        return pd_data.where(pd.notnull(pd_data), None).to_dict(orient="records")
+        subset = self.get_subset(AggregationLevel.STATE, state=state)
+        return subset.records
+
+    @property
+    def records(self) -> List[dict]:
+        """Returns rows in current data."""
+        data = self.data
+        return data.where(pd.notnull(data), None).to_dict(orient="records")
 
     def get_data(
         self,
@@ -189,10 +187,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
         group = [
-            cls.Fields.DATE,
-            cls.Fields.COUNTRY,
-            cls.Fields.AGGREGATE_LEVEL,
-            cls.Fields.STATE,
+            CommonFields.DATE,
+            CommonFields.COUNTRY,
+            CommonFields.AGGREGATE_LEVEL,
+            CommonFields.STATE,
         ]
         data = custom_aggregations.update_with_combined_new_york_counties(
             data, group, are_boroughs_zero=source.HAS_AGGREGATED_NYC_BOROUGH
@@ -200,9 +198,9 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         if fill_missing_state:
             state_groupby_fields = [
-                cls.Fields.DATE,
-                cls.Fields.COUNTRY,
-                cls.Fields.STATE,
+                CommonFields.DATE,
+                CommonFields.COUNTRY,
+                CommonFields.STATE,
             ]
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data, state_groupby_fields, AggregationLevel.COUNTY, AggregationLevel.STATE,
@@ -211,12 +209,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         fips_data = dataset_utils.build_fips_data_frame()
         data = dataset_utils.add_county_using_fips(data, fips_data)
-        is_state = data[cls.Fields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, cls.Fields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
-        data.loc[is_state, cls.Fields.FIPS] = state_fips
+        is_state = data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
+        state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
+        data.loc[is_state, CommonFields.FIPS] = state_fips
 
         # Choosing to sort by date
-        data = data.sort_values(cls.Fields.DATE)
+        data = data.sort_values(CommonFields.DATE)
         return cls(data)
 
     @classmethod
@@ -236,12 +234,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         dataset_utils.summarize(
             self.data,
             AggregationLevel.COUNTY,
-            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE, self.Fields.FIPS,],
+            [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS,],
         )
 
         print()
         dataset_utils.summarize(
             self.data,
             AggregationLevel.STATE,
-            [self.Fields.DATE, self.Fields.COUNTRY, self.Fields.STATE],
+            [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE],
         )
