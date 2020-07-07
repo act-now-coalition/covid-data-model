@@ -116,12 +116,17 @@ class ForecastRt:
         # Split into train and test before normalizing to avoid data leakage
         # TODO: Test set will actually be entire series
         df_samples = self.create_df_list(df_forecast)
+        log.info("DF SAMPLES")
+        log.info(df_samples)
 
         train_set_length = int(len(df_samples) * self.train_size)
         train_scaling_set = df_samples[train_set_length]
         train_samples_not_spaced = df_samples[:train_set_length]
         train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
         test_samples = df_samples[train_set_length + 1 :]
+
+        log.info("TEST SAMPLES")
+        log.info(test_samples)
 
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
 
@@ -451,11 +456,12 @@ class ForecastRt:
 
     def create_df_list(self, df):
         df_list = list()
-        for index in range(len(df.index)):
-            # i = index * self.days_between_samples
+        for index in range(len(df.index) + 1):
             i = index
-            if i > len(df.index):
-                continue
+            # i = index * self.days_between_samples
+            # i = index
+            # if i > len(df.index):
+            #    continue
 
             if (
                 i < self.predict_days + self.min_number_of_days
