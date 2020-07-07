@@ -1,5 +1,6 @@
 {
   "title": "CANPredictionTimeseriesRow",
+  "description": "Base model for API output.",
   "type": "object",
   "properties": {
     "date": {
@@ -72,16 +73,6 @@
       "title": "Currentexposed",
       "description": "Number of people currently exposed",
       "type": "integer"
-    },
-    "cumulativePositiveTests": {
-      "title": "Cumulativepositivetests",
-      "description": "Number of positive test results to date",
-      "type": "integer"
-    },
-    "cumulativeNegativeTests": {
-      "title": "Cumulativenegativetests",
-      "description": "Number of negative test results to date",
-      "type": "integer"
     }
   },
   "required": [
@@ -98,8 +89,6 @@
     "cumulativeInfected",
     "currentInfected",
     "currentSusceptible",
-    "currentExposed",
-    "cumulativePositiveTests",
-    "cumulativeNegativeTests"
+    "currentExposed"
   ]
 }

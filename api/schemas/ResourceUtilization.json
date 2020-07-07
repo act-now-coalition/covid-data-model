@@ -1,0 +1,39 @@
+{
+  "title": "ResourceUtilization",
+  "description": "Base model for API output.",
+  "type": "object",
+  "properties": {
+    "capacity": {
+      "title": "Capacity",
+      "description": "*deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07",
+      "type": "integer"
+    },
+    "totalCapacity": {
+      "title": "Totalcapacity",
+      "description": "Total capacity for resource.",
+      "type": "integer"
+    },
+    "currentUsageCovid": {
+      "title": "Currentusagecovid",
+      "description": "Currently used capacity for resource by COVID ",
+      "type": "integer"
+    },
+    "currentUsageTotal": {
+      "title": "Currentusagetotal",
+      "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
+      "type": "integer"
+    },
+    "typicalUsageRate": {
+      "title": "Typicalusagerate",
+      "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
+      "type": "number"
+    }
+  },
+  "required": [
+    "capacity",
+    "totalCapacity",
+    "currentUsageCovid",
+    "currentUsageTotal",
+    "typicalUsageRate"
+  ]
+}

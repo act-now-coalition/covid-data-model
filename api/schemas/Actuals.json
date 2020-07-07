@@ -1,0 +1,100 @@
+{
+  "title": "Actuals",
+  "description": "Base model for API output.",
+  "type": "object",
+  "properties": {
+    "population": {
+      "title": "Population",
+      "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
+      "exclusiveMinimum": 0,
+      "type": "integer"
+    },
+    "intervention": {
+      "title": "Intervention",
+      "description": "Name of high-level intervention in-place",
+      "type": "string"
+    },
+    "cumulativeConfirmedCases": {
+      "title": "Cumulativeconfirmedcases",
+      "description": "Number of confirmed cases so far",
+      "type": "integer"
+    },
+    "cumulativePositiveTests": {
+      "title": "Cumulativepositivetests",
+      "description": "Number of positive test results to date",
+      "type": "integer"
+    },
+    "cumulativeNegativeTests": {
+      "title": "Cumulativenegativetests",
+      "description": "Number of negative test results to date",
+      "type": "integer"
+    },
+    "cumulativeDeaths": {
+      "title": "Cumulativedeaths",
+      "description": "Number of deaths so far",
+      "type": "integer"
+    },
+    "hospitalBeds": {
+      "$ref": "#/definitions/ResourceUtilization"
+    },
+    "ICUBeds": {
+      "$ref": "#/definitions/ResourceUtilization"
+    },
+    "contactTracers": {
+      "title": "Contacttracers",
+      "description": "# of Contact Tracers",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "population",
+    "intervention",
+    "cumulativeConfirmedCases",
+    "cumulativePositiveTests",
+    "cumulativeNegativeTests",
+    "cumulativeDeaths",
+    "hospitalBeds",
+    "ICUBeds"
+  ],
+  "definitions": {
+    "ResourceUtilization": {
+      "title": "ResourceUtilization",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "title": "Capacity",
+          "description": "*deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07",
+          "type": "integer"
+        },
+        "totalCapacity": {
+          "title": "Totalcapacity",
+          "description": "Total capacity for resource.",
+          "type": "integer"
+        },
+        "currentUsageCovid": {
+          "title": "Currentusagecovid",
+          "description": "Currently used capacity for resource by COVID ",
+          "type": "integer"
+        },
+        "currentUsageTotal": {
+          "title": "Currentusagetotal",
+          "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
+          "type": "integer"
+        },
+        "typicalUsageRate": {
+          "title": "Typicalusagerate",
+          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "capacity",
+        "totalCapacity",
+        "currentUsageCovid",
+        "currentUsageTotal",
+        "typicalUsageRate"
+      ]
+    }
+  }
+}

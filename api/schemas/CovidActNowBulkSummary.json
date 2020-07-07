@@ -1,17 +1,19 @@
 {
-  "title": "CovidActNowStatesSummary",
+  "title": "CovidActNowBulkSummary",
+  "description": "Base model for API output.",
   "type": "array",
   "items": {
-    "$ref": "#/definitions/CovidActNowStateSummary"
+    "$ref": "#/definitions/CovidActNowAreaSummary"
   },
   "definitions": {
-    "_ResourceUsageProjection": {
-      "title": "_ResourceUsageProjection",
+    "ResourceUsageProjection": {
+      "title": "ResourceUsageProjection",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "peakShortfall": {
           "title": "Peakshortfall",
-          "description": "Shortfall of resource needed at the peek utilization",
+          "description": "Shortfall of resource needed at the peak utilization",
           "type": "integer"
         },
         "peakDate": {
@@ -33,8 +35,9 @@
         "shortageStartDate"
       ]
     },
-    "_Projections": {
-      "title": "_Projections",
+    "Projections": {
+      "title": "Projections",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "totalHospitalBeds": {
@@ -42,7 +45,7 @@
           "description": "Projection about total hospital bed utilization",
           "allOf": [
             {
-              "$ref": "#/definitions/_ResourceUsageProjection"
+              "$ref": "#/definitions/ResourceUsageProjection"
             }
           ]
         },
@@ -51,7 +54,7 @@
           "description": "Projection about ICU hospital bed utilization",
           "allOf": [
             {
-              "$ref": "#/definitions/_ResourceUsageProjection"
+              "$ref": "#/definitions/ResourceUsageProjection"
             }
           ]
         },
@@ -73,8 +76,9 @@
         "RtCI90"
       ]
     },
-    "_ResourceUtilization": {
-      "title": "_ResourceUtilization",
+    "ResourceUtilization": {
+      "title": "ResourceUtilization",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "capacity": {
@@ -111,8 +115,9 @@
         "typicalUsageRate"
       ]
     },
-    "_Actuals": {
-      "title": "_Actuals",
+    "Actuals": {
+      "title": "Actuals",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "population": {
@@ -147,10 +152,10 @@
           "type": "integer"
         },
         "hospitalBeds": {
-          "$ref": "#/definitions/_ResourceUtilization"
+          "$ref": "#/definitions/ResourceUtilization"
         },
         "ICUBeds": {
-          "$ref": "#/definitions/_ResourceUtilization"
+          "$ref": "#/definitions/ResourceUtilization"
         },
         "contactTracers": {
           "title": "Contacttracers",
@@ -169,8 +174,9 @@
         "ICUBeds"
       ]
     },
-    "CovidActNowStateSummary": {
-      "title": "CovidActNowStateSummary",
+    "CovidActNowAreaSummary": {
+      "title": "CovidActNowAreaSummary",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "countryName": {
@@ -180,7 +186,7 @@
         },
         "fips": {
           "title": "Fips",
-          "description": "Fips for State + County. Five character code",
+          "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
           "type": "string"
         },
         "lat": {
@@ -193,24 +199,6 @@
           "description": "Longitude of point within the state or county",
           "type": "number"
         },
-        "lastUpdatedDate": {
-          "title": "Lastupdateddate",
-          "description": "Date of latest data",
-          "type": "string",
-          "format": "date"
-        },
-        "projections": {
-          "$ref": "#/definitions/_Projections"
-        },
-        "actuals": {
-          "$ref": "#/definitions/_Actuals"
-        },
-        "population": {
-          "title": "Population",
-          "description": "Total Population in geographic area.",
-          "exclusiveMinimum": 0,
-          "type": "integer"
-        },
         "stateName": {
           "title": "Statename",
           "description": "The state name",
@@ -220,17 +208,35 @@
           "title": "Countyname",
           "description": "The county name",
           "type": "string"
+        },
+        "lastUpdatedDate": {
+          "title": "Lastupdateddate",
+          "description": "Date of latest data",
+          "type": "string",
+          "format": "date"
+        },
+        "projections": {
+          "$ref": "#/definitions/Projections"
+        },
+        "actuals": {
+          "$ref": "#/definitions/Actuals"
+        },
+        "population": {
+          "title": "Population",
+          "description": "Total Population in geographic area.",
+          "exclusiveMinimum": 0,
+          "type": "integer"
         }
       },
       "required": [
         "fips",
         "lat",
         "long",
+        "stateName",
         "lastUpdatedDate",
         "projections",
         "actuals",
-        "population",
-        "stateName"
+        "population"
       ]
     }
   }
