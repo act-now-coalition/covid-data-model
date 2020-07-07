@@ -890,12 +890,12 @@ class RtInferenceEngine:
         if df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
 
-        # df_all["state"] = self.display_name
-        # df_all["fips"] = self.fips
-        # df_all.to_csv("df_all_" + self.display_name + ".csv")
+        df_all["state"] = self.display_name
+        df_all["fips"] = self.fips
+        df_all.to_csv("df_all_" + self.display_name + ".csv")
 
         # log.info("run forecast")
-        # ForecastRt.run_forecast(df_all)
+        ForecastRt.run_forecast(df_all)
         # log.info("done running forecast")
         return df_all
 

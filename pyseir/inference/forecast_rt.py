@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import logging
 import pandas as pd
+import os, sys, glob
 from matplotlib import pyplot as plt
 import us
 import structlog
@@ -30,7 +31,8 @@ class ForecastRt:
     def __init__(self, df_all):
         log.info("init!")
         self.df_all = df_all
-        self.states = "all"
+        self.states = "All"  # All to use All
+        self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/july7_csv/"
         self.ref_date = datetime(year=2020, month=1, day=1)
 
         # Variable Names
@@ -40,7 +42,7 @@ class ForecastRt:
         self.forecast_variables = [
             "sim_day",
             "raw_new_cases",
-            "raw_new_deaths",
+            # "raw_new_deaths",
             self.d_predict_variable,
             "Rt_MAP__new_cases",
         ]
@@ -77,14 +79,52 @@ class ForecastRt:
         if self.states != "All":
             df_all = self.df_all
             state_name = df_all["state"][0]
-        # Set first day of year to 1 not 0
-        df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
-        df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
-        df_forecast = df_all[self.forecast_variables].copy()
-        # Fill empty values with mask value
-        df_forecast.replace(r"\s+", self.mask_value, regex=True).replace("", self.mask_value)
-        df_forecast.replace(np.nan, self.mask_value, regex=True).replace(np.nan, self.mask_value)
-        df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
+            log.info(df_all.index)
+            log.info("index type")
+            log.info(type(df_all.index))
+            log.info("ref date type")
+            log.info(type(self.ref_date))
+            df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
+            df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
+            df_forecast = df_all[self.forecast_variables].copy()
+            # Fill empty values with mask value
+            df_forecast.replace(r"\s+", self.mask_value, regex=True).replace("", self.mask_value)
+            df_forecast.replace(np.nan, self.mask_value, regex=True).replace(
+                np.nan, self.mask_value
+            )
+            df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
+
+        else:
+            dataframes = list()
+            csv_files = glob.glob(f"{self.csv_path}*.csv")
+            for myfile in csv_files:
+                df_all = pd.read_csv(
+                    myfile, parse_dates=True, index_col="date"
+                )  # it does need to be told the index col name
+                state_name = df_all["state"][0]
+                # Set first day of year to 1 not 0
+                log.info("----------------------")
+                log.info(myfile)
+                log.info(df_all.index)
+                log.info("index type")
+                log.info(type(df_all.index))
+                log.info("ref date type")
+                log.info(type(self.ref_date))
+                df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
+                df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
+                df_forecast = df_all[self.forecast_variables].copy()
+                # Fill empty values with mask value
+                df_forecast.replace(r"\s+", self.mask_value, regex=True).replace(
+                    "", self.mask_value
+                )
+                df_forecast.replace(np.nan, self.mask_value, regex=True).replace(
+                    np.nan, self.mask_value
+                )
+                df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
+
+            log.info(csv_files)
+            exit()
+
         return df_forecast, state_name
 
     def get_train_test_samples(self, df_forecast):
