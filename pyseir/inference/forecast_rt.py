@@ -55,7 +55,7 @@ class ForecastRt:
         self.predict_days = 7
         self.train_size = 0.8
         self.n_batch = 1
-        self.n_epochs = 1000
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -73,8 +73,30 @@ class ForecastRt:
             logging.exception("forecast failed : ( something unintended occured")
             return None
 
+    def get_forecast_df(self):
+        if self.states != "All":
+            df_all = self.df_all
+            state_name = df_all["state"][0]
+        # Set first day of year to 1 not 0
+        df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
+        df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
+        df_forecast = df_all[self.forecast_variables].copy()
+        # Fill empty values with mask value
+        df_forecast.replace(r"\s+", self.mask_value, regex=True).replace("", self.mask_value)
+        df_forecast.replace(np.nan, self.mask_value, regex=True).replace(np.nan, self.mask_value)
+        df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
+        return df_forecast, state_name
+
+    def get_train_test_samples(self, df_forecast):
+        df_samples = self.create_df_list(df_forecast)
+        train_set_length = int(len(df_samples) * self.train_size)
+        train_scaling_set = df_samples[train_set_length]
+        train_samples_not_spaced = df_samples[:train_set_length]
+        train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
+        test_samples = df_samples[train_set_length + 1 :]
+        return train_samples, test_samples, train_scaling_set
+
     def forecast_rt(self):
-        logging.info("starting")
         """
         predict r_t for 14 days into the future
         
@@ -82,95 +104,21 @@ class ForecastRt:
         ___________
         df_all: dataframe with dates, new_cases, new_deaths, and r_t values
 
-        Potential todo: add more features
+        Potential todo: add more features #ALWAYS
 
         Returns
         __________
         dates and forecast r_t values
 
         """
-        log.info("beginning forecast")
-
-        # Convert dates to what day of 2020 it corresponds to for Forecast
         log.info("saving dfall")
         log.info(self.df_all)
-        df_all = self.df_all
-        log.info(df_all)
-        log.info("STATE NAME")
-        state_name = df_all["state"][0]
-
-        df_all[self.sim_date_name] = (
-            df_all.index - self.ref_date
-        ).days + 1  # set first day of year to 1 not 0
-
-        df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
-
-        df_forecast = df_all[self.forecast_variables].copy()
-
-        # Fill empty values with mask value
-        df_forecast.replace(r"\s+", self.mask_value, regex=True).replace("", self.mask_value)
-        df_forecast.replace(np.nan, self.mask_value, regex=True).replace(np.nan, self.mask_value)
-
-        df_forecast.to_csv("df_forecast.csv")  # , na_rep="NaN")
-
-        # Split into train and test before normalizing to avoid data leakage
-        # TODO: Test set will actually be entire series
-        df_samples = self.create_df_list(df_forecast)
-        log.info("DF SAMPLES")
-        log.info(df_samples)
-
-        train_set_length = int(len(df_samples) * self.train_size)
-        train_scaling_set = df_samples[train_set_length]
-        train_samples_not_spaced = df_samples[:train_set_length]
-        train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
-        test_samples = df_samples[train_set_length + 1 :]
-
-        log.info("TEST SAMPLES")
-        log.info(test_samples)
-
+        df_forecast, state_name = self.get_forecast_df()
+        train_samples, test_samples, train_scaling_set = self.get_train_test_samples(df_forecast)
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
 
         train_X, train_Y, train_df_list = self.get_scaled_X_Y(train_samples, scalers_dict)
-        log.info("TRAIN X")
-        log.info(train_X)
-        log.info("TRAIN Y")
-        log.info(train_Y)
         test_X, test_Y, test_df_list = self.get_scaled_X_Y(test_samples, scalers_dict)
-
-        log.info(f"train samples: {len(train_X)} {len(train_df_list)}")
-        log.info(f"test samples: {len(test_X)} {len(test_df_list)}")
-        """
-        for n in range(len(train_X)):
-          log.info(f'------------------------   {n} ----------------')
-          if n == 0 or n == 1 or n == len(train_X)-2 or n== len(train_X)-1:
-              log.info('----------------------')
-              log.info('train X')
-              log.info(train_X[n])
-              log.info('train Y')
-              log.info(train_Y[n])
-              log.info('DF')
-              log.info(train_df_list[n])
-
-        for n in range(len(test_X)):
-          log.info(f'------------------------   {n} ----------------')
-          if n == 0 or n == 1 or n == len(test_X)-2 or n== len(test_X)-1:
-              log.info('----------------------')
-              log.info('test X')
-              log.info(test_X[n])
-              log.info('test Y')
-              log.info(test_Y[n])
-              log.info('DF')
-              log.info(test_df_list[n])
-
-        for i, j, k in zip(test_X, test_Y, test_df_list):
-            log.info('----------------------')
-            log.info('test X')
-            log.info(i)
-            log.info('test Y')
-            log.info(j)
-            log.info('DF')
-            log.info(k)
-      """
 
         model, history = self.build_model(train_X, train_Y)
 
@@ -181,10 +129,6 @@ class ForecastRt:
         forecasts_train, dates_train = self.get_forecasts(
             train_X, train_Y, train_df_list, scalers_dict, model
         )
-        # log.info('train forecasts')
-        # log.info(forecasts_train)
-        # log.info('train dates')
-        # log.info(dates_train)
         log.info("TEST FORECASTS")
         forecasts_test, dates_test = self.get_forecasts(
             test_X, test_Y, test_df_list, scalers_dict, model
