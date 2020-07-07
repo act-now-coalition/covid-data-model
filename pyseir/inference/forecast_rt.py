@@ -45,6 +45,7 @@ class ForecastRt:
             # "raw_new_deaths",
             self.d_predict_variable,
             "Rt_MAP__new_cases",
+            # "state"
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -75,15 +76,11 @@ class ForecastRt:
             logging.exception("forecast failed : ( something unintended occured")
             return None
 
-    def get_forecast_df(self):
+    def get_forecast_dfs(self):
+        # Probably get rid of this entirely
         if self.states != "All":
             df_all = self.df_all
             state_name = df_all["state"][0]
-            log.info(df_all.index)
-            log.info("index type")
-            log.info(type(df_all.index))
-            log.info("ref date type")
-            log.info(type(self.ref_date))
             df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
             df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
             df_forecast = df_all[self.forecast_variables].copy()
@@ -93,6 +90,7 @@ class ForecastRt:
                 np.nan, self.mask_value
             )
             df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
+            return df_forecast, state_name
 
         else:
             dataframes = list()
@@ -100,16 +98,9 @@ class ForecastRt:
             for myfile in csv_files:
                 df_all = pd.read_csv(
                     myfile, parse_dates=True, index_col="date"
-                )  # it does need to be told the index col name
+                )  # it needs index col name
                 state_name = df_all["state"][0]
                 # Set first day of year to 1 not 0
-                log.info("----------------------")
-                log.info(myfile)
-                log.info(df_all.index)
-                log.info("index type")
-                log.info(type(df_all.index))
-                log.info("ref date type")
-                log.info(type(self.ref_date))
                 df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
                 df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
                 df_forecast = df_all[self.forecast_variables].copy()
@@ -121,11 +112,9 @@ class ForecastRt:
                     np.nan, self.mask_value
                 )
                 df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
+                dataframes.append(df_forecast)
 
-            log.info(csv_files)
-            exit()
-
-        return df_forecast, state_name
+            return dataframes
 
     def get_train_test_samples(self, df_forecast):
         df_samples = self.create_df_list(df_forecast)
@@ -153,12 +142,36 @@ class ForecastRt:
         """
         log.info("saving dfall")
         log.info(self.df_all)
-        df_forecast, state_name = self.get_forecast_df()
-        train_samples, test_samples, train_scaling_set = self.get_train_test_samples(df_forecast)
+        # df_forecast, state_name = self.get_forecast_dfs()
+        df_list = self.get_forecast_dfs()
+        log.info(df_list)
+        log.info("that is the df_forecasts")
+
+        # get train, test, and scaling samples
+        scaling_dfs = []
+        train_samples = []
+        test_samples = []
+        for df in df_list:
+            train, test, train_scaling_set = self.get_train_test_samples(df)
+            scaling_dfs.append(train_scaling_set)
+            train_samples.append(train)
+            test_samples.append(test)
+
+        # Get scaling dictionary
+        train_scaling_set = pd.concat(scaling_dfs)
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
 
-        train_X, train_Y, train_df_list = self.get_scaled_X_Y(train_samples, scalers_dict)
-        test_X, test_Y, test_df_list = self.get_scaled_X_Y(test_samples, scalers_dict)
+        list_train_X = []
+        list_train_Y = []
+        list_test_X = []
+        list_test_Y = []
+        for train, text in zip(train_samples, test_samples):
+            train_X, train_Y, train_df_list = self.get_scaled_X_Y(train_samples, scalers_dict)
+            test_X, test_Y, test_df_list = self.get_scaled_X_Y(test_samples, scalers_dict)
+            list_train_X.append(train_X)
+            list_train_Y.append(train_Y)
+            list_test_X.append(test_X)
+            list_test_Y.append(test_Y)
 
         model, history = self.build_model(train_X, train_Y)
 
