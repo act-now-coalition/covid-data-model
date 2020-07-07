@@ -49,12 +49,12 @@ class ForecastRt:
         self.days_between_samples = 7
         self.mask_value = -10
         self.min_number_of_days = 30
-        self.sequence_length = 30
+        self.sequence_length = 100
         self.sample_train_length = 30  # Set to -1 to use all historical data
         self.predict_days = 7
         self.train_size = 0.8
         self.n_batch = 1
-        self.n_epochs = 1
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -184,7 +184,8 @@ class ForecastRt:
         )
 
         logging.info("about to plot")
-        LINEWIDTH = 1
+        DATA_LINEWIDTH=1
+        MODEL_LINEWIDTH = 2
         # plot training predictions
         plt.figure(figsize=(18, 12))
         for n in range(len(dates_train)):
@@ -197,10 +198,10 @@ class ForecastRt:
             log.info(j)
             if n == 0:
                 plt.plot(
-                    newdates, j, color="blue", label="Train Set", linewidth=LINEWIDTH, markersize=0
+                    newdates, j, color="green", label="Train Set", linewidth=MODEL_LINEWIDTH, markersize=0
                 )
             else:
-                plt.plot(newdates, j, color="blue", linewidth=LINEWIDTH, markersize=0)
+                plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
 
             logging.info("plotted TRAIN")
 
@@ -216,17 +217,17 @@ class ForecastRt:
             logging.info("got inputs for plotting")
             if n == 0:
                 plt.plot(
-                    newdates, j, color="orange", label="Test Set", linewidth=LINEWIDTH, markersize=0
+                    newdates, j, color="orange", label="Test Set", linewidth=MODEL_LINEWIDTH, markersize=0
                 )
             else:
-                plt.plot(newdates, j, color="orange", linewidth=LINEWIDTH, markersize=0)
+                plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
             logging.info("plotted TEST")
 
         full_data = df_forecast
         plt.plot(
             full_data[self.sim_date_name],
             full_data[self.predict_variable],
-            linewidth=LINEWIDTH,
+            linewidth=DATA_LINEWIDTH,
             markersize=1,
             label="Data",
         )
@@ -235,21 +236,6 @@ class ForecastRt:
         plt.legend()
         plt.grid(which="both", alpha=0.5)
         # Seq2Seq Parameters
-        """
-        self.days_between_samples = 7
-        self.mask_value = -10
-        self.min_number_of_days = 30
-        self.sequence_length = 30
-        self.sample_train_length = 30  # Set to -1 to use all historical data
-        self.predict_days = 7
-        self.train_size = 0.8
-        self.n_batch = 1
-        self.n_epochs = 100
-        self.n_hidden_layer_dimensions = 100
-        self.dropout = 0
-        self.patience = 50
-        self.validation_split = 0.1
-        """
         seq_params_dict = {
             "days_between_samples": self.days_between_samples,
             "min_number_days": self.min_number_of_days,
