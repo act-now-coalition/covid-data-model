@@ -1,0 +1,72 @@
+{
+  "title": "Projections",
+  "description": "Base model for API output.",
+  "type": "object",
+  "properties": {
+    "totalHospitalBeds": {
+      "title": "Totalhospitalbeds",
+      "description": "Projection about total hospital bed utilization",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ResourceUsageProjection"
+        }
+      ]
+    },
+    "ICUBeds": {
+      "title": "Icubeds",
+      "description": "Projection about ICU hospital bed utilization",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ResourceUsageProjection"
+        }
+      ]
+    },
+    "Rt": {
+      "title": "Rt",
+      "description": "Historical or Inferred Rt",
+      "type": "number"
+    },
+    "RtCI90": {
+      "title": "Rtci90",
+      "description": "Rt standard deviation",
+      "type": "number"
+    }
+  },
+  "required": [
+    "totalHospitalBeds",
+    "ICUBeds",
+    "Rt",
+    "RtCI90"
+  ],
+  "definitions": {
+    "ResourceUsageProjection": {
+      "title": "ResourceUsageProjection",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "peakShortfall": {
+          "title": "Peakshortfall",
+          "description": "Shortfall of resource needed at the peak utilization",
+          "type": "integer"
+        },
+        "peakDate": {
+          "title": "Peakdate",
+          "description": "Date of peak resource utilization",
+          "type": "string",
+          "format": "date"
+        },
+        "shortageStartDate": {
+          "title": "Shortagestartdate",
+          "description": "Date when resource shortage begins",
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "peakShortfall",
+        "peakDate",
+        "shortageStartDate"
+      ]
+    }
+  }
+}

@@ -219,11 +219,11 @@ def load_ensemble_results(fips):
     ensemble_results: dict
     """
     output_filename = get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT)
-    if os.path.exists(output_filename):
-        with open(output_filename) as f:
-            fit_results = json.load(f)
-        return fit_results
-    return None
+    if not os.path.exists(output_filename):
+        return None
+
+    with open(output_filename) as f:
+        return json.load(f)
 
 
 @lru_cache(maxsize=32)

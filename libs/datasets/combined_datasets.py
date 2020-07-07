@@ -109,7 +109,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(
-    country="USA", states=list(us_state_abbrev.abbrev_us_state.keys())
+    country="USA", states=list(us_state_abbrev.ABBREV_US_STATE.keys())
 )
 
 
