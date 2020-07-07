@@ -5,6 +5,7 @@ import sys
 import logging
 
 import pydantic
+from libs import base_model
 
 _logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ def find_public_model_classes() -> List[Type[pydantic.BaseModel]]:
             spec.loader.exec_module(mod)
 
     model_classes = []
-    for subclass in pydantic.BaseModel.__subclasses__():
+    for subclass in base_model.BaseModel.__subclasses__():
         # Skip any internal pydantic models.
         if subclass.__module__.startswith("pydantic"):
             continue
