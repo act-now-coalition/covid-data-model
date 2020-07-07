@@ -120,15 +120,20 @@ def compare_snapshots(
         return f"Applied dif from {input_snapshot} to {compare_snapshot}, no difference above thresholds found"
 
     # make the output directory if it doesn't exist already
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = pathlib.Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+
     dataset_deployer.write_nested_csv(
-        Comparitor.dict_results(sorted(results, reverse=True)), "compared", output_dir
+        Comparitor.dict_results(sorted(results, reverse=True)), output_dir / "compared.csv"
     )
 
     formatted_report = "\n--" + "\n\n--".join(report)
-    output_report = f"Applied dif from {input_snapshot if input_snapshot else input_dir} to {compare_snapshot}: {formatted_report} {output_report}"
+    output_report = (
+        f"Applied dif from {input_snapshot if input_snapshot else input_dir} to "
+        f"{compare_snapshot}: {formatted_report} {output_report}"
+    )
     # write report to a file
-    output_path = pathlib.Path(output_dir) / f"report.txt"
+    output_path = output_dir / f"report.txt"
     with output_path.open("w") as report_file:
         report_file.write(output_report)
 

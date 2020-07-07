@@ -1,6 +1,8 @@
 """
 One data model output of the modeling pipeline to serve to the API.
 """
+FIPS = "fips"
+INTERVENTION = "intervention"
 DAY_NUM = "day_num"  # Index Column. Generally not the same between simulations.
 DATE = "date"  # Date in the timeseries.
 TOTAL = "total"  # All people in the model. This should always be population.

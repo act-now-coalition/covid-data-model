@@ -1,0 +1,130 @@
+# To debug, it's recommended you modify / use the version in the test-actions repo:
+# https://github.com/covid-projections/test-actions/blob/master/.github/workflows/deploy_api.yml
+
+#Test workflow to validate new CI build machines.  It is a cut down version of
+#the build and publish workflow
+name: CI Test Build API artifacts 
+
+on:
+  # covid-data-public fetches data at 01:00 and 16:00 UTC.
+  # So we rebuild / publish the API at 01:30 and 16:30 UTC.
+  #schedule:
+  # - cron: '30 1,16 * * *'
+
+  # push:
+  # Hook to trigger a manual run.
+  # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
+  repository_dispatch:
+    types: ci-test-publish-api
+
+env:
+  # !!! Change this to your BRANCH if you want to test it
+  COVID_DATA_MODEL_REF: 'master'
+
+  # To pin to an old data sets, put the branch/tag/commit here:
+  COVID_DATA_PUBLIC_REF: 'master'
+
+  # S3 Bucket (used by s3-sync-action tasks) to store final API snapshot.
+  AWS_S3_BUCKET: 'data.covidactnow.org'
+
+  # Use plotting by default on CI
+  PYSEIR_PLOT_RESULTS: 'True'
+
+  # The snapshot ID that identifies all of the API artifacts we're generating and ends
+  # up in the final /snapshot/{id}/ URL.
+  SNAPSHOT_ID: ${{github.run_number}}
+
+  # Used by execute-model (for now) to optimize parallelization on self-hosted
+  # runner.
+  COVID_MODEL_CORES: 96
+  # for other sizes than the default 96
+  #COVID_MODEL_CORES: 32
+
+  # Used by python code that reports errors to sentry.
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+  # use a webhook to write to slack channel dev-alerts for QA
+  # Turn off for CI test deploy box
+  #SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
+
+
+jobs:
+  ci-test-build-snapshot:
+    runs-on: [self-hosted, targeted-runner]
+    steps:
+
+    - name: Checkout covid-data-model
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-model
+        path: covid-data-model
+        ref: '${{env.COVID_DATA_MODEL_REF}}'
+
+    - name: Checkout covid-data-public
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-public
+        path: covid-data-public
+        lfs: true
+        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
+
+    - name: Setup Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7.6'
+        architecture: 'x64'
+
+    - name: Cache Pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+
+    - name: Install Dependencies
+      working-directory: ./covid-data-model
+      run: pip install -r requirements.txt
+
+    - name: run raw data QA
+      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_raw_data_qa
+
+    - name: Build Model Results (run.sh .. .. execute_model)
+      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
+
+    - name: Zip Model Results (run.sh .. .. execute_zip_folder)
+      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
+
+    # - name: Upload Raw Data QA and Model Results
+    #   uses: actions/upload-artifact@v2-preview
+    #   with:
+    #     name: model-results-${{env.SNAPSHOT_ID}}
+    #     path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
+
+    - name: Build API (run.sh .. .. execute_api)
+      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
+
+    - name: make and copy to local tmp directory
+      run: |
+        mkdir -p ./tmp/data/
+        cp -r /data/api-results-${{env.SNAPSHOT_ID}}/ ./tmp/data/
+
+    # - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
+    #   uses: jakejarvis/s3-sync-action@master
+    #   with:
+    #     args: --acl public-read --follow-symlinks --delete
+    #   env:
+    #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     SOURCE_DIR: './tmp/data/api-results-${{env.SNAPSHOT_ID}}/'
+    #     DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}/'
+
+    # - name: remove local tmp directory
+    #   run: |
+    #     rm -rf ./tmp/data/
+
+    # - name: Trigger website PR generation if conditions are met (master branch, morning build, etc)
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+    #   run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
