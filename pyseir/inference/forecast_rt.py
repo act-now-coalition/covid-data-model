@@ -35,10 +35,12 @@ class ForecastRt:
         # Variable Names
         self.sim_date_name = "sim_day"
         self.predict_variable = "Rt_MAP__new_cases"
+        self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
             "sim_day",
             "raw_new_cases",
             "raw_new_deaths",
+            self.d_predict_variable,
             "Rt_MAP__new_cases",
         ]
         self.scaled_variable_suffix = "_scaled"
@@ -99,6 +101,8 @@ class ForecastRt:
         df_all[self.sim_date_name] = (
             df_all.index - self.ref_date
         ).days + 1  # set first day of year to 1 not 0
+
+        df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
 
         df_forecast = df_all[self.forecast_variables].copy()
 
