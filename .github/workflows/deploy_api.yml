@@ -23,6 +23,7 @@ env:
   COVID_DATA_PUBLIC_REF: 'master'
 
 
+
   # S3 Bucket (used by s3-sync-action tasks) to store final API snapshot.
   AWS_S3_BUCKET: 'data.covidactnow.org'
 
