@@ -894,9 +894,9 @@ class RtInferenceEngine:
         df_all["fips"] = self.fips
         df_all.to_csv("df_all_" + self.display_name + ".csv")
 
-        log.info("run forecast")
-        ForecastRt.run_forecast(df_all)
-        log.info("done running forecast")
+        # log.info("run forecast")
+        # ForecastRt.run_forecast(df_all)
+        # log.info("done running forecast")
         return df_all
 
     @staticmethod

@@ -30,6 +30,7 @@ class ForecastRt:
     def __init__(self, df_all):
         log.info("init!")
         self.df_all = df_all
+        self.states = "all"
         self.ref_date = datetime(year=2020, month=1, day=1)
 
         # Variable Names
@@ -118,7 +119,8 @@ class ForecastRt:
 
         train_set_length = int(len(df_samples) * self.train_size)
         train_scaling_set = df_samples[train_set_length]
-        train_samples = df_samples[:train_set_length]
+        train_samples_not_spaced = df_samples[:train_set_length]
+        train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
         test_samples = df_samples[train_set_length + 1 :]
 
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
@@ -184,7 +186,7 @@ class ForecastRt:
         )
 
         logging.info("about to plot")
-        DATA_LINEWIDTH=1
+        DATA_LINEWIDTH = 1
         MODEL_LINEWIDTH = 2
         # plot training predictions
         plt.figure(figsize=(18, 12))
@@ -198,7 +200,12 @@ class ForecastRt:
             log.info(j)
             if n == 0:
                 plt.plot(
-                    newdates, j, color="green", label="Train Set", linewidth=MODEL_LINEWIDTH, markersize=0
+                    newdates,
+                    j,
+                    color="green",
+                    label="Train Set",
+                    linewidth=MODEL_LINEWIDTH,
+                    markersize=0,
                 )
             else:
                 plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
@@ -217,7 +224,12 @@ class ForecastRt:
             logging.info("got inputs for plotting")
             if n == 0:
                 plt.plot(
-                    newdates, j, color="orange", label="Test Set", linewidth=MODEL_LINEWIDTH, markersize=0
+                    newdates,
+                    j,
+                    color="orange",
+                    label="Test Set",
+                    linewidth=MODEL_LINEWIDTH,
+                    markersize=0,
                 )
             else:
                 plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
@@ -228,8 +240,9 @@ class ForecastRt:
             full_data[self.sim_date_name],
             full_data[self.predict_variable],
             linewidth=DATA_LINEWIDTH,
-            markersize=1,
+            markersize=3,
             label="Data",
+            marker="o",
         )
         plt.xlabel(self.sim_date_name)
         plt.ylabel(self.predict_variable)
@@ -439,12 +452,11 @@ class ForecastRt:
     def create_df_list(self, df):
         df_list = list()
         for index in range(len(df.index)):
-            i = index * self.days_between_samples
+            # i = index * self.days_between_samples
+            i = index
             if i > len(df.index):
                 continue
 
-            log.info("i is")
-            log.info(i)
             if (
                 i < self.predict_days + self.min_number_of_days
             ):  # only keep df if it has min number of entries
