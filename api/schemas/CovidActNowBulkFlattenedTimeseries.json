@@ -1,0 +1,152 @@
+{
+  "title": "CovidActNowBulkFlattenedTimeseries",
+  "description": "Base model for API output.",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/PredictionTimeseriesRowWithHeader"
+  },
+  "definitions": {
+    "PredictionTimeseriesRowWithHeader": {
+      "title": "PredictionTimeseriesRowWithHeader",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "title": "Date",
+          "descrition": "Date of timeseries data point",
+          "type": "string",
+          "format": "date"
+        },
+        "hospitalBedsRequired": {
+          "title": "Hospitalbedsrequired",
+          "description": "Number of hospital beds projected to be in-use or that were actually in use (if in the past)",
+          "type": "integer"
+        },
+        "hospitalBedCapacity": {
+          "title": "Hospitalbedcapacity",
+          "description": "Number of hospital beds projected to be in-use or actually in use (if in the past)",
+          "type": "integer"
+        },
+        "ICUBedsInUse": {
+          "title": "Icubedsinuse",
+          "description": "Number of ICU beds projected to be in-use or that were actually in use (if in the past)",
+          "type": "integer"
+        },
+        "ICUBedCapacity": {
+          "title": "Icubedcapacity",
+          "description": "Number of ICU beds projected to be in-use or actually in use (if in the past)",
+          "type": "integer"
+        },
+        "ventilatorsInUse": {
+          "title": "Ventilatorsinuse",
+          "description": "Number of ventilators projected to be in-use.",
+          "type": "integer"
+        },
+        "ventilatorCapacity": {
+          "title": "Ventilatorcapacity",
+          "description": "Total ventilator capacity.",
+          "type": "integer"
+        },
+        "RtIndicator": {
+          "title": "Rtindicator",
+          "description": "Historical or Inferred Rt",
+          "type": "number"
+        },
+        "RtIndicatorCI90": {
+          "title": "Rtindicatorci90",
+          "description": "Rt standard deviation",
+          "type": "number"
+        },
+        "cumulativeDeaths": {
+          "title": "Cumulativedeaths",
+          "description": "Number of cumulative deaths",
+          "type": "integer"
+        },
+        "cumulativeInfected": {
+          "title": "Cumulativeinfected",
+          "description": "Number of cumulative infections",
+          "type": "integer"
+        },
+        "currentInfected": {
+          "title": "Currentinfected",
+          "description": "Number of current infections",
+          "type": "integer"
+        },
+        "currentSusceptible": {
+          "title": "Currentsusceptible",
+          "description": "Number of people currently susceptible ",
+          "type": "integer"
+        },
+        "currentExposed": {
+          "title": "Currentexposed",
+          "description": "Number of people currently exposed",
+          "type": "integer"
+        },
+        "countryName": {
+          "title": "Countryname",
+          "default": "US",
+          "type": "string"
+        },
+        "stateName": {
+          "title": "Statename",
+          "description": "The state name",
+          "type": "string"
+        },
+        "countyName": {
+          "title": "Countyname",
+          "description": "The county name",
+          "type": "string"
+        },
+        "intervention": {
+          "title": "Intervention",
+          "description": "Name of high-level intervention in-place",
+          "type": "string"
+        },
+        "fips": {
+          "title": "Fips",
+          "description": "Fips for State + County. Five character code",
+          "type": "string"
+        },
+        "lat": {
+          "title": "Lat",
+          "description": "Latitude of point within the state or county",
+          "type": "number"
+        },
+        "long": {
+          "title": "Long",
+          "description": "Longitude of point within the state or county",
+          "type": "number"
+        },
+        "lastUpdatedDate": {
+          "title": "Lastupdateddate",
+          "description": "Date of latest data",
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "date",
+        "hospitalBedsRequired",
+        "hospitalBedCapacity",
+        "ICUBedsInUse",
+        "ICUBedCapacity",
+        "ventilatorsInUse",
+        "ventilatorCapacity",
+        "RtIndicator",
+        "RtIndicatorCI90",
+        "cumulativeDeaths",
+        "cumulativeInfected",
+        "currentInfected",
+        "currentSusceptible",
+        "currentExposed",
+        "stateName",
+        "countyName",
+        "intervention",
+        "fips",
+        "lat",
+        "long",
+        "lastUpdatedDate"
+      ]
+    }
+  }
+}
