@@ -1,5 +1,6 @@
 {
   "title": "ResourceUsageProjection",
+  "description": "Base model for API output.",
   "type": "object",
   "properties": {
     "peakShortfall": {

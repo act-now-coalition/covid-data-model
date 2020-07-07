@@ -1,5 +1,6 @@
 {
   "title": "CovidActNowBulkTimeseries",
+  "description": "Base model for API output.",
   "type": "array",
   "items": {
     "$ref": "#/definitions/CovidActNowAreaTimeseries"
@@ -7,6 +8,7 @@
   "definitions": {
     "ResourceUsageProjection": {
       "title": "ResourceUsageProjection",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "peakShortfall": {
@@ -35,6 +37,7 @@
     },
     "Projections": {
       "title": "Projections",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "totalHospitalBeds": {
@@ -75,6 +78,7 @@
     },
     "ResourceUtilization": {
       "title": "ResourceUtilization",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "capacity": {
@@ -113,6 +117,7 @@
     },
     "Actuals": {
       "title": "Actuals",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "population": {
@@ -171,6 +176,7 @@
     },
     "CANPredictionTimeseriesRow": {
       "title": "CANPredictionTimeseriesRow",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "date": {
@@ -264,6 +270,7 @@
     },
     "CANActualsTimeseriesRow": {
       "title": "CANActualsTimeseriesRow",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "population": {
@@ -329,6 +336,7 @@
     },
     "CovidActNowAreaTimeseries": {
       "title": "CovidActNowAreaTimeseries",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "countryName": {

@@ -1,5 +1,6 @@
 {
   "title": "CovidActNowBulkFlattenedTimeseries",
+  "description": "Base model for API output.",
   "type": "array",
   "items": {
     "$ref": "#/definitions/PredictionTimeseriesRowWithHeader"
@@ -7,6 +8,7 @@
   "definitions": {
     "PredictionTimeseriesRowWithHeader": {
       "title": "PredictionTimeseriesRowWithHeader",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "date": {

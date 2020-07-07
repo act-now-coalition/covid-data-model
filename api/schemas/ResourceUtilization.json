@@ -1,5 +1,6 @@
 {
   "title": "ResourceUtilization",
+  "description": "Base model for API output.",
   "type": "object",
   "properties": {
     "capacity": {

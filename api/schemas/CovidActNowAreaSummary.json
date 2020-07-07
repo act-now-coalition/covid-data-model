@@ -1,5 +1,6 @@
 {
   "title": "CovidActNowAreaSummary",
+  "description": "Base model for API output.",
   "type": "object",
   "properties": {
     "countryName": {
@@ -64,6 +65,7 @@
   "definitions": {
     "ResourceUsageProjection": {
       "title": "ResourceUsageProjection",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "peakShortfall": {
@@ -92,6 +94,7 @@
     },
     "Projections": {
       "title": "Projections",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "totalHospitalBeds": {
@@ -132,6 +135,7 @@
     },
     "ResourceUtilization": {
       "title": "ResourceUtilization",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "capacity": {
@@ -170,6 +174,7 @@
     },
     "Actuals": {
       "title": "Actuals",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "population": {

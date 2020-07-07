@@ -13,7 +13,7 @@ Documentation at https://github.com/covid-projections/covid-data-model/tree/mast
 """
 
 
-class ResourceUsageProjection(base_model.BaseModel):
+class ResourceUsageProjection(base_model.APIBaseModel):
     peakShortfall: int = pydantic.Field(
         ..., description="Shortfall of resource needed at the peek utilization"
     )
@@ -25,7 +25,7 @@ class ResourceUsageProjection(base_model.BaseModel):
     )
 
 
-class Projections(base_model.BaseModel):
+class Projections(base_model.APIBaseModel):
     totalHospitalBeds: ResourceUsageProjection = pydantic.Field(
         ..., description="Projection about total hospital bed utilization"
     )
@@ -36,7 +36,7 @@ class Projections(base_model.BaseModel):
     RtCI90: float = pydantic.Field(..., description="Rt standard deviation")
 
 
-class ResourceUtilization(base_model.BaseModel):
+class ResourceUtilization(base_model.APIBaseModel):
     capacity: Optional[int] = pydantic.Field(
         ...,
         description=(
@@ -57,7 +57,7 @@ class ResourceUtilization(base_model.BaseModel):
     )
 
 
-class Actuals(base_model.BaseModel):
+class Actuals(base_model.APIBaseModel):
     population: Optional[int] = pydantic.Field(
         ...,
         description="Total population in geographic area [*deprecated*: refer to summary for this]",
@@ -80,7 +80,7 @@ class Actuals(base_model.BaseModel):
     contactTracers: Optional[int] = pydantic.Field(default=None, description="# of Contact Tracers")
 
 
-class CovidActNowAreaSummary(base_model.BaseModel):
+class CovidActNowAreaSummary(base_model.APIBaseModel):
     countryName: str = "US"
     fips: str = pydantic.Field(
         ...,
@@ -131,7 +131,7 @@ class CANActualsTimeseriesRow(Actuals):
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
 
 
-class CANPredictionTimeseriesRow(base_model.BaseModel):
+class CANPredictionTimeseriesRow(base_model.APIBaseModel):
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
     hospitalBedsRequired: int = pydantic.Field(
         ...,
@@ -240,7 +240,7 @@ class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
         return super().output_key(intervention) + ".timeseries"
 
 
-class CovidActNowBulkSummary(base_model.BaseModel):
+class CovidActNowBulkSummary(base_model.APIBaseModel):
     __root__: List[CovidActNowAreaSummary] = pydantic.Field(...)
 
     def output_key(self, intervention):
@@ -251,7 +251,7 @@ class CovidActNowBulkSummary(base_model.BaseModel):
             return f"states.{intervention.name}"
 
 
-class CovidActNowBulkTimeseries(base_model.BaseModel):
+class CovidActNowBulkTimeseries(base_model.APIBaseModel):
     __root__: List[CovidActNowAreaTimeseries] = pydantic.Field(...)
 
     def output_key(self, intervention):
@@ -262,7 +262,7 @@ class CovidActNowBulkTimeseries(base_model.BaseModel):
             return f"states.{intervention.name}.timeseries"
 
 
-class CovidActNowBulkFlattenedTimeseries(base_model.BaseModel):
+class CovidActNowBulkFlattenedTimeseries(base_model.APIBaseModel):
     __root__: List[PredictionTimeseriesRowWithHeader] = pydantic.Field(...)
 
     def output_key(self, intervention):
