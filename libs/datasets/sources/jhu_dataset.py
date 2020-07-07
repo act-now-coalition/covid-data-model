@@ -9,6 +9,7 @@ from libs.datasets import data_source
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import enums
+from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 
 _logger = logging.getLogger(__name__)
 
@@ -120,8 +121,6 @@ class JHUDataset(data_source.DataSource):
         """Fills incomplete county data.
 
         Most of this data is "unassigned" (at least in more recent days.
-        We probably need to either give each state its own fake FIP, or spread this
-        out over the existing counties for the state.
         """
         overrides = {
             # Assigning nantucket county to dukes and nantucket
@@ -134,7 +133,14 @@ class JHUDataset(data_source.DataSource):
 
         has_county = data[cls.Fields.COUNTY].notnull()
         rows_to_replace = has_county & data[cls.Fields.FIPS].isnull()
-        data.loc[rows_to_replace, cls.Fields.FIPS] = enums.UNKNOWN_FIPS
+        data.loc[rows_to_replace, cls.Fields.FIPS] = data.loc[
+            rows_to_replace, cls.Fields.STATE
+        ].map(ABBREV_US_UNKNOWN_COUNTY_FIPS)
+        still_no_fips = has_county & data[cls.Fields.FIPS].isnull()
+        if still_no_fips.any():
+            _logger.warning(
+                f"County rows without FIPS: {data.loc[still_no_fips, [cls.Fields.STATE, cls.Fields.COUNTY]]}"
+            )
         return data
 
     @classmethod

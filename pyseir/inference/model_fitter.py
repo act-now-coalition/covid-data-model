@@ -667,11 +667,10 @@ class ModelFitter:
             return model_fitter
         except Exception:
             logging.exception(f"Failed to run {fips}")
-            raise
-            # return None
+            return None
 
 
-def _execute_model_for_fips(fips):
+def execute_model_for_fips(fips):
     if fips:
         model_fitter = ModelFitter.run_for_fips(fips)
         return model_fitter

@@ -1,9 +1,11 @@
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
+from libs import enums
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.common_fields import CommonIndexFields
+from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 
 
 class NYTimesDataset(data_source.DataSource):
@@ -55,7 +57,9 @@ class NYTimesDataset(data_source.DataSource):
         # Super hacky way of filling in new york.
         data.loc[data[cls.Fields.COUNTY] == "New York City", "county"] = "New York County"
         data.loc[data[cls.Fields.COUNTY] == "New York County", "fips"] = "36061"
-        data.loc[data[cls.Fields.COUNTY] == "Unknown", "fips"] = "99999"
+
+        # UNKNOWN_FIPS is overwritten with values from ABBREV_US_UNKNOWN_COUNTY_FIPS below.
+        data.loc[data[cls.Fields.COUNTY] == "Unknown", "fips"] = enums.UNKNOWN_FIPS
 
         # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
         # Both Joplin and Kansas City numbers are reported separately from the surrounding counties.
@@ -63,9 +67,9 @@ class NYTimesDataset(data_source.DataSource):
         # data missing a fips into one unknown fips.
         is_kc = data[cls.Fields.COUNTY] == "Kansas City"
         is_joplin = data[cls.Fields.COUNTY] == "Joplin"
-        data.loc[is_kc | is_joplin, cls.Fields.FIPS] = "99999"
+        data.loc[is_kc | is_joplin, cls.Fields.FIPS] = enums.UNKNOWN_FIPS
         is_missouri = data[cls.Fields.STATE] == "MO"
-        is_unknown = data[cls.Fields.FIPS] == "99999"
+        is_unknown = data[cls.Fields.FIPS] == enums.UNKNOWN_FIPS
         missouri_unknown = data.loc[is_missouri & is_unknown, :]
         group_columns = [
             cls.Fields.AGGREGATE_LEVEL,
@@ -76,4 +80,12 @@ class NYTimesDataset(data_source.DataSource):
         ]
         missouri_unknown = missouri_unknown.groupby(group_columns).sum().reset_index()
         missouri_unknown[cls.Fields.COUNTY] = "Aggregated City and Unknown Data"
-        return pd.concat([data.loc[~(is_missouri & is_unknown), :], missouri_unknown])
+        data = pd.concat([data.loc[~(is_missouri & is_unknown), :], missouri_unknown])
+
+        # Change all the 99999 FIPS to per-state unknown
+        unknown_fips = data[cls.Fields.FIPS] == enums.UNKNOWN_FIPS
+        data.loc[unknown_fips, cls.Fields.FIPS] = data.loc[unknown_fips, cls.Fields.STATE].map(
+            ABBREV_US_UNKNOWN_COUNTY_FIPS
+        )
+
+        return data

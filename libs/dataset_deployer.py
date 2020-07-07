@@ -68,7 +68,7 @@ def flatten_dict(data: dict, level_separator: str = ".") -> dict:
     return flattened
 
 
-def write_nested_csv(data: List[dict], key: str, output_dir: str):
+def write_nested_csv(data: List[dict], output_path: pathlib.Path):
     """Writes list of data as a nested csv.
 
     Args:
@@ -80,8 +80,7 @@ def write_nested_csv(data: List[dict], key: str, output_dir: str):
         raise ValueError("Cannot upload a 0 length list.")
     header = flatten_dict(data[0]).keys()
 
-    output_path = pathlib.Path(output_dir) / f"{key}.csv"
-    _logger.info(f"Writing {key} to {output_path}")
+    _logger.info(f"Writing to {output_path}")
     with output_path.open("w") as csvfile:
         writer = csv.DictWriter(csvfile, header)
         writer.writeheader()
@@ -113,3 +112,33 @@ def deploy_shape_files(
     DatasetDeployer(key=f"{key}.shp", body=shp_bytes.getvalue(), output_dir=output_dir).persist()
     DatasetDeployer(key=f"{key}.shx", body=shx_bytes.getvalue(), output_dir=output_dir).persist()
     DatasetDeployer(key=f"{key}.dbf", body=dbf_bytes.getvalue(), output_dir=output_dir).persist()
+
+
+def remove_root_wrapper(obj: dict):
+    """Removes __root__ and replaces with __root__ value.
+
+    When pydantic models are used to wrap lists this is done using a property __root__.
+    When this is serialized using `model.json()`, it will return a json list. However,
+    calling `model.dict()` will return a dictionary with a single key `__root__`.
+    This function removes that __root__ key (and all sub pydantic models with a
+    similar structure) to have a similar hierarchy to the json output.
+
+    A dictionary {"__root__": []} will return [].
+
+    Args:
+        obj: pydantic model as dict.
+
+    Returns: object with __root__ removed.
+    """
+    # Objects with __root__ should have it as the only key.
+    if len(obj) == 1 and "__root__" in obj:
+        return obj["__root__"]
+
+    results = {}
+    for key, value in obj.items():
+        if isinstance(value, dict):
+            value = remove_root_wrapper(value)
+
+        results[key] = value
+
+    return results

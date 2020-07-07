@@ -4,7 +4,7 @@ import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
-from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS
+from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS, ABBREV_US_UNKNOWN_COUNTY_FIPS
 from libs import enums
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonIndexFields
@@ -62,8 +62,7 @@ class FIPSPopulation(data_source.DataSource):
         for state in data.state.unique():
             row = {
                 cls.Fields.STATE: state,
-                # TODO(chris): Possibly separate fips out by state prefix
-                cls.Fields.FIPS: enums.UNKNOWN_FIPS,
+                cls.Fields.FIPS: ABBREV_US_UNKNOWN_COUNTY_FIPS[state],
                 cls.Fields.POPULATION: None,
                 cls.Fields.COUNTY: "Unknown",
             }
