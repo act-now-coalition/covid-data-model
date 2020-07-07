@@ -11,6 +11,12 @@ _logger = logging.getLogger(__name__)
 SCHEMAS_PATH = pathlib.Path(__file__).parent / "schemas"
 
 
+def _get_subclasses_recursively(cls) -> Iterator[Type]:
+    for subclass in cls.__subclasses__():
+        yield subclass
+        yield from _get_subclasses_recursively(subclass)
+
+
 def find_public_model_classes() -> List[Type[base_model.APIBaseModel]]:
     """Finds all model classes (i.e. that derive from base_model.APIBaseModel) for export.
 
@@ -35,7 +41,11 @@ def find_public_model_classes() -> List[Type[base_model.APIBaseModel]]:
             spec.loader.exec_module(mod)
 
     model_classes = []
-    for subclass in base_model.APIBaseModel.__subclasses__():
+
+    # Calling `base_model.APIBaseModel.__subclasses__()` only returns direct subclasses.
+    # To find all classes that may inherit from subclasses of APIBaseModel, we need to
+    # recursively get subclasses.
+    for subclass in _get_subclasses_recursively(base_model.APIBaseModel):
         model_classes.append(subclass)
 
     return model_classes
