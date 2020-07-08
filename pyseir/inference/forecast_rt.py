@@ -53,10 +53,10 @@ class ForecastRt:
         # Seq2Seq Parameters
         self.days_between_samples = 7
         self.mask_value = -10
-        self.min_number_of_days = 60
-        self.sequence_length = 10
-        self.sample_train_length = 5  # Set to -1 to use all historical data
-        self.predict_days = 2
+        self.min_number_of_days = 31
+        self.sequence_length = 30
+        self.sample_train_length = 30  # Set to -1 to use all historical data
+        self.predict_days = 3
         self.train_size = 0.8
         self.n_batch = 1
         self.n_epochs = 1000
