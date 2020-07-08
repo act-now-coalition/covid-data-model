@@ -7,8 +7,9 @@ import os, sys, glob
 from matplotlib import pyplot as plt
 import us
 import structlog
-from pyseir.utils import AggregationLevel, TimeseriesType
-from pyseir.utils import get_run_artifact_path, RunArtifact
+
+# from pyseir.utils import AggregationLevel, TimeseriesType
+# from pyseir.utils import get_run_artifact_path, RunArtifact
 from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
 from structlog import configure
 from enum import Enum
@@ -45,7 +46,7 @@ class ForecastRt:
             # "raw_new_deaths",
             self.d_predict_variable,
             "Rt_MAP__new_cases",
-            # "state"
+            "fips",
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -94,11 +95,12 @@ class ForecastRt:
 
         else:
             dataframes = list()
+            state_names = list()
             csv_files = glob.glob(f"{self.csv_path}*.csv")
             for myfile in csv_files:
                 df_all = pd.read_csv(
                     myfile, parse_dates=True, index_col="date"
-                )  # it needs index col name
+                )  # , dtype={'fips': int}
                 state_name = df_all["state"][0]
                 # Set first day of year to 1 not 0
                 df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
@@ -113,8 +115,9 @@ class ForecastRt:
                 )
                 df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
                 dataframes.append(df_forecast)
+                state_names.append(state_name)
 
-            return dataframes
+            return dataframes, state_names
 
     def get_train_test_samples(self, df_forecast):
         df_samples = self.create_df_list(df_forecast)
@@ -143,160 +146,171 @@ class ForecastRt:
         log.info("saving dfall")
         log.info(self.df_all)
         # df_forecast, state_name = self.get_forecast_dfs()
-        df_list = self.get_forecast_dfs()
+        df_list, state_names = self.get_forecast_dfs()
         log.info(df_list)
         log.info("that is the df_forecasts")
 
         # get train, test, and scaling samples
-        scaling_dfs = []
+        scaling_samples = []
         train_samples = []
         test_samples = []
         for df in df_list:
-            train, test, train_scaling_set = self.get_train_test_samples(df)
-            scaling_dfs.append(train_scaling_set)
+            train, test, scaling = self.get_train_test_samples(df)
+            scaling_samples.append(scaling)
             train_samples.append(train)
             test_samples.append(test)
 
         # Get scaling dictionary
-        train_scaling_set = pd.concat(scaling_dfs)
+        train_scaling_set = pd.concat(scaling_samples)
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
+        log.info("retrieved scaling dictionary")
 
+        # Create scaled train samples
         list_train_X = []
         list_train_Y = []
         list_test_X = []
         list_test_Y = []
-        for train, text in zip(train_samples, test_samples):
-            train_X, train_Y, train_df_list = self.get_scaled_X_Y(train_samples, scalers_dict)
-            test_X, test_Y, test_df_list = self.get_scaled_X_Y(test_samples, scalers_dict)
+        for train, test in zip(train_samples, test_samples):
+            log.info("get scaled train sets")
+            train_X, train_Y, train_df_list = self.get_scaled_X_Y(train, scalers_dict)
+            log.info("getting scaled test sets")
+            test_X, test_Y, test_df_list = self.get_scaled_X_Y(test, scalers_dict)
+            log.info("appending samples to aggregate lists")
             list_train_X.append(train_X)
             list_train_Y.append(train_Y)
             list_test_X.append(test_X)
             list_test_Y.append(test_Y)
 
+        log.info("building model")
         model, history = self.build_model(train_X, train_Y)
 
         logging.info("built model")
 
         # Plot predictions for test and train sets
-        log.info("TRAIN FORECASTS")
-        forecasts_train, dates_train = self.get_forecasts(
-            train_X, train_Y, train_df_list, scalers_dict, model
-        )
-        log.info("TEST FORECASTS")
-        forecasts_test, dates_test = self.get_forecasts(
-            test_X, test_Y, test_df_list, scalers_dict, model
-        )
 
-        logging.info("about to plot")
-        DATA_LINEWIDTH = 1
-        MODEL_LINEWIDTH = 2
-        # plot training predictions
-        plt.figure(figsize=(18, 12))
-        for n in range(len(dates_train)):
-            i = dates_train[n]
-            newdates = dates_train[n]
-            # newdates = convert_to_2020_date(i,args)
-            j = np.squeeze(forecasts_train[n])
-            log.info("dates")
-            log.info(newdates)
-            log.info(j)
-            if n == 0:
-                plt.plot(
-                    newdates,
-                    j,
-                    color="green",
-                    label="Train Set",
-                    linewidth=MODEL_LINEWIDTH,
-                    markersize=0,
-                )
-            else:
-                plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
+        for train_X, train_Y, test_X, test_Y, df_forecast, state_name in zip(
+            list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_names
+        ):
+            log.info("TRAIN FORECASTS")
+            forecasts_train, dates_train = self.get_forecasts(
+                train_X, train_Y, train_df_list, scalers_dict, model
+            )
+            log.info("TEST FORECASTS")
+            forecasts_test, dates_test = self.get_forecasts(
+                test_X, test_Y, test_df_list, scalers_dict, model
+            )
 
-            logging.info("plotted TRAIN")
+            logging.info("about to plot")
+            DATA_LINEWIDTH = 1
+            MODEL_LINEWIDTH = 2
+            # plot training predictions
+            plt.figure(figsize=(18, 12))
+            for n in range(len(dates_train)):
+                i = dates_train[n]
+                newdates = dates_train[n]
+                # newdates = convert_to_2020_date(i,args)
+                j = np.squeeze(forecasts_train[n])
+                log.info("dates")
+                log.info(newdates)
+                log.info(j)
+                if n == 0:
+                    plt.plot(
+                        newdates,
+                        j,
+                        color="green",
+                        label="Train Set",
+                        linewidth=MODEL_LINEWIDTH,
+                        markersize=0,
+                    )
+                else:
+                    plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
 
-        log.info("TEST___________")
-        for n in range(len(dates_test)):
-            i = dates_test[n]
-            newdates = dates_test[n]
-            # newdates = convert_to_2020_date(i,args)
-            j = np.squeeze(forecasts_test[n])
+                logging.info("plotted TRAIN")
 
-            logging.info(j)
-            logging.info(newdates)
-            logging.info("got inputs for plotting")
-            if n == 0:
-                plt.plot(
-                    newdates,
-                    j,
-                    color="orange",
-                    label="Test Set",
-                    linewidth=MODEL_LINEWIDTH,
-                    markersize=0,
-                )
-            else:
-                plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
-            logging.info("plotted TEST")
+            log.info("TEST___________")
+            for n in range(len(dates_test)):
+                i = dates_test[n]
+                newdates = dates_test[n]
+                # newdates = convert_to_2020_date(i,args)
+                j = np.squeeze(forecasts_test[n])
 
-        full_data = df_forecast
-        plt.plot(
-            full_data[self.sim_date_name],
-            full_data[self.predict_variable],
-            linewidth=DATA_LINEWIDTH,
-            markersize=3,
-            label="Data",
-            marker="o",
-        )
-        plt.xlabel(self.sim_date_name)
-        plt.ylabel(self.predict_variable)
-        plt.legend()
-        plt.grid(which="both", alpha=0.5)
-        # Seq2Seq Parameters
-        seq_params_dict = {
-            "days_between_samples": self.days_between_samples,
-            "min_number_days": self.min_number_of_days,
-            "sequence_length": self.sequence_length,
-            "train_length": self.sample_train_length,
-            "% train": self.train_size,
-            "batch size": self.n_batch,
-            "epochs": self.n_epochs,
-            "hidden layer dimensions": self.n_hidden_layer_dimensions,
-            "dropout": self.dropout,
-            "patience": self.patience,
-            "validation split": self.validation_split,
-            "mask value": self.mask_value,
-        }
-        for i, (k, v) in enumerate(seq_params_dict.items()):
+                logging.info(j)
+                logging.info(newdates)
+                logging.info("got inputs for plotting")
+                if n == 0:
+                    plt.plot(
+                        newdates,
+                        j,
+                        color="orange",
+                        label="Test Set",
+                        linewidth=MODEL_LINEWIDTH,
+                        markersize=0,
+                    )
+                else:
+                    plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
+                logging.info("plotted TEST")
 
-            fontweight = "bold" if k in ("important variables") else "normal"
+            plt.plot(
+                df_forecast[self.sim_date_name],
+                df_forecast[self.predict_variable],
+                linewidth=DATA_LINEWIDTH,
+                markersize=3,
+                label="Data",
+                marker="o",
+            )
+            plt.xlabel(self.sim_date_name)
+            plt.ylabel(self.predict_variable)
+            plt.legend()
+            plt.grid(which="both", alpha=0.5)
+            # Seq2Seq Parameters
+            seq_params_dict = {
+                "days_between_samples": self.days_between_samples,
+                "min_number_days": self.min_number_of_days,
+                "sequence_length": self.sequence_length,
+                "train_length": self.sample_train_length,
+                "% train": self.train_size,
+                "batch size": self.n_batch,
+                "epochs": self.n_epochs,
+                "hidden layer dimensions": self.n_hidden_layer_dimensions,
+                "dropout": self.dropout,
+                "patience": self.patience,
+                "validation split": self.validation_split,
+                "mask value": self.mask_value,
+            }
+            for i, (k, v) in enumerate(seq_params_dict.items()):
 
-            if np.isscalar(v) and not isinstance(v, str):
-                plt.text(
-                    1.0,
-                    0.7 - 0.032 * i,
-                    f"{k}={v:1.1f}",
-                    transform=plt.gca().transAxes,
-                    fontsize=15,
-                    alpha=0.6,
-                    fontweight=fontweight,
-                )
+                fontweight = "bold" if k in ("important variables") else "normal"
 
-            else:
-                plt.text(
-                    1.0,
-                    0.7 - 0.032 * i,
-                    f"{k}={v}",
-                    transform=plt.gca().transAxes,
-                    fontsize=15,
-                    alpha=0.6,
-                    fontweight=fontweight,
-                )
+                if np.isscalar(v) and not isinstance(v, str):
+                    plt.text(
+                        1.0,
+                        0.7 - 0.032 * i,
+                        f"{k}={v:1.1f}",
+                        transform=plt.gca().transAxes,
+                        fontsize=15,
+                        alpha=0.6,
+                        fontweight=fontweight,
+                    )
 
-        # plt.text(4,1,t,ha='left', 'days between samples: ')
-        plt.title(state_name + ": epochs: " + str(self.n_epochs))
-        plt.savefig(
-            "train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf",
-            bbox_inches="tight",
-        )
+                else:
+                    plt.text(
+                        1.0,
+                        0.7 - 0.032 * i,
+                        f"{k}={v}",
+                        transform=plt.gca().transAxes,
+                        fontsize=15,
+                        alpha=0.6,
+                        fontweight=fontweight,
+                    )
+
+            # plt.text(4,1,t,ha='left', 'days between samples: ')
+            log.info("DF FORECAST")
+            log.info(df_forecast)
+            plt.title(state_name + ": epochs: " + str(self.n_epochs))
+            plt.savefig(
+                "train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf",
+                bbox_inches="tight",
+            )
 
         return
 
@@ -335,15 +349,26 @@ class ForecastRt:
     def get_scaling_dictionary(self, train_scaling_set):
         log.info("getting scaling dictionary")
         scalers_dict = {}
+        log.info("training scaling set")
+        log.info(train_scaling_set)
+        log.info(train_scaling_set.dtypes)
+        train_scaling_set.to_csv("scalingset_now.csv")
         for columnName, columnData in train_scaling_set.iteritems():
+            log.info("column")
+            log.info(columnName)
             scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+            log.info("made scaler")
             reshaped_data = columnData.values.reshape(-1, 1)
+            log.info("reshaped data")
 
             scaler = scaler.fit(reshaped_data)
+            log.info("fit data")
             scaled_values = scaler.transform(reshaped_data)
+            log.info("scaled data")
 
             scalers_dict.update({columnName: scaler})
-
+            log.info("saved scaler to dictionary")
+        log.info("about to return scaling dictionary")
         return scalers_dict
 
     def get_scaled_X_Y(self, samples, scalers_dict):
