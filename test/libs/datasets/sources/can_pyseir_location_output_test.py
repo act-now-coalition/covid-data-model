@@ -74,4 +74,4 @@ def test_load_from_path(nyc_model_output_path):
     # manually checked values
     assert output.peak_hospitalizations_date == datetime.datetime(2020, 4, 15)
     assert not output.hospitals_shortfall_date
-    assert output.latest_rt == pytest.approx(1.238822)
+    assert output.latest_rt == pytest.approx(1.3115558257)
