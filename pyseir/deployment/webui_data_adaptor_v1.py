@@ -18,6 +18,9 @@ import libs.datasets.can_model_output_schema as schema
 
 log = structlog.get_logger()
 
+# Value of orient argument in pandas dataframe json output.
+OUTPUT_JSON_ORIENT = "split"
+
 
 class WebUIDataAdaptorV1:
     """
@@ -298,7 +301,7 @@ class WebUIDataAdaptorV1:
                 fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
-            output_model.to_json(output_path)
+            output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
 
     def generate_state(self, whitelisted_county_fips: list, states_only=False):
         """

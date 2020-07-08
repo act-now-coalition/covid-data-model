@@ -6,6 +6,7 @@ import pandas as pd
 
 from libs.datasets import can_model_output_schema as schema
 from libs.enums import Intervention
+from pyseir.deployment import webui_data_adaptor_v1
 
 
 def get_can_projection_path(input_dir, fips, intervention) -> pathlib.Path:
@@ -34,7 +35,12 @@ class CANPyseirLocationOutput(object):
 
     @classmethod
     def load_from_path(cls, path):
-        data = pd.read_json(path, convert_dates=[schema.DATE], dtype={schema.FIPS: str})
+        data = pd.read_json(
+            path,
+            convert_dates=[schema.DATE],
+            dtype={schema.FIPS: str},
+            orient=webui_data_adaptor_v1.OUTPUT_JSON_ORIENT,
+        )
         return cls(data)
 
     @classmethod

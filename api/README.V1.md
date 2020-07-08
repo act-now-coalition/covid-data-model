@@ -146,7 +146,8 @@ County aggregates are also available as CSV files:
 
 ### Data format:
 
-This is the data format for both states and counties. `timeseries` is only included when requesting `*.timeseries.json` or `*.timeseries.csv`.
+This is the data format for both states and counties. `timeseries` and `actualsTimeseries`
+are only included when requesting `*.timeseries.json` or `*.timeseries.csv`.
 ```jsonc
 {
   country,
@@ -164,10 +165,14 @@ This is the data format for both states and counties. `timeseries` is only inclu
     cumulativeConfirmedCases,
     cumulativeDeaths,
     hospitalBeds: {
-      capacity,
-      currentUsage, // Coming soon where available, null currently
+      capacity,  // *deprecated*
+      totalCapacity,
+      currentUsageCovid,
+      currentUsageTotal,
+      typicalUsageRate
     },
-    ICUBeds: { same as above }  // Coming soon where available, null currently
+    ICUBeds: { same as above },  // Coming soon where available, null currently
+    contactTracers
   },
   projections: {
     totalHospitalBeds: {
@@ -175,22 +180,44 @@ This is the data format for both states and counties. `timeseries` is only inclu
       peakDate,
       peakShortfall
     },
-    ICUBeds: { same as above }, // Coming soon where available, null currently
+    ICUBeds: { same as above },
+    Rt,
+    RtCI90
   },
   timeseries: [{
     date,
     hospitalBedsRequired,
     hospitalBedCapacity,
     ICUBedsInUse,
-    ICUBedCapacity, // Coming soon where available, null currently
-    cumulativePositiveTests,
-    cumulativeNegativeTests,
+    ICUBedCapacity,
+    ventilatorsInUse,
+    RtIndictator,
+    RtIndicatorCI90,
     cumulativeDeaths,
     cumulativeInfected,
+    currentInfected,
+    currentSusceptible,
+    currentExposed
   }],
+  actualsTimeseries: [{
+    date,
+    population,
+    intervention, // one of (NO_INTERVENTION, WEAK_INTERVENTION, STRONG_INTERVENTION, OBSERVED_INTERVENTION)
+    cumulativePositiveTests,
+    cumulativeNegativeTests,
+    cumulativeConfirmedCases,
+    cumulativeDeaths,
+    hospitalBeds: {
+      capacity,  // *deprecated*
+      totalCapacity,
+      currentUsageCovid,
+      currentUsageTotal,
+      typicalUsageRate
+    },
+    ICUBeds: { same as above },  // Coming soon where available, null currently
+    contactTracers
+  }]
 };
 ```
-## Coming soon
-* Hospital bed usage (actuals)
-* ICU bed data (capacity, projections, and actuals)
-* More file forms (dbf, shp, shx)
+## Breaking Changes
+* As of 6/5, `cumulativePositiveTests` and `cumulativeNegativeTests` were removed from the `timeseries` rows.  This data is still available in the `actualsTimeseries` field.
