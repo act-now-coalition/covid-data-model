@@ -53,13 +53,13 @@ class ForecastRt:
         # Seq2Seq Parameters
         self.days_between_samples = 7
         self.mask_value = -10
-        self.min_number_of_days = 30
-        self.sequence_length = 100
-        self.sample_train_length = 30  # Set to -1 to use all historical data
-        self.predict_days = 7
+        self.min_number_of_days = 60
+        self.sequence_length = 10
+        self.sample_train_length = 5  # Set to -1 to use all historical data
+        self.predict_days = 2
         self.train_size = 0.8
         self.n_batch = 1
-        self.n_epochs = 1
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -121,7 +121,12 @@ class ForecastRt:
 
     def get_train_test_samples(self, df_forecast):
         df_samples = self.create_df_list(df_forecast)
-        train_set_length = int(len(df_samples) * self.train_size)
+        n_test_days = 10
+        percent = False  # set to true to do percent train df
+        if percent:
+            train_set_length = int(len(df_samples) * self.train_size)
+        else:
+            train_set_length = int(len(df_samples)) - 10
         train_scaling_set = df_samples[train_set_length]
         train_samples_not_spaced = df_samples[:train_set_length]
         train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
@@ -182,7 +187,29 @@ class ForecastRt:
             list_test_Y.append(test_Y)
 
         log.info("building model")
-        model, history = self.build_model(train_X, train_Y)
+        final_list_train_X = np.concatenate(list_train_X)
+        final_list_train_Y = np.concatenate(list_train_Y)
+        # Prep samples for training
+        # final_list_train_X = np.squeeze(np.array(list_train_X))
+        # final_list_train_Y = np.squeeze(np.array(list_train_Y))
+        # log.info('TRAINING')
+        # log.info(list_train_X)
+        # log.info('ARRAY?')
+        # log.info(final_list_train_X)
+        # log.info(final_list_train_Y)
+        # log.info('single type')
+        # log.info(type(final_list_train_X[0]))
+        # log.info('list type')
+        # log.info(type(final_list_train_X))
+        log.info("LIST")
+        log.info(list_train_X)
+        log.info(type(list_train_X))
+        log.info("SINGLE TYPE")
+        log.info(list_train_X[0])
+        log.info(type(list_train_X[0]))
+        log.info("FINAL TYPE")
+        log.info(type(final_list_train_X))
+        model, history = self.build_model(final_list_train_X, final_list_train_Y)
 
         logging.info("built model")
 
@@ -384,6 +411,11 @@ class ForecastRt:
 
     def build_model(self, final_train_X, final_train_Y):
         model = Sequential()
+        log.info("BUILDING MODEL")
+        log.info(final_train_X)
+        log.info(type(final_train_X))
+        log.info(final_train_X.shape[1])
+        log.info(final_train_X.shape[2])
         model.add(
             Masking(
                 mask_value=self.mask_value,
@@ -471,10 +503,12 @@ class ForecastRt:
             X_train_list.append(padded_train)
             Y_train_list.append(test)
 
+        # MAYBE UNCOMMENT NATASHA
         final_test_X = np.array(X_train_list)
         final_test_Y = np.array(Y_train_list)
         final_test_Y = np.squeeze(final_test_Y)
         return final_test_X, final_test_Y, df_list
+        return X_train_list, Y_train_list, df_list
 
     def create_df_list(self, df):
         df_list = list()
