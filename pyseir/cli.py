@@ -21,6 +21,9 @@ from libs.datasets import combined_datasets
 from libs.us_state_abbrev import ABBREV_US_STATE
 from pyseir.inference.whitelist_generator import WhitelistGenerator
 
+from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.dataset_utils import AggregationLevel
+
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
@@ -193,6 +196,15 @@ def _build_all_for_states(
 ):
     # prepare data
     _cache_global_datasets()
+    print("saving data")
+    all_data = combined_datasets.build_us_timeseries_with_all_fields().get_data(
+        AggregationLevel.STATE, country="USA"
+    )
+    print("done")
+    print(all_data)
+    print("making csv")
+    all_data.to_csv("pyseir_combined_datasets_USA.csv")
+    print("made csv")
 
     if not skip_whitelist:
         _generate_whitelist()

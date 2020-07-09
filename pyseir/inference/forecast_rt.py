@@ -57,14 +57,15 @@ class ForecastRt:
         self.sequence_length = 30
         self.sample_train_length = 30  # Set to -1 to use all historical data
         self.predict_days = 3
+        self.percent_train = False
         self.train_size = 0.8
+        self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 1000
+        self.n_epochs = 3
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
         self.validation_split = 0.1
-        log.info("DONE INIT")
 
     @classmethod
     def run_forecast(cls, df_all=None):
@@ -103,7 +104,6 @@ class ForecastRt:
                 df_all = pd.read_csv(
                     myfile, parse_dates=True, index_col="date"
                 )  # , dtype={'fips': int}
-                log.info(df_all)
                 state_name = df_all["state"][0]
                 # Set first day of year to 1 not 0
                 df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
@@ -124,12 +124,10 @@ class ForecastRt:
 
     def get_train_test_samples(self, df_forecast):
         df_samples = self.create_df_list(df_forecast)
-        n_test_days = 10
-        percent = False  # set to true to do percent train df
-        if percent:
+        if self.percent_train:
             train_set_length = int(len(df_samples) * self.train_size)
         else:
-            train_set_length = int(len(df_samples)) - 10
+            train_set_length = int(len(df_samples)) - self.n_test_days
         train_scaling_set = df_samples[train_set_length]
         train_samples_not_spaced = df_samples[:train_set_length]
         train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
