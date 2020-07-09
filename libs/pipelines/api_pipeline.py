@@ -114,11 +114,10 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
     logger.info(f"Deploying {intervention.name}")
 
     all_summaries = []
-    # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
-    # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
-    pool = multiprocessing.Pool(maxtasksperchild=1)
     deploy_timeseries_partial = functools.partial(_deploy_timeseries, intervention, region_folder)
-    all_summaries = pool.map(deploy_timeseries_partial, all_timeseries)
+    all_summaries = [
+        deploy_timeseries_partial(area_timeseries) for area_timeseries in all_timeseries
+    ]
     bulk_timeseries = CovidActNowBulkTimeseries(__root__=all_timeseries)
     bulk_summaries = CovidActNowBulkSummary(__root__=all_summaries)
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
