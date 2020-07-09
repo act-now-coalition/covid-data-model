@@ -7,7 +7,7 @@ def test_custom_model_nans_serialize_properly():
     class InnerClass(pydantic.BaseModel):
         val: float
 
-    class OuterClass(base_model.BaseModel):
+    class OuterClass(base_model.APIBaseModel):
         val: float
         inner: InnerClass
 

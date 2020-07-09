@@ -1,6 +1,5 @@
 import pandas as pd
 
-
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from libs.datasets import data_source
@@ -10,7 +9,6 @@ from libs.datasets import dataset_utils
 class TexasHospitalizations(data_source.DataSource):
     DATA_PATH = "data/states/tx/tx_fips_hospitalizations.csv"
     SOURCE_NAME = "tx_hosp"
-
     FILL_MISSING_STATE_LEVEL_DATA = False
 
     INDEX_FIELD_MAP = {

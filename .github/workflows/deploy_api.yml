@@ -22,6 +22,8 @@ env:
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'master'
 
+
+
   # S3 Bucket (used by s3-sync-action tasks) to store final API snapshot.
   AWS_S3_BUCKET: 'data.covidactnow.org'
 
@@ -96,6 +98,7 @@ jobs:
       with:
         name: model-results-${{env.SNAPSHOT_ID}}
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
+
 
     - name: Build API (run.sh .. .. execute_api)
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
