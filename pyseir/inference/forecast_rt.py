@@ -29,11 +29,11 @@ class ForecastRt:
     Write doc string
     """
 
-    def __init__(self, df_all):
+    def __init__(self, df_all=None):
         log.info("init!")
         self.df_all = df_all
         self.states = "All"  # All to use All
-        self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/july7_csv/"
+        self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/july9_csv/"
         self.ref_date = datetime(year=2020, month=1, day=1)
 
         # Variable Names
@@ -67,7 +67,7 @@ class ForecastRt:
         log.info("DONE INIT")
 
     @classmethod
-    def run_forecast(cls, df_all):
+    def run_forecast(cls, df_all=None):
         try:
             log.info("CREATE CLASS")
             engine = cls(df_all)
@@ -80,6 +80,7 @@ class ForecastRt:
     def get_forecast_dfs(self):
         # Probably get rid of this entirely
         if self.states != "All":
+            log.info("using dfall")
             df_all = self.df_all
             state_name = df_all["state"][0]
             df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
@@ -94,6 +95,7 @@ class ForecastRt:
             return df_forecast, state_name
 
         else:
+            log.info("getting dataframes from csv files")
             dataframes = list()
             state_names = list()
             csv_files = glob.glob(f"{self.csv_path}*.csv")
@@ -101,6 +103,7 @@ class ForecastRt:
                 df_all = pd.read_csv(
                     myfile, parse_dates=True, index_col="date"
                 )  # , dtype={'fips': int}
+                log.info(df_all)
                 state_name = df_all["state"][0]
                 # Set first day of year to 1 not 0
                 df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
@@ -529,3 +532,7 @@ class ForecastRt:
                 else:  # use only SAMPLE_LENGTH historical days of data
                     df_list.append(df[i - self.sample_train_length : i].copy())
         return df_list
+
+
+def external_run_forecast():
+    ForecastRt.run_forecast()
