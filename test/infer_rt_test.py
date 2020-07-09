@@ -89,6 +89,10 @@ def run_individual(test):
         pytest.approx(rt[t_switch + OFFSET] - 1.0, rel=FAILURE_ERROR_FRACTION) == rt2 - 1.0
     ), "Second Stage Failed to Converge Within Tolerance"  # settle into 2nd rate change
 
+    assert (
+        pytest.approx(rt[-1] - 1.0, rel=FAILURE_ERROR_FRACTION * 2) == rt2 - 1.0
+    ), f"Test {test['id']} Failed: Today Value Not Within Spec: Predicted={round(rt[-1],2)} Observed={rt2}."
+
 
 def test_all():
     for test_spec in synthetic_tests:

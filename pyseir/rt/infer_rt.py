@@ -224,14 +224,14 @@ class RtInferenceEngine:
         2) Ensures the smoothing (of the posterior when creating the prior) is symmetric
            in R so that this process does not move argmax (the peak in probability)
         """
-        # TODO FOR ALEX: Please expand this and describe more clearly these cutoffs
-        use_sigma = (
-            min(
-                self.max_scaling_sigma,
-                max(1.0, math.sqrt(self.scale_sigma_from_count / timeseries_scale)),
-            )
-            * self.default_process_sigma
-        )
+        # TODO FOR ALEX: Please expand this and describe more clearly the meaning of these variables
+        a = self.max_scaling_sigma
+        if timeseries_scale == 0:
+            b = 1.0
+        else:
+            b = max(1.0, math.sqrt(self.scale_sigma_from_count / timeseries_scale))
+
+        use_sigma = min(a, b) * self.default_process_sigma
 
         process_matrix = sps.norm(loc=self.r_list, scale=use_sigma).pdf(self.r_list[:, None])
 
