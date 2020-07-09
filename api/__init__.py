@@ -4,26 +4,29 @@ import importlib
 import sys
 import logging
 
-import pydantic
+from libs import base_model
 
 _logger = logging.getLogger(__name__)
 
 SCHEMAS_PATH = pathlib.Path(__file__).parent / "schemas"
 
 
-def find_public_model_classes() -> List[Type[pydantic.BaseModel]]:
-    """Finds all model classes (i.e. that derive from pydantic.BasModel) for export.
+def _get_subclasses_recursively(cls) -> Iterator[Type]:
+    for subclass in cls.__subclasses__():
+        yield subclass
+        yield from _get_subclasses_recursively(subclass)
 
-    If a class is prefixed with a '_' (i.e. _MySchema), it will not be exported
-    as a public schema.
+
+def find_public_model_classes() -> List[Type[base_model.APIBaseModel]]:
+    """Finds all model classes (i.e. that derive from base_model.APIBaseModel) for export.
 
     Performs a bit of python magic to load all modules in the in the `api/` folder
-    and find all subclasses of `pydantic.BaseModel`.
+    and find all subclasses of `base_model.APIBaseModel`.
 
     Returns: List of api model classes.
     """
     # Find all python files in api/ and load them as global modules.
-    # This allows us to then enumerate pydantic.BaseModel.__subclasses__
+    # This allows us to then enumerate base_model.APIBaseModel.__subclasses__
     # to find all our model classes.
     root = pathlib.Path(__file__).parent
     for path in root.rglob("*.py"):
@@ -38,13 +41,11 @@ def find_public_model_classes() -> List[Type[pydantic.BaseModel]]:
             spec.loader.exec_module(mod)
 
     model_classes = []
-    for subclass in pydantic.BaseModel.__subclasses__():
-        # Skip any internal pydantic models.
-        if subclass.__module__.startswith("pydantic"):
-            continue
-        if subclass.__name__.startswith("_"):
-            _logger.debug(f"Skipping private model: {subclass}")
-            continue
+
+    # Calling `base_model.APIBaseModel.__subclasses__()` only returns direct subclasses.
+    # To find all classes that may inherit from subclasses of APIBaseModel, we need to
+    # recursively get subclasses.
+    for subclass in _get_subclasses_recursively(base_model.APIBaseModel):
         model_classes.append(subclass)
 
     return model_classes

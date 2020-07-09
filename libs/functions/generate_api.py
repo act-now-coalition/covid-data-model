@@ -8,9 +8,9 @@ from api.can_api_definition import (
     PredictionTimeseriesRowWithHeader,
     CANPredictionTimeseriesRow,
     CANActualsTimeseriesRow,
-    _Projections,
-    _Actuals,
-    _ResourceUsageProjection,
+    Projections,
+    Actuals,
+    ResourceUsageProjection,
 )
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.enums import Intervention
@@ -24,12 +24,12 @@ import pandas as pd
 
 
 def _generate_api_for_projections(model_output: CANPyseirLocationOutput):
-    _hospital_beds = _ResourceUsageProjection(
+    _hospital_beds = ResourceUsageProjection(
         peakDate=model_output.peak_hospitalizations_date,
         shortageStartDate=model_output.hospitals_shortfall_date,
         peakShortfall=model_output.peak_hospitalizations_shortfall,
     )
-    projections = _Projections(
+    projections = Projections(
         totalHospitalBeds=_hospital_beds,
         ICUBeds=None,
         Rt=model_output.latest_rt,
@@ -38,7 +38,7 @@ def _generate_api_for_projections(model_output: CANPyseirLocationOutput):
     return projections
 
 
-def _generate_actuals(actual_data: dict, intervention: Intervention) -> _Actuals:
+def _generate_actuals(actual_data: dict, intervention: Intervention) -> Actuals:
     """Generate actuals entry.
 
     Args:
@@ -57,7 +57,7 @@ def _generate_actuals(actual_data: dict, intervention: Intervention) -> _Actuals
         # as a result of less hospital utilization.
         capacity = (1 - typical_usage_rate) * total_bed_capacity * 2.07
 
-    return _Actuals(
+    return Actuals(
         population=actual_data.get(CommonFields.POPULATION),
         intervention=intervention.name,
         cumulativeConfirmedCases=actual_data[CommonFields.CASES],

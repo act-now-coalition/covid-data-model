@@ -9,9 +9,9 @@ from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOu
 from libs.enums import Intervention
 from api.can_api_definition import CovidActNowAreaSummary
 from api.can_api_definition import CovidActNowAreaTimeseries
-from api.can_api_definition import _Actuals
-from api.can_api_definition import _Projections
-from api.can_api_definition import _ResourceUsageProjection
+from api.can_api_definition import Actuals
+from api.can_api_definition import Projections
+from api.can_api_definition import ResourceUsageProjection
 
 
 @pytest.mark.parametrize("include_projections", [True, False])
@@ -25,8 +25,8 @@ def test_build_summary_for_fips(include_projections, nyc_model_output_path, nyc_
     intervention = Intervention.OBSERVED_INTERVENTION
     if include_projections:
         model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
-        expected_projections = _Projections(
-            totalHospitalBeds=_ResourceUsageProjection(
+        expected_projections = Projections(
+            totalHospitalBeds=ResourceUsageProjection(
                 peakShortfall=0, peakDate=datetime.date(2020, 4, 15), shortageStartDate=None
             ),
             ICUBeds=None,
@@ -44,7 +44,7 @@ def test_build_summary_for_fips(include_projections, nyc_model_output_path, nyc_
         fips="36061",
         lat=None,
         long=None,
-        actuals=_Actuals(
+        actuals=Actuals(
             population=nyc_latest["population"],
             intervention="STRONG_INTERVENTION",
             cumulativeConfirmedCases=nyc_latest["cases"],

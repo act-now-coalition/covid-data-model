@@ -60,6 +60,11 @@ class InferRtConstants:
     MIN_COUNTS_TO_INFER = 5.0
     # TODO really understand whether the min_cases and/or min_deaths compares to max, avg, or day to day counts
 
+    # Correct for tail suppression (if > 0.) due to case smoothing window converting from centered to lagging
+    # as approach curren time. Valid values for correction are between 0. (none) and 1. (full but sometimes
+    # too much). .75-.8 seems a good compromise (determined from unit tests not yet included)
+    CORRECT_TAIL_SUPRESSION = 0.75
+
     # Smooth RTeff (Rt_MAP_composite) to make less reactive in the short term while retaining long
     # term shape correctly.
     SMOOTH_RT_MAP_COMPOSITE = 1  # number of times to apply soothing
@@ -276,6 +281,21 @@ class RtInferenceEngine:
             TimeseriesType.CURRENT_HOSPITALIZATIONS,
         ):
             return self.hospital_dates, self.hospital_times, self.hospitalizations
+
+    def evaluate_head_tail_suppression(self):
+        """
+        Evaluates how much time slows down (which suppresses Rt) as series approaches latest date.
+        Do this by smoothing a linear ramp and then taking a daily difference. This is 1. where no
+        change in smoothing behaviour and <1 where time slows down. For now we only look at the
+        end of the series and not the beginning.
+        """
+        timeseries = pd.Series(1.0 * np.arange(0, 2 * self.window_size))
+        smoothed = timeseries.rolling(
+            self.window_size, win_type="gaussian", min_periods=self.kernel_std, center=True
+        ).mean(std=self.kernel_std)
+        delta = (smoothed - smoothed.shift()).tail(math.ceil(self.window_size / 2))
+
+        return delta[delta < 1.0]
 
     def apply_gaussian_smoothing(self, timeseries_type, plot=True, smoothed_max_threshold=5):
         """
@@ -763,6 +783,27 @@ class RtInferenceEngine:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
+        # Correct for tail suppression where Rt is incorrectly forced towards 1 as
+        # case smoothing lags when approaching end of time series
+        suppression = 1.0 * np.ones(len(df_all))
+        if (
+            InferRtConstants.CORRECT_TAIL_SUPRESSION > 0.0
+            and InferRtConstants.CORRECT_TAIL_SUPRESSION <= 1.0
+        ):
+            tail_sup = self.evaluate_head_tail_suppression()
+            # Calculate rt suppression by smoothing delay at tail of sequence
+            # and pad with 1s at front (which won't change anything) to apply
+            suppression = np.concatenate(
+                [1.0 * np.ones(len(df_all) - len(tail_sup)), tail_sup.values]
+            )
+            # Adjust rt by undoing the supppression. If Rt does not lag likelihood
+            # at all then wouldn't need np.power term and just a flag to enable. But
+            # when lagging linear use of suppression correction seems to over-adjust
+            # so use some power CORRECT_TAIL_SUPPRESSION between 0. and 1.
+            df_all["Rt_MAP_composite"] = (df_all["Rt_MAP_composite"] - 1.0) / np.power(
+                suppression, InferRtConstants.CORRECT_TAIL_SUPRESSION
+            ) + 1.0
+
         # Optionally Smooth just Rt_MAP_composite.
         # Note this doesn't lag in time and preserves integral of Rteff over time
         for i in range(0, InferRtConstants.SMOOTH_RT_MAP_COMPOSITE):
@@ -778,13 +819,15 @@ class RtInferenceEngine:
                 .mean(std=kernel_width)
             )
 
-            # Adjust down confidence interval due to count smoothing over kernel_width values but not below .2
+            # Adjust down confidence interval due to count smoothing over kernel_width values but not
+            # below threshold. Adjust confidence interval for tail suppression adjustment also.
             df_all["Rt_MAP_composite"] = smoothed
             df_all["Rt_ci95_composite"] = (
                 (df_all["Rt_ci95_composite"] - df_all["Rt_MAP_composite"])
                 / math.sqrt(
                     2.0 * kernel_width  # averaging over many points reduces confidence interval
                 )
+                / np.power(suppression, InferRtConstants.CORRECT_TAIL_SUPRESSION / 2)
             ).apply(lambda v: max(v, InferRtConstants.MIN_CONF_WIDTH)) + df_all["Rt_MAP_composite"]
 
         if plot:
