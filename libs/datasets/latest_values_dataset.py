@@ -1,7 +1,8 @@
 from typing import Type, List, Optional
-
+import pathlib
 from libs import us_state_abbrev
 import pandas as pd
+import numpy as np
 from libs.datasets.dataset_utils import AggregationLevel, make_binary_array
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
@@ -189,3 +190,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             return {}
 
         return row.iloc[0].to_dict()
+
+    def to_csv(self, path: pathlib.Path):
+        data = self.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
+        data.to_csv(output_path, date_format="%Y-%m-%d", index=True, float_format="%.12g")

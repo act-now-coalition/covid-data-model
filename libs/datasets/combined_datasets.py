@@ -114,21 +114,21 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 
 
 @dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_timeseries_with_all_fields() -> TimeseriesDataset:
+def build_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
     return build_combined_dataset_from_sources(
         TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION,
     )
 
 
 @dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
+def build_us_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
     return build_combined_dataset_from_sources(
         TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
     )
 
 
 @dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
-def build_us_latest_with_all_fields() -> LatestValuesDataset:
+def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
     return build_combined_dataset_from_sources(
         LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
     )

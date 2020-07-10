@@ -1,6 +1,9 @@
 import warnings
+import pathlib
 from typing import List, Optional
 import pandas as pd
+import structlog
+from covidactnow.datapublic import common_df
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
@@ -243,3 +246,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             AggregationLevel.STATE,
             [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE],
         )
+
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        common_df.write_csv(self.data, path, structlog.get_logger())

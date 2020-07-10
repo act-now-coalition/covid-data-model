@@ -86,7 +86,7 @@ def form_path_name(csv_path_format, output_dir):
             ["git", "describe", "--dirty", "--always", "--long"], text=True
         ).strip(),
         git_branch=git_branch,
-        timestamp=datetime.now().strftime("%Y%m%dT%H%M%S"),
+        timestamp=datetime.utcnow().strftime("%Y%m%dT%H%M%S"),
     )
     return csv_path
 
