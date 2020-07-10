@@ -93,6 +93,7 @@ class ModelFitter:
         # limit_test_fraction=[0.02, 1],
         fix_test_fraction=True,
         error_test_fraction=0.02,
+        hosp_fraction=1,
         fix_hosp_fraction=True,
         limit_hosp_fraction=[0.25, 1],
         error_hosp_fraction=0.05,
