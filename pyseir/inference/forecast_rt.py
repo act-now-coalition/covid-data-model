@@ -35,6 +35,7 @@ class ForecastRt:
         self.states = "All"  # All to use All
         self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/july9_csv/"
         self.ref_date = datetime(year=2020, month=1, day=1)
+        self.debug_plots = False
 
         # Variable Names
         self.sim_date_name = "sim_day"
@@ -134,32 +135,41 @@ class ForecastRt:
         test_samples = df_samples[train_set_length + 1 :]
         return train_samples, test_samples, train_scaling_set
 
+    def plot_variables(self, df_list, state_names, scalers_dict):
+        for df, state in zip(df_list, state_names):
+            plt.close("all")
+            for var in self.forecast_variables:
+                plt.plot(df[var], label=var)
+            plt.legend()
+            plt.xticks(rotation=30, fontsize=14)
+            plt.grid(which="both", alpha=0.5)
+            plt.savefig(state + "_unscaled.pdf", bbox_inches="tight")
+
+            plt.close("all")
+            for var in self.forecast_variables:
+                reshaped_data = df[var].values.reshape(-1, 1)
+                scaled_values = scalers_dict[var].transform(reshaped_data)
+                plt.plot(scaled_values, label=var)
+            plt.legend()
+            plt.xticks(rotation=30, fontsize=14)
+            plt.grid(which="both", alpha=0.5)
+            plt.savefig(state + "_scaled.pdf", bbox_inches="tight")
+
+        return
+
     def forecast_rt(self):
         """
         predict r_t for 14 days into the future
-        
         Parameters
-        ___________
         df_all: dataframe with dates, new_cases, new_deaths, and r_t values
-
         Potential todo: add more features #ALWAYS
-
         Returns
-        __________
         dates and forecast r_t values
-
         """
-        log.info("saving dfall")
-        log.info(self.df_all)
         # df_forecast, state_name = self.get_forecast_dfs()
         df_list, state_names = self.get_forecast_dfs()
-        log.info(df_list)
-        log.info("that is the df_forecasts")
-
         # get train, test, and scaling samples
-        scaling_samples = []
-        train_samples = []
-        test_samples = []
+        scaling_samples, train_samples, test_samples = [], [], []
         for df in df_list:
             train, test, scaling = self.get_train_test_samples(df)
             scaling_samples.append(scaling)
@@ -170,6 +180,8 @@ class ForecastRt:
         train_scaling_set = pd.concat(scaling_samples)
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
         log.info("retrieved scaling dictionary")
+        if self.debug_plots:
+            self.plot_variables(df_list, state_names, scalers_dict)
 
         # Create scaled train samples
         list_train_X = []
@@ -187,48 +199,21 @@ class ForecastRt:
             list_test_X.append(test_X)
             list_test_Y.append(test_Y)
 
-        log.info("building model")
         final_list_train_X = np.concatenate(list_train_X)
         final_list_train_Y = np.concatenate(list_train_Y)
-        # Prep samples for training
-        # final_list_train_X = np.squeeze(np.array(list_train_X))
-        # final_list_train_Y = np.squeeze(np.array(list_train_Y))
-        # log.info('TRAINING')
-        # log.info(list_train_X)
-        # log.info('ARRAY?')
-        # log.info(final_list_train_X)
-        # log.info(final_list_train_Y)
-        # log.info('single type')
-        # log.info(type(final_list_train_X[0]))
-        # log.info('list type')
-        # log.info(type(final_list_train_X))
-        log.info("LIST")
-        log.info(list_train_X)
-        log.info(type(list_train_X))
-        log.info("SINGLE TYPE")
-        log.info(list_train_X[0])
-        log.info(type(list_train_X[0]))
-        log.info("FINAL TYPE")
-        log.info(type(final_list_train_X))
         model, history = self.build_model(final_list_train_X, final_list_train_Y)
-
-        logging.info("built model")
 
         # Plot predictions for test and train sets
 
         for train_X, train_Y, test_X, test_Y, df_forecast, state_name in zip(
             list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_names
         ):
-            log.info("TRAIN FORECASTS")
             forecasts_train, dates_train = self.get_forecasts(
                 train_X, train_Y, train_df_list, scalers_dict, model
             )
-            log.info("TEST FORECASTS")
             forecasts_test, dates_test = self.get_forecasts(
                 test_X, test_Y, test_df_list, scalers_dict, model
             )
-
-            logging.info("about to plot")
             DATA_LINEWIDTH = 1
             MODEL_LINEWIDTH = 2
             # plot training predictions
@@ -238,9 +223,6 @@ class ForecastRt:
                 newdates = dates_train[n]
                 # newdates = convert_to_2020_date(i,args)
                 j = np.squeeze(forecasts_train[n])
-                log.info("dates")
-                log.info(newdates)
-                log.info(j)
                 if n == 0:
                     plt.plot(
                         newdates,
@@ -253,18 +235,12 @@ class ForecastRt:
                 else:
                     plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
 
-                logging.info("plotted TRAIN")
-
-            log.info("TEST___________")
             for n in range(len(dates_test)):
                 i = dates_test[n]
                 newdates = dates_test[n]
                 # newdates = convert_to_2020_date(i,args)
                 j = np.squeeze(forecasts_test[n])
 
-                logging.info(j)
-                logging.info(newdates)
-                logging.info("got inputs for plotting")
                 if n == 0:
                     plt.plot(
                         newdates,
@@ -276,7 +252,6 @@ class ForecastRt:
                     )
                 else:
                     plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
-                logging.info("plotted TEST")
 
             plt.plot(
                 df_forecast[self.sim_date_name],
@@ -331,9 +306,6 @@ class ForecastRt:
                         fontweight=fontweight,
                     )
 
-            # plt.text(4,1,t,ha='left', 'days between samples: ')
-            log.info("DF FORECAST")
-            log.info(df_forecast)
             plt.title(state_name + ": epochs: " + str(self.n_epochs))
             plt.savefig(
                 "train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf",
@@ -456,7 +428,7 @@ class ForecastRt:
         logging.info(history.history["loss"])
         logging.info(history.history["val_loss"])
         plot = True
-        if plot:
+        if self.debug_plots:
             plt.close("all")
             logging.info("plotting")
             plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
