@@ -1,4 +1,6 @@
 from typing import List
+import pathlib
+from covidactnow.datapublic import common_df
 import pandas as pd
 from libs.datasets.dataset_utils import AggregationLevel
 
@@ -18,3 +20,8 @@ class DatasetBase(object):
     def build_from_data_source(cls, source) -> "DatasetBase":
         """Builds an instance of the dataset from a data source."""
         raise NotImplementedError("Subsclass must implement")
+
+    @classmethod
+    def load_csv(cls, path: pathlib.Path):
+        df = common_df.read_csv(path)
+        return cls(df)

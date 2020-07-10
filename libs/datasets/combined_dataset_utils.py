@@ -25,7 +25,7 @@ _logger = structlog.getLogger(__name__)
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent.parent
 
-DATA_CACHE_FOLDER = ".data"
+DATA_CACHE_FOLDER = REPO_ROOT / ".data"
 
 
 def s3_split(url) -> Tuple[str, str]:
@@ -99,14 +99,16 @@ class CombinedDatasetPointer(pydantic.BaseModel):
         *_, filename = os.path.split(self.s3_path)
         return filename
 
-    def download(self, s3_client, dir_path: pathlib.Path, overwrite=False) -> pathlib.Path:
-
-        dest_path = dir_path / self.filename
+    def download(
+        self, directory: pathlib.Path = DATA_CACHE_FOLDER, overwrite=False, s3_client=None
+    ) -> pathlib.Path:
+        s3_client = s3_client or boto3.client("s3")
+        dest_path = directory / self.filename
         if dest_path.exists() and not overwrite:
-            return dest_path
+            raise FileExistsError()
 
         bucket, key = s3_split(self.s3_path)
-        s3_client.download_file(bucket, key, dest_path)
+        s3_client.download_file(bucket, key, str(dest_path))
         return dest_path
 
     def upload_dataset(self, s3_client, dataset):
@@ -117,9 +119,12 @@ class CombinedDatasetPointer(pydantic.BaseModel):
             s3_client.upload_file(str(path), bucket, key)
             _logger.info("Successfully uploaded dataset", s3_path=self.s3_path)
 
-    def load(self):
-        df = common_df.read_csv(self.local_path)
-        return self.dataset_type.dataset_class(df)
+    def load(self, download_directory: pathlib.Path = DATA_CACHE_FOLDER):
+        path = download_directory / self.filename
+        if not path.exists():
+            path = self.download(directory=download_directory)
+
+        return self.dataset_type.dataset_class.load_csv(path)
 
 
 def form_filename(dataset_type: DatasetType, data_git_info, model_git_info):
@@ -139,7 +144,7 @@ def persist_dataset(
     pointer_path_dir: pathlib.Path = REPO_ROOT,
     data_public_path: pathlib.Path = dataset_utils.LOCAL_PUBLIC_DATA_PATH,
     s3_client=None,
-):
+) -> CombinedDatasetPointer:
     s3_client = s3_client or boto3.client("s3")
 
     model_git_info = GitSummary.from_repo_path(REPO_ROOT)
@@ -167,3 +172,4 @@ def persist_dataset(
     _logger.info(f"Saved dataset spec", path=str(spec_path), type=dataset_type.value)
 
     # TODO: Upload spec to s3 also? probably.
+    return dataset_pointer
