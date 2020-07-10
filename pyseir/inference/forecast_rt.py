@@ -113,7 +113,7 @@ class ForecastRt:
 
                 # process dataframe
                 log.info(state_df_dictionary)
-                state_names, df_list = list(), list()
+                state_names, df_list = [], []
                 for state in state_df_dictionary:
                     log.info("iterating thru dictionary of state dataframes")
                     df = state_df_dictionary[state]
@@ -126,18 +126,23 @@ class ForecastRt:
                     if self.cases_cumulative:
                         df[self.daily_death_var] = df[self.death_var].diff()
                     state_name = df["state"][0]
-                    df.to_csv(state_name + ".csv")
+
                     df_forecast = df[self.forecast_variables].copy()
                     # Fill empty values with mask value
-                    df_forecast.replace(r"\s+", self.mask_value, regex=True).replace(
-                        "", self.mask_value
-                    )
-                    df_forecast.replace(np.nan, self.mask_value, regex=True).replace(
-                        np.nan, self.mask_value
-                    )
+                    df_forecast.replace(r"\s*+", self.mask_value, regex=True)
+                    df_forecast.replace(r"\s+", self.mask_value, regex=True)
+                    df_forecast.replace("NaN", self.mask_value, regex=True)
+                    df_forecast.replace(np.nan, self.mask_value, regex=True)
+                    df_forecast = df_forecast.iloc[
+                        :-1
+                    ]  # because last value is NaN for diff #TODO find a better way to do this
                     log.info(df_forecast)
+                    df_forecast.to_csv(state_name + ".csv")
                     state_names.append(state_name)
                     df_list.append(df_forecast)
+            log.info("STATE NAMES")
+            log.info(state_names)
+            log.info(df_list)
             return state_names, df_list
 
     def get_forecast_dfs_old(self):
@@ -235,8 +240,7 @@ class ForecastRt:
         Returns
         dates and forecast r_t values
         """
-        # df_forecast, state_name = self.get_forecast_dfs()
-        df_list, state_names = self.get_forecast_dfs()
+        state_names, df_list = self.get_forecast_dfs()
         # get train, test, and scaling samples
         scaling_samples, train_samples, test_samples = [], [], []
         for df in df_list:
