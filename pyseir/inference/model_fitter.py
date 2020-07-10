@@ -94,7 +94,7 @@ class ModelFitter:
         error_t_delta_phases=1,
         test_fraction=0.1,
         limit_test_fraction=[0.02, 1],
-        fix_test_fraction=True,
+        # fix_test_fraction=True,
         error_test_fraction=0.02,
         hosp_fraction=1,
         # fix_hosp_fraction=True,
