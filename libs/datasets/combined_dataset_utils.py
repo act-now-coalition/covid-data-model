@@ -83,7 +83,8 @@ class CombinedDatasetPointer(pydantic.BaseModel):
 
     dataset_type: DatasetType
 
-    s3_path: str
+    # Can be either an s3 url or local path.
+    path: str
 
     # Sha of covid-data-public for dataset
     data_git_info: GitSummary
@@ -95,6 +96,10 @@ class CombinedDatasetPointer(pydantic.BaseModel):
     updated_at: datetime.datetime
 
     @property
+    def is_s3(self):
+        return self.path.startswith("s3://")
+
+    @property
     def filename(self) -> str:
         *_, filename = os.path.split(self.s3_path)
         return filename
@@ -102,24 +107,37 @@ class CombinedDatasetPointer(pydantic.BaseModel):
     def download(
         self, directory: pathlib.Path = DATA_CACHE_FOLDER, overwrite=False, s3_client=None
     ) -> pathlib.Path:
+        if not self.is_s3:
+            return pathlib.Path(self.path)
+
         s3_client = s3_client or boto3.client("s3")
         dest_path = directory / self.filename
         if dest_path.exists() and not overwrite:
             raise FileExistsError()
 
-        bucket, key = s3_split(self.s3_path)
+        bucket, key = s3_split(self.path)
         s3_client.download_file(bucket, key, str(dest_path))
         return dest_path
 
     def upload_dataset(self, dataset, s3_client):
+        if not self.is_s3:
+            raise Exception("Cannot only upload datasets if path is an s3 url.")
+
         with tempfile.NamedTemporaryFile() as tmp_file:
             path = pathlib.Path(tmp_file.name)
             dataset.to_csv(path)
             bucket, key = s3_split(self.s3_path)
             s3_client.upload_file(str(path), bucket, key)
-            _logger.info("Successfully uploaded dataset", s3_path=self.s3_path)
+            _logger.info("Successfully uploaded dataset", path=self.path)
+
+    def save_dataset(self, dataset):
+        dataset.to_csv(pathlib.Path(self.path))
+        _logger.info("Successfully saved dataset", path=self.path)
 
     def load_dataset(self, download_directory: pathlib.Path = DATA_CACHE_FOLDER):
+        if not self.is_s3:
+            return self.dataset_type.dataset_class.load_csv(self.path)
+
         path = download_directory / self.filename
         if not path.exists():
             path = self.download(directory=download_directory)
@@ -151,11 +169,10 @@ def form_pointer_filename(dataset_type: DatasetType, promotion_level: DatasetPro
 
 def persist_dataset(
     dataset: dataset_base.DatasetBase,
-    s3_path_prefix: str,
+    path_prefix: str,
     data_public_path: pathlib.Path = dataset_utils.LOCAL_PUBLIC_DATA_PATH,
     s3_client=None,
 ) -> CombinedDatasetPointer:
-    s3_client = s3_client or boto3.client("s3")
 
     model_git_info = GitSummary.from_repo_path(REPO_ROOT)
     data_git_info = GitSummary.from_repo_path(data_public_path)
@@ -166,34 +183,38 @@ def persist_dataset(
         dataset_type = DatasetType.LATEST
 
     filename = _form_filename(dataset_type, data_git_info, model_git_info)
-    s3_dataset_path = os.path.join(s3_path_prefix, filename)
+    dataset_path = os.path.join(path_prefix, filename)
     dataset_pointer = CombinedDatasetPointer(
         dataset_type=dataset_type,
-        s3_path=s3_dataset_path,
+        path=dataset_path,
         data_git_info=data_git_info,
         model_git_info=model_git_info,
         updated_at=datetime.datetime.utcnow(),
     )
-    dataset_pointer.upload_dataset(dataset, s3_client)
+    if dataset_pointer.is_s3:
+        s3_client = s3_client or boto3.client("s3")
+        dataset_pointer.upload_dataset(dataset, s3_client)
+    else:
+        dataset_pointer.save_dataset(dataset)
+
     return dataset_pointer
 
 
 def update_data_public_head(
-    s3_bucket: str,
+    path_prefix: str,
     pointer_path_dir: pathlib.Path = REPO_ROOT,
     latest_dataset=None,
     timeseries_dataset=None,
 ):
 
-    s3_path_prefix = f"s3://{s3_bucket}"
     if not latest_dataset:
         latest_dataset = combined_datasets.build_us_latest_with_all_fields(skip_cache=True)
-    latest_pointer = persist_dataset(latest_dataset, s3_path_prefix)
+    latest_pointer = persist_dataset(latest_dataset, path_prefix)
     latest_pointer.save(pointer_path_dir, DatasetPromotion.LATEST)
 
     if not timeseries_dataset:
         timseries_dataset = combined_datasets.build_timeseries_with_all_fields(skip_cache=True)
-    timeseries_pointer = persist_dataset(timeseries_dataset, s3_path_prefix)
+    timeseries_pointer = persist_dataset(timeseries_dataset, path_prefix)
     timeseries_pointer.save(pointer_path_dir, DatasetPromotion.LATEST)
     return latest_pointer, timeseries_pointer
 
