@@ -131,6 +131,10 @@ class ForecastRt:
                     # Fill empty values with mask value
                     log.info("THIS Forecast")
                     log.info(df_forecast)
+                    # first_valid_index = df[self.predict_variable].first_valid_index()
+                    # log.info('first valid index')
+                    # log.info(first_valid_index)
+                    # df_forecast = df_forecast.iloc[df[self.predict_variable].first_valid_index():df[self.predict_variable].last_valid_index()]
                     df_forecast = df_forecast.fillna(self.mask_value)
                     # df_forecast.replace(r"\s*+", self.mask_value, regex=True)
                     # df_forecast.replace(r"\s+", self.mask_value, regex=True)
