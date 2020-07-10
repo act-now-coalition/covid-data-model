@@ -79,16 +79,11 @@ def build_timeseries_for_fips(
     model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
         fips, intervention, model_output_dir
     )
-    # TODO(chris): Skipping returning all counties right now as the frontend expects projections
-    # and in many places errors out if there are no projections. Once the frontend can handle outputs
-    # without projections, this should be removed and the code below should be uncommented.
-    if not model_output:
+    if not model_output and intervention is not Intervention.OBSERVED_INTERVENTION:
+        # All model output is currently tied to a specific intervention. However,
+        # we want to generate results for areas that don't have a fit result, but we're not
+        # duplicating non-model outputs.
         return None
-    # if not model_output and intervention is not Intervention.OBSERVED_INTERVENTION:
-    #     # All model output is currently tied to a specific intervention. However,
-    #     # we want to generate results for areas that don't have a fit result, but we're not
-    #     # duplicating non-model outputs.
-    #     return None
 
     try:
         area_summary = api.generate_area_summary(fips_latest, model_output)

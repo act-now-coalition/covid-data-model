@@ -255,7 +255,7 @@ class ModelFitter:
             self.fit_params["log10_I_initial"] = np.log10(
                 initial_cases_guess / self.fit_params["test_fraction"]
             )
-            self.fit_params["limit_t0"] = state_fit_result["t0"] - 20, state_fit_result["t0"] + 30
+            self.fit_params["limit_t0"] = t0_guess - 5, state_fit_result["t0"] + 30
             self.fit_params["t_break"] = state_fit_result["t_break"] - (
                 t0_guess - state_fit_result["t0"]
             )
