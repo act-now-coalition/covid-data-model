@@ -193,4 +193,10 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
     def to_csv(self, path: pathlib.Path):
         data = self.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
-        data.to_csv(output_path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
+        data.to_csv(path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
+
+    @classmethod
+    def load_csv(cls, path: pathlib.Path):
+
+        df = pd.read_csv(path, dtype={CommonFields.FIPS: str})
+        return cls(df)

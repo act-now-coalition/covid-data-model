@@ -254,3 +254,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             path: Path to write to.
         """
         common_df.write_csv(self.data, path, structlog.get_logger())
+
+    @classmethod
+    def load_csv(cls, path: pathlib.Path):
+        df = common_df.read_csv(path)
+        return cls(df)
