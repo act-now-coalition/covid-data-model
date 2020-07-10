@@ -93,7 +93,7 @@ class ModelFitter:
         # limit_test_fraction=[0.02, 1],
         fix_test_fraction=True,
         error_test_fraction=0.02,
-        hosp_fraction=0.7,
+        fix_hosp_fraction=True,
         limit_hosp_fraction=[0.25, 1],
         error_hosp_fraction=0.05,
         # Let's not fit this to start...
@@ -226,8 +226,8 @@ class ModelFitter:
             "t_break",
             "eps2",
             "t_delta_phases",
-            "test_fraction",
-            "hosp_fraction",
+            # "test_fraction",
+            # "hosp_fraction",
             "log10_I_initial",
         ]
         if self.fips in overwrite_params_df["fips"].values:
@@ -235,9 +235,9 @@ class ModelFitter:
             for param in INITIAL_PARAM_SETS:
                 self.fit_params[param] = this_fips_df[param]
 
-        self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
-        if self.fit_params["fix_hosp_fraction"]:
-            self.fit_params["hosp_fraction"] = 1
+        # self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
+        # if self.fit_params["fix_hosp_fraction"]:
+        #     self.fit_params["hosp_fraction"] = 1
 
         if len(self.fips) == 5:
             OBSERVED_NEW_CASES_GUESS_THRESHOLD = 2
