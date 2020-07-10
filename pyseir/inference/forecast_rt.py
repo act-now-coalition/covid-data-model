@@ -33,21 +33,36 @@ class ForecastRt:
         log.info("init!")
         self.df_all = df_all
         self.states = "All"  # All to use All
-        self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/july9_csv/"
+        # self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/july9_csv/"
+        self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/merged_results.csv"
+        self.merged_df = True  # set to true if input dataframe merges all areas
+        self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet
         self.ref_date = datetime(year=2020, month=1, day=1)
         self.debug_plots = False
 
         # Variable Names
+        self.aggregate_level_name = "aggregate_level"
+        self.state_aggregate_level_name = "state"
+        self.state_var_name = "state"
+        self.fips_var_name = "fips"
         self.sim_date_name = "sim_day"
+        self.index_col_name_csv = "date"
         self.predict_variable = "Rt_MAP__new_cases"
+        self.cases_cumulative = True
+        self.deaths_cumulative = True
+        self.case_var = "cases"
+        self.death_var = "deaths"
+        self.daily_var_prefix = "new_"
+        self.daily_case_var = self.daily_var_prefix + self.case_var
+        self.daily_death_var = self.daily_var_prefix + self.death_var
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
             "sim_day",
-            "raw_new_cases",
-            # "raw_new_deaths",
+            self.daily_case_var,
+            self.daily_death_var,
             self.d_predict_variable,
             "Rt_MAP__new_cases",
-            "fips",
+            self.fips_var_name,
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -71,18 +86,63 @@ class ForecastRt:
     @classmethod
     def run_forecast(cls, df_all=None):
         try:
-            log.info("CREATE CLASS")
             engine = cls(df_all)
-            log.info("created class")
             return engine.forecast_rt()
         except Exception:
             logging.exception("forecast failed : ( something unintended occured")
             return None
 
     def get_forecast_dfs(self):
-        # Probably get rid of this entirely
+        if self.merged_df:
+            df_merge = pd.read_csv(
+                self.csv_path, parse_dates=True, index_col=self.index_col_name_csv
+            )
+            if not self.states_only:
+                log.info("County level training not implemented yet :(")
+                exit()
+            else:
+                log.info("MERGED DF")
+                log.info(df_merge)
+                # only store state information
+                df_states_merge = df_merge[
+                    df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
+                ]
+                # create separate dataframe for each state
+                log.info(df_states_merge)
+                state_df_dictionary = dict(iter(df_states_merge.groupby(self.fips_var_name)))
+
+                # process dataframe
+                log.info(state_df_dictionary)
+                state_names, df_list = list(), list()
+                for state in state_df_dictionary:
+                    log.info("iterating thru dictionary of state dataframes")
+                    df = state_df_dictionary[state]
+                    df[self.sim_date_name] = (df.index - self.ref_date).days + 1
+                    df[self.d_predict_variable] = df[self.predict_variable].diff()
+
+                    if self.deaths_cumulative:
+                        log.info("SAVING DEATHS")
+                        df[self.daily_case_var] = df[self.case_var].diff()
+                    if self.cases_cumulative:
+                        df[self.daily_death_var] = df[self.death_var].diff()
+                    state_name = df["state"][0]
+                    df.to_csv(state_name + ".csv")
+                    df_forecast = df[self.forecast_variables].copy()
+                    # Fill empty values with mask value
+                    df_forecast.replace(r"\s+", self.mask_value, regex=True).replace(
+                        "", self.mask_value
+                    )
+                    df_forecast.replace(np.nan, self.mask_value, regex=True).replace(
+                        np.nan, self.mask_value
+                    )
+                    log.info(df_forecast)
+                    state_names.append(state_name)
+                    df_list.append(df_forecast)
+            return state_names, df_list
+
+    def get_forecast_dfs_old(self):
+        # Probably get rid of this entirely -- to process single state at a time
         if self.states != "All":
-            log.info("using dfall")
             df_all = self.df_all
             state_name = df_all["state"][0]
             df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
@@ -96,32 +156,41 @@ class ForecastRt:
             df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
             return df_forecast, state_name
 
-        else:
-            log.info("getting dataframes from csv files")
-            dataframes = list()
-            state_names = list()
-            csv_files = glob.glob(f"{self.csv_path}*.csv")
-            for myfile in csv_files:
-                df_all = pd.read_csv(
-                    myfile, parse_dates=True, index_col="date"
-                )  # , dtype={'fips': int}
-                state_name = df_all["state"][0]
-                # Set first day of year to 1 not 0
-                df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
-                df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
-                df_forecast = df_all[self.forecast_variables].copy()
-                # Fill empty values with mask value
-                df_forecast.replace(r"\s+", self.mask_value, regex=True).replace(
-                    "", self.mask_value
-                )
-                df_forecast.replace(np.nan, self.mask_value, regex=True).replace(
-                    np.nan, self.mask_value
-                )
-                df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
-                dataframes.append(df_forecast)
-                state_names.append(state_name)
+        else:  # merged dataframe (states/counties all merged into one df)
+            df_merge = pd.read_csv(self.csv_path)
+            if self.states_only:
+                if self.merged_df:
+                    log.info("MERGED DF")
 
-            return dataframes, state_names
+                    log.info(df_merge)
+
+                # Probs delete
+                else:
+                    dataframes, state_names = list(), list()
+                    csv_files = glob.glob(f"{self.csv_path}*.csv")
+                    for myfile in csv_files:
+                        df_all = pd.read_csv(
+                            myfile, parse_dates=True, index_col="date"
+                        )  # , dtype={'fips': int}
+                        state_name = df_all["state"][0]
+                        # Set first day of year to 1 not 0
+                        df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
+                        df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
+                        df_forecast = df_all[self.forecast_variables].copy()
+                        # Fill empty values with mask value
+                        df_forecast.replace(r"\s+", self.mask_value, regex=True).replace(
+                            "", self.mask_value
+                        )
+                        df_forecast.replace(np.nan, self.mask_value, regex=True).replace(
+                            np.nan, self.mask_value
+                        )
+                        df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
+                        dataframes.append(df_forecast)
+                        state_names.append(state_name)
+            else:
+                log.info("County level training not implemented yet :(")
+                exit()
+                return dataframes, state_names
 
     def get_train_test_samples(self, df_forecast):
         df_samples = self.create_df_list(df_forecast)
@@ -184,10 +253,7 @@ class ForecastRt:
             self.plot_variables(df_list, state_names, scalers_dict)
 
         # Create scaled train samples
-        list_train_X = []
-        list_train_Y = []
-        list_test_X = []
-        list_test_Y = []
+        list_train_X, list_train_Y, list_test_X, list_test_Y = [], [], [], []
         for train, test in zip(train_samples, test_samples):
             log.info("get scaled train sets")
             train_X, train_Y, train_df_list = self.get_scaled_X_Y(train, scalers_dict)
