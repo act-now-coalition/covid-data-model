@@ -2,8 +2,8 @@ from typing import Optional
 from datetime import datetime, timedelta
 from api.can_api_definition import (
     CovidActNowBulkSummary,
-    CovidActNowAreaSummary,
-    CovidActNowAreaTimeseries,
+    CovidActNowRegionSummary,
+    CovidActNowRegionTimeseries,
     CovidActNowBulkFlattenedTimeseries,
     PredictionTimeseriesRowWithHeader,
     CANPredictionTimeseriesRow,
@@ -104,7 +104,7 @@ def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeserie
 
 def generate_area_summary(
     latest_values: dict, model_output: Optional[CANPyseirLocationOutput],
-) -> CovidActNowAreaSummary:
+) -> CovidActNowRegionSummary:
     fips = latest_values[CommonFields.FIPS]
     state = latest_values[CommonFields.STATE]
     state_intervention = get_can_projection.get_intervention_for_state(state)
@@ -115,7 +115,7 @@ def generate_area_summary(
     if model_output:
         projections = _generate_api_for_projections(model_output)
 
-    return CovidActNowAreaSummary(
+    return CovidActNowRegionSummary(
         population=latest_values[CommonFields.POPULATION],
         stateName=us_state_abbrev.ABBREV_US_STATE[state],
         countyName=latest_values.get(CommonFields.COUNTY),
@@ -130,10 +130,10 @@ def generate_area_summary(
 
 
 def generate_area_timeseries(
-    area_summary: CovidActNowAreaSummary,
+    area_summary: CovidActNowRegionSummary,
     timeseries: TimeseriesDataset,
     model_output: Optional[CANPyseirLocationOutput],
-) -> CovidActNowAreaTimeseries:
+) -> CovidActNowRegionTimeseries:
     if not area_summary.intervention:
         # All area summaries here are expected to have actuals values.
         # It's a bit unclear why the actuals value is optional in the first place,
@@ -157,7 +157,7 @@ def generate_area_timeseries(
         ]
 
     area_summary_data = {key: getattr(area_summary, key) for (key, _) in area_summary}
-    return CovidActNowAreaTimeseries(
+    return CovidActNowRegionTimeseries(
         **area_summary_data, timeseries=model_timeseries, actualsTimeseries=actuals_timeseries
     )
 

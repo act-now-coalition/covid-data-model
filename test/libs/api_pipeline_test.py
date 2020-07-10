@@ -7,7 +7,7 @@ from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
-from api.can_api_definition import CovidActNowAreaSummary
+from api.can_api_definition import CovidActNowRegionSummary
 from api.can_api_definition import Actuals
 from api.can_api_definition import Projections
 from api.can_api_definition import ResourceUsageProjection

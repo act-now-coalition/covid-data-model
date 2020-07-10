@@ -1,5 +1,5 @@
 {
-  "title": "CovidActNowAreaSummary",
+  "title": "CovidActNowRegionSummary",
   "description": "Base model for API output.",
   "type": "object",
   "properties": {

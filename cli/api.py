@@ -4,7 +4,7 @@ import pathlib
 import click
 import itertools
 import us
-from api.can_api_definition import CovidActNowAreaTimeseries
+from api.can_api_definition import CovidActNowRegionTimeseries
 from api.can_api_definition import CovidActNowBulkTimeseries
 from libs.pipelines import api_pipeline
 from libs.datasets.dataset_utils import AggregationLevel
@@ -116,7 +116,7 @@ def generate_top_counties(disable_validation, input_dir, output, state, fips):
         AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
     )
 
-    def sort_func(output: CovidActNowAreaTimeseries):
+    def sort_func(output: CovidActNowRegionTimeseries):
         return -output.projections.totalHospitalBeds.peakShortfall
 
     all_timeseries = api_pipeline.run_on_all_fips_for_intervention(

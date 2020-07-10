@@ -3,7 +3,7 @@
   "description": "Base model for API output.",
   "type": "array",
   "items": {
-    "$ref": "#/definitions/CovidActNowAreaSummary"
+    "$ref": "#/definitions/CovidActNowRegionSummary"
   },
   "definitions": {
     "ResourceUsageProjection": {
@@ -174,8 +174,8 @@
         "ICUBeds"
       ]
     },
-    "CovidActNowAreaSummary": {
-      "title": "CovidActNowAreaSummary",
+    "CovidActNowRegionSummary": {
+      "title": "CovidActNowRegionSummary",
       "description": "Base model for API output.",
       "type": "object",
       "properties": {

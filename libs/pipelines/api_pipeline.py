@@ -8,8 +8,8 @@ import multiprocessing
 import pydantic
 import simplejson
 from libs.functions import get_can_projection
-from api.can_api_definition import CovidActNowAreaSummary
-from api.can_api_definition import CovidActNowAreaTimeseries
+from api.can_api_definition import CovidActNowRegionSummary
+from api.can_api_definition import CovidActNowRegionTimeseries
 from api.can_api_definition import CovidActNowBulkSummary
 from api.can_api_definition import CovidActNowBulkTimeseries
 from api.can_api_definition import CovidActNowBulkFlattenedTimeseries
@@ -38,7 +38,7 @@ def run_on_all_fips_for_intervention(
     pool: multiprocessing.Pool = None,
     sort_func=None,
     limit=None,
-) -> Iterator[CovidActNowAreaTimeseries]:
+) -> Iterator[CovidActNowRegionTimeseries]:
     run_fips = functools.partial(
         build_timeseries_for_fips, intervention, latest_values, timeseries, model_output_dir,
     )
@@ -69,7 +69,7 @@ def run_on_all_fips_for_intervention(
 
 def build_timeseries_for_fips(
     intervention, us_latest, us_timeseries, model_output_dir, fips,
-) -> Optional[CovidActNowAreaTimeseries]:
+) -> Optional[CovidActNowRegionTimeseries]:
     fips_latest = us_latest.get_record_for_fips(fips)
 
     if intervention is Intervention.SELECTED_INTERVENTION:

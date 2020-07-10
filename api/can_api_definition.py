@@ -80,7 +80,7 @@ class Actuals(base_model.APIBaseModel):
     contactTracers: Optional[int] = pydantic.Field(default=None, description="# of Contact Tracers")
 
 
-class CovidActNowAreaSummary(base_model.APIBaseModel):
+class CovidActNowRegionSummary(base_model.APIBaseModel):
     countryName: str = "US"
     fips: str = pydantic.Field(
         ...,
@@ -191,22 +191,22 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
             return AggregationLevel.COUNTY
 
 
-class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
+class CovidActNowRegionTimeseries(CovidActNowRegionSummary):
     timeseries: Optional[List[CANPredictionTimeseriesRow]] = pydantic.Field(...)
     actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
 
     @property
-    def area_summary(self) -> CovidActNowAreaSummary:
+    def area_summary(self) -> CovidActNowRegionSummary:
 
         data = {}
         # Iterating through self does not force any conversion
         # https://pydantic-docs.helpmanual.io/usage/exporting_models/#dictmodel-and-iteration
         for field, value in self:
-            if field not in CovidActNowAreaSummary.__fields__:
+            if field not in CovidActNowRegionSummary.__fields__:
                 continue
             data[field] = value
 
-        return CovidActNowAreaSummary(**data)
+        return CovidActNowRegionSummary(**data)
 
     # pylint: disable=no-self-argument
     @pydantic.validator("timeseries")
@@ -241,7 +241,7 @@ class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
 
 
 class CovidActNowBulkSummary(base_model.APIBaseModel):
-    __root__: List[CovidActNowAreaSummary] = pydantic.Field(...)
+    __root__: List[CovidActNowRegionSummary] = pydantic.Field(...)
 
     def output_key(self, intervention):
         aggregate_level = self.__root__[0].aggregate_level
@@ -252,7 +252,7 @@ class CovidActNowBulkSummary(base_model.APIBaseModel):
 
 
 class CovidActNowBulkTimeseries(base_model.APIBaseModel):
-    __root__: List[CovidActNowAreaTimeseries] = pydantic.Field(...)
+    __root__: List[CovidActNowRegionTimeseries] = pydantic.Field(...)
 
     def output_key(self, intervention):
         aggregate_level = self.__root__[0].aggregate_level
