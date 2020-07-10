@@ -34,6 +34,8 @@ def run_rt_for_fips(fips):
     county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
     if output_df is not None and not output_df.empty:
         output_df.to_json(county_output_file)
+        output_df["fips"] = fips
+    return output_df
 
 
 def _get_display_name(fips) -> str:
