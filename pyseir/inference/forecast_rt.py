@@ -129,10 +129,13 @@ class ForecastRt:
 
                     df_forecast = df[self.forecast_variables].copy()
                     # Fill empty values with mask value
-                    df_forecast.replace(r"\s*+", self.mask_value, regex=True)
-                    df_forecast.replace(r"\s+", self.mask_value, regex=True)
-                    df_forecast.replace("NaN", self.mask_value, regex=True)
-                    df_forecast.replace(np.nan, self.mask_value, regex=True)
+                    log.info("THIS Forecast")
+                    log.info(df_forecast)
+                    df_forecast = df_forecast.fillna(self.mask_value)
+                    # df_forecast.replace(r"\s*+", self.mask_value, regex=True)
+                    # df_forecast.replace(r"\s+", self.mask_value, regex=True)
+                    # df_forecast.replace("NaN", self.mask_value, regex=True)
+                    # df_forecast.replace(np.nan, self.mask_value, regex=True)
                     df_forecast = df_forecast.iloc[
                         :-1
                     ]  # because last value is NaN for diff #TODO find a better way to do this
@@ -143,6 +146,7 @@ class ForecastRt:
             log.info("STATE NAMES")
             log.info(state_names)
             log.info(df_list)
+
             return state_names, df_list
 
     def get_forecast_dfs_old(self):
