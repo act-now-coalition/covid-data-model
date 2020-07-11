@@ -49,7 +49,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
     CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [
@@ -77,13 +77,14 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
 
+
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [NYTimesDataset],
     CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
     CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
         CmdcDataSource,
@@ -115,9 +116,7 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 
 @dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
 def build_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION,
-    )
+    return build_combined_dataset_from_sources(TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION)
 
 
 @dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
@@ -269,7 +268,7 @@ def build_combined_dataset_from_sources(
             with tmp_bind(log, dataset_name=data_source_cls.SOURCE_NAME, field=field) as log:
                 try:
                     data = dataset_utils.fill_fields_with_data_source(
-                        log, data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field],
+                        log, data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field]
                     )
                 except Exception:
                     log.exception("trying to fill fields")

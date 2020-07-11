@@ -20,8 +20,8 @@ from libs.datasets import latest_values_dataset
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_utils import DatasetTag
-from libs.datasets.combined_dataset_pointer import CombinedDatasetPointer
-from libs.datasets import combined_dataset_pointer
+from libs.datasets.dataset_pointer import DatasetPointer
+from libs.datasets import dataset_pointer
 from libs.github_utils import GitSummary
 
 _logger = structlog.getLogger(__name__)
@@ -44,7 +44,7 @@ def persist_dataset(
     path_prefix: str,
     data_public_path: pathlib.Path = dataset_utils.LOCAL_PUBLIC_DATA_PATH,
     s3_client=None,
-) -> CombinedDatasetPointer:
+) -> DatasetPointer:
 
     model_git_info = GitSummary.from_repo_path(dataset_utils.REPO_ROOT)
     data_git_info = GitSummary.from_repo_path(data_public_path)
@@ -56,7 +56,7 @@ def persist_dataset(
 
     filename = _form_dataset_filename(dataset_type, data_git_info, model_git_info)
     dataset_path = os.path.join(path_prefix, filename)
-    dataset_pointer = CombinedDatasetPointer(
+    dataset_pointer = DatasetPointer(
         dataset_type=dataset_type,
         path=dataset_path,
         data_git_info=data_git_info,
@@ -96,9 +96,9 @@ def load_us_timeseries_with_all_fields(
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
     dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
 ) -> timeseries.TimeseriesDataset:
-    filename = combined_dataset_pointer.form_filename(DatasetType.TIMESERIES, dataset_tag)
+    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES, dataset_tag)
     pointer_path = pointer_directory / filename
-    pointer = CombinedDatasetPointer.parse_raw(pointer_path.read_text())
+    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     return pointer.load_dataset(download_directory=dataset_download_directory)
 
 
@@ -107,22 +107,20 @@ def load_us_latest_with_all_fields(
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
     dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
 ) -> latest_values_dataset.LatestValuesDataset:
-    filename = combined_dataset_pointer.form_filename(DatasetType.LATEST, dataset_tag)
+    filename = dataset_pointer.form_filename(DatasetType.LATEST, dataset_tag)
     pointer_path = pointer_directory / filename
-    pointer = CombinedDatasetPointer.parse_raw(pointer_path.read_text())
+    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     return pointer.load_dataset(download_directory=dataset_download_directory)
 
 
 def promote_pointer(
     dataset_type: DatasetType,
-    from_level: DatasetTag,
-    to_level: DatasetTag,
+    from_tag: DatasetTag,
+    to_tag: DatasetTag,
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
 ):
-    filename = combined_dataset_pointer.form_filename(dataset_type, from_level)
+    filename = dataset_pointer.form_filename(dataset_type, from_tag)
     pointer_path = pointer_directory / filename
-    pointer = CombinedDatasetPointer.parse_raw(pointer_path.read_text())
-    pointer.save(pointer_directory, to_level)
-    _logger.info(
-        "Successfully promoted dataset pointer", from_level=from_level.value, to=to_level.value
-    )
+    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
+    pointer.save(pointer_directory, to_tag)
+    _logger.info("Successfully promoted dataset pointer", from_tag=from_tag.value, to=to_tag.value)

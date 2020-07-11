@@ -41,7 +41,7 @@ def form_filename(dataset_type: DatasetType, dataset_tag: DatasetTag) -> str:
     return f"{dataset_type.value}.{dataset_tag.value}.json"
 
 
-class CombinedDatasetPointer(pydantic.BaseModel):
+class DatasetPointer(pydantic.BaseModel):
     """Describes a persisted combined dataset."""
 
     dataset_type: DatasetType
