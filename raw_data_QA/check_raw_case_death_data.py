@@ -126,7 +126,9 @@ def compare_data(var, df1, df2, df1_name, df2_name, args, state):
         color1 = "blue"
         color2 = "orange"
         color3 = "purple"
-        color4 = "purple"  # because we are only comparing changes in additional days from the latest NYT dataset
+        color4 = (
+            "purple"
+        )  # because we are only comparing changes in additional days from the latest NYT dataset
         fig.suptitle(var)
         ax[0].plot(
             df1.index.values,
@@ -570,7 +572,7 @@ if __name__ == "__main__":
                     abnormal_old,
                     abnormal_new,
                     average_new_p_diff,
-                ) = compare_data(var, prod_ag, latest_ag, prod_name, latest_name, args, state,)
+                ) = compare_data(var, prod_ag, latest_ag, prod_name, latest_name, args, state)
 
                 if abnormal_old:
                     z_avg_list.append(avg_z)
@@ -603,7 +605,7 @@ if __name__ == "__main__":
                     _logger.warning(new_data_report_string)
                     sentry_sdk.capture_message(new_data_report_string)
 
-            # Create meta-compare charts for all abnormal areas
+            # Create meta-compare charts for all abnormal regions
             states_list = list(dict.fromkeys(states_list))
             make_meta_comparison_plot(
                 states_list,

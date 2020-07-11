@@ -7,8 +7,8 @@ from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
-from api.can_api_definition import CovidActNowRegionSummary
-from api.can_api_definition import CovidActNowRegionTimeseries
+from api.can_api_definition import RegionSummary
+from api.can_api_definition import RegionSummaryWithTimeseries
 from api.can_api_definition import Actuals
 from api.can_api_definition import Projections
 from api.can_api_definition import ResourceUsageProjection
@@ -35,9 +35,9 @@ def test_build_summary_for_fips(include_projections, nyc_model_output_path, nyc_
         )
         intervention = Intervention.STRONG_INTERVENTION
 
-    summary = generate_api.generate_area_summary(nyc_latest, model_output)
+    summary = generate_api.generate_region_summary(nyc_latest, model_output)
 
-    expected = CovidActNowRegionSummary(
+    expected = RegionSummary(
         population=nyc_latest["population"],
         stateName="New York",
         countyName="New York County",
@@ -89,14 +89,14 @@ def test_generate_timeseries_for_fips(include_projections, nyc_model_output_path
     intervention = Intervention.OBSERVED_INTERVENTION
     model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
 
-    area_summary = generate_api.generate_area_summary(nyc_latest, model_output)
-    area_timeseries = generate_api.generate_area_timeseries(
-        area_summary, nyc_timeseries, model_output
+    region_summary = generate_api.generate_region_summary(nyc_latest, model_output)
+    region_timeseries = generate_api.generate_region_timeseries(
+        region_summary, nyc_timeseries, model_output
     )
 
-    summary = generate_api.generate_area_summary(nyc_latest, model_output)
+    summary = generate_api.generate_region_summary(nyc_latest, model_output)
 
-    assert summary.dict() == area_timeseries.area_summary.dict()
+    assert summary.dict() == region_timeseries.region_summary.dict()
     # Double checking that serialized json does not contain NaNs, all values should
     # be serialized using the simplejson wrapper.
-    assert "NaN" not in area_timeseries.json()
+    assert "NaN" not in region_timeseries.json()
