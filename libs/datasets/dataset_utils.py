@@ -52,7 +52,7 @@ class DatasetType(enum.Enum):
             return latest_values_dataset.LatestValuesDataset
 
 
-class DatasetPromotion(enum.Enum):
+class DatasetTag(enum.Enum):
     """"""
 
     # Latest dataset

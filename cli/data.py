@@ -1,7 +1,7 @@
 import logging
 import click
 from libs.datasets import combined_dataset_utils
-from libs.datasets.combined_dataset_utils import DatasetPromotion
+from libs.datasets.combined_dataset_utils import DatasetTag
 from libs.datasets.combined_dataset_utils import DatasetType
 
 
@@ -24,9 +24,7 @@ def update_latest():
 @main.command()
 def promote_latest():
     """Promotes latest and timeseries datasets to stable."""
+    combined_dataset_utils.promote_pointer(DatasetType.LATEST, DatasetTag.LATEST, DatasetTag.STABLE)
     combined_dataset_utils.promote_pointer(
-        DatasetType.LATEST, DatasetPromotion.LATEST, DatasetPromotion.STABLE
-    )
-    combined_dataset_utils.promote_pointer(
-        DatasetType.TIMESERIES, DatasetPromotion.LATEST, DatasetPromotion.STABLE
+        DatasetType.TIMESERIES, DatasetTag.LATEST, DatasetTag.STABLE
     )

@@ -19,7 +19,7 @@ from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import DatasetType
-from libs.datasets.dataset_utils import DatasetPromotion
+from libs.datasets.dataset_utils import DatasetTag
 from libs.datasets.combined_dataset_pointer import CombinedDatasetPointer
 from libs.datasets import combined_dataset_pointer
 from libs.github_utils import GitSummary
@@ -82,32 +82,32 @@ def update_data_public_head(
     if not latest_dataset:
         latest_dataset = combined_datasets.build_us_latest_with_all_fields(skip_cache=True)
     latest_pointer = persist_dataset(latest_dataset, path_prefix)
-    latest_pointer.save(pointer_path_dir, DatasetPromotion.LATEST)
+    latest_pointer.save(pointer_path_dir, DatasetTag.LATEST)
 
     if not timeseries_dataset:
         timeseries_dataset = combined_datasets.build_timeseries_with_all_fields(skip_cache=True)
     timeseries_pointer = persist_dataset(timeseries_dataset, path_prefix)
-    timeseries_pointer.save(pointer_path_dir, DatasetPromotion.LATEST)
+    timeseries_pointer.save(pointer_path_dir, DatasetTag.LATEST)
     return latest_pointer, timeseries_pointer
 
 
 def load_us_timeseries_with_all_fields(
-    promotion_level: DatasetPromotion = DatasetPromotion.LATEST,
+    dataset_tag: DatasetTag = DatasetTag.LATEST,
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
     dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
 ) -> timeseries.TimeseriesDataset:
-    filename = combined_dataset_pointer.form_filename(DatasetType.TIMESERIES, promotion_level)
+    filename = combined_dataset_pointer.form_filename(DatasetType.TIMESERIES, dataset_tag)
     pointer_path = pointer_directory / filename
     pointer = CombinedDatasetPointer.parse_raw(pointer_path.read_text())
     return pointer.load_dataset(download_directory=dataset_download_directory)
 
 
 def load_us_latest_with_all_fields(
-    promotion_level: DatasetPromotion = DatasetPromotion.LATEST,
+    dataset_tag: DatasetTag = DatasetTag.LATEST,
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
     dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
 ) -> latest_values_dataset.LatestValuesDataset:
-    filename = combined_dataset_pointer.form_filename(DatasetType.LATEST, promotion_level)
+    filename = combined_dataset_pointer.form_filename(DatasetType.LATEST, dataset_tag)
     pointer_path = pointer_directory / filename
     pointer = CombinedDatasetPointer.parse_raw(pointer_path.read_text())
     return pointer.load_dataset(download_directory=dataset_download_directory)
@@ -115,8 +115,8 @@ def load_us_latest_with_all_fields(
 
 def promote_pointer(
     dataset_type: DatasetType,
-    from_level: DatasetPromotion,
-    to_level: DatasetPromotion,
+    from_level: DatasetTag,
+    to_level: DatasetTag,
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
 ):
     filename = combined_dataset_pointer.form_filename(dataset_type, from_level)

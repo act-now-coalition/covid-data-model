@@ -6,7 +6,7 @@ import pytest
 
 from libs.datasets import combined_dataset_utils
 from libs.datasets.combined_dataset_utils import DatasetType
-from libs.datasets.combined_dataset_utils import DatasetPromotion
+from libs.datasets.combined_dataset_utils import DatasetTag
 from libs.datasets import combined_datasets
 from libs.qa.common_df_diff import DatasetDiff
 
@@ -51,13 +51,13 @@ def test_update_and_load(mock_s3_bucket: str, tmp_path: pathlib.Path, nyc_fips):
     )
 
     timeseries = combined_dataset_utils.load_us_timeseries_with_all_fields(
-        promotion_level=DatasetPromotion.LATEST,
+        dataset_tag=DatasetTag.LATEST,
         pointer_directory=tmp_path,
         dataset_download_directory=tmp_path,
     )
 
     latest = combined_dataset_utils.load_us_latest_with_all_fields(
-        promotion_level=DatasetPromotion.LATEST,
+        dataset_tag=DatasetTag.LATEST,
         pointer_directory=tmp_path,
         dataset_download_directory=tmp_path,
     )
