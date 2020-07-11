@@ -23,5 +23,8 @@ class DatasetBase(object):
 
     @classmethod
     def load_csv(cls, path: pathlib.Path):
-        df = common_df.read_csv(path)
-        return cls(df)
+        raise NotImplementedError()
+
+    @classmethod
+    def to_csv(cls, path: pathlib.Path):
+        raise NotImplementedError()

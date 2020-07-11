@@ -20,7 +20,7 @@ def mock_s3_bucket():
         yield bucket
 
 
-def test_persist_and_load_dataset(mock_s3_bucket: str, tmp_path):
+def test_persist_and_load_dataset(mock_s3_bucket: str, tmp_path, nyc_fips):
     s3_prefix = f"s3://{mock_s3_bucket}"
     dataset = combined_datasets.build_us_timeseries_with_all_fields()
     timeseries_nyc = dataset.get_subset(None, fips=nyc_fips)
@@ -44,7 +44,7 @@ def test_update_and_load(mock_s3_bucket: str, tmp_path: pathlib.Path, nyc_fips):
     timeseries_nyc = timeseries_dataset.get_subset(None, fips=nyc_fips)
 
     combined_dataset_utils.update_data_public_head(
-        mock_s3_bucket,
+        f"s3://{mock_s3_bucket}",
         pointer_path_dir=tmp_path,
         latest_dataset=latest_nyc,
         timeseries_dataset=timeseries_nyc,
@@ -61,4 +61,5 @@ def test_update_and_load(mock_s3_bucket: str, tmp_path: pathlib.Path, nyc_fips):
         pointer_directory=tmp_path,
         dataset_download_directory=tmp_path,
     )
+
     assert latest.get_record_for_fips(nyc_fips) == latest_nyc.get_record_for_fips(nyc_fips)

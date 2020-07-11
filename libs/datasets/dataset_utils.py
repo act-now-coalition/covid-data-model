@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Type
 import os
 import enum
 import logging
@@ -19,10 +19,49 @@ else:
 _logger = logging.getLogger(__name__)
 
 
+REPO_ROOT = pathlib.Path(__file__).parent.parent.parent
+
+POINTER_DIRECTORY = REPO_ROOT / "dataset_pointers"
+
+DATA_CACHE_FOLDER = REPO_ROOT / ".data"
+
+
 class AggregationLevel(enum.Enum):
     COUNTRY = "country"
     STATE = "state"
     COUNTY = "county"
+
+
+class DatasetType(enum.Enum):
+
+    TIMESERIES = "timeseries"
+    LATEST = "latest"
+
+    @property
+    def dataset_class(self) -> Type:
+        """Returns associated dataset class."""
+        # Avoidling circular import errors.
+        from libs.datasets import timeseries
+
+        from libs.datasets import latest_values_dataset
+
+        if self is DatasetType.TIMESERIES:
+            return timeseries.TimeseriesDataset
+
+        if self is DatasetType.LATEST:
+            return latest_values_dataset.LatestValuesDataset
+
+
+class DatasetPromotion(enum.Enum):
+    """"""
+
+    # Latest dataset
+    LATEST = "latest"
+
+    # Has gone through validation
+    STABLE = "stable"
+
+    TEST = "test"
 
 
 class DuplicateValuesForIndex(Exception):
