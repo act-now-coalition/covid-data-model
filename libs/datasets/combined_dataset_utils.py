@@ -64,6 +64,8 @@ class DatasetPromotion(enum.Enum):
     # Has gone through validation
     STABLE = "stable"
 
+    TEST = "test"
+
 
 class GitSummary(pydantic.BaseModel):
 
@@ -75,7 +77,12 @@ class GitSummary(pydantic.BaseModel):
     def from_repo_path(cls, path: pathlib.Path):
         repo = git.Repo(path)
 
-        return cls(sha=repo.head.commit.hexsha, branch=str(repo.head.ref), is_dirty=repo.is_dirty())
+        try:
+            branch = str(repo.head.ref)
+        except TypeError:
+            branch = "detached"
+
+        return cls(sha=repo.head.commit.hexsha, branch=branch, is_dirty=repo.is_dirty())
 
 
 class CombinedDatasetPointer(pydantic.BaseModel):
@@ -213,7 +220,7 @@ def update_data_public_head(
     latest_pointer.save(pointer_path_dir, DatasetPromotion.LATEST)
 
     if not timeseries_dataset:
-        timseries_dataset = combined_datasets.build_timeseries_with_all_fields(skip_cache=True)
+        timeseries_dataset = combined_datasets.build_timeseries_with_all_fields(skip_cache=True)
     timeseries_pointer = persist_dataset(timeseries_dataset, path_prefix)
     timeseries_pointer.save(pointer_path_dir, DatasetPromotion.LATEST)
     return latest_pointer, timeseries_pointer
@@ -239,3 +246,18 @@ def load_us_latest_with_all_fields(
     pointer_path = pointer_directory / filename
     pointer = CombinedDatasetPointer.parse_raw(pointer_path.read_text())
     return pointer.load_dataset(download_directory=dataset_download_directory)
+
+
+def promote_pointer(
+    dataset_type: DatasetType,
+    from_level: DatasetPromotion,
+    to_level: DatasetPromotion,
+    pointer_directory: pathlib.Path = REPO_ROOT,
+):
+    filename = form_pointer_filename(dataset_type, from_level)
+    pointer_path = pointer_directory / filename
+    pointer = CombinedDatasetPointer.parse_raw(pointer_path.read_text())
+    pointer.save(pointer_directory, to_level)
+    _logger.info(
+        "Successfully promoted dataset pointer", from_level=from_level.value, to=to_level.value
+    )

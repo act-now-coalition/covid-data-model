@@ -33,6 +33,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         self.data = data
 
     @property
+    def all_fips(self):
+        return self.data.reset_index().fips.unique()
+
+    @property
     def states(self) -> List:
         return self.data[CommonFields.STATE].dropna().unique().tolist()
 
