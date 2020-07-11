@@ -1,5 +1,5 @@
 {
-  "title": "CANPredictionTimeseriesRow",
+  "title": "PredictionTimeseriesRow",
   "description": "Base model for API output.",
   "type": "object",
   "properties": {

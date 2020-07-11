@@ -1,11 +1,11 @@
 {
-  "title": "CANActualsTimeseriesRow",
+  "title": "ActualsTimeseriesRow",
   "description": "Base model for API output.",
   "type": "object",
   "properties": {
     "population": {
       "title": "Population",
-      "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
+      "description": "Total population in geographic region [*deprecated*: refer to summary for this]",
       "exclusiveMinimum": 0,
       "type": "integer"
     },
