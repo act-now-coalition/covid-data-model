@@ -17,11 +17,13 @@ def main():
 
 @main.command()
 def update_latest():
-    combined_dataset_utils.update_data_public_head(combined_dataset_utils.DATA_CACHE_FOLDER,)
+    """Updates latest and timeseries datasets to the current checked out covid data public commit"""
+    combined_dataset_utils.update_data_public_head(combined_dataset_utils.DATA_CACHE_FOLDER)
 
 
 @main.command()
 def promote_latest():
+    """Promotes latest and timeseries datasets to stable."""
     combined_dataset_utils.promote_pointer(
         DatasetType.LATEST, DatasetPromotion.LATEST, DatasetPromotion.STABLE
     )

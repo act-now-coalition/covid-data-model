@@ -23,11 +23,13 @@ def mock_s3_bucket():
 def test_persist_and_load_dataset(mock_s3_bucket: str, tmp_path):
     s3_prefix = f"s3://{mock_s3_bucket}"
     dataset = combined_datasets.build_us_timeseries_with_all_fields()
-    pointer = combined_dataset_utils.persist_dataset(dataset, s3_prefix)
+    timeseries_nyc = dataset.get_subset(None, fips=nyc_fips)
+
+    pointer = combined_dataset_utils.persist_dataset(timeseries_nyc, s3_prefix)
 
     downloaded_dataset = pointer.load_dataset(download_directory=tmp_path)
     differ_l = DatasetDiff.make(downloaded_dataset.data)
-    differ_r = DatasetDiff.make(dataset.data)
+    differ_r = DatasetDiff.make(timeseries_nyc.data)
     differ_l.compare(differ_r)
 
     assert not len(differ_l.my_ts)
