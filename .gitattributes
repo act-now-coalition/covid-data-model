@@ -1,0 +1,4 @@
+dataset_pointers/data/latest.20200712T174510.8f2000e7-1efbb970.csv filter=lfs diff=lfs merge=lfs -text
+dataset_pointers/data/latest.20200713T152853.303cbe0f-8df11d25.csv filter=lfs diff=lfs merge=lfs -text
+dataset_pointers/data/timeseries.20200712T175410.8f2000e7-1efbb970.csv filter=lfs diff=lfs merge=lfs -text
+dataset_pointers/data/timeseries.20200713T153846.303cbe0f-8df11d25.csv filter=lfs diff=lfs merge=lfs -text
