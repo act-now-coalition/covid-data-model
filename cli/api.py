@@ -67,10 +67,10 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
     """The entry function for invocation"""
 
     active_states = [state.abbr for state in us.STATES]
-    us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
+    us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
     )
-    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields().get_subset(
+    us_timeseries = combined_datasets.load_us_timeseries_dataset().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
     )
 
@@ -91,10 +91,10 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 
 @main.command("generate-top-counties")
 @click.option(
-    "--disable-validation", "-dv", is_flag=True, help="Run the validation on the deploy command",
+    "--disable-validation", "-dv", is_flag=True, help="Run the validation on the deploy command"
 )
 @click.option(
-    "--input-dir", "-i", default="results", help="Input directory of state/county projections",
+    "--input-dir", "-i", default="results", help="Input directory of state/county projections"
 )
 @click.option(
     "--output",
@@ -109,10 +109,10 @@ def generate_top_counties(disable_validation, input_dir, output, state, fips):
     """The entry function for invocation"""
     intervention = Intervention.SELECTED_INTERVENTION
     active_states = [state.abbr for state in us.STATES]
-    us_latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
+    us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
     )
-    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields().get_subset(
+    us_timeseries = combined_datasets.load_us_timeseries_dataset().get_subset(
         AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
     )
 

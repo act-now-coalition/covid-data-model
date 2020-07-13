@@ -1,6 +1,6 @@
 {
   "dataset_type": "timeseries",
-  "path": "/Users/chris/can/covid-data-model/.data/timeseries.20200713T131608.8f2000e7-8df11d25.csv",
+  "path": ".data/timeseries.20200713T140526.8f2000e7-8df11d25.csv",
   "data_git_info": {
     "sha": "8df11d2579406c21aa0c2a747ba6ad10c7372ef4",
     "branch": "master",
@@ -11,5 +11,5 @@
     "branch": "persist-combined-datasets",
     "is_dirty": true
   },
-  "updated_at": "2020-07-13T13:16:08.916728"
+  "updated_at": "2020-07-13T14:05:26.977243"
 }

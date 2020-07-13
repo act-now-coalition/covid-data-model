@@ -22,7 +22,7 @@ def mock_s3_bucket():
 
 def test_persist_and_load_dataset(mock_s3_bucket: str, tmp_path, nyc_fips):
     s3_prefix = f"s3://{mock_s3_bucket}"
-    dataset = combined_datasets.build_us_timeseries_with_all_fields()
+    dataset = combined_datasets.load_us_timeseries_dataset()
     timeseries_nyc = dataset.get_subset(None, fips=nyc_fips)
 
     pointer = combined_dataset_utils.persist_dataset(timeseries_nyc, s3_prefix)
@@ -36,8 +36,8 @@ def test_persist_and_load_dataset(mock_s3_bucket: str, tmp_path, nyc_fips):
 
 
 def test_update_and_load(mock_s3_bucket: str, tmp_path: pathlib.Path, nyc_fips):
-    latest = combined_datasets.build_us_latest_with_all_fields()
-    timeseries_dataset = combined_datasets.build_us_timeseries_with_all_fields()
+    latest = combined_datasets.load_us_latest_dataset()
+    timeseries_dataset = combined_datasets.load_us_timeseries_dataset()
 
     # restricting the datasets being persisted to one county to speed up tests a bit.
     latest_nyc = latest.get_subset(None, fips=nyc_fips)
@@ -50,16 +50,12 @@ def test_update_and_load(mock_s3_bucket: str, tmp_path: pathlib.Path, nyc_fips):
         timeseries_dataset=timeseries_nyc,
     )
 
-    timeseries = combined_dataset_utils.load_us_timeseries_with_all_fields(
-        dataset_tag=DatasetTag.LATEST,
-        pointer_directory=tmp_path,
-        dataset_download_directory=tmp_path,
+    timeseries = combined_dataset_utils.load_us_timeseries_dataset(
+        tag=DatasetTag.LATEST, pointer_directory=tmp_path, dataset_download_directory=tmp_path
     )
 
-    latest = combined_dataset_utils.load_us_latest_with_all_fields(
-        dataset_tag=DatasetTag.LATEST,
-        pointer_directory=tmp_path,
-        dataset_download_directory=tmp_path,
+    latest = combined_dataset_utils.load_us_latest_dataset(
+        tag=DatasetTag.LATEST, pointer_directory=tmp_path, dataset_download_directory=tmp_path
     )
 
     assert latest.get_record_for_fips(nyc_fips) == latest_nyc.get_record_for_fips(nyc_fips)

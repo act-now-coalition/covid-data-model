@@ -1,6 +1,6 @@
 {
   "dataset_type": "latest",
-  "path": ".data/latest.20200713T133852.8f2000e7-8df11d25.csv",
+  "path": ".data/latest.20200713T135500.8f2000e7-8df11d25.csv",
   "data_git_info": {
     "sha": "8df11d2579406c21aa0c2a747ba6ad10c7372ef4",
     "branch": "master",
@@ -11,5 +11,5 @@
     "branch": "persist-combined-datasets",
     "is_dirty": true
   },
-  "updated_at": "2020-07-13T13:38:52.849428"
+  "updated_at": "2020-07-13T13:55:00.497774"
 }

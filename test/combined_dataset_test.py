@@ -21,14 +21,14 @@ from libs.datasets import NevadaHospitalAssociationData
 # If this test is failing, it means that there is one of the data sources that
 # is returning multiple values for a single row.
 def test_unique_index_values_us_timeseries():
-    timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    timeseries = combined_datasets.load_us_timeseries_dataset()
     timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS)
     duplicates = timeseries_data.index.duplicated()
     assert not sum(duplicates)
 
 
 def test_unique_index_values_us_latest():
-    latest = combined_datasets.build_us_latest_with_all_fields()
+    latest = combined_datasets.load_us_latest_dataset()
     latest_data = latest.data.set_index(latest.INDEX_FIELDS)
     duplicates = latest_data.index.duplicated()
     assert not sum(duplicates)
@@ -37,7 +37,7 @@ def test_unique_index_values_us_latest():
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_data(fips):
-    latest = combined_datasets.build_us_latest_with_all_fields().get_subset(
+    latest = combined_datasets.load_us_latest_dataset().get_subset(
         AggregationLevel.COUNTY, fips=fips
     )
     assert latest.data[CommonFields.POSITIVE_TESTS].all()
@@ -47,7 +47,7 @@ def test_combined_county_has_some_data(fips):
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_timeseries_data(fips):
-    latest = combined_datasets.build_us_timeseries_with_all_fields().get_subset(
+    latest = combined_datasets.load_us_timeseries_dataset().get_subset(
         AggregationLevel.COUNTY, fips=fips
     )
     df = latest.data.set_index(CommonFields.DATE)
