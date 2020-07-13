@@ -195,70 +195,65 @@ def _build_all_for_states(
     states_only=False,
     fips=None,
 ):
+
+    only_run_forecast = True
+    only_states = True  # needed to override webui output
     print("running forecast")
     forecast_rt.external_run_forecast()
     print("ran forecast")
-    return
-    # prepare data
-    _cache_global_datasets()
-    print("saving data")
-    all_data = combined_datasets.build_us_timeseries_with_all_fields().get_data(
-        AggregationLevel.STATE, country="USA"
-    )
-    print("done")
-    print(all_data)
-    print("making csv")
-    all_data.to_csv("pyseir_combined_datasets_USA.csv")
-    print("made csv")
 
-    if not skip_whitelist:
-        _generate_whitelist()
+    if not only_run_forecast:
+        # prepare data
+        _cache_global_datasets()
 
-    # do everything for just states in parallel
-    with Pool(maxtasksperchild=1) as p:
-        states_only_func = partial(
-            _state_only_pipeline,
-            run_mode=run_mode,
-            generate_reports=generate_reports,
-            output_interval_days=output_interval_days,
-            output_dir=output_dir,
-        )
-        p.map(states_only_func, states)
+        if not skip_whitelist:
+            _generate_whitelist()
 
-    if states_only:
-        root.info("Only executing for states. returning.")
-        return
+        # do everything for just states in parallel
+        with Pool(maxtasksperchild=1) as p:
+            states_only_func = partial(
+                _state_only_pipeline,
+                run_mode=run_mode,
+                generate_reports=generate_reports,
+                output_interval_days=output_interval_days,
+                output_dir=output_dir,
+            )
+            p.map(states_only_func, states)
 
-    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
+        if states_only:
+            root.info("Only executing for states. returning.")
+            return
 
-    with Pool(maxtasksperchild=1) as p:
-        # calculate calculate county inference
-        p.map(infer_rt_module.run_county, all_county_fips.keys())
-        # calculate model fit
-        root.info(f"executing model for {len(all_county_fips)} counties")
-        fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
+        all_county_fips = build_counties_to_run_per_state(states, fips=fips)
 
-        df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-        df["state"] = df.fips.replace(all_county_fips)
-        df["mle_model"] = [fit.mle_model for fit in fitters if fit]
-        df.index = df.fips
+        with Pool(maxtasksperchild=1) as p:
+            # calculate calculate county inference
+            p.map(infer_rt_module.run_county, all_county_fips.keys())
+            # calculate model fit
+            root.info(f"executing model for {len(all_county_fips)} counties")
+            fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
 
-        state_dfs = [state_df for name, state_df in df.groupby("state")]
-        p.map(model_fitter._persist_results_per_state, state_dfs)
+            df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+            df["state"] = df.fips.replace(all_county_fips)
+            df["mle_model"] = [fit.mle_model for fit in fitters if fit]
+            df.index = df.fips
 
-        # calculate ensemble
-        root.info(f"running ensemble for {len(all_county_fips)} counties")
-        ensemble_func = partial(
-            ensemble_runner._run_county,
-            ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-        )
-        p.map(ensemble_func, all_county_fips.keys())
+            state_dfs = [state_df for name, state_df in df.groupby("state")]
+            p.map(model_fitter._persist_results_per_state, state_dfs)
 
-    # output it all
-    output_interval_days = int(output_interval_days)
-    _cache_global_datasets()
+            # calculate ensemble
+            root.info(f"running ensemble for {len(all_county_fips)} counties")
+            ensemble_func = partial(
+                ensemble_runner._run_county,
+                ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+            )
+            p.map(ensemble_func, all_county_fips.keys())
 
-    root.info(f"outputting web results for states and {len(all_county_fips)} counties")
+        # output it all
+        output_interval_days = int(output_interval_days)
+        _cache_global_datasets()
+
+        root.info(f"outputting web results for states and {len(all_county_fips)} counties")
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
@@ -269,10 +264,11 @@ def _build_all_for_states(
             run_mode=run_mode,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(
-            whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
-            states_only=False,
-        )
+        if not only_states:
+            web_ui_mapper.generate_state(
+                whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
+                states_only=False,
+            )
 
     return
 

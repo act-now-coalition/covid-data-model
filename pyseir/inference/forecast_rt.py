@@ -146,8 +146,8 @@ class ForecastRt:
                     df_forecast = df_forecast.iloc[
                         :-1
                     ]  # because last value is NaN for diff #TODO find a better way to do this
-                    log.info(df_forecast)
-                    df_forecast.to_csv(state_name + ".csv")
+                    # log.info(df_forecast)
+                    # df_forecast.to_csv(state_name + ".csv")
                     state_names.append(state_name)
                     df_list.append(df_forecast)
             log.info("STATE NAMES")
@@ -222,23 +222,25 @@ class ForecastRt:
 
     def plot_variables(self, df_list, state_names, scalers_dict):
         for df, state in zip(df_list, state_names):
-            plt.close("all")
+            fig, ax = plt.subplots(figsize=(18, 12))
             for var in self.forecast_variables:
-                plt.plot(df[var], label=var)
-            plt.legend()
+                ax.plot(df[var], label=var)
+            ax.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
-            plt.savefig(state + "_unscaled.pdf", bbox_inches="tight")
+            fig.savefig(state + "_unscaled.pdf", bbox_inches="tight")
 
-            plt.close("all")
+            fig2, ax2 = plt.subplots(figsize=(18, 12))
             for var in self.forecast_variables:
                 reshaped_data = df[var].values.reshape(-1, 1)
                 scaled_values = scalers_dict[var].transform(reshaped_data)
-                plt.plot(scaled_values, label=var)
-            plt.legend()
+                ax2.plot(scaled_values, label=var)
+            ax2.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
-            plt.savefig(state + "_scaled.pdf", bbox_inches="tight")
+            fig2.savefig(state + "_scaled.pdf", bbox_inches="tight")
+
+            plt.close("all")
 
         return
 
