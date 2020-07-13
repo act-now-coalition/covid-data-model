@@ -1,4 +1,5 @@
 import math
+import us
 from datetime import datetime, timedelta
 import numpy as np
 import logging
@@ -76,7 +77,7 @@ class ForecastRt:
         self.min_number_of_days = 31
         self.sequence_length = 30
         self.sample_train_length = 30  # Set to -1 to use all historical data
-        self.predict_days = 3
+        self.predict_days = 7
         self.percent_train = False
         self.train_size = 0.8
         self.n_test_days = 10
@@ -226,6 +227,7 @@ class ForecastRt:
             plt.grid(which="both", alpha=0.5)
             log.info("about to get run artifact path")
             output_path = get_run_artifact_path(state, RunArtifact.FORECAST_VAR_UNSCALED)
+            plt.title(us.states.lookup(state).name)
             plt.savefig(output_path, bbox_inches="tight")
 
             fig2, ax2 = plt.subplots(figsize=(18, 12))
@@ -236,6 +238,7 @@ class ForecastRt:
             ax2.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
+            plt.title(us.states.lookup(state).name)
             output_path = get_run_artifact_path(state, RunArtifact.FORECAST_VAR_SCALED)
             plt.savefig(output_path, bbox_inches="tight")
 
@@ -391,6 +394,7 @@ class ForecastRt:
             plt.title(state_name + ": epochs: " + str(self.n_epochs))
             plt.ylim(0.5, 3)
             output_path = get_run_artifact_path(state_name, RunArtifact.FORECAST_RESULT)
+            state_obj = us.states.lookup(state_name)
             plt.savefig(output_path, bbox_inches="tight")
 
         return

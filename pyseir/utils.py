@@ -84,7 +84,7 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
         Location of the artifact.
     """
     log.info(f"getting state obj fips: {fips}")
-    state_obj = us.states.lookup("01")  # [:2])
+    state_obj = us.states.lookup(fips)  # [:2])
     log.info(state_obj)
 
     if len(fips) == 5:
