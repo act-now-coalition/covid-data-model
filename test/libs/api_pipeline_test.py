@@ -7,7 +7,7 @@ from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
-from api.can_api_definition import CovidActNowAreaSummary
+from api.can_api_definition import RegionSummary
 from api.can_api_definition import Actuals
 from api.can_api_definition import Projections
 from api.can_api_definition import ResourceUsageProjection
@@ -57,7 +57,7 @@ def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_
     nyc_latest = us_latest.get_subset(None, fips=nyc_fips)
     nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
     all_timeseries_api = api_pipeline.run_on_all_fips_for_intervention(
-        nyc_latest, nyc_timeseries, Intervention.STRONG_INTERVENTION, nyc_model_output_path.parent,
+        nyc_latest, nyc_timeseries, Intervention.STRONG_INTERVENTION, nyc_model_output_path.parent
     )
 
     api_pipeline.deploy_single_level(

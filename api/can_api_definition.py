@@ -50,17 +50,17 @@ class ResourceUtilization(base_model.APIBaseModel):
         ..., description="Currently used capacity for resource by COVID "
     )
     currentUsageTotal: Optional[int] = pydantic.Field(
-        ..., description="Currently used capacity for resource by all patients (COVID + Non-COVID)",
+        ..., description="Currently used capacity for resource by all patients (COVID + Non-COVID)"
     )
     typicalUsageRate: Optional[float] = pydantic.Field(
-        ..., description="Typical used capacity rate for resource. This excludes any COVID usage.",
+        ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
     )
 
 
 class Actuals(base_model.APIBaseModel):
     population: Optional[int] = pydantic.Field(
         ...,
-        description="Total population in geographic area [*deprecated*: refer to summary for this]",
+        description="Total population in geographic region [*deprecated*: refer to summary for this]",
         gt=0,
     )
     intervention: str = pydantic.Field(..., description="Name of high-level intervention in-place")
@@ -80,7 +80,7 @@ class Actuals(base_model.APIBaseModel):
     contactTracers: Optional[int] = pydantic.Field(default=None, description="# of Contact Tracers")
 
 
-class CovidActNowAreaSummary(base_model.APIBaseModel):
+class RegionSummary(base_model.APIBaseModel):
     countryName: str = "US"
     fips: str = pydantic.Field(
         ...,
@@ -97,7 +97,9 @@ class CovidActNowAreaSummary(base_model.APIBaseModel):
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
     projections: Optional[Projections] = pydantic.Field(...)
     actuals: Optional[Actuals] = pydantic.Field(...)
-    population: int = pydantic.Field(..., description="Total Population in geographic area.", gt=0)
+    population: int = pydantic.Field(
+        ..., description="Total Population in geographic region.", gt=0
+    )
 
     @property
     def intervention(self) -> Optional[Intervention]:
@@ -127,11 +129,11 @@ class CovidActNowAreaSummary(base_model.APIBaseModel):
             return f"{self.fips}.{intervention.name}"
 
 
-class CANActualsTimeseriesRow(Actuals):
+class ActualsTimeseriesRow(Actuals):
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
 
 
-class CANPredictionTimeseriesRow(base_model.APIBaseModel):
+class PredictionTimeseriesRow(base_model.APIBaseModel):
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
     hospitalBedsRequired: int = pydantic.Field(
         ...,
@@ -150,7 +152,7 @@ class CANPredictionTimeseriesRow(base_model.APIBaseModel):
         description="Number of ICU beds projected to be in-use or actually in use (if in the past)",
     )
     ventilatorsInUse: int = pydantic.Field(
-        ..., description="Number of ventilators projected to be in-use.",
+        ..., description="Number of ventilators projected to be in-use."
     )
     ventilatorCapacity: int = pydantic.Field(..., description="Total ventilator capacity.")
     RtIndicator: float = pydantic.Field(..., description="Historical or Inferred Rt")
@@ -168,7 +170,7 @@ class CANPredictionTimeseriesRow(base_model.APIBaseModel):
     )
 
 
-class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
+class PredictionTimeseriesRowWithHeader(PredictionTimeseriesRow):
     countryName: str = "US"
     stateName: str = pydantic.Field(..., description="The state name")
     countyName: Optional[str] = pydantic.Field(..., description="The county name")
@@ -191,22 +193,22 @@ class PredictionTimeseriesRowWithHeader(CANPredictionTimeseriesRow):
             return AggregationLevel.COUNTY
 
 
-class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
-    timeseries: Optional[List[CANPredictionTimeseriesRow]] = pydantic.Field(...)
-    actualsTimeseries: List[CANActualsTimeseriesRow] = pydantic.Field(...)
+class RegionSummaryWithTimeseries(RegionSummary):
+    timeseries: Optional[List[PredictionTimeseriesRow]] = pydantic.Field(...)
+    actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
 
     @property
-    def area_summary(self) -> CovidActNowAreaSummary:
+    def region_summary(self) -> RegionSummary:
 
         data = {}
         # Iterating through self does not force any conversion
         # https://pydantic-docs.helpmanual.io/usage/exporting_models/#dictmodel-and-iteration
         for field, value in self:
-            if field not in CovidActNowAreaSummary.__fields__:
+            if field not in RegionSummary.__fields__:
                 continue
             data[field] = value
 
-        return CovidActNowAreaSummary(**data)
+        return RegionSummary(**data)
 
     # pylint: disable=no-self-argument
     @pydantic.validator("timeseries")
@@ -240,8 +242,8 @@ class CovidActNowAreaTimeseries(CovidActNowAreaSummary):
         return super().output_key(intervention) + ".timeseries"
 
 
-class CovidActNowBulkSummary(base_model.APIBaseModel):
-    __root__: List[CovidActNowAreaSummary] = pydantic.Field(...)
+class AggregateRegionSummary(base_model.APIBaseModel):
+    __root__: List[RegionSummary] = pydantic.Field(...)
 
     def output_key(self, intervention):
         aggregate_level = self.__root__[0].aggregate_level
@@ -251,8 +253,8 @@ class CovidActNowBulkSummary(base_model.APIBaseModel):
             return f"states.{intervention.name}"
 
 
-class CovidActNowBulkTimeseries(base_model.APIBaseModel):
-    __root__: List[CovidActNowAreaTimeseries] = pydantic.Field(...)
+class AggregateRegionSummaryWithTimeseries(base_model.APIBaseModel):
+    __root__: List[RegionSummaryWithTimeseries] = pydantic.Field(...)
 
     def output_key(self, intervention):
         aggregate_level = self.__root__[0].aggregate_level
@@ -262,7 +264,7 @@ class CovidActNowBulkTimeseries(base_model.APIBaseModel):
             return f"states.{intervention.name}.timeseries"
 
 
-class CovidActNowBulkFlattenedTimeseries(base_model.APIBaseModel):
+class AggregateFlattenedTimeseries(base_model.APIBaseModel):
     __root__: List[PredictionTimeseriesRowWithHeader] = pydantic.Field(...)
 
     def output_key(self, intervention):
