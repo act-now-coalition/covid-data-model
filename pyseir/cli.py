@@ -20,6 +20,7 @@ from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 from libs.us_state_abbrev import ABBREV_US_STATE
 from pyseir.inference.whitelist_generator import WhitelistGenerator
+from pyseir.inference import forecast_rt
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -194,6 +195,10 @@ def _build_all_for_states(
     states_only=False,
     fips=None,
 ):
+    print("running forecast")
+    forecast_rt.external_run_forecast()
+    print("ran forecast")
+    return
     # prepare data
     _cache_global_datasets()
     print("saving data")

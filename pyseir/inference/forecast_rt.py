@@ -34,11 +34,12 @@ class ForecastRt:
         self.df_all = df_all
         self.states = "All"  # All to use All
         # self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/july9_csv/"
-        self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/merged_results.csv"
+        # self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/merged_results.csv"
+        self.csv_path = "./pyseir_data/merged_results.csv"
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet
         self.ref_date = datetime(year=2020, month=1, day=1)
-        self.debug_plots = False
+        self.debug_plots = True
 
         # Variable Names
         self.aggregate_level_name = "aggregate_level"
@@ -63,6 +64,8 @@ class ForecastRt:
             self.d_predict_variable,
             "Rt_MAP__new_cases",
             self.fips_var_name,
+            "positive_tests",
+            "negative_tests",
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -77,7 +80,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 3
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -385,6 +388,7 @@ class ForecastRt:
                     )
 
             plt.title(state_name + ": epochs: " + str(self.n_epochs))
+            plt.ylim(0.5, 3)
             plt.savefig(
                 "train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf",
                 bbox_inches="tight",
