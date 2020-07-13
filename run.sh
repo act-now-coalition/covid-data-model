@@ -69,8 +69,10 @@ execute_model() {
   pyseir build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
 
   # Move state output to the expected location.
+  echo "making output dir"
   mkdir -p ${API_OUTPUT_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/* ${API_OUTPUT_DIR}/
+  echo "moving output"
+  #mv ${API_OUTPUT_DIR}/web_ui/* ${API_OUTPUT_DIR}/
 
   rmdir ${API_OUTPUT_DIR}/web_ui/
 
