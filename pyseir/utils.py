@@ -7,6 +7,13 @@ from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from libs.datasets.dataset_utils import AggregationLevel
 
+import structlog
+from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
+from structlog import configure
+
+configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
+log = structlog.get_logger(__name__)
+
 REPORTS_FOLDER = lambda output_dir, state_name: os.path.join(
     output_dir, "pyseir", state_name, "reports"
 )
@@ -34,6 +41,12 @@ class RunMode(Enum):
 
 
 class RunArtifact(Enum):
+
+    FORECAST_VAR_UNSCALED = "forecast_var_unscaled"
+    FORECAST_VAR_SCALED = "forecast_var_scaled"
+    FORECAST_RESULT = "forecast_result"
+    FORECAST_LOSS = "forecast_loss"
+
     RT_SMOOTHING_REPORT = "rt_smoothing_report"
     RT_INFERENCE_RESULT = "rt_inference_result"
     RT_INFERENCE_REPORT = "rt_inference_report"
@@ -70,14 +83,20 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
     path: str
         Location of the artifact.
     """
-    state_obj = us.states.lookup(fips[:2])
+    log.info(f"getting state obj fips: {fips}")
+    state_obj = us.states.lookup("01")  # [:2])
+    log.info(state_obj)
+
     if len(fips) == 5:
         agg_level = AggregationLevel.COUNTY
         county = load_data.load_county_metadata_by_fips(fips)["county"]
     else:
         agg_level = AggregationLevel.STATE
 
+    log.info("getting artifact")
     artifact = RunArtifact(artifact)
+    log.info("got artifact")
+    log.info(artifact)
 
     output_dir = output_dir or OUTPUT_DIR
 
@@ -204,6 +223,30 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
                 "reports",
                 f"backtest_results__{state_obj.name}__{fips}.pdf",
             )
+
+    elif artifact is RunArtifact.FORECAST_VAR_UNSCALED:
+        path = os.path.join(
+            STATE_SUMMARY_FOLDER(output_dir),
+            "reports",
+            f"Forecast_var_unscaled_{state_obj.name}__{fips}.pdf",
+        )
+
+    elif artifact is RunArtifact.FORECAST_LOSS:
+        path = os.path.join(STATE_SUMMARY_FOLDER(output_dir), "reports", f"Forecast_loss.pdf",)
+
+    elif artifact is RunArtifact.FORECAST_VAR_SCALED:
+        path = os.path.join(
+            STATE_SUMMARY_FOLDER(output_dir),
+            "reports",
+            f"Forecast_var_scaled_{state_obj.name}__{fips}.pdf",
+        )
+
+    elif artifact is RunArtifact.FORECAST_RESULT:
+        path = os.path.join(
+            STATE_SUMMARY_FOLDER(output_dir),
+            "reports",
+            f"Forecast_result_{state_obj.name}__{fips}.pdf",
+        )
 
     else:
         raise ValueError(f"No paths available for artifact {RunArtifact}")

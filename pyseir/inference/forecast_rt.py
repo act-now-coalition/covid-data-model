@@ -9,7 +9,7 @@ import us
 import structlog
 
 # from pyseir.utils import AggregationLevel, TimeseriesType
-# from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from structlog.threadlocal import bind_threadlocal, clear_threadlocal, merge_threadlocal
 from structlog import configure
 from enum import Enum
@@ -33,8 +33,6 @@ class ForecastRt:
         log.info("init!")
         self.df_all = df_all
         self.states = "All"  # All to use All
-        # self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/july9_csv/"
-        # self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/merged_results.csv"
         self.csv_path = "./pyseir_data/merged_results.csv"
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet
@@ -45,7 +43,10 @@ class ForecastRt:
         self.aggregate_level_name = "aggregate_level"
         self.state_aggregate_level_name = "state"
         self.state_var_name = "state"
-        self.fips_var_name = "fips"
+        self.fips_var_name = "fips"  # name of fips var in input csv
+        self.fips_var_name_int = (
+            "fips_int"  # name of fips used in forecast (cast from input string to int)
+        )
         self.sim_date_name = "sim_day"
         self.index_col_name_csv = "date"
         self.predict_variable = "Rt_MAP__new_cases"
@@ -63,7 +64,7 @@ class ForecastRt:
             self.daily_death_var,
             self.d_predict_variable,
             "Rt_MAP__new_cases",
-            self.fips_var_name,
+            self.fips_var_name_int,
             "positive_tests",
             "negative_tests",
         ]
@@ -98,7 +99,10 @@ class ForecastRt:
     def get_forecast_dfs(self):
         if self.merged_df:
             df_merge = pd.read_csv(
-                self.csv_path, parse_dates=True, index_col=self.index_col_name_csv
+                self.csv_path,
+                parse_dates=True,
+                index_col=self.index_col_name_csv,
+                converters={"fips": str},
             )
             if not self.states_only:
                 log.info("County level training not implemented yet :(")
@@ -106,6 +110,7 @@ class ForecastRt:
             else:
                 log.info("MERGED DF")
                 log.info(df_merge)
+                df_merge.to_csv("MERGED_CSV.csv")
                 # only store state information
                 df_states_merge = df_merge[
                     df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
@@ -122,32 +127,23 @@ class ForecastRt:
                     df = state_df_dictionary[state]
                     df[self.sim_date_name] = (df.index - self.ref_date).days + 1
                     df[self.d_predict_variable] = df[self.predict_variable].diff()
+                    df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
 
                     if self.deaths_cumulative:
                         log.info("SAVING DEATHS")
                         df[self.daily_case_var] = df[self.case_var].diff()
                     if self.cases_cumulative:
                         df[self.daily_death_var] = df[self.death_var].diff()
-                    state_name = df["state"][0]
+                    state_name = df["fips"][0]
+                    log.info(f"STATE FIPS: {state_name}")
 
                     df_forecast = df[self.forecast_variables].copy()
                     # Fill empty values with mask value
-                    log.info("THIS Forecast")
                     log.info(df_forecast)
-                    # first_valid_index = df[self.predict_variable].first_valid_index()
-                    # log.info('first valid index')
-                    # log.info(first_valid_index)
-                    # df_forecast = df_forecast.iloc[df[self.predict_variable].first_valid_index():df[self.predict_variable].last_valid_index()]
                     df_forecast = df_forecast.fillna(self.mask_value)
-                    # df_forecast.replace(r"\s*+", self.mask_value, regex=True)
-                    # df_forecast.replace(r"\s+", self.mask_value, regex=True)
-                    # df_forecast.replace("NaN", self.mask_value, regex=True)
-                    # df_forecast.replace(np.nan, self.mask_value, regex=True)
                     df_forecast = df_forecast.iloc[
                         :-1
                     ]  # because last value is NaN for diff #TODO find a better way to do this
-                    # log.info(df_forecast)
-                    # df_forecast.to_csv(state_name + ".csv")
                     state_names.append(state_name)
                     df_list.append(df_forecast)
             log.info("STATE NAMES")
@@ -228,7 +224,9 @@ class ForecastRt:
             ax.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
-            fig.savefig(state + "_unscaled.pdf", bbox_inches="tight")
+            log.info("about to get run artifact path")
+            output_path = get_run_artifact_path(state, RunArtifact.FORECAST_VAR_UNSCALED)
+            plt.savefig(output_path, bbox_inches="tight")
 
             fig2, ax2 = plt.subplots(figsize=(18, 12))
             for var in self.forecast_variables:
@@ -238,7 +236,8 @@ class ForecastRt:
             ax2.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
-            fig2.savefig(state + "_scaled.pdf", bbox_inches="tight")
+            output_path = get_run_artifact_path(state, RunArtifact.FORECAST_VAR_SCALED)
+            plt.savefig(output_path, bbox_inches="tight")
 
             plt.close("all")
 
@@ -391,10 +390,8 @@ class ForecastRt:
 
             plt.title(state_name + ": epochs: " + str(self.n_epochs))
             plt.ylim(0.5, 3)
-            plt.savefig(
-                "train_plot_" + state_name + "_epochs_" + str(self.n_epochs) + ".pdf",
-                bbox_inches="tight",
-            )
+            output_path = get_run_artifact_path(state_name, RunArtifact.FORECAST_RESULT)
+            plt.savefig(output_path, bbox_inches="tight")
 
         return
 
@@ -514,20 +511,18 @@ class ForecastRt:
         plot = True
         if self.debug_plots:
             plt.close("all")
-            logging.info("plotting")
             plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
-            logging.info("plotted history")
             plt.plot(
                 history.history["val_loss"],
                 color="green",
                 linestyle="solid",
                 label="Validation Set",
             )
-            logging.info("plotted more")
             plt.legend()
             plt.xlabel("Epochs")
             plt.ylabel("RMSE")
-            plt.savefig("lstm_loss_final.png")
+            output_path = get_run_artifact_path("01", RunArtifact.FORECAST_LOSS)
+            plt.savefig(output_path, bbox_inches="tight")
             plt.close("all")
 
         return model, history
