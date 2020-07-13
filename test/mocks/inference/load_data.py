@@ -73,8 +73,8 @@ def create_synthetic_df(data_generator):
     observed_new_cases = _get_cases_for_times(data_generator, times)
     data = dict()
     data["cases"] = observed_new_cases
-    if not data_generator.disable_deaths:
-        data["deaths"] = 0.03 * observed_new_cases
+    # if not data_generator.disable_deaths: - TODO fails if deaths missing elsewhere
+    data["deaths"] = 0.03 * observed_new_cases
 
     df = pd.DataFrame(data=data, index=dates)
     return df

@@ -6,6 +6,7 @@ import structlog
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
+from matplotlib import pyplot as plt
 
 from pyseir import load_data
 from pyseir.utils import TimeseriesType, get_run_artifact_path, RunArtifact
@@ -19,7 +20,11 @@ def run_rt_for_fips(fips):
     """Entry Point for Infer Rt"""
 
     # Generate the Data Packet to Pass to RtInferenceEngine
-    input_df = _generate_input_data(fips, include_testing_correction=True)
+    input_df = _generate_input_data(
+        fips,
+        include_testing_correction=True,
+        plot_path=get_run_artifact_path(fips, RunArtifact.RT_SMOOTHING_REPORT),
+    )
 
     # Save a reference to instantiated engine (eventually I want to pull out the figure generation
     # and saving so that I don't have to pass a display_name and fips into the class
@@ -43,7 +48,9 @@ def _get_display_name(fips) -> str:
     return str(fips)
 
 
-def _generate_input_data(fips, include_testing_correction=True, include_deaths=True):
+def _generate_input_data(
+    fips, include_testing_correction=True, include_deaths=True, plot_path=None
+):
     """
     Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
 
@@ -59,15 +66,19 @@ def _generate_input_data(fips, include_testing_correction=True, include_deaths=T
     df = filter_and_smooth_input_data(
         df=pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date),
         include_deaths=include_deaths,
+        plot_path=plot_path,
     )
     return df
 
 
-def filter_and_smooth_input_data(df: [pd.DataFrame], include_deaths=False) -> pd.DataFrame:
+def filter_and_smooth_input_data(
+    df: [pd.DataFrame], include_deaths=False, plot_path=None
+) -> pd.DataFrame:
     """Do Everything Strange Here Before it Gets to the Inference Engine"""
     MIN_CUMULATIVE_COUNTS = dict(cases=20, deaths=10)
     MIN_INCIDENT_COUNTS = dict(cases=5, deaths=5)
 
+    dates = df.index
     # Apply Business Logic To Filter Raw Data
     for column in ["cases", "deaths"]:
         requirements = [  # All Must Be True
@@ -77,6 +88,8 @@ def filter_and_smooth_input_data(df: [pd.DataFrame], include_deaths=False) -> pd
         ]
         # Now Apply Input Outlier Detection and Smoothing
         filtered = utils.replace_outliers(df[column], log=rt_log)
+        # TODO find way to indicate which points filtered in figure below
+
         assert len(filtered) == len(df[column])
         smoothed = filtered.rolling(
             InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
@@ -96,8 +109,27 @@ def filter_and_smooth_input_data(df: [pd.DataFrame], include_deaths=False) -> pd
             requirements.append(True)
 
         if all(requirements):
+            if plot_path is not None and column == "cases":
+                fig = plt.figure(figsize=(10, 6))
+                ax = fig.add_subplot(111)  # plt.axes
+                ax.set_yscale("log")
+                chart_min = max(0.1, smoothed.min())
+                ax.set_ylim((chart_min, df[column].max()))
+                plt.scatter(
+                    dates[-len(df[column]) :],
+                    df[column],
+                    alpha=0.3,
+                    label=f"Smoothing of: {column}",
+                )
+                plt.plot(dates[-len(df[column]) :], smoothed)
+                plt.grid(True, which="both")
+                plt.xticks(rotation=30)
+                plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
+
+                plt.savefig(plot_path, bbox_inches="tight")
+                plt.close(fig)
+
             df[column] = smoothed
-            # TODO: save_input_data_smoothing() Figures
         else:
             df = df.drop(columns=column, inplace=False)
             rt_log.info("Dropping:", columns=column, requirements=requirements)

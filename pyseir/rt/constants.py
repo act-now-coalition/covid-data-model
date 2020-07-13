@@ -35,7 +35,7 @@ class InferRtConstants:
 
     # Maximum increase (from DEFAULT_PROCESS_SIGMA) permitted for low counts
     # Recommend range 20. - 50. 30. appears to be best
-    MAX_SCALING_OF_SIGMA = 30.0
+    MAX_SCALING_OF_SIGMA = 50.0
 
     # Override min_cases and min_deaths with this value.
     # Recommend 1. - 5. range.

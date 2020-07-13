@@ -60,6 +60,7 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
     ----------
     fips: str
         State or county fips code. Can also be a 2 character state abbreviation.
+        If arbitrary string (e.g. for tests) then passed through
     artifact: RunArtifact
         The artifact type to retrieve the pointer for.
     output_dir: str or NoneType
@@ -74,8 +75,10 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
     if len(fips) == 5:
         agg_level = AggregationLevel.COUNTY
         county = load_data.load_county_metadata_by_fips(fips)["county"]
-    else:
+    elif len(fips) == 2:
         agg_level = AggregationLevel.STATE
+    else:
+        agg_level = None
 
     artifact = RunArtifact(artifact)
 
@@ -100,7 +103,13 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
                 REPORTS_FOLDER(output_dir, state_obj.name),
                 f"Rt_smoothing__{state_obj.name}__{county}__{fips}.pdf",
             )
-        else:
+        elif agg_level is AggregationLevel.STATE:
+            path = os.path.join(
+                STATE_SUMMARY_FOLDER(output_dir),
+                "reports",
+                f"Rt_smoothing__{state_obj.name}__{fips}.pdf",
+            )
+        else:  # For tests
             path = os.path.join(
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
