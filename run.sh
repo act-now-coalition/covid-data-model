@@ -74,7 +74,7 @@ execute_model() {
   echo "moving output"
   #mv ${API_OUTPUT_DIR}/web_ui/* ${API_OUTPUT_DIR}/
 
-  rmdir ${API_OUTPUT_DIR}/web_ui/
+  #rmdir ${API_OUTPUT_DIR}/web_ui/
 
   # Capture all the PDFs pyseir creates in output/pyseir since they are
   # extremely helpful for debugging / QA'ing the model results.
