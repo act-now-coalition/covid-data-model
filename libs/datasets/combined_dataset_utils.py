@@ -107,12 +107,12 @@ def update_data_public_head(
     Returns: Tuple of DatasetPointers to latest and timeseries datasets.
     """
     if not latest_dataset:
-        latest_dataset = combined_datasets.load_us_latest_dataset(skip_cache=True)
+        latest_dataset = combined_datasets.build_us_latest_with_all_fields(skip_cache=True)
     latest_pointer = persist_dataset(latest_dataset, path_prefix)
     latest_pointer.save(pointer_path_dir, tag)
 
     if not timeseries_dataset:
-        timeseries_dataset = combined_datasets.load_us_timeseries_dataset(skip_cache=True)
+        timeseries_dataset = combined_datasets.build_us_timeseries_with_all_fields(skip_cache=True)
     timeseries_pointer = persist_dataset(timeseries_dataset, path_prefix)
     timeseries_pointer.save(pointer_path_dir, tag)
     return latest_pointer, timeseries_pointer
@@ -129,3 +129,27 @@ def promote_pointer(
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     pointer.save(pointer_directory, to_tag)
     _logger.info("Successfully promoted dataset pointer", from_tag=from_tag.value, to=to_tag.value)
+
+
+def remove_stale_datasets(
+    dataset_pointer_directory: pathlib.Path, dataset_directory: pathlib.Path, dry_run=False
+):
+    """Removes datasets not currently pointed to by pointers in dataset pointer directory.
+
+    Args:
+        dataset_pointer_directory: Directory with saved dataset pointers.
+        dataset_directory: Directory where persisted or cached datasets are stored.
+
+    """
+    active_filenames = []
+    for pointer_path in dataset_pointer_directory.rglob("*.json"):
+        pointer = DatasetPointer.parse_raw(pointer_path.read_text())
+        active_filenames.append(pointer.filename)
+
+    for dataset_path in dataset_directory.rglob("*.csv"):
+        if dataset_path.name not in active_filenames:
+            _logger.info("Removing stale dataset", path=str(dataset_path))
+            if not dry_run:
+                dataset_path.unlink()
+        else:
+            _logger.info("Dataset actively pointed to, continuing", path=str(dataset_path))

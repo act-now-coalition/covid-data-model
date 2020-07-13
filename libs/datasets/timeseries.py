@@ -262,4 +262,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     @classmethod
     def load_csv(cls, path: pathlib.Path):
         df = common_df.read_csv(path)
+        # TODO: common_df.read_csv sets the index of the dataframe to be fips, date, however
+        # most of the calling code expects fips and date to not be in an index.
+        # In the future, it would be good to standardize around index fields.
+        df = df.reset_index()
         return cls(df)

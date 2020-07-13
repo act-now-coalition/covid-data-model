@@ -1,15 +1,15 @@
 {
   "dataset_type": "timeseries",
-  "path": "/Users/chris/can/covid-data-model/.data/timeseries.20200712T175410.8f2000e7-1efbb970.csv",
+  "path": "dataset_pointers/data/timeseries.20200713T153846.303cbe0f-8df11d25.csv",
   "data_git_info": {
-    "sha": "1efbb970ef79b5f583610cc4b41f99b2e53fd468",
+    "sha": "8df11d2579406c21aa0c2a747ba6ad10c7372ef4",
     "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "8f2000e7e3b74864c5333ef9b0fe6946dfcfd815",
+    "sha": "303cbe0f2cf19e85bec8ef3ee930ea4d7e1c2ac9",
     "branch": "persist-combined-datasets",
     "is_dirty": true
   },
-  "updated_at": "2020-07-12T17:54:10.266185"
+  "updated_at": "2020-07-13T15:38:46.353484"
 }
