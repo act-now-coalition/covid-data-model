@@ -7,14 +7,15 @@ from collections import defaultdict
 from datetime import datetime
 from matplotlib.backends import backend_pdf
 from pyseir import load_data
-from pyseir.cdc.parameters import Target, ForecastTimeUnit
+from pyseir.cdc.parameters import Target, ForecastTimeUnit, TARGETS_AND_UNITS_REPORT
 from pyseir.cdc.utils import load_and_aggregate_observations
 from pyseir.cdc.output_mapper import (OutputMapper, REPORT_FOLDER, TEAM,
                                       MODEL, FORECAST_DATE, DATE_FORMAT)
 
 
 LABELS = {Target.CUM_DEATH: 'cumulative death',
-          Target.INC_DEATH: 'incident death'}
+          Target.INC_DEATH: 'incident death',
+          Target.INC_CASE: 'incident case'}
 
 
 def load_output_mapper_result(fips, forecast_date):
@@ -30,7 +31,7 @@ def load_output_mapper_result(fips, forecast_date):
     return om_result
 
 
-def plot_results(fips, om_result, target, observations, pdf=None):
+def plot_results(fips, om_result, targets_and_units, observations, pdf=None):
     """
     Plot median and 95% confidence interval of the forecast and observations
     for a given type of target (cumulative death, incident death or incident
@@ -59,17 +60,16 @@ def plot_results(fips, om_result, target, observations, pdf=None):
         Pdf object to save the figures.
     """
 
-    target = Target(target)
+    results = defaultdict(dict)
 
-    results = defaultdict(list)
-
-    for unit in ['day', 'wk']:
-        df_by_unit = om_result[om_result.target.str.contains(f'{unit} ahead {target.value}')].copy()
-        for target_name in df_by_unit.target.unique():
-            sub_df = df_by_unit[df_by_unit.target == target_name]
+    for target, unit in targets_and_units:
+        df = om_result[om_result.target.str.contains(f'{unit.value} ahead {target.value}')].copy()
+        results[target.value][unit.value] = list()
+        for target_name in df.target.unique():
+            sub_df = df[df.target == target_name]
             sub_df['quantile'] = sub_df['quantile'].apply(lambda x: float(x))
 
-            results[unit].append(pd.DataFrame({
+            results[target.value][unit.value].append(pd.DataFrame({
                 'target_end_date': [sub_df.iloc[0]['target_end_date']],
                 'median': [float(sub_df[sub_df['quantile'] == 0.5]['value'])],
                 'ci_250': [float(sub_df[sub_df['quantile'] == 0.25]['value'])],
@@ -77,29 +77,32 @@ def plot_results(fips, om_result, target, observations, pdf=None):
                 'ci_025': [float(sub_df[sub_df['quantile'] == 0.025]['value'])],
                 'ci_975': [float(sub_df[sub_df['quantile'] == 0.975]['value'])]}))
 
+    for target_name in results:
+        for unit_name in results[target_name]:
+            results[target_name][unit_name] = pd.concat(results[target_name][unit_name])
+            results[target_name][unit_name]['target_end_date'] = \
+                pd.to_datetime(results[target_name][unit_name]['target_end_date'])
 
-    for unit in [ForecastTimeUnit.DAY.value, ForecastTimeUnit.WK.value]:
-        results[unit] = pd.concat(results[unit])
-        results[unit]['target_end_date'] = pd.to_datetime(results[unit]['target_end_date'])
-
-    plt.figure(figsize=(10, 4))
-    for n, unit in enumerate([ForecastTimeUnit.DAY.value,
-                              ForecastTimeUnit.WK.value]):
-        plt.subplot(1, 2, n+1)
-        plt.plot(pd.to_datetime(observations[target.value][unit].index),
-                 observations[target.value][unit].values,
+    plt.figure(figsize=(10, 10))
+    for n, target_unit in enumerate(targets_and_units):
+        target, unit = target_unit
+        plt.subplot(2, 2, n+1)
+        plt.plot(pd.to_datetime(observations[target.value][unit.value].index),
+                 observations[target.value][unit.value].values,
                  label='observed')
 
-        plt.plot(results[unit]['target_end_date'], results[unit]['median'],
+        plt.plot(results[target.value][unit.value]['target_end_date'],
+                 results[target.value][unit.value]['median'],
                  marker='o', label='forecast median')
-        plt.fill_between(x=results[unit]['target_end_date'],
-                         y1=results[unit]['ci_025'],
-                         y2=results[unit]['ci_975'],
+        plt.fill_between(x=results[target.value][unit.value]['target_end_date'],
+                         y1=results[target.value][unit.value]['ci_025'],
+                         y2=results[target.value][unit.value]['ci_975'],
                          label=f'CI_95',
                          alpha=0.15)
-        plt.fill_between(x=results[unit]['target_end_date'],
-                         y1=results[unit]['ci_250'],
-                         y2=results[unit]['ci_750'],
+
+        plt.fill_between(x=results[target.value][unit.value]['target_end_date'],
+                         y1=results[target.value][unit.value]['ci_250'],
+                         y2=results[target.value][unit.value]['ci_750'],
                          label=f'CI_50',
                          alpha=0.3)
         plt.ylabel(f'{unit} ahead forecast')
@@ -107,7 +110,8 @@ def plot_results(fips, om_result, target, observations, pdf=None):
         plt.legend()
         plt.xticks(rotation=45)
 
-    plt.suptitle('/'.join([us.states.lookup(fips).name, fips, LABELS[target]]))
+        plt.title('/'.join([us.states.lookup(fips).name, fips, LABELS[target]]))
+
     plt.tight_layout()
     plt.subplots_adjust(top=0.88)
 
@@ -128,7 +132,7 @@ def run_all(forecast_date=FORECAST_DATE):
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist['inference_ok'] == True]
-    fips_list = list(df_whitelist['fips'].str[:2].unique())[:5]
+    fips_list = list(df_whitelist['fips'].str[:2].unique())
     date_string = datetime.strftime(forecast_date, DATE_FORMAT)
     output_path = os.path.join(f'{REPORT_FOLDER}',
                                date_string,
@@ -137,11 +141,16 @@ def run_all(forecast_date=FORECAST_DATE):
     for fips in fips_list:
         logging.info(f'plotting cdc submission for fips {fips}')
         observations = load_and_aggregate_observations(fips,
-                                                       units=[ForecastTimeUnit.DAY, ForecastTimeUnit.WK],
-                                                       targets=[Target.CUM_DEATH, Target.INC_DEATH],
+                                                       targets_and_units=[(Target(tup[0]),
+                                                                           ForecastTimeUnit(tup[1])) for
+                                                                          tup in TARGETS_AND_UNITS_REPORT],
                                                        smooth=False)
-        om_result = load_output_mapper_result(fips,
-                                              datetime.strftime(forecast_date, DATE_FORMAT))
-        for target in [Target.CUM_DEATH, Target.INC_DEATH]:
-            plot_results(fips, om_result, target, observations, pdf)
+        om_result = load_output_mapper_result(fips, datetime.strftime(forecast_date, DATE_FORMAT))
+        plot_results(fips=fips, om_result=om_result,
+                     observations=observations,
+                     pdf=pdf,
+                     targets_and_units=[(Target(tup[0]), ForecastTimeUnit(tup[1]))
+                                        for tup in TARGETS_AND_UNITS_REPORT if
+                                        Target(tup[0]) != Target.INC_HOSP])
+
     pdf.close()
