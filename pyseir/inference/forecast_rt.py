@@ -81,7 +81,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 1
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
