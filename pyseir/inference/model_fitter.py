@@ -93,8 +93,8 @@ class ModelFitter:
         limit_t_delta_phases=[14, 100],  # good as of June 3, 2020 may need to update in the future
         error_t_delta_phases=1,
         test_fraction=0.1,
-        # limit_test_fraction=[0.02, 1],
-        fix_test_fraction=True,
+        limit_test_fraction=[0.02, 1],
+        # fix_test_fraction=True,
         error_test_fraction=0.02,
         hosp_fraction=1,
         # fix_hosp_fraction=True,
@@ -230,7 +230,7 @@ class ModelFitter:
             "t_break",
             "eps2",
             "t_delta_phases",
-            # "test_fraction",
+            "test_fraction",
             "hosp_fraction",
             "log10_I_initial",
         ]
