@@ -126,9 +126,7 @@ def compare_data(var, df1, df2, df1_name, df2_name, args, state):
         color1 = "blue"
         color2 = "orange"
         color3 = "purple"
-        color4 = (
-            "purple"
-        )  # because we are only comparing changes in additional days from the latest NYT dataset
+        color4 = "purple"  # because we are only comparing changes in additional days from the latest NYT dataset
         fig.suptitle(var)
         ax[0].plot(
             df1.index.values,
