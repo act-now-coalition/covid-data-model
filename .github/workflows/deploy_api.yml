@@ -9,7 +9,7 @@ on:
   schedule:
    - cron: '30 1,16 * * *'
 
-  # push:
+  push:
   # Hook to trigger a manual run.
   # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
   repository_dispatch:
@@ -17,7 +17,7 @@ on:
 
 env:
   # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'master'
+  COVID_DATA_MODEL_REF: 'feature/rt-forecast'
 
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'master'
