@@ -100,8 +100,8 @@ jobs:
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
 
 
-    - name: Build API (run.sh .. .. execute_api)
-      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
+    #- name: Build API (run.sh .. .. execute_api)
+    #  run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
 
     - name: make and copy to local tmp directory
       run: |
@@ -122,7 +122,7 @@ jobs:
       run: |
         rm -rf ./tmp/data/
 
-    - name: Trigger website PR generation if conditions are met (master branch, morning build, etc)
-      env:
-        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
-      run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
+    #- name: Trigger website PR generation if conditions are met (master branch, morning build, etc)
+    #  env:
+    #    GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+    #  run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
