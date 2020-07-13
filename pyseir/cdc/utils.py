@@ -14,6 +14,8 @@ from pyseir.cdc.parameters import Target, ForecastTimeUnit, DATE_FORMAT
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
+def extract_num_units_from_target_name(target_name):
+    return int(target_name.split(' ')[0])
 
 def target_column_name(num, target, unit):
     """
@@ -51,8 +53,12 @@ def ppf_from_data(data, weights=None):
         cdf = pdf.cumsum()
         cdf /= cdf.max()
 
-    return scipy.interpolate.interp1d(cdf,
-                                      sorted(data))
+    return scipy.interpolate.interp1d(cdf, sorted(data))
+
+def ppf_from_pdf(values, pdf):
+    cdf = np.cumsum(pdf)
+    cdf /= cdf.max()
+    return scipy.interpolate.interp1d(cdf, values)
 
 def random_sample_from_ppf(ppf, size, percentile_bounds=(0, 1)):
     """
@@ -234,7 +240,7 @@ def aggregate_timeseries(dates, data, unit, target):
         saturdays = np.array([d + timedelta((12 - d.weekday()) % 7) for d in dates])
         data = data[saturdays <= dates.max()]
         saturdays = saturdays[saturdays <= dates.max()]
-        if target in [Target.INC_HOSP, Target.INC_DEATH]:
+        if target in [Target.INC_HOSP, Target.INC_DEATH, Target.INC_CASE]:
             agg = list()
             for d in np.unique(saturdays):
                 agg.append(data[saturdays == d].sum())
@@ -251,7 +257,7 @@ def aggregate_timeseries(dates, data, unit, target):
     return agg_dates, agg_data
 
 
-def load_and_aggregate_observations(fips, units, targets, end_date=None, smooth=True):
+def load_and_aggregate_observations(fips, targets_and_units, end_date=None, smooth=True):
     """
     Load observations based on type of target (cumulative death, incident
     death and incident hospitalizations) and unit (day, week).
@@ -281,40 +287,42 @@ def load_and_aggregate_observations(fips, units, targets, end_date=None, smooth=
         Observations for hospitalizations can be None if no
         cumulative hospitalization data is available for the FIPS code.
     """
+
     state_level_dates, state_level_cumulative_death, state_level_incident_death = \
-        load_state_level_death_data(fips)
+            load_state_level_death_data(fips)
+
+    # sometimes we may want to check the performance of historical forecast,
+    # here it enables blocking part of observations.
+    end_date = end_date or datetime.today()
+    maximum_time_step = (end_date.date() - REF_DATE.date()).days
 
     times, observed_new_cases, observed_new_deaths = \
         load_data.load_new_case_data_by_state(us.states.lookup(fips).name,
                                               REF_DATE)
 
     times = np.array(times)
+
+    observed_new_deaths = observed_new_deaths[times <= maximum_time_step]
+    observed_new_cases = observed_new_cases[times <= maximum_time_step]
+    times = times[times <= maximum_time_step]
+
     hospital_times, hospitalizations, hospitalization_data_type = \
         load_data.load_hospitalization_data_by_state(us.states.lookup(fips).abbr,
                                                      REF_DATE)
     hospital_times = np.array(hospital_times)
-    # sometimes we may want to check the performance of historical forecast,
-    # here it enables blocking part of observations.
-    end_date = end_date or datetime.today()
-    maximum_time_step = (end_date.date() - REF_DATE.date()).days
 
-
-    observed_new_cases = observed_new_cases[times <= maximum_time_step]
-    observed_new_deaths = observed_new_deaths[times <= maximum_time_step]
-    times = times[times <= maximum_time_step]
 
     if hospital_times is not None:
         hospitalizations = hospitalizations[hospital_times <= maximum_time_step]
         hospital_times = hospital_times[hospital_times <= maximum_time_step]
 
+    observation_time_series = {}
+
     observation_dates = {}
-    for target in [Target.CUM_DEATH, Target.INC_DEATH]:
+    for target in [Target.CUM_DEATH, Target.INC_DEATH, Target.INC_CASE]:
         observation_dates[target.value] = [timedelta(int(t)) + REF_DATE for t in times]
 
-
-    observation_time_series = {}
     matched_observation_date = (state_level_dates == observation_dates[Target.CUM_DEATH.value][-1])
-
     if state_level_cumulative_death[matched_observation_date][0] > observed_new_deaths.cumsum()[-1]:
         observation_time_series[Target.CUM_DEATH.value] = state_level_cumulative_death
         observation_dates[Target.CUM_DEATH.value] = state_level_dates
@@ -327,6 +335,8 @@ def load_and_aggregate_observations(fips, units, targets, end_date=None, smooth=
     else:
         observation_time_series[Target.INC_DEATH.value] = observed_new_deaths
 
+    observation_time_series[Target.INC_CASE.value] = observed_new_cases
+
     if hospital_times is not None:
         hospital_dates = [timedelta(int(t)) + REF_DATE for t in hospital_times]
         if hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
@@ -336,20 +346,19 @@ def load_and_aggregate_observations(fips, units, targets, end_date=None, smooth=
 
     observations = defaultdict(dict)
 
-    for unit in units:
-        for target in targets:
-            if target.value in observation_time_series:
-                agg_dates, agg_observations = aggregate_timeseries(observation_dates[target.value],
+    for target, unit in targets_and_units:
+        if target.value in observation_time_series:
+            agg_dates, agg_observations = aggregate_timeseries(observation_dates[target.value],
                                                                observation_time_series[target.value],
-                                                                   unit,
-                                                                   target)
+                                                               unit,
+                                                               target)
 
-                observations[target.value][unit.value] = \
-                    pd.Series(agg_observations,
-                              index=pd.DatetimeIndex(agg_dates).strftime(DATE_FORMAT))
+            observations[target.value][unit.value] = \
+                pd.Series(agg_observations,
+                          index=pd.DatetimeIndex(agg_dates).strftime(DATE_FORMAT))
 
-            else:
-                observations[target.value][unit.value] = None
+        else:
+            observations[target.value][unit.value] = None
 
     return observations
 
@@ -360,7 +369,7 @@ def smooth_observations(observations):
     smoothed = defaultdict(dict)
     for target_name in observations.keys():
         for unit_name in observations[target_name]:
-            if ((Target(target_name) in [Target.INC_DEATH, Target.INC_HOSP])
+            if ((Target(target_name) in [Target.INC_DEATH, Target.INC_HOSP, Target.INC_CASE])
                & (ForecastTimeUnit(unit_name) is ForecastTimeUnit.DAY)
                & (observations[target_name][unit_name] is not None)):
                 smoothed[target_name][unit_name] = \
