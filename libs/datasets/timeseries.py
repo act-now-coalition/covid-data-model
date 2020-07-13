@@ -84,9 +84,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         if aggregation_level == AggregationLevel.COUNTY:
             group = [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS]
-        if aggregation_level == AggregationLevel.STATE:
+        elif aggregation_level == AggregationLevel.STATE:
             group = [CommonFields.COUNTRY, CommonFields.STATE]
-        if aggregation_level == AggregationLevel.COUNTRY:
+        else:
+            assert aggregation_level == AggregationLevel.COUNTRY
             group = [CommonFields.COUNTRY]
 
         data = self.data[
@@ -259,20 +260,3 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             AggregationLevel.STATE,
             [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE],
         )
-
-    def to_csv(self, path: pathlib.Path):
-        """Persists timeseries to CSV.
-
-        Args:
-            path: Path to write to.
-        """
-        common_df.write_csv(self.data, path, structlog.get_logger())
-
-    @classmethod
-    def load_csv(cls, path: pathlib.Path):
-        df = common_df.read_csv(path)
-        # TODO: common_df.read_csv sets the index of the dataframe to be fips, date, however
-        # most of the calling code expects fips and date to not be in an index.
-        # In the future, it would be good to standardize around index fields.
-        df = df.reset_index()
-        return cls(df)

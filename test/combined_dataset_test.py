@@ -35,6 +35,9 @@ import pytest
 # Tests to make sure that combined datasets are building data with unique indexes
 # If this test is failing, it means that there is one of the data sources that
 # is returning multiple values for a single row.
+from test.dataset_utils_test import to_dict
+
+
 def test_unique_index_values_us_timeseries():
     timeseries = combined_datasets.load_us_timeseries_dataset()
     timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS)

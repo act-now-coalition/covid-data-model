@@ -308,6 +308,8 @@ def build_combined_dataset_from_sources(
     datasets = {}
     for key, dataset_obj in intermediate_datasets.items():
         data_with_index = dataset_obj.data.set_index(target_dataset_cls.NEW_INDEX_FIELDS)
+        if data_with_index.index.duplicated(keep=False).any():
+            raise ValueError(f"Duplicate in {key}")
         # https://stackoverflow.com/a/34297689
         datasets[key] = data_with_index.loc[~data_with_index.duplicated(keep="first"), :]
         # datasets[key] = dataset_obj.data.groupby(target_dataset_cls.NEW_INDEX_FIELDS).first() fails
@@ -386,9 +388,9 @@ def _build_dataframe(
                     assert override == Override.BY_ROW
                     this_not_in_result = ~this_series.index.isin(field_series.index)
                     field_series = field_series.append(this_series.loc[this_not_in_result])
-                    dups = field_series.loc[field_series.duplicated()]
-                    if not dups.empty:
-                        print(f"Dups in {datasource_name} {field}\n{dups}")
+                    dups = field_series.index.duplicated(keep=False)
+                    if dups.any():
+                        print(f"Dups in {datasource_name} {field}\n{field_series.loc[dups, :]}")
                         raise ValueError()
                 log.info(f"series now\n{field_series}")
                 dups = field_series.groupby(field_series.index).filter(lambda group: group.size > 1)
