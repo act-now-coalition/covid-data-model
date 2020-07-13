@@ -52,7 +52,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data = cls._aggregate_new_york_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE,
+                data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE
             ).reset_index()
 
             data = pd.concat([data, non_matching])
@@ -109,7 +109,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
         if weighted_all_bed_occupancy:
             data.loc[
-                data[CommonFields.FIPS] == nyc_fips, CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+                data[CommonFields.FIPS] == nyc_fips, CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
             ] = weighted_all_bed_occupancy
 
         if weighted_icu_occupancy:
@@ -131,6 +131,10 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         """Returns a new BedsDataset containing only county data."""
         is_county = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         return self.data[is_county]
+
+    @property
+    def states(self):
+        return self.data.state.unique()
 
     @property
     def all_fips(self) -> List[str]:

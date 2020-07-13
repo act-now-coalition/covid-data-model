@@ -1,4 +1,7 @@
 from typing import Dict, Type, List, NewType
+import functools
+import pathlib
+import os
 import logging
 import pandas as pd
 import structlog
@@ -8,7 +11,13 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
+from libs.datasets import dataset_pointer
+from libs.datasets.dataset_pointer import DatasetPointer
+from libs.datasets import timeseries
+from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import DatasetTag
+from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
@@ -30,6 +39,12 @@ _logger = logging.getLogger(__name__)
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
+
+
+# Default tag used when loading datasets. Change to globally load different datasets
+# when calling helper load functions
+DEFAULT_TAG = DatasetTag(os.getenv("DATASET_TAG", "stable"))
+
 
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
@@ -79,8 +94,6 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 
 
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [NYTimesDataset],
-    CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -107,6 +120,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.DEATHS: [NYTimesDataset],
 }
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(
@@ -133,15 +148,40 @@ def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
     )
 
 
+@functools.lru_cache(None)
+def load_us_timeseries_dataset(
+    tag: DatasetTag = DEFAULT_TAG,
+    pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
+    dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
+) -> timeseries.TimeseriesDataset:
+    """Loads US TimeseriesDataset for """
+    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES, tag)
+    pointer_path = pointer_directory / filename
+    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
+    return pointer.load_dataset(download_directory=dataset_download_directory)
+
+
+@functools.lru_cache(None)
+def load_us_latest_dataset(
+    dataset_tag: DatasetTag = DEFAULT_TAG,
+    pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
+    dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
+) -> latest_values_dataset.LatestValuesDataset:
+    filename = dataset_pointer.form_filename(DatasetType.LATEST, dataset_tag)
+    pointer_path = pointer_directory / filename
+    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
+    return pointer.load_dataset(download_directory=dataset_download_directory)
+
+
 def get_us_latest_for_state(state) -> dict:
     """Gets latest values for a given state."""
-    us_latest = build_us_latest_with_all_fields()
+    us_latest = load_us_latest_dataset()
     return us_latest.get_record_for_state(state)
 
 
 def get_us_latest_for_fips(fips) -> dict:
     """Gets latest values for a given fips code."""
-    us_latest = build_us_latest_with_all_fields()
+    us_latest = load_us_latest_dataset()
     return us_latest.get_record_for_fips(fips)
 
 
@@ -169,7 +209,7 @@ def get_timeseries_for_fips(
     Returns: Timeseries for fips
     """
 
-    state_ts = build_us_timeseries_with_all_fields().get_subset(None, fips=fips)
+    state_ts = load_us_timeseries_dataset().get_subset(None, fips=fips)
     if columns:
         subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
             drop=True
@@ -197,7 +237,7 @@ def get_timeseries_for_state(
     Returns: Timeseries for state
     """
 
-    state_ts = build_us_timeseries_with_all_fields().get_subset(AggregationLevel.STATE, state=state)
+    state_ts = load_us_timeseries_dataset().get_subset(AggregationLevel.STATE, state=state)
     if columns:
         subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
             drop=True

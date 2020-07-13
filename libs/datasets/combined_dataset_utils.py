@@ -2,6 +2,7 @@ from typing import Type, Tuple
 import os
 import tempfile
 import pathlib
+import functools
 import datetime
 import enum
 from urllib.parse import urlparse
@@ -45,7 +46,19 @@ def persist_dataset(
     data_public_path: pathlib.Path = dataset_utils.LOCAL_PUBLIC_DATA_PATH,
     s3_client=None,
 ) -> DatasetPointer:
+    """Creates a DatasetPointer and persists dataset to directory of path_prefix.
 
+    Can save dataset locally or to s3.
+
+    Args:
+        dataset: Dataset to persist.
+        path_prefix: Path prefix of dataset. Can either be an s3 url
+            (i.e. "s3://<bucket>/<subfolder>") or a local path.
+        data_public_path: Path to covid data public folder.
+        s3_client: Optional s3 client.
+
+    Returns: DatasetPointer describing persisted dataset.
+    """
     model_git_info = GitSummary.from_repo_path(dataset_utils.REPO_ROOT)
     data_git_info = GitSummary.from_repo_path(data_public_path)
 
@@ -74,43 +87,35 @@ def persist_dataset(
 
 def update_data_public_head(
     path_prefix: str,
+    tag: DatasetTag = DatasetTag.LATEST,
     pointer_path_dir: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
-    latest_dataset=None,
-    timeseries_dataset=None,
-):
+    latest_dataset: latest_values_dataset.LatestValuesDataset = None,
+    timeseries_dataset: timeseries.TimeseriesDataset = None,
+) -> Tuple[DatasetPointer, DatasetPointer]:
+    """Persists US latest and timeseries dataset and saves dataset pointers for Latest tag.
 
+    Args:
+        path_prefix: Path prefix of dataset. Can either be an s3 url
+            (i.e. "s3://<bucket>/<subfolder>") or a local path.
+        tag: DatasetTag to save pointer as.
+        pointer_path_dir: Directory to save DatasetPointer files.
+        latest_dataset: Optionally specify a LatestValuesDataset to persist instead of building
+            from head.  Generally used in testing to sidestep building entire dataset.
+        timeseries_dataset: Optionally specify a TimeseriesDataset to persist instead of building
+            from head.  Generally used in testing to sidestep building entire dataset.
+
+    Returns: Tuple of DatasetPointers to latest and timeseries datasets.
+    """
     if not latest_dataset:
-        latest_dataset = combined_datasets.build_us_latest_with_all_fields(skip_cache=True)
+        latest_dataset = combined_datasets.load_us_latest_dataset(skip_cache=True)
     latest_pointer = persist_dataset(latest_dataset, path_prefix)
-    latest_pointer.save(pointer_path_dir, DatasetTag.LATEST)
+    latest_pointer.save(pointer_path_dir, tag)
 
     if not timeseries_dataset:
-        timeseries_dataset = combined_datasets.build_timeseries_with_all_fields(skip_cache=True)
+        timeseries_dataset = combined_datasets.load_us_timeseries_dataset(skip_cache=True)
     timeseries_pointer = persist_dataset(timeseries_dataset, path_prefix)
-    timeseries_pointer.save(pointer_path_dir, DatasetTag.LATEST)
+    timeseries_pointer.save(pointer_path_dir, tag)
     return latest_pointer, timeseries_pointer
-
-
-def load_us_timeseries_with_all_fields(
-    dataset_tag: DatasetTag = DatasetTag.LATEST,
-    pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
-    dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
-) -> timeseries.TimeseriesDataset:
-    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES, dataset_tag)
-    pointer_path = pointer_directory / filename
-    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset(download_directory=dataset_download_directory)
-
-
-def load_us_latest_with_all_fields(
-    dataset_tag: DatasetTag = DatasetTag.LATEST,
-    pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
-    dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
-) -> latest_values_dataset.LatestValuesDataset:
-    filename = dataset_pointer.form_filename(DatasetType.LATEST, dataset_tag)
-    pointer_path = pointer_directory / filename
-    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset(download_directory=dataset_download_directory)
 
 
 def promote_pointer(

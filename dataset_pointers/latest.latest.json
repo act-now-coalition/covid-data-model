@@ -1,15 +1,15 @@
 {
   "dataset_type": "latest",
-  "path": "/Users/chris/can/covid-data-model/.data/latest.20200711T153950.72f61887-d57adbfc.csv",
+  "path": ".data/latest.20200713T133852.8f2000e7-8df11d25.csv",
   "data_git_info": {
-    "sha": "d57adbfc99267cc76bef8ce0fab95623946ff74a",
+    "sha": "8df11d2579406c21aa0c2a747ba6ad10c7372ef4",
     "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "72f618873f65a908d4b02fb9a0fab8925907d7e1",
+    "sha": "8f2000e7e3b74864c5333ef9b0fe6946dfcfd815",
     "branch": "persist-combined-datasets",
     "is_dirty": true
   },
-  "updated_at": "2020-07-11T15:39:50.858787"
+  "updated_at": "2020-07-13T13:38:52.849428"
 }
