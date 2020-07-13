@@ -1,10 +1,67 @@
 {
-  "title": "CovidActNowBulkSummary",
+  "title": "RegionSummary",
   "description": "Base model for API output.",
-  "type": "array",
-  "items": {
-    "$ref": "#/definitions/CovidActNowAreaSummary"
+  "type": "object",
+  "properties": {
+    "countryName": {
+      "title": "Countryname",
+      "default": "US",
+      "type": "string"
+    },
+    "fips": {
+      "title": "Fips",
+      "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+      "type": "string"
+    },
+    "lat": {
+      "title": "Lat",
+      "description": "Latitude of point within the state or county",
+      "type": "number"
+    },
+    "long": {
+      "title": "Long",
+      "description": "Longitude of point within the state or county",
+      "type": "number"
+    },
+    "stateName": {
+      "title": "Statename",
+      "description": "The state name",
+      "type": "string"
+    },
+    "countyName": {
+      "title": "Countyname",
+      "description": "The county name",
+      "type": "string"
+    },
+    "lastUpdatedDate": {
+      "title": "Lastupdateddate",
+      "description": "Date of latest data",
+      "type": "string",
+      "format": "date"
+    },
+    "projections": {
+      "$ref": "#/definitions/Projections"
+    },
+    "actuals": {
+      "$ref": "#/definitions/Actuals"
+    },
+    "population": {
+      "title": "Population",
+      "description": "Total Population in geographic region.",
+      "exclusiveMinimum": 0,
+      "type": "integer"
+    }
   },
+  "required": [
+    "fips",
+    "lat",
+    "long",
+    "stateName",
+    "lastUpdatedDate",
+    "projections",
+    "actuals",
+    "population"
+  ],
   "definitions": {
     "ResourceUsageProjection": {
       "title": "ResourceUsageProjection",
@@ -122,7 +179,7 @@
       "properties": {
         "population": {
           "title": "Population",
-          "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
+          "description": "Total population in geographic region [*deprecated*: refer to summary for this]",
           "exclusiveMinimum": 0,
           "type": "integer"
         },
@@ -172,71 +229,6 @@
         "cumulativeDeaths",
         "hospitalBeds",
         "ICUBeds"
-      ]
-    },
-    "CovidActNowAreaSummary": {
-      "title": "CovidActNowAreaSummary",
-      "description": "Base model for API output.",
-      "type": "object",
-      "properties": {
-        "countryName": {
-          "title": "Countryname",
-          "default": "US",
-          "type": "string"
-        },
-        "fips": {
-          "title": "Fips",
-          "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
-          "type": "string"
-        },
-        "lat": {
-          "title": "Lat",
-          "description": "Latitude of point within the state or county",
-          "type": "number"
-        },
-        "long": {
-          "title": "Long",
-          "description": "Longitude of point within the state or county",
-          "type": "number"
-        },
-        "stateName": {
-          "title": "Statename",
-          "description": "The state name",
-          "type": "string"
-        },
-        "countyName": {
-          "title": "Countyname",
-          "description": "The county name",
-          "type": "string"
-        },
-        "lastUpdatedDate": {
-          "title": "Lastupdateddate",
-          "description": "Date of latest data",
-          "type": "string",
-          "format": "date"
-        },
-        "projections": {
-          "$ref": "#/definitions/Projections"
-        },
-        "actuals": {
-          "$ref": "#/definitions/Actuals"
-        },
-        "population": {
-          "title": "Population",
-          "description": "Total Population in geographic area.",
-          "exclusiveMinimum": 0,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "fips",
-        "lat",
-        "long",
-        "stateName",
-        "lastUpdatedDate",
-        "projections",
-        "actuals",
-        "population"
       ]
     }
   }

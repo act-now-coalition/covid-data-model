@@ -13,12 +13,10 @@ NYC_BOROUGH_FIPS = [
 ALL_NYC_FIPS = NYC_BOROUGH_FIPS + [NEW_YORK_COUNTY_FIPS]
 
 
-def calculate_combined_new_york_counties(
-    data, group, are_boroughs_zero=False,
-):
-    """Calculates combined new york metro county areas, replacing NYC with combined data.
+def calculate_combined_new_york_counties(data, group, are_boroughs_zero=False):
+    """Calculates combined new york metro county regions, replacing NYC with combined data.
 
-    Most of the case data in New York City area is reported in aggregate
+    Most of the case data in New York City region is reported in aggregate
     but beds/population data includes values separated out by counties.
 
     Args:
@@ -53,9 +51,7 @@ def calculate_combined_new_york_counties(
     return pd.concat([without_nyc, aggregated])
 
 
-def update_with_combined_new_york_counties(
-    data, group, are_boroughs_zero=False,
-):
+def update_with_combined_new_york_counties(data, group, are_boroughs_zero=False):
     """Updates data replacing all new york county data with one number.
 
     """
