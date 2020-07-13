@@ -50,11 +50,11 @@ def test_update_and_load(mock_s3_bucket: str, tmp_path: pathlib.Path, nyc_fips):
         timeseries_dataset=timeseries_nyc,
     )
 
-    timeseries = combined_dataset_utils.load_us_timeseries_dataset(
+    timeseries = combined_datasets.load_us_timeseries_dataset(
         tag=DatasetTag.LATEST, pointer_directory=tmp_path, dataset_download_directory=tmp_path
     )
 
-    latest = combined_dataset_utils.load_us_latest_dataset(
+    latest = combined_datasets.load_us_latest_dataset(
         tag=DatasetTag.LATEST, pointer_directory=tmp_path, dataset_download_directory=tmp_path
     )
 

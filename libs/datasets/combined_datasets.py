@@ -163,11 +163,11 @@ def load_us_timeseries_dataset(
 
 @functools.lru_cache(None)
 def load_us_latest_dataset(
-    dataset_tag: DatasetTag = DEFAULT_TAG,
+    tag: DatasetTag = DEFAULT_TAG,
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
     dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
 ) -> latest_values_dataset.LatestValuesDataset:
-    filename = dataset_pointer.form_filename(DatasetType.LATEST, dataset_tag)
+    filename = dataset_pointer.form_filename(DatasetType.LATEST, tag)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     return pointer.load_dataset(download_directory=dataset_download_directory)
