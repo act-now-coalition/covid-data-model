@@ -52,18 +52,6 @@ class DatasetType(enum.Enum):
             return latest_values_dataset.LatestValuesDataset
 
 
-class DatasetTag(enum.Enum):
-    """"""
-
-    # Latest dataset
-    LATEST = "latest"
-
-    # Has gone through validation
-    STABLE = "stable"
-
-    TEST = "test"
-
-
 class DuplicateValuesForIndex(Exception):
     def __init__(self, index, duplicate_data):
         self.index = index

@@ -16,7 +16,6 @@ from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.dataset_utils import DatasetTag
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -39,11 +38,6 @@ _logger = logging.getLogger(__name__)
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
-
-
-# Default tag used when loading datasets. Change to globally load different datasets
-# when calling helper load functions
-DEFAULT_TAG = DatasetTag(os.getenv("DATASET_TAG", "stable"))
 
 
 # Below are two instances of feature definitions. These define
@@ -150,27 +144,23 @@ def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
 
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
-    tag: DatasetTag = DEFAULT_TAG,
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
-    dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
 ) -> timeseries.TimeseriesDataset:
     """Loads US TimeseriesDataset for """
-    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES, tag)
+    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset(download_directory=dataset_download_directory)
+    return pointer.load_dataset()
 
 
 @functools.lru_cache(None)
 def load_us_latest_dataset(
-    tag: DatasetTag = DEFAULT_TAG,
     pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
-    dataset_download_directory: pathlib.Path = dataset_utils.DATA_CACHE_FOLDER,
 ) -> latest_values_dataset.LatestValuesDataset:
-    filename = dataset_pointer.form_filename(DatasetType.LATEST, tag)
+    filename = dataset_pointer.form_filename(DatasetType.LATEST)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset(download_directory=dataset_download_directory)
+    return pointer.load_dataset()
 
 
 def get_us_latest_for_state(state) -> dict:
