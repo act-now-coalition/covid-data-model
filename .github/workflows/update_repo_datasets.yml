@@ -61,7 +61,7 @@ jobs:
       working-directory: ./covid-data-model
       run: |
         ./run.py data update-latest
-        ./run.py data promote-latest
+        ./run.py data promote-latest --cleanup
 
     - name: Create Update Commit
       working-directory: ./covid-data-model
