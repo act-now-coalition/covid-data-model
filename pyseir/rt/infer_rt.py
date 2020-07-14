@@ -21,7 +21,7 @@ def run_rt_for_fips(fips, figure_collector=None):
 
     # Generate the Data Packet to Pass to RtInferenceEngine
     input_df = _generate_input_data(
-        fips, include_testing_correction=True, figure_collector=figure_collector,
+        fips, include_testing_correction=True, figure_collector=figure_collector
     )
 
     # Save a reference to instantiated engine (eventually I want to pull out the figure generation
@@ -56,7 +56,7 @@ def _generate_input_data(
         If True, include a correction for testing increases and decreases.
     """
     times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
-        fips, t0=InferRtConstants.REF_DATE, include_testing_correction=include_testing_correction,
+        fips, t0=InferRtConstants.REF_DATE, include_testing_correction=include_testing_correction
     )
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
@@ -125,7 +125,7 @@ def filter_and_smooth_input_data(
                 plt.xticks(rotation=30)
                 plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
 
-                if figure_collector is None:
+                if not figure_collector:
                     plot_path = get_run_artifact_path(display_name, RunArtifact.RT_SMOOTHING_REPORT)
                     plt.savefig(plot_path, bbox_inches="tight")
                     plt.close(fig)
@@ -326,7 +326,7 @@ class RtInferenceEngine:
         start_idx: int
             Index of first Rt value calculated from input data series
             #TODO figure out why this value sometimes truncates the series
-            
+
         """
         dates, timeseries = self.get_timeseries(timeseries_type=timeseries_type)
 
@@ -460,13 +460,13 @@ class RtInferenceEngine:
 
     def get_available_timeseries(self):
         """
-        Determine available timeseries for Rt inference calculation 
+        Determine available timeseries for Rt inference calculation
         with constraints below.
 
 
         Returns
         -------
-        available_timeseries: 
+        available_timeseries:
           array of available timeseries saved as TimeseriesType
         """
         available_timeseries = []
@@ -557,7 +557,7 @@ class RtInferenceEngine:
                 series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
                 series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
 
-                shift_in_days = utils.align_time_series(series_a=series_a, series_b=series_b,)
+                shift_in_days = utils.align_time_series(series_a=series_a, series_b=series_b)
 
                 df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
                 logging.debug(

@@ -60,11 +60,11 @@ class DataGenerator:
         return self.last_value
 
 
-def _get_cases_for_times(generator, times):
+def _get_cases_for_times(generator: DataGenerator, times) -> np.array:
     return np.array(list(map(generator.generate_data, times)))
 
 
-def create_synthetic_df(data_generator):
+def create_synthetic_df(data_generator) -> pd.DataFrame:
     """
     Generates case and death data.
     """
