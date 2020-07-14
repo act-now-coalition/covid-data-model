@@ -36,7 +36,7 @@ class ForecastRt:
         self.states = "All"  # All to use All
         self.csv_path = "./pyseir_data/merged_results.csv"
         self.merged_df = True  # set to true if input dataframe merges all areas
-        self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet
+        self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet)
         self.ref_date = datetime(year=2020, month=1, day=1)
         self.debug_plots = True
 
@@ -64,7 +64,7 @@ class ForecastRt:
             self.daily_case_var,
             self.daily_death_var,
             self.d_predict_variable,
-            "Rt_MAP__new_cases",
+            self.predict_variable,
             self.fips_var_name_int,
             "positive_tests",
             "negative_tests",
@@ -82,7 +82,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 1000
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -99,6 +99,7 @@ class ForecastRt:
 
     def get_forecast_dfs(self):
         if self.merged_df:
+
             df_merge = pd.read_csv(
                 self.csv_path,
                 parse_dates=True,
@@ -126,6 +127,12 @@ class ForecastRt:
                 for state in state_df_dictionary:
                     log.info("iterating thru dictionary of state dataframes")
                     df = state_df_dictionary[state]
+
+                    # Only keep data points where predict variable exists
+                    first_valid_index = df[self.predict_variable].first_valid_index()
+                    df = df[first_valid_index:].copy()
+                    df.to_csv(df["state"][0] + "_forecast.csv")
+
                     df[self.sim_date_name] = (df.index - self.ref_date).days + 1
                     df[self.d_predict_variable] = df[self.predict_variable].diff()
                     df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
@@ -156,6 +163,7 @@ class ForecastRt:
     def get_forecast_dfs_old(self):
         # Probably get rid of this entirely -- to process single state at a time
         if self.states != "All":
+            log.info("WE ARE HERE")
             df_all = self.df_all
             state_name = df_all["state"][0]
             df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
@@ -187,6 +195,8 @@ class ForecastRt:
                         )  # , dtype={'fips': int}
                         state_name = df_all["state"][0]
                         # Set first day of year to 1 not 0
+                        first_valid_index = df_all[self.predict_variable].first_valid_index()
+                        log.info(f"FIRST VALID INDEX: {first_valid_index}")
                         df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
                         df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
                         df_forecast = df_all[self.forecast_variables].copy()
