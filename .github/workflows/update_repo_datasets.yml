@@ -60,8 +60,7 @@ jobs:
     - name: Update and Promote dataset.
       working-directory: ./covid-data-model
       run: |
-        ./run.py data update-latest
-        ./run.py data promote-latest --cleanup
+        ./run.py data update
 
     - name: Create Update Commit
       working-directory: ./covid-data-model
