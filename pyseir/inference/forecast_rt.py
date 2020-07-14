@@ -83,7 +83,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 1
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -100,7 +100,6 @@ class ForecastRt:
 
     def get_forecast_dfs(self):
         if self.merged_df:
-
             df_merge = pd.read_csv(
                 self.csv_path,
                 parse_dates=True,
@@ -132,10 +131,11 @@ class ForecastRt:
                     # Only keep data points where predict variable exists
                     first_valid_index = df[self.predict_variable].first_valid_index()
                     df = df[first_valid_index:].copy()
-                    df.to_csv(df["state"][0] + "_forecast.csv")
 
                     df[self.sim_date_name] = (df.index - self.ref_date).days + 1
+                    # Calculate Rt derivative, but exclude first row since it will have a zero derivative
                     df[self.d_predict_variable] = df[self.predict_variable].diff()
+                    df = df[1:]
                     df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
 
                     if self.deaths_cumulative:
@@ -155,81 +155,37 @@ class ForecastRt:
                     ]  # because last value is NaN for diff #TODO find a better way to do this
                     state_names.append(state_name)
                     df_list.append(df_forecast)
+                    df_forecast.to_csv(df["state"][0] + "_forecast.csv")
             log.info("STATE NAMES")
             log.info(state_names)
             log.info(df_list)
 
             return state_names, df_list
 
-    def get_forecast_dfs_old(self):
-        # Probably get rid of this entirely -- to process single state at a time
-        if self.states != "All":
-            log.info("WE ARE HERE")
-            df_all = self.df_all
-            state_name = df_all["state"][0]
-            df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
-            df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
-            df_forecast = df_all[self.forecast_variables].copy()
-            # Fill empty values with mask value
-            df_forecast.replace(r"\s+", self.mask_value, regex=True).replace("", self.mask_value)
-            df_forecast.replace(np.nan, self.mask_value, regex=True).replace(
-                np.nan, self.mask_value
-            )
-            df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
-            return df_forecast, state_name
-
-        else:  # merged dataframe (states/counties all merged into one df)
-            df_merge = pd.read_csv(self.csv_path)
-            if self.states_only:
-                if self.merged_df:
-                    log.info("MERGED DF")
-
-                    log.info(df_merge)
-
-                # Probs delete
-                else:
-                    dataframes, state_names = list(), list()
-                    csv_files = glob.glob(f"{self.csv_path}*.csv")
-                    for myfile in csv_files:
-                        df_all = pd.read_csv(
-                            myfile, parse_dates=True, index_col="date"
-                        )  # , dtype={'fips': int}
-                        state_name = df_all["state"][0]
-                        # Set first day of year to 1 not 0
-                        first_valid_index = df_all[self.predict_variable].first_valid_index()
-                        log.info(f"FIRST VALID INDEX: {first_valid_index}")
-                        df_all[self.sim_date_name] = (df_all.index - self.ref_date).days + 1
-                        df_all[self.d_predict_variable] = df_all[self.predict_variable].diff()
-                        df_forecast = df_all[self.forecast_variables].copy()
-                        # Fill empty values with mask value
-                        df_forecast.replace(r"\s+", self.mask_value, regex=True).replace(
-                            "", self.mask_value
-                        )
-                        df_forecast.replace(np.nan, self.mask_value, regex=True).replace(
-                            np.nan, self.mask_value
-                        )
-                        df_forecast.to_csv(f"df_{state_name}_forecast.csv")  # , na_rep="NaN")
-                        dataframes.append(df_forecast)
-                        state_names.append(state_name)
-            else:
-                log.info("County level training not implemented yet :(")
-                exit()
-                return dataframes, state_names
-
     def get_train_test_samples(self, df_forecast):
-        df_samples = self.create_df_list(df_forecast)
+        # create list of dataframe samples
+        df_samples = self.create_samples(df_forecast)
+
+        # Determine size of train set to split sample list into training and testing
         if self.percent_train:
             train_set_length = int(len(df_samples) * self.train_size)
         else:
             train_set_length = int(len(df_samples)) - self.n_test_days
-        train_scaling_set = df_samples[train_set_length]
-        train_samples_not_spaced = df_samples[:train_set_length]
-        train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
-        test_samples = df_samples[train_set_length + 1 :]
-        return train_samples, test_samples, train_scaling_set
 
-    def plot_variables(self, df_list, state_names, scalers_dict):
-        for df, state in zip(df_list, state_names):
+        # TODO could create scaling set more cleaning
+        # Split sample list into training and testing
+        train_samples_not_spaced = df_samples[:train_set_length]
+        test_samples = df_samples[train_set_length + 1 :]
+        # For training only keep samples that are days_between_samples apart (avoid forecast learning meaningless correlations between labels)
+        train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
+
+        # Scaling set is the concatenated train_samples
+        scaling_set = pd.concat(train_samples)
+
+        return train_samples, test_samples, scaling_set
+
+    def plot_variables(self, df_list, state_fips, scalers_dict):
+        for df, state in zip(df_list, state_fips):
             fig, ax = plt.subplots(figsize=(18, 12))
             for var in self.forecast_variables:
                 ax.plot(df[var], label=var)
@@ -266,30 +222,31 @@ class ForecastRt:
         Returns
         dates and forecast r_t values
         """
-        state_names, df_list = self.get_forecast_dfs()
+
+        # split merged dataframe into state level dataframes (this includes adding variables and masking nan values)
+        state_fips, df_list = self.get_forecast_dfs()
         # get train, test, and scaling samples
         scaling_samples, train_samples, test_samples = [], [], []
-        for df in df_list:
+        for df, fips in zip(df_list, state_fips):
+            state_name = us.states.lookup(fips).name
             train, test, scaling = self.get_train_test_samples(df)
             scaling_samples.append(scaling)
             train_samples.append(train)
             test_samples.append(test)
 
         # Get scaling dictionary
+        # TODO add max min rows to avoid domain adaption issues
         train_scaling_set = pd.concat(scaling_samples)
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
         log.info("retrieved scaling dictionary")
         if self.debug_plots:
-            self.plot_variables(df_list, state_names, scalers_dict)
+            self.plot_variables(df_list, state_fips, scalers_dict)
 
         # Create scaled train samples
         list_train_X, list_train_Y, list_test_X, list_test_Y = [], [], [], []
         for train, test in zip(train_samples, test_samples):
-            log.info("get scaled train sets")
             train_X, train_Y, train_df_list = self.get_scaled_X_Y(train, scalers_dict)
-            log.info("getting scaled test sets")
             test_X, test_Y, test_df_list = self.get_scaled_X_Y(test, scalers_dict)
-            log.info("appending samples to aggregate lists")
             list_train_X.append(train_X)
             list_train_Y.append(train_Y)
             list_test_X.append(test_X)
@@ -301,9 +258,11 @@ class ForecastRt:
 
         # Plot predictions for test and train sets
 
-        for train_X, train_Y, test_X, test_Y, df_forecast, state_name in zip(
-            list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_names
+        for train_X, train_Y, test_X, test_Y, df_forecast, fips in zip(
+            list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_fips
         ):
+            log.info(f"getting state name: {fips}")
+            state_name = us.states.lookup(fips).name
             forecasts_train, dates_train = self.get_forecasts(
                 train_X, train_Y, train_df_list, scalers_dict, model
             )
@@ -404,7 +363,7 @@ class ForecastRt:
 
             plt.title(state_name + ": epochs: " + str(self.n_epochs))
             plt.ylim(0.5, 3)
-            output_path = get_run_artifact_path(state_name, RunArtifact.FORECAST_RESULT)
+            output_path = get_run_artifact_path(fips, RunArtifact.FORECAST_RESULT)
             state_obj = us.states.lookup(state_name)
             plt.savefig(output_path, bbox_inches="tight")
 
@@ -509,9 +468,7 @@ class ForecastRt:
         model.add(Dropout(self.dropout))
         model.add(Dense(final_train_Y.shape[1]))
         es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=self.patience)
-        tensorboard_callback = tf.keras.callbacks.TensorBoard(
-            log_dir='fit_logs'
-        )
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
         model.compile(loss="mean_squared_error", optimizer="adam")
         history = model.fit(
             final_train_X,
@@ -580,15 +537,10 @@ class ForecastRt:
         return final_test_X, final_test_Y, df_list
         return X_train_list, Y_train_list, df_list
 
-    def create_df_list(self, df):
+    def create_samples(self, df):
         df_list = list()
         for index in range(len(df.index) + 1):
             i = index
-            # i = index * self.days_between_samples
-            # i = index
-            # if i > len(df.index):
-            #    continue
-
             if (
                 i < self.predict_days + self.min_number_of_days
             ):  # only keep df if it has min number of entries
