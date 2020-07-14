@@ -1,5 +1,6 @@
 {
-  "title": "CANPredictionTimeseriesRow",
+  "title": "PredictionTimeseriesRowWithHeader",
+  "description": "Base model for API output.",
   "type": "object",
   "properties": {
     "date": {
@@ -73,15 +74,46 @@
       "description": "Number of people currently exposed",
       "type": "integer"
     },
-    "cumulativePositiveTests": {
-      "title": "Cumulativepositivetests",
-      "description": "Number of positive test results to date",
-      "type": "integer"
+    "countryName": {
+      "title": "Countryname",
+      "default": "US",
+      "type": "string"
     },
-    "cumulativeNegativeTests": {
-      "title": "Cumulativenegativetests",
-      "description": "Number of negative test results to date",
-      "type": "integer"
+    "stateName": {
+      "title": "Statename",
+      "description": "The state name",
+      "type": "string"
+    },
+    "countyName": {
+      "title": "Countyname",
+      "description": "The county name",
+      "type": "string"
+    },
+    "intervention": {
+      "title": "Intervention",
+      "description": "Name of high-level intervention in-place",
+      "type": "string"
+    },
+    "fips": {
+      "title": "Fips",
+      "description": "Fips for State + County. Five character code",
+      "type": "string"
+    },
+    "lat": {
+      "title": "Lat",
+      "description": "Latitude of point within the state or county",
+      "type": "number"
+    },
+    "long": {
+      "title": "Long",
+      "description": "Longitude of point within the state or county",
+      "type": "number"
+    },
+    "lastUpdatedDate": {
+      "title": "Lastupdateddate",
+      "description": "Date of latest data",
+      "type": "string",
+      "format": "date"
     }
   },
   "required": [
@@ -99,7 +131,12 @@
     "currentInfected",
     "currentSusceptible",
     "currentExposed",
-    "cumulativePositiveTests",
-    "cumulativeNegativeTests"
+    "stateName",
+    "countyName",
+    "intervention",
+    "fips",
+    "lat",
+    "long",
+    "lastUpdatedDate"
   ]
 }

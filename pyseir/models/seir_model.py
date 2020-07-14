@@ -367,7 +367,7 @@ class SEIRModel:
             - died_from_icu_vent
         )
 
-        # This compartment is for tracking ventillator count. The beds are
+        # This compartment is for tracking ventilator count. The beds are
         # accounted for in the ICU cases.
         dHICUVent_dt = (
             infected_and_in_hospital_icu * self.fraction_icu_requiring_ventilator

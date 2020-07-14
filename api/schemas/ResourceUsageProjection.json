@@ -1,0 +1,29 @@
+{
+  "title": "ResourceUsageProjection",
+  "description": "Base model for API output.",
+  "type": "object",
+  "properties": {
+    "peakShortfall": {
+      "title": "Peakshortfall",
+      "description": "Shortfall of resource needed at the peak utilization",
+      "type": "integer"
+    },
+    "peakDate": {
+      "title": "Peakdate",
+      "description": "Date of peak resource utilization",
+      "type": "string",
+      "format": "date"
+    },
+    "shortageStartDate": {
+      "title": "Shortagestartdate",
+      "description": "Date when resource shortage begins",
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "peakShortfall",
+    "peakDate",
+    "shortageStartDate"
+  ]
+}

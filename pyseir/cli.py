@@ -17,7 +17,7 @@ from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
-from libs.us_state_abbrev import abbrev_us_state
+from libs.us_state_abbrev import ABBREV_US_STATE
 from pyseir.inference.whitelist_generator import WhitelistGenerator
 
 
@@ -129,7 +129,7 @@ def _generate_state_reports(state=None):
 
 
 def _map_outputs(
-    state=None, output_interval_days=1, states_only=False, output_dir=None, run_mode="default",
+    state=None, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
 ):
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
@@ -140,9 +140,7 @@ def _map_outputs(
             run_mode=run_mode,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(
-            whitelisted_county_fips=[], states_only=states_only,
-        )
+        web_ui_mapper.generate_state(whitelisted_county_fips=[], states_only=states_only)
     else:
         for state_name in ALL_STATES:
             _map_outputs(
@@ -261,7 +259,7 @@ def _build_all_for_states(
     with Pool(maxtasksperchild=1) as p:
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
-        fitters = p.map(model_fitter._execute_model_for_fips, all_county_fips.keys())
+        fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
 
         df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
         df["state"] = df.fips.replace(all_county_fips)
@@ -437,7 +435,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
+    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase."
 )
 @click.option(
     "--fips",
@@ -463,7 +461,7 @@ def build_all(
     states = [c.strip() for c in states]
     # Convert abbreviated states to the full state name, allowing states passed in
     # to be the full name or the abbreviated name.
-    states = [abbrev_us_state.get(state, state) for state in states]
+    states = [ABBREV_US_STATE.get(state, state) for state in states]
     states = [state for state in states if state in ALL_STATES]
     if not len(states):
         states = ALL_STATES

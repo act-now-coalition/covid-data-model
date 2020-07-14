@@ -570,7 +570,7 @@ if __name__ == "__main__":
                     abnormal_old,
                     abnormal_new,
                     average_new_p_diff,
-                ) = compare_data(var, prod_ag, latest_ag, prod_name, latest_name, args, state,)
+                ) = compare_data(var, prod_ag, latest_ag, prod_name, latest_name, args, state)
 
                 if abnormal_old:
                     z_avg_list.append(avg_z)
@@ -603,7 +603,7 @@ if __name__ == "__main__":
                     _logger.warning(new_data_report_string)
                     sentry_sdk.capture_message(new_data_report_string)
 
-            # Create meta-compare charts for all abnormal areas
+            # Create meta-compare charts for all abnormal regions
             states_list = list(dict.fromkeys(states_list))
             make_meta_comparison_plot(
                 states_list,
