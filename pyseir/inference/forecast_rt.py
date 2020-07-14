@@ -17,9 +17,10 @@ from enum import Enum
 
 from tensorflow import keras
 from sklearn import preprocessing
-from keras.models import Sequential
-from keras.layers import *
-from keras.callbacks import EarlyStopping
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import *
+from tensorflow.keras.callbacks import EarlyStopping
 
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
 log = structlog.get_logger(__name__)
@@ -498,6 +499,9 @@ class ForecastRt:
         model.add(Dropout(self.dropout))
         model.add(Dense(final_train_Y.shape[1]))
         es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=self.patience)
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(
+            log_dir='fit_logs'
+        )
         model.compile(loss="mean_squared_error", optimizer="adam")
         history = model.fit(
             final_train_X,
@@ -507,7 +511,7 @@ class ForecastRt:
             verbose=1,
             shuffle=False,
             validation_split=self.validation_split,
-            callbacks=[es],
+            callbacks=[es, tensorboard_callback],
         )
         logging.info("fit")
         logging.info(history.history["loss"])
