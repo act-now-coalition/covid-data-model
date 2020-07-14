@@ -73,6 +73,7 @@ def _run_infer_rt(state=None, states_only=False):
 
 
 def _run_infer_rt_new(state, states_only, output_dir):
+    _cache_global_datasets()  # make sure using cache if exists
     # Do Infer Rt Separately For Right Now
     if state is None:
         print("No State. Using All States")

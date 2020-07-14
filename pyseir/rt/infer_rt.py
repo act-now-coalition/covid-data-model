@@ -16,14 +16,12 @@ from pyseir.rt import plotting, utils
 rt_log = structlog.get_logger(__name__)
 
 
-def run_rt_for_fips(fips):
+def run_rt_for_fips(fips, figure_collector=None):
     """Entry Point for Infer Rt"""
 
     # Generate the Data Packet to Pass to RtInferenceEngine
     input_df = _generate_input_data(
-        fips,
-        include_testing_correction=True,
-        plot_path=get_run_artifact_path(fips, RunArtifact.RT_SMOOTHING_REPORT),
+        fips, include_testing_correction=True, figure_collector=figure_collector,
     )
 
     # Save a reference to instantiated engine (eventually I want to pull out the figure generation
@@ -49,7 +47,7 @@ def _get_display_name(fips) -> str:
 
 
 def _generate_input_data(
-    fips, include_testing_correction=True, include_deaths=True, plot_path=None
+    fips, include_testing_correction=True, include_deaths=True, figure_collector=None
 ):
     """
     Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
@@ -66,13 +64,14 @@ def _generate_input_data(
     df = filter_and_smooth_input_data(
         df=pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date),
         include_deaths=include_deaths,
-        plot_path=plot_path,
+        figure_collector=figure_collector,
+        display_name=fips,
     )
     return df
 
 
 def filter_and_smooth_input_data(
-    df: [pd.DataFrame], include_deaths=False, plot_path=None
+    df: [pd.DataFrame], display_name, include_deaths=False, figure_collector=None
 ) -> pd.DataFrame:
     """Do Everything Strange Here Before it Gets to the Inference Engine"""
     MIN_CUMULATIVE_COUNTS = dict(cases=20, deaths=10)
@@ -109,7 +108,7 @@ def filter_and_smooth_input_data(
             requirements.append(True)
 
         if all(requirements):
-            if plot_path is not None and column == "cases":
+            if column == "cases":
                 fig = plt.figure(figsize=(10, 6))
                 ax = fig.add_subplot(111)  # plt.axes
                 ax.set_yscale("log")
@@ -126,8 +125,12 @@ def filter_and_smooth_input_data(
                 plt.xticks(rotation=30)
                 plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
 
-                plt.savefig(plot_path, bbox_inches="tight")
-                plt.close(fig)
+                if figure_collector is None:
+                    plot_path = get_run_artifact_path(display_name, RunArtifact.RT_SMOOTHING_REPORT)
+                    plt.savefig(plot_path, bbox_inches="tight")
+                    plt.close(fig)
+                else:
+                    figure_collector["1_smoothed_cases"] = fig
 
             df[column] = smoothed
         else:
@@ -155,9 +158,7 @@ class RtInferenceEngine:
         Just used for output paths. Should remove with display_name later.
     """
 
-    def __init__(
-        self, data, display_name, fips, include_deaths=False,
-    ):
+    def __init__(self, data, display_name, fips, include_deaths=False, figure_collector=None):
 
         self.dates = data.index
         self.cases = data.cases if "cases" in data else None
@@ -166,6 +167,7 @@ class RtInferenceEngine:
         self.include_deaths = include_deaths
         self.display_name = display_name
         self.fips = fips
+        self.figure_collector = figure_collector
 
         # Load the InferRtConstants (TODO: turn into class constants)
         self.r_list = InferRtConstants.R_BUCKETS
@@ -644,8 +646,11 @@ class RtInferenceEngine:
                 shift_deaths=shift_deaths,
                 display_name=self.display_name,
             )
-            output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
-            fig.savefig(output_path, bbox_inches="tight")
+            if self.figure_collector is None:
+                output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
+                fig.savefig(output_path, bbox_inches="tight")
+            else:
+                self.figure_collector["3_Rt_inference"] = fig
         if df_all.empty:
             logging.warning("Inference not possible for fips: %s", self.fips)
         return df_all
