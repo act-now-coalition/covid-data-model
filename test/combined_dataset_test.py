@@ -156,8 +156,6 @@ def test_remove_padded_nans(include_na_at_end):
     pd.testing.assert_series_equal(results.cases, expected_series)
 
 
-
-
 def read_csv_str(csv_str: str) -> pd.DataFrame:
     return pd.read_csv(
         StringIO(csv_str),
