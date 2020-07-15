@@ -1,12 +1,13 @@
 name: Update combined datasets
 
 on:
+  push:
   repository_dispatch:
     types: update-dataset-snapshot
 
 env:
   # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'master'
+  COVID_DATA_MODEL_REF: 'fix-update-action'
 
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'master'
@@ -42,7 +43,6 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: '3.7.6'
-        architecture: 'x64'
 
     - name: Cache Pip
       uses: actions/cache@v1
@@ -62,15 +62,14 @@ jobs:
       run: |
         ./run.py data update
 
-    - name: Create Update Commit
-      working-directory: ./covid-data-model
-      run: ./tools/push-data-update.sh
-
-    - name: Slack notification
-      if: failure()
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
-        STATUS: ${{job.status}}
-      uses: Ilshidur/action-slack@fb92a78
-      with:
-        args: 'update-dataset-snapshot failed'
+    # - name: Create Update Commit
+    #   working-directory: ./covid-data-model
+    #   run: ./tools/push-data-update.sh
+    # - name: Slack notification
+    #   if: failure()
+    #   env:
+    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+    #     STATUS: ${{job.status}}
+    #   uses: Ilshidur/action-slack@fb92a78
+    #   with:
+    #     args: 'update-dataset-snapshot failed'
