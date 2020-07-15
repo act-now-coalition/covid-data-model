@@ -34,8 +34,8 @@ def _cache_global_datasets():
     # Populate cache for combined latest and timeseries.  Caching pre-fork
     # will make sure cache is populated for subprocesses.  Return value
     # is not needed as the only goal is to populate the cache.
-    combined_datasets.build_us_latest_with_all_fields()
-    combined_datasets.build_us_timeseries_with_all_fields()
+    combined_datasets.load_us_latest_dataset()
+    combined_datasets.load_us_timeseries_dataset()
 
 
 @click.group()
@@ -100,7 +100,7 @@ def _generate_state_reports(state=None):
 
 
 def _map_outputs(
-    state=None, output_interval_days=1, states_only=False, output_dir=None, run_mode="default",
+    state=None, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
 ):
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
@@ -111,9 +111,7 @@ def _map_outputs(
             run_mode=run_mode,
             output_dir=output_dir,
         )
-        web_ui_mapper.generate_state(
-            whitelisted_county_fips=[], states_only=states_only,
-        )
+        web_ui_mapper.generate_state(whitelisted_county_fips=[], states_only=states_only)
     else:
         for state_name in ALL_STATES:
             _map_outputs(
@@ -391,7 +389,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     help="Number of days between outputs for the WebUI payload.",
 )
 @click.option(
-    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase.",
+    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase."
 )
 @click.option(
     "--fips",

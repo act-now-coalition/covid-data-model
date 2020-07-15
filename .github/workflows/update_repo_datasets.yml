@@ -1,0 +1,76 @@
+name: Update combined datasets
+
+on:
+  repository_dispatch:
+    types: update-dataset-snapshot
+
+env:
+  # !!! Change this to your BRANCH if you want to test it
+  COVID_DATA_MODEL_REF: 'master'
+
+  # To pin to an old data sets, put the branch/tag/commit here:
+  COVID_DATA_PUBLIC_REF: 'master'
+
+  # Used by python code that reports errors to sentry.
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+  # use a webhook to write to slack channel dev-alerts for QA
+  SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
+
+jobs:
+  update-and-promote-datasets:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout covid-data-model
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-model
+        path: covid-data-model
+        ref: '${{env.COVID_DATA_MODEL_REF}}'
+        lfs: true
+
+    - name: Checkout covid-data-public
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-public
+        path: covid-data-public
+        lfs: true
+        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
+
+    - name: Setup Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7.6'
+        architecture: 'x64'
+
+    - name: Cache Pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+
+    - name: Install Dependencies
+      working-directory: ./covid-data-model
+      run: pip install -r requirements.txt
+
+    - name: Update and Promote dataset.
+      working-directory: ./covid-data-model
+      run: |
+        ./run.py data update
+
+    - name: Create Update Commit
+      working-directory: ./covid-data-model
+      run: ./tools/push-data-update.sh
+
+    - name: Slack notification
+      if: failure()
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+        STATUS: ${{job.status}}
+      uses: Ilshidur/action-slack@fb92a78
+      with:
+        args: 'update-dataset-snapshot failed'

@@ -27,8 +27,8 @@ NYC_FIPS = "36061"
 )
 def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, intervention):
 
-    us_latest = combined_datasets.build_us_latest_with_all_fields()
-    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    us_latest = combined_datasets.load_us_latest_dataset()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     timeseries = api_pipeline.build_timeseries_for_fips(
         intervention, us_latest, us_timeseries, nyc_model_output_path.parent, nyc_fips
@@ -51,8 +51,8 @@ def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, i
 
 def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_path):
     county_output = tmp_path / "county"
-    us_latest = combined_datasets.build_us_latest_with_all_fields()
-    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    us_latest = combined_datasets.load_us_latest_dataset()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     nyc_latest = us_latest.get_subset(None, fips=nyc_fips)
     nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)

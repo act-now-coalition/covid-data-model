@@ -17,7 +17,7 @@ from api.can_api_definition import ResourceUsageProjection
 @pytest.mark.parametrize("include_projections", [True, False])
 def test_build_summary_for_fips(include_projections, nyc_model_output_path, nyc_fips):
 
-    us_latest = combined_datasets.build_us_latest_with_all_fields()
+    us_latest = combined_datasets.load_us_latest_dataset()
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
     model_output = None
     expected_projections = None
@@ -81,8 +81,8 @@ def test_build_summary_for_fips(include_projections, nyc_model_output_path, nyc_
 @pytest.mark.parametrize("include_projections", [True])
 def test_generate_timeseries_for_fips(include_projections, nyc_model_output_path, nyc_fips):
 
-    us_latest = combined_datasets.build_us_latest_with_all_fields()
-    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    us_latest = combined_datasets.load_us_latest_dataset()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
     nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
