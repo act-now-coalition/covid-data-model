@@ -62,14 +62,14 @@ jobs:
       run: |
         ./run.py data update
 
-    # - name: Create Update Commit
-    #   working-directory: ./covid-data-model
-    #   run: ./tools/push-data-update.sh
-    # - name: Slack notification
-    #   if: failure()
-    #   env:
-    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
-    #     STATUS: ${{job.status}}
-    #   uses: Ilshidur/action-slack@fb92a78
-    #   with:
-    #     args: 'update-dataset-snapshot failed'
+    - name: Create Update Commit
+      working-directory: ./covid-data-model
+      run: ./tools/push-data-update.sh
+    - name: Slack notification
+      if: failure()
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+        STATUS: ${{job.status}}
+      uses: Ilshidur/action-slack@fb92a78
+      with:
+        args: 'update-dataset-snapshot failed'
