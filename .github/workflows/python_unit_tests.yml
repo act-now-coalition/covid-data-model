@@ -22,7 +22,6 @@ jobs:
     strategy:
       matrix:
         python-version: [3.7]
-
     steps:
     - name: Checkout covid-data-public
       uses: actions/checkout@v2
