@@ -42,6 +42,7 @@ def find_commit(
 
     Returns: Commit if matching commit found.
     """
+    print(list(repo.iter_commits(paths=path)))
     if previous_commit:
         commit_iterator = repo.iter_commits(paths=path)
         _ = next(commit_iterator)
