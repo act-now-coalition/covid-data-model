@@ -141,6 +141,12 @@ def build_timeseries_with_all_fields() -> TimeseriesDataset:
     }
     log.info("made Timeseries from data sources")
 
+    feature_definition = {
+        name: [cls.SOURCE_NAME for cls in classes]
+        for name, classes in feature_definition_config.items()
+        if classes
+    }
+
     return build_timeseries(feature_definition, datasets)
 
 
