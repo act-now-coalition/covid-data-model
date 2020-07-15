@@ -9,6 +9,7 @@ from covidactnow.datapublic import common_init
 from pandarallel import pandarallel
 
 from cli import api
+from cli import data
 from cli import compare_snapshots
 from cli import utils
 from libs.datasets import dataset_cache
@@ -29,6 +30,7 @@ def entry_point(ctx):  # pylint: disable=no-value-for-parameter
 entry_point.add_command(compare_snapshots.compare_snapshots)
 entry_point.add_command(api.main)
 entry_point.add_command(utils.main)
+entry_point.add_command(data.main)
 
 
 # This code is executed when invoked as `python run.py ...` and will need to be changed if you

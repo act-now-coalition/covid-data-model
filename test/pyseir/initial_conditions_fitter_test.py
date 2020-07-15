@@ -5,7 +5,7 @@ from libs.datasets import combined_datasets
 
 
 def test_fips_metadata(nyc_fips):
-    combined_datasets.build_us_timeseries_with_all_fields()
+    combined_datasets.load_us_timeseries_dataset()
     fitter = initial_conditions_fitter.InitialConditionsFitter(nyc_fips)
     assert fitter.state == "NY"
     assert fitter.county == "New York County"

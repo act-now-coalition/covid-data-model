@@ -8,6 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
         with:
+          lfs: true
           ref: master
       - name: Action Placeholder
         run: |

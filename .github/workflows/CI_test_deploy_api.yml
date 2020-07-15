@@ -3,7 +3,7 @@
 
 #Test workflow to validate new CI build machines.  It is a cut down version of
 #the build and publish workflow
-name: CI Test Build API artifacts 
+name: CI Test Build API artifacts
 
 on:
   # covid-data-public fetches data at 01:00 and 16:00 UTC.
@@ -59,6 +59,7 @@ jobs:
         repository: covid-projections/covid-data-model
         path: covid-data-model
         ref: '${{env.COVID_DATA_MODEL_REF}}'
+        lfs: true
 
     - name: Checkout covid-data-public
       uses: actions/checkout@v2

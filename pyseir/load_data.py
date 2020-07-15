@@ -394,7 +394,7 @@ def get_hospitalization_data():
     -------
     TimeseriesDataset
     """
-    data = combined_datasets.build_us_timeseries_with_all_fields().data
+    data = combined_datasets.load_us_timeseries_dataset().data
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
     return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
@@ -490,7 +490,7 @@ def load_hospitalization_data_by_state(
         Specifies cumulative or current hospitalizations.
     """
     abbr = us.states.lookup(state).abbr
-    hospitalization_data = combined_datasets.build_us_timeseries_with_all_fields().get_data(
+    hospitalization_data = combined_datasets.load_us_timeseries_dataset().get_data(
         AggregationLevel.STATE, country="USA", state=abbr
     )
 

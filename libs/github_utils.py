@@ -3,10 +3,14 @@ import shutil
 import click
 import tempfile
 import io
+
 import zipfile
 import pathlib
 import logging
+
+import pydantic
 import requests
+import git
 
 
 _logger = logging.getLogger(__name__)
@@ -16,6 +20,25 @@ REPO = "covid-projections/covid-data-model"
 REPO_GIT_URL = f"https://api.github.com/repos/{REPO}"
 # GitHub assigned ID for "Build & Publish API artifacts" workflow.
 WORKFLOW_ID = "988804"
+
+
+class GitSummary(pydantic.BaseModel):
+    """Summary of a github repo state."""
+
+    sha: str
+    branch: str
+    is_dirty: bool
+
+    @classmethod
+    def from_repo_path(cls, path: pathlib.Path) -> "GitSummary":
+        repo = git.Repo(path)
+
+        try:
+            branch = str(repo.head.ref)
+        except TypeError:
+            branch = "detached"
+
+        return cls(sha=repo.head.commit.hexsha, branch=branch, is_dirty=repo.is_dirty())
 
 
 def _get_artifact_zip_url(run_number: int = None, latest: bool = True) -> Tuple[str, int]:

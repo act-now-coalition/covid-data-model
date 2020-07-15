@@ -1,7 +1,8 @@
 from typing import Type, List, Optional
-
+import pathlib
 from libs import us_state_abbrev
 import pandas as pd
+import numpy as np
 from libs.datasets.dataset_utils import AggregationLevel, make_binary_array
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
@@ -51,7 +52,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data = cls._aggregate_new_york_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE,
+                data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE
             ).reset_index()
 
             data = pd.concat([data, non_matching])
@@ -108,7 +109,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
         if weighted_all_bed_occupancy:
             data.loc[
-                data[CommonFields.FIPS] == nyc_fips, CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+                data[CommonFields.FIPS] == nyc_fips, CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
             ] = weighted_all_bed_occupancy
 
         if weighted_icu_occupancy:
@@ -130,6 +131,10 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         """Returns a new BedsDataset containing only county data."""
         is_county = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
         return self.data[is_county]
+
+    @property
+    def states(self):
+        return self.data.state.unique()
 
     @property
     def all_fips(self) -> List[str]:
@@ -189,3 +194,20 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             return {}
 
         return row.iloc[0].to_dict()
+
+    def to_csv(self, path: pathlib.Path):
+        """Save data to CSV.
+
+        Args:
+            path: Path to save data to.
+        """
+        # Cannot use common_df.write_csv as it doesn't support data without a date index field.
+        data = self.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
+        data.to_csv(path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
+
+    @classmethod
+    def load_csv(cls, path: pathlib.Path) -> "cls":
+        """Load CSV Latest Values Dataset."""
+        # Cannot use common_df.read_csv as it doesn't support data without a date index field.
+        df = pd.read_csv(path, dtype={CommonFields.FIPS: str})
+        return cls(df)
