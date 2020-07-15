@@ -41,8 +41,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v1
       with:
-        python-version: '3.7.6'
-        architecture: 'x64'
+        python-version: '3.7'
 
     - name: Cache Pip
       uses: actions/cache@v1
@@ -65,7 +64,6 @@ jobs:
     - name: Create Update Commit
       working-directory: ./covid-data-model
       run: ./tools/push-data-update.sh
-
     - name: Slack notification
       if: failure()
       env:
