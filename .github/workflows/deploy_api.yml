@@ -55,9 +55,8 @@ jobs:
       with:
         repository: covid-projections/covid-data-model
         path: covid-data-model
-        ref: '${{env.COVID_DATA_MODEL_REF}}'
         lfs: true
-
+        ref: '${{env.COVID_DATA_MODEL_REF}}'
     - name: Checkout covid-data-public
       uses: actions/checkout@v2
       with:
@@ -89,7 +88,11 @@ jobs:
     #   run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_raw_data_qa
 
     - name: Build Model Results (run.sh .. .. execute_model)
-      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
+      working-directory: ./covid-data-model
+      run: |
+        ls -lh data/
+        git lfs ls-files
+        ./run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
 
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
