@@ -32,13 +32,8 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips):
     latest_nyc = latest.get_subset(None, fips=nyc_fips)
     timeseries_nyc = timeseries_dataset.get_subset(None, fips=nyc_fips)
 
-    dataset_path = tmp_path / "dataset"
-    dataset_path.mkdir()
     combined_dataset_utils.update_data_public_head(
-        dataset_path,
-        pointer_path_dir=tmp_path,
-        latest_dataset=latest_nyc,
-        timeseries_dataset=timeseries_nyc,
+        tmp_path, latest_dataset=latest_nyc, timeseries_dataset=timeseries_nyc,
     )
 
     timeseries = combined_datasets.load_us_timeseries_dataset(pointer_directory=tmp_path)

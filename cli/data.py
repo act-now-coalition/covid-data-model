@@ -19,5 +19,5 @@ def main():
 @main.command()
 def update():
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
-    path_prefix = dataset_utils.DATA_CACHE_FOLDER.relative_to(dataset_utils.REPO_ROOT)
+    path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
     combined_dataset_utils.update_data_public_head(path_prefix)

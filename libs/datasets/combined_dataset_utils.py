@@ -29,16 +29,14 @@ _logger = structlog.getLogger(__name__)
 
 def persist_dataset(
     dataset: dataset_base.DatasetBase,
-    path_prefix: pathlib.Path,
+    data_directory: pathlib.Path,
     data_public_path: pathlib.Path = dataset_utils.LOCAL_PUBLIC_DATA_PATH,
 ) -> DatasetPointer:
-    """Creates a DatasetPointer and persists dataset to directory of path_prefix.
-
-    Can save dataset locally or to s3.
+    """Saves dataset and associated pointer in same data directory.
 
     Args:
         dataset: Dataset to persist.
-        path_prefix: Path prefix of dataset.
+        data_directory: Data directory
         data_public_path: Path to covid data public folder.
 
     Returns: DatasetPointer describing persisted dataset.
@@ -51,7 +49,7 @@ def persist_dataset(
     elif isinstance(dataset, latest_values_dataset.LatestValuesDataset):
         dataset_type = DatasetType.LATEST
 
-    dataset_path = path_prefix / f"{dataset_type.value}.csv"
+    dataset_path = data_directory / f"{dataset_type.value}.csv"
     dataset_pointer = DatasetPointer(
         dataset_type=dataset_type,
         path=dataset_path,
@@ -60,19 +58,19 @@ def persist_dataset(
         updated_at=datetime.datetime.utcnow(),
     )
     dataset_pointer.save_dataset(dataset)
+    dataset_pointer.save(data_directory)
     return dataset_pointer
 
 
 def update_data_public_head(
-    path_prefix: pathlib.Path,
-    pointer_path_dir: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
+    data_directory: pathlib.Path,
     latest_dataset: latest_values_dataset.LatestValuesDataset = None,
     timeseries_dataset: timeseries.TimeseriesDataset = None,
 ) -> Tuple[DatasetPointer, DatasetPointer]:
     """Persists US latest and timeseries dataset and saves dataset pointers for Latest tag.
 
     Args:
-        path_prefix: Path prefix of dataset
+        data_directory: Directory to save dataset and pointer.
         pointer_path_dir: Directory to save DatasetPointer files.
         latest_dataset: Optionally specify a LatestValuesDataset to persist instead of building
             from head.  Generally used in testing to sidestep building entire dataset.
@@ -83,11 +81,9 @@ def update_data_public_head(
     """
     if not latest_dataset:
         latest_dataset = combined_datasets.build_us_latest_with_all_fields(skip_cache=True)
-    latest_pointer = persist_dataset(latest_dataset, path_prefix)
-    latest_pointer.save(pointer_path_dir)
+    latest_pointer = persist_dataset(latest_dataset, data_directory)
 
     if not timeseries_dataset:
         timeseries_dataset = combined_datasets.build_us_timeseries_with_all_fields(skip_cache=True)
-    timeseries_pointer = persist_dataset(timeseries_dataset, path_prefix)
-    timeseries_pointer.save(pointer_path_dir)
+    timeseries_pointer = persist_dataset(timeseries_dataset, data_directory)
     return latest_pointer, timeseries_pointer

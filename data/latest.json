@@ -1,15 +1,15 @@
 {
-  "dataset_type": "timeseries",
-  "path": "dataset_pointers/data/timeseries.csv",
+  "dataset_type": "latest",
+  "path": "data/latest.csv",
   "data_git_info": {
     "sha": "f8b29fa1a63561b16f6ceb4ce6bc4ad1be02d34b",
     "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "8a368a7825830fb890ea7599f03d407052b2e465",
+    "sha": "c2ac14c8b43fe1172a418354827b33404409acca",
     "branch": "persist-combined-datasets",
     "is_dirty": true
   },
-  "updated_at": "2020-07-14T20:16:02.778013"
+  "updated_at": "2020-07-15T02:05:22.742648"
 }

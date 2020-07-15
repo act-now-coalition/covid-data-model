@@ -1,6 +1,6 @@
 {
-  "dataset_type": "latest",
-  "path": "dataset_pointers/data/latest.csv",
+  "dataset_type": "timeseries",
+  "path": "data/timeseries.csv",
   "data_git_info": {
     "sha": "f8b29fa1a63561b16f6ceb4ce6bc4ad1be02d34b",
     "branch": "master",

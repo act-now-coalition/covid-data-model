@@ -196,11 +196,18 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return row.iloc[0].to_dict()
 
     def to_csv(self, path: pathlib.Path):
+        """Save data to CSV.
+
+        Args:
+            path: Path to save data to.
+        """
+        # Cannot use common_df.write_csv as it doesn't support data without a date index field.
         data = self.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
         data.to_csv(path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
 
     @classmethod
-    def load_csv(cls, path: pathlib.Path):
-
+    def load_csv(cls, path: pathlib.Path) -> "cls":
+        """Load CSV Latest Values Dataset."""
+        # Cannot use common_df.read_csv as it doesn't support data without a date index field.
         df = pd.read_csv(path, dtype={CommonFields.FIPS: str})
         return cls(df)

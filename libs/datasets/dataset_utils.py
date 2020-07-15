@@ -21,9 +21,7 @@ _logger = logging.getLogger(__name__)
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent.parent
 
-POINTER_DIRECTORY = REPO_ROOT / "dataset_pointers"
-
-DATA_CACHE_FOLDER = POINTER_DIRECTORY / "data"
+DATA_DIRECTORY = REPO_ROOT / "data"
 
 
 class AggregationLevel(enum.Enum):

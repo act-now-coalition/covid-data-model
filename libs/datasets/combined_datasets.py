@@ -144,7 +144,7 @@ def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
 
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
-    pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
+    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
 ) -> timeseries.TimeseriesDataset:
     """Loads US TimeseriesDataset for """
     filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
@@ -155,7 +155,7 @@ def load_us_timeseries_dataset(
 
 @functools.lru_cache(None)
 def load_us_latest_dataset(
-    pointer_directory: pathlib.Path = dataset_utils.POINTER_DIRECTORY,
+    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
 ) -> latest_values_dataset.LatestValuesDataset:
     filename = dataset_pointer.form_filename(DatasetType.LATEST)
     pointer_path = pointer_directory / filename

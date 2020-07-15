@@ -44,7 +44,7 @@ class DatasetPointer(pydantic.BaseModel):
 
     @property
     def filename(self) -> str:
-        return path.filename
+        return self.path.filename
 
     def save_dataset(self, dataset: DatasetBase) -> pathlib.Path:
         dataset.to_csv(self.path)
