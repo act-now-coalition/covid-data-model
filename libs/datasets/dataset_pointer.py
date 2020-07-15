@@ -4,12 +4,14 @@ import tempfile
 import pathlib
 import datetime
 
+import git
 import structlog
 import numpy as np
+
 import pandas as pd
 import pydantic
 from covidactnow.datapublic import common_df
-
+from libs import git_lfs_object_helpers
 from libs.datasets import dataset_base
 from libs.datasets import combined_datasets
 from libs.datasets import timeseries
@@ -51,7 +53,30 @@ class DatasetPointer(pydantic.BaseModel):
         _logger.info("Successfully saved dataset", path=str(self.path))
         return self.path
 
-    def load_dataset(self) -> DatasetBase:
+    def load_dataset(self, on_or_before: str = None, previous_commit: bool = False) -> DatasetBase:
+        """Load dataset from file specified by pointer.
+
+        If options are specified, will load from git history of the file.
+
+        Args:
+            on_or_before: If set, returns dataset from first commit for file on or before date.
+            previous_commit: If true, returns the dataset from previous commit.
+
+        Returns: Instantiated dataset.
+        """
+        if on_or_before or previous_commit:
+            # When loading dataset from a previous point in time, the data is not available as path.
+            # To get around this, we save the bytes of the commit data to a temporary file to then
+            # load as a csv.
+            with tempfile.NamedTemporaryFile() as tmp_file:
+                path = pathlib.Path(tmp_file.name)
+                repo = git.Repo(dataset_utils.REPO_ROOT)
+                lfs_data = git_lfs_object_helpers.get_data_for_path(
+                    repo, str(self.path), on_or_before=on_or_before, previous_commit=previous_commit
+                )
+                path.write_bytes(lfs_data)
+                return self.dataset_type.dataset_class.load_csv(path)
+
         return self.dataset_type.dataset_class.load_csv(self.path)
 
     def save(self, directory: pathlib.Path) -> pathlib.Path:
