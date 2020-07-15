@@ -34,14 +34,6 @@ def test_unique_index_values_us_latest():
     assert not sum(duplicates)
 
 
-def test_load_previous_commit():
-    dataset = combined_datasets.load_us_timeseries_dataset(previous_commit=True)
-    assert not dataset.data.empty
-
-    dataset = combined_datasets.load_us_latest_dataset(previous_commit=True)
-    assert not dataset.data.empty
-
-
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_data(fips):
