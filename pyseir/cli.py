@@ -72,34 +72,6 @@ def _run_infer_rt(state=None, states_only=False):
             infer_rt.run_rt_for_fips(fips=fips)
 
 
-def _run_infer_rt_new(state, states_only, output_dir):
-    _cache_global_datasets()  # make sure using cache if exists
-    # Do Infer Rt Separately For Right Now
-    if state is None:
-        print("No State. Using All States")
-        states = ALL_STATES
-    else:
-        print(f"states = {state}")
-        states = [state]  # this is confusing because state can be a list of states.
-
-    state_fips = [us.states.lookup(s).fips for s in states]
-    all_county_fips = build_counties_to_run_per_state(states=states, fips=None)
-
-    if states_only:
-        infer_rt_fips = state_fips
-    else:
-        infer_rt_fips = state_fips + list(all_county_fips.keys())
-
-    with Pool(maxtasksperchild=1) as p:
-        # calculate calculate county inference
-        rt_results = p.map(infer_rt.run_rt_for_fips, infer_rt_fips)
-        rt_df = pd.concat(rt_results)
-        rt_df = rt_df.set_index("fips", append=True)  # Adds fips to MultiIndex with Date
-        rt_df.to_pickle(os.path.join(output_dir, "infer_rt_results.pkl"))
-        rt_df.to_csv(os.path.join(output_dir, "infer_rt_results.csv"))
-    return
-
-
 def _run_mle_fits(state=None, states_only=False):
     _cache_global_datasets()
     if state:
@@ -160,7 +132,7 @@ def _state_only_pipeline(
     output_dir=None,
 ):
     states_only = True
-    # _run_infer_rt(state, states_only=states_only)
+    _run_infer_rt(state, states_only=states_only)
     _run_mle_fits(state, states_only=states_only)
     _run_ensembles(
         state,
@@ -234,29 +206,15 @@ def _build_all_for_states(
         )
         p.map(states_only_func, states)
 
-    # Do Infer Rt Separately For Right Now
-    _run_infer_rt_new(state=states, states_only=states_only, output_dir=output_dir)
-    # state_fips = [us.states.lookup(state).fips for state in states]
-    #
-    # if states_only:
-    #     infer_rt_fips = state_fips
-    # else:
-    #     infer_rt_fips = state_fips + list(all_county_fips.keys())
-    #
-    # with Pool(maxtasksperchild=1) as p:
-    #     # calculate calculate county inference
-    #     rt_results = p.map(infer_rt.run_rt_for_fips, infer_rt_fips)
-    #     rt_df = pd.concat(rt_results)
-    #     rt_df = rt_df.set_index("fips", append=True)  # Adds fips to MultiIndex with Date
-    #     rt_df.to_pickle(os.path.join(output_dir, 'infer_rt_results.pkl'))
-    #     rt_df.to_csv(os.path.join(output_dir, 'infer_rt_results.csv'))
-
     if states_only:
         root.info("Only executing for states. returning.")
         return
 
     all_county_fips = build_counties_to_run_per_state(states, fips=fips)
+
     with Pool(maxtasksperchild=1) as p:
+        # calculate calculate county inference
+        p.map(infer_rt.run_rt_for_fips, all_county_fips.keys())
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
         fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
@@ -319,16 +277,12 @@ def generate_whitelist():
 @entry_point.command()
 @click.option(
     "--state",
-    default=None,
+    default="",
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-@click.option(
-    "--output-dir", default="output", type=str, help="Directory to deploy infer_rt output."
-)
-def run_infer_rt(state, states_only, output_dir):
-    # _run_infer_rt_new(state, states_only=states_only, output_dir=output_dir)
-    _run_infer_rt_new(state=state, states_only=states_only, output_dir=output_dir)
+def run_infer_rt(state, states_only):
+    _run_infer_rt(state, states_only=states_only)
 
 
 @entry_point.command()
