@@ -1,6 +1,9 @@
 import warnings
+import pathlib
 from typing import List, Optional
 import pandas as pd
+import structlog
+from covidactnow.datapublic import common_df
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
@@ -28,6 +31,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     def __init__(self, data: pd.DataFrame):
         self.data = data
+
+    @property
+    def all_fips(self):
+        return self.data.reset_index().fips.unique()
 
     @property
     def states(self) -> List:
@@ -243,3 +250,20 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             AggregationLevel.STATE,
             [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE],
         )
+
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        common_df.write_csv(self.data, path, structlog.get_logger())
+
+    @classmethod
+    def load_csv(cls, path: pathlib.Path):
+        df = common_df.read_csv(path)
+        # TODO: common_df.read_csv sets the index of the dataframe to be fips, date, however
+        # most of the calling code expects fips and date to not be in an index.
+        # In the future, it would be good to standardize around index fields.
+        df = df.reset_index()
+        return cls(df)
