@@ -83,9 +83,7 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
     path: str
         Location of the artifact.
     """
-    log.info(f"getting state obj fips: {fips}")
     state_obj = us.states.lookup(fips)  # [:2])
-    log.info(state_obj)
 
     if len(fips) == 5:
         agg_level = AggregationLevel.COUNTY
@@ -93,10 +91,7 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
     else:
         agg_level = AggregationLevel.STATE
 
-    log.info("getting artifact")
     artifact = RunArtifact(artifact)
-    log.info("got artifact")
-    log.info(artifact)
 
     output_dir = output_dir or OUTPUT_DIR
 

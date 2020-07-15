@@ -32,14 +32,13 @@ class ForecastRt:
     """
 
     def __init__(self, df_all=None):
-        log.info("init!")
         self.df_all = df_all
         self.states = "All"  # All to use All
         self.csv_path = "./pyseir_data/merged_results.csv"
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet)
         self.ref_date = datetime(year=2020, month=1, day=1)
-        self.debug_plots = True
+        self.debug_plots = False
 
         # Variable Names
         self.aggregate_level_name = "aggregate_level"
@@ -61,7 +60,7 @@ class ForecastRt:
         self.daily_death_var = self.daily_var_prefix + self.death_var
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
-            "sim_day",
+            self.sim_date_name,
             self.daily_case_var,
             self.daily_death_var,
             self.d_predict_variable,
@@ -73,6 +72,8 @@ class ForecastRt:
         self.scaled_variable_suffix = "_scaled"
 
         # Seq2Seq Parameters
+        self.max_scaling = 2  # multiply max feature values by this number for scaling set
+        self.min_scaling = 0.5  # multiply min feature values by this number of scaling set
         self.days_between_samples = 7
         self.mask_value = -10
         self.min_number_of_days = 31
@@ -83,7 +84,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 1000
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -104,14 +105,10 @@ class ForecastRt:
                 self.csv_path,
                 parse_dates=True,
                 index_col=self.index_col_name_csv,
-                converters={"fips": str},
+                converters={self.fips_var_name: str},
             )
-            if not self.states_only:
-                log.info("County level training not implemented yet :(")
-                exit()
-            else:
-                log.info("MERGED DF")
-                log.info(df_merge)
+
+            if self.states_only:
                 df_merge.to_csv("MERGED_CSV.csv")
                 # only store state information
                 df_states_merge = df_merge[
@@ -122,43 +119,40 @@ class ForecastRt:
                 state_df_dictionary = dict(iter(df_states_merge.groupby(self.fips_var_name)))
 
                 # process dataframe
-                log.info(state_df_dictionary)
                 state_names, df_list = [], []
                 for state in state_df_dictionary:
-                    log.info("iterating thru dictionary of state dataframes")
                     df = state_df_dictionary[state]
+                    state_name = df[self.fips_var_name][0]
 
                     # Only keep data points where predict variable exists
                     first_valid_index = df[self.predict_variable].first_valid_index()
                     df = df[first_valid_index:].copy()
 
                     df[self.sim_date_name] = (df.index - self.ref_date).days + 1
-                    # Calculate Rt derivative, but exclude first row since it will have a zero derivative
+                    # Calculate Rt derivative, exclude first row since-- zero derivative
                     df[self.d_predict_variable] = df[self.predict_variable].diff()
                     df = df[1:]
                     df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
 
                     if self.deaths_cumulative:
-                        log.info("SAVING DEATHS")
                         df[self.daily_case_var] = df[self.case_var].diff()
                     if self.cases_cumulative:
                         df[self.daily_death_var] = df[self.death_var].diff()
-                    state_name = df["fips"][0]
-                    log.info(f"STATE FIPS: {state_name}")
 
                     df_forecast = df[self.forecast_variables].copy()
                     # Fill empty values with mask value
-                    log.info(df_forecast)
                     df_forecast = df_forecast.fillna(self.mask_value)
-                    df_forecast = df_forecast.iloc[
-                        :-1
-                    ]  # because last value is NaN for diff #TODO find a better way to do this
+                    # ignore last entry = NaN #TODO find a better way to do this!!!
+                    # Is this necessary? dunno why some states have 0 for last Rt
+                    df_forecast = df_forecast.iloc[:-1]
+
                     state_names.append(state_name)
                     df_list.append(df_forecast)
                     df_forecast.to_csv(df["state"][0] + "_forecast.csv")
-            log.info("STATE NAMES")
-            log.info(state_names)
-            log.info(df_list)
+
+            else:
+                log.info("County level training not implemented yet :(")
+                exit()
 
             return state_names, df_list
 
@@ -175,7 +169,21 @@ class ForecastRt:
         # TODO could create scaling set more cleaning
         # Split sample list into training and testing
         train_samples_not_spaced = df_samples[:train_set_length]
-        test_samples = df_samples[train_set_length + 1 :]
+        first_test_index = (
+            self.days_between_samples * ((train_set_length // self.days_between_samples) + 1) - 1
+        )
+        # test_samples = df_samples[train_set_length:]
+        test_samples = df_samples[first_test_index:]
+
+        if 1 == 0:
+            for i in range(len(train_samples_not_spaced)):
+                df = train_samples_not_spaced[i]
+                df.to_csv("df" + str(i) + "_train-notspaced.csv")
+
+            for i in range(len(test_samples)):
+                df = test_samples[i]
+                df.to_csv("df" + str(i) + "_test-notspaced.csv")
+
         # For training only keep samples that are days_between_samples apart (avoid forecast learning meaningless correlations between labels)
         train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
 
@@ -192,7 +200,6 @@ class ForecastRt:
             ax.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
-            log.info("about to get run artifact path")
             output_path = get_run_artifact_path(state, RunArtifact.FORECAST_VAR_UNSCALED)
             plt.title(us.states.lookup(state).name)
             plt.savefig(output_path, bbox_inches="tight")
@@ -222,31 +229,34 @@ class ForecastRt:
         Returns
         dates and forecast r_t values
         """
-
         # split merged dataframe into state level dataframes (this includes adding variables and masking nan values)
         state_fips, df_list = self.get_forecast_dfs()
-        # get train, test, and scaling samples
+
+        # get train, test, and scaling samples per state and append to list
         scaling_samples, train_samples, test_samples = [], [], []
         for df, fips in zip(df_list, state_fips):
-            state_name = us.states.lookup(fips).name
             train, test, scaling = self.get_train_test_samples(df)
             scaling_samples.append(scaling)
             train_samples.append(train)
             test_samples.append(test)
-
+            state_name = us.states.lookup(fips).name
+            log.info(f"{state_name}: train_samples: {len(train)} test_samples: {len(test)}")
         # Get scaling dictionary
         # TODO add max min rows to avoid domain adaption issues
         train_scaling_set = pd.concat(scaling_samples)
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
-        log.info("retrieved scaling dictionary")
         if self.debug_plots:
             self.plot_variables(df_list, state_fips, scalers_dict)
 
         # Create scaled train samples
         list_train_X, list_train_Y, list_test_X, list_test_Y = [], [], [], []
+        # iterate over train/test_samples = list[state_dfs_samples]
         for train, test in zip(train_samples, test_samples):
-            train_X, train_Y, train_df_list = self.get_scaled_X_Y(train, scalers_dict)
-            test_X, test_Y, test_df_list = self.get_scaled_X_Y(test, scalers_dict)
+            train_X, train_Y, train_df_list = self.get_scaled_X_Y(train, scalers_dict, "train")
+            log.info(
+                f"input train length: {len(train_samples)} train_X: {len(train_X)} train_Y: {len(train_Y)}"
+            )
+            test_X, test_Y, test_df_list = self.get_scaled_X_Y(test, scalers_dict, "test")
             list_train_X.append(train_X)
             list_train_Y.append(train_Y)
             list_test_X.append(test_X)
@@ -261,14 +271,14 @@ class ForecastRt:
         for train_X, train_Y, test_X, test_Y, df_forecast, fips in zip(
             list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_fips
         ):
-            log.info(f"getting state name: {fips}")
             state_name = us.states.lookup(fips).name
-            forecasts_train, dates_train = self.get_forecasts(
-                train_X, train_Y, train_df_list, scalers_dict, model
-            )
-            forecasts_test, dates_test = self.get_forecasts(
-                test_X, test_Y, test_df_list, scalers_dict, model
-            )
+            forecasts_train, dates_train = self.get_forecasts(train_X, train_Y, scalers_dict, model)
+
+            for i in range(len(train_X)):
+                df = pd.DataFrame(data=train_X[i])
+                df.to_csv(state_name + "_" + str(i) + ".csv")
+
+            forecasts_test, dates_test = self.get_forecasts(test_X, test_Y, scalers_dict, model)
             DATA_LINEWIDTH = 1
             MODEL_LINEWIDTH = 2
             # plot training predictions
@@ -369,10 +379,10 @@ class ForecastRt:
 
         return
 
-    def get_forecasts(self, X, Y, df_list, scalers_dict, model):
+    def get_forecasts(self, X, Y, scalers_dict, model):
         forecasts = list()
         dates = list()
-        for i, j, k in zip(X, Y, df_list):
+        for i, j in zip(X, Y):
             i = i.reshape(self.n_batch, i.shape[0], i.shape[1])
             scaled_df = pd.DataFrame(np.squeeze(i))
             thisforecast = scalers_dict[self.predict_variable].inverse_transform(
@@ -426,15 +436,16 @@ class ForecastRt:
         log.info("about to return scaling dictionary")
         return scalers_dict
 
-    def get_scaled_X_Y(self, samples, scalers_dict):
+    def get_scaled_X_Y(self, samples, scalers_dict, label):
         sample_list = list()
         for sample in samples:
             for columnName, columnData in sample.iteritems():
                 scaled_values = scalers_dict[columnName].transform(columnData.values.reshape(-1, 1))
+                # scaled_values = columnData.values.reshape(-1,1)
                 sample.loc[:, f"{columnName}{self.scaled_variable_suffix}"] = scaled_values
             sample_list.append(sample)
-
-        X, Y, df_list = self.get_X_Y(sample_list)
+        X, Y, df_list = self.get_X_Y(sample_list, label)
+        log.info(f"lengths: X: {len(X)} Y:{len(Y)} df_list: {len(df_list)}")
         return X, Y, df_list
 
     def build_model(self, final_train_X, final_train_Y):
@@ -502,40 +513,42 @@ class ForecastRt:
 
         return model, history
 
-    def get_X_Y(self, sample_list):
+    def get_X_Y(self, sample_list, label):
         PREDICT_VAR = self.predict_variable + self.scaled_variable_suffix
         X_train_list = list()
         Y_train_list = list()
         df_list = list()
-        log.info("SAMPLE LIST LENGTH")
-        log.info(len(sample_list))
         for i in range(len(sample_list)):
             df = sample_list[i]
             df_list.append(df)
             df = df.filter(regex="scaled")
 
-            train = df.iloc[
+            X = df.iloc[
                 : -self.predict_days, :
             ]  # exclude last n entries of df to use for prediction
-            test = df.iloc[-self.predict_days :, :]
+            Y = df.iloc[-self.predict_days :, :]
 
-            n_rows_train = train.shape[0]
+            # if 1==1:
+            #  fips = X['fips_int'][0]
+            #  X.to_csv(label + '_X_' + str(fips) + '_' +  str(i) + '.csv')
+            #  Y.to_csv(label + '_Y_' + str(fips) + '_' + str(i) + '.csv')
+
+            n_rows_train = X.shape[0]
             n_rows_to_add = self.sequence_length - n_rows_train
-            pad_rows = np.empty((n_rows_to_add, train.shape[1]), float)
+            pad_rows = np.empty((n_rows_to_add, X.shape[1]), float)
             pad_rows[:] = self.mask_value
-            padded_train = np.concatenate((pad_rows, train))
+            padded_train = np.concatenate((pad_rows, X))
 
-            test = np.array(test[PREDICT_VAR])
+            labels = np.array(Y[PREDICT_VAR])
 
             X_train_list.append(padded_train)
-            Y_train_list.append(test)
+            Y_train_list.append(labels)
 
         # MAYBE UNCOMMENT NATASHA
         final_test_X = np.array(X_train_list)
         final_test_Y = np.array(Y_train_list)
         final_test_Y = np.squeeze(final_test_Y)
         return final_test_X, final_test_Y, df_list
-        return X_train_list, Y_train_list, df_list
 
     def create_samples(self, df):
         df_list = list()
