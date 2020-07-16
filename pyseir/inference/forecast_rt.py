@@ -34,11 +34,14 @@ class ForecastRt:
     def __init__(self, df_all=None):
         self.df_all = df_all
         self.states = "All"  # All to use All
-        self.csv_path = "./pyseir_data/merged_results.csv"
+        # self.csv_path = "./pyseir_data/merged_results.csv"
+        # self.csv_path = "./pyseir_data/delphi_merged.csv"
+        self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/pyseir/inference/delphi_merged.csv"
+
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet)
         self.ref_date = datetime(year=2020, month=1, day=1)
-        self.debug_plots = False
+        self.debug_plots = True
 
         # Variable Names
         self.aggregate_level_name = "aggregate_level"
@@ -60,6 +63,8 @@ class ForecastRt:
         self.daily_death_var = self.daily_var_prefix + self.death_var
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
+            "raw_search",
+            "smoothed_search",
             self.sim_date_name,
             self.daily_case_var,
             self.daily_death_var,
@@ -84,7 +89,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 1000
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
