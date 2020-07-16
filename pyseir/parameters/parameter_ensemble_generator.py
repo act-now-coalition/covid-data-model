@@ -28,19 +28,10 @@ class ParameterEnsembleGenerator:
 
     def __init__(self, fips, N_samples, t_list, I_initial=1, suppression_policy=None):
         self.fips = fips
-        self.agg_level = AggregationLevel.COUNTY if len(self.fips) == 5 else AggregationLevel.STATE
         self.N_samples = N_samples
         self.I_initial = I_initial
         self.suppression_policy = suppression_policy
         self.t_list = t_list
-
-        if self.agg_level is AggregationLevel.COUNTY:
-            self.county_metadata = (
-                load_data.load_county_metadata().set_index("fips").loc[fips].to_dict()
-            )
-            self.state_abbr = us.states.lookup(self.county_metadata["state"]).abbr
-        else:
-            self.state_abbr = us.states.lookup(fips).abbr
         self._latest = combined_datasets.get_us_latest_for_fips(self.fips)
 
     @property

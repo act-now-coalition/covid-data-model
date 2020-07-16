@@ -83,14 +83,12 @@ class EnsembleRunner:
 
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata_by_fips(fips)
-            self.state_abbr = us.states.lookup(self.county_metadata["state"]).abbr
             self.state_name = us.states.lookup(self.county_metadata["state"]).name
 
             self.output_file_report = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_REPORT)
             self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
 
         else:
-            self.state_abbr = us.states.lookup(self.fips).abbr
             self.state_name = us.states.lookup(self.fips).name
 
             self.output_file_report = None
