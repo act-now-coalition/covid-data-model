@@ -1,5 +1,8 @@
-from typing import Type, List, Optional
+from typing import Type, List, Optional, Iterable
 import pathlib
+
+from more_itertools import first
+
 from libs import us_state_abbrev
 import pandas as pd
 import numpy as np
@@ -195,12 +198,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
         Returns: Dictionary with all data for a given fips code.
         """
-        # we map NaNs to none here so that they can be generated via the API easier
-        row = self.data[self.data[CommonFields.FIPS] == fips].where(pd.notnull(self.data), None)
-        if not len(row):
-            return {}
-
-        return row.iloc[0].to_dict()
+        return first(self.get_subset(aggregation_level=AggregationLevel.COUNTY, fips=fips).yield_records(), default={})
 
     def to_csv(self, path: pathlib.Path):
         """Save data to CSV.
