@@ -21,7 +21,7 @@ def test_remove_duplicate_city_data():
         )
     )
 
-    output_df = cds_dataset.CDSDataset.remove_duplicate_city_data(input_df)
+    output_df = cds_dataset.CDSDataset._remove_duplicate_city_data(input_df)
     expected_df = pd.read_csv(
         StringIO(
             "city,county,state,fips,date,metric_a\n"

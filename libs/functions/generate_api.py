@@ -142,7 +142,7 @@ def generate_region_timeseries(
 
     actuals_timeseries = []
 
-    for row in timeseries.records:
+    for row in timeseries.yield_records():
         # Timeseries records don't have population
         row[CommonFields.POPULATION] = region_summary.population
         actual = _generate_actuals(row, region_summary.intervention)

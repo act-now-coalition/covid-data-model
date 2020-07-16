@@ -81,9 +81,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         if aggregation_level == AggregationLevel.COUNTY:
             group = [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS]
-        if aggregation_level == AggregationLevel.STATE:
+        elif aggregation_level == AggregationLevel.STATE:
             group = [CommonFields.COUNTRY, CommonFields.STATE]
-        if aggregation_level == AggregationLevel.COUNTRY:
+        else:
+            assert aggregation_level == AggregationLevel.COUNTRY
             group = [CommonFields.COUNTRY]
 
         data = self.data[
@@ -128,8 +129,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None
         """
-        subset = self.get_subset(AggregationLevel.COUNTY, fips=fips)
-        return subset.records
+        return list(self.get_subset(aggregation_level=AggregationLevel.COUNTY, fips=fips).yield_records())
 
     def get_records_for_state(self, state) -> List[dict]:
         """Get data for state.
@@ -139,14 +139,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Returns: List of dictionary records with NA values replaced to be None.
         """
-        subset = self.get_subset(AggregationLevel.STATE, state=state)
-        return subset.records
-
-    @property
-    def records(self) -> List[dict]:
-        """Returns rows in current data."""
-        data = self.data
-        return data.where(pd.notnull(data), None).to_dict(orient="records")
+        return list(self.get_subset(aggregation_level=AggregationLevel.COUNTY, state=state).yield_records())
 
     def get_data(
         self,
