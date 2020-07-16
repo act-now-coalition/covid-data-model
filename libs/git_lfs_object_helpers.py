@@ -72,12 +72,6 @@ def read_lfs_data_for_commit(repo: git.Repo, path: pathlib.Path, commit: git.Com
         path = path.relative_to(root)
 
     blob = commit.tree / str(path)
-
-    # TODO(chris): Find a better way to identify a Git LFS pointer file.
-    is_pointer = blob.size < 200
-    if not is_pointer:
-        return blob.data_stream.read()
-
     pointer_text = blob.data_stream.read()
     return subprocess.check_output(["git", "lfs", "smudge"], input=pointer_text)
 
