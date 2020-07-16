@@ -600,21 +600,17 @@ def _get_current_hospitalized(df: pd.DataFrame, t0: datetime, category: Hospital
 
 
 @lru_cache(maxsize=32)
-def load_new_test_data_by_fips(
-    fips, t0, smoothing_tau=5, correction_threshold=5, use_recent_positivity=False
-):
+def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
     back as far as case data.
-
     Parameters
     ----------
     fips: str
         State or county fips code
     t0: datetime
         Reference datetime to use.
-
     Returns
     -------
     df: pd.DataFrame
@@ -636,7 +632,6 @@ def load_new_test_data_by_fips(
         Do not apply a correction if the incident cases per day is lower than
         this value. There can be instability if case counts are very low.
     """
-    EPSILON = 0.1
     fips_timeseries = combined_datasets.get_timeseries_for_fips(fips)
     df = fips_timeseries.data.copy()
 
@@ -648,26 +643,16 @@ def load_new_test_data_by_fips(
         :,
     ]
 
-    # The first derivative gets us new instead of cumulative tests while the second derivative gives us the change in new test rate.
+    df["positivity_rate"] = df[CommonFields.POSITIVE_TESTS] / (
+        df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]
+    )
     df["new_positive"] = np.append([0], np.diff(df[CommonFields.POSITIVE_TESTS]))
+
+    # The first derivative gets us new instead of cumulative tests while the second derivative gives us the change in new test rate.
     df["new_tests"] = np.append(
         [0], np.diff(df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS])
     )
     df["increase_in_new_tests"] = np.append([0], np.diff(df["new_tests"]))
-
-    # Filter out days with nonsensical new daily values
-    df = df.loc[(df["new_positive"] >= 0) & (df["new_tests"] >= 0)]
-
-    # Is test positive rate local in time or averaged over all time?
-    if use_recent_positivity:  # Change to use positivity from 7 day moving average
-        df["raw_positivity_rate"] = df["new_positive"] / (
-            df["new_tests"].apply(lambda v: max(EPSILON, v))
-        )
-        df["positivity_rate"] = df["raw_positivity_rate"].rolling(10, min_periods=1).mean()
-    else:  # Eric's original code
-        df["positivity_rate"] = df[CommonFields.POSITIVE_TESTS] / (
-            df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]
-        )
 
     # dPositive / dTotal = 0.65 * positivity_rate was empirically determined by looking at
     # the increase in positives day-over-day relative to the increase in total tests across all 50 states.
@@ -688,7 +673,6 @@ def load_new_test_data_by_fips(
     df["expected_positives_from_test_increase"] = ewma_smoothing(
         df["expected_positives_from_test_increase"], smoothing_tau
     )
-    # don't bother making adjustment if its not significant
     df.loc[df["new_positive"] < 5, "expected_positives_from_test_increase"] = 0
 
     df["times"] = [
