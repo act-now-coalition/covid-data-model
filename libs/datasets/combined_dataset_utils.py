@@ -7,7 +7,6 @@ import datetime
 import enum
 from urllib.parse import urlparse
 
-import boto3
 import structlog
 import numpy as np
 import pandas as pd
