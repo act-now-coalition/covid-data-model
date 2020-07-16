@@ -74,11 +74,15 @@ class WebUIDataAdaptorV1:
         return metric is not None and metric > 0
 
     def _get_population(self, fips: str) -> int:
-        if len(fips) == 5:
-            return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
-        return self.population_data.get_record_for_state(self.state_abbreviation)[
-            CommonFields.POPULATION
-        ]
+        """
+        Get the population for a region.
+
+        Parameters
+        ----------
+        fips: str
+            2 digits for a state or 5 digits for a county.
+        """
+        return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
 
     def map_fips(self, fips: str) -> None:
         """

@@ -39,10 +39,9 @@ class ParameterEnsembleGenerator:
                 load_data.load_county_metadata().set_index("fips").loc[fips].to_dict()
             )
             self.state_abbr = us.states.lookup(self.county_metadata["state"]).abbr
-            self._latest = combined_datasets.get_us_latest_for_fips(self.fips)
         else:
             self.state_abbr = us.states.lookup(fips).abbr
-            self._latest = combined_datasets.get_us_latest_for_state(self.state_abbr)
+        self._latest = combined_datasets.get_us_latest_for_fips(self.fips)
 
     @property
     def population(self) -> int:

@@ -127,7 +127,7 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 
 
 @dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_timeseries_with_all_fields() -> TimeseriesDataset:
+def build_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
     feature_definition_config = ALL_TIMESERIES_FEATURE_DEFINITION
     log = structlog.get_logger()
 
@@ -151,14 +151,14 @@ def build_timeseries_with_all_fields() -> TimeseriesDataset:
 
 
 @dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
+def build_us_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
     return build_combined_dataset_from_sources(
         TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
     )
 
 
 @dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
-def build_us_latest_with_all_fields() -> LatestValuesDataset:
+def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
     return build_combined_dataset_from_sources(
         LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
     )
@@ -185,14 +185,8 @@ def load_us_latest_dataset(
     return pointer.load_dataset()
 
 
-def get_us_latest_for_state(state) -> dict:
-    """Gets latest values for a given state."""
-    us_latest = load_us_latest_dataset()
-    return us_latest.get_record_for_state(state)
-
-
 def get_us_latest_for_fips(fips) -> dict:
-    """Gets latest values for a given fips code."""
+    """Gets latest values for a given state or county fips code."""
     us_latest = load_us_latest_dataset()
     return us_latest.get_record_for_fips(fips)
 
