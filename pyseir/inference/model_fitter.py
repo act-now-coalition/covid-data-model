@@ -1,6 +1,7 @@
 import os
 import us
-import logging
+import json
+import structlog
 from pprint import pformat
 import datetime as dt
 from datetime import datetime, timedelta
@@ -23,7 +24,7 @@ from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
 
-log = logging.getLogger()
+log = structlog.getLogger()
 
 
 def calc_chi_sq(obs, predicted, stddev):
@@ -586,7 +587,7 @@ class ModelFitter:
             )
 
         if np.isnan(self.fit_results["t0"]):
-            logging.error(f"Could not compute MLE values for {self.display_name}")
+            log.error(f"Could not compute MLE values for {self.display_name}")
             self.fit_results["t0_date"] = (
                 self.ref_date + timedelta(days=self.t0_guess)
             ).isoformat()
@@ -612,12 +613,15 @@ class ModelFitter:
 
         try:
             param_state = minuit.get_param_states()
-            logging.info(f"Fit Results for {self.display_name} \n {param_state}")
+            log.info(f"Fit Results for {self.display_name} \n {param_state}")
         except:
             param_state = dict(minuit.values)
-            logging.info(f"Fit Results for {self.display_name} \n {param_state}")
+            log.info(f"Fit Results for {self.display_name} \n {param_state}")
 
-        logging.info(f"Complete fit results for {self.display_name} \n {pformat(self.fit_results)}")
+        log.info(
+            event=f"Fit results for {self.display_name}:",
+            results=f"###{json.dumps(self.fit_results)})###",
+        )
         self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     @classmethod
@@ -658,7 +662,7 @@ class ModelFitter:
                     if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
                         model_plotting.plot_fitting_results(model_fitter)
                 except RuntimeError as e:
-                    logging.warning("No convergence.. Retrying " + str(e))
+                    log.warning("No convergence.. Retrying " + str(e))
                 retries_left = retries_left - 1
                 if model_fitter.mle_model:
                     model_is_empty = False
@@ -666,7 +670,7 @@ class ModelFitter:
                 raise RuntimeError(f"Could not converge after {n_retries} for fips {fips}")
             return model_fitter
         except Exception:
-            logging.exception(f"Failed to run {fips}")
+            log.exception(f"Failed to run {fips}")
             return None
 
 
@@ -674,7 +678,7 @@ def execute_model_for_fips(fips):
     if fips:
         model_fitter = ModelFitter.run_for_fips(fips)
         return model_fitter
-    logging.warning(f"Not running model run for ${fips}")
+    log.warning(f"Not running model run for ${fips}")
     return None
 
 
@@ -693,7 +697,7 @@ def build_county_list(state):
     Build the and return the fips list
     """
     state_obj = us.states.lookup(state)
-    logging.info(f"Get fips list for state {state_obj.name}")
+    log.info(f"Get fips list for state {state_obj.name}")
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
@@ -718,7 +722,7 @@ def run_state(state, states_only=False, with_age_structure=False):
         If True run model with age structure.
     """
     state_obj = us.states.lookup(state)
-    logging.info(f"Running MLE fitter for state {state_obj.name}")
+    log.info(f"Running MLE fitter for state {state_obj.name}")
 
     model_fitter = ModelFitter.run_for_fips(
         fips=state_obj.fips, with_age_structure=with_age_structure
