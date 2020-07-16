@@ -96,7 +96,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     def get_subset(
         self,
-        aggregation_level,
+        aggregation_level=None,
         country=None,
         fips: Optional[str] = None,
         state: Optional[str] = None,
@@ -125,25 +125,15 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         """Get data for FIPS code.
 
         Args:
-            fips: FIPS code.
+            fips: 2 digits for a state or 5 digits for a county
 
         Returns: List of dictionary records with NA values replaced to be None
         """
-        return list(self.get_subset(aggregation_level=AggregationLevel.COUNTY, fips=fips).yield_records())
-
-    def get_records_for_state(self, state) -> List[dict]:
-        """Get data for state.
-
-        Args:
-            state: 2 letter state abbrev.
-
-        Returns: List of dictionary records with NA values replaced to be None.
-        """
-        return list(self.get_subset(aggregation_level=AggregationLevel.COUNTY, state=state).yield_records())
+        return list(self.get_subset(fips=fips).yield_records())
 
     def get_data(
         self,
-        aggregation_level,
+        aggregation_level=None,
         country=None,
         fips: Optional[str] = None,
         state: Optional[str] = None,

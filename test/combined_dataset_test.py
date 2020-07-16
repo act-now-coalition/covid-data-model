@@ -42,6 +42,7 @@ def test_combined_county_has_some_data(fips):
     )
     assert latest.data[CommonFields.POSITIVE_TESTS].all()
     assert latest.data[CommonFields.NEGATIVE_TESTS].all()
+    assert latest.get_record_for_fips(fips=fips)[CommonFields.DEATHS] > 1
 
 
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
