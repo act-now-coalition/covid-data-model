@@ -72,8 +72,12 @@ class CANPyseirLocationOutput(object):
 
     @property
     def latest_rt(self) -> float:
-        return self.data.iloc[-1][schema.Rt]
+        """Returns the latest Rt value from Rt inference process."""
+        last_idx = self.data[schema.RT_INDICATOR].last_valid_index()
+        return self.data.loc[last_idx][schema.RT_INDICATOR]
 
     @property
     def latest_rt_ci90(self) -> float:
-        return self.data.iloc[-1][schema.Rt_ci90]
+        """Returns the latest Rt confidence bounds from Rt inference process."""
+        last_idx = self.data[schema.RT_INDICATOR_CI90].last_valid_index()
+        return self.data.loc[last_idx][schema.RT_INDICATOR_CI90]

@@ -8,6 +8,10 @@ The Covid Act Now API provides the same data that powers [CovidActNow.org](https
 
 Data is updated every day, typically around midnight US Pacific Time.
 
+## Notable Changes
+* 7/16 - ``projections.Rt`` and ``projections.RtCI90`` now match the Rt in `timeseries.RtIndicator` and `timeseries.RtIndicatorCI90`.  This value now matches the Infection Rate shown on the website as opposed to a separate value inferred from our SEIR model.
+* 6/5 - `cumulativePositiveTests` and `cumulativeNegativeTests` were removed from the `timeseries` rows.  This data is still available in the `actualsTimeseries` field.
+
 ### Rate Limits
 
 There are no rate limits, but please be aware of your usage as we're a non-profit and would like to stay available to everyone.
@@ -219,5 +223,3 @@ are only included when requesting `*.timeseries.json` or `*.timeseries.csv`.
   }]
 };
 ```
-## Breaking Changes
-* As of 6/5, `cumulativePositiveTests` and `cumulativeNegativeTests` were removed from the `timeseries` rows.  This data is still available in the `actualsTimeseries` field.
