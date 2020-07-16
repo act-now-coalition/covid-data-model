@@ -11,23 +11,17 @@ import re
 import pathlib
 import structlog
 import git
+from libs.datasets import dataset_utils
 
 _logger = structlog.getLogger(__name__)
 
 
-def _get_lfs_object_path(repo: git.Repo, object_oid: str) -> pathlib.Path:
-    lfs_objects = pathlib.Path(repo.git_dir) / "lfs" / "objects"
-    path = lfs_objects / object_oid[:2] / object_oid[2:4] / object_oid
-    return path
-
-
-def _get_object_sha_from_lfs_pointer(lfs_data: str) -> str:
-    match = re.search("oid sha256:(.*)", lfs_data)
-    return match.groups(0)[0]
-
-
 def find_commit(
-    repo: git.Repo, path: pathlib.Path, on_or_before: str = None, previous_commit: bool = False
+    repo: git.Repo,
+    path: pathlib.Path,
+    before: str = None,
+    previous_commit: bool = False,
+    commit_sha: str = None,
 ) -> Optional[git.Commit]:
     """Find a commit for a given path matching query options.
 
@@ -36,31 +30,33 @@ def find_commit(
     Args:
         repo: Git Repo.
         path: file path.
-        on_or_before: Optional ISO format date string.  If set, will return the first commit on or
+        before: Optional ISO format date string.  If set, will return the first commit
             before this date.
         previous_commit: Returns the previous commit for the file.
 
     Returns: Commit if matching commit found.
     """
+    if commit_sha:
+        return repo.commit(commit_sha)
     if previous_commit:
         commit_iterator = repo.iter_commits(paths=path)
         _ = next(commit_iterator)
         return next(commit_iterator)
 
-    if on_or_before:
-        on_or_before = datetime.datetime.fromisoformat(on_or_before)
+    if before:
+        before = datetime.datetime.fromisoformat(before)
 
     for commit in repo.iter_commits(paths=path):
-        if not on_or_before:
+        if not before:
             return commit
 
-        if commit.committed_datetime > on_or_before:
+        if commit.committed_datetime >= before:
             continue
 
         return commit
 
 
-def read_lfs_data_for_commit(repo: git.Repo, path: str, commit: git.Commit) -> bytes:
+def read_lfs_data_for_commit(repo: git.Repo, path: pathlib.Path, commit: git.Commit) -> bytes:
     """Read LFS Data for a commit, fetching data if necessary.
 
     Args:
@@ -70,27 +66,31 @@ def read_lfs_data_for_commit(repo: git.Repo, path: str, commit: git.Commit) -> b
 
     Returns: Bytes for file at commit.
     """
-    blob = commit.tree / path
+    # blob expects relative path, converts to relative from the repo root if path is absolute.
+    if path.absolute() == path:
+        root = pathlib.Path(repo.common_dir).parent
+        path = path.relative_to(root)
+
+    blob = commit.tree / str(path)
+
     # TODO(chris): Find a better way to identify a Git LFS pointer file.
     is_pointer = blob.size < 200
     if not is_pointer:
         return blob.data_stream.read()
 
-    _logger.debug("Loading commit data from path at commit", path=path, commit=commit)
-    pointer_text = blob.data_stream.read().decode()
-    object_sha = _get_object_sha_from_lfs_pointer(pointer_text)
-    object_path = _get_lfs_object_path(repo, object_sha)
-
-    if not object_path.exists():
-        lfs_fetch_command = f"git lfs fetch origin {commit.hexsha}"
-        _logger.info("Fetching missing reference", fetch_command=lfs_fetch_command)
-        subprocess.check_output(lfs_fetch_command, shell=True)
-
-    return object_path.read_bytes()
+    pointer_text = blob.data_stream.read()
+    return subprocess.check_output(["git", "lfs", "smudge"], input=pointer_text)
 
 
 def get_data_for_path(
-    repo: git.Repo, path: str, on_or_before: str = None, previous_commit=False
+    path: pathlib.Path,
+    repo: git.Repo = None,
+    before: str = None,
+    previous_commit=False,
+    commit: str = None,
 ) -> bytes:
-    commit = find_commit(repo, path, on_or_before=on_or_before, previous_commit=previous_commit)
+    repo = repo or git.Repo(dataset_utils.REPO_ROOT)
+    commit = find_commit(
+        repo, path, before=before, previous_commit=previous_commit, commit_sha=commit
+    )
     return read_lfs_data_for_commit(repo, path, commit)
