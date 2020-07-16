@@ -106,10 +106,13 @@ def test_dh_beds_loading():
 
 def test_get_data():
     beds_data = CovidCareMapBeds.local().beds()
-    data = beds_data.get_record_for_state("MA")
+    data = beds_data.get_record_for_fips("25")
     assert data
 
-    data = beds_data.get_record_for_state("NOTSTATE")
+    data = beds_data.get_record_for_fips("NOTSTATE")
+    assert not data
+
+    data = beds_data.get_record_for_fips("99")
     assert not data
 
 

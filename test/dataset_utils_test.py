@@ -145,6 +145,33 @@ def test_fill_fields_with_data_source():
     assert logs == []
 
 
+def test_fill_fields_with_data_source_nan_overwrite():
+    existing_df = pd.read_csv(
+        StringIO(
+            "fips,state,aggregate_level,county,current_icu,preserved\n"
+            "55,ZZ,state,Grand State,46,ef\n"
+        )
+    )
+    new_df = pd.read_csv(
+        StringIO("fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,\n")
+    )
+
+    with testing.capture_logs() as logs:
+        log = get_logger()
+        result = fill_fields_with_data_source(
+            log, existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
+        )
+    expected = pd.read_csv(
+        StringIO(
+            "fips,state,aggregate_level,county,current_icu,preserved\n"
+            "55,ZZ,state,Grand State,,ef\n"
+        )
+    )
+
+    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
+    assert logs == []
+
+
 def test_fill_fields_with_data_source_timeseries():
     # Timeseries in existing_df and new_df are merged together.
     existing_df = pd.read_csv(
