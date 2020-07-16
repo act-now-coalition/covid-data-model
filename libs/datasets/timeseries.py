@@ -78,12 +78,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             county = self.latest_values(aggregation_level=AggregationLevel.COUNTY)
             state = self.latest_values(aggregation_level=AggregationLevel.STATE)
             return pd.concat([county, state])
-        elif aggregation_level == AggregationLevel.COUNTY:
+        elif aggregation_level is AggregationLevel.COUNTY:
             group = [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS]
-        elif aggregation_level == AggregationLevel.STATE:
+        elif aggregation_level is AggregationLevel.STATE:
             group = [CommonFields.COUNTRY, CommonFields.STATE]
         else:
-            assert aggregation_level == AggregationLevel.COUNTRY
+            assert aggregation_level is AggregationLevel.COUNTRY
             group = [CommonFields.COUNTRY]
 
         data = self.data[
