@@ -605,14 +605,12 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
     back as far as case data.
-
     Parameters
     ----------
     fips: str
         State or county fips code
     t0: datetime
         Reference datetime to use.
-
     Returns
     -------
     df: pd.DataFrame
