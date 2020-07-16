@@ -163,14 +163,8 @@ def load_us_latest_dataset(
     return pointer.load_dataset()
 
 
-def get_us_latest_for_state(state) -> dict:
-    """Gets latest values for a given state."""
-    us_latest = load_us_latest_dataset()
-    return us_latest.get_record_for_state(state)
-
-
 def get_us_latest_for_fips(fips) -> dict:
-    """Gets latest values for a given fips code."""
+    """Gets latest values for a given state or county fips code."""
     us_latest = load_us_latest_dataset()
     return us_latest.get_record_for_fips(fips)
 

@@ -74,16 +74,16 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Return: DataFrame
         """
-        if not aggregation_level:
+        if aggregation_level is None:
             county = self.latest_values(aggregation_level=AggregationLevel.COUNTY)
             state = self.latest_values(aggregation_level=AggregationLevel.STATE)
             return pd.concat([county, state])
-
-        if aggregation_level == AggregationLevel.COUNTY:
+        elif aggregation_level is AggregationLevel.COUNTY:
             group = [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS]
-        if aggregation_level == AggregationLevel.STATE:
+        elif aggregation_level is AggregationLevel.STATE:
             group = [CommonFields.COUNTRY, CommonFields.STATE]
-        if aggregation_level == AggregationLevel.COUNTRY:
+        else:
+            assert aggregation_level is AggregationLevel.COUNTRY
             group = [CommonFields.COUNTRY]
 
         data = self.data[
@@ -95,7 +95,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     def get_subset(
         self,
-        aggregation_level,
+        aggregation_level=None,
         country=None,
         fips: Optional[str] = None,
         state: Optional[str] = None,
@@ -124,33 +124,15 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         """Get data for FIPS code.
 
         Args:
-            fips: FIPS code.
+            fips: 2 digits for a state or 5 digits for a county
 
         Returns: List of dictionary records with NA values replaced to be None
         """
-        subset = self.get_subset(AggregationLevel.COUNTY, fips=fips)
-        return subset.records
-
-    def get_records_for_state(self, state) -> List[dict]:
-        """Get data for state.
-
-        Args:
-            state: 2 letter state abbrev.
-
-        Returns: List of dictionary records with NA values replaced to be None.
-        """
-        subset = self.get_subset(AggregationLevel.STATE, state=state)
-        return subset.records
-
-    @property
-    def records(self) -> List[dict]:
-        """Returns rows in current data."""
-        data = self.data
-        return data.where(pd.notnull(data), None).to_dict(orient="records")
+        return list(self.get_subset(fips=fips).yield_records())
 
     def get_data(
         self,
-        aggregation_level,
+        aggregation_level=None,
         country=None,
         fips: Optional[str] = None,
         state: Optional[str] = None,

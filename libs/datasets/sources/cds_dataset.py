@@ -91,7 +91,7 @@ class CDSDataset(data_source.DataSource):
             dtype={self.Fields.FIPS: str},
             low_memory=False,
         )
-        data = self.standardize_data(data)
+        data = self._standardize_data(data)
         super().__init__(data)
 
     @classmethod
@@ -100,10 +100,10 @@ class CDSDataset(data_source.DataSource):
         return cls(data_root / cls.DATA_PATH)
 
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+    def _standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
 
-        data = cls.remove_duplicate_city_data(data)
+        data = cls._remove_duplicate_city_data(data)
 
         # CDS state level aggregates are identifiable by not having a city or county.
         only_county = data[cls.Fields.COUNTY].notnull() & data[cls.Fields.STATE].notnull()
@@ -156,7 +156,7 @@ class CDSDataset(data_source.DataSource):
         return data
 
     @classmethod
-    def remove_duplicate_city_data(cls, data):
+    def _remove_duplicate_city_data(cls, data):
         # City data before 3-23 was not duplicated, copy the city name to the county field.
         select_pre_march_23 = data.date < "2020-03-23"
         data.loc[select_pre_march_23, cls.Fields.COUNTY] = data.loc[select_pre_march_23].apply(
