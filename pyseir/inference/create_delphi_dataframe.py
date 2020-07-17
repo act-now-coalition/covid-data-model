@@ -46,13 +46,15 @@ merged_df = reduce(
 
 merged_df.to_csv("merged_delphi_df.csv")
 # Merge dataframes
-# merged_df = pd.merge(
-#    can_df,
-#    delphi_var_df,
-#    how="left",
-#    left_on=["fips", "date", aggregate_level_name, aggregate_select],
-#    right_on=["fips", "date", aggregate_level_name, aggregate_select],
-# )
+final_merged_df = pd.merge(
+    can_df,
+    merged_df,
+    how="left",
+    left_on=["fips", "date", aggregate_level_name, aggregate_select],
+    right_on=["fips", "date", aggregate_level_name, aggregate_select],
+)
+
+final_merged_df.to_csv("merged_delphi_df.csv")
 
 # merged_df["fips_int"] = merged_df["fips"].astype(int)
 # merged_df.to_csv("delphi_merged.csv")

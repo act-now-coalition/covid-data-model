@@ -65,8 +65,6 @@ class ForecastRt:
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
             self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
-            "raw_search",
-            "smoothed_search",
             self.daily_case_var,
             self.daily_death_var,
             self.d_predict_variable,
@@ -74,6 +72,26 @@ class ForecastRt:
             self.fips_var_name_int,
             "positive_tests",
             "negative_tests",
+            "raw_search",  # google health trends data raw
+            "smoothed_search",  # google health trends data smooth
+            "nmf_day_doc_fbc_fbs_ght",  # delphi combined indicator
+            "raw_cli",  # fb raw covid like illness
+            "raw_ili",  # fb raw flu like illness
+            "contact_tracers_count",
+            "nmf_day_doc_fbs_ght",
+            "raw_community",
+            "raw_hh_cmnty_cli",
+            "raw_nohh_cmnty_cli",
+            "raw_wcli",
+            "raw_wili",
+            "smoothed_cli",
+            "smoothed_community",
+            "smoothed_hh_cmnty_cli",
+            "smoothed_ili",
+            "smoothed_nohh_cmnty_cli",
+            "smoothed_wcli",
+            "smoothed_wili",
+            "unsmoothed_community",
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -90,7 +108,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 1000
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
