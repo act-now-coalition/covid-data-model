@@ -308,6 +308,17 @@ def _build_dataframe(
 ) -> pd.DataFrame:
     # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
     log = structlog.get_logger()
+    for field, data_source_classes in feature_definition_config.items():
+        for data_source_cls in data_source_classes:
+            dataset = intermediate_datasets[data_source_cls]
+            with tmp_bind(log, dataset_name=data_source_cls.SOURCE_NAME, field=field) as log:
+                try:
+                    data = dataset_utils.fill_fields_with_data_source(
+                        log, data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field]
+                    )
+                except Exception:
+                    log.exception("trying to fill fields")
+                    raise
 
     preserve_columns = [
         CommonFields.AGGREGATE_LEVEL,
