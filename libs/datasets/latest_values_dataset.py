@@ -1,4 +1,4 @@
-from typing import Type, List, Optional
+from typing import Type, List, Optional, Union, TextIO
 import pathlib
 from libs import us_state_abbrev
 import pandas as pd
@@ -206,8 +206,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data.to_csv(path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
 
     @classmethod
-    def load_csv(cls, path: pathlib.Path) -> "cls":
+    def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         """Load CSV Latest Values Dataset."""
         # Cannot use common_df.read_csv as it doesn't support data without a date index field.
-        df = pd.read_csv(path, dtype={CommonFields.FIPS: str})
+        df = pd.read_csv(path_or_buf, dtype={CommonFields.FIPS: str})
         return cls(df)

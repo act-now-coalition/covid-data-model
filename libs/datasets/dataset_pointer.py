@@ -1,22 +1,14 @@
 from typing import Type, Tuple
 import os
-import tempfile
+import io
 import pathlib
 import datetime
 
 import git
 import structlog
-import numpy as np
-
-import pandas as pd
 import pydantic
-from covidactnow.datapublic import common_df
+
 from libs import git_lfs_object_helpers
-from libs.datasets import dataset_base
-from libs.datasets import combined_datasets
-from libs.datasets import timeseries
-from libs.datasets import latest_values_dataset
-from libs.datasets import dataset_utils
 from libs.datasets.dataset_base import DatasetBase
 from libs.datasets.dataset_utils import DatasetType
 from libs.github_utils import GitSummary
@@ -71,13 +63,12 @@ class DatasetPointer(pydantic.BaseModel):
             # When loading dataset from a previous point in time, the data is not available as path.
             # To get around this, we save the bytes of the commit data to a temporary file to then
             # load as a csv.
-            with tempfile.NamedTemporaryFile() as tmp_file:
-                path = pathlib.Path(tmp_file.name)
-                lfs_data = git_lfs_object_helpers.get_data_for_path(
-                    self.path, before=before, previous_commit=previous_commit, commit=commit
-                )
-                path.write_bytes(lfs_data)
-                return self.dataset_type.dataset_class.load_csv(path)
+
+            lfs_data = git_lfs_object_helpers.get_data_for_path(
+                self.path, before=before, previous_commit=previous_commit, commit=commit
+            )
+            lfs_buf = io.BytesIO(lfs_data)
+            return self.dataset_type.dataset_class.load_csv(lfs_buf)
 
         return self.dataset_type.dataset_class.load_csv(self.path)
 
