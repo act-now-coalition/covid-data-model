@@ -60,10 +60,6 @@ class DatasetPointer(pydantic.BaseModel):
         Returns: Instantiated dataset.
         """
         if before or previous_commit or commit:
-            # When loading dataset from a previous point in time, the data is not available as path.
-            # To get around this, we save the bytes of the commit data to a temporary file to then
-            # load as a csv.
-
             lfs_data = git_lfs_object_helpers.get_data_for_path(
                 self.path, before=before, previous_commit=previous_commit, commit=commit
             )
