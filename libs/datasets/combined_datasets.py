@@ -125,21 +125,16 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 
 
 @dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION)
-
-
-@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
 def build_us_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
+    return _build_combined_dataset_from_sources(
+        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
 
 
 @dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
 def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
-    return build_combined_dataset_from_sources(
-        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
+    return _build_combined_dataset_from_sources(
+        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
 
 
@@ -260,10 +255,10 @@ def load_data_sources(
     return loaded_data_sources
 
 
-def build_combined_dataset_from_sources(
+def _build_combined_dataset_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
     feature_definition_config: FeatureDataSourceMap,
-    filters: List[dataset_filter.DatasetFilter] = None,
+    filter: dataset_filter.DatasetFilter,
 ):
     """Builds a combined dataset from a feature definition.
 
@@ -276,18 +271,11 @@ def build_combined_dataset_from_sources(
     """
     loaded_data_sources = load_data_sources(feature_definition_config)
 
-    # Convert data sources to instances of `target_data_cls`.
+    # Convert data sources to instances of `target_data_cls` and apply filter
     intermediate_datasets = {
-        data_source_cls: target_dataset_cls.build_from_data_source(source)
+        data_source_cls: filter.apply(target_dataset_cls.build_from_data_source(source))
         for data_source_cls, source in loaded_data_sources.items()
     }
-
-    # Apply filters to datasets.
-    for key in intermediate_datasets:
-        dataset = intermediate_datasets[key]
-        for data_filter in filters or []:
-            dataset = data_filter.apply(dataset)
-        intermediate_datasets[key] = dataset
 
     # Build feature columns from feature_definition_config.
     data = pd.DataFrame({})

@@ -73,12 +73,14 @@ class JHUDataset(data_source.DataSource):
             loaded_data.append(data)
 
         data = pd.concat(loaded_data)
-        data = self.standardize_data(data)
+        data = self._standardize_data(data)
         super().__init__(data)
 
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+    def _standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
+        # Drop all data outside the USA to speed up debugging
+        data = data.loc[data[cls.Fields.COUNTRY].isin(["US", "USA"])]
         # TODO Figure out how to rename to some ISO standard.
         country_remap = {
             "Mainland China": "China",
