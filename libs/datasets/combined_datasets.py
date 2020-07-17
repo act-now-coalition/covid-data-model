@@ -291,14 +291,14 @@ class Override(Enum):
 
     # For each <fips, date>, if a row in a higher priority datasource exists it is used, even
     # for columns with NaN. This is the unexpected behavior from before July 16th that blends
-    # timeseries from different sources and XXX
+    # timeseries from different sources into a single output timeseries.
     BY_ROW = 1
     # For each <fips, variable>, use the entire timeseries of the highest priority datasource
     # with at least one real (not NaN) value.
     BY_TIMESERIES = 2
     # For each <fips, variable, date>, use the highest priority datasource that has a real
     # (not NaN) value.
-    NAN = 3
+    BY_TIMESERIES_POINT = 3
 
 
 def _build_dataframe(
@@ -358,7 +358,7 @@ def _build_dataframe(
                     )
                     # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
                     field_out = field_out.where(keep_higher_priority, datasource_field_in)
-                elif override == Override.NAN:
+                elif override == Override.BY_TIMESERIES_POINT:
                     # Copy from datasource_field_in only on rows where field_out is NaN
                     field_out = field_out.where(pd.notna(field_out), datasource_field_in)
                 else:

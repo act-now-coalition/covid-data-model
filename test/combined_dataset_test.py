@@ -22,7 +22,7 @@ from libs.datasets import NevadaHospitalAssociationData
 
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.timeseries import TimeseriesDataset
-from test.dataset_utils_test import read_csv_str
+from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date
 import pandas as pd
 import numpy as np
 import pytest
@@ -153,14 +153,14 @@ def test_remove_padded_nans(include_na_at_end):
 
 
 def test_build_timeseries():
-    data_a = read_csv_str(
+    data_a = read_csv_and_index_fips_date(
         "county,state,fips,country,aggregate_level,date,cases\n"
         "Jones County,ZZ,97123,USA,county,2020-04-01,1\n"
-    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
-    data_b = read_csv_str(
+    )
+    data_b = read_csv_and_index_fips_date(
         "county,state,fips,country,aggregate_level,date,cases\n"
         "Jones County,ZZ,97123,USA,county,2020-04-01,2\n"
-    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+    )
     datasets = {"source_a": data_a, "source_b": data_b}
 
     combined = _build_dataframe({"cases": ["source_a", "source_b"]}, datasets)
@@ -171,22 +171,14 @@ def test_build_timeseries():
 
 
 def test_build_latest():
-    data_a = (
-        read_csv_str(
-            "county,state,fips,country,aggregate_level,date,cases\n"
-            "Jones County,ZZ,97123,USA,county,2020-04-01,1\n"
-            "Three County,XY,97333,USA,county,2020-04-01,3\n"
-        )
-        .groupby(CommonFields.FIPS)
-        .last()
+    data_a = read_csv_and_index_fips(
+        "county,state,fips,country,aggregate_level,date,cases\n"
+        "Jones County,ZZ,97123,USA,county,2020-04-01,1\n"
+        "Three County,XY,97333,USA,county,2020-04-01,3\n"
     )
-    data_b = (
-        read_csv_str(
-            "county,state,fips,country,aggregate_level,date,cases\n"
-            "Jones County,ZZ,97123,USA,county,2020-04-01,2\n"
-        )
-        .groupby(CommonFields.FIPS)
-        .last()
+    data_b = read_csv_and_index_fips(
+        "county,state,fips,country,aggregate_level,date,cases\n"
+        "Jones County,ZZ,97123,USA,county,2020-04-01,2\n"
     )
     datasets = {"source_a": data_a, "source_b": data_b}
 
@@ -200,12 +192,12 @@ def test_build_latest():
 
 
 def test_build_timeseries_override():
-    data_a = read_csv_str(
+    data_a = read_csv_and_index_fips_date(
         "fips,date,m1,m2\n" "97123,2020-04-01,1,\n" "97123,2020-04-02,,\n" "97123,2020-04-03,3,3"
-    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
-    data_b = read_csv_str(
+    )
+    data_b = read_csv_and_index_fips_date(
         "fips,date,m1,m2\n" "97123,2020-04-01,,\n" "97123,2020-04-02,2,\n"
-    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+    )
     datasets = {"source_a": data_a, "source_b": data_b}
 
     # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
@@ -215,7 +207,9 @@ def test_build_timeseries_override():
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, None]
 
     # The combined m1 timeseries is the highest priority real value for each date, a blend of source_a and source_b.
-    combined = _build_dataframe({"m1": ["source_a", "source_b"]}, datasets, override=Override.NAN)
+    combined = _build_dataframe(
+        {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_TIMESERIES_POINT
+    )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, 2, 3]
 
     # The combined m1 timeseries is the highest priority value for each date; source_b is higher priority for
@@ -230,7 +224,9 @@ def test_build_timeseries_override():
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
 
-    combined = _build_dataframe({"m1": ["source_b", "source_a"]}, datasets, override=Override.NAN)
+    combined = _build_dataframe(
+        {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_TIMESERIES_POINT
+    )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, 2, 3]
 
     combined = _build_dataframe(
