@@ -1,6 +1,7 @@
 from typing import Type, List, Optional
 import pathlib
 
+import structlog
 from more_itertools import first
 
 from covidactnow.datapublic import common_df
@@ -186,7 +187,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         """
         # Cannot use common_df.write_csv as it doesn't support data without a date index field.
         data = self.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
-        data = common_df.sort_common_field_columns(data)
+        data = common_df.only_common_columns(data, structlog.get_logger())  # Drops `index`
+        data = common_df.sort_common_field_columns(data).sort_index()
         data.to_csv(path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
 
     @classmethod
