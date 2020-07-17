@@ -18,6 +18,7 @@ def _build_row(**updates):
         schema.INTERVENTION: 2,
         schema.FIPS: "36061",
         schema.BEDS: 20,
+        schema.RT_INDICATOR: 1.02,
     }
     data.update(updates)
     data["date"] = pd.Timestamp(data["date"])
@@ -75,3 +76,16 @@ def test_load_from_path(nyc_model_output_path):
     assert output.peak_hospitalizations_date == datetime.datetime(2020, 4, 15)
     assert not output.hospitals_shortfall_date
     assert output.latest_rt == pytest.approx(0.972686)
+
+
+def test_no_rt_val():
+    rows = [
+        _build_row(
+            date="2020-12-13", **{schema.RT_INDICATOR: None, schema.RT_INDICATOR_CI90: None}
+        ),
+    ]
+    data = _build_input_df(rows)
+    model_output = CANPyseirLocationOutput(data)
+    # Check that it picks first date of max.
+    assert not model_output.latest_rt
+    assert not model_output.latest_rt_ci90
