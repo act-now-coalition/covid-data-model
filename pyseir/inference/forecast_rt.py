@@ -106,12 +106,14 @@ class ForecastRt:
 
     def get_forecast_dfs(self):
         if self.merged_df:
+            log.info("retrieving input csv")
             df_merge = pd.read_csv(
                 self.csv_path,
                 parse_dates=True,
                 index_col=self.index_col_name_csv,
                 converters={self.fips_var_name: str},
             )
+            log.info("retrieved input csv")
 
             if self.states_only:
                 df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
