@@ -33,7 +33,9 @@ class Projections(base_model.APIBaseModel):
         ..., description="Projection about ICU hospital bed utilization"
     )
     Rt: float = pydantic.Field(..., description="Inferred Rt")
-    RtCI90: float = pydantic.Field(..., description="Rt 90th percentile confidence interval.")
+    RtCI90: float = pydantic.Field(
+        ..., description="Rt 90th percentile confidence interval upper endpoint."
+    )
 
 
 class ResourceUtilization(base_model.APIBaseModel):
