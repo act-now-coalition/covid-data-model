@@ -49,63 +49,44 @@ def _generate_whitelist():
     gen.generate_whitelist()
 
 
-def _impute_start_dates(state=None, states_only=False):
+def _impute_start_dates(states, states_only=False):
     if states_only:
         raise NotImplementedError(
             "Impute start dates does not yet implement support for states_only."
         )
 
-    if state:
+    for state in states:
         generate_start_times_for_state(state=state)
-    else:
-        for state_name in ALL_STATES:
-            _impute_start_dates(state_name)
 
 
-def _run_infer_rt(state=None, states_only=False):
-    if state:
-        fips = us.states.lookup(state).fips
+def _run_infer_rt(states: List[str], states_only=False):
+    for state_name in states:
+        fips = us.states.lookup(state_name).fips
         infer_rt.run_rt_for_fips(fips=fips)
-    else:
-        for state_name in ALL_STATES:
-            fips = us.states.lookup(state_name).fips
-            infer_rt.run_rt_for_fips(fips=fips)
 
 
-def _run_mle_fits(state=None, states_only=False):
-    _cache_global_datasets()
-    if state:
+def _run_mle_fits(states: List[str], states_only=False):
+    for state in states:
         model_fitter.run_state(state, states_only=states_only)
-    else:
-        for state_name in ALL_STATES:
-            _run_mle_fits(state=state_name, states_only=states_only)
 
 
-def _run_ensembles(state=None, ensemble_kwargs=dict(), states_only=False):
-    if state:
-        ensemble_runner.run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
-    else:
-        for state_name in ALL_STATES:
-            ensemble_runner.run_state(
-                state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only
-            )
+def _run_ensembles(states, ensemble_kwargs=dict(), states_only=False):
+    for state_name in states:
+        ensemble_runner.run_state(
+            state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only
+        )
 
 
-def _generate_state_reports(state=None):
-    if state:
+def _generate_state_reports(states):
+    for state in states:
         report = StateReport(state)
         report.generate_report()
-    else:
-        for state_name in ALL_STATES:
-            _generate_state_reports(state_name)
 
 
 def _map_outputs(
-    state=None, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
+    states, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
 ):
-    output_interval_days = int(output_interval_days)
-    _cache_global_datasets()
-    if state:
+    for state in states:
         web_ui_mapper = WebUIDataAdaptorV1(
             state,
             output_interval_days=output_interval_days,
@@ -113,15 +94,6 @@ def _map_outputs(
             output_dir=output_dir,
         )
         web_ui_mapper.generate_state(whitelisted_county_fips=[], states_only=states_only)
-    else:
-        for state_name in ALL_STATES:
-            _map_outputs(
-                state_name,
-                output_interval_days,
-                states_only=states_only,
-                run_mode=run_mode,
-                output_dir=output_dir,
-            )
 
 
 def _state_only_pipeline(
@@ -132,18 +104,20 @@ def _state_only_pipeline(
     output_dir=None,
 ):
     states_only = True
-    _run_infer_rt(state, states_only=states_only)
-    _run_mle_fits(state, states_only=states_only)
+
+    states = [state]
+    _run_infer_rt(states, states_only=states_only)
+    _run_mle_fits(states, states_only=states_only)
     _run_ensembles(
-        state,
+        states,
         ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
         states_only=states_only,
     )
     if generate_reports:
-        _generate_state_reports(state)
+        _generate_state_reports(states)
     # remove outputs atm. just output at the end
     _map_outputs(
-        state,
+        states,
         output_interval_days,
         states_only=states_only,
         output_dir=output_dir,
@@ -180,7 +154,7 @@ def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict
 
 
 def _build_all_for_states(
-    states=[],
+    states: List[str],
     run_mode=DEFAULT_RUN_MODE,
     generate_reports=False,
     output_interval_days=4,
@@ -266,7 +240,8 @@ def _build_all_for_states(
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def impute_start_dates(state, states_only):
-    _impute_start_dates(state, states_only)
+    states = [state] if state else ALL_STATES
+    _impute_start_dates(states, states_only=states_only)
 
 
 @entry_point.command()
@@ -276,31 +251,27 @@ def generate_whitelist():
 
 @entry_point.command()
 @click.option(
-    "--state",
-    default="",
-    help="State to generate files for. If no state is given, all states are computed.",
+    "--state", help="State to generate files for. If no state is given, all states are computed."
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_infer_rt(state, states_only):
-    _run_infer_rt(state, states_only=states_only)
+    states = [state] if state else ALL_STATES
+    _run_infer_rt(states, states_only=states_only)
 
 
 @entry_point.command()
 @click.option(
-    "--state",
-    default="",
-    help="State to generate files for. If no state is given, all states are computed.",
+    "--state", help="State to generate files for. If no state is given, all states are computed."
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_mle_fits(state, states_only):
-    _run_mle_fits(state, states_only=states_only)
+    states = [state] if state else ALL_STATES
+    _run_mle_fits(states, states_only=states_only)
 
 
 @entry_point.command()
 @click.option(
-    "--state",
-    default="",
-    help="State to generate files for. If no state is given, all states are computed.",
+    "--state", help="State to generate files for. If no state is given, all states are computed."
 )
 @click.option(
     "--generate-reports",
@@ -317,8 +288,9 @@ def run_mle_fits(state, states_only):
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_ensembles(state, run_mode, generate_reports, states_only):
+    states = [state] if state else ALL_STATES
     _run_ensembles(
-        state,
+        states,
         ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
         states_only=states_only,
     )
@@ -326,19 +298,16 @@ def run_ensembles(state, run_mode, generate_reports, states_only):
 
 @entry_point.command()
 @click.option(
-    "--state",
-    default="",
-    help="State to generate files for. If no state is given, all states are computed.",
+    "--state", help="State to generate files for. If no state is given, all states are computed."
 )
 def generate_state_report(state):
-    _generate_state_reports(state)
+    states = [state] if state else ALL_STATES
+    _generate_state_reports(states)
 
 
 @entry_point.command()
 @click.option(
-    "--state",
-    default="",
-    help="State to generate files for. If no state is given, all states are computed.",
+    "--state", help="State to generate files for. If no state is given, all states are computed."
 )
 @click.option(
     "--output-interval-days",
@@ -354,8 +323,9 @@ def generate_state_report(state):
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def map_outputs(state, output_interval_days, run_mode, states_only):
+    states = [state] if state else ALL_STATES
     _map_outputs(
-        state,
+        states,
         output_interval_days=int(output_interval_days),
         run_mode=run_mode,
         states_only=states_only,
@@ -421,7 +391,7 @@ def build_all(
         states = ALL_STATES
 
     _build_all_for_states(
-        states=states,
+        states,
         run_mode=DEFAULT_RUN_MODE,
         generate_reports=generate_reports,
         output_interval_days=output_interval_days,

@@ -10,6 +10,7 @@ import structlog
 from structlog.threadlocal import tmp_bind
 
 from covidactnow.datapublic.common_fields import CommonFields
+from libs import git_lfs_object_helpers
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
@@ -143,22 +144,28 @@ def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
+    before=None,
+    previous_commit=False,
+    commit: str = None,
 ) -> timeseries.TimeseriesDataset:
-    """Loads US TimeseriesDataset for """
     filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset()
+    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
 
 
 @functools.lru_cache(None)
 def load_us_latest_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
+    before: str = None,
+    previous_commit: bool = False,
+    commit: str = None,
 ) -> latest_values_dataset.LatestValuesDataset:
+
     filename = dataset_pointer.form_filename(DatasetType.LATEST)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset()
+    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
 
 
 def get_us_latest_for_fips(fips) -> dict:

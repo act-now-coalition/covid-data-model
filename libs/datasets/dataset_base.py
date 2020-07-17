@@ -1,4 +1,4 @@
-from typing import List, Mapping, Iterable
+from typing import List, Union, TextIO, Mapping, Iterable
 import pathlib
 from covidactnow.datapublic import common_df
 import pandas as pd
@@ -30,7 +30,7 @@ class DatasetBase(object):
         raise NotImplementedError("Subsclass must implement")
 
     @classmethod
-    def load_csv(cls, path: pathlib.Path):
+    def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         raise NotImplementedError()
 
     @classmethod

@@ -1,6 +1,6 @@
 import warnings
 import pathlib
-from typing import List, Optional
+from typing import List, Optional, Union, TextIO
 import pandas as pd
 import structlog
 from covidactnow.datapublic import common_df
@@ -256,8 +256,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         common_df.write_csv(self.data, path, structlog.get_logger())
 
     @classmethod
-    def load_csv(cls, path: pathlib.Path):
-        df = common_df.read_csv(path)
+    def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
+        df = common_df.read_csv(path_or_buf)
         # TODO: common_df.read_csv sets the index of the dataframe to be fips, date, however
         # most of the calling code expects fips and date to not be in an index.
         # In the future, it would be good to standardize around index fields.
