@@ -309,7 +309,12 @@ def _build_dataframe(
     # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
     log = structlog.get_logger()
 
-    preserve_columns = [CommonFields.AGGREGATE_LEVEL, CommonFields.STATE, CommonFields.COUNTY]
+    preserve_columns = [
+        CommonFields.AGGREGATE_LEVEL,
+        CommonFields.STATE,
+        CommonFields.COUNTRY,
+        CommonFields.COUNTY,
+    ]
     all_identifiers = pd.concat(
         df.reset_index().loc[
             :, [CommonFields.FIPS] + list(df.columns.intersection(preserve_columns))
