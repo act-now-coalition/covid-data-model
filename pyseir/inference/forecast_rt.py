@@ -32,6 +32,7 @@ class ForecastRt:
     """
 
     def __init__(self, df_all=None):
+        self.save_csv_output = False
         self.csv_output_folder = "./csv_files/"
         self.df_all = df_all
         self.states = "All"  # All to use All
@@ -107,6 +108,7 @@ class ForecastRt:
     def get_forecast_dfs(self):
         if self.merged_df:
             log.info("retrieving input csv")
+
             df_merge = pd.read_csv(
                 self.csv_path,
                 parse_dates=True,
@@ -116,7 +118,8 @@ class ForecastRt:
             log.info("retrieved input csv")
 
             if self.states_only:
-                df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
+                if self.save_csv_output:
+                    df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
                 # only store state information
                 df_states_merge = df_merge[
                     df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
@@ -155,7 +158,10 @@ class ForecastRt:
 
                     state_names.append(state_name)
                     df_list.append(df_forecast)
-                    df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
+                    if self.save_csv_output:
+                        df_forecast.to_csv(
+                            self.csv_output_folder + df["state"][0] + "_forecast.csv"
+                        )
 
             else:
                 log.info("County level training not implemented yet :(")
@@ -185,11 +191,13 @@ class ForecastRt:
         if 1 == 0:
             for i in range(len(train_samples_not_spaced)):
                 df = train_samples_not_spaced[i]
-                df.to_csv(self.csv_output_folder + "df" + str(i) + "_train-notspaced.csv")
+                if self.save_csv_output:
+                    df.to_csv(self.csv_output_folder + "df" + str(i) + "_train-notspaced.csv")
 
             for i in range(len(test_samples)):
                 df = test_samples[i]
-                df.to_csv(self.csv_output_folder + "df" + str(i) + "_test-notspaced.csv")
+                if self.save_csv_output:
+                    df.to_csv(self.csv_output_folder + "df" + str(i) + "_test-notspaced.csv")
 
         # For training only keep samples that are days_between_samples apart (avoid forecast learning meaningless correlations between labels)
         train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
@@ -284,7 +292,8 @@ class ForecastRt:
 
             for i in range(len(train_X)):
                 df = pd.DataFrame(data=train_X[i])
-                df.to_csv(self.csv_output_folder + state_name + "_" + str(i) + ".csv")
+                if self.save_csv_output:
+                    df.to_csv(self.csv_output_folder + state_name + "_" + str(i) + ".csv")
 
             forecasts_test, dates_test = self.get_forecasts(test_X, test_Y, scalers_dict, model)
             DATA_LINEWIDTH = 1
@@ -425,7 +434,8 @@ class ForecastRt:
         log.info("training scaling set")
         log.info(train_scaling_set)
         log.info(train_scaling_set.dtypes)
-        train_scaling_set.to_csv(self.csv_output_folder + "scalingset_now.csv")
+        if self.save_csv_output:
+            train_scaling_set.to_csv(self.csv_output_folder + "scalingset_now.csv")
         for columnName, columnData in train_scaling_set.iteritems():
             log.info("column")
             log.info(columnName)
@@ -463,6 +473,7 @@ class ForecastRt:
         log.info(type(final_train_X))
         log.info(final_train_X.shape[1])
         log.info(final_train_X.shape[2])
+
         model.add(
             Masking(
                 mask_value=self.mask_value,
@@ -486,7 +497,7 @@ class ForecastRt:
         )
         model.add(Dropout(self.dropout))
         model.add(Dense(final_train_Y.shape[1]))
-        es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=self.patience)
+        es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=self.patience)
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
         model.compile(loss="mean_squared_error", optimizer="adam")
         history = model.fit(
