@@ -32,11 +32,11 @@ class ForecastRt:
     """
 
     def __init__(self, df_all=None):
+        self.csv_output_folder = "./csv_files/"
         self.df_all = df_all
         self.states = "All"  # All to use All
-        # self.csv_path = "./pyseir_data/merged_results.csv"
+        self.csv_path = "./pyseir_data/merged_results_delphi.csv"
         # self.csv_path = "./pyseir_data/delphi_merged.csv"
-        self.csv_path = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/pyseir/inference/delphi_merged.csv"
 
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet)
@@ -63,9 +63,9 @@ class ForecastRt:
         self.daily_death_var = self.daily_var_prefix + self.death_var
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
+            self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
             "raw_search",
             "smoothed_search",
-            self.sim_date_name,
             self.daily_case_var,
             self.daily_death_var,
             self.d_predict_variable,
@@ -89,7 +89,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 1
-        self.n_epochs = 1
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -114,7 +114,7 @@ class ForecastRt:
             )
 
             if self.states_only:
-                df_merge.to_csv("MERGED_CSV.csv")
+                df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
                 # only store state information
                 df_states_merge = df_merge[
                     df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
@@ -153,7 +153,7 @@ class ForecastRt:
 
                     state_names.append(state_name)
                     df_list.append(df_forecast)
-                    df_forecast.to_csv(df["state"][0] + "_forecast.csv")
+                    df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
 
             else:
                 log.info("County level training not implemented yet :(")
@@ -183,11 +183,11 @@ class ForecastRt:
         if 1 == 0:
             for i in range(len(train_samples_not_spaced)):
                 df = train_samples_not_spaced[i]
-                df.to_csv("df" + str(i) + "_train-notspaced.csv")
+                df.to_csv(self.csv_output_folder + "df" + str(i) + "_train-notspaced.csv")
 
             for i in range(len(test_samples)):
                 df = test_samples[i]
-                df.to_csv("df" + str(i) + "_test-notspaced.csv")
+                df.to_csv(self.csv_output_folder + "df" + str(i) + "_test-notspaced.csv")
 
         # For training only keep samples that are days_between_samples apart (avoid forecast learning meaningless correlations between labels)
         train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
@@ -250,9 +250,10 @@ class ForecastRt:
         # TODO add max min rows to avoid domain adaption issues
         train_scaling_set = pd.concat(scaling_samples)
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
+        log.info("about to make debug plots")
         if self.debug_plots:
             self.plot_variables(df_list, state_fips, scalers_dict)
-
+        log.info("made debug plots")
         # Create scaled train samples
         list_train_X, list_train_Y, list_test_X, list_test_Y = [], [], [], []
         # iterate over train/test_samples = list[state_dfs_samples]
@@ -281,7 +282,7 @@ class ForecastRt:
 
             for i in range(len(train_X)):
                 df = pd.DataFrame(data=train_X[i])
-                df.to_csv(state_name + "_" + str(i) + ".csv")
+                df.to_csv(self.csv_output_folder + state_name + "_" + str(i) + ".csv")
 
             forecasts_test, dates_test = self.get_forecasts(test_X, test_Y, scalers_dict, model)
             DATA_LINEWIDTH = 1
@@ -422,7 +423,7 @@ class ForecastRt:
         log.info("training scaling set")
         log.info(train_scaling_set)
         log.info(train_scaling_set.dtypes)
-        train_scaling_set.to_csv("scalingset_now.csv")
+        train_scaling_set.to_csv(self.csv_output_folder + "scalingset_now.csv")
         for columnName, columnData in train_scaling_set.iteritems():
             log.info("column")
             log.info(columnName)
@@ -533,10 +534,10 @@ class ForecastRt:
             ]  # exclude last n entries of df to use for prediction
             Y = df.iloc[-self.predict_days :, :]
 
-            # if 1==1:
-            #  fips = X['fips_int'][0]
-            #  X.to_csv(label + '_X_' + str(fips) + '_' +  str(i) + '.csv')
-            #  Y.to_csv(label + '_Y_' + str(fips) + '_' + str(i) + '.csv')
+            # fips = X['fips_int'][0]
+            # if fips==-1:
+            #  X.to_csv(self.csv_output_folder + label + '_X_' + str(fips) + '_' +  str(i) + '.csv')
+            #  Y.to_csv(self.csv_output_folder + label + '_Y_' + str(fips) + '_' + str(i) + '.csv')
 
             n_rows_train = X.shape[0]
             n_rows_to_add = self.sequence_length - n_rows_train

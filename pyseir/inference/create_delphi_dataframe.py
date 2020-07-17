@@ -37,6 +37,8 @@ merged_df = pd.merge(
     left_on=["fips", "date", "aggregate_level", "state"],
     right_on=["fips", "date", "aggregate_level", "state"],
 )
+
+merged_df["fips_int"] = merged_df["fips"].astype(int)
 merged_df.to_csv("delphi_merged.csv")
 
 
