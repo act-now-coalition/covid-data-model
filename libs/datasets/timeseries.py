@@ -4,6 +4,7 @@ from typing import List, Optional
 import pandas as pd
 import structlog
 from covidactnow.datapublic import common_df
+from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
@@ -201,6 +202,17 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         is_state = data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
+
+        no_fips = data[CommonFields.FIPS].isnull()
+        if no_fips.any():
+            print(f"Dropping rows without FIPS in {source}:\n{data.loc[no_fips]}")
+            data = data.loc[~no_fips]
+
+        if data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS, keep=False).any():
+            raise ValueError(
+                f"Duplicates in {source}:\n"
+                f"{data.loc[data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS)]}"
+            )
 
         # Choosing to sort by date
         data = data.sort_values(CommonFields.DATE)
