@@ -30,7 +30,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         CommonIndexFields.FIPS,
     ]
 
-    NEW_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
+    COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
     def __init__(self, data: pd.DataFrame):
         self.data = data
@@ -205,15 +205,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
-        dups = (
-            data.groupby(COMMON_FIELDS_TIMESERIES_KEYS)
-            .filter(lambda group: len(group) > 1)
-            .sort_index()
-        )
-        print(source.SOURCE_NAME)
-        if not dups.empty:
-            print(f"Dups in ts {source.SOURCE_NAME}:\n{dups}")
-            data.drop_duplicates(COMMON_FIELDS_TIMESERIES_KEYS, inplace=True)
+        if data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS, keep=False).any():
+            raise ValueError(
+                f"Duplicates in {source}:\n"
+                f"{data.loc[data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS)]}"
+            )
 
         # Choosing to sort by date
         data = data.sort_values(CommonFields.DATE)

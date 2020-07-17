@@ -27,7 +27,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         CommonIndexFields.COUNTRY,
         CommonIndexFields.STATE,
     ]
-    NEW_INDEX_FIELDS = [CommonFields.FIPS]
+    COMMON_INDEX_FIELDS = [CommonFields.FIPS]
 
     def __init__(self, data):
         self.data = data
@@ -69,11 +69,13 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
-        dups = data.groupby(cls.NEW_INDEX_FIELDS).filter(lambda group: len(group) > 1).sort_index()
+        dups = (
+            data.groupby(cls.COMMON_INDEX_FIELDS).filter(lambda group: len(group) > 1).sort_index()
+        )
         print(source.SOURCE_NAME)
         if not dups.empty:
             print(f"Dups in latest {source.SOURCE_NAME}:\n{dups}")
-            data.drop_duplicates(cls.NEW_INDEX_FIELDS, inplace=True)
+            data.drop_duplicates(cls.COMMON_INDEX_FIELDS, inplace=True)
 
         return cls(data)
 

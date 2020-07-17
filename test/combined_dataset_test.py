@@ -8,8 +8,16 @@ from more_itertools import one
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs.datasets import combined_datasets, CommonFields
-from libs.datasets.combined_datasets import build_timeseries, _build_dataframe
+from libs.datasets.combined_datasets import (
+    _build_dataframe,
+    Override,
+    _build_combined_dataset_from_sources,
+    US_STATES_FILTER,
+    ALL_FIELDS_FEATURE_DEFINITION,
+    FeatureDataSourceMap,
+)
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
@@ -215,15 +223,59 @@ def test_build_latest():
 
 def test_build_timeseries_override():
     data_a = read_csv_str(
-        "fips,date,cases\n" "97123,2020-04-01,1\n" "97123,2020-04-02,\n"
+        "fips,date,m1,m2\n" "97123,2020-04-01,1,\n" "97123,2020-04-02,,\n" "97123,2020-04-03,3,3"
     ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
     data_b = read_csv_str(
-        "fips,date,cases\n" "97123,2020-04-01,\n" "97123,2020-04-02,2\n"
+        "fips,date,m1,m2\n" "97123,2020-04-01,,\n" "97123,2020-04-02,2,\n"
     ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
     datasets = {"source_a": data_a, "source_b": data_b}
 
-    combined = _build_dataframe({"cases": ["source_a", "source_b"]}, datasets)
-    assert combined.loc["97123", "cases"].replace({np.nan: None}).tolist() == [None, 2]
+    # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
+    combined = _build_dataframe(
+        {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_TIMESERIES
+    )
+    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, None]
 
-    combined = _build_dataframe({"cases": ["source_b", "source_a"]}, datasets)
-    assert combined.loc["97123", "cases"].replace({np.nan: None}).tolist() == [1, None]
+    # The combined m1 timeseries is the highest priority real value for each date, a blend of source_a and source_b.
+    combined = _build_dataframe({"m1": ["source_a", "source_b"]}, datasets, override=Override.NAN)
+    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, 2, 3]
+
+    # The combined m1 timeseries is the highest priority value for each date; source_b is higher priority for
+    # both 2020-04-01 and 2020-04-02.
+    combined = _build_dataframe(
+        {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_ROW
+    )
+    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, 3]
+
+    combined = _build_dataframe(
+        {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_TIMESERIES
+    )
+    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
+
+    combined = _build_dataframe({"m1": ["source_b", "source_a"]}, datasets, override=Override.NAN)
+    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, 2, 3]
+
+    combined = _build_dataframe(
+        {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_ROW
+    )
+    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
+
+
+def test_build_combined_dataset_from_sources_smoke_test():
+    # Quickly make sure _build_combined_dataset_from_sources doesn't crash when run with a small
+    # number of features.
+
+    # feature_definition = ALL_FIELDS_FEATURE_DEFINITION
+    feature_definition: FeatureDataSourceMap = {
+        CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
+        CommonFields.CASES: [NYTimesDataset],
+        CommonFields.RECOVERED: [JHUDataset],
+    }
+
+    _build_combined_dataset_from_sources(
+        TimeseriesDataset, feature_definition, filter=US_STATES_FILTER,
+    )
+
+    _build_combined_dataset_from_sources(
+        LatestValuesDataset, feature_definition, filter=US_STATES_FILTER,
+    )

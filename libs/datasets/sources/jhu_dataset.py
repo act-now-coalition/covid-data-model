@@ -9,7 +9,7 @@ from libs.datasets import data_source
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import enums
-from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
+from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS, US_STATE_ABBREV
 
 _logger = logging.getLogger(__name__)
 
@@ -73,11 +73,11 @@ class JHUDataset(data_source.DataSource):
             loaded_data.append(data)
 
         data = pd.concat(loaded_data)
-        data = self.standardize_data(data)
+        data = self._standardize_data(data)
         super().__init__(data)
 
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+    def _standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
         # TODO Figure out how to rename to some ISO standard.
         country_remap = {
@@ -94,6 +94,7 @@ class JHUDataset(data_source.DataSource):
             "US": "USA",
         }
         data = data.replace({cls.Fields.COUNTRY: country_remap})
+        data = data.loc[data[cls.Fields.COUNTRY] == "USA", :]
         states = data[cls.Fields.STATE].apply(dataset_utils.parse_state)
 
         county_from_state = data[cls.Fields.STATE].apply(dataset_utils.parse_county_from_state)
@@ -110,9 +111,17 @@ class JHUDataset(data_source.DataSource):
         data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(state_only, "state", "county")
         data = cls._aggregate_fips_data(data)
 
-        dataset_utils.assert_counties_have_fips(
-            data, county_key=cls.Fields.COUNTY, fips_key=cls.Fields.FIPS
-        )
+        rows_without_fips = data[cls.Fields.FIPS].isnull()
+        if rows_without_fips.any():
+            print(f"Dropping rows without FIPS:\n"
+            f"{data.loc[rows_without_fips, [cls.Fields.FIPS, cls.Fields.STATE, cls.Fields.DATE, cls.Fields.AGGREGATE_LEVEL]]}")
+            data = data.loc[~rows_without_fips]
+
+        rows_with_bad_state_name = (data[cls.Fields.AGGREGATE_LEVEL] == "state") & (~data[cls.Fields.STATE].isin(US_STATE_ABBREV.values()))
+        if rows_with_bad_state_name.any():
+            print(f"Dropping rows with bad state name:\n"
+                  f"{data.loc[rows_with_bad_state_name, [cls.Fields.FIPS, cls.Fields.STATE, cls.Fields.DATE]]}")
+            data = data.loc[~rows_with_bad_state_name]
 
         return data
 
@@ -141,7 +150,7 @@ class JHUDataset(data_source.DataSource):
             _logger.warning(
                 f"County rows without FIPS: {data.loc[still_no_fips, [cls.Fields.STATE, cls.Fields.COUNTY]]}"
             )
-        return data
+        return data.loc[~still_no_fips, :]
 
     @classmethod
     def _aggregate_fips_data(cls, data):

@@ -9,6 +9,8 @@ class DatasetBase(object):
 
     INDEX_FIELDS: List[str] = []
 
+    COMMON_INDEX_FIELDS: List[str] = []
+
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
