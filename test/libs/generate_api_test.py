@@ -5,6 +5,7 @@ import pytest
 from libs.functions import generate_api
 from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
+from libs.datasets import can_model_output_schema as schema
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
 from api.can_api_definition import RegionSummary
@@ -14,8 +15,10 @@ from api.can_api_definition import Projections
 from api.can_api_definition import ResourceUsageProjection
 
 
-@pytest.mark.parametrize("include_projections", [True, False])
-def test_build_summary_for_fips(include_projections, nyc_model_output_path, nyc_fips):
+@pytest.mark.parametrize(
+    "include_projections,rt_null", [(True, True), (True, False), (False, False)]
+)
+def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_path, nyc_fips):
 
     us_latest = combined_datasets.load_us_latest_dataset()
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
@@ -25,13 +28,19 @@ def test_build_summary_for_fips(include_projections, nyc_model_output_path, nyc_
     intervention = Intervention.OBSERVED_INTERVENTION
     if include_projections:
         model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
+
+        if rt_null:
+            model_output.data[schema.RT_INDICATOR] = None
+            model_output.data[schema.RT_INDICATOR_CI90] = None
+        rt = model_output.latest_rt
+        rt_ci_90 = model_output.latest_rt_ci90
         expected_projections = Projections(
             totalHospitalBeds=ResourceUsageProjection(
                 peakShortfall=0, peakDate=datetime.date(2020, 4, 15), shortageStartDate=None
             ),
             ICUBeds=None,
-            Rt=model_output.latest_rt,
-            RtCI90=model_output.latest_rt_ci90,
+            Rt=rt,
+            RtCI90=rt_ci_90,
         )
         intervention = Intervention.STRONG_INTERVENTION
 
