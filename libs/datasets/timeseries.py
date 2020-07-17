@@ -205,6 +205,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
+        no_fips = data[CommonFields.FIPS].isnull()
+        if no_fips.any():
+            print(f"Dropping rows without FIPS in {source}:\n{data.loc[no_fips]}")
+            data = data.loc[~no_fips]
+
         if data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS, keep=False).any():
             raise ValueError(
                 f"Duplicates in {source}:\n"
@@ -213,7 +218,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         # Choosing to sort by date
         data = data.sort_values(CommonFields.DATE)
-        data = data.convert_dtypes()
         return cls(data)
 
     @classmethod
