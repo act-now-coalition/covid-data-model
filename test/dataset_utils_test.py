@@ -4,19 +4,17 @@ from typing import Mapping, List
 
 import pandas as pd
 import numpy as np
-from more_itertools import one
 from structlog import testing, get_logger
 
+from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
 from libs.datasets import dataset_utils
-from libs.datasets.dataset_utils import (
-    fill_fields_and_timeseries_from_column,
-    fill_fields_with_data_source,
-    AggregationLevel,
-)
+from libs.datasets.combined_datasets import _build_dataframe, Override
+from libs.datasets.dataset_utils import AggregationLevel
 import pytest
 
 
 # turns all warnings into errors for this module
+
 pytestmark = pytest.mark.filterwarnings("error")
 
 
@@ -62,246 +60,194 @@ def to_dict(keys: List[str], df: pd.DataFrame):
 
 def test_fill_fields_and_timeseries_from_column():
     # Timeseries in existing_df and new_df are merged together.
-    existing_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,cnt,date,foo\n"
-            "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-            "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-            "55005,ZZ,county,North County,,2020-05-03,ef\n"
-            "55006,ZZ,county,South County,4,2020-05-04,gh\n"
-            "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
-            "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
-        )
-    )
-    new_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,cnt,date\n"
-            "55006,ZZ,county,South County,44,2020-05-04\n"
-            "55007,ZZ,county,West County,28,2020-05-03\n"
-            "55005,ZZ,county,North County,3,2020-05-03\n"
-            "55,ZZ,state,Grand State,42,2020-05-02\n"
-        )
+    existing_df = read_csv_str(
+        "fips,state,aggregate_level,county,cnt,date,foo\n"
+        "55005,ZZ,county,North County,1,2020-05-01,ab\n"
+        "55005,ZZ,county,North County,2,2020-05-02,cd\n"
+        "55005,ZZ,county,North County,,2020-05-03,ef\n"
+        "55006,ZZ,county,South County,4,2020-05-04,gh\n"
+        "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
+        "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+    new_df = read_csv_str(
+        "fips,state,aggregate_level,county,cnt,date\n"
+        "55006,ZZ,county,South County,44,2020-05-04\n"
+        "55007,ZZ,county,West County,28,2020-05-03\n"
+        "55005,ZZ,county,North County,3,2020-05-03\n"
+        "55,ZZ,state,Grand State,42,2020-05-02\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+
+    datasets = {"existing": existing_df, "new": new_df}
+
+    result = _build_dataframe(
+        {"cnt": ["existing", "new"], "foo": ["existing"]}, datasets, Override.BY_TIMESERIES
     )
 
-    with testing.capture_logs() as logs:
-        log = get_logger()
-        result = fill_fields_and_timeseries_from_column(
-            log, existing_df, new_df, "fips state aggregate_level county".split(), "date", "cnt",
-        )
-    expected = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,cnt,date,foo\n"
-            "55005,ZZ,county,North County,,2020-05-01,ab\n"
-            "55005,ZZ,county,North County,,2020-05-02,cd\n"
-            "55005,ZZ,county,North County,3,2020-05-03,ef\n"
-            "55006,ZZ,county,South County,44,2020-05-04,gh\n"
-            "55007,ZZ,county,West County,28,2020-05-03,\n"
-            "55,ZZ,state,Grand State,,2020-05-01,ij\n"
-            "55,ZZ,state,Grand State,42,2020-05-02,\n"
-            "55,ZZ,state,Grand State,,2020-05-03,kl\n"
-        )
-    )
+    expected = read_csv_str(
+        "fips,state,aggregate_level,county,cnt,date,foo\n"
+        "55005,ZZ,county,North County,,2020-05-01,ab\n"
+        "55005,ZZ,county,North County,,2020-05-02,cd\n"
+        "55005,ZZ,county,North County,3,2020-05-03,ef\n"
+        "55006,ZZ,county,South County,44,2020-05-04,gh\n"
+        "55007,ZZ,county,West County,28,2020-05-03,\n"
+        "55,ZZ,state,Grand State,,2020-05-01,ij\n"
+        "55,ZZ,state,Grand State,42,2020-05-02,\n"
+        "55,ZZ,state,Grand State,,2020-05-03,kl\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
     assert to_dict(["fips", "date"], result) == to_dict(["fips", "date"], expected)
-    assert one(logs)["event"] == "Duplicate timeseries data"
-    assert one(logs)["log_level"] == "error"
-    assert "55006" in repr(one(logs)["common_labels"])
-    assert "55007" not in repr(one(logs)["common_labels"])
+    # assert one(logs)["event"] == "Duplicate timeseries data"
+    # assert one(logs)["log_level"] == "error"
+    # assert "55006" in repr(one(logs)["common_labels"])
+    # assert "55007" not in repr(one(logs)["common_labels"])
 
 
 def test_fill_fields_with_data_source():
-    existing_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu,preserved\n"
-            "55005,ZZ,county,North County,43,ab\n"
-            "55006,ZZ,county,South County,,cd\n"
-            "55,ZZ,state,Grand State,46,ef\n"
-        )
-    )
-    new_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu\n"
-            "55006,ZZ,county,South County,27\n"
-            "55007,ZZ,county,West County,28\n"
-            "55,ZZ,state,Grand State,64\n"
-        )
+    existing_df = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu,preserved\n"
+        "55005,ZZ,county,North County,43,ab\n"
+        "55006,ZZ,county,South County,,cd\n"
+        "55,ZZ,state,Grand State,46,ef\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+    new_df = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu\n"
+        "55006,ZZ,county,South County,27\n"
+        "55007,ZZ,county,West County,28\n"
+        "55,ZZ,state,Grand State,64\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+
+    datasets = {"existing": existing_df, "new": new_df}
+
+    result = _build_dataframe(
+        {"current_icu": ["existing", "new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
     )
 
-    with testing.capture_logs() as logs:
-        log = get_logger()
-        result = fill_fields_with_data_source(
-            log, existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
-        )
-    expected = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu,preserved\n"
-            "55005,ZZ,county,North County,43,ab\n"
-            "55006,ZZ,county,South County,27,cd\n"
-            "55007,ZZ,county,West County,28,\n"
-            "55,ZZ,state,Grand State,64,ef\n"
-        )
-    )
+    expected = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu,preserved\n"
+        "55005,ZZ,county,North County,43,ab\n"
+        "55006,ZZ,county,South County,27,cd\n"
+        "55007,ZZ,county,West County,28,\n"
+        "55,ZZ,state,Grand State,64,ef\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
 
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-    assert logs == []
 
 
 def test_fill_fields_with_data_source_nan_overwrite():
-    existing_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu,preserved\n"
-            "55,ZZ,state,Grand State,46,ef\n"
-        )
-    )
-    new_df = pd.read_csv(
-        StringIO("fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,\n")
+    existing_df = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu,preserved\n"
+        "55,ZZ,state,Grand State,46,ef\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+    new_df = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+
+    datasets = {"existing": existing_df, "new": new_df}
+
+    result = _build_dataframe(
+        {"current_icu": ["existing", "new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
     )
 
-    with testing.capture_logs() as logs:
-        log = get_logger()
-        result = fill_fields_with_data_source(
-            log, existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
-        )
-    expected = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu,preserved\n"
-            "55,ZZ,state,Grand State,,ef\n"
-        )
-    )
+    expected = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu,preserved\n" "55,ZZ,state,Grand State,,ef\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
 
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-    assert logs == []
 
 
 def test_fill_fields_with_data_source_timeseries():
     # Timeseries in existing_df and new_df are merged together.
-    existing_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,cnt,date,foo\n"
-            "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-            "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-            "55005,ZZ,county,North County,,2020-05-03,ef\n"
-            "55006,ZZ,county,South County,4,2020-05-04,gh\n"
-            "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
-            "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
-        )
-    )
-    new_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,cnt,date\n"
-            "55006,ZZ,county,South County,44,2020-05-04\n"
-            "55007,ZZ,county,West County,28,2020-05-03\n"
-            "55005,ZZ,county,North County,3,2020-05-03\n"
-            "55,ZZ,state,Grand State,42,2020-05-02\n"
-        )
+    existing_df = read_csv_str(
+        "fips,state,aggregate_level,county,cnt,date,foo\n"
+        "55005,ZZ,county,North County,1,2020-05-01,ab\n"
+        "55005,ZZ,county,North County,2,2020-05-02,cd\n"
+        "55005,ZZ,county,North County,,2020-05-03,ef\n"
+        "55006,ZZ,county,South County,4,2020-05-04,gh\n"
+        "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
+        "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+    new_df = read_csv_str(
+        "fips,state,aggregate_level,county,cnt,date\n"
+        "55006,ZZ,county,South County,44,2020-05-04\n"
+        "55007,ZZ,county,West County,28,2020-05-03\n"
+        "55005,ZZ,county,North County,3,2020-05-03\n"
+        "55,ZZ,state,Grand State,42,2020-05-02\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+
+    datasets = {"existing": existing_df, "new": new_df}
+
+    result = _build_dataframe(
+        {"cnt": ["existing", "new"], "foo": ["existing"]}, datasets, Override.BY_ROW
     )
 
-    with testing.capture_logs() as logs:
-        log = get_logger()
-        result = fill_fields_with_data_source(
-            log, existing_df, new_df, "fips state aggregate_level county date".split(), ["cnt"],
-        )
-    expected = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,cnt,date,foo\n"
-            "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-            "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-            "55005,ZZ,county,North County,3,2020-05-03,ef\n"
-            "55006,ZZ,county,South County,44,2020-05-04,gh\n"
-            "55007,ZZ,county,West County,28,2020-05-03,\n"
-            "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
-            "55,ZZ,state,Grand State,42,2020-05-02,\n"
-            "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
-        )
-    )
+    expected = read_csv_str(
+        "fips,state,aggregate_level,county,cnt,date,foo\n"
+        "55005,ZZ,county,North County,1,2020-05-01,ab\n"
+        "55005,ZZ,county,North County,2,2020-05-02,cd\n"
+        "55005,ZZ,county,North County,3,2020-05-03,ef\n"
+        "55006,ZZ,county,South County,44,2020-05-04,gh\n"
+        "55007,ZZ,county,West County,28,2020-05-03,\n"
+        "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
+        "55,ZZ,state,Grand State,42,2020-05-02,\n"
+        "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
 
     assert to_dict(["fips", "date"], result) == to_dict(["fips", "date"], expected)
-    assert logs == []
 
 
 def test_fill_fields_with_data_source_add_column():
     # existing_df does not have a current_icu column. Check that it doesn't cause a crash.
-    existing_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,preserved\n"
-            "55005,ZZ,county,North County,ab\n"
-            "55,ZZ,state,Grand State,cd\n"
-        )
-    )
-    new_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu\n"
-            "55007,ZZ,county,West County,28\n"
-            "55,ZZ,state,Grand State,64\n"
-        )
+    existing_df = read_csv_str(
+        "fips,state,aggregate_level,county,preserved\n"
+        "55005,ZZ,county,North County,ab\n"
+        "55,ZZ,state,Grand State,cd\n",
+        parse_dates=False,
+    ).set_index(CommonFields.FIPS)
+    new_df = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu\n"
+        "55007,ZZ,county,West County,28\n"
+        "55,ZZ,state,Grand State,64\n",
+        parse_dates=False,
+    ).set_index(CommonFields.FIPS)
+
+    datasets = {"existing": existing_df, "new": new_df}
+
+    result = _build_dataframe(
+        {"current_icu": ["new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
     )
 
-    with testing.capture_logs() as logs:
-        log = get_logger()
-        result = fill_fields_with_data_source(
-            log, existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
-        )
-
-    expected = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu,preserved\n"
-            "55005,ZZ,county,North County,,ab\n"
-            "55007,ZZ,county,West County,28,\n"
-            "55,ZZ,state,Grand State,64,cd\n"
-        )
-    )
+    expected = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu,preserved\n"
+        "55005,ZZ,county,North County,,ab\n"
+        "55007,ZZ,county,West County,28,\n"
+        "55,ZZ,state,Grand State,64,cd\n",
+        parse_dates=False,
+    ).set_index(CommonFields.FIPS)
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-    assert logs == []
 
 
 def test_fill_fields_with_data_source_no_rows_input():
-    existing_df = pd.read_csv(StringIO("fips,state,aggregate_level,county,preserved\n"))
-    new_df = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu\n"
-            "55007,ZZ,county,West County,28\n"
-            "55,ZZ,state,Grand State,64\n"
-        )
+    existing_df = read_csv_str(
+        "fips,state,aggregate_level,county,preserved\n", parse_dates=False,
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+    new_df = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu\n"
+        "55007,ZZ,county,West County,28\n"
+        "55,ZZ,state,Grand State,64\n",
+        parse_dates=False,
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
+
+    datasets = {"existing": existing_df, "new": new_df}
+
+    result = _build_dataframe(
+        {"current_icu": ["existing", "new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
     )
 
-    with testing.capture_logs() as logs:
-        log = get_logger()
-        result = fill_fields_with_data_source(
-            log, existing_df, new_df, "fips state aggregate_level county".split(), ["current_icu"],
-        )
-
-    expected = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu,preserved\n"
-            "55007,ZZ,county,West County,28,\n"
-            "55,ZZ,state,Grand State,64,\n"
-        )
-    )
+    expected = read_csv_str(
+        "fips,state,aggregate_level,county,current_icu,preserved\n"
+        "55007,ZZ,county,West County,28,\n"
+        "55,ZZ,state,Grand State,64,\n"
+    ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
     assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-    assert logs == []
-
-
-def test_fill_fields_with_data_source_empty_input():
-    existing_df = pd.DataFrame()
-    new_df = pd.read_csv(
-        StringIO("fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,64\n")
-    )
-    with testing.capture_logs() as logs:
-        result = fill_fields_with_data_source(
-            get_logger(),
-            existing_df,
-            new_df,
-            "fips state aggregate_level county".split(),
-            ["current_icu"],
-        )
-
-    expected = pd.read_csv(
-        StringIO(
-            "fips,state,aggregate_level,county,current_icu,preserved\n"
-            "55,ZZ,state,Grand State,64,\n"
-        )
-    )
-    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-    assert logs == []
 
 
 def column_as_set(
@@ -356,3 +302,18 @@ def test_make_binary_array():
     assert column_as_set(
         df, "metric", None, states=["ZZ"], after="2020-03-22", before="2020-03-24"
     ) == {"smithville-march23", "county-metric", "mystate",}
+
+
+def read_csv_str(csv_str: str, parse_dates=True) -> pd.DataFrame:
+
+    if parse_dates:
+        parse_dates_columns = [CommonFields.DATE]
+    else:
+        parse_dates_columns = []
+
+    return pd.read_csv(
+        StringIO(csv_str),
+        parse_dates=parse_dates_columns,
+        dtype={CommonFields.FIPS: str},
+        low_memory=False,
+    )

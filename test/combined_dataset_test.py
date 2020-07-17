@@ -1,10 +1,5 @@
 import logging
-import pathlib
 import re
-
-import pytest
-import structlog
-from more_itertools import one
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs.datasets import combined_datasets, CommonFields
@@ -13,29 +8,21 @@ from libs.datasets.combined_datasets import (
     Override,
     _build_combined_dataset_from_sources,
     US_STATES_FILTER,
-    ALL_FIELDS_FEATURE_DEFINITION,
     FeatureDataSourceMap,
 )
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import JHUDataset
 from libs.datasets import NYTimesDataset
 from libs.datasets import CDSDataset
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import NevadaHospitalAssociationData
-from covidactnow.datapublic.common_df import write_df_as_csv, read_csv_to_indexed_df
-from datetime import datetime
-
-from io import StringIO
 
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.sources import cds_dataset
 from libs.datasets.timeseries import TimeseriesDataset
-from test.dataset_utils_test import to_dict
+from test.dataset_utils_test import read_csv_str
 import pandas as pd
 import numpy as np
 import pytest
@@ -43,7 +30,6 @@ import pytest
 # Tests to make sure that combined datasets are building data with unique indexes
 # If this test is failing, it means that there is one of the data sources that
 # is returning multiple values for a single row.
-from test.dataset_utils_test import to_dict
 
 
 def test_unique_index_values_us_timeseries():
@@ -164,15 +150,6 @@ def test_remove_padded_nans(include_na_at_end):
     expected_series = pd.Series([1, pd.NA, 2, 3], name="cases")
 
     pd.testing.assert_series_equal(results.cases, expected_series)
-
-
-def read_csv_str(csv_str: str) -> pd.DataFrame:
-    return pd.read_csv(
-        StringIO(csv_str),
-        parse_dates=[CommonFields.DATE],
-        dtype={CommonFields.FIPS: str},
-        low_memory=False,
-    )
 
 
 def test_build_timeseries():
