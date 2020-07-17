@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "e95e69c377be83c5bf1cffc9508186912da04118",
-    "branch": "master",
+    "sha": "93cbeacc20220493c46b97ac333fdb3b5c53590b",
+    "branch": "tgb-20200626-combine-refactor",
     "is_dirty": true
   },
-  "updated_at": "2020-07-17T16:40:51.368398"
+  "updated_at": "2020-07-17T19:25:57.603709"
 }

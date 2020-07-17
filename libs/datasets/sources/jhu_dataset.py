@@ -79,6 +79,7 @@ class JHUDataset(data_source.DataSource):
     @classmethod
     def _standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data = dataset_utils.strip_whitespace(data)
+        # Drop all data outside the USA to speed up debugging
         data = data.loc[data[cls.Fields.COUNTRY].isin(["US", "USA"])]
         # TODO Figure out how to rename to some ISO standard.
         country_remap = {
@@ -111,17 +112,9 @@ class JHUDataset(data_source.DataSource):
         data[cls.Fields.AGGREGATE_LEVEL] = numpy.where(state_only, "state", "county")
         data = cls._aggregate_fips_data(data)
 
-        # rows_without_fips = data[cls.Fields.FIPS].isnull()
-        # if rows_without_fips.any():
-        #    print(f"Dropping rows without FIPS:\n"
-        #    f"{data.loc[rows_without_fips, [cls.Fields.FIPS, cls.Fields.STATE, cls.Fields.DATE, cls.Fields.AGGREGATE_LEVEL]]}")
-        #    data = data.loc[~rows_without_fips]
-
-        # rows_with_bad_state_name = (data[cls.Fields.AGGREGATE_LEVEL] == "state") & (~data[cls.Fields.STATE].isin(US_STATE_ABBREV.values()))
-        # if rows_with_bad_state_name.any():
-        #    print(f"Dropping rows with bad state name:\n"
-        #          f"{data.loc[rows_with_bad_state_name, [cls.Fields.FIPS, cls.Fields.STATE, cls.Fields.DATE]]}")
-        #    data = data.loc[~rows_with_bad_state_name]
+        dataset_utils.assert_counties_have_fips(
+            data, county_key=cls.Fields.COUNTY, fips_key=cls.Fields.FIPS
+        )
 
         return data
 

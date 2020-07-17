@@ -14,6 +14,16 @@ from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 
 
+class DuplicateDataException(Exception):
+    def __init__(self, message, duplicates):
+        self.message = message
+        self.duplicates = duplicates
+        super().__init__()
+
+    def __str__(self):
+        return f"DuplicateDataException({self.message})"
+
+
 class TimeseriesDataset(dataset_base.DatasetBase):
     """Represents timeseries dataset.
 
@@ -207,14 +217,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         no_fips = data[CommonFields.FIPS].isnull()
         if no_fips.any():
-            print(f"Dropping rows without FIPS in {source}:\n{data.loc[no_fips]}")
+            structlog.get_logger().warning(
+                "Dropping rows without FIPS", source=str(source), rows=repr(data.loc[no_fips])
+            )
             data = data.loc[~no_fips]
 
-        if data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS, keep=False).any():
-            raise ValueError(
-                f"Duplicates in {source}:\n"
-                f"{data.loc[data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS)]}"
-            )
+        dups = data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS, keep=False)
+        if dups.any():
+            raise DuplicateDataException(f"Duplicates in {source}", data.loc[dups])
 
         # Choosing to sort by date
         data = data.sort_values(CommonFields.DATE)

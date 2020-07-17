@@ -259,7 +259,7 @@ def _build_combined_dataset_from_sources(
         for data_source_cls in set(chain.from_iterable(feature_definition_config.values()))
     }
 
-    # Convert data sources to instances of `target_data_cls`.
+    # Convert data sources to instances of `target_data_cls` and apply filter
     intermediate_datasets = {
         data_source_cls.SOURCE_NAME: filter.apply(target_dataset_cls.build_from_data_source(source))
         for data_source_cls, source in loaded_data_sources.items()

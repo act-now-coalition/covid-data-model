@@ -1,6 +1,7 @@
 from typing import Type, List, Optional, Iterable, Union, TextIO
 import pathlib
 
+import structlog
 from more_itertools import first
 
 from covidactnow.datapublic import common_df
@@ -69,14 +70,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         is_state = data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
-
-        dups = (
-            data.groupby(cls.COMMON_INDEX_FIELDS).filter(lambda group: len(group) > 1).sort_index()
-        )
-        print(source.SOURCE_NAME)
-        if not dups.empty:
-            print(f"Dups in latest {source.SOURCE_NAME}:\n{dups}")
-            data.drop_duplicates(cls.COMMON_INDEX_FIELDS, inplace=True)
 
         return cls(data)
 
@@ -195,7 +188,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         """
         # Cannot use common_df.write_csv as it doesn't support data without a date index field.
         data = self.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
-        data = common_df.sort_common_field_columns(data)
+        data = common_df.only_common_columns(data, structlog.get_logger())  # Drops `index`
+        data = common_df.sort_common_field_columns(data).sort_index()
         data.to_csv(path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
 
     @classmethod

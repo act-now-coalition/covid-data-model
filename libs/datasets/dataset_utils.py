@@ -222,6 +222,13 @@ def add_county_using_fips(data, fips_data):
     return pd.concat([data, not_county_df])
 
 
+def assert_counties_have_fips(data, county_key="county", fips_key="fips"):
+    is_county = data["aggregate_level"] == AggregationLevel.COUNTY.value
+    is_fips_null = is_county & data[fips_key].isnull()
+    if sum(is_fips_null):
+        print(data[is_fips_null])
+
+
 def add_fips_using_county(data, fips_data) -> pd.Series:
     """Gets FIPS code from a data frame with a county."""
     data = data.set_index(["county", "state"])
