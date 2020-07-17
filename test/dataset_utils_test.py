@@ -59,27 +59,20 @@ def to_dict(keys: List[str], df: pd.DataFrame):
 
 
 def read_csv_and_index_fips(csv_str: str) -> pd.DataFrame:
+    """Read a CSV in a str to a DataFrame and set the FIPS column as an index."""
     return pd.read_csv(
         StringIO(csv_str), dtype={CommonFields.FIPS: str}, low_memory=False,
     ).set_index(CommonFields.FIPS)
 
 
 def read_csv_and_index_fips_date(csv_str: str) -> pd.DataFrame:
+    """Read a CSV in a str to a DataFrame and set the FIPS and DATE columns as MultiIndex."""
     return pd.read_csv(
         StringIO(csv_str),
         parse_dates=[CommonFields.DATE],
         dtype={CommonFields.FIPS: str},
         low_memory=False,
     ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
-
-
-def read_csv_str(csv_str: str) -> pd.DataFrame:
-    return pd.read_csv(
-        StringIO(csv_str),
-        parse_dates=parse_dates_columns,
-        dtype={CommonFields.FIPS: str},
-        low_memory=False,
-    )
 
 
 def test_fill_fields_and_timeseries_from_column():
