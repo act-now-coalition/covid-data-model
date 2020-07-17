@@ -1,5 +1,8 @@
 from typing import Type, List, Optional, Union, TextIO
 import pathlib
+
+from more_itertools import first
+
 from libs import us_state_abbrev
 import pandas as pd
 import numpy as np
@@ -142,7 +145,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
     def get_subset(
         self,
-        aggregation_level,
+        aggregation_level=None,
         country=None,
         fips: Optional[str] = None,
         state: Optional[str] = None,
@@ -164,36 +167,15 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         )
         return self.__class__(self.data.loc[rows_binary_array, :])
 
-    def get_record_for_state(self, state) -> dict:
-        """Gets all data for a given state.
-
-        Args:
-            state: State abbreviation.
-
-        Returns: Dictionary with all data for a given state.
-        """
-        # we map NaNs to none here so that they can be generated via the API easier
-        data = self.state_data.where(pd.notnull(self.state_data), None)
-        row = data[data[CommonFields.STATE] == state]
-        if not len(row):
-            return {}
-
-        return row.iloc[0].to_dict()
-
     def get_record_for_fips(self, fips) -> dict:
         """Gets all data for a given fips code.
 
         Args:
-            fips: fips code.
+            fips: 2 digits for a state or 5 digits for a county
 
         Returns: Dictionary with all data for a given fips code.
         """
-        # we map NaNs to none here so that they can be generated via the API easier
-        row = self.data[self.data[CommonFields.FIPS] == fips].where(pd.notnull(self.data), None)
-        if not len(row):
-            return {}
-
-        return row.iloc[0].to_dict()
+        return first(self.get_subset(fips=fips).yield_records(), default={})
 
     def to_csv(self, path: pathlib.Path):
         """Save data to CSV.

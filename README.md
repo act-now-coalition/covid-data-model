@@ -2,11 +2,19 @@
 
 *Objective:* Provide a library/API that ingests COVID-19 data to provide simulated outcomes based on local isolation/quarantine policy levers as represented in published models.
 
-Check It Out in Jupyter
+This work supports https://covidactnow.org/.
+
+Check It Out via Jupyter:
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/covid-projections/covid-data-model/master)
 
 
 ## Resources
+
+We track our work via Trello. Our [engineering board](https://trello.com/b/zLf79HJ8/public-engpmux) is public.
+
+Please file any issues via GitHub.
+
+We are always looking for more collaborators. See our [contact page](https://covidactnow.org/contact) for general information or reach out directly about helping via this [form](https://docs.google.com/forms/d/e/1FAIpQLSfQkdwXsbDbwLHhWwBD6wzNiw54_0P6A60r8hujP3qnaxxFkA/viewform).
 
 ### Models
 
@@ -25,7 +33,9 @@ Some code in the `covid-data-model` repo depends on there being a copy of the `c
 `../covid-data-public`.
 
 
-## [Setup](./SETUP.md)
+## Setup
+
+Detailed setup instructions can be found [here](./SETUP.md)
 
 # API Snapshots
 
