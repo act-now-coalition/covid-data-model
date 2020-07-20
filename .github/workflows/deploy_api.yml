@@ -47,7 +47,8 @@ env:
 
 jobs:
   build-and-publish-snapshot:
-    runs-on: self-hosted
+    runs-on model-trainer
+    #runs-on: self-hosted
     steps:
 
     - name: Checkout covid-data-model
