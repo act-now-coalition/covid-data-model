@@ -42,7 +42,7 @@ class ForecastRt:
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet)
         self.ref_date = datetime(year=2020, month=1, day=1)
-        self.debug_plots = True
+        self.debug_plots = False
 
         # Variable Names
         self.aggregate_level_name = "aggregate_level"
@@ -101,14 +101,16 @@ class ForecastRt:
         self.days_between_samples = 7
         self.mask_value = -10
         self.min_number_of_days = 31
-        self.sequence_length = 30
+        self.sequence_length = (
+            30  # can pad sequence with numbers up to this length if input lenght is variable
+        )
         self.sample_train_length = 30  # Set to -1 to use all historical data
         self.predict_days = 7
         self.percent_train = False
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 1
-        self.n_epochs = 1000
+        self.n_batch = 2
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -226,10 +228,13 @@ class ForecastRt:
         return train_samples, test_samples, scaling_set
 
     def plot_variables(self, df_list, state_fips, scalers_dict):
+        col = plt.cm.jet(np.linspace(0, 1, round(len(self.forecast_variables) + 1)))
+        BOLD_LINEWIDTH = 3
         for df, state in zip(df_list, state_fips):
             fig, ax = plt.subplots(figsize=(18, 12))
-            for var in self.forecast_variables:
-                ax.plot(df[var], label=var)
+            # for var in self.forecast_variables:
+            for var, color in zip(self.forecast_variables, col):
+                ax.plot(df[var], label=var, color=color)
             ax.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
@@ -238,10 +243,10 @@ class ForecastRt:
             plt.savefig(output_path, bbox_inches="tight")
 
             fig2, ax2 = plt.subplots(figsize=(18, 12))
-            for var in self.forecast_variables:
+            for var, color in zip(self.forecast_variables, col):
                 reshaped_data = df[var].values.reshape(-1, 1)
                 scaled_values = scalers_dict[var].transform(reshaped_data)
-                ax2.plot(scaled_values, label=var)
+                ax2.plot(scaled_values, label=var, color=color)
             ax2.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
@@ -287,9 +292,6 @@ class ForecastRt:
         # iterate over train/test_samples = list[state_dfs_samples]
         for train, test in zip(train_samples, test_samples):
             train_X, train_Y, train_df_list = self.get_scaled_X_Y(train, scalers_dict, "train")
-            log.info(
-                f"input train length: {len(train_samples)} train_X: {len(train_X)} train_Y: {len(train_Y)}"
-            )
             test_X, test_Y, test_df_list = self.get_scaled_X_Y(test, scalers_dict, "test")
             list_train_X.append(train_X)
             list_train_Y.append(train_Y)
@@ -300,13 +302,21 @@ class ForecastRt:
         final_list_train_Y = np.concatenate(list_train_Y)
         model, history = self.build_model(final_list_train_X, final_list_train_Y)
 
+        # redefine model with batch size one to access forecasts
+        forecast_model = self.specify_model(1)  # set batch_size to one
+        log.info("made forecast model")
+        trained_model_weights = model.get_weights()
+        forecast_model.set_weights(trained_model_weights)
+
         # Plot predictions for test and train sets
 
         for train_X, train_Y, test_X, test_Y, df_forecast, fips in zip(
             list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_fips
         ):
             state_name = us.states.lookup(fips).name
-            forecasts_train, dates_train = self.get_forecasts(train_X, train_Y, scalers_dict, model)
+            forecasts_train, dates_train = self.get_forecasts(
+                train_X, train_Y, scalers_dict, forecast_model
+            )
 
             for i in range(len(train_X)):
                 df = pd.DataFrame(data=train_X[i])
@@ -415,14 +425,35 @@ class ForecastRt:
         return
 
     def get_forecasts(self, X, Y, scalers_dict, model):
+        log.info("getting forecasts")
+
+        # redefine model for one input sample not n_batch input samples for forecasting output:
+        log.info("making new model")
+        log.info(type(X))
+        log.info(X[0].shape[0])
+        log.info(X[0].shape[1])
+        log.info(Y)
+        log.info(Y[0])
+        log.info("getting single sample modelz")
+        # single_sample_model = self.specify_model(1, X[0].shape[0], X[0].shape[1], self.predict_days)
+
+        # forecast_model = self.specify_model(1) #set batch_size to one
+        # log.info('made model')
+        # trained_model_weights = model.get_weights()
+        # forecast_model.set_weights(trained_model_weights)
+        # log.info('made new model')
+
         forecasts = list()
         dates = list()
         for i, j in zip(X, Y):
-            i = i.reshape(self.n_batch, i.shape[0], i.shape[1])
+            i = i.reshape(1, i.shape[0], i.shape[1])
+
+            log.info(i)
+            log.info(i.shape[0])
+            log.info(i.shape[1])
+            log.info(i.shape[2])
             scaled_df = pd.DataFrame(np.squeeze(i))
-            thisforecast = scalers_dict[self.predict_variable].inverse_transform(
-                model.predict(i, batch_size=self.n_batch)
-            )
+            thisforecast = scalers_dict[self.predict_variable].inverse_transform(model.predict(i))
             forecasts.append(thisforecast)
 
             last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
@@ -481,27 +512,22 @@ class ForecastRt:
                 sample.loc[:, f"{columnName}{self.scaled_variable_suffix}"] = scaled_values
             sample_list.append(sample)
         X, Y, df_list = self.get_X_Y(sample_list, label)
-        log.info(f"lengths: X: {len(X)} Y:{len(Y)} df_list: {len(df_list)}")
         return X, Y, df_list
 
-    def build_model(self, final_train_X, final_train_Y):
+    def specify_model(
+        self, n_batch
+    ):  # , sample_train_length, n_features, predict_sequence_length):
         model = Sequential()
-        log.info("BUILDING MODEL")
-        log.info(final_train_X)
-        log.info(type(final_train_X))
-        log.info(final_train_X.shape[1])
-        log.info(final_train_X.shape[2])
-
         model.add(
             Masking(
                 mask_value=self.mask_value,
-                batch_input_shape=(self.n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                batch_input_shape=(n_batch, self.sequence_length, len(self.forecast_variables)),
             )
         )
         model.add(
             LSTM(
                 self.n_hidden_layer_dimensions,
-                batch_input_shape=(self.n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                batch_input_shape=(n_batch, self.sequence_length, len(self.forecast_variables)),
                 stateful=True,
                 return_sequences=True,
             )
@@ -509,12 +535,61 @@ class ForecastRt:
         model.add(
             LSTM(
                 self.n_hidden_layer_dimensions,
-                batch_input_shape=(self.n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                batch_input_shape=(n_batch, self.sequence_length, len(self.forecast_variables)),
+                stateful=True,
+            )
+        )
+        model.add(Dropout(self.dropout))
+        model.add(Dense(self.predict_days))
+        log.info("returning model")
+
+        return model
+
+    def old_specify_model(self, n_batch, final_train_X, final_train_Y):
+        model = Sequential()
+        model.add(
+            Masking(
+                mask_value=self.mask_value,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+            )
+        )
+        model.add(
+            LSTM(
+                self.n_hidden_layer_dimensions,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
+                stateful=True,
+                return_sequences=True,
+            )
+        )
+        model.add(
+            LSTM(
+                self.n_hidden_layer_dimensions,
+                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
                 stateful=True,
             )
         )
         model.add(Dropout(self.dropout))
         model.add(Dense(final_train_Y.shape[1]))
+        log.info(final_train_Y.shape[1])
+        log.info(final_train_X.shape[1])
+        log.info(final_train_X.shape[2])
+        log.info("returning model")
+        exit()
+
+        return model
+
+    def build_model(self, final_train_X, final_train_Y):
+
+        log.info("BUILDING MODEL")
+        log.info(final_train_X)
+        log.info(type(final_train_X))
+        log.info(final_train_X.shape[1])
+        log.info(final_train_X.shape[2])
+
+        n_features = final_train_X.shape[2]
+        model = self.specify_model(self.n_batch)
+        # model = self.specify_model(self.n_batch, self.sample_train_length, n_features, self.predict_days)
+
         es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=self.patience)
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
         model.compile(loss="mean_squared_error", optimizer="adam")
