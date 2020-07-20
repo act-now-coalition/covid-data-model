@@ -1,4 +1,4 @@
-from typing import Type, List, Optional, Union, TextIO
+from typing import Type, List, Optional, Iterable, Union, TextIO
 import pathlib
 
 import structlog
@@ -29,6 +29,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         CommonIndexFields.COUNTRY,
         CommonIndexFields.STATE,
     ]
+    COMMON_INDEX_FIELDS = [CommonFields.FIPS]
 
     def __init__(self, data):
         self.data = data

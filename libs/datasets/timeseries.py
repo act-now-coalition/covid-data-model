@@ -40,6 +40,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         CommonIndexFields.FIPS,
     ]
 
+    COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
+
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
