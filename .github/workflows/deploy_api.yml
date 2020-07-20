@@ -47,7 +47,7 @@ env:
 
 jobs:
   build-and-publish-snapshot:
-    runs-on: model-trainer
+    runs-on:[self-hosted, model-trainer]
     #runs-on: self-hosted
     steps:
 
