@@ -110,7 +110,7 @@ class ForecastRt:
         self.percent_train = False
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 1
+        self.n_batch = 10
         self.n_epochs = 10000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
@@ -119,74 +119,65 @@ class ForecastRt:
 
     @classmethod
     def run_forecast(cls, df_all=None):
-        try:
-            engine = cls(df_all)
-            return engine.forecast_rt()
-        except Exception:
-            logging.exception("forecast failed : ( something unintended occured")
-            return None
+        engine = cls(df_all)
+        return engine.forecast_rt()
 
     def get_forecast_dfs(self):
-        if self.merged_df:
+        if self.merged_df is None or not self.states_only:
+            raise NotImplementedError("Only states are supported.")
 
-            df_merge = pd.read_csv(
-                self.csv_path,
-                parse_dates=True,
-                index_col=self.index_col_name_csv,
-                converters={self.fips_var_name: str},
-            )
-            log.info("retrieved input csv")
+        df_merge = pd.read_csv(
+            self.csv_path,
+            parse_dates=True,
+            index_col=self.index_col_name_csv,
+            converters={self.fips_var_name: str},
+        )
+        log.info("retrieved input csv")
 
-            if self.states_only:
+        if self.states_only:
+            if self.save_csv_output:
+                df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
+            # only store state information
+            df_states_merge = df_merge[
+                df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
+            ]
+            # create separate dataframe for each state
+            state_df_dictionary = dict(iter(df_states_merge.groupby(self.fips_var_name)))
+
+            # process dataframe
+            state_names, df_list = [], []
+            for state in state_df_dictionary:
+                df = state_df_dictionary[state]
+                state_name = df[self.fips_var_name][0]
+
+                # Only keep data points where predict variable exists
+                first_valid_index = df[self.predict_variable].first_valid_index()
+                df = df[first_valid_index:].copy()
+
+                df[self.sim_date_name] = (df.index - self.ref_date).days + 1
+                # Calculate Rt derivative, exclude first row since-- zero derivative
+                df[self.d_predict_variable] = df[self.predict_variable].diff()
+                df = df[1:]
+                df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
+
+                if self.deaths_cumulative:
+                    df[self.daily_case_var] = df[self.case_var].diff()
+                if self.cases_cumulative:
+                    df[self.daily_death_var] = df[self.death_var].diff()
+
+                df_forecast = df[self.forecast_variables].copy()
+                # Fill empty values with mask value
+                df_forecast = df_forecast.fillna(self.mask_value)
+                # ignore last entry = NaN #TODO find a better way to do this!!!
+                # Is this necessary? dunno why some states have 0 for last Rt
+                df_forecast = df_forecast.iloc[:-1]
+
+                state_names.append(state_name)
+                df_list.append(df_forecast)
                 if self.save_csv_output:
-                    df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
-                # only store state information
-                df_states_merge = df_merge[
-                    df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
-                ]
-                # create separate dataframe for each state
-                state_df_dictionary = dict(iter(df_states_merge.groupby(self.fips_var_name)))
+                    df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
 
-                # process dataframe
-                state_names, df_list = [], []
-                for state in state_df_dictionary:
-                    df = state_df_dictionary[state]
-                    state_name = df[self.fips_var_name][0]
-
-                    # Only keep data points where predict variable exists
-                    first_valid_index = df[self.predict_variable].first_valid_index()
-                    df = df[first_valid_index:].copy()
-
-                    df[self.sim_date_name] = (df.index - self.ref_date).days + 1
-                    # Calculate Rt derivative, exclude first row since-- zero derivative
-                    df[self.d_predict_variable] = df[self.predict_variable].diff()
-                    df = df[1:]
-                    df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
-
-                    if self.deaths_cumulative:
-                        df[self.daily_case_var] = df[self.case_var].diff()
-                    if self.cases_cumulative:
-                        df[self.daily_death_var] = df[self.death_var].diff()
-
-                    df_forecast = df[self.forecast_variables].copy()
-                    # Fill empty values with mask value
-                    df_forecast = df_forecast.fillna(self.mask_value)
-                    # ignore last entry = NaN #TODO find a better way to do this!!!
-                    # Is this necessary? dunno why some states have 0 for last Rt
-                    df_forecast = df_forecast.iloc[:-1]
-
-                    state_names.append(state_name)
-                    df_list.append(df_forecast)
-                    if self.save_csv_output:
-                        df_forecast.to_csv(
-                            self.csv_output_folder + df["state"][0] + "_forecast.csv"
-                        )
-
-            else:
-                log.info("County level training not implemented yet :(")
-                exit()
-
-            return state_names, df_list
+        return state_names, df_list
 
     def get_train_test_samples(self, df_forecast):
         # create list of dataframe samples
@@ -306,7 +297,7 @@ class ForecastRt:
         )
 
         # redefine model with batch size one to access forecasts
-        forecast_model = self.specify_model(1)  # set batch_size to one
+        forecast_model = self.specify_model(1)  # set n_batch to one
         log.info("made forecast model")
         trained_model_weights = model.get_weights()
         forecast_model.set_weights(trained_model_weights)
@@ -521,16 +512,20 @@ class ForecastRt:
         es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=self.patience)
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
         model.compile(loss="mean_squared_error", optimizer="adam")
+        final_train_X = final_train_X[:-2]
+        final_train_Y = final_train_Y[:-2]
+        print(final_test_X.shape)
+        print(final_train_Y.shape)
         history = model.fit(
             final_train_X,
             final_train_Y,
             epochs=self.n_epochs,
-            batch_size=self.n_batch,
+            n_batch=self.n_batch,
             verbose=1,
             shuffle=True,  # TODO test shuffle
             callbacks=[es, tensorboard_callback],
             # validation_split=self.validation_split,
-            validation_data=(final_test_X, final_test_Y),
+            validation_data=(final_test_X[:-4], final_test_Y[:-4]),
         )
         logging.info("fit")
         logging.info(history.history["loss"])
