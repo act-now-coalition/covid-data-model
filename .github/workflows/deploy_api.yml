@@ -14,11 +14,9 @@ on:
   repository_dispatch:
     types: publish-api
 
-  push:
-
 env:
   # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'tgb-merge-by-ts'
+  COVID_DATA_MODEL_REF: 'master'
 
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'master'
