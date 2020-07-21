@@ -109,8 +109,8 @@ class ForecastRt:
         self.percent_train = False
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 2
-        self.n_epochs = 1
+        self.n_batch = 532
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -314,6 +314,7 @@ class ForecastRt:
             list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_fips
         ):
             state_name = us.states.lookup(fips).name
+            log.info(f"STATE: {state_name}")
             forecasts_train, dates_train = self.get_forecasts(
                 train_X, train_Y, scalers_dict, forecast_model
             )
@@ -323,7 +324,9 @@ class ForecastRt:
                 if self.save_csv_output:
                     df.to_csv(self.csv_output_folder + state_name + "_" + str(i) + ".csv")
 
-            forecasts_test, dates_test = self.get_forecasts(test_X, test_Y, scalers_dict, model)
+            forecasts_test, dates_test = self.get_forecasts(
+                test_X, test_Y, scalers_dict, forecast_model
+            )
             DATA_LINEWIDTH = 1
             MODEL_LINEWIDTH = 2
             # plot training predictions
@@ -432,7 +435,6 @@ class ForecastRt:
         log.info(type(X))
         log.info(X[0].shape[0])
         log.info(X[0].shape[1])
-        log.info(Y)
         log.info(Y[0])
         log.info("getting single sample modelz")
         # single_sample_model = self.specify_model(1, X[0].shape[0], X[0].shape[1], self.predict_days)
@@ -446,12 +448,11 @@ class ForecastRt:
         forecasts = list()
         dates = list()
         for i, j in zip(X, Y):
-            i = i.reshape(1, i.shape[0], i.shape[1])
-
             log.info(i)
             log.info(i.shape[0])
             log.info(i.shape[1])
-            log.info(i.shape[2])
+            i = i.reshape(1, i.shape[0], i.shape[1])
+
             scaled_df = pd.DataFrame(np.squeeze(i))
             thisforecast = scalers_dict[self.predict_variable].inverse_transform(model.predict(i))
             forecasts.append(thisforecast)
@@ -541,6 +542,7 @@ class ForecastRt:
         )
         model.add(Dropout(self.dropout))
         model.add(Dense(self.predict_days))
+        log.info(f"BATCH SIZE: {n_batch}")
         log.info("returning model")
 
         return model
