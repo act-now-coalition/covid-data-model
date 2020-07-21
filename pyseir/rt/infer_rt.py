@@ -2,6 +2,7 @@ import math
 from datetime import timedelta
 import logging
 import structlog
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -16,36 +17,54 @@ from pyseir.rt import plotting, utils
 rt_log = structlog.get_logger(__name__)
 
 
-def run_rt_for_fips(fips, figure_collector=None):
+def run_rt_for_fips(
+    fips: str,
+    include_deaths: bool = False,
+    include_testing_correction: bool = True,
+    figure_collector: Optional[list] = None,
+):
     """Entry Point for Infer Rt"""
 
     # Generate the Data Packet to Pass to RtInferenceEngine
     input_df = _generate_input_data(
-        fips, include_testing_correction=True, figure_collector=figure_collector
+        fips=fips,
+        include_testing_correction=include_testing_correction,
+        include_deaths=include_deaths,
+        figure_collector=figure_collector,
     )
+    if input_df.dropna().empty:
+        rt_log.warning(event="Infer Rt Skipped. No Data Passed Filter Requirements:", fips=fips)
+        return
 
-    # Save a reference to instantiated engine (eventually I want to pull out the figure generation
-    # and saving so that I don't have to pass a display_name and fips into the class
+    # Save a reference to instantiated engine (eventually I want to pull out the figure
+    # generation and saving so that I don't have to pass a display_name and fips into the class
     engine = RtInferenceEngine(
-        data=input_df, display_name=_get_display_name(fips), fips=fips, include_deaths=False
+        data=input_df,
+        display_name=_get_display_name(fips),
+        fips=fips,
+        include_deaths=include_deaths,
     )
 
-    # Generate the output DataFrame (consider renaming the function infer_all to make it clearer)
+    # Generate the output DataFrame (consider renaming the function infer_all to be clearer)
     output_df = engine.infer_all()
 
     # Save the output to json for downstream repacking and incorporation.
-    county_output_file = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
     if output_df is not None and not output_df.empty:
-        output_df.to_json(county_output_file)
+        output_path = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
+        output_df.to_json(output_path)
+    return
 
 
-def _get_display_name(fips) -> str:
+def _get_display_name(fips: str) -> str:
     """Need to find the right function for this. Right now just return the fips"""
     return str(fips)
 
 
 def _generate_input_data(
-    fips, include_testing_correction=True, include_deaths=True, figure_collector=None
+    fips: str,
+    include_testing_correction: bool,
+    include_deaths: bool,
+    figure_collector: Optional[list],
 ):
     """
     Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
@@ -64,14 +83,19 @@ def _generate_input_data(
         include_deaths=include_deaths,
         figure_collector=figure_collector,
         display_name=fips,
+        log=rt_log.new(fips=fips),
     )
     return df
 
 
 def filter_and_smooth_input_data(
-    df: [pd.DataFrame], display_name, include_deaths=False, figure_collector=None
+    df: pd.DataFrame,
+    display_name: str,
+    include_deaths: bool,
+    figure_collector: Optional[list],
+    log: logging.Logger,
 ) -> pd.DataFrame:
-    """Do Everything Strange Here Before it Gets to the Inference Engine"""
+    """Do Filtering Here Before it Gets to the Inference Engine"""
     MIN_CUMULATIVE_COUNTS = dict(cases=20, deaths=10)
     MIN_INCIDENT_COUNTS = dict(cases=5, deaths=5)
 
@@ -133,7 +157,7 @@ def filter_and_smooth_input_data(
             df[column] = smoothed
         else:
             df = df.drop(columns=column, inplace=False)
-            rt_log.info("Dropping:", columns=column, requirements=requirements)
+            log.info("Dropping:", columns=column, requirements=requirements)
 
     return df
 
