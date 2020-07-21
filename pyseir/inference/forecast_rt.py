@@ -519,7 +519,7 @@ class ForecastRt:
             final_train_X,
             final_train_Y,
             epochs=self.n_epochs,
-            n_batch=self.n_batch,
+            batch_size=self.n_batch,
             verbose=1,
             shuffle=True,  # TODO test shuffle
             callbacks=[es, tensorboard_callback],
