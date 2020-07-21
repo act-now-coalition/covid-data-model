@@ -633,14 +633,15 @@ def specify_model(
     model.add(
         Masking(mask_value=mask_value, batch_input_shape=(n_batch, train_length, n_features),)
     )
-    model.add(
-        LSTM(
-            n_hidden_layer_dimensions,
-            batch_input_shape=(n_batch, train_length, n_features),
-            stateful=True,
-            return_sequences=True,
+    for i in range(n_layers - 1):
+        model.add(
+            LSTM(
+                n_hidden_layer_dimensions,
+                batch_input_shape=(n_batch, train_length, n_features),
+                stateful=True,
+                return_sequences=True,
+            )
         )
-    )
     model.add(
         LSTM(
             n_hidden_layer_dimensions,
