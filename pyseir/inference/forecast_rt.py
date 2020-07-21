@@ -54,7 +54,6 @@ class ForecastRt:
         )
         self.sim_date_name = "sim_day"
         self.index_col_name_csv = "date"
-        self.predict_variable = "Rt_MAP__new_cases"
         self.cases_cumulative = True
         self.deaths_cumulative = True
         self.case_var = "cases"
@@ -62,12 +61,14 @@ class ForecastRt:
         self.daily_var_prefix = "new_"
         self.daily_case_var = self.daily_var_prefix + self.case_var
         self.daily_death_var = self.daily_var_prefix + self.death_var
+        self.predict_variable = "Rt_MAP__new_cases"
+        # self.predict_variable = self.daily_case_var
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
             self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
             self.daily_case_var,
             self.daily_death_var,
-            self.d_predict_variable,
+            # self.d_predict_variable,
             self.predict_variable,
             self.fips_var_name_int,
             "positive_tests",
@@ -109,12 +110,12 @@ class ForecastRt:
         self.percent_train = False
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 592
+        self.n_batch = 1
         self.n_epochs = 10000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
-        self.validation_split = 0
+        self.validation_split = 0  # currently using test set as validation set
 
     @classmethod
     def run_forecast(cls, df_all=None):
@@ -127,7 +128,6 @@ class ForecastRt:
 
     def get_forecast_dfs(self):
         if self.merged_df:
-            log.info("retrieving input csv")
 
             df_merge = pd.read_csv(
                 self.csv_path,
@@ -145,7 +145,6 @@ class ForecastRt:
                     df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
                 ]
                 # create separate dataframe for each state
-                log.info(df_states_merge)
                 state_df_dictionary = dict(iter(df_states_merge.groupby(self.fips_var_name)))
 
                 # process dataframe
@@ -300,7 +299,11 @@ class ForecastRt:
 
         final_list_train_X = np.concatenate(list_train_X)
         final_list_train_Y = np.concatenate(list_train_Y)
-        model, history = self.build_model(final_list_train_X, final_list_train_Y)
+        final_list_test_X = np.concatenate(list_test_X)
+        final_list_test_Y = np.concatenate(list_test_Y)
+        model, history = self.build_model(
+            final_list_train_X, final_list_train_Y, final_list_test_X, final_list_test_Y
+        )
 
         # redefine model with batch size one to access forecasts
         forecast_model = self.specify_model(1)  # set batch_size to one
@@ -314,7 +317,6 @@ class ForecastRt:
             list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_fips
         ):
             state_name = us.states.lookup(fips).name
-            log.info(f"STATE: {state_name}")
             forecasts_train, dates_train = self.get_forecasts(
                 train_X, train_Y, scalers_dict, forecast_model
             )
@@ -428,29 +430,9 @@ class ForecastRt:
         return
 
     def get_forecasts(self, X, Y, scalers_dict, model):
-        log.info("getting forecasts")
-
-        # redefine model for one input sample not n_batch input samples for forecasting output:
-        log.info("making new model")
-        log.info(type(X))
-        log.info(X[0].shape[0])
-        log.info(X[0].shape[1])
-        log.info(Y[0])
-        log.info("getting single sample modelz")
-        # single_sample_model = self.specify_model(1, X[0].shape[0], X[0].shape[1], self.predict_days)
-
-        # forecast_model = self.specify_model(1) #set batch_size to one
-        # log.info('made model')
-        # trained_model_weights = model.get_weights()
-        # forecast_model.set_weights(trained_model_weights)
-        # log.info('made new model')
-
         forecasts = list()
         dates = list()
         for i, j in zip(X, Y):
-            log.info(i)
-            log.info(i.shape[0])
-            log.info(i.shape[1])
             i = i.reshape(1, i.shape[0], i.shape[1])
 
             scaled_df = pd.DataFrame(np.squeeze(i))
@@ -479,29 +461,17 @@ class ForecastRt:
         return forecasts, dates
 
     def get_scaling_dictionary(self, train_scaling_set):
-        log.info("getting scaling dictionary")
         scalers_dict = {}
-        log.info("training scaling set")
-        log.info(train_scaling_set)
-        log.info(train_scaling_set.dtypes)
         if self.save_csv_output:
             train_scaling_set.to_csv(self.csv_output_folder + "scalingset_now.csv")
         for columnName, columnData in train_scaling_set.iteritems():
-            log.info("column")
-            log.info(columnName)
             scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
-            log.info("made scaler")
             reshaped_data = columnData.values.reshape(-1, 1)
-            log.info("reshaped data")
 
             scaler = scaler.fit(reshaped_data)
-            log.info("fit data")
-            scaled_values = scaler.transform(reshaped_data)
-            log.info("scaled data")
+            # scaled_values = scaler.transform(reshaped_data)
 
             scalers_dict.update({columnName: scaler})
-            log.info("saved scaler to dictionary")
-        log.info("about to return scaling dictionary")
         return scalers_dict
 
     def get_scaled_X_Y(self, samples, scalers_dict, label):
@@ -542,86 +512,39 @@ class ForecastRt:
         )
         model.add(Dropout(self.dropout))
         model.add(Dense(self.predict_days))
-        log.info(f"BATCH SIZE: {n_batch}")
-        log.info("returning model")
 
         return model
 
-    def old_specify_model(self, n_batch, final_train_X, final_train_Y):
-        model = Sequential()
-        model.add(
-            Masking(
-                mask_value=self.mask_value,
-                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
-            )
-        )
-        model.add(
-            LSTM(
-                self.n_hidden_layer_dimensions,
-                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
-                stateful=True,
-                return_sequences=True,
-            )
-        )
-        model.add(
-            LSTM(
-                self.n_hidden_layer_dimensions,
-                batch_input_shape=(n_batch, final_train_X.shape[1], final_train_X.shape[2]),
-                stateful=True,
-            )
-        )
-        model.add(Dropout(self.dropout))
-        model.add(Dense(final_train_Y.shape[1]))
-        log.info(final_train_Y.shape[1])
-        log.info(final_train_X.shape[1])
-        log.info(final_train_X.shape[2])
-        log.info("returning model")
-        exit()
-
-        return model
-
-    def build_model(self, final_train_X, final_train_Y):
-
-        log.info("BUILDING MODEL")
-        log.info(final_train_X)
-        log.info(type(final_train_X))
-        log.info(final_train_X.shape[1])
-        log.info(final_train_X.shape[2])
-
-        n_features = final_train_X.shape[2]
+    def build_model(self, final_train_X, final_train_Y, final_test_X, final_test_Y):
         model = self.specify_model(self.n_batch)
-        # model = self.specify_model(self.n_batch, self.sample_train_length, n_features, self.predict_days)
 
         es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=self.patience)
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
         model.compile(loss="mean_squared_error", optimizer="adam")
-        log.info(final_train_X)
-        log.info(type(final_train_X))
-        log.info(final_train_X.shape)
-        log.info("train shapezzz")
         history = model.fit(
             final_train_X,
             final_train_Y,
             epochs=self.n_epochs,
             batch_size=self.n_batch,
             verbose=1,
-            shuffle=False,  # TODO test shuffle
-            validation_split=self.validation_split,
+            shuffle=True,  # TODO test shuffle
             callbacks=[es, tensorboard_callback],
+            # validation_split=self.validation_split,
+            validation_data=(final_test_X, final_test_Y),
         )
         logging.info("fit")
         logging.info(history.history["loss"])
-        # logging.info(history.history["val_loss"])
-        plot = True
-        if self.debug_plots:
+        logging.info(history.history["val_loss"])
+        # if self.debug_plots:
+        if True:
             plt.close("all")
             plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
-            # plt.plot(
-            #    history.history["val_loss"],
-            #    color="green",
-            #    linestyle="solid",
-            #    label="Validation Set",
-            # )
+            plt.plot(
+                history.history["val_loss"],
+                color="green",
+                linestyle="solid",
+                label="Validation Set",
+            )
             plt.legend()
             plt.xlabel("Epochs")
             plt.ylabel("RMSE")
