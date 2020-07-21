@@ -109,12 +109,12 @@ class ForecastRt:
         self.percent_train = False
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 532
-        self.n_epochs = 1000
+        self.n_batch = 592
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
-        self.validation_split = 0.1
+        self.validation_split = 0
 
     @classmethod
     def run_forecast(cls, df_all=None):
@@ -595,29 +595,33 @@ class ForecastRt:
         es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=self.patience)
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
         model.compile(loss="mean_squared_error", optimizer="adam")
+        log.info(final_train_X)
+        log.info(type(final_train_X))
+        log.info(final_train_X.shape)
+        log.info("train shapezzz")
         history = model.fit(
             final_train_X,
             final_train_Y,
             epochs=self.n_epochs,
             batch_size=self.n_batch,
             verbose=1,
-            shuffle=False,
+            shuffle=False,  # TODO test shuffle
             validation_split=self.validation_split,
             callbacks=[es, tensorboard_callback],
         )
         logging.info("fit")
         logging.info(history.history["loss"])
-        logging.info(history.history["val_loss"])
+        # logging.info(history.history["val_loss"])
         plot = True
         if self.debug_plots:
             plt.close("all")
             plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
-            plt.plot(
-                history.history["val_loss"],
-                color="green",
-                linestyle="solid",
-                label="Validation Set",
-            )
+            # plt.plot(
+            #    history.history["val_loss"],
+            #    color="green",
+            #    linestyle="solid",
+            #    label="Validation Set",
+            # )
             plt.legend()
             plt.xlabel("Epochs")
             plt.ylabel("RMSE")
