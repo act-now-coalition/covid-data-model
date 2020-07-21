@@ -51,7 +51,11 @@ def run_individual(
     # Now apply smoothing and filtering
     collector = {}
     smoothed_df = infer_rt.filter_and_smooth_input_data(
-        df=input_df, display_name=fips, include_deaths=False, figure_collector=collector
+        df=input_df,
+        display_name=fips,
+        include_deaths=False,
+        figure_collector=collector,
+        log=structlog.getLogger(),
     )
 
     engine = infer_rt.RtInferenceEngine(
