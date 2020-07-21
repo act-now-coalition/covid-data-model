@@ -111,7 +111,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 10
-        self.n_epochs = 10000
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -296,7 +296,16 @@ class ForecastRt:
         )
 
         # redefine model with batch size one to access forecasts
-        forecast_model = self.specify_model(1)  # set n_batch to one
+        forecast_model = specify_model(
+            self.sequence_length,
+            self.predict_days,
+            len(self.forecast_variables),
+            self.dropout,
+            self.n_hidden_layer_dimensions,
+            2,
+            1,
+            self.mask_value,
+        )
         log.info("made forecast model")
         trained_model_weights = model.get_weights()
         forecast_model.set_weights(trained_model_weights)
@@ -475,7 +484,7 @@ class ForecastRt:
         X, Y, df_list = self.get_X_Y(sample_list, label)
         return X, Y, df_list
 
-    def specify_model(
+    def old_specify_model(
         self, n_batch
     ):  # , sample_train_length, n_features, predict_sequence_length):
         model = Sequential()
@@ -506,7 +515,16 @@ class ForecastRt:
         return model
 
     def build_model(self, final_train_X, final_train_Y, final_test_X, final_test_Y):
-        model = self.specify_model(self.n_batch)
+        model = specify_model(
+            self.sequence_length,
+            self.predict_days,
+            len(self.forecast_variables),
+            self.dropout,
+            self.n_hidden_layer_dimensions,
+            2,
+            self.n_batch,
+            self.mask_value,
+        )
 
         es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=self.patience)
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
@@ -599,6 +617,41 @@ class ForecastRt:
                 else:  # use only SAMPLE_LENGTH historical days of data
                     df_list.append(df[i - self.sample_train_length : i].copy())
         return df_list
+
+
+def specify_model(
+    train_length,
+    predict_length,
+    n_features,
+    dropout,
+    n_hidden_layer_dimensions,
+    n_layers,
+    n_batch,
+    mask_value,
+):
+    model = Sequential()
+    model.add(
+        Masking(mask_value=mask_value, batch_input_shape=(n_batch, train_length, n_features),)
+    )
+    model.add(
+        LSTM(
+            n_hidden_layer_dimensions,
+            batch_input_shape=(n_batch, train_length, n_features),
+            stateful=True,
+            return_sequences=True,
+        )
+    )
+    model.add(
+        LSTM(
+            n_hidden_layer_dimensions,
+            batch_input_shape=(n_batch, train_length, n_features),
+            stateful=True,
+        )
+    )
+    model.add(Dropout(dropout))
+    model.add(Dense(predict_length))
+
+    return model
 
 
 def external_run_forecast():
