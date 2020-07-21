@@ -69,13 +69,13 @@ def cache_dataset_on_disk(
         _loaded_cache = None
 
         @functools.wraps(func)
-        def f() -> target_dataset_cls:
+        def f(*args, **kwargs) -> target_dataset_cls:
             nonlocal _loaded_cache
 
             pickle_cache_dir = os.getenv(PICKLE_CACHE_ENV_KEY)
 
-            if not pickle_cache_dir:
-                return func()
+            if not pickle_cache_dir or kwargs.get("skip_cache"):
+                return func(*args, **kwargs)
 
             if _loaded_cache is not None:
                 return _loaded_cache
@@ -92,7 +92,7 @@ def cache_dataset_on_disk(
                 else:
                     _logger.info("Cache expired, reloading.")
 
-            dataset = func()
+            dataset = func(*args, **kwargs)
             dataset.data.to_pickle(cache_path)
             _loaded_cache = dataset
             return dataset

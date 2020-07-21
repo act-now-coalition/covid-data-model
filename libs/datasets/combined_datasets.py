@@ -1,14 +1,25 @@
-from typing import Dict, Type, List, NewType
+from enum import Enum
+from itertools import chain
+from typing import Dict, Type, List, NewType, Mapping, Optional, MutableMapping
+import functools
+import pathlib
+import os
 import logging
 import pandas as pd
 import structlog
 from structlog.threadlocal import tmp_bind
 
 from covidactnow.datapublic.common_fields import CommonFields
+from libs import git_lfs_object_helpers
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
+from libs.datasets import dataset_pointer
+from libs.datasets.dataset_pointer import DatasetPointer
+from libs.datasets import timeseries
+from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
@@ -25,11 +36,14 @@ from libs.datasets import dataset_filter
 from libs.datasets import dataset_cache
 from libs import us_state_abbrev
 
+from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
+
 
 _logger = logging.getLogger(__name__)
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
+
 
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
@@ -49,7 +63,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
     CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.CURRENT_HOSPITALIZED: [
@@ -63,7 +77,6 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
-    CommonFields.COUNTY: [FIPSPopulation],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
@@ -77,13 +90,12 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
 
+
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [NYTimesDataset],
-    CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.RECOVERED: [JHUDataset],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource,],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
     CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
         CmdcDataSource,
@@ -106,6 +118,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.DEATHS: [NYTimesDataset],
 }
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(
@@ -114,35 +128,49 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 
 
 @dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_timeseries_with_all_fields() -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION,
-    )
-
-
-@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
-    return build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
+def build_us_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
+    return _build_combined_dataset_from_sources(
+        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
 
 
 @dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
-def build_us_latest_with_all_fields() -> LatestValuesDataset:
-    return build_combined_dataset_from_sources(
-        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filters=[US_STATES_FILTER]
+def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
+    return _build_combined_dataset_from_sources(
+        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
 
 
-def get_us_latest_for_state(state) -> dict:
-    """Gets latest values for a given state."""
-    us_latest = build_us_latest_with_all_fields()
-    return us_latest.get_record_for_state(state)
+@functools.lru_cache(None)
+def load_us_timeseries_dataset(
+    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
+    before=None,
+    previous_commit=False,
+    commit: str = None,
+) -> timeseries.TimeseriesDataset:
+    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
+    pointer_path = pointer_directory / filename
+    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
+    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
+
+
+@functools.lru_cache(None)
+def load_us_latest_dataset(
+    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
+    before: str = None,
+    previous_commit: bool = False,
+    commit: str = None,
+) -> latest_values_dataset.LatestValuesDataset:
+
+    filename = dataset_pointer.form_filename(DatasetType.LATEST)
+    pointer_path = pointer_directory / filename
+    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
+    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
 
 
 def get_us_latest_for_fips(fips) -> dict:
-    """Gets latest values for a given fips code."""
-    us_latest = build_us_latest_with_all_fields()
+    """Gets latest values for a given state or county fips code."""
+    us_latest = load_us_latest_dataset()
     return us_latest.get_record_for_fips(fips)
 
 
@@ -170,7 +198,7 @@ def get_timeseries_for_fips(
     Returns: Timeseries for fips
     """
 
-    state_ts = build_us_timeseries_with_all_fields().get_subset(None, fips=fips)
+    state_ts = load_us_timeseries_dataset().get_subset(None, fips=fips)
     if columns:
         subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
             drop=True
@@ -198,7 +226,7 @@ def get_timeseries_for_state(
     Returns: Timeseries for state
     """
 
-    state_ts = build_us_timeseries_with_all_fields().get_subset(AggregationLevel.STATE, state=state)
+    state_ts = load_us_timeseries_dataset().get_subset(AggregationLevel.STATE, state=state)
     if columns:
         subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
             drop=True
@@ -212,28 +240,10 @@ def get_timeseries_for_state(
     return state_ts
 
 
-def load_data_sources(
-    feature_definition_config,
-) -> Dict[Type[data_source.DataSource], data_source.DataSource]:
-
-    data_source_classes = []
-    for classes in feature_definition_config.values():
-        data_source_classes.extend(classes)
-    loaded_data_sources = {}
-
-    for data_source_class in data_source_classes:
-        for data_source_cls in data_source_classes:
-            # only load data source once
-            if data_source_cls not in loaded_data_sources:
-                loaded_data_sources[data_source_cls] = data_source_cls.local()
-
-    return loaded_data_sources
-
-
-def build_combined_dataset_from_sources(
+def _build_combined_dataset_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
     feature_definition_config: FeatureDataSourceMap,
-    filters: List[dataset_filter.DatasetFilter] = None,
+    filter: dataset_filter.DatasetFilter,
 ):
     """Builds a combined dataset from a feature definition.
 
@@ -244,35 +254,126 @@ def build_combined_dataset_from_sources(
         filters: A list of dataset filters applied to the datasets before
             assembling features.
     """
-    loaded_data_sources = load_data_sources(feature_definition_config)
+    loaded_data_sources = {
+        data_source_cls: data_source_cls.local()
+        for data_source_cls in set(chain.from_iterable(feature_definition_config.values()))
+    }
 
-    # Convert data sources to instances of `target_data_cls`.
+    # Convert data sources to instances of `target_data_cls` and apply filter
     intermediate_datasets = {
-        data_source_cls: target_dataset_cls.build_from_data_source(source)
+        data_source_cls.SOURCE_NAME: filter.apply(target_dataset_cls.build_from_data_source(source))
         for data_source_cls, source in loaded_data_sources.items()
     }
 
-    # Apply filters to datasets.
-    for key in intermediate_datasets:
-        dataset = intermediate_datasets[key]
-        for data_filter in filters or []:
-            dataset = data_filter.apply(dataset)
-        intermediate_datasets[key] = dataset
+    datasets: MutableMapping[str, pd.DataFrame] = {}
+    for name, dataset_obj in intermediate_datasets.items():
+        data_with_index = dataset_obj.data.set_index(target_dataset_cls.COMMON_INDEX_FIELDS)
+        if data_with_index.index.duplicated(keep=False).any():
+            raise ValueError(f"Duplicate in {name}")
+        datasets[name] = data_with_index
+        # If any duplicates slip in the following code may help you debug them:
+        # https://stackoverflow.com/a/34297689
+        # datasets[name] = data_with_index.loc[~data_with_index.duplicated(keep="first"), :]
+        # datasets[key] = dataset_obj.data.groupby(target_dataset_cls.COMMON_INDEX_FIELDS).first() fails
+        # due to <NA>s: cannot convert to 'float64'-dtype NumPy array with missing values. Specify an appropriate 'na_value' for this dtype.
 
-    # Build feature columns from feature_definition_config.
-    data = pd.DataFrame({})
+    feature_definition = {
+        field_name: [cls.SOURCE_NAME for cls in classes]
+        for field_name, classes in feature_definition_config.items()
+        if classes
+    }
+
+    return target_dataset_cls(_build_dataframe(feature_definition, datasets).reset_index())
+
+
+class Override(Enum):
+    """How data sources override each other when combined."""
+
+    # For each <fips, date>, if a row in a higher priority datasource exists it is used, even
+    # for columns with NaN. This is the unexpected behavior from before July 16th that blends
+    # timeseries from different sources into a single output timeseries.
+    BY_ROW = 1
+    # For each <fips, variable>, use the entire timeseries of the highest priority datasource
+    # with at least one real (not NaN) value.
+    BY_TIMESERIES = 2
+    # For each <fips, variable, date>, use the highest priority datasource that has a real
+    # (not NaN) value.
+    BY_TIMESERIES_POINT = 3
+
+
+def _build_dataframe(
+    feature_definitions: Mapping[str, List[str]],
+    datasource_dataframes: Mapping[str, pd.DataFrame],
+    override=Override.BY_ROW,
+) -> pd.DataFrame:
     # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
     log = structlog.get_logger()
-    for field, data_source_classes in feature_definition_config.items():
-        for data_source_cls in data_source_classes:
-            dataset = intermediate_datasets[data_source_cls]
-            with tmp_bind(log, dataset_name=data_source_cls.SOURCE_NAME, field=field) as log:
-                try:
-                    data = dataset_utils.fill_fields_with_data_source(
-                        log, data, dataset.data, target_dataset_cls.INDEX_FIELDS, [field],
-                    )
-                except Exception:
-                    log.exception("trying to fill fields")
-                    raise
 
-    return target_dataset_cls(data)
+    # These are columns that are expected to have a single value for each FIPS. Get the columns
+    # from every row of each data source and then keep one of each unique row.
+    preserve_columns = [
+        CommonFields.AGGREGATE_LEVEL,
+        CommonFields.STATE,
+        CommonFields.COUNTRY,
+        CommonFields.COUNTY,
+    ]
+    all_identifiers = pd.concat(
+        df.reset_index().loc[
+            :, [CommonFields.FIPS] + list(df.columns.intersection(preserve_columns))
+        ]
+        for df in datasource_dataframes.values()
+    ).drop_duplicates()
+    # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
+    # are rows in the input data sources that have different values for county name, state etc.
+    fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
+
+    # Inspired by pd.Series.combine_first(). Create a new index which is a union of all the input dataframe
+    # index.
+    dataframes = list(datasource_dataframes.values())
+    new_index = dataframes[0].index
+    for df in dataframes[1:]:
+        new_index = new_index.union(df.index)
+    # Override.BY_ROW needs to preserve the rows of the input dataframes. If not going BY_ROW
+    # reindex the inputs now to avoid reindexing for each field below.
+    if override is not Override.BY_ROW:
+        datasource_dataframes = {
+            name: df.reindex(new_index, copy=False) for name, df in datasource_dataframes.items()
+        }
+
+    # Build feature columns from feature_definitions.
+    data = pd.DataFrame(index=new_index)
+    for field_name, data_source_names in feature_definitions.items():
+        log.info("Working field", field=field_name)
+        field_out = None
+        # Go through the data sources, starting with the highest priority.
+        for datasource_name in reversed(data_source_names):
+            with tmp_bind(log, dataset_name=datasource_name, field=field_name) as log:
+                datasource_field_in = datasource_dataframes[datasource_name][field_name]
+                if field_out is None:
+                    # Copy all values from the highest priority input to the output
+                    field_out = datasource_field_in
+                elif override == Override.BY_TIMESERIES:
+                    keep_higher_priority = field_out.groupby(level=[CommonFields.FIPS]).transform(
+                        lambda x: x.notna().any()
+                    )
+                    # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
+                    field_out = field_out.where(keep_higher_priority, datasource_field_in)
+                elif override == Override.BY_TIMESERIES_POINT:
+                    # Copy from datasource_field_in only on rows where field_out is NaN
+                    field_out = field_out.where(pd.notna(field_out), datasource_field_in)
+                else:
+                    assert override == Override.BY_ROW
+                    # Copy from datasource_field_in rows that are not yet in field_out
+                    this_not_in_result = ~datasource_field_in.index.isin(field_out.index)
+                    field_out = field_out.append(datasource_field_in.loc[this_not_in_result])
+                dups = field_out.index.duplicated(keep=False)
+                if dups.any():
+                    log.error("Found duplicates in index")
+                    raise ValueError()  # This is bad, somehow the input /still/ has duplicates
+        data.loc[:, field_name] = field_out
+
+    if not fips_indexed.empty:
+        # See https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html#joining-with-two-multiindexes
+        data = data.join(fips_indexed, on=["fips"], how="left")
+
+    return data

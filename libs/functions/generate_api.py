@@ -1,13 +1,13 @@
 from typing import Optional
 from datetime import datetime, timedelta
 from api.can_api_definition import (
-    CovidActNowBulkSummary,
-    CovidActNowAreaSummary,
-    CovidActNowAreaTimeseries,
-    CovidActNowBulkFlattenedTimeseries,
+    AggregateRegionSummary,
+    RegionSummary,
+    RegionSummaryWithTimeseries,
+    AggregateFlattenedTimeseries,
     PredictionTimeseriesRowWithHeader,
-    CANPredictionTimeseriesRow,
-    CANActualsTimeseriesRow,
+    PredictionTimeseriesRow,
+    ActualsTimeseriesRow,
     Projections,
     Actuals,
     ResourceUsageProjection,
@@ -82,9 +82,9 @@ def _generate_actuals(actual_data: dict, intervention: Intervention) -> Actuals:
     )
 
 
-def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeseriesRow:
+def _generate_prediction_timeseries_row(json_data_row) -> PredictionTimeseriesRow:
 
-    return CANPredictionTimeseriesRow(
+    return PredictionTimeseriesRow(
         date=json_data_row[can_schema.DATE].to_pydatetime(),
         hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
         hospitalBedCapacity=json_data_row[can_schema.BEDS],
@@ -102,9 +102,9 @@ def _generate_prediction_timeseries_row(json_data_row) -> CANPredictionTimeserie
     )
 
 
-def generate_area_summary(
-    latest_values: dict, model_output: Optional[CANPyseirLocationOutput],
-) -> CovidActNowAreaSummary:
+def generate_region_summary(
+    latest_values: dict, model_output: Optional[CANPyseirLocationOutput]
+) -> RegionSummary:
     fips = latest_values[CommonFields.FIPS]
     state = latest_values[CommonFields.STATE]
     state_intervention = get_can_projection.get_intervention_for_state(state)
@@ -115,7 +115,7 @@ def generate_area_summary(
     if model_output:
         projections = _generate_api_for_projections(model_output)
 
-    return CovidActNowAreaSummary(
+    return RegionSummary(
         population=latest_values[CommonFields.POPULATION],
         stateName=us_state_abbrev.ABBREV_US_STATE[state],
         countyName=latest_values.get(CommonFields.COUNTY),
@@ -129,24 +129,24 @@ def generate_area_summary(
     )
 
 
-def generate_area_timeseries(
-    area_summary: CovidActNowAreaSummary,
+def generate_region_timeseries(
+    region_summary: RegionSummary,
     timeseries: TimeseriesDataset,
     model_output: Optional[CANPyseirLocationOutput],
-) -> CovidActNowAreaTimeseries:
-    if not area_summary.intervention:
-        # All area summaries here are expected to have actuals values.
+) -> RegionSummaryWithTimeseries:
+    if not region_summary.intervention:
+        # All region summaries here are expected to have actuals values.
         # It's a bit unclear why the actuals value is optional in the first place,
         # but at this point we expect actuals to have been included.
-        raise AssertionError("Area summary missing actuals")
+        raise AssertionError("Region summary missing actuals")
 
     actuals_timeseries = []
 
-    for row in timeseries.records:
+    for row in timeseries.yield_records():
         # Timeseries records don't have population
-        row[CommonFields.POPULATION] = area_summary.population
-        actual = _generate_actuals(row, area_summary.intervention,)
-        timeseries_row = CANActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
+        row[CommonFields.POPULATION] = region_summary.population
+        actual = _generate_actuals(row, region_summary.intervention)
+        timeseries_row = ActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
     model_timeseries = []
@@ -156,35 +156,35 @@ def generate_area_timeseries(
             for row in model_output.data.to_dict(orient="records")
         ]
 
-    area_summary_data = {key: getattr(area_summary, key) for (key, _) in area_summary}
-    return CovidActNowAreaTimeseries(
-        **area_summary_data, timeseries=model_timeseries, actualsTimeseries=actuals_timeseries
+    region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}
+    return RegionSummaryWithTimeseries(
+        **region_summary_data, timeseries=model_timeseries, actualsTimeseries=actuals_timeseries
     )
 
 
 def generate_bulk_flattened_timeseries(
-    bulk_timeseries: CovidActNowBulkSummary,
-) -> CovidActNowBulkFlattenedTimeseries:
+    bulk_timeseries: AggregateRegionSummary,
+) -> AggregateFlattenedTimeseries:
     rows = []
-    for area_timeseries in bulk_timeseries.__root__:
+    for region_timeseries in bulk_timeseries.__root__:
         # Iterate through each state or county in data, adding summary data to each
         # timeseries row.
         summary_data = {
-            "countryName": area_timeseries.countryName,
-            "countyName": area_timeseries.countyName,
-            "stateName": area_timeseries.stateName,
-            "fips": area_timeseries.fips,
-            "lat": area_timeseries.lat,
-            "long": area_timeseries.long,
-            "intervention": area_timeseries.intervention.name,
+            "countryName": region_timeseries.countryName,
+            "countyName": region_timeseries.countyName,
+            "stateName": region_timeseries.stateName,
+            "fips": region_timeseries.fips,
+            "lat": region_timeseries.lat,
+            "long": region_timeseries.long,
+            "intervention": region_timeseries.intervention.name,
             # TODO(chris): change this to reflect latest time data updated?
             "lastUpdatedDate": datetime.utcnow(),
         }
 
-        for timeseries_data in area_timeseries.timeseries:
+        for timeseries_data in region_timeseries.timeseries:
             timeseries_row = PredictionTimeseriesRowWithHeader(
                 **summary_data, **timeseries_data.dict()
             )
             rows.append(timeseries_row)
 
-    return CovidActNowBulkFlattenedTimeseries(__root__=rows)
+    return AggregateFlattenedTimeseries(__root__=rows)

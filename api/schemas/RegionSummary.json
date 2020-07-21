@@ -1,5 +1,5 @@
 {
-  "title": "CovidActNowAreaTimeseries",
+  "title": "RegionSummary",
   "description": "Base model for API output.",
   "type": "object",
   "properties": {
@@ -47,23 +47,9 @@
     },
     "population": {
       "title": "Population",
-      "description": "Total Population in geographic area.",
+      "description": "Total Population in geographic region.",
       "exclusiveMinimum": 0,
       "type": "integer"
-    },
-    "timeseries": {
-      "title": "Timeseries",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/CANPredictionTimeseriesRow"
-      }
-    },
-    "actualsTimeseries": {
-      "title": "Actualstimeseries",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/CANActualsTimeseriesRow"
-      }
     }
   },
   "required": [
@@ -74,9 +60,7 @@
     "lastUpdatedDate",
     "projections",
     "actuals",
-    "population",
-    "timeseries",
-    "actualsTimeseries"
+    "population"
   ],
   "definitions": {
     "ResourceUsageProjection": {
@@ -133,12 +117,12 @@
         },
         "Rt": {
           "title": "Rt",
-          "description": "Historical or Inferred Rt",
+          "description": "Inferred Rt",
           "type": "number"
         },
         "RtCI90": {
           "title": "Rtci90",
-          "description": "Rt standard deviation",
+          "description": "Rt 90th percentile confidence interval upper endpoint.",
           "type": "number"
         }
       },
@@ -195,7 +179,7 @@
       "properties": {
         "population": {
           "title": "Population",
-          "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
+          "description": "Total population in geographic region [*deprecated*: refer to summary for this]",
           "exclusiveMinimum": 0,
           "type": "integer"
         },
@@ -245,166 +229,6 @@
         "cumulativeDeaths",
         "hospitalBeds",
         "ICUBeds"
-      ]
-    },
-    "CANPredictionTimeseriesRow": {
-      "title": "CANPredictionTimeseriesRow",
-      "description": "Base model for API output.",
-      "type": "object",
-      "properties": {
-        "date": {
-          "title": "Date",
-          "descrition": "Date of timeseries data point",
-          "type": "string",
-          "format": "date"
-        },
-        "hospitalBedsRequired": {
-          "title": "Hospitalbedsrequired",
-          "description": "Number of hospital beds projected to be in-use or that were actually in use (if in the past)",
-          "type": "integer"
-        },
-        "hospitalBedCapacity": {
-          "title": "Hospitalbedcapacity",
-          "description": "Number of hospital beds projected to be in-use or actually in use (if in the past)",
-          "type": "integer"
-        },
-        "ICUBedsInUse": {
-          "title": "Icubedsinuse",
-          "description": "Number of ICU beds projected to be in-use or that were actually in use (if in the past)",
-          "type": "integer"
-        },
-        "ICUBedCapacity": {
-          "title": "Icubedcapacity",
-          "description": "Number of ICU beds projected to be in-use or actually in use (if in the past)",
-          "type": "integer"
-        },
-        "ventilatorsInUse": {
-          "title": "Ventilatorsinuse",
-          "description": "Number of ventilators projected to be in-use.",
-          "type": "integer"
-        },
-        "ventilatorCapacity": {
-          "title": "Ventilatorcapacity",
-          "description": "Total ventilator capacity.",
-          "type": "integer"
-        },
-        "RtIndicator": {
-          "title": "Rtindicator",
-          "description": "Historical or Inferred Rt",
-          "type": "number"
-        },
-        "RtIndicatorCI90": {
-          "title": "Rtindicatorci90",
-          "description": "Rt standard deviation",
-          "type": "number"
-        },
-        "cumulativeDeaths": {
-          "title": "Cumulativedeaths",
-          "description": "Number of cumulative deaths",
-          "type": "integer"
-        },
-        "cumulativeInfected": {
-          "title": "Cumulativeinfected",
-          "description": "Number of cumulative infections",
-          "type": "integer"
-        },
-        "currentInfected": {
-          "title": "Currentinfected",
-          "description": "Number of current infections",
-          "type": "integer"
-        },
-        "currentSusceptible": {
-          "title": "Currentsusceptible",
-          "description": "Number of people currently susceptible ",
-          "type": "integer"
-        },
-        "currentExposed": {
-          "title": "Currentexposed",
-          "description": "Number of people currently exposed",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "date",
-        "hospitalBedsRequired",
-        "hospitalBedCapacity",
-        "ICUBedsInUse",
-        "ICUBedCapacity",
-        "ventilatorsInUse",
-        "ventilatorCapacity",
-        "RtIndicator",
-        "RtIndicatorCI90",
-        "cumulativeDeaths",
-        "cumulativeInfected",
-        "currentInfected",
-        "currentSusceptible",
-        "currentExposed"
-      ]
-    },
-    "CANActualsTimeseriesRow": {
-      "title": "CANActualsTimeseriesRow",
-      "description": "Base model for API output.",
-      "type": "object",
-      "properties": {
-        "population": {
-          "title": "Population",
-          "description": "Total population in geographic area [*deprecated*: refer to summary for this]",
-          "exclusiveMinimum": 0,
-          "type": "integer"
-        },
-        "intervention": {
-          "title": "Intervention",
-          "description": "Name of high-level intervention in-place",
-          "type": "string"
-        },
-        "cumulativeConfirmedCases": {
-          "title": "Cumulativeconfirmedcases",
-          "description": "Number of confirmed cases so far",
-          "type": "integer"
-        },
-        "cumulativePositiveTests": {
-          "title": "Cumulativepositivetests",
-          "description": "Number of positive test results to date",
-          "type": "integer"
-        },
-        "cumulativeNegativeTests": {
-          "title": "Cumulativenegativetests",
-          "description": "Number of negative test results to date",
-          "type": "integer"
-        },
-        "cumulativeDeaths": {
-          "title": "Cumulativedeaths",
-          "description": "Number of deaths so far",
-          "type": "integer"
-        },
-        "hospitalBeds": {
-          "$ref": "#/definitions/ResourceUtilization"
-        },
-        "ICUBeds": {
-          "$ref": "#/definitions/ResourceUtilization"
-        },
-        "contactTracers": {
-          "title": "Contacttracers",
-          "description": "# of Contact Tracers",
-          "type": "integer"
-        },
-        "date": {
-          "title": "Date",
-          "descrition": "Date of timeseries data point",
-          "type": "string",
-          "format": "date"
-        }
-      },
-      "required": [
-        "population",
-        "intervention",
-        "cumulativeConfirmedCases",
-        "cumulativePositiveTests",
-        "cumulativeNegativeTests",
-        "cumulativeDeaths",
-        "hospitalBeds",
-        "ICUBeds",
-        "date"
       ]
     }
   }

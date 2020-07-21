@@ -8,4 +8,5 @@ pytest-mock >= 1.10.4
 black==19.10b0
 nbstripout==0.3.7
 pylint==2.5.2
-pre-commit==2.3.0
+pre-commit==2.6.0
+identify==1.4.23

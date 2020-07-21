@@ -1,3 +1,4 @@
+scipy==1.4.1
 astroid==2.4.1
 certifi==2019.11.28
 chardet==3.0.4
@@ -20,7 +21,6 @@ jupyter==1.0.0
 jupyterlab==2.1.4
 simplejson==3.17.0
 ujson==2.0.3
-boto3==1.12.28
 seaborn==0.10.0
 click==7.1.1
 sentry-sdk==0.14.3

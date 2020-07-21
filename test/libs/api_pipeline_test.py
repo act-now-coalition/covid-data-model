@@ -7,7 +7,7 @@ from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
-from api.can_api_definition import CovidActNowAreaSummary
+from api.can_api_definition import RegionSummary
 from api.can_api_definition import Actuals
 from api.can_api_definition import Projections
 from api.can_api_definition import ResourceUsageProjection
@@ -27,16 +27,14 @@ NYC_FIPS = "36061"
 )
 def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, intervention):
 
-    us_latest = combined_datasets.build_us_latest_with_all_fields()
-    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    us_latest = combined_datasets.load_us_latest_dataset()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     timeseries = api_pipeline.build_timeseries_for_fips(
         intervention, us_latest, us_timeseries, nyc_model_output_path.parent, nyc_fips
     )
 
-    # TODO(chris): Uncomment and replace when API is outputting for all counties.
-    # if intervention is Intervention.NO_INTERVENTION:
-    if intervention is not Intervention.STRONG_INTERVENTION:
+    if intervention is Intervention.NO_INTERVENTION:
         # Test data does not contain no intervention model, should not output any results.
         assert not timeseries
         return
@@ -46,21 +44,20 @@ def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, i
     if intervention is Intervention.STRONG_INTERVENTION:
         assert timeseries.projections
         assert timeseries.timeseries
-    # TODO(chris): Uncomment when API is outputting for all counties
-    # elif intervention is Intervention.OBSERVED_INTERVENTION:
-    #     assert not timeseries.projections
-    #     assert not timeseries.timeseries
+    elif intervention is Intervention.OBSERVED_INTERVENTION:
+        assert not timeseries.projections
+        assert not timeseries.timeseries
 
 
 def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_path):
     county_output = tmp_path / "county"
-    us_latest = combined_datasets.build_us_latest_with_all_fields()
-    us_timeseries = combined_datasets.build_us_timeseries_with_all_fields()
+    us_latest = combined_datasets.load_us_latest_dataset()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     nyc_latest = us_latest.get_subset(None, fips=nyc_fips)
     nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
     all_timeseries_api = api_pipeline.run_on_all_fips_for_intervention(
-        nyc_latest, nyc_timeseries, Intervention.STRONG_INTERVENTION, nyc_model_output_path.parent,
+        nyc_latest, nyc_timeseries, Intervention.STRONG_INTERVENTION, nyc_model_output_path.parent
     )
 
     api_pipeline.deploy_single_level(

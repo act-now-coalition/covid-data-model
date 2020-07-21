@@ -394,7 +394,7 @@ def get_hospitalization_data():
     -------
     TimeseriesDataset
     """
-    data = combined_datasets.build_us_timeseries_with_all_fields().data
+    data = combined_datasets.load_us_timeseries_dataset().data
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
     return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
@@ -490,7 +490,7 @@ def load_hospitalization_data_by_state(
         Specifies cumulative or current hospitalizations.
     """
     abbr = us.states.lookup(state).abbr
-    hospitalization_data = combined_datasets.build_us_timeseries_with_all_fields().get_data(
+    hospitalization_data = combined_datasets.load_us_timeseries_dataset().get_data(
         AggregationLevel.STATE, country="USA", state=abbr
     )
 
@@ -551,9 +551,7 @@ def get_current_hospitalized(fips, t0, category: HospitalizationCategory):
     return _get_current_hospitalized(df, t0, category)
 
 
-def _get_current_hospitalized(
-    df: pd.DataFrame, t0: datetime, category: HospitalizationCategory,
-):
+def _get_current_hospitalized(df: pd.DataFrame, t0: datetime, category: HospitalizationCategory):
     """
     Given a DataFrame that contains values icu or hospitalization data
     for a single county/state, this function returns the latest value.
@@ -607,14 +605,12 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
     back as far as case data.
-
     Parameters
     ----------
     fips: str
         State or county fips code
     t0: datetime
         Reference datetime to use.
-
     Returns
     -------
     df: pd.DataFrame

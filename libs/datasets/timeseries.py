@@ -1,6 +1,10 @@
 import warnings
-from typing import List, Optional
+import pathlib
+from typing import List, Optional, Union, TextIO
 import pandas as pd
+import structlog
+from covidactnow.datapublic import common_df
+from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
@@ -8,6 +12,16 @@ from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
+
+
+class DuplicateDataException(Exception):
+    def __init__(self, message, duplicates):
+        self.message = message
+        self.duplicates = duplicates
+        super().__init__()
+
+    def __str__(self):
+        return f"DuplicateDataException({self.message})"
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -26,8 +40,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         CommonIndexFields.FIPS,
     ]
 
+    COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
+
     def __init__(self, data: pd.DataFrame):
         self.data = data
+
+    @property
+    def all_fips(self):
+        return self.data.reset_index().fips.unique()
 
     @property
     def states(self) -> List:
@@ -67,16 +87,16 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Return: DataFrame
         """
-        if not aggregation_level:
+        if aggregation_level is None:
             county = self.latest_values(aggregation_level=AggregationLevel.COUNTY)
             state = self.latest_values(aggregation_level=AggregationLevel.STATE)
             return pd.concat([county, state])
-
-        if aggregation_level == AggregationLevel.COUNTY:
+        elif aggregation_level is AggregationLevel.COUNTY:
             group = [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS]
-        if aggregation_level == AggregationLevel.STATE:
+        elif aggregation_level is AggregationLevel.STATE:
             group = [CommonFields.COUNTRY, CommonFields.STATE]
-        if aggregation_level == AggregationLevel.COUNTRY:
+        else:
+            assert aggregation_level is AggregationLevel.COUNTRY
             group = [CommonFields.COUNTRY]
 
         data = self.data[
@@ -88,7 +108,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     def get_subset(
         self,
-        aggregation_level,
+        aggregation_level=None,
         country=None,
         fips: Optional[str] = None,
         state: Optional[str] = None,
@@ -117,33 +137,15 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         """Get data for FIPS code.
 
         Args:
-            fips: FIPS code.
+            fips: 2 digits for a state or 5 digits for a county
 
         Returns: List of dictionary records with NA values replaced to be None
         """
-        subset = self.get_subset(AggregationLevel.COUNTY, fips=fips)
-        return subset.records
-
-    def get_records_for_state(self, state) -> List[dict]:
-        """Get data for state.
-
-        Args:
-            state: 2 letter state abbrev.
-
-        Returns: List of dictionary records with NA values replaced to be None.
-        """
-        subset = self.get_subset(AggregationLevel.STATE, state=state)
-        return subset.records
-
-    @property
-    def records(self) -> List[dict]:
-        """Returns rows in current data."""
-        data = self.data
-        return data.where(pd.notnull(data), None).to_dict(orient="records")
+        return list(self.get_subset(fips=fips).yield_records())
 
     def get_data(
         self,
-        aggregation_level,
+        aggregation_level=None,
         country=None,
         fips: Optional[str] = None,
         state: Optional[str] = None,
@@ -213,6 +215,17 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
+        no_fips = data[CommonFields.FIPS].isnull()
+        if no_fips.any():
+            structlog.get_logger().warning(
+                "Dropping rows without FIPS", source=str(source), rows=repr(data.loc[no_fips])
+            )
+            data = data.loc[~no_fips]
+
+        dups = data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS, keep=False)
+        if dups.any():
+            raise DuplicateDataException(f"Duplicates in {source}", data.loc[dups])
+
         # Choosing to sort by date
         data = data.sort_values(CommonFields.DATE)
         return cls(data)
@@ -243,3 +256,20 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             AggregationLevel.STATE,
             [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE],
         )
+
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        common_df.write_csv(self.data, path, structlog.get_logger())
+
+    @classmethod
+    def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
+        df = common_df.read_csv(path_or_buf)
+        # TODO: common_df.read_csv sets the index of the dataframe to be fips, date, however
+        # most of the calling code expects fips and date to not be in an index.
+        # In the future, it would be good to standardize around index fields.
+        df = df.reset_index()
+        return cls(df)

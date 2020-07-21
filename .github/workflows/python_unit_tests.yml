@@ -22,7 +22,6 @@ jobs:
     strategy:
       matrix:
         python-version: [3.7]
-
     steps:
     - name: Checkout covid-data-public
       uses: actions/checkout@v2
@@ -36,6 +35,7 @@ jobs:
       with:
         repository: covid-projections/covid-data-model
         path: covid-data-model
+        lfs: true
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:

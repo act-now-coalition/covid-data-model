@@ -1,0 +1,15 @@
+{
+  "dataset_type": "timeseries",
+  "path": "data/timeseries.csv",
+  "data_git_info": {
+    "sha": "c53492560fcfe8b179da7081c562dab047895952",
+    "branch": "master",
+    "is_dirty": false
+  },
+  "model_git_info": {
+    "sha": "ac424fd557b4e31fd7c26ed4f4ce62081b45bebb",
+    "branch": "master",
+    "is_dirty": true
+  },
+  "updated_at": "2020-07-21T16:47:13.793985"
+}

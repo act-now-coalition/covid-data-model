@@ -8,11 +8,11 @@ import multiprocessing
 import pydantic
 import simplejson
 from libs.functions import get_can_projection
-from api.can_api_definition import CovidActNowAreaSummary
-from api.can_api_definition import CovidActNowAreaTimeseries
-from api.can_api_definition import CovidActNowBulkSummary
-from api.can_api_definition import CovidActNowBulkTimeseries
-from api.can_api_definition import CovidActNowBulkFlattenedTimeseries
+from api.can_api_definition import RegionSummary
+from api.can_api_definition import RegionSummaryWithTimeseries
+from api.can_api_definition import AggregateRegionSummary
+from api.can_api_definition import AggregateRegionSummaryWithTimeseries
+from api.can_api_definition import AggregateFlattenedTimeseries
 from api.can_api_definition import PredictionTimeseriesRowWithHeader
 from libs.enums import Intervention
 from libs.datasets import CommonFields
@@ -38,9 +38,9 @@ def run_on_all_fips_for_intervention(
     pool: multiprocessing.Pool = None,
     sort_func=None,
     limit=None,
-) -> Iterator[CovidActNowAreaTimeseries]:
+) -> Iterator[RegionSummaryWithTimeseries]:
     run_fips = functools.partial(
-        build_timeseries_for_fips, intervention, latest_values, timeseries, model_output_dir,
+        build_timeseries_for_fips, intervention, latest_values, timeseries, model_output_dir
     )
 
     # Load interventions outside of subprocesses to properly cache.
@@ -52,11 +52,11 @@ def run_on_all_fips_for_intervention(
     results = pool.map(run_fips, latest_values.all_fips)
     all_timeseries = []
 
-    for area_timeseries in results:
-        if not area_timeseries:
+    for region_timeseries in results:
+        if not region_timeseries:
             continue
 
-        all_timeseries.append(area_timeseries)
+        all_timeseries.append(region_timeseries)
 
     if sort_func:
         all_timeseries.sort(key=sort_func)
@@ -68,8 +68,8 @@ def run_on_all_fips_for_intervention(
 
 
 def build_timeseries_for_fips(
-    intervention, us_latest, us_timeseries, model_output_dir, fips,
-) -> Optional[CovidActNowAreaTimeseries]:
+    intervention, us_latest, us_timeseries, model_output_dir, fips
+) -> Optional[RegionSummaryWithTimeseries]:
     fips_latest = us_latest.get_record_for_fips(fips)
 
     if intervention is Intervention.SELECTED_INTERVENTION:
@@ -79,33 +79,30 @@ def build_timeseries_for_fips(
     model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
         fips, intervention, model_output_dir
     )
-    # TODO(chris): Skipping returning all counties right now as the frontend expects projections
-    # and in many places errors out if there are no projections. Once the frontend can handle outputs
-    # without projections, this should be removed and the code below should be uncommented.
-    if not model_output:
+    if not model_output and intervention is not Intervention.OBSERVED_INTERVENTION:
+        # All model output is currently tied to a specific intervention. However,
+        # we want to generate results for regions that don't have a fit result, but we're not
+        # duplicating non-model outputs.
         return None
-    # if not model_output and intervention is not Intervention.OBSERVED_INTERVENTION:
-    #     # All model output is currently tied to a specific intervention. However,
-    #     # we want to generate results for areas that don't have a fit result, but we're not
-    #     # duplicating non-model outputs.
-    #     return None
 
     try:
-        area_summary = api.generate_area_summary(fips_latest, model_output)
+        region_summary = api.generate_region_summary(fips_latest, model_output)
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
-        area_timeseries = api.generate_area_timeseries(area_summary, fips_timeseries, model_output)
+        region_timeseries = api.generate_region_timeseries(
+            region_summary, fips_timeseries, model_output
+        )
     except Exception:
         logger.error(f"failed to run output", fips=fips)
         return None
 
-    return area_timeseries
+    return region_timeseries
 
 
 def _deploy_timeseries(intervention, region_folder, timeseries):
-    area_summary = timeseries.area_summary
-    deploy_json_api_output(intervention, area_summary, region_folder)
+    region_summary = timeseries.region_summary
+    deploy_json_api_output(intervention, region_summary, region_folder)
     deploy_json_api_output(intervention, timeseries, region_folder)
-    return area_summary
+    return region_summary
 
 
 def deploy_single_level(intervention, all_timeseries, summary_folder, region_folder):
@@ -116,10 +113,10 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
     all_summaries = []
     deploy_timeseries_partial = functools.partial(_deploy_timeseries, intervention, region_folder)
     all_summaries = [
-        deploy_timeseries_partial(area_timeseries) for area_timeseries in all_timeseries
+        deploy_timeseries_partial(region_timeseries) for region_timeseries in all_timeseries
     ]
-    bulk_timeseries = CovidActNowBulkTimeseries(__root__=all_timeseries)
-    bulk_summaries = CovidActNowBulkSummary(__root__=all_summaries)
+    bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
+    bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
 
     deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
@@ -131,17 +128,17 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
 
 def deploy_json_api_output(
     intervention: Intervention,
-    area_result: pydantic.BaseModel,
+    region_result: pydantic.BaseModel,
     output_dir: pathlib.Path,
     filename_override=None,
 ):
     if not output_dir.exists():
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = filename_override or (area_result.output_key(intervention) + ".json")
+    filename = filename_override or (region_result.output_key(intervention) + ".json")
     output_path = output_dir / filename
-    output_path.write_text(area_result.json())
-    return area_result
+    output_path.write_text(region_result.json())
+    return region_result
 
 
 def deploy_csv_api_output(
