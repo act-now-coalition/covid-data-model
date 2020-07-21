@@ -134,48 +134,47 @@ class ForecastRt:
         )
         log.info("retrieved input csv")
 
-        if self.states_only:
+        if self.save_csv_output:
+            df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
+        # only store state information
+        df_states_merge = df_merge[
+            df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
+        ]
+        # create separate dataframe for each state
+        state_df_dictionary = dict(iter(df_states_merge.groupby(self.fips_var_name)))
+
+        # process dataframe
+        state_names, df_list = [], []
+        for state in state_df_dictionary:
+            df = state_df_dictionary[state]
+            state_name = df[self.fips_var_name][0]
+
+            # Only keep data points where predict variable exists
+            first_valid_index = df[self.predict_variable].first_valid_index()
+            df = df[first_valid_index:].copy()
+
+            df[self.sim_date_name] = (df.index - self.ref_date).days + 1
+            # Calculate Rt derivative, exclude first row since-- zero derivative
+            df[self.d_predict_variable] = df[self.predict_variable].diff()
+            df = df[1:]
+            df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
+
+            if self.deaths_cumulative:
+                df[self.daily_case_var] = df[self.case_var].diff()
+            if self.cases_cumulative:
+                df[self.daily_death_var] = df[self.death_var].diff()
+
+            df_forecast = df[self.forecast_variables].copy()
+            # Fill empty values with mask value
+            df_forecast = df_forecast.fillna(self.mask_value)
+            # ignore last entry = NaN #TODO find a better way to do this!!!
+            # Is this necessary? dunno why some states have 0 for last Rt
+            df_forecast = df_forecast.iloc[:-1]
+
+            state_names.append(state_name)
+            df_list.append(df_forecast)
             if self.save_csv_output:
-                df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
-            # only store state information
-            df_states_merge = df_merge[
-                df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
-            ]
-            # create separate dataframe for each state
-            state_df_dictionary = dict(iter(df_states_merge.groupby(self.fips_var_name)))
-
-            # process dataframe
-            state_names, df_list = [], []
-            for state in state_df_dictionary:
-                df = state_df_dictionary[state]
-                state_name = df[self.fips_var_name][0]
-
-                # Only keep data points where predict variable exists
-                first_valid_index = df[self.predict_variable].first_valid_index()
-                df = df[first_valid_index:].copy()
-
-                df[self.sim_date_name] = (df.index - self.ref_date).days + 1
-                # Calculate Rt derivative, exclude first row since-- zero derivative
-                df[self.d_predict_variable] = df[self.predict_variable].diff()
-                df = df[1:]
-                df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
-
-                if self.deaths_cumulative:
-                    df[self.daily_case_var] = df[self.case_var].diff()
-                if self.cases_cumulative:
-                    df[self.daily_death_var] = df[self.death_var].diff()
-
-                df_forecast = df[self.forecast_variables].copy()
-                # Fill empty values with mask value
-                df_forecast = df_forecast.fillna(self.mask_value)
-                # ignore last entry = NaN #TODO find a better way to do this!!!
-                # Is this necessary? dunno why some states have 0 for last Rt
-                df_forecast = df_forecast.iloc[:-1]
-
-                state_names.append(state_name)
-                df_list.append(df_forecast)
-                if self.save_csv_output:
-                    df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
+                df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
 
         return state_names, df_list
 
