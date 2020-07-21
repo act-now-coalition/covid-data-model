@@ -45,7 +45,7 @@ FIPS 5 states (xx, yy, zz, ...) and 6 counties (xxyyy, xxyyy, ... OR by state TX
 """
 
 
-from typing import Optional
+from typing import Optional, List, Set
 
 import pandas as pd
 import numpy as np
@@ -75,11 +75,21 @@ class DatasetDiff(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def colums(self) -> Set[str]:
+        return set(self.all_variable_fips.unique(level="variable"))
+
     def __str__(self):
         # TODO(tom): Make this easier to read. See idea in docstring at top of this file.
-        return f"""Duplicate rows in this file: {self.duplicates_dropped.index.unique(level='fips')}
-{self.duplicates_dropped}
-TS only in this file: {self.my_ts}
+        buf = []
+        if not self.duplicates_dropped.empty:
+            buf.append(
+                f"Duplicate rows in this file: {self.duplicates_dropped.index.unique(level='fips')}\n"
+                f"{self.duplicates_dropped}"
+            )
+        if not self.my_ts.empty:
+            buf.append(f"TS only in this file: {self.my_ts}")
+
+        return f"""
 TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()}
 """ + (
             f"""TS diffs:\n{self.ts_diffs.sort_values('diff', ascending=False)}
