@@ -8,12 +8,7 @@ class CDSDataset(data_source.DataSource):
     DATA_PATH = "data/cases-cds/timeseries-common.csv"
     SOURCE_NAME = "CDS"
 
-    INDEX_FIELD_MAP = {}
-
-    # Keep in sync with update_cmdc.py in the covid-data-public repo.
-    # DataSource objects must have a map from CommonFields to fields in the source file. For CMDC the
-    # conversion is done in the covid-data-public repo so the map here doesn't represent any field renaming.
-    COMMON_FIELD_MAP = {
+    INDEX_FIELD_MAP = {
         f: f
         for f in {
             CommonFields.DATE,
@@ -21,6 +16,15 @@ class CDSDataset(data_source.DataSource):
             CommonFields.STATE,
             CommonFields.FIPS,
             CommonFields.AGGREGATE_LEVEL,
+        }
+    }
+
+    # Keep in sync with update_cmdc.py in the covid-data-public repo.
+    # DataSource objects must have a map from CommonFields to fields in the source file. For CMDC the
+    # conversion is done in the covid-data-public repo so the map here doesn't represent any field renaming.
+    COMMON_FIELD_MAP = {
+        f: f
+        for f in {
             CommonFields.CASES,
             CommonFields.DEATHS,
             CommonFields.POPULATION,
@@ -34,4 +38,4 @@ class CDSDataset(data_source.DataSource):
     def local(cls) -> "CDSDataset":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        return cls(common_df.read_csv(input_path))
+        return cls(common_df.read_csv(input_path).reset_index())
