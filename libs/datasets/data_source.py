@@ -10,10 +10,6 @@ from functools import lru_cache
 class DataSource(object):
     """Represents a single dataset source, loads data and cleans data."""
 
-    # Subclass must implement custom class of fields in dataset.
-    class Fields(object):
-        pass
-
     INDEX_FIELD_MAP = None
 
     COMMON_FIELD_MAP = None
