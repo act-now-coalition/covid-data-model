@@ -25,9 +25,9 @@ class CDSDataset(data_source.DataSource):
     COMMON_FIELD_MAP = {
         f: f
         for f in {
-            CommonFields.CASES,
             CommonFields.DEATHS,
             CommonFields.POPULATION,
+            CommonFields.POSITIVE_TESTS,
             CommonFields.NEGATIVE_TESTS,
             CommonFields.CUMULATIVE_HOSPITALIZED,
             CommonFields.CUMULATIVE_ICU,
@@ -38,4 +38,10 @@ class CDSDataset(data_source.DataSource):
     def local(cls) -> "CDSDataset":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        return cls(common_df.read_csv(input_path).reset_index())
+        # Rename CASES to POSITIVE_TESTS to avoid changing what is in place as of 2020-07-21.
+        data = (
+            common_df.read_csv(input_path)
+            .reset_index()
+            .rename(columns={CommonFields.CASES: CommonFields.POSITIVE_TESTS})
+        )
+        return cls(data)
