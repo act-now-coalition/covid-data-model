@@ -84,8 +84,8 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
-    CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
-    CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
+    CommonFields.POSITIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
 }
@@ -114,8 +114,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.ICU_BEDS: [CmdcDataSource],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
-    CommonFields.POSITIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
-    CommonFields.NEGATIVE_TESTS: [CmdcDataSource, CDSDataset, CovidTrackingDataSource],
+    CommonFields.POSITIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
     CommonFields.CASES: [NYTimesDataset],
@@ -304,7 +304,7 @@ class Override(Enum):
 def _build_dataframe(
     feature_definitions: Mapping[str, List[str]],
     datasource_dataframes: Mapping[str, pd.DataFrame],
-    override=Override.BY_ROW,
+    override=Override.BY_TIMESERIES,
 ) -> pd.DataFrame:
     # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
     log = structlog.get_logger()
