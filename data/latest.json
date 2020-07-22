@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "763bbc9ec714ae2811aacf6c04c1960734ddeda4",
-    "branch": "master",
-    "is_dirty": true
+    "sha": "e58bc94b35e55ed9254c79cba6eca6fc286e9a88",
+    "branch": "tgb-merge-by-ts",
+    "is_dirty": false
   },
-  "updated_at": "2020-07-22T18:36:46.504097"
+  "updated_at": "2020-07-22T17:13:54.908738"
 }

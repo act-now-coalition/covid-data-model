@@ -304,7 +304,7 @@ class Override(Enum):
 def _build_dataframe(
     feature_definitions: Mapping[str, List[str]],
     datasource_dataframes: Mapping[str, pd.DataFrame],
-    override=Override.BY_ROW,
+    override=Override.BY_TIMESERIES,
 ) -> pd.DataFrame:
     # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
     log = structlog.get_logger()
