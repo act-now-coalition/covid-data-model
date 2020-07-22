@@ -7,6 +7,7 @@ import os
 import logging
 import pandas as pd
 import structlog
+from pandas import MultiIndex
 from structlog.threadlocal import tmp_bind
 
 from covidactnow.datapublic.common_fields import CommonFields
@@ -331,8 +332,18 @@ def _build_dataframe(
     # index.
     dataframes = list(datasource_dataframes.values())
     new_index = dataframes[0].index
+    index_names = dataframes[0].index.names
     for df in dataframes[1:]:
+        assert index_names == df.index.names
         new_index = new_index.union(df.index)
+    if index_names == ["fips", "date"]:
+        arrays = [new_index.get_level_values(0), pd.to_datetime(new_index.get_level_values(1))]
+        new_index = MultiIndex.from_arrays(arrays=arrays, names=index_names)
+    elif index_names == ["fips"]:
+        pass
+    else:
+        raise ValueError("bad new_index.names")
+
     # Override.BY_ROW needs to preserve the rows of the input dataframes. If not going BY_ROW
     # reindex the inputs now to avoid reindexing for each field below.
     if override is not Override.BY_ROW:
