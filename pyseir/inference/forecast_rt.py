@@ -22,6 +22,10 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import *
 from tensorflow.keras.callbacks import EarlyStopping
 
+# Hyperparameter Search
+from kerastuner import HyperModel
+from kerastuner.tuners import RandomSearch
+
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
 log = structlog.get_logger(__name__)
 
@@ -111,7 +115,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 10
-        self.n_epochs = 1
+        self.n_epochs = 100
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -291,11 +295,12 @@ class ForecastRt:
         final_list_train_Y = np.concatenate(list_train_Y)
         final_list_test_X = np.concatenate(list_test_X)
         final_list_test_Y = np.concatenate(list_test_Y)
-        model, history = self.build_model(
+        model, history, tuner = self.build_model(
             final_list_train_X, final_list_train_Y, final_list_test_X, final_list_test_Y
         )
 
         # redefine model with batch size one to access forecasts
+        """
         forecast_model = specify_model(
             self.sequence_length,
             self.predict_days,
@@ -306,7 +311,29 @@ class ForecastRt:
             1,
             self.mask_value,
         )
+        """
         log.info("made forecast model")
+        # TODO find a better way to do this and change batch size?
+        best_hps = tuner.get_best_hyperparameters()[0]
+        dropout = best_hps.get("dropout")
+        n_hidden_layer_dimensions = best_hps.get("n_hidden_layer_dimensions")
+        n_layers = best_hps.get("n_layers")
+        forecast_model_skeleton = MyHyperModel(
+            train_sequence_length=self.sequence_length,
+            predict_sequence_length=self.predict_days,
+            n_features=len(self.forecast_variables),
+            mask_value=self.mask_value,
+            batch_size=1,
+        )
+        forecast_model = forecast_model_skeleton.build(
+            hp=None,
+            tune=False,
+            n_layers=n_layers,
+            dropout=dropout,
+            n_hidden_layer_dimensions=n_hidden_layer_dimensions,
+        )
+        log.info("getting best hyperparams")
+
         trained_model_weights = model.get_weights()
         forecast_model.set_weights(trained_model_weights)
 
@@ -515,24 +542,40 @@ class ForecastRt:
         return model
 
     def build_model(self, final_train_X, final_train_Y, final_test_X, final_test_Y):
-        model = specify_model(
-            self.sequence_length,
-            self.predict_days,
-            len(self.forecast_variables),
-            self.dropout,
-            self.n_hidden_layer_dimensions,
-            2,
-            self.n_batch,
-            self.mask_value,
-        )
 
-        es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=self.patience)
-        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
-        model.compile(loss="mean_squared_error", optimizer="adam")
+        log.info("making hypermodel")
+        hypermodel = MyHyperModel(
+            train_sequence_length=self.sequence_length,
+            predict_sequence_length=self.predict_days,
+            n_features=len(self.forecast_variables),
+            mask_value=self.mask_value,
+            batch_size=self.n_batch,
+        )
+        log.info("made hypermodel")
+        tuner = RandomSearch(
+            hypermodel,
+            objective="val_loss",
+            max_trials=1000,
+            directory="hyperparam_search",
+            project_name="hyperparam_search",
+        )
+        log.info("made tuner")
+
         final_train_X = final_train_X[:-2]
         final_train_Y = final_train_Y[:-2]
-        print(final_test_X.shape)
-        print(final_train_Y.shape)
+        tuner.search(
+            final_train_X,
+            final_train_Y,
+            epochs=self.n_epochs,
+            validation_data=(final_test_X[:-4], final_test_Y[:-4]),
+        )
+        log.info("finished search")
+        tuner.results_summary()
+
+        model = tuner.get_best_models(num_models=1)[0]
+        best_hyperparams = tuner.get_best_hyperparameters()[0]
+        log.info(best_hyperparams)
+        log.info("done")
         history = model.fit(
             final_train_X,
             final_train_Y,
@@ -540,7 +583,7 @@ class ForecastRt:
             batch_size=self.n_batch,
             verbose=1,
             shuffle=True,  # TODO test shuffle
-            callbacks=[es, tensorboard_callback],
+            # callbacks=[es, tensorboard_callback],
             # validation_split=self.validation_split,
             validation_data=(final_test_X[:-4], final_test_Y[:-4]),
         )
@@ -564,7 +607,7 @@ class ForecastRt:
             plt.savefig(output_path, bbox_inches="tight")
             plt.close("all")
 
-        return model, history
+        return model, history, tuner
 
     def get_X_Y(self, sample_list, label):
         PREDICT_VAR = self.predict_variable + self.scaled_variable_suffix
@@ -619,40 +662,58 @@ class ForecastRt:
         return df_list
 
 
-def specify_model(
-    train_length,
-    predict_length,
-    n_features,
-    dropout,
-    n_hidden_layer_dimensions,
-    n_layers,
-    n_batch,
-    mask_value,
-):
-    model = Sequential()
-    model.add(
-        Masking(mask_value=mask_value, batch_input_shape=(n_batch, train_length, n_features),)
-    )
-    for i in range(n_layers - 1):
+class MyHyperModel(HyperModel):
+    def __init__(
+        self, train_sequence_length, predict_sequence_length, n_features, mask_value, batch_size
+    ):
+        self.train_sequence_length = train_sequence_length
+        self.predict_sequence_length = predict_sequence_length
+        self.n_features = n_features
+        self.mask_value = mask_value
+        self.batch_size = batch_size
+
+    def build(self, hp, tune=True, n_layers=-1, dropout=-1, n_hidden_layer_dimensions=-1):
+        if tune:
+            # access hyperparameters from hp
+            dropout = hp.Float("dropout", min_value=0, max_value=0.5, step=0.1)
+            n_hidden_layer_dimensions = hp.Int(
+                "n_hidden_layer_dimensions", min_value=2, max_value=100, step=1
+            )
+            n_layers = hp.Int("n_layers", min_value=2, max_value=10, step=1)
+            # n_batch = hp.Choice('n_batch', values=[10]) #TODO test other values
+
+        model = Sequential()
+        model.add(
+            Masking(
+                mask_value=self.mask_value,
+                batch_input_shape=(self.batch_size, self.train_sequence_length, self.n_features),
+            )
+        )
+        for i in range(n_layers - 1):
+            model.add(
+                LSTM(
+                    n_hidden_layer_dimensions,
+                    batch_input_shape=(
+                        self.batch_size,
+                        self.train_sequence_length,
+                        self.n_features,
+                    ),
+                    stateful=True,
+                    return_sequences=True,
+                )
+            )
         model.add(
             LSTM(
                 n_hidden_layer_dimensions,
-                batch_input_shape=(n_batch, train_length, n_features),
+                batch_input_shape=(self.batch_size, self.train_sequence_length, self.n_features),
                 stateful=True,
-                return_sequences=True,
             )
         )
-    model.add(
-        LSTM(
-            n_hidden_layer_dimensions,
-            batch_input_shape=(n_batch, train_length, n_features),
-            stateful=True,
-        )
-    )
-    model.add(Dropout(dropout))
-    model.add(Dense(predict_length))
+        model.add(Dropout(dropout))
+        model.add(Dense(self.predict_sequence_length))
+        model.compile(loss="mean_squared_error", optimizer="adam")
 
-    return model
+        return model
 
 
 def external_run_forecast():
