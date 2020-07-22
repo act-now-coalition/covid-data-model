@@ -36,7 +36,7 @@ class ForecastRt:
     """
 
     def __init__(self, df_all=None):
-        self.save_csv_output = True
+        self.save_csv_output = False  # do not set to true for github actions run
         self.csv_output_folder = "./csv_files/"
         self.df_all = df_all
         self.states = "All"  # All to use All
