@@ -1,6 +1,6 @@
 from enum import Enum
 from itertools import chain
-from typing import Dict, Type, List, NewType, Mapping, Optional, MutableMapping
+from typing import Dict, Type, List, NewType, Mapping, Optional, MutableMapping, Tuple
 import functools
 import pathlib
 import os
@@ -284,7 +284,9 @@ def _build_combined_dataset_from_sources(
         if classes
     }
 
-    return target_dataset_cls(_build_dataframe(feature_definition, datasets).reset_index())
+    data, provenance = _build_dataframe(feature_definition, datasets)
+    provenance.to_csv("source.csv")
+    return target_dataset_cls(data.reset_index())
 
 
 class Override(Enum):
@@ -306,7 +308,7 @@ def _build_dataframe(
     feature_definitions: Mapping[str, List[str]],
     datasource_dataframes: Mapping[str, pd.DataFrame],
     override=Override.BY_TIMESERIES,
-) -> pd.DataFrame:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
     log = structlog.get_logger()
 
@@ -344,18 +346,74 @@ def _build_dataframe(
     else:
         raise ValueError("bad new_index.names")
 
-    # Override.BY_ROW needs to preserve the rows of the input dataframes. If not going BY_ROW
-    # reindex the inputs now to avoid reindexing for each field below.
-    if override is not Override.BY_ROW:
-        datasource_dataframes = {
-            name: df.reindex(new_index, copy=False) for name, df in datasource_dataframes.items()
-        }
+    if override is Override.BY_ROW:
+        data, provenance = _merged_data_by_row(
+            datasource_dataframes, feature_definitions, log, new_index
+        )
+    else:
+        data, provenance = _merged_data(
+            datasource_dataframes, feature_definitions, log, new_index, override
+        )
 
+    if not fips_indexed.empty:
+        # See https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html#joining-with-two-multiindexes
+        data = data.join(fips_indexed, on=["fips"], how="left")
+
+    return data, provenance
+
+
+def _merged_data(datasource_dataframes, feature_definitions, log, new_index, override):
+    # Not going BY_ROW so reindex the inputs now to avoid reindexing for each field below.
+    datasource_dataframes = {
+        name: df.reindex(new_index, copy=False) for name, df in datasource_dataframes.items()
+    }
     # Build feature columns from feature_definitions.
     data = pd.DataFrame(index=new_index)
+    provenance = pd.DataFrame(index=new_index)
     for field_name, data_source_names in feature_definitions.items():
         log.info("Working field", field=field_name)
         field_out = None
+        field_provenance = pd.Series(index=new_index, dtype="object")
+        # Go through the data sources, starting with the highest priority.
+        for datasource_name in reversed(data_source_names):
+            with tmp_bind(log, dataset_name=datasource_name, field=field_name) as log:
+                datasource_field_in = datasource_dataframes[datasource_name][field_name]
+                if field_out is None:
+                    # Copy all values from the highest priority input to the output
+                    field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
+                    field_out = datasource_field_in
+                elif override == Override.BY_TIMESERIES:
+                    keep_higher_priority = field_out.groupby(level=[CommonFields.FIPS]).transform(
+                        lambda x: x.notna().any()
+                    )
+                    # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
+                    field_provenance.loc[keep_higher_priority] = datasource_name
+                    field_out = field_out.where(keep_higher_priority, datasource_field_in)
+                else:
+                    assert override is Override.BY_TIMESERIES_POINT
+                    # Copy from datasource_field_in only on rows where field_out is NaN
+                    field_provenance.loc[pd.notna(field_out)] = datasource_name
+                    field_out = field_out.where(pd.notna(field_out), datasource_field_in)
+                dups = field_out.index.duplicated(keep=False)
+                if dups.any():
+                    log.error("Found duplicates in index")
+                    raise ValueError()  # This is bad, somehow the input /still/ has duplicates
+        data.loc[:, field_name] = field_out
+        provenance.loc[:, field_name] = field_provenance
+    return data, provenance
+
+
+def _merged_data_by_row(datasource_dataframes, feature_definitions, log, new_index):
+    # Override.BY_ROW needs to preserve the rows of the input dataframes.
+
+    # Build feature columns from feature_definitions.
+    data = pd.DataFrame(index=new_index)
+    provenance = pd.DataFrame(index=new_index)
+    for field_name, data_source_names in feature_definitions.items():
+        log.info("Working field", field=field_name)
+        field_out = None
+        # A list of Series, that when concatanted, will match 1-1 with the series in field_out
+        provenance = []
         # Go through the data sources, starting with the highest priority.
         for datasource_name in reversed(data_source_names):
             with tmp_bind(log, dataset_name=datasource_name, field=field_name) as log:
@@ -363,28 +421,21 @@ def _build_dataframe(
                 if field_out is None:
                     # Copy all values from the highest priority input to the output
                     field_out = datasource_field_in
-                elif override == Override.BY_TIMESERIES:
-                    keep_higher_priority = field_out.groupby(level=[CommonFields.FIPS]).transform(
-                        lambda x: x.notna().any()
+                    provenance.append(
+                        pd.Series(index=datasource_field_in.index).fillna(datasource_name)
                     )
-                    # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-                    field_out = field_out.where(keep_higher_priority, datasource_field_in)
-                elif override == Override.BY_TIMESERIES_POINT:
-                    # Copy from datasource_field_in only on rows where field_out is NaN
-                    field_out = field_out.where(pd.notna(field_out), datasource_field_in)
                 else:
-                    assert override == Override.BY_ROW
                     # Copy from datasource_field_in rows that are not yet in field_out
                     this_not_in_result = ~datasource_field_in.index.isin(field_out.index)
-                    field_out = field_out.append(datasource_field_in.loc[this_not_in_result])
+                    values_to_append = datasource_field_in.loc[this_not_in_result]
+                    field_out = field_out.append(values_to_append)
+                    provenance.append(
+                        pd.Series(index=values_to_append.index).fillna(datasource_name)
+                    )
                 dups = field_out.index.duplicated(keep=False)
                 if dups.any():
                     log.error("Found duplicates in index")
                     raise ValueError()  # This is bad, somehow the input /still/ has duplicates
         data.loc[:, field_name] = field_out
-
-    if not fips_indexed.empty:
-        # See https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html#joining-with-two-multiindexes
-        data = data.join(fips_indexed, on=["fips"], how="left")
-
-    return data
+        provenance[:, field_name] = pd.concat(provenance)
+    return data, provenance
