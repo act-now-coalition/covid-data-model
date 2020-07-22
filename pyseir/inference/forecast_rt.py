@@ -1,4 +1,4 @@
-import math
+import math, random
 import us
 from datetime import datetime, timedelta
 import numpy as np
@@ -36,7 +36,7 @@ class ForecastRt:
     """
 
     def __init__(self, df_all=None):
-        self.save_csv_output = False
+        self.save_csv_output = True
         self.csv_output_folder = "./csv_files/"
         self.df_all = df_all
         self.states = "All"  # All to use All
@@ -77,26 +77,26 @@ class ForecastRt:
             self.fips_var_name_int,
             "positive_tests",
             "negative_tests",
-            "raw_search",  # google health trends data raw
-            "smoothed_search",  # google health trends data smooth
+            "raw_search",  # raw google health trends data
+            "smoothed_search",  # smoothed google health trends data
             "nmf_day_doc_fbc_fbs_ght",  # delphi combined indicator
             "raw_cli",  # fb raw covid like illness
             "raw_ili",  # fb raw flu like illness
             "contact_tracers_count",
             "nmf_day_doc_fbs_ght",
             "raw_community",
-            "raw_hh_cmnty_cli",
-            "raw_nohh_cmnty_cli",
-            "raw_wcli",
-            "raw_wili",
-            "smoothed_cli",
-            "smoothed_community",
-            "smoothed_hh_cmnty_cli",
-            "smoothed_ili",
-            "smoothed_nohh_cmnty_cli",
-            "smoothed_wcli",
-            "smoothed_wili",
-            "unsmoothed_community",
+            # "raw_hh_cmnty_cli",
+            # "raw_nohh_cmnty_cli",
+            # "raw_wcli",
+            # "raw_wili",
+            # "smoothed_cli",
+            # "smoothed_community",
+            # "smoothed_hh_cmnty_cli",
+            # "smoothed_ili",
+            # "smoothed_nohh_cmnty_cli",
+            # "smoothed_wcli",
+            # "smoothed_wili",
+            # "unsmoothed_community",
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -111,11 +111,11 @@ class ForecastRt:
         )
         self.sample_train_length = 30  # Set to -1 to use all historical data
         self.predict_days = 7
-        self.percent_train = False
+        self.percent_train = True
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 10
-        self.n_epochs = 3
+        self.n_batch = 50
+        self.n_epochs = 100
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -136,10 +136,10 @@ class ForecastRt:
             index_col=self.index_col_name_csv,
             converters={self.fips_var_name: str},
         )
-        log.info("retrieved input csv")
 
         if self.save_csv_output:
             df_merge.to_csv(self.csv_output_folder + "MERGED_CSV.csv")
+
         # only store state information
         df_states_merge = df_merge[
             df_merge[self.aggregate_level_name] == self.state_aggregate_level_name
@@ -148,72 +148,91 @@ class ForecastRt:
         state_df_dictionary = dict(iter(df_states_merge.groupby(self.fips_var_name)))
 
         # process dataframe
-        state_names, df_list = [], []
+        state_names, df_forecast_list, df_list = [], [], []
         for state in state_df_dictionary:
             df = state_df_dictionary[state]
             state_name = df[self.fips_var_name][0]
-
-            # Only keep data points where predict variable exists
-            first_valid_index = df[self.predict_variable].first_valid_index()
-            df = df[first_valid_index:].copy()
-
-            df[self.sim_date_name] = (df.index - self.ref_date).days + 1
-            # Calculate Rt derivative, exclude first row since-- zero derivative
-            df[self.d_predict_variable] = df[self.predict_variable].diff()
-            df = df[1:]
-            df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
 
             if self.deaths_cumulative:
                 df[self.daily_case_var] = df[self.case_var].diff()
             if self.cases_cumulative:
                 df[self.daily_death_var] = df[self.death_var].diff()
 
+            # Only keep data points where predict variable exists
+            first_valid_index = df[self.predict_variable].first_valid_index()
+            df = df[first_valid_index:].copy()
+
+            # Calculate Rt derivative, exclude first row since-- zero derivative
+            df[self.d_predict_variable] = df[self.predict_variable].diff()
+            # TODO decide if first and last entry need to be removed
+            df = df[1:-1]
+            df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
+            df[self.sim_date_name] = (df.index - self.ref_date).days + 1
+
             df_forecast = df[self.forecast_variables].copy()
             # Fill empty values with mask value
             df_forecast = df_forecast.fillna(self.mask_value)
             # ignore last entry = NaN #TODO find a better way to do this!!!
             # Is this necessary? dunno why some states have 0 for last Rt
-            df_forecast = df_forecast.iloc[:-1]
+            # df_forecast = df_forecast.iloc[:-1]
 
             state_names.append(state_name)
-            df_list.append(df_forecast)
+            df_forecast_list.append(df_forecast)
+            df_list.append(df)
             if self.save_csv_output:
                 df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
+                df.to_csv(self.csv_output_folder + df["state"][0] + "_OG_forecast.csv")
 
-        return state_names, df_list
+        return state_names, df_forecast_list, df_list
 
     def get_train_test_samples(self, df_forecast):
+        # True if test samples are constrained to be latest samples
+        test_set_end_of_sample = False
+
         # create list of dataframe samples
         df_samples = self.create_samples(df_forecast)
 
-        # Determine size of train set to split sample list into training and testing
-        if self.percent_train:
-            train_set_length = int(len(df_samples) * self.train_size)
-        else:
-            train_set_length = int(len(df_samples)) - self.n_test_days
-
-        # TODO could create scaling set more cleaning
         # Split sample list into training and testing
-        train_samples_not_spaced = df_samples[:train_set_length]
-        first_test_index = (
-            self.days_between_samples * ((train_set_length // self.days_between_samples) + 1) - 1
-        )
-        # test_samples = df_samples[train_set_length:]
-        test_samples = df_samples[first_test_index:]
+        if test_set_end_of_sample:
+            # Determine size of train set to split sample list into training and testing
+            if self.percent_train:
+                train_set_length = int(len(df_samples) * self.train_size)
+            else:
+                train_set_length = int(len(df_samples)) - self.n_test_days
+            train_samples_not_spaced = df_samples[:train_set_length]
+            first_test_index = (
+                self.days_between_samples * ((train_set_length // self.days_between_samples) + 1)
+                - 1
+            )
+            test_samples = df_samples[first_test_index:]
 
-        if 1 == 0:
-            for i in range(len(train_samples_not_spaced)):
-                df = train_samples_not_spaced[i]
-                if self.save_csv_output:
-                    df.to_csv(self.csv_output_folder + "df" + str(i) + "_train-notspaced.csv")
+            if self.save_csv_output:
+                for i in range(len(train_samples_not_spaced)):
+                    df = train_samples_not_spaced[i]
+                    if self.save_csv_output:
+                        df.to_csv(self.csv_output_folder + "df" + str(i) + "_train-notspaced.csv")
 
-            for i in range(len(test_samples)):
-                df = test_samples[i]
-                if self.save_csv_output:
-                    df.to_csv(self.csv_output_folder + "df" + str(i) + "_test-notspaced.csv")
+                for i in range(len(test_samples)):
+                    df = test_samples[i]
+                    if self.save_csv_output:
+                        df.to_csv(self.csv_output_folder + "df" + str(i) + "_test-notspaced.csv")
 
-        # For training only keep samples that are days_between_samples apart (avoid forecast learning meaningless correlations between labels)
-        train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
+            # For training only keep samples that are days_between_samples apart (avoid forecast learning meaningless correlations between labels)
+            train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
+
+        else:  # test and train set randomly selected from sample set
+            # require samples to be days_between_samples apart
+            df_samples_spaced = df_samples[0 :: self.days_between_samples]
+
+            if self.percent_train:
+                train_set_length = int(len(df_samples_spaced) * self.train_size)
+            else:
+                train_set_length = int(len(df_samples_spaced)) - self.n_test_days
+            # shuffle samples before spliting between test and train sets
+            random.shuffle(df_samples_spaced)
+            # Select train and test sets
+            train_samples = df_samples_spaced[:train_set_length]
+            test_samples = df_samples_spaced[train_set_length:]
 
         # Scaling set is the concatenated train_samples
         scaling_set = pd.concat(train_samples)
@@ -224,22 +243,34 @@ class ForecastRt:
         col = plt.cm.jet(np.linspace(0, 1, round(len(self.forecast_variables) + 1)))
         BOLD_LINEWIDTH = 3
         for df, state in zip(df_list, state_fips):
+            """
             fig, ax = plt.subplots(figsize=(18, 12))
             # for var in self.forecast_variables:
+            log.info('STATE')
             for var, color in zip(self.forecast_variables, col):
-                ax.plot(df[var], label=var, color=color)
+                log.info(var)
+                if var != self.predict_variable:
+                  ax.plot(df[var], label=var, color=color, linewidth = 1)
+                else:
+                  log.info('IMPORTANT VARIABLE')
+                  ax.plot(df[var], label=var, color='black', linewidth = BOLD_LINEWIDTH)
             ax.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
             output_path = get_run_artifact_path(state, RunArtifact.FORECAST_VAR_UNSCALED)
             plt.title(us.states.lookup(state).name)
             plt.savefig(output_path, bbox_inches="tight")
+            """
 
             fig2, ax2 = plt.subplots(figsize=(18, 12))
             for var, color in zip(self.forecast_variables, col):
                 reshaped_data = df[var].values.reshape(-1, 1)
                 scaled_values = scalers_dict[var].transform(reshaped_data)
-                ax2.plot(scaled_values, label=var, color=color)
+                # ax2.plot(scaled_values, label=var, color=color)
+                if var != self.predict_variable and var != self.daily_case_var:
+                    ax2.plot(scaled_values, label=var, color=color, linewidth=1)
+                else:
+                    ax2.plot(scaled_values, label=var, color=color, linewidth=BOLD_LINEWIDTH)
             ax2.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
@@ -261,11 +292,11 @@ class ForecastRt:
         dates and forecast r_t values
         """
         # split merged dataframe into state level dataframes (this includes adding variables and masking nan values)
-        state_fips, df_list = self.get_forecast_dfs()
+        state_fips, df_forecast_list, df_list = self.get_forecast_dfs()
 
         # get train, test, and scaling samples per state and append to list
         scaling_samples, train_samples, test_samples = [], [], []
-        for df, fips in zip(df_list, state_fips):
+        for df, fips in zip(df_forecast_list, state_fips):
             train, test, scaling = self.get_train_test_samples(df)
             scaling_samples.append(scaling)
             train_samples.append(train)
@@ -276,10 +307,9 @@ class ForecastRt:
         # TODO add max min rows to avoid domain adaption issues
         train_scaling_set = pd.concat(scaling_samples)
         scalers_dict = self.get_scaling_dictionary(train_scaling_set)
-        log.info("about to make debug plots")
         if self.debug_plots:
             self.plot_variables(df_list, state_fips, scalers_dict)
-        log.info("made debug plots")
+
         # Create scaled train samples
         list_train_X, list_train_Y, list_test_X, list_test_Y = [], [], [], []
         # iterate over train/test_samples = list[state_dfs_samples]
@@ -296,23 +326,12 @@ class ForecastRt:
         final_list_test_X = np.concatenate(list_test_X)
         final_list_test_Y = np.concatenate(list_test_Y)
         model, history, tuner = self.build_model(
-            final_list_train_X, final_list_train_Y, final_list_test_X, final_list_test_Y
+            final_list_train_X[:-2],
+            final_list_train_Y[:-2],
+            final_list_test_X[:-6],
+            final_list_test_Y[:-6],
         )
 
-        # redefine model with batch size one to access forecasts
-        """
-        forecast_model = specify_model(
-            self.sequence_length,
-            self.predict_days,
-            len(self.forecast_variables),
-            self.dropout,
-            self.n_hidden_layer_dimensions,
-            2,
-            1,
-            self.mask_value,
-        )
-        """
-        log.info("made forecast model")
         # TODO find a better way to do this and change batch size?
         best_hps = tuner.get_best_hyperparameters()[0]
         dropout = best_hps.get("dropout")
@@ -542,8 +561,6 @@ class ForecastRt:
         return model
 
     def build_model(self, final_train_X, final_train_Y, final_test_X, final_test_Y):
-
-        log.info("making hypermodel")
         hypermodel = MyHyperModel(
             train_sequence_length=self.sequence_length,
             predict_sequence_length=self.predict_days,
@@ -551,15 +568,13 @@ class ForecastRt:
             mask_value=self.mask_value,
             batch_size=self.n_batch,
         )
-        log.info("made hypermodel")
         tuner = RandomSearch(
             hypermodel,
             objective="val_loss",
-            max_trials=1,
+            max_trials=100,
             directory="hyperparam_search",
             project_name="hyperparam_search",
         )
-        log.info("made tuner")
 
         final_train_X = final_train_X[:-2]
         final_train_Y = final_train_Y[:-2]
@@ -569,13 +584,11 @@ class ForecastRt:
             epochs=self.n_epochs,
             validation_data=(final_test_X[:-4], final_test_Y[:-4]),
         )
-        log.info("finished search")
         tuner.results_summary()
 
         model = tuner.get_best_models(num_models=1)[0]
         best_hyperparams = tuner.get_best_hyperparameters()[0]
         log.info(best_hyperparams)
-        log.info("done")
         history = model.fit(
             final_train_X,
             final_train_Y,
@@ -587,9 +600,6 @@ class ForecastRt:
             # validation_split=self.validation_split,
             validation_data=(final_test_X[:-4], final_test_Y[:-4]),
         )
-        logging.info("fit")
-        logging.info(history.history["loss"])
-        logging.info(history.history["val_loss"])
         # if self.debug_plots:
         if True:
             plt.close("all")
@@ -675,11 +685,11 @@ class MyHyperModel(HyperModel):
     def build(self, hp, tune=True, n_layers=-1, dropout=-1, n_hidden_layer_dimensions=-1):
         if tune:
             # access hyperparameters from hp
-            dropout = hp.Float("dropout", min_value=0, max_value=0.5, step=0.1)
+            dropout = hp.Float("dropout", min_value=0, max_value=0.1, step=0.01)
             n_hidden_layer_dimensions = hp.Int(
-                "n_hidden_layer_dimensions", min_value=2, max_value=100, step=1
+                "n_hidden_layer_dimensions", min_value=100, max_value=101, step=1
             )
-            n_layers = hp.Int("n_layers", min_value=2, max_value=10, step=1)
+            n_layers = hp.Int("n_layers", min_value=2, max_value=6, step=1)
             # n_batch = hp.Choice('n_batch', values=[10]) #TODO test other values
 
         model = Sequential()
@@ -711,6 +721,7 @@ class MyHyperModel(HyperModel):
         )
         model.add(Dropout(dropout))
         model.add(Dense(self.predict_sequence_length))
+        es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=3)
         model.compile(loss="mean_squared_error", optimizer="adam")
 
         return model
