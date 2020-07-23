@@ -68,7 +68,7 @@ def generate_field_summary(series: pd.Series) -> pd.Series:
     return pd.Series(results)
 
 
-def summarize_data(data) -> pd.DataFrame:
+def summarize_timeseries_fields(data: pd.DataFrame) -> pd.DataFrame:
     data = data[[column for column in data.columns if column not in IGNORE_COLUMNS]]
 
     melted = pd.melt(data, id_vars=[CommonFields.FIPS, CommonFields.DATE]).set_index(
@@ -112,8 +112,8 @@ def get_summaries(
         timeseries1 = timeseries1.get_subset(fips=fips)
         timeseries2 = timeseries2.get_subset(fips=fips)
 
-    summary1 = summarize_data(timeseries1.data)
-    summary2 = summarize_data(timeseries2.data)
+    summary1 = summarize_timeseries_fields(timeseries1.data)
+    summary2 = summarize_timeseries_fields(timeseries2.data)
 
     sum1 = TimeseriesSummary(
         sha=sha1, timeseries=timeseries1, summary=summary1, fips=fips, level=level
