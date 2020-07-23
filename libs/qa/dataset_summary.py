@@ -2,6 +2,7 @@ from typing import Optional, Tuple
 
 import pydantic
 import pandas as pd
+import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.timeseries import TimeseriesDataset
