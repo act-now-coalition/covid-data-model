@@ -300,7 +300,7 @@ class Override(Enum):
     BY_TIMESERIES = 2
     # For each <fips, variable, date>, use the highest priority datasource that has a real
     # (not NaN) value.
-    BY_TIMESERIES_POINT = 3
+    BY_TIMESERIES_POINT = 3  # Deprecated
 
 
 def _build_dataframe(
@@ -362,6 +362,8 @@ def _build_dataframe(
 def _merge_data(datasource_dataframes, feature_definitions, log, new_index, override):
     if override is Override.BY_ROW:
         return _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_index)
+    if override is not Override.BY_TIMESERIES:
+        raise ValueError("Invalid override")
 
     # Not going BY_ROW so reindex the inputs now to avoid reindexing for each field below.
     datasource_dataframes = {
@@ -382,18 +384,13 @@ def _merge_data(datasource_dataframes, feature_definitions, log, new_index, over
                     # Copy all values from the highest priority input to the output
                     field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
                     field_out = datasource_field_in
-                elif override == Override.BY_TIMESERIES:
+                else:
                     keep_higher_priority = field_out.groupby(level=[CommonFields.FIPS]).transform(
                         lambda x: x.notna().any()
                     )
                     # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-                    field_provenance.loc[keep_higher_priority] = datasource_name
+                    field_provenance.loc[~keep_higher_priority] = datasource_name
                     field_out = field_out.where(keep_higher_priority, datasource_field_in)
-                else:
-                    assert override is Override.BY_TIMESERIES_POINT
-                    # Copy from datasource_field_in only on rows where field_out is NaN
-                    field_provenance.loc[pd.notna(field_out)] = datasource_name
-                    field_out = field_out.where(pd.notna(field_out), datasource_field_in)
                 dups = field_out.index.duplicated(keep=False)
                 if dups.any():
                     log.error("Found duplicates in index")
