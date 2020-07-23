@@ -46,7 +46,7 @@ class ForecastRt:
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet)
         self.ref_date = datetime(year=2020, month=1, day=1)
-        self.debug_plots = False
+        self.debug_plots = True
 
         # Variable Names
         self.aggregate_level_name = "aggregate_level"
@@ -115,11 +115,12 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 50
-        self.n_epochs = 1
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
         self.validation_split = 0  # currently using test set as validation set
+        self.hyperparam_search = False
 
     @classmethod
     def run_forecast(cls, df_all=None):
@@ -307,9 +308,10 @@ class ForecastRt:
         # TODO add max min rows to avoid domain adaption issues
         train_scaling_set = pd.concat(area_scaling_samples)
         scalers_dict = self.get_scaling_dictionary(slim(train_scaling_set, self.forecast_variables))
-        log.info("got scaling dictionary")
         if self.debug_plots:
-            self.plot_variables(area_df_list, area_fips, scalers_dict)
+            self.plot_variables(
+                slim(area_df_list, self.forecast_variables), area_fips, scalers_dict
+            )
 
         # Create scaled train samples
         list_train_X, list_train_Y, list_test_X, list_test_Y = [], [], [], []
@@ -317,8 +319,6 @@ class ForecastRt:
         for train, test in zip(area_train_samples, area_test_samples):
             train_filter = slim(train, self.forecast_variables)
             test_filter = slim(test, self.forecast_variables)
-            # train_X, train_Y, train_df_list = self.get_scaled_X_Y(train_filter, scalers_dict, "train")
-            # test_X, test_Y, test_df_list = self.get_scaled_X_Y(test_filter, scalers_dict, "test")
             train_X, train_Y = self.get_scaled_X_Y(train_filter, scalers_dict, "train")
             test_X, test_Y = self.get_scaled_X_Y(test_filter, scalers_dict, "test")
             list_train_X.append(train_X)
@@ -326,27 +326,63 @@ class ForecastRt:
             list_test_X.append(test_X)
             list_test_Y.append(test_Y)
 
-        log.info("train df")
-        for df in train:
-            log.info(df)
-
         final_list_train_X = np.concatenate(list_train_X)
         final_list_train_Y = np.concatenate(list_train_Y)
         final_list_test_X = np.concatenate(list_test_X)
         final_list_test_Y = np.concatenate(list_test_Y)
 
-        model, history, tuner = self.build_model(
-            final_list_train_X[:-2],
-            final_list_train_Y[:-2],
-            final_list_test_X[:-6],
-            final_list_test_Y[:-6],
+        log.info(f"train: {len(final_list_train_X)} test: {len(final_list_test_X)}")
+        if self.hyperparam_search:
+            model, history, tuner = self.build_model(
+                final_list_train_X[:-4],
+                final_list_train_Y[:-4],
+                final_list_test_X,
+                final_list_test_Y,
+            )
+
+            # TODO find a better way to do this and change batch size?
+            best_hps = tuner.get_best_hyperparameters()[0]
+            # dropout = best_hps.get("dropout")
+            # n_hidden_layer_dimensions = best_hps.get("n_hidden_layer_dimensions")
+            # n_layers = best_hps.get("n_layers")
+        dropout = 0
+        n_hidden_layer_dimensions = 100
+        n_layers = 4
+        modelClass = MyHyperModel(
+            train_sequence_length=self.sequence_length,
+            predict_sequence_length=self.predict_days,
+            n_features=len(self.forecast_variables),
+            mask_value=self.mask_value,
+            batch_size=self.n_batch,
+        )
+        model = modelClass.build(
+            tune=False,
+            dropout=dropout,
+            n_hidden_layer_dimensions=n_hidden_layer_dimensions,
+            n_layers=n_layers,
+        )
+        history = model.fit(
+            final_list_train_X[:-4],
+            final_list_train_Y[:-4],
+            epochs=self.n_epochs,
+            batch_size=self.n_batch,
+            verbose=1,
+            shuffle=True,
+            validation_data=(final_list_test_X[:-10], final_list_test_Y[:-10]),
         )
 
-        # TODO find a better way to do this and change batch size?
-        best_hps = tuner.get_best_hyperparameters()[0]
-        dropout = best_hps.get("dropout")
-        n_hidden_layer_dimensions = best_hps.get("n_hidden_layer_dimensions")
-        n_layers = best_hps.get("n_layers")
+        plt.close("all")
+        plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
+        plt.plot(
+            history.history["val_loss"], color="green", linestyle="solid", label="Validation Set",
+        )
+        plt.legend()
+        plt.xlabel("Epochs")
+        plt.ylabel("RMSE")
+        output_path = get_run_artifact_path("01", RunArtifact.FORECAST_LOSS)
+        plt.savefig(output_path, bbox_inches="tight")
+        plt.close("all")
+
         forecast_model_skeleton = MyHyperModel(
             train_sequence_length=self.sequence_length,
             predict_sequence_length=self.predict_days,
@@ -364,30 +400,26 @@ class ForecastRt:
         trained_model_weights = model.get_weights()
         forecast_model.set_weights(trained_model_weights)
 
-        # Plot predictions for test and train sets
-        # for train_df, train_X, train_Y, test_df, test_X, test_Y, fips in zip(
-        #    area_train_samples, list_train_X, list_train_Y, area_test_samples, list_test_X, list_test_Y, area_fips
-        # ):
-
         DATA_LINEWIDTH = 1
         MODEL_LINEWIDTH = 2
-        for train_df, train_X, train_Y in zip(area_train_samples, list_train_X, list_train_Y):
+        # plot training predictions
+        for train_df, train_X, train_Y, test_df, test_X, test_Y, area_df in zip(
+            area_train_samples,
+            list_train_X,
+            list_train_Y,
+            area_test_samples,
+            list_test_X,
+            list_test_Y,
+            area_df_list,
+        ):
+            plt.figure(figsize=(18, 12))
             fips = train_df[0]["fips"][0]  # here
             state_name = us.states.lookup(fips).name
             forecasts_train, dates_train = self.get_forecasts(
                 train_df, train_X, train_Y, scalers_dict, forecast_model
             )
-
-            # forecasts_test, dates_test = self.get_forecasts(
-            #    test_X, test_Y, scalers_dict, forecast_model
-            # )
-
-            # plot training predictions
-            plt.figure(figsize=(18, 12))
             for n in range(len(dates_train)):
-                i = dates_train[n]
                 newdates = dates_train[n]
-                # newdates = convert_to_2020_date(i,args)
                 j = np.squeeze(forecasts_train[n])
                 if n == 0:
                     plt.plot(
@@ -400,6 +432,32 @@ class ForecastRt:
                     )
                 else:
                     plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
+
+            forecasts_test, dates_test = self.get_forecasts(
+                test_df, test_X, test_Y, scalers_dict, forecast_model
+            )
+            for n in range(len(dates_test)):
+                newdates = dates_test[n]
+                j = np.squeeze(forecasts_test[n])
+                if n == 0:
+                    plt.plot(
+                        newdates,
+                        j,
+                        color="orange",
+                        label="Test Set",
+                        linewidth=MODEL_LINEWIDTH,
+                        markersize=0,
+                    )
+                else:
+                    plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
+
+            plt.plot(
+                area_df.index,
+                area_df[self.predict_variable],
+                label="Data",
+                markersize=3,
+                marker=".",
+            )
 
             plt.xlabel(self.sim_date_name)
             plt.ylabel(self.predict_variable)
@@ -451,36 +509,9 @@ class ForecastRt:
             output_path = get_run_artifact_path(fips, RunArtifact.FORECAST_RESULT)
             state_obj = us.states.lookup(state_name)
             plt.savefig(output_path, bbox_inches="tight")
+            plt.close("all")
 
         return
-        """
-        for n in range(len(dates_test)):
-            i = dates_test[n]
-            newdates = dates_test[n]
-            # newdates = convert_to_2020_date(i,args)
-            j = np.squeeze(forecasts_test[n])
-
-            if n == 0:
-                plt.plot(
-                    newdates,
-                    j,
-                    color="orange",
-                    label="Test Set",
-                    linewidth=MODEL_LINEWIDTH,
-                    markersize=0,
-                )
-            else:
-                plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
-
-        plt.plot(
-            df_forecast[self.sim_date_name],
-            df_forecast[self.predict_variable],
-            linewidth=DATA_LINEWIDTH,
-            markersize=3,
-            label="Data",
-            marker="o",
-        )
-        """
 
     def get_forecasts(self, df_list, X_list, Y_list, scalers_dict, model):
         forecasts = list()
@@ -568,13 +599,13 @@ class ForecastRt:
             project_name="hyperparam_search",
         )
 
-        final_train_X = final_train_X[:-2]
-        final_train_Y = final_train_Y[:-2]
+        # final_train_X = final_train_X[:-2]
+        # final_train_Y = final_train_Y[:-2]
         tuner.search(
             final_train_X,
             final_train_Y,
             epochs=self.n_epochs,
-            validation_data=(final_test_X[:-4], final_test_Y[:-4]),
+            validation_data=(final_test_X, final_test_Y),
         )
         tuner.results_summary()
 
@@ -590,7 +621,8 @@ class ForecastRt:
             shuffle=True,  # TODO test shuffle
             # callbacks=[es, tensorboard_callback],
             # validation_split=self.validation_split,
-            validation_data=(final_test_X[:-4], final_test_Y[:-4]),
+            # validation_data=(final_test_X[:-4], final_test_Y[:-4]),
+            validation_data=(final_test_X, final_test_Y),
         )
         # if self.debug_plots:
         if True:
@@ -674,14 +706,14 @@ class MyHyperModel(HyperModel):
         self.mask_value = mask_value
         self.batch_size = batch_size
 
-    def build(self, hp, tune=True, n_layers=-1, dropout=-1, n_hidden_layer_dimensions=-1):
+    def build(self, hp=None, tune=True, n_layers=-1, dropout=-1, n_hidden_layer_dimensions=-1):
         if tune:
             # access hyperparameters from hp
-            dropout = hp.Float("dropout", min_value=0, max_value=0.1, step=0.01)
+            dropout = hp.Float("dropout", min_value=0, max_value=0.1, step=0.01, default=0)
             n_hidden_layer_dimensions = hp.Int(
-                "n_hidden_layer_dimensions", min_value=100, max_value=101, step=1
+                "n_hidden_layer_dimensions", min_value=100, max_value=101, step=1, default=100
             )
-            n_layers = hp.Int("n_layers", min_value=2, max_value=6, step=1)
+            n_layers = hp.Int("n_layers", min_value=2, max_value=6, step=1, default=4)
             # n_batch = hp.Choice('n_batch', values=[10]) #TODO test other values
 
         model = Sequential()
