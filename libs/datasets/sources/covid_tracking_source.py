@@ -125,10 +125,6 @@ class CovidTrackingDataSource(data_source.DataSource):
 
         data = data.astype(dtypes)
 
-        # Dropping PR because of bad data
-        # TODO(chris): Handle this in a more sane way.
-        data = data.loc[data.state != "PR", :]
-
         # Removing bad data from Delaware.
         # Once that is resolved we can remove this while keeping the assert below.
         icu_mask = data[cls.Fields.IN_ICU_CURRENTLY] > data[cls.Fields.CURRENT_HOSPITALIZED]
