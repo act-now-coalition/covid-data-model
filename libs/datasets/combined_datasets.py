@@ -285,8 +285,7 @@ def _build_combined_dataset_from_sources(
     }
 
     data, provenance = _build_dataframe(feature_definition, datasets)
-    provenance.to_csv("source.csv")
-    return target_dataset_cls(data.reset_index())
+    return target_dataset_cls(data.reset_index(), provenance=provenance)
 
 
 class Override(Enum):
@@ -338,22 +337,20 @@ def _build_dataframe(
     for df in dataframes[1:]:
         assert index_names == df.index.names
         new_index = new_index.union(df.index)
-    if index_names == ["fips", "date"]:
-        arrays = [new_index.get_level_values(0), pd.to_datetime(new_index.get_level_values(1))]
-        new_index = MultiIndex.from_arrays(arrays=arrays, names=index_names)
-    elif index_names == ["fips"]:
-        pass
-    else:
-        raise ValueError("bad new_index.names")
+    # The following is a failed attempt at a performance optimization. The merge operation spends most of its
+    # time boxing datetime values, something that in theory doesn't need to happen for an DatetimeIndex but
+    # I've been unable to make that happen when the datetimes are part of a MultiIndex.
+    # if index_names == ["fips", "date"]:
+    #     arrays = [new_index.get_level_values(0), pd.to_datetime(new_index.get_level_values(1))]
+    #     new_index = MultiIndex.from_arrays(arrays=arrays, names=index_names)
+    # elif index_names == ["fips"]:
+    #     pass
+    # else:
+    #     raise ValueError("bad new_index.names")
 
-    if override is Override.BY_ROW:
-        data, provenance = _merged_data_by_row(
-            datasource_dataframes, feature_definitions, log, new_index
-        )
-    else:
-        data, provenance = _merged_data(
-            datasource_dataframes, feature_definitions, log, new_index, override
-        )
+    data, provenance = _merge_data(
+        datasource_dataframes, feature_definitions, log, new_index, override
+    )
 
     if not fips_indexed.empty:
         # See https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html#joining-with-two-multiindexes
@@ -362,7 +359,10 @@ def _build_dataframe(
     return data, provenance
 
 
-def _merged_data(datasource_dataframes, feature_definitions, log, new_index, override):
+def _merge_data(datasource_dataframes, feature_definitions, log, new_index, override):
+    if override is Override.BY_ROW:
+        return _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_index)
+
     # Not going BY_ROW so reindex the inputs now to avoid reindexing for each field below.
     datasource_dataframes = {
         name: df.reindex(new_index, copy=False) for name, df in datasource_dataframes.items()
@@ -403,8 +403,8 @@ def _merged_data(datasource_dataframes, feature_definitions, log, new_index, ove
     return data, provenance
 
 
-def _merged_data_by_row(datasource_dataframes, feature_definitions, log, new_index):
-    # Override.BY_ROW needs to preserve the rows of the input dataframes.
+def _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_index):
+    # Override.BY_ROW needs to preserve the rows datasource_dataframes
 
     # Build feature columns from feature_definitions.
     data = pd.DataFrame(index=new_index)
@@ -413,7 +413,7 @@ def _merged_data_by_row(datasource_dataframes, feature_definitions, log, new_ind
         log.info("Working field", field=field_name)
         field_out = None
         # A list of Series, that when concatanted, will match 1-1 with the series in field_out
-        provenance = []
+        field_provenance = []
         # Go through the data sources, starting with the highest priority.
         for datasource_name in reversed(data_source_names):
             with tmp_bind(log, dataset_name=datasource_name, field=field_name) as log:
@@ -421,21 +421,25 @@ def _merged_data_by_row(datasource_dataframes, feature_definitions, log, new_ind
                 if field_out is None:
                     # Copy all values from the highest priority input to the output
                     field_out = datasource_field_in
-                    provenance.append(
-                        pd.Series(index=datasource_field_in.index).fillna(datasource_name)
+                    field_provenance.append(
+                        pd.Series(index=datasource_field_in.index, dtype="object").fillna(
+                            datasource_name
+                        )
                     )
                 else:
                     # Copy from datasource_field_in rows that are not yet in field_out
                     this_not_in_result = ~datasource_field_in.index.isin(field_out.index)
                     values_to_append = datasource_field_in.loc[this_not_in_result]
                     field_out = field_out.append(values_to_append)
-                    provenance.append(
-                        pd.Series(index=values_to_append.index).fillna(datasource_name)
+                    field_provenance.append(
+                        pd.Series(index=values_to_append.index, dtype="object").fillna(
+                            datasource_name
+                        )
                     )
                 dups = field_out.index.duplicated(keep=False)
                 if dups.any():
                     log.error("Found duplicates in index")
                     raise ValueError()  # This is bad, somehow the input /still/ has duplicates
         data.loc[:, field_name] = field_out
-        provenance[:, field_name] = pd.concat(provenance)
+        provenance.loc[:, field_name] = pd.concat(field_provenance)
     return data, provenance

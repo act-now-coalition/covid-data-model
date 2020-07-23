@@ -31,9 +31,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
     ]
     COMMON_INDEX_FIELDS = [CommonFields.FIPS]
 
-    def __init__(self, data):
-        self.data = data
-
     @classmethod
     def from_source(cls, source: "DataSource", fill_missing_state=True):
         """Loads data from a specific datasource.

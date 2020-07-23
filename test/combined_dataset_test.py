@@ -163,10 +163,10 @@ def test_build_timeseries():
     )
     datasets = {"source_a": data_a, "source_b": data_b}
 
-    combined = _build_dataframe({"cases": ["source_a", "source_b"]}, datasets)
+    combined, _ = _build_dataframe({"cases": ["source_a", "source_b"]}, datasets)
     assert combined.at[("97123", "2020-04-01"), "cases"] == 2
 
-    combined = _build_dataframe({"cases": ["source_b", "source_a"]}, datasets)
+    combined, _ = _build_dataframe({"cases": ["source_b", "source_a"]}, datasets)
     assert combined.at[("97123", "2020-04-01"), "cases"] == 1
 
 
@@ -182,11 +182,11 @@ def test_build_latest():
     )
     datasets = {"source_a": data_a, "source_b": data_b}
 
-    combined = _build_dataframe({"cases": ["source_a", "source_b"]}, datasets)
+    combined, _ = _build_dataframe({"cases": ["source_a", "source_b"]}, datasets)
     assert combined.at["97123", "cases"] == 2
     assert combined.at["97333", "cases"] == 3
 
-    combined = _build_dataframe({"cases": ["source_b", "source_a"]}, datasets)
+    combined, _ = _build_dataframe({"cases": ["source_b", "source_a"]}, datasets)
     assert combined.at["97123", "cases"] == 1
     assert combined.at["97333", "cases"] == 3
 
@@ -201,35 +201,35 @@ def test_build_timeseries_override():
     datasets = {"source_a": data_a, "source_b": data_b}
 
     # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
-    combined = _build_dataframe(
+    combined, _ = _build_dataframe(
         {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_TIMESERIES
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, None]
 
     # The combined m1 timeseries is the highest priority real value for each date, a blend of source_a and source_b.
-    combined = _build_dataframe(
+    combined, _ = _build_dataframe(
         {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_TIMESERIES_POINT
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, 2, 3]
 
     # The combined m1 timeseries is the highest priority value for each date; source_b is higher priority for
     # both 2020-04-01 and 2020-04-02.
-    combined = _build_dataframe(
+    combined, _ = _build_dataframe(
         {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_ROW
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, 3]
 
-    combined = _build_dataframe(
+    combined, _ = _build_dataframe(
         {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_TIMESERIES
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
 
-    combined = _build_dataframe(
+    combined, _ = _build_dataframe(
         {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_TIMESERIES_POINT
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, 2, 3]
 
-    combined = _build_dataframe(
+    combined, _ = _build_dataframe(
         {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_ROW
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
