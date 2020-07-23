@@ -69,7 +69,7 @@ class ForecastRt:
         # self.predict_variable = self.daily_case_var
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
-            self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
+            # self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
             self.daily_case_var,
             self.daily_death_var,
             # self.d_predict_variable,
@@ -115,7 +115,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 50
-        self.n_epochs = 100
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -169,9 +169,9 @@ class ForecastRt:
             df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
             df[self.sim_date_name] = (df.index - self.ref_date).days + 1
 
-            df_forecast = df[self.forecast_variables].copy()
+            # df_forecast = df[self.forecast_variables].copy()
             # Fill empty values with mask value
-            df_forecast = df_forecast.fillna(self.mask_value)
+            df_forecast = df.fillna(self.mask_value)
             # ignore last entry = NaN #TODO find a better way to do this!!!
             # Is this necessary? dunno why some states have 0 for last Rt
             # df_forecast = df_forecast.iloc[:-1]
@@ -183,7 +183,7 @@ class ForecastRt:
                 df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
                 df.to_csv(self.csv_output_folder + df["state"][0] + "_OG_forecast.csv")
 
-        return state_names, df_forecast_list, df_list
+        return state_names, df_forecast_list
 
     def get_train_test_samples(self, df_forecast):
         # True if test samples are constrained to be latest samples
@@ -292,39 +292,49 @@ class ForecastRt:
         dates and forecast r_t values
         """
         # split merged dataframe into state level dataframes (this includes adding variables and masking nan values)
-        state_fips, df_forecast_list, df_list = self.get_forecast_dfs()
+        area_fips, area_df_list = self.get_forecast_dfs()
 
         # get train, test, and scaling samples per state and append to list
-        scaling_samples, train_samples, test_samples = [], [], []
-        for df, fips in zip(df_forecast_list, state_fips):
+        area_scaling_samples, area_train_samples, area_test_samples = [], [], []
+        for df, fips in zip(area_df_list, area_fips):
             train, test, scaling = self.get_train_test_samples(df)
-            scaling_samples.append(scaling)
-            train_samples.append(train)
-            test_samples.append(test)
-            state_name = us.states.lookup(fips).name
-            log.info(f"{state_name}: train_samples: {len(train)} test_samples: {len(test)}")
+            area_scaling_samples.append(scaling)
+            area_train_samples.append(train)
+            area_test_samples.append(test)
+            area_name = us.states.lookup(fips).name
+            log.info(f"{area_name}: train_samples: {len(train)} test_samples: {len(test)}")
         # Get scaling dictionary
         # TODO add max min rows to avoid domain adaption issues
-        train_scaling_set = pd.concat(scaling_samples)
-        scalers_dict = self.get_scaling_dictionary(train_scaling_set)
+        train_scaling_set = pd.concat(area_scaling_samples)
+        scalers_dict = self.get_scaling_dictionary(slim(train_scaling_set, self.forecast_variables))
+        log.info("got scaling dictionary")
         if self.debug_plots:
-            self.plot_variables(df_list, state_fips, scalers_dict)
+            self.plot_variables(area_df_list, area_fips, scalers_dict)
 
         # Create scaled train samples
         list_train_X, list_train_Y, list_test_X, list_test_Y = [], [], [], []
         # iterate over train/test_samples = list[state_dfs_samples]
-        for train, test in zip(train_samples, test_samples):
-            train_X, train_Y, train_df_list = self.get_scaled_X_Y(train, scalers_dict, "train")
-            test_X, test_Y, test_df_list = self.get_scaled_X_Y(test, scalers_dict, "test")
+        for train, test in zip(area_train_samples, area_test_samples):
+            train_filter = slim(train, self.forecast_variables)
+            test_filter = slim(test, self.forecast_variables)
+            # train_X, train_Y, train_df_list = self.get_scaled_X_Y(train_filter, scalers_dict, "train")
+            # test_X, test_Y, test_df_list = self.get_scaled_X_Y(test_filter, scalers_dict, "test")
+            train_X, train_Y = self.get_scaled_X_Y(train_filter, scalers_dict, "train")
+            test_X, test_Y = self.get_scaled_X_Y(test_filter, scalers_dict, "test")
             list_train_X.append(train_X)
             list_train_Y.append(train_Y)
             list_test_X.append(test_X)
             list_test_Y.append(test_Y)
 
+        log.info("train df")
+        for df in train:
+            log.info(df)
+
         final_list_train_X = np.concatenate(list_train_X)
         final_list_train_Y = np.concatenate(list_train_Y)
         final_list_test_X = np.concatenate(list_test_X)
         final_list_test_Y = np.concatenate(list_test_Y)
+
         model, history, tuner = self.build_model(
             final_list_train_X[:-2],
             final_list_train_Y[:-2],
@@ -351,31 +361,27 @@ class ForecastRt:
             dropout=dropout,
             n_hidden_layer_dimensions=n_hidden_layer_dimensions,
         )
-        log.info("getting best hyperparams")
-
         trained_model_weights = model.get_weights()
         forecast_model.set_weights(trained_model_weights)
 
         # Plot predictions for test and train sets
+        # for train_df, train_X, train_Y, test_df, test_X, test_Y, fips in zip(
+        #    area_train_samples, list_train_X, list_train_Y, area_test_samples, list_test_X, list_test_Y, area_fips
+        # ):
 
-        for train_X, train_Y, test_X, test_Y, df_forecast, fips in zip(
-            list_train_X, list_train_Y, list_test_X, list_test_Y, df_list, state_fips
-        ):
+        DATA_LINEWIDTH = 1
+        MODEL_LINEWIDTH = 2
+        for train_df, train_X, train_Y in zip(area_train_samples, list_train_X, list_train_Y):
+            fips = train_df[0]["fips"][0]  # here
             state_name = us.states.lookup(fips).name
             forecasts_train, dates_train = self.get_forecasts(
-                train_X, train_Y, scalers_dict, forecast_model
+                train_df, train_X, train_Y, scalers_dict, forecast_model
             )
 
-            for i in range(len(train_X)):
-                df = pd.DataFrame(data=train_X[i])
-                if self.save_csv_output:
-                    df.to_csv(self.csv_output_folder + state_name + "_" + str(i) + ".csv")
+            # forecasts_test, dates_test = self.get_forecasts(
+            #    test_X, test_Y, scalers_dict, forecast_model
+            # )
 
-            forecasts_test, dates_test = self.get_forecasts(
-                test_X, test_Y, scalers_dict, forecast_model
-            )
-            DATA_LINEWIDTH = 1
-            MODEL_LINEWIDTH = 2
             # plot training predictions
             plt.figure(figsize=(18, 12))
             for n in range(len(dates_train)):
@@ -395,32 +401,6 @@ class ForecastRt:
                 else:
                     plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
 
-            for n in range(len(dates_test)):
-                i = dates_test[n]
-                newdates = dates_test[n]
-                # newdates = convert_to_2020_date(i,args)
-                j = np.squeeze(forecasts_test[n])
-
-                if n == 0:
-                    plt.plot(
-                        newdates,
-                        j,
-                        color="orange",
-                        label="Test Set",
-                        linewidth=MODEL_LINEWIDTH,
-                        markersize=0,
-                    )
-                else:
-                    plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
-
-            plt.plot(
-                df_forecast[self.sim_date_name],
-                df_forecast[self.predict_variable],
-                linewidth=DATA_LINEWIDTH,
-                markersize=3,
-                label="Data",
-                marker="o",
-            )
             plt.xlabel(self.sim_date_name)
             plt.ylabel(self.predict_variable)
             plt.legend()
@@ -473,36 +453,46 @@ class ForecastRt:
             plt.savefig(output_path, bbox_inches="tight")
 
         return
+        """
+        for n in range(len(dates_test)):
+            i = dates_test[n]
+            newdates = dates_test[n]
+            # newdates = convert_to_2020_date(i,args)
+            j = np.squeeze(forecasts_test[n])
 
-    def get_forecasts(self, X, Y, scalers_dict, model):
+            if n == 0:
+                plt.plot(
+                    newdates,
+                    j,
+                    color="orange",
+                    label="Test Set",
+                    linewidth=MODEL_LINEWIDTH,
+                    markersize=0,
+                )
+            else:
+                plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
+
+        plt.plot(
+            df_forecast[self.sim_date_name],
+            df_forecast[self.predict_variable],
+            linewidth=DATA_LINEWIDTH,
+            markersize=3,
+            label="Data",
+            marker="o",
+        )
+        """
+
+    def get_forecasts(self, df_list, X_list, Y_list, scalers_dict, model):
         forecasts = list()
         dates = list()
-        for i, j in zip(X, Y):
-            i = i.reshape(1, i.shape[0], i.shape[1])
-
-            scaled_df = pd.DataFrame(np.squeeze(i))
-            thisforecast = scalers_dict[self.predict_variable].inverse_transform(model.predict(i))
+        for df, x, y in zip(df_list, X_list, Y_list):
+            x = x.reshape(1, x.shape[0], x.shape[1])
+            # scaled_df = pd.DataFrame(np.squeeze(x))
+            thisforecast = scalers_dict[self.predict_variable].inverse_transform(model.predict(x))
             forecasts.append(thisforecast)
+            # dates.append(df.iloc[-self.predict_days:]['sim_day'])
+            dates.append(df.iloc[-self.predict_days :].index)
 
-            last_train_day = np.array(scaled_df.iloc[-1][0]).reshape(1, -1)
-            log.info(f"last train day: {last_train_day}")
-
-            unscaled_last_train_day = scalers_dict[self.sim_date_name].inverse_transform(
-                last_train_day
-            )
-
-            unscaled_first_test_day = unscaled_last_train_day + 1
-            unscaled_last_test_day = int(unscaled_first_test_day) + self.predict_days - 1
-            # TODO not putting int here creates weird issues that are possibly worth later investigation
-
-            log.info(
-                f"unscaled_last_train_day: {unscaled_last_train_day} first test day: {unscaled_first_test_day} last_predict_day: {unscaled_last_test_day}"
-            )
-
-            predicted_days = np.arange(unscaled_first_test_day, unscaled_last_test_day + 1.0)
-            log.info("predict days")
-            log.info(predicted_days)
-            dates.append(predicted_days)
         return forecasts, dates
 
     def get_scaling_dictionary(self, train_scaling_set):
@@ -527,8 +517,10 @@ class ForecastRt:
                 # scaled_values = columnData.values.reshape(-1,1)
                 sample.loc[:, f"{columnName}{self.scaled_variable_suffix}"] = scaled_values
             sample_list.append(sample)
-        X, Y, df_list = self.get_X_Y(sample_list, label)
-        return X, Y, df_list
+        # X, Y, df_list = self.get_X_Y(sample_list, label)
+        X, Y = self.get_X_Y(sample_list, label)
+        # return X, Y, df_list
+        return X, Y
 
     def old_specify_model(
         self, n_batch
@@ -571,7 +563,7 @@ class ForecastRt:
         tuner = RandomSearch(
             hypermodel,
             objective="val_loss",
-            max_trials=100,
+            max_trials=1,
             directory="hyperparam_search",
             project_name="hyperparam_search",
         )
@@ -654,7 +646,7 @@ class ForecastRt:
         final_test_X = np.array(X_train_list)
         final_test_Y = np.array(Y_train_list)
         final_test_Y = np.squeeze(final_test_Y)
-        return final_test_X, final_test_Y, df_list
+        return final_test_X, final_test_Y  # , df_list
 
     def create_samples(self, df):
         df_list = list()
@@ -725,6 +717,16 @@ class MyHyperModel(HyperModel):
         model.compile(loss="mean_squared_error", optimizer="adam")
 
         return model
+
+
+def slim(dataframe_input, variables):
+    if type(dataframe_input) == list:
+        df_list = []
+        for df in dataframe_input:
+            df_list.append(df[variables].copy())
+        return df_list
+    else:  # assume there is one inputdataframe
+        return dataframe_input[variables].copy()
 
 
 def external_run_forecast():
