@@ -42,9 +42,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
-    def __init__(self, data: pd.DataFrame):
-        self.data = data
-
     @property
     def all_fips(self):
         return self.data.reset_index().fips.unique()

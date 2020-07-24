@@ -8,7 +8,7 @@ from structlog import testing, get_logger
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
 from libs.datasets import dataset_utils
-from libs.datasets.combined_datasets import _build_dataframe, Override
+from libs.datasets.combined_datasets import _build_data_and_provenance, Override
 from libs.datasets.dataset_utils import AggregationLevel
 import pytest
 
@@ -96,7 +96,7 @@ def test_fill_fields_and_timeseries_from_column():
 
     datasets = {"existing": existing_df, "new": new_df}
 
-    result = _build_dataframe(
+    result, _ = _build_data_and_provenance(
         {"cnt": ["existing", "new"], "foo": ["existing"]}, datasets, Override.BY_TIMESERIES
     )
 
@@ -130,7 +130,7 @@ def test_fill_fields_with_data_source():
 
     datasets = {"existing": existing_df, "new": new_df}
 
-    result = _build_dataframe(
+    result, _ = _build_data_and_provenance(
         {"current_icu": ["existing", "new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
     )
 
@@ -156,7 +156,7 @@ def test_fill_fields_with_data_source_nan_overwrite():
 
     datasets = {"existing": existing_df, "new": new_df}
 
-    result = _build_dataframe(
+    result, _ = _build_data_and_provenance(
         {"current_icu": ["existing", "new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
     )
 
@@ -188,7 +188,7 @@ def test_fill_fields_with_data_source_timeseries():
 
     datasets = {"existing": existing_df, "new": new_df}
 
-    result = _build_dataframe(
+    result, _ = _build_data_and_provenance(
         {"cnt": ["existing", "new"], "foo": ["existing"]}, datasets, Override.BY_ROW
     )
 
@@ -222,7 +222,7 @@ def test_fill_fields_with_data_source_add_column():
 
     datasets = {"existing": existing_df, "new": new_df}
 
-    result = _build_dataframe(
+    result, _ = _build_data_and_provenance(
         {"current_icu": ["new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
     )
 
@@ -245,7 +245,7 @@ def test_fill_fields_with_data_source_no_rows_input():
 
     datasets = {"existing": existing_df, "new": new_df}
 
-    result = _build_dataframe(
+    result, _ = _build_data_and_provenance(
         {"current_icu": ["new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
     )
 

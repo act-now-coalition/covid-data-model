@@ -4,7 +4,7 @@ import re
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.combined_datasets import (
-    _build_dataframe,
+    _build_data_and_provenance,
     Override,
     _build_combined_dataset_from_sources,
     US_STATES_FILTER,
@@ -163,11 +163,13 @@ def test_build_timeseries():
     )
     datasets = {"source_a": data_a, "source_b": data_b}
 
-    combined = _build_dataframe({"cases": ["source_a", "source_b"]}, datasets)
+    combined, provenance = _build_data_and_provenance({"cases": ["source_a", "source_b"]}, datasets)
     assert combined.at[("97123", "2020-04-01"), "cases"] == 2
+    assert provenance.at[("97123", "2020-04-01"), "cases"] == "source_b"
 
-    combined = _build_dataframe({"cases": ["source_b", "source_a"]}, datasets)
+    combined, provenance = _build_data_and_provenance({"cases": ["source_b", "source_a"]}, datasets)
     assert combined.at[("97123", "2020-04-01"), "cases"] == 1
+    assert provenance.at[("97123", "2020-04-01"), "cases"] == "source_a"
 
 
 def test_build_latest():
@@ -182,13 +184,17 @@ def test_build_latest():
     )
     datasets = {"source_a": data_a, "source_b": data_b}
 
-    combined = _build_dataframe({"cases": ["source_a", "source_b"]}, datasets)
+    combined, provenance = _build_data_and_provenance({"cases": ["source_a", "source_b"]}, datasets)
     assert combined.at["97123", "cases"] == 2
+    assert provenance.at["97123", "cases"] == "source_b"
     assert combined.at["97333", "cases"] == 3
+    assert provenance.at["97333", "cases"] == "source_a"
 
-    combined = _build_dataframe({"cases": ["source_b", "source_a"]}, datasets)
+    combined, provenance = _build_data_and_provenance({"cases": ["source_b", "source_a"]}, datasets)
     assert combined.at["97123", "cases"] == 1
+    assert provenance.at["97123", "cases"] == "source_a"
     assert combined.at["97333", "cases"] == 3
+    assert provenance.at["97333", "cases"] == "source_a"
 
 
 def test_build_timeseries_override():
@@ -201,35 +207,35 @@ def test_build_timeseries_override():
     datasets = {"source_a": data_a, "source_b": data_b}
 
     # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
-    combined = _build_dataframe(
+    combined, provenance = _build_data_and_provenance(
         {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_TIMESERIES
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, None]
-
-    # The combined m1 timeseries is the highest priority real value for each date, a blend of source_a and source_b.
-    combined = _build_dataframe(
-        {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_TIMESERIES_POINT
-    )
-    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, 2, 3]
+    assert provenance.loc["97123", "m1"].replace({np.nan: None}).tolist() == [
+        None,
+        "source_b",
+        None,
+    ]
 
     # The combined m1 timeseries is the highest priority value for each date; source_b is higher priority for
     # both 2020-04-01 and 2020-04-02.
-    combined = _build_dataframe(
+    combined, provenance = _build_data_and_provenance(
         {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_ROW
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, 3]
+    assert provenance.loc["97123", "m1"].tolist() == ["source_b", "source_b", "source_a"]
 
-    combined = _build_dataframe(
+    combined, provenance = _build_data_and_provenance(
         {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_TIMESERIES
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
+    assert provenance.loc["97123", "m1"].replace({np.nan: None}).tolist() == [
+        "source_a",
+        None,
+        "source_a",
+    ]
 
-    combined = _build_dataframe(
-        {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_TIMESERIES_POINT
-    )
-    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, 2, 3]
-
-    combined = _build_dataframe(
+    combined, _ = _build_data_and_provenance(
         {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_ROW
     )
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
