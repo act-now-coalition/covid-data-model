@@ -17,6 +17,7 @@ from pyseir import cli
 NYC_FIPS = "36061"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "intervention",
     [
