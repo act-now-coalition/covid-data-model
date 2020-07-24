@@ -65,15 +65,15 @@ class ForecastRt:
         self.daily_var_prefix = "new_"
         self.daily_case_var = self.daily_var_prefix + self.case_var
         self.daily_death_var = self.daily_var_prefix + self.death_var
-        self.predict_variable = "Rt_MAP__new_cases"
-        # self.predict_variable = self.daily_case_var
+        # self.predict_variable = "Rt_MAP__new_cases"
+        self.predict_variable = self.daily_case_var
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
             # self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
             self.daily_case_var,
             self.daily_death_var,
-            self.d_predict_variable,
-            self.predict_variable,
+            # self.d_predict_variable,
+            # self.predict_variable,
             self.fips_var_name_int,
             "positive_tests",
             "negative_tests",
@@ -359,6 +359,7 @@ class ForecastRt:
         dropout = 0
         n_hidden_layer_dimensions = 100
         n_layers = 4
+        log.info(f"n_features: {len(self.forecast_variables)}")
         modelClass = MyHyperModel(
             train_sequence_length=self.sequence_length,
             predict_sequence_length=self.predict_days,
@@ -516,7 +517,7 @@ class ForecastRt:
                     )
 
             plt.title(state_name + ": epochs: " + str(self.n_epochs))
-            plt.ylim(0.5, 3)
+            # plt.ylim(0.5, 3)
             output_path = get_run_artifact_path(fips, RunArtifact.FORECAST_RESULT)
             state_obj = us.states.lookup(state_name)
             plt.savefig(output_path, bbox_inches="tight")
