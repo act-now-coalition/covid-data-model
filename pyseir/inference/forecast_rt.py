@@ -120,7 +120,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 10
-        self.n_epochs = 1
+        self.n_epochs = 150
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
@@ -632,7 +632,7 @@ class ForecastRt:
         tuner = RandomSearch(
             hypermodel,
             objective="val_loss",
-            max_trials=1,
+            max_trials=100,
             directory="hyperparam_search",
             project_name="hyperparam_search",
         )
