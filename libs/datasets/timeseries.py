@@ -254,14 +254,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE],
         )
 
-    def to_csv(self, path: pathlib.Path):
-        """Persists timeseries to CSV.
-
-        Args:
-            path: Path to write to.
-        """
-        common_df.write_csv(self.data, path, structlog.get_logger())
-
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         df = common_df.read_csv(path_or_buf)
