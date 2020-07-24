@@ -66,14 +66,16 @@ class ForecastRt:
         self.daily_case_var = self.daily_var_prefix + self.case_var
         self.daily_death_var = self.daily_var_prefix + self.death_var
         # self.predict_variable = "Rt_MAP__new_cases"
-        self.predict_variable = self.daily_case_var
+
+        self.raw_predict_variable = self.daily_case_var
+        self.smooth_predict_variable = f"smooth_{self.raw_predict_variable}"
+        self.predict_variable = self.smooth_predict_variable
         self.d_predict_variable = f"d_{self.predict_variable}"
         self.forecast_variables = [
             # self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
+            self.predict_variable,
             self.daily_case_var,
             self.daily_death_var,
-            # self.d_predict_variable,
-            # self.predict_variable,
             self.fips_var_name_int,
             "positive_tests",
             "negative_tests",
@@ -114,7 +116,7 @@ class ForecastRt:
         self.percent_train = True
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 50
+        self.n_batch = 10
         self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
@@ -159,12 +161,20 @@ class ForecastRt:
             if self.cases_cumulative:
                 df[self.daily_death_var] = df[self.death_var].diff()
 
+            # Calculate average of predict variable
+            df[self.smooth_predict_variable] = (
+                df.iloc[:][self.raw_predict_variable].rolling(window=5).mean()
+            )
+            log.info("DATA FRAME")
+            log.info(df)
+            # Calculate Rt derivative, exclude first row since-- zero derivative
+            df[self.d_predict_variable] = df[self.predict_variable].diff()
+
             # Only keep data points where predict variable exists
             first_valid_index = df[self.predict_variable].first_valid_index()
             df = df[first_valid_index:].copy()
 
-            # Calculate Rt derivative, exclude first row since-- zero derivative
-            df[self.d_predict_variable] = df[self.predict_variable].diff()
+            # dates.append(df.iloc[-self.predict_days:]['sim_day'])
             # TODO decide if first and last entry need to be removed
             df = df[1:-1]
             df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
@@ -255,24 +265,18 @@ class ForecastRt:
         col = plt.cm.jet(np.linspace(0, 1, round(len(self.forecast_variables) + 1)))
         BOLD_LINEWIDTH = 3
         for df, state in zip(df_list, state_fips):
-            """
             fig, ax = plt.subplots(figsize=(18, 12))
-            # for var in self.forecast_variables:
-            log.info('STATE')
             for var, color in zip(self.forecast_variables, col):
-                log.info(var)
                 if var != self.predict_variable:
-                  ax.plot(df[var], label=var, color=color, linewidth = 1)
+                    ax.plot(df[var], label=var, color=color, linewidth=1)
                 else:
-                  log.info('IMPORTANT VARIABLE')
-                  ax.plot(df[var], label=var, color='black', linewidth = BOLD_LINEWIDTH)
+                    ax.plot(df[var], label=var, color="black", linewidth=BOLD_LINEWIDTH)
             ax.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
             output_path = get_run_artifact_path(state, RunArtifact.FORECAST_VAR_UNSCALED)
             plt.title(us.states.lookup(state).name)
             plt.savefig(output_path, bbox_inches="tight")
-            """
 
             fig2, ax2 = plt.subplots(figsize=(18, 12))
             for var, color in zip(self.forecast_variables, col):
@@ -374,13 +378,13 @@ class ForecastRt:
             n_layers=n_layers,
         )
         history = model.fit(
-            final_list_train_X[:-4],
-            final_list_train_Y[:-4],
+            final_list_train_X,
+            final_list_train_Y,
             epochs=self.n_epochs,
             batch_size=self.n_batch,
             verbose=1,
             shuffle=True,
-            validation_data=(final_list_test_X[:-10], final_list_test_Y[:-10]),
+            validation_data=(final_list_test_X[:-8], final_list_test_Y[:-8]),
         )
 
         plt.close("all")
