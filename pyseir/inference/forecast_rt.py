@@ -26,6 +26,9 @@ from tensorflow.keras.callbacks import EarlyStopping
 from kerastuner import HyperModel
 from kerastuner.tuners import RandomSearch
 
+# Aesthetics
+from cycler import cycler
+
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
 log = structlog.get_logger(__name__)
 
@@ -117,12 +120,12 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 10
-        self.n_epochs = 1000
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
         self.validation_split = 0  # currently using test set as validation set
-        self.hyperparam_search = False
+        self.hyperparam_search = True
 
     @classmethod
     def run_forecast(cls, df_all=None):
@@ -165,8 +168,6 @@ class ForecastRt:
             df[self.smooth_predict_variable] = (
                 df.iloc[:][self.raw_predict_variable].rolling(window=5).mean()
             )
-            log.info("DATA FRAME")
-            log.info(df)
             # Calculate Rt derivative, exclude first row since-- zero derivative
             df[self.d_predict_variable] = df[self.predict_variable].diff()
 
@@ -279,14 +280,29 @@ class ForecastRt:
             plt.savefig(output_path, bbox_inches="tight")
 
             fig2, ax2 = plt.subplots(figsize=(18, 12))
-            for var, color in zip(self.forecast_variables, col):
+            # for var, color in zip(self.forecast_variables, col):
+            for i in range(len(self.forecast_variables)):
+                if i % 2 == 0:
+                    lstyle = "solid"
+                elif i % 3 == 0:
+                    lstyle = "dotted"
+                else:
+                    lstyle = "dashed"
+                var = self.forecast_variables[i]
+                color = col[i]
                 reshaped_data = df[var].values.reshape(-1, 1)
                 scaled_values = scalers_dict[var].transform(reshaped_data)
                 # ax2.plot(scaled_values, label=var, color=color)
                 if var != self.predict_variable and var != self.daily_case_var:
-                    ax2.plot(scaled_values, label=var, color=color, linewidth=1)
+                    ax2.plot(scaled_values, label=var, color=color, linewidth=1, linestyle=lstyle)
                 else:
-                    ax2.plot(scaled_values, label=var, color=color, linewidth=BOLD_LINEWIDTH)
+                    ax2.plot(
+                        scaled_values,
+                        label=var,
+                        color=color,
+                        linewidth=BOLD_LINEWIDTH,
+                        linestyle=lstyle,
+                    )
             ax2.legend()
             plt.xticks(rotation=30, fontsize=14)
             plt.grid(which="both", alpha=0.5)
@@ -346,23 +362,29 @@ class ForecastRt:
         final_list_test_X = np.concatenate(list_test_X)
         final_list_test_Y = np.concatenate(list_test_Y)
 
+        skip_train = 0
+        skip_test = 8
+        if skip_train > 0:
+            final_list_train_X = final_list_train_X[:-skip_train]
+            final_list_train_Y = final_list_train_Y[:-skip_train]
+        if skip_test > 0:
+            final_list_test_X = final_list_test_X[:-skip_test]
+            final_list_test_Y = final_list_test_Y[:-skip_test]
+
         log.info(f"train: {len(final_list_train_X)} test: {len(final_list_test_X)}")
         if self.hyperparam_search:
             model, history, tuner = self.build_model(
-                final_list_train_X[:-4],
-                final_list_train_Y[:-4],
-                final_list_test_X,
-                final_list_test_Y,
+                final_list_train_X, final_list_train_Y, final_list_test_X, final_list_test_Y,
             )
 
             # TODO find a better way to do this and change batch size?
             best_hps = tuner.get_best_hyperparameters()[0]
-            # dropout = best_hps.get("dropout")
-            # n_hidden_layer_dimensions = best_hps.get("n_hidden_layer_dimensions")
-            # n_layers = best_hps.get("n_layers")
-        dropout = 0
-        n_hidden_layer_dimensions = 100
-        n_layers = 4
+            dropout = best_hps.get("dropout")
+            n_hidden_layer_dimensions = best_hps.get("n_hidden_layer_dimensions")
+            n_layers = best_hps.get("n_layers")
+        # dropout = 0
+        # n_hidden_layer_dimensions = 100
+        # n_layers = 4
         log.info(f"n_features: {len(self.forecast_variables)}")
         modelClass = MyHyperModel(
             train_sequence_length=self.sequence_length,
@@ -384,7 +406,7 @@ class ForecastRt:
             batch_size=self.n_batch,
             verbose=1,
             shuffle=True,
-            validation_data=(final_list_test_X[:-8], final_list_test_Y[:-8]),
+            validation_data=(final_list_test_X, final_list_test_Y),
         )
 
         plt.close("all")
@@ -725,9 +747,9 @@ class MyHyperModel(HyperModel):
     def build(self, hp=None, tune=True, n_layers=-1, dropout=-1, n_hidden_layer_dimensions=-1):
         if tune:
             # access hyperparameters from hp
-            dropout = hp.Float("dropout", min_value=0, max_value=0.1, step=0.01, default=0)
+            dropout = hp.Float("dropout", min_value=0, max_value=0.3, step=0.05, default=0)
             n_hidden_layer_dimensions = hp.Int(
-                "n_hidden_layer_dimensions", min_value=100, max_value=101, step=1, default=100
+                "n_hidden_layer_dimensions", min_value=10, max_value=100, step=5, default=100
             )
             n_layers = hp.Int("n_layers", min_value=2, max_value=6, step=1, default=4)
             # n_batch = hp.Choice('n_batch', values=[10]) #TODO test other values

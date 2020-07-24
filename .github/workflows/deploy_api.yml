@@ -48,6 +48,7 @@ env:
 jobs:
   build-and-publish-snapshot:
     runs-on: [self-hosted,model-trainer]
+    timeout-minutes: 1000000000000000
     steps:
 
     - name: Checkout covid-data-model
