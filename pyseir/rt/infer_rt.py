@@ -25,6 +25,9 @@ def run_rt_for_fips(
 ):
     """Entry Point for Infer Rt"""
 
+    # TODO: This fails silently if you pass it a numeric fips instead of a string
+    # assert type(fips) == str
+
     # Generate the Data Packet to Pass to RtInferenceEngine
     input_df = _generate_input_data(
         fips=fips,
@@ -72,6 +75,7 @@ def _generate_input_data(
     include_testing_correction: bool
         If True, include a correction for testing increases and decreases.
     """
+    # TODO: Outlier Removal Before Test Correction
     times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
         fips, t0=InferRtConstants.REF_DATE, include_testing_correction=include_testing_correction
     )

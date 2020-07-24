@@ -639,7 +639,8 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
     df = df.loc[
         (df[CommonFields.POSITIVE_TESTS].notnull())
         & (df[CommonFields.NEGATIVE_TESTS].notnull())
-        & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0),
+        & (df[CommonFields.NEGATIVE_TESTS] > 0)
+        & (df[CommonFields.POSITIVE_TESTS] > 0),
         :,
     ]
 
