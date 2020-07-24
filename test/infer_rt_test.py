@@ -93,6 +93,7 @@ def check_standard_assertions(rt1, rt2, t_switch, rt):
     ), f"Test {id} Failed: Today Value Not Within Spec: Predicted={round(rt[-1],2)} Observed={rt2}."
 
 
+@pytest.mark.slow
 def test_constant_cases_high_count(tmp_path):
     """Track constant cases (R=1) at low count"""
     data_spec = load_data.DataSpec(
@@ -108,6 +109,7 @@ def test_constant_cases_high_count(tmp_path):
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
+@pytest.mark.slow
 def test_med_scale_strong_growth_and_decay():
     """Track cases growing strongly and then decaying strongly"""
     (rt1, rt2, t_switch, rt) = run_individual(
@@ -124,6 +126,7 @@ def test_med_scale_strong_growth_and_decay():
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
+@pytest.mark.slow
 def test_low_cases_weak_growth():
     """Track with low scale (count = 5) and slow growth"""
     (rt1, rt2, t_switch, rt) = run_individual(
@@ -141,6 +144,7 @@ def test_low_cases_weak_growth():
     # TODO is failing this test rt = .84 instead of rt1
 
 
+@pytest.mark.slow
 def test_high_scale_late_growth():
     """Track decaying from high initial count to low number then strong growth"""
     (rt1, rt2, t_switch, rt) = run_individual(
@@ -157,6 +161,7 @@ def test_high_scale_late_growth():
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
+@pytest.mark.slow
 def test_low_scale_two_decays():
     """Track low scale decay at two different rates"""
     (rt1, rt2, t_switch, rt) = run_individual(
@@ -173,6 +178,7 @@ def test_low_scale_two_decays():
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
+@pytest.mark.slow
 def test_smoothing_and_causality():
     run_individual(
         "56",  # Wyoming
