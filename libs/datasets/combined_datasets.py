@@ -284,7 +284,7 @@ def _build_combined_dataset_from_sources(
         if classes
     }
 
-    data, provenance = _build_dataframe(feature_definition, datasets)
+    data, provenance = _build_data_and_provenance(feature_definition, datasets)
     return target_dataset_cls(data.reset_index(), provenance=provenance)
 
 
@@ -303,7 +303,7 @@ class Override(Enum):
     BY_TIMESERIES_POINT = 3  # Deprecated
 
 
-def _build_dataframe(
+def _build_data_and_provenance(
     feature_definitions: Mapping[str, List[str]],
     datasource_dataframes: Mapping[str, pd.DataFrame],
     override=Override.BY_TIMESERIES,
