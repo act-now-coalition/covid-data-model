@@ -72,7 +72,7 @@ class ForecastRt:
             # self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
             self.daily_case_var,
             self.daily_death_var,
-            # self.d_predict_variable,
+            self.d_predict_variable,
             self.predict_variable,
             self.fips_var_name_int,
             "positive_tests",
@@ -85,18 +85,18 @@ class ForecastRt:
             "contact_tracers_count",
             "nmf_day_doc_fbs_ght",
             "raw_community",
-            # "raw_hh_cmnty_cli",
-            # "raw_nohh_cmnty_cli",
-            # "raw_wcli",
-            # "raw_wili",
-            # "smoothed_cli",
-            # "smoothed_community",
-            # "smoothed_hh_cmnty_cli",
-            # "smoothed_ili",
-            # "smoothed_nohh_cmnty_cli",
-            # "smoothed_wcli",
-            # "smoothed_wili",
-            # "unsmoothed_community",
+            "raw_hh_cmnty_cli",
+            "raw_nohh_cmnty_cli",
+            "raw_wcli",
+            "raw_wili",
+            "smoothed_cli",
+            "smoothed_community",
+            "smoothed_hh_cmnty_cli",
+            "smoothed_ili",
+            "smoothed_nohh_cmnty_cli",
+            "smoothed_wcli",
+            "smoothed_wili",
+            "unsmoothed_community",
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -234,6 +234,17 @@ class ForecastRt:
             # Select train and test sets
             train_samples = df_samples_spaced[:train_set_length]
             test_samples = df_samples_spaced[train_set_length:]
+
+            if self.save_csv_output:
+                for i in range(len(train_samples_not_spaced)):
+                    df = train_samples_not_spaced[i]
+                    if self.save_csv_output:
+                        df.to_csv(self.csv_output_folder + "df" + str(i) + "_train-notspaced.csv")
+
+                for i in range(len(test_samples)):
+                    df = test_samples[i]
+                    if self.save_csv_output:
+                        df.to_csv(self.csv_output_folder + "df" + str(i) + "_test-notspaced.csv")
 
         # Scaling set is the concatenated train_samples
         scaling_set = pd.concat(train_samples)
