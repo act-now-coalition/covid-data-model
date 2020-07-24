@@ -1,9 +1,11 @@
+import pytest
 from click.testing import CliRunner
 
 
 from cli import data
 
 
+@pytest.mark.slow
 def test_summary_save(tmp_path):
 
     runner = CliRunner()

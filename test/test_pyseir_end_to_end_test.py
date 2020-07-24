@@ -12,6 +12,7 @@ import pytest
 pytestmark = pytest.mark.filterwarnings("error")
 
 
+@pytest.mark.slow
 def test_pyseir_end_to_end_idaho():
     # This covers a lot of edge cases.
     # cli._run_all(state='Idaho')
@@ -29,6 +30,7 @@ def test_pyseir_end_to_end_idaho():
     assert (with_values < 6).all()
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("fips,expected_results", [(None, True), ("16013", True), ("26013", False)])
 def test_filters_counties_properly(fips, expected_results):
     cli._generate_whitelist()

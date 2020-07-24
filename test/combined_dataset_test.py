@@ -32,6 +32,7 @@ import pytest
 # is returning multiple values for a single row.
 
 
+@pytest.mark.slow
 def test_unique_index_values_us_timeseries():
     timeseries = combined_datasets.load_us_timeseries_dataset()
     timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS)
@@ -74,6 +75,7 @@ def test_combined_county_has_some_timeseries_data(fips):
         assert df.loc["2020-05-01", CommonFields.CURRENT_ICU] > 0
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "data_source_cls",
     [
@@ -97,6 +99,7 @@ def test_unique_timeseries(data_source_cls):
     assert not sum(duplicates), str(timeseries_data.loc[duplicates])
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "data_source_cls",
     [
@@ -241,6 +244,7 @@ def test_build_timeseries_override():
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
 
 
+@pytest.mark.slow
 def test_build_combined_dataset_from_sources_smoke_test():
     # Quickly make sure _build_combined_dataset_from_sources doesn't crash when run with a small
     # number of features.
