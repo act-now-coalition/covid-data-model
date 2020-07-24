@@ -50,6 +50,16 @@ prepare () {
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
   API_OUTPUT_US="${API_OUTPUT_DIR}/us"
+  API_OUTPUT_QA="${API_OUTPUT_DIR}/qa"
+
+  # Create QA dir
+  if [ ! -d "${API_OUTPUT_QA}" ] ; then
+    echo "Directory ${API_OUTPUT_QA} does not exist. Creating."
+    mkdir -p "${API_OUTPUT_QA}"
+    echo "made dir"
+  fi
+
+  TIMESERIES_SUMMARY_PATH="./data/timeseries_summary.csv"
 }
 
 execute_raw_data_qa() {
@@ -102,6 +112,9 @@ execute_api() {
 
   # echo ">>> Generate an QA doc for states to ${API_OUTPUT_DIR}/qa"
   # ./run.py compare-snapshots -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_DIR}/qa"
+
+  echo ">>> Copying timeseries summary to ${API_OUTPUT_QA}"
+  cp "${TIMESERIES_SUMMARY_PATH}" "${API_OUTPUT_QA}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }

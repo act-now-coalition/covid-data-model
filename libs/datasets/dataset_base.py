@@ -1,4 +1,4 @@
-from typing import List, Union, TextIO, Mapping, Iterable
+from typing import List, Union, TextIO, Mapping, Iterable, Optional
 import pathlib
 from covidactnow.datapublic import common_df
 import pandas as pd
@@ -11,8 +11,9 @@ class DatasetBase(object):
 
     COMMON_INDEX_FIELDS: List[str] = []
 
-    def __init__(self, data: pd.DataFrame):
+    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.DataFrame] = None):
         self.data = data
+        self.provenance = provenance
 
     def get_subset(self, aggregation_level: AggregationLevel, **filters) -> "DatasetBase":
         """Returns a subset of the existing dataset."""
