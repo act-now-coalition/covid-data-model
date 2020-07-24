@@ -90,7 +90,7 @@ def find_missing_values_in_summary(
 
 
 def get_summaries(
-    sha1: str, sha2: str, level: AggregationLevel = None, fips: str = None
+    sha1: str, sha2: str, level: Optional[AggregationLevel] = None, fips: Optional[str] = None
 ) -> Tuple[TimeseriesSummary, TimeseriesSummary]:
     """Builds summaries comparing timeseries between two commit shas.
 
@@ -127,10 +127,13 @@ def get_summaries(
 
 
 def get_changes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """Gets changes between two data frames.
+    """Returns differences of each column in input DataFrames for matching indices.
 
     Expects dataframes with matching index levels.
     """
+    if not (df1.index == df2.index).all():
+        raise ValueError("Indexes must match")
+
     ne_stacked = (df1 != df2).stack()
     changed = ne_stacked[ne_stacked]
     difference_locations = np.where(df1 != df2)
