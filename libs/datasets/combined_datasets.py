@@ -40,7 +40,10 @@ from libs import us_state_abbrev
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 
-_logger = logging.getLogger(__name__)
+# structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
+_log = structlog.get_logger()
+
+
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
@@ -285,7 +288,7 @@ def _build_combined_dataset_from_sources(
     }
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    return target_dataset_cls(data.reset_index(), provenance=_to_timeseries_rows(provenance))
+    return target_dataset_cls(data.reset_index(), provenance=_to_timeseries_rows(provenance, _log))
 
 
 class Override(Enum):
@@ -308,9 +311,6 @@ def _build_data_and_provenance(
     datasource_dataframes: Mapping[str, pd.DataFrame],
     override=Override.BY_TIMESERIES,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
-    log = structlog.get_logger()
-
     # These are columns that are expected to have a single value for each FIPS. Get the columns
     # from every row of each data source and then keep one of each unique row.
     preserve_columns = [
@@ -349,7 +349,7 @@ def _build_data_and_provenance(
     #     raise ValueError("bad new_index.names")
 
     data, provenance = _merge_data(
-        datasource_dataframes, feature_definitions, log, new_index, override
+        datasource_dataframes, feature_definitions, _log, new_index, override
     )
 
     if not fips_indexed.empty:

@@ -44,3 +44,6 @@ class DatasetBase(object):
             path: Path to write to.
         """
         common_df.write_csv(self.data, path, structlog.get_logger(), self.COMMON_INDEX_FIELDS)
+        if self.provenance is not None:
+            provenance_path = str(path).replace(".csv", "-provenance.csv")
+            self.provenance.sort_index().to_csv(provenance_path)
