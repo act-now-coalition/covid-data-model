@@ -38,22 +38,27 @@ Some code in the `covid-data-model` repo depends on there being a copy of the `c
 Detailed setup instructions can be found [here](./SETUP.md)
 
 # API Snapshots
+We automatically build & publish an API snapshot (e.g.
+https://data.covidactnow.org/snapshot/123/) twice a day via a [github
+action](./.github/workflows/daily_build.yml).
 
-We automatically build & publish an API snapshot (e.g. https://data.covidactnow.org/snapshot/123/)
-twice a day via a [github action](./.github/workflows/deploy_api.yml).  To manually kick off a new
-snapshot, get a
-[personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
+To manually kick off a new snapshot (e.g. from a feature branch), get a
+[github personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line),
 and run:
 
 ```bash
-export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
-./tools/push-api.sh
+GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN> ./tools/build-snapshot.sh <branch (or commit sha, etc.)>
 ```
 
-Once a snapshot has been vetted, you can "label" it with a friendly name, e.g. pointing https://data.covidactnow.org/v0/ at https://data.covidactnow.org/snapshot/123/ with:
+## Labelling Snapshots
+Once a snapshot has been vetted and shipped to the production website, it should also be labeled
+as our "latest" snapshot, which will allow our API consumers to pick it up.
+
+The command to label snapshot 123 as latest (i.e. pointing https://data.covidactnow.org/latest/
+at https://data.covidactnow.org/snapshot/123/) is:
+
 ```bash
-export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
-./tools/label-api.sh v0 123
+GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN> ./tools/label-api.sh latest 123
 ```
 
 # Development

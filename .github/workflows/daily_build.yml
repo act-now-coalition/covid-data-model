@@ -1,0 +1,27 @@
+# Workflow to trigger our daily snapshot builds.
+#
+# See https://github.com/covid-projections/covid-data-model/blob/master/.github/workflows/deploy_api.yml
+# for the actual meat of the snapshot build.
+
+name: Trigger daily Snapshot Build
+
+on:
+  # covid-data-public fetches data at 01:00 and 12:00 UTC.
+  # So we rebuild / publish the API at 01:30 and 12:30 UTC.
+  schedule:
+   - cron: '30 1,12 * * *'
+
+jobs:
+  trigger-daily-build:
+    steps:
+
+    - name: Checkout covid-data-model
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-model
+
+    - name: Trigger snapshot build.
+      env:
+        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+      run: |
+        ./tools/build-snapshot.sh master
