@@ -385,12 +385,13 @@ def _merge_data(datasource_dataframes, feature_definitions, log, new_index, over
                     field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
                     field_out = datasource_field_in
                 else:
-                    keep_higher_priority = field_out.groupby(level=[CommonFields.FIPS]).transform(
-                        lambda x: x.notna().any()
-                    )
+                    field_out_has_ts = field_out.groupby(
+                        level=[CommonFields.FIPS], sort=False
+                    ).transform(lambda x: x.notna().any())
+                    copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
                     # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-                    field_provenance.loc[~keep_higher_priority] = datasource_name
-                    field_out = field_out.where(keep_higher_priority, datasource_field_in)
+                    field_provenance.loc[copy_field_in] = datasource_name
+                    field_out = field_out.where(~copy_field_in, datasource_field_in)
                 dups = field_out.index.duplicated(keep=False)
                 if dups.any():
                     log.error("Found duplicates in index")

@@ -247,6 +247,27 @@ def test_build_timeseries_override():
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
 
 
+def test_build_and_and_provenance_missing_fips():
+    data_a = read_csv_and_index_fips_date(
+        "fips,date,m1,m2\n" "97111,2020-04-01,1,\n" "97111,2020-04-02,,\n" "97111,2020-04-03,3,3\n"
+    )
+    data_b = read_csv_and_index_fips_date(
+        "fips,date,m1,m2\n" "97111,2020-04-01,,\n" "97111,2020-04-02,2,\n" "97444,2020-04-04,4,\n"
+    )
+    datasets = {"source_a": data_a, "source_b": data_b}
+
+    # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
+    combined, provenance = _build_data_and_provenance(
+        {"m1": ["source_a", "source_b"], "m2": ["source_a", "source_b"]},
+        datasets,
+        override=Override.BY_TIMESERIES,
+    )
+    assert combined.loc["97444", "m1"].dropna().tolist() == [4]
+    assert provenance.loc["97444", "m1"].dropna().tolist() == ["source_b"]
+    assert combined.loc["97444", "m2"].dropna().tolist() == []
+    assert provenance.loc["97444", "m2"].dropna().tolist() == []
+
+
 @pytest.mark.slow
 def test_build_combined_dataset_from_sources_smoke_test():
     # Quickly make sure _build_combined_dataset_from_sources doesn't crash when run with a small
