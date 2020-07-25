@@ -42,6 +42,20 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
+    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
+        super().__init__(data, provenance)
+        columns_without_timeseries_point_keys = set(data.columns) - set(
+            COMMON_FIELDS_TIMESERIES_KEYS
+        )
+        self.data_date_columns = (
+            data.melt(
+                id_vars=[CommonFields.FIPS, CommonFields.DATE],
+                value_vars=columns_without_timeseries_point_keys,
+            )
+            .set_index([CommonFields.FIPS, "variable", CommonFields.DATE])
+            .unstack(CommonFields.DATE)
+        )
+
     @property
     def all_fips(self):
         return self.data.reset_index().fips.unique()
@@ -262,3 +276,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         # In the future, it would be good to standardize around index fields.
         df = df.reset_index()
         return cls(df)
+
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        super().to_csv(path)
+        self.data_date_columns.to_csv(str(path).replace(".csv", "-wide-dates.csv"))

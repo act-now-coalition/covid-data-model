@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "a60a84fa39d6eecbcd834daea03107d3311ada4c",
+    "sha": "8c782da0d06712afd6e7946b8906553c9e7e5636",
     "branch": "tgb-combined-datasets-provenance-save",
-    "is_dirty": false
+    "is_dirty": true
   },
-  "updated_at": "2020-07-25T04:28:29.900308"
+  "updated_at": "2020-07-25T07:51:28.787958"
 }

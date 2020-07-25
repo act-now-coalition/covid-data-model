@@ -448,7 +448,7 @@ def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
 
     Args:
         wide: DataFrame with a row for each fips-date and a column containing the datasource for each variable.
-            The date and fips need to be regular columns, not in the index.
+            The date and fips are expected to be named levels in a MultiIndex.
 
     Returns: A Series of string data source values with fips and variable in the index. In the unexpected
         case of multiple sources for a timeseries a warning is logged and one is returned arbitrarily.
