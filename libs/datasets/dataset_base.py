@@ -14,7 +14,7 @@ class DatasetBase(object):
 
     COMMON_INDEX_FIELDS: List[str] = []
 
-    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.DataFrame] = None):
+    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
         self.data = data
         self.provenance = provenance
 

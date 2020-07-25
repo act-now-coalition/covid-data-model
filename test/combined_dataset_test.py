@@ -1,6 +1,8 @@
 import logging
 import re
 
+import structlog
+
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.combined_datasets import (
@@ -9,6 +11,7 @@ from libs.datasets.combined_datasets import (
     _build_combined_dataset_from_sources,
     US_STATES_FILTER,
     FeatureDataSourceMap,
+    _to_timeseries_rows,
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.cmdc import CmdcDataSource
@@ -22,7 +25,7 @@ from libs.datasets import NevadaHospitalAssociationData
 
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.timeseries import TimeseriesDataset
-from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date
+from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date, to_dict
 import pandas as pd
 import numpy as np
 import pytest
@@ -263,3 +266,41 @@ def test_build_combined_dataset_from_sources_smoke_test():
     _build_combined_dataset_from_sources(
         LatestValuesDataset, feature_definition, filter=US_STATES_FILTER,
     )
+
+
+def test_melt_provenance():
+    wide = read_csv_and_index_fips_date(
+        "fips,date,cases,recovered\n"
+        "97111,2020-04-01,source_a,source_b\n"
+        "97111,2020-04-02,source_a,\n"
+        "97222,2020-04-01,source_c,\n"
+    )
+    with structlog.testing.capture_logs() as logs:
+        long = _to_timeseries_rows(wide, structlog.get_logger())
+
+    assert logs == []
+
+    assert long.to_dict() == {
+        ("97111", "cases"): "source_a",
+        ("97111", "recovered"): "source_b",
+        ("97222", "cases"): "source_c",
+    }
+
+
+def test_melt_provenance_multiple_sources():
+    wide = read_csv_and_index_fips_date(
+        "fips,date,cases,recovered\n"
+        "97111,2020-04-01,source_a,source_b\n"
+        "97111,2020-04-02,source_x,\n"
+        "97222,2020-04-01,source_c,\n"
+    )
+    with structlog.testing.capture_logs() as logs:
+        long = _to_timeseries_rows(wide, structlog.get_logger())
+
+    assert [l["event"] for l in logs] == ["Multiple rows for a timeseries"]
+
+    assert long.to_dict() == {
+        ("97111", "cases"): "source_a",
+        ("97111", "recovered"): "source_b",
+        ("97222", "cases"): "source_c",
+    }

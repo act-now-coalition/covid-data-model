@@ -285,7 +285,7 @@ def _build_combined_dataset_from_sources(
     }
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    return target_dataset_cls(data.reset_index(), provenance=provenance)
+    return target_dataset_cls(data.reset_index(), provenance=_to_timeseries_rows(provenance))
 
 
 class Override(Enum):
@@ -440,3 +440,28 @@ def _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_inde
         data.loc[:, field_name] = field_out
         provenance.loc[:, field_name] = pd.concat(field_provenance)
     return data, provenance
+
+
+def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
+    """Transform a DataFrame of sources with dateindex and variable columns to Series with one row per variable.
+
+    Args:
+        wide: DataFrame with a row for each fips-date and a column containing the datasource for each variable.
+            The date and fips need to be regular columns, not in the index.
+
+    Returns: A Series of string data source values with fips and variable in the index. In the unexpected
+        case of multiple sources for a timeseries a warning is logged and one is returned arbitrarily.
+    """
+    columns_without_timeseries_point_keys = set(wide.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS)
+    long_unindexed = (
+        wide.reset_index()
+        .melt(id_vars=[CommonFields.FIPS], value_vars=columns_without_timeseries_point_keys)
+        .drop_duplicates()
+        .dropna(subset=["value"])
+    )
+    fips_var_grouped = long_unindexed.groupby([CommonFields.FIPS, "variable"], sort=False)["value"]
+    dups = fips_var_grouped.transform("size") > 1
+    if dups.any():
+        log.warning("Multiple rows for a timeseries", bad_data=long_unindexed[dups])
+    first = fips_var_grouped.first()
+    return first
