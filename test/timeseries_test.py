@@ -20,10 +20,10 @@ def test_get_subset_and_get_data():
             "New York City,,ZZ,97324,USA,city,2020-03-22,march22-nyc\n"
             "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
             ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
-            ",,ZZ,97001,USA,state,2020-03-23,mystate\n"
-            ",,XY,96001,USA,state,2020-03-23,other-state\n"
-            ",,,,UK,country,2020-03-23,you-kee\n"
-            ",,,,US,country,2020-03-23,you-ess-hey\n"
+            ",,ZZ,97,USA,state,2020-03-23,mystate\n"
+            ",,XY,96,USA,state,2020-03-23,other-state\n"
+            ",,,iso2:uk,UK,country,2020-03-23,you-kee\n"
+            ",,,iso2:us,US,country,2020-03-23,you-ess-hey\n"
         )
     )
     ts = TimeseriesDataset(input_df)
@@ -48,3 +48,17 @@ def test_get_subset_and_get_data():
         "mystate",
     }
     assert set(ts.get_data(None, states=["ZZ"], before="2020-03-23")["metric"]) == {"march22-nyc"}
+
+
+def test_wide_dates():
+    input_df = pd.read_csv(
+        StringIO(
+            "fips,county,aggregate_level,date,m1,m2\n"
+            "97111,Bar County,county,2020-04-01,1,\n"
+            "97111,Bar County,county,2020-04-02,2,\n"
+            "97222,Foo County,county,2020-04-01,,10\n"
+            "97222,Foo County,county,2020-04-03,3,30\n"
+        )
+    )
+    ts = TimeseriesDataset(input_df)
+    assert not ts.data_date_columns.empty

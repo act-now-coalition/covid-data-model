@@ -44,17 +44,32 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
         super().__init__(data, provenance)
-        columns_without_timeseries_point_keys = set(data.columns) - set(
-            COMMON_FIELDS_TIMESERIES_KEYS
+
+        geo_data_columns = set(data.columns) & {
+            CommonFields.FIPS,
+            CommonFields.AGGREGATE_LEVEL,
+            CommonFields.STATE,
+            CommonFields.COUNTRY,
+            CommonFields.COUNTY,
+            "city",
+        }
+        # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
+        # are rows in the input data sources that have different values for county name, state etc.
+        fips_indexed = (
+            data.loc[:, geo_data_columns]
+            .drop_duplicates()
+            .set_index(CommonFields.FIPS, verify_integrity=True)
         )
-        self.data_date_columns = (
-            data.melt(
-                id_vars=[CommonFields.FIPS, CommonFields.DATE],
-                value_vars=columns_without_timeseries_point_keys,
-            )
+        ts_value_columns = set(data.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS) - geo_data_columns
+        data_date_columns = (
+            data.loc[:, COMMON_FIELDS_TIMESERIES_KEYS + list(ts_value_columns)]
+            .melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS, value_vars=ts_value_columns,)
             .set_index([CommonFields.FIPS, "variable", CommonFields.DATE])
             .unstack(CommonFields.DATE)
         )
+        self.data_date_columns = data_date_columns.loc[
+            data_date_columns.loc[:, "value"].notna().any(axis=1), :
+        ]
 
     @property
     def all_fips(self):
@@ -284,4 +299,9 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             path: Path to write to.
         """
         super().to_csv(path)
-        self.data_date_columns.to_csv(str(path).replace(".csv", "-wide-dates.csv"))
+        self.data_date_columns.to_csv(
+            str(path).replace(".csv", "-wide-dates.csv"),
+            date_format="%Y-%m-%d",
+            index=True,
+            float_format="%.12g",
+        )
