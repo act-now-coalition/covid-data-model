@@ -12,7 +12,7 @@ from pyseir.inference.fit_results import load_inference_result, load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
 from libs.datasets import CommonFields
-from libs.datasets import FIPSPopulation, combined_datasets, dataset_cache
+from libs.datasets import FIPSPopulation, combined_datasets
 import libs.datasets.can_model_output_schema as schema
 
 
@@ -332,7 +332,6 @@ class WebUIDataAdaptorV1:
 
 
 if __name__ == "__main__":
-    dataset_cache.set_pickle_cache_dir()
     # Need to have a whitelist pre-generated
     # Need to have state output already built
     mapper = WebUIDataAdaptorV1(
