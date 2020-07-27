@@ -12,6 +12,7 @@ from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.qa.dataset_summary_gen import generate_field_summary
 
 
 class DuplicateDataException(Exception):
@@ -61,15 +62,22 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             .set_index(CommonFields.FIPS, verify_integrity=True)
         )
         ts_value_columns = set(data.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS) - geo_data_columns
-        data_date_columns = (
+        long = (
             data.loc[:, COMMON_FIELDS_TIMESERIES_KEYS + list(ts_value_columns)]
             .melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS, value_vars=ts_value_columns,)
+            .dropna()
             .set_index([CommonFields.FIPS, "variable", CommonFields.DATE])
-            .unstack(CommonFields.DATE)
+            .apply(pd.to_numeric)
         )
-        self.data_date_columns = data_date_columns.loc[
+        data_date_columns = long.unstack(CommonFields.DATE)
+
+        data_date_columns = data_date_columns.loc[
             data_date_columns.loc[:, "value"].notna().any(axis=1), :
         ]
+        summary = data_date_columns.loc[:, "value"].apply(generate_field_summary, axis=1)
+        self.data_date_columns = pd.concat(
+            {"summary": summary, "value": data_date_columns["value"]}, axis=1
+        )
 
     @property
     def all_fips(self):
