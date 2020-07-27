@@ -1,0 +1,8 @@
+#!/bin/bash
+
+ls
+apt-get install git-lfs
+git clone https://github.com/covid-projections/covid-data-public.git
+ls
+pip install -e covid-data-public
+ls
