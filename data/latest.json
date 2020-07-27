@@ -4,12 +4,12 @@
   "data_git_info": {
     "sha": "2db0aae287becf5de83516ea07b3a3f549708bea",
     "branch": "master",
-    "is_dirty": false
+    "is_dirty": true
   },
   "model_git_info": {
-    "sha": "e150d393a668f74090d03ddbf2e87c539350de12",
+    "sha": "1720bea6f32ab90b00cf0fdb58bb1af71fd970d1",
     "branch": "master",
-    "is_dirty": false
+    "is_dirty": true
   },
-  "updated_at": "2020-07-27T12:24:32.219281"
+  "updated_at": "2020-07-27T22:13:13.112722"
 }
