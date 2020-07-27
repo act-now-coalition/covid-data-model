@@ -61,70 +61,55 @@ FeatureDataSourceMap = NewType(
 # immediately obvious as to the transformations that are or are not applied.
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
-ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [NYTimesDataset],
-    CommonFields.DEATHS: [NYTimesDataset],
-    CommonFields.RECOVERED: [JHUDataset],
-    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
-    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.CURRENT_HOSPITALIZED: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-        TexasHospitalizations,
-    ],
-    CommonFields.CURRENT_VENTILATED: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
-    CommonFields.POPULATION: [FIPSPopulation],
-    CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
-    CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds],
-    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
-}
-
-
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.RECOVERED: [JHUDataset],
-    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
+    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
         CmdcDataSource,
         CovidTrackingDataSource,
         TexasHospitalizations,
     ],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
+    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
+    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
     CommonFields.CURRENT_VENTILATED: [
         CmdcDataSource,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
-    CommonFields.STAFFED_BEDS: [CmdcDataSource],
+    CommonFields.DEATHS: [NYTimesDataset],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
+    CommonFields.ICU_BEDS: [CmdcDataSource],
+    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
-    CommonFields.ICU_BEDS: [CmdcDataSource],
-    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
-    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
     CommonFields.NEGATIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
-    CommonFields.CASES: [NYTimesDataset],
-    CommonFields.DEATHS: [NYTimesDataset],
+    CommonFields.POSITIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
+    CommonFields.RECOVERED: [JHUDataset],
+    CommonFields.STAFFED_BEDS: [CmdcDataSource],
 }
+
+ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
+    **ALL_TIMESERIES_FEATURE_DEFINITION,
+    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
+    CommonFields.CURRENT_HOSPITALIZED: [
+        CmdcDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        TexasHospitalizations,
+    ],
+    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds],
+    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
+    CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
+    CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
+    CommonFields.POPULATION: [FIPSPopulation],
+    CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
+}
+
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(
     country="USA", states=list(us_state_abbrev.ABBREV_US_STATE.keys())
