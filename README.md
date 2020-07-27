@@ -50,7 +50,7 @@ and run:
 GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN> ./tools/build-snapshot.sh <branch (or commit sha, etc.)>
 ```
 
-## Labelling Snapshots
+## Labeling Snapshots
 Once a snapshot has been vetted and shipped to the production website, it should also be labeled
 as our "latest" snapshot, which will allow our API consumers to pick it up.
 
