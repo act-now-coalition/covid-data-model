@@ -4,7 +4,6 @@ from typing import Mapping, List
 
 import pandas as pd
 import numpy as np
-from structlog import testing, get_logger
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
 from libs.datasets import dataset_utils

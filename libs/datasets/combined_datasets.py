@@ -40,7 +40,10 @@ from libs import us_state_abbrev
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 
-_logger = logging.getLogger(__name__)
+# structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
+_log = structlog.get_logger()
+
+
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
@@ -285,7 +288,7 @@ def _build_combined_dataset_from_sources(
     }
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    return target_dataset_cls(data.reset_index(), provenance=provenance)
+    return target_dataset_cls(data.reset_index(), provenance=_to_timeseries_rows(provenance, _log))
 
 
 class Override(Enum):
@@ -308,9 +311,6 @@ def _build_data_and_provenance(
     datasource_dataframes: Mapping[str, pd.DataFrame],
     override=Override.BY_TIMESERIES,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
-    log = structlog.get_logger()
-
     # These are columns that are expected to have a single value for each FIPS. Get the columns
     # from every row of each data source and then keep one of each unique row.
     preserve_columns = [
@@ -349,7 +349,7 @@ def _build_data_and_provenance(
     #     raise ValueError("bad new_index.names")
 
     data, provenance = _merge_data(
-        datasource_dataframes, feature_definitions, log, new_index, override
+        datasource_dataframes, feature_definitions, _log, new_index, override
     )
 
     if not fips_indexed.empty:
@@ -385,12 +385,13 @@ def _merge_data(datasource_dataframes, feature_definitions, log, new_index, over
                     field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
                     field_out = datasource_field_in
                 else:
-                    keep_higher_priority = field_out.groupby(level=[CommonFields.FIPS]).transform(
-                        lambda x: x.notna().any()
-                    )
+                    field_out_has_ts = field_out.groupby(
+                        level=[CommonFields.FIPS], sort=False
+                    ).transform(lambda x: x.notna().any())
+                    copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
                     # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-                    field_provenance.loc[~keep_higher_priority] = datasource_name
-                    field_out = field_out.where(keep_higher_priority, datasource_field_in)
+                    field_provenance.loc[copy_field_in] = datasource_name
+                    field_out = field_out.where(~copy_field_in, datasource_field_in)
                 dups = field_out.index.duplicated(keep=False)
                 if dups.any():
                     log.error("Found duplicates in index")
@@ -440,3 +441,28 @@ def _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_inde
         data.loc[:, field_name] = field_out
         provenance.loc[:, field_name] = pd.concat(field_provenance)
     return data, provenance
+
+
+def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
+    """Transform a DataFrame of sources with dateindex and variable columns to Series with one row per variable.
+
+    Args:
+        wide: DataFrame with a row for each fips-date and a column containing the datasource for each variable.
+            The date and fips need to be regular columns, not in the index.
+
+    Returns: A Series of string data source values with fips and variable in the index. In the unexpected
+        case of multiple sources for a timeseries a warning is logged and one is returned arbitrarily.
+    """
+    columns_without_timeseries_point_keys = set(wide.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS)
+    long_unindexed = (
+        wide.reset_index()
+        .melt(id_vars=[CommonFields.FIPS], value_vars=columns_without_timeseries_point_keys)
+        .drop_duplicates()
+        .dropna(subset=["value"])
+    )
+    fips_var_grouped = long_unindexed.groupby([CommonFields.FIPS, "variable"], sort=False)["value"]
+    dups = fips_var_grouped.transform("size") > 1
+    if dups.any():
+        log.warning("Multiple rows for a timeseries", bad_data=long_unindexed[dups])
+    first = fips_var_grouped.first()
+    return first
