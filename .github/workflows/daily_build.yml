@@ -13,8 +13,9 @@ on:
 
 jobs:
   trigger-daily-build:
-    steps:
+    runs-on: ubuntu-latest
 
+    steps:
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
       with:
