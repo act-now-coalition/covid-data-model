@@ -51,4 +51,6 @@ class CDSDataset(data_source.DataSource):
     @classmethod
     def local(cls) -> "CDSDataset":
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        return cls(common_df.read_csv(data_root / cls.DATA_PATH).reset_index())
+        df = common_df.read_csv(data_root / cls.DATA_PATH).reset_index()
+        df[CommonFields.POSITIVE_TESTS] = df[CommonFields.CASES]
+        return cls(df)
