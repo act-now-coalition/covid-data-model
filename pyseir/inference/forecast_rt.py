@@ -119,13 +119,13 @@ class ForecastRt:
         self.percent_train = True
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 10
-        self.n_epochs = 150
+        self.n_batch = 100
+        self.n_epochs = 2
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 50
         self.validation_split = 0  # currently using test set as validation set
-        self.hyperparam_search = True
+        self.hyperparam_search = False
 
     @classmethod
     def run_forecast(cls, df_all=None):
@@ -362,8 +362,8 @@ class ForecastRt:
         final_list_test_X = np.concatenate(list_test_X)
         final_list_test_Y = np.concatenate(list_test_Y)
 
-        skip_train = 0
-        skip_test = 8
+        skip_train = 380
+        skip_test = 58
         if skip_train > 0:
             final_list_train_X = final_list_train_X[:-skip_train]
             final_list_train_Y = final_list_train_Y[:-skip_train]
@@ -382,9 +382,9 @@ class ForecastRt:
             dropout = best_hps.get("dropout")
             n_hidden_layer_dimensions = best_hps.get("n_hidden_layer_dimensions")
             n_layers = best_hps.get("n_layers")
-        # dropout = 0
-        # n_hidden_layer_dimensions = 100
-        # n_layers = 4
+        dropout = 0
+        n_hidden_layer_dimensions = 100
+        n_layers = 4
         log.info(f"n_features: {len(self.forecast_variables)}")
         modelClass = MyHyperModel(
             train_sequence_length=self.sequence_length,
@@ -399,11 +399,14 @@ class ForecastRt:
             n_hidden_layer_dimensions=n_hidden_layer_dimensions,
             n_layers=n_layers,
         )
+        es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=self.patience)
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="fit_logs")
         history = model.fit(
             final_list_train_X,
             final_list_train_Y,
             epochs=self.n_epochs,
             batch_size=self.n_batch,
+            callbacks=[es, tensorboard_callback],
             verbose=1,
             shuffle=True,
             validation_data=(final_list_test_X, final_list_test_Y),
@@ -441,6 +444,8 @@ class ForecastRt:
         DATA_LINEWIDTH = 1
         MODEL_LINEWIDTH = 2
         # plot training predictions
+        train_error = 0
+        test_error = 0
         for train_df, train_X, train_Y, test_df, test_X, test_Y, area_df in zip(
             area_train_samples,
             list_train_X,
@@ -453,9 +458,15 @@ class ForecastRt:
             plt.figure(figsize=(18, 12))
             fips = train_df[0]["fips"][0]  # here
             state_name = us.states.lookup(fips).name
-            forecasts_train, dates_train = self.get_forecasts(
+            forecasts_train, dates_train, unscaled_forecasts_train = self.get_forecasts(
                 train_df, train_X, train_Y, scalers_dict, forecast_model
             )
+            train_error += rmse(unscaled_forecasts_train, train_Y)
+            log.info(state_name)
+            log.info(forecasts_train)
+            log.info(train_Y)
+            log.info(rmse(forecasts_train, train_Y))
+
             for n in range(len(dates_train)):
                 newdates = dates_train[n]
                 j = np.squeeze(forecasts_train[n])
@@ -471,9 +482,12 @@ class ForecastRt:
                 else:
                     plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
 
-            forecasts_test, dates_test = self.get_forecasts(
+            log.info("now here")
+            forecasts_test, dates_test, unscaled_forecasts_test = self.get_forecasts(
                 test_df, test_X, test_Y, scalers_dict, forecast_model
             )
+            test_error += rmse(unscaled_forecasts_test, test_Y)
+
             for n in range(len(dates_test)):
                 newdates = dates_test[n]
                 j = np.squeeze(forecasts_test[n])
@@ -548,21 +562,27 @@ class ForecastRt:
             state_obj = us.states.lookup(state_name)
             plt.savefig(output_path, bbox_inches="tight")
             plt.close("all")
-
+            log.info(f"train error: {train_error} test error: {test_error}")
         return
 
     def get_forecasts(self, df_list, X_list, Y_list, scalers_dict, model):
+        unscaled_predictions = list()
         forecasts = list()
         dates = list()
         for df, x, y in zip(df_list, X_list, Y_list):
             x = x.reshape(1, x.shape[0], x.shape[1])
             # scaled_df = pd.DataFrame(np.squeeze(x))
-            thisforecast = scalers_dict[self.predict_variable].inverse_transform(model.predict(x))
+            unscaled_prediction = model.predict(x)
+            thisforecast = scalers_dict[self.predict_variable].inverse_transform(
+                unscaled_prediction
+            )
             forecasts.append(thisforecast)
+            unscaled_predictions.append(unscaled_prediction)
+
             # dates.append(df.iloc[-self.predict_days:]['sim_day'])
             dates.append(df.iloc[-self.predict_days :].index)
 
-        return forecasts, dates
+        return forecasts, dates, unscaled_predictions
 
     def get_scaling_dictionary(self, train_scaling_set):
         scalers_dict = {}
@@ -797,6 +817,15 @@ def slim(dataframe_input, variables):
         return df_list
     else:  # assume there is one inputdataframe
         return dataframe_input[variables].copy()
+
+
+def rmse(prediction, data):
+    error_sum = 0
+    prediction_np = np.squeeze(np.asarray(prediction))
+    for i, j in zip(prediction_np, data):  # iterate over samples
+        for k, l in zip(i, j):  # iterate over predictions for a given sample
+            error_sum += abs(k - l)
+    return error_sum
 
 
 def external_run_forecast():
