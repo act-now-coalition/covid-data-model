@@ -8,7 +8,8 @@ import pandas as pd
 from multiprocessing import Pool
 from pyseir import load_data
 from pyseir.deployment import model_to_observed_shim as shim
-from pyseir.inference.fit_results import load_inference_result, load_Rt_result
+from pyseir.inference.fit_results import load_inference_result
+from pyseir.rt.utils import load_Rt_result
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
 from libs.datasets import CommonFields

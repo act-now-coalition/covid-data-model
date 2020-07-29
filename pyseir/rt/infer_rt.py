@@ -55,7 +55,7 @@ def run_rt_for_fips(
     if output_df is not None and not output_df.empty:
         output_path = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
         output_df.to_json(output_path)
-    return
+    return output_df
 
 
 def _get_display_name(fips: str) -> str:

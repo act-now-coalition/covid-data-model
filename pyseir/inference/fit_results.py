@@ -1,7 +1,5 @@
-from typing import Optional
 import os
 from pyseir.load_data import load_county_metadata
-import ujson
 from pyseir import OUTPUT_DIR
 import pandas as pd
 from datetime import datetime
@@ -52,23 +50,3 @@ def load_inference_result(fips):
         return df.iloc[0].to_dict()
     else:
         return df.set_index("fips").loc[fips].to_dict()
-
-
-def load_Rt_result(fips) -> Optional[pd.DataFrame]:
-    """
-    Load the Rt inference result.
-
-    Parameters
-    ----------
-    fips: str
-        State or County FIPS code.
-
-    Returns
-    -------
-    results: pd.DataFrame
-        DataFrame containing the R_t inferences.
-    """
-    path = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
-    if not os.path.exists(path):
-        return None
-    return pd.read_json(path)
