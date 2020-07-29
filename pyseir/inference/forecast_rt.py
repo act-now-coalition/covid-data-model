@@ -74,14 +74,32 @@ class ForecastRt:
         self.smooth_predict_variable = f"smooth_{self.raw_predict_variable}"
         self.predict_variable = self.smooth_predict_variable
         self.d_predict_variable = f"d_{self.predict_variable}"
+        self.smooth_variabes = [
+            self.predict_variable,
+            self.daily_case_var,
+            self.daily_death_var,
+            self.fips_var_name_int,
+            "new_positive_tests",  # calculated by diffing input 'positive_tests' column
+            "new_negative_tests",  # calculated by diffing input 'negative_tests' column
+            "raw_search",  # raw google health trends data
+            "raw_cli",  # fb raw covid like illness
+            "raw_ili",  # fb raw flu like illness
+            "contact_tracers_count",
+            "raw_community",
+            "raw_hh_cmnty_cli",
+            "raw_nohh_cmnty_cli",
+            "raw_wcli",
+            "raw_wili",
+            "unsmoothed_community",
+        ]
         self.forecast_variables = [
             # self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
             self.predict_variable,
             self.daily_case_var,
             self.daily_death_var,
             self.fips_var_name_int,
-            "positive_tests",
-            "negative_tests",
+            "new_positive_tests",  # calculated by diffing input 'positive_tests' column
+            "new_negative_tests",  # calculated by diffing input 'negative_tests' column
             "raw_search",  # raw google health trends data
             "smoothed_search",  # smoothed google health trends data
             "nmf_day_doc_fbc_fbs_ght",  # delphi combined indicator
@@ -119,11 +137,11 @@ class ForecastRt:
         self.percent_train = True
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 100
-        self.n_epochs = 2
+        self.n_batch = 10
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
-        self.patience = 50
+        self.patience = 30
         self.validation_split = 0  # currently using test set as validation set
         self.hyperparam_search = False
 
@@ -163,7 +181,14 @@ class ForecastRt:
                 df[self.daily_case_var] = df[self.case_var].diff()
             if self.cases_cumulative:
                 df[self.daily_death_var] = df[self.death_var].diff()
-
+            df["new_positive_tests"] = df["positive_tests"].diff()
+            df["new_negative_tests"] = df["negative_tests"].diff()
+            """
+            for var in self.forecast_variables:
+              df[f'smooth_{var}'] = (
+                  df.iloc[:][var].rolling(window=5).mean()
+              )
+            """
             # Calculate average of predict variable
             df[self.smooth_predict_variable] = (
                 df.iloc[:][self.raw_predict_variable].rolling(window=5).mean()
@@ -362,8 +387,8 @@ class ForecastRt:
         final_list_test_X = np.concatenate(list_test_X)
         final_list_test_Y = np.concatenate(list_test_Y)
 
-        skip_train = 380
-        skip_test = 58
+        skip_train = 0
+        skip_test = 8
         if skip_train > 0:
             final_list_train_X = final_list_train_X[:-skip_train]
             final_list_train_Y = final_list_train_Y[:-skip_train]
@@ -495,6 +520,8 @@ class ForecastRt:
         DATA_LINEWIDTH = 1
         MODEL_LINEWIDTH = 2
         # plot training predictions
+        train_unscaled_average_errors = []
+        train_scaled_average_errors = []
         for train_df, train_X, train_Y, test_df, test_X, test_Y, area_df in zip(
             area_train_samples,
             list_train_X,
@@ -510,6 +537,20 @@ class ForecastRt:
             forecasts_train, dates_train, unscaled_forecasts_train = self.get_forecasts(
                 train_df, train_X, train_Y, scalers_dict, forecast_model
             )
+
+            # log.info('forecasts')
+            # log.info(forecasts_train)
+            # log.info(train_Y)
+
+            (
+                train_scaled_average_error,
+                train_unscaled_total_error,
+                train_unscaled_average_error,
+            ) = get_aggregate_errors(
+                train_X, train_Y, forecast_model, scalers_dict, self.predict_variable
+            )
+            train_scaled_average_errors.append(train_scaled_average_error)
+            train_unscaled_average_errors.append(train_unscaled_average_error)
 
             for n in range(len(dates_train)):
                 newdates = dates_train[n]
@@ -604,6 +645,10 @@ class ForecastRt:
             state_obj = us.states.lookup(state_name)
             plt.savefig(output_path, bbox_inches="tight")
             plt.close("all")
+        log.info("unscaled")
+        log.info(np.mean(train_unscaled_average_errors))
+        log.info("scaled")
+        log.info(np.mean(train_scaled_average_errors))
         return
 
     def get_forecasts(self, df_list, X_list, Y_list, scalers_dict, model):
@@ -873,7 +918,6 @@ def get_aggregate_errors(X, Y, model, scalers_dict, predict_variable):
     forecast = model.predict(X)
     keras_error = tf.keras.losses.MAE(forecast, Y)
     avg_keras_error = sum(keras_error) / len(keras_error)
-    log.info(f"average keras error: {avg_keras_error}")
 
     sample_errors = []
     unscaled_sample_errors = []
