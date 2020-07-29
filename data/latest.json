@@ -2,14 +2,14 @@
   "dataset_type": "latest",
   "path": "data/latest.csv",
   "data_git_info": {
-    "sha": "0c27bd4503527b6824739c5e75d83431f9540317",
-    "branch": "tgb-cds-simplified",
-    "is_dirty": true
-  },
-  "model_git_info": {
-    "sha": "9ca11c6baf8ddcf66acdfc16ec19ac3f52b729f2",
-    "branch": "tgb-cds-read-common-2",
+    "sha": "2db0aae287becf5de83516ea07b3a3f549708bea",
+    "branch": "master",
     "is_dirty": false
   },
-  "updated_at": "2020-07-28T16:30:12.554002"
+  "model_git_info": {
+    "sha": "e150d393a668f74090d03ddbf2e87c539350de12",
+    "branch": "master",
+    "is_dirty": false
+  },
+  "updated_at": "2020-07-27T12:24:32.219281"
 }
