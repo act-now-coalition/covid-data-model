@@ -260,7 +260,7 @@ def load_Rt_result(fips) -> Optional[pd.DataFrame]:
         DataFrame containing the R_t inferences.
     """
     if fips in NEW_ORLEANS_FIPS:
-        utils_log.info(msg="Applying New Orleans Patch", fips=fips)
+        utils_log.info("Applying New Orleans Patch")
         return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
 
     path = pyseir.utils.get_run_artifact_path(fips, pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
