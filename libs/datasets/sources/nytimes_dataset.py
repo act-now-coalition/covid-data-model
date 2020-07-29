@@ -23,6 +23,17 @@ ESTIMATED_REMOVED_CT_CASES_COUNTY = {
 }
 
 
+def _remove_ct_backfill_cases(data: pd.DataFrame) -> pd.DataFrame:
+    # July 24th was the day there was a backfill of cases
+    is_on_or_after_july_24 = data[CommonFields.DATE] >= "2020-07-24"
+
+    # Remove backfilled tests from cumulatives on and after July 24th.
+    for fips, count in ESTIMATED_REMOVED_CT_CASES_COUNTY.items():
+        is_fips_data_after_jul_24 = is_on_or_after_july_24 & (data[CommonFields.FIPS] == fips)
+        data.loc[is_fips_data_after_jul_24, CommonFields.CASES] -= count
+    return data
+
+
 class NYTimesDataset(data_source.DataSource):
     SOURCE_NAME = "NYTimes"
 
@@ -64,22 +75,6 @@ class NYTimesDataset(data_source.DataSource):
         return cls(data_root / cls.DATA_FOLDER / cls.COUNTIES_DATA_FILE)
 
     @classmethod
-    def _remove_ct_cases(cls, data: pd.DataFrame) -> pd.DataFrame:
-        is_county = data[cls.Fields.AGGREGATE_LEVEL] == "county"
-        is_ct = data[cls.Fields.STATE] == "CT"
-        # July 24th was the day there was a backfill of cases
-        is_on_or_after_july_24 = data[cls.Fields.DATE] >= "2020-07-24"
-        is_ct_county_data_after_jul_24 = is_county & is_ct & is_on_or_after_july_24
-
-        # Remove backfilled tests from cumulatives on and after July 24th.
-        for fips, count in ESTIMATED_REMOVED_CT_CASES_COUNTY.items():
-            is_ct_fips_data_after_jul_24 = is_ct_county_data_after_jul_24 & (
-                data[CommonFields.FIPS] == fips
-            )
-            data.loc[is_ct_fips_data_after_jul_24, CommonFields.CASES] -= count
-        return data
-
-    @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = "county"
@@ -119,6 +114,6 @@ class NYTimesDataset(data_source.DataSource):
             ABBREV_US_UNKNOWN_COUNTY_FIPS
         )
 
-        data = cls._remove_ct_cases(data)
+        data = _remove_ct_backfill_cases(data)
 
         return data

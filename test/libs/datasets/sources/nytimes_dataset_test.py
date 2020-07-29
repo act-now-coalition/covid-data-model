@@ -24,7 +24,7 @@ def test_remove_ct_cases(is_ct_county):
     data = common_df.read_csv(data_buf)
     data = data.reset_index()
 
-    results = nytimes_dataset.NYTimesDataset._remove_ct_cases(data)
+    results = nytimes_dataset._remove_ct_backfill_cases(data)
 
     if is_ct_county:
         expected_cases = pd.Series([1000, 1100, 1200], name="cases")
