@@ -20,7 +20,7 @@ rt_log = structlog.get_logger(__name__)
 def run_rt_for_fips(
     fips: str,
     include_deaths: bool = False,
-    include_testing_correction: bool = True,
+    include_testing_correction: bool = False,
     figure_collector: Optional[list] = None,
 ):
     """Entry Point for Infer Rt"""
