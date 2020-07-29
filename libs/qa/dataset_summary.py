@@ -1,12 +1,17 @@
 from typing import Optional, Tuple
 
+import io
+import pathlib
 import pydantic
 import pandas as pd
 import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import dataset_utils
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import combined_datasets
+from libs import git_lfs_object_helpers
+
 
 IGNORE_COLUMNS = [
     CommonFields.STATE,
@@ -16,6 +21,8 @@ IGNORE_COLUMNS = [
 ]
 
 VARIABLE_FIELD = "variable"
+
+SUMMARY_PATH = dataset_utils.DATA_DIRECTORY / "timeseries_summary.csv"
 
 
 class TimeseriesSummary(pydantic.BaseModel):
@@ -140,3 +147,16 @@ def get_changes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     changed_from = df1.values[difference_locations]
     changed_to = df2.values[difference_locations]
     return pd.DataFrame({"from": changed_from, "to": changed_to}, index=changed.index)
+
+
+def load_summary(path: pathlib.Path = SUMMARY_PATH, commit: Optional[str] = None) -> pd.DataFrame:
+
+    if commit:
+        data = git_lfs_object_helpers.get_data_for_path(path, commit=commit)
+    else:
+        data = path.read_bytes()
+
+    buf = io.BytesIO(data)
+    return pd.read_csv(buf, dtype={CommonFields.FIPS: str}).set_index(
+        [CommonFields.FIPS, VARIABLE_FIELD]
+    )
