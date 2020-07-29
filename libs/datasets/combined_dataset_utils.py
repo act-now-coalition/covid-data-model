@@ -79,10 +79,10 @@ def update_data_public_head(
     Returns: Tuple of DatasetPointers to latest and timeseries datasets.
     """
     if not latest_dataset:
-        latest_dataset = combined_datasets.build_us_latest_with_all_fields(skip_cache=True)
+        latest_dataset = combined_datasets.build_us_latest_with_all_fields()
     latest_pointer = persist_dataset(latest_dataset, data_directory)
 
     if not timeseries_dataset:
-        timeseries_dataset = combined_datasets.build_us_timeseries_with_all_fields(skip_cache=True)
+        timeseries_dataset = combined_datasets.build_us_timeseries_with_all_fields()
     timeseries_pointer = persist_dataset(timeseries_dataset, data_directory)
     return latest_pointer, timeseries_pointer
