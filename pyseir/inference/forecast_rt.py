@@ -411,15 +411,66 @@ class ForecastRt:
             shuffle=True,
             validation_data=(final_list_test_X, final_list_test_Y),
         )
+        model.evaluate(final_list_train_X, final_list_train_Y)  # this gives actual loss
+
+        (
+            train_scaled_average_error,
+            train_unscaled_total_error,
+            train_unscaled_average_error,
+        ) = get_aggregate_errors(
+            final_list_train_X, final_list_train_Y, model, scalers_dict, self.predict_variable
+        )
+
+        (
+            test_scaled_average_error,
+            test_unscaled_total_error,
+            test_unscaled_average_error,
+        ) = get_aggregate_errors(
+            final_list_test_X, final_list_test_Y, model, scalers_dict, self.predict_variable
+        )
+
+        log.info("train scaled error")
+        log.info(train_scaled_average_error)
 
         plt.close("all")
-        plt.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
-        plt.plot(
+        fig, ax = plt.subplots()
+        ax.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
+        ax.plot(
             history.history["val_loss"], color="green", linestyle="solid", label="Validation Set",
         )
         plt.legend()
+        plt.title("MAE vs. Epochs")
+        log.info("train scaled average error")
+        log.info(train_scaled_average_error)
+        log.info("total error")
+        log.info(train_unscaled_total_error)
+        log.info("ave error")
+        log.info(train_unscaled_average_error)
+        textstr = "\n".join(
+            (
+                "MAE",
+                "TRAIN",
+                f"Scaled Avg:{train_scaled_average_error:.3f}",
+                f"Unscaled Avg:{train_unscaled_average_error:.1f}",
+                f"Unscaled Total:{train_unscaled_total_error:.1f}",
+                "TEST",
+                f"Scaled Avg:{test_scaled_average_error:.3f}",
+                f"Unscaled Avg:{test_unscaled_average_error:.1f}",
+                f"Unscaled Total:{test_unscaled_total_error:.1f}",
+            )
+        )
+        props = dict(boxstyle="round", facecolor="wheat", alpha=0.5)
+        ax.text(
+            0.05,
+            0.95,
+            textstr,
+            transform=ax.transAxes,
+            fontsize=8,
+            verticalalignment="top",
+            bbox=props,
+        )
         plt.xlabel("Epochs")
-        plt.ylabel("RMSE")
+        plt.ylabel("MAE")
         output_path = get_run_artifact_path("01", RunArtifact.FORECAST_LOSS)
         plt.savefig(output_path, bbox_inches="tight")
         plt.close("all")
@@ -444,8 +495,6 @@ class ForecastRt:
         DATA_LINEWIDTH = 1
         MODEL_LINEWIDTH = 2
         # plot training predictions
-        train_error = 0
-        test_error = 0
         for train_df, train_X, train_Y, test_df, test_X, test_Y, area_df in zip(
             area_train_samples,
             list_train_X,
@@ -461,11 +510,6 @@ class ForecastRt:
             forecasts_train, dates_train, unscaled_forecasts_train = self.get_forecasts(
                 train_df, train_X, train_Y, scalers_dict, forecast_model
             )
-            train_error += rmse(unscaled_forecasts_train, train_Y)
-            log.info(state_name)
-            log.info(forecasts_train)
-            log.info(train_Y)
-            log.info(rmse(forecasts_train, train_Y))
 
             for n in range(len(dates_train)):
                 newdates = dates_train[n]
@@ -482,11 +526,9 @@ class ForecastRt:
                 else:
                     plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
 
-            log.info("now here")
             forecasts_test, dates_test, unscaled_forecasts_test = self.get_forecasts(
                 test_df, test_X, test_Y, scalers_dict, forecast_model
             )
-            test_error += rmse(unscaled_forecasts_test, test_Y)
 
             for n in range(len(dates_test)):
                 newdates = dates_test[n]
@@ -562,7 +604,6 @@ class ForecastRt:
             state_obj = us.states.lookup(state_name)
             plt.savefig(output_path, bbox_inches="tight")
             plt.close("all")
-            log.info(f"train error: {train_error} test error: {test_error}")
         return
 
     def get_forecasts(self, df_list, X_list, Y_list, scalers_dict, model):
@@ -804,7 +845,7 @@ class MyHyperModel(HyperModel):
         model.add(Dropout(dropout))
         model.add(Dense(self.predict_sequence_length))
         es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=3)
-        model.compile(loss="mean_squared_error", optimizer="adam")
+        model.compile(loss="mae", optimizer="adam")
 
         return model
 
@@ -826,6 +867,33 @@ def rmse(prediction, data):
         for k, l in zip(i, j):  # iterate over predictions for a given sample
             error_sum += abs(k - l)
     return error_sum
+
+
+def get_aggregate_errors(X, Y, model, scalers_dict, predict_variable):
+    forecast = model.predict(X)
+    keras_error = tf.keras.losses.MAE(forecast, Y)
+    avg_keras_error = sum(keras_error) / len(keras_error)
+    log.info(f"average keras error: {avg_keras_error}")
+
+    sample_errors = []
+    unscaled_sample_errors = []
+    for i, j in zip(Y, forecast):  # iterate over samples
+        error_sum = 0
+        unscaled_error_sum = 0
+        for k, l in zip(i, j):  # iterate over seven days
+            error_sum += abs(k - l)
+            unscaled_k = scalers_dict[predict_variable].inverse_transform(k.reshape(1, -1))
+            unscaled_l = scalers_dict[predict_variable].inverse_transform(l.reshape(1, -1))
+            unscaled_error_sum += abs(unscaled_k - unscaled_l)
+        sample_errors.append(error_sum / len(i))
+        unscaled_sample_errors.append(unscaled_error_sum / len(i))
+
+    total_unscaled_error = sum(unscaled_sample_errors)
+    average_unscaled_error = total_unscaled_error / len(unscaled_sample_errors)
+
+    scaled_error = sum(sample_errors) / (len(sample_errors))
+
+    return scaled_error, float(total_unscaled_error), float(average_unscaled_error)
 
 
 def external_run_forecast():
