@@ -329,7 +329,11 @@ def test_melt_provenance_multiple_sources():
 
 def test_make_latest_from_timeseries():
     data = read_csv_and_index_fips_date(
-        "fips,date,m1,m2\n" "97123,2020-04-01,1,\n" "97123,2020-04-02,,2\n"
+        "fips,county,state,country,date,aggregate_level,m1,m2\n"
+        "97123,Smith County,ZZ,USA,2020-04-01,county,1,\n"
+        "97123,Smith County,ZZ,USA,2020-04-02,county,,2\n"
     ).reset_index()
     ts = TimeseriesDataset(data)
-    assert to_dict(["fips"], ts.latest_values()) == {"97123": {"m1": 1, "m2": 2}}
+    assert to_dict(["fips"], ts.latest_values()[["fips", "m1", "m2"]]) == {
+        "97123": {"m1": 1, "m2": 2}
+    }
