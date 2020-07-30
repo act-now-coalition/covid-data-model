@@ -93,30 +93,29 @@ class ForecastRt:
         self.forecast_variables = [
             self.predict_variable,
             f"smooth_{self.daily_death_var}",
-            "smooth_raw_cli",  # fb raw covid like illness
-            "smooth_raw_ili",  # fb raw flu like illness
-            "smooth_contact_tracers_count",
-            "smooth_raw_community",
-            "smooth_raw_hh_cmnty_cli",
-            "smooth_raw_nohh_cmnty_cli",
-            "smooth_raw_wcli",
-            "smooth_raw_wili",
-            "smooth_new_positive_tests",  # calculated by diffing input 'positive_tests' column
             "smooth_new_negative_tests",  # calculated by diffing input 'negative_tests' column
-            "smooth_raw_search",  # raw google health trends data
-            "smooth_unsmoothed_community",
             "Rt_MAP__new_cases",
             self.fips_var_name_int,
-            "smoothed_search",  # smoothed google health trends data
-            "nmf_day_doc_fbc_fbs_ght",  # delphi combined indicator
-            "nmf_day_doc_fbs_ght",
+            # "smooth_raw_cli",  # fb raw covid like illness
+            # "smooth_raw_ili",  # fb raw flu like illness
+            "smooth_contact_tracers_count",  # number of contacts traced
+            # "smooth_raw_community",
+            # "smooth_raw_hh_cmnty_cli", #fb estimated cli count including household
+            # "smooth_raw_nohh_cmnty_cli", #fb estimated cli county not including household
+            # "smooth_raw_wcli", #fb cli adjusted with weight surveys
+            # "smooth_raw_wili", #fb ili adjusted with weight surveys
+            # "smooth_unsmoothed_community",
+            # "smoothed_community",
             "smoothed_cli",
-            "smoothed_community",
             "smoothed_hh_cmnty_cli",
-            "smoothed_ili",
             "smoothed_nohh_cmnty_cli",
+            "smoothed_ili",
             "smoothed_wcli",
             "smoothed_wili",
+            # "smooth_raw_search",  # raw google health trends data
+            "smoothed_search",  # smoothed google health trends da
+            "nmf_day_doc_fbc_fbs_ght",  # delphi combined indicator
+            "nmf_day_doc_fbs_ght",
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -130,7 +129,7 @@ class ForecastRt:
             30  # can pad sequence with numbers up to this length if input lenght is variable
         )
         self.sample_train_length = 30  # Set to -1 to use all historical data
-        self.predict_days = 3
+        self.predict_days = 1
         self.percent_train = True
         self.train_size = 0.8
         self.n_test_days = 10
@@ -384,8 +383,8 @@ class ForecastRt:
         final_list_test_X = np.concatenate(list_test_X)
         final_list_test_Y = np.concatenate(list_test_Y)
 
-        skip_train = 0
-        skip_test = 9
+        skip_train = 5
+        skip_test = 6
         if skip_train > 0:
             final_list_train_X = final_list_train_X[:-skip_train]
             final_list_train_Y = final_list_train_Y[:-skip_train]
@@ -440,7 +439,12 @@ class ForecastRt:
             train_unscaled_total_error,
             train_unscaled_average_error,
         ) = get_aggregate_errors(
-            final_list_train_X, final_list_train_Y, model, scalers_dict, self.predict_variable
+            final_list_train_X,
+            final_list_train_Y,
+            model,
+            scalers_dict,
+            self.predict_variable,
+            self.predict_days,
         )
 
         (
@@ -448,7 +452,12 @@ class ForecastRt:
             test_unscaled_total_error,
             test_unscaled_average_error,
         ) = get_aggregate_errors(
-            final_list_test_X, final_list_test_Y, model, scalers_dict, self.predict_variable
+            final_list_test_X,
+            final_list_test_Y,
+            model,
+            scalers_dict,
+            self.predict_variable,
+            self.predict_days,
         )
 
         log.info("train scaled error")
@@ -544,7 +553,12 @@ class ForecastRt:
                 train_unscaled_total_error,
                 train_unscaled_average_error,
             ) = get_aggregate_errors(
-                train_X, train_Y, forecast_model, scalers_dict, self.predict_variable
+                train_X,
+                train_Y,
+                forecast_model,
+                scalers_dict,
+                self.predict_variable,
+                self.predict_days,
             )
             train_scaled_average_errors.append(train_scaled_average_error)
             train_unscaled_average_errors.append(train_unscaled_average_error)
@@ -559,7 +573,8 @@ class ForecastRt:
                         color="green",
                         label="Train Set",
                         linewidth=MODEL_LINEWIDTH,
-                        markersize=0,
+                        markersize=5,
+                        marker="*",
                     )
                 else:
                     plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
@@ -578,7 +593,8 @@ class ForecastRt:
                         color="orange",
                         label="Test Set",
                         linewidth=MODEL_LINEWIDTH,
-                        markersize=0,
+                        markersize=5,
+                        marker="*",
                     )
                 else:
                     plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
@@ -911,7 +927,7 @@ def rmse(prediction, data):
     return error_sum
 
 
-def get_aggregate_errors(X, Y, model, scalers_dict, predict_variable):
+def get_aggregate_errors(X, Y, model, scalers_dict, predict_variable, sequence_length):
     forecast = model.predict(X)
     keras_error = tf.keras.losses.MAE(forecast, Y)
     avg_keras_error = sum(keras_error) / len(keras_error)
@@ -921,20 +937,26 @@ def get_aggregate_errors(X, Y, model, scalers_dict, predict_variable):
     for i, j in zip(Y, forecast):  # iterate over samples
         error_sum = 0
         unscaled_error_sum = 0
-        for k, l in zip(i, j):  # iterate over seven days
-            error_sum += abs(k - l)
-            unscaled_k = scalers_dict[predict_variable].inverse_transform(k.reshape(1, -1))
-            unscaled_l = scalers_dict[predict_variable].inverse_transform(l.reshape(1, -1))
-            unscaled_error_sum += abs(unscaled_k - unscaled_l)
-        sample_errors.append(error_sum / len(i))
-        unscaled_sample_errors.append(unscaled_error_sum / len(i))
+        if sequence_length > 1:
+            for k, l in zip(i, j):  # iterate over seven days
+                error_sum += abs(k - l)
+                unscaled_k = scalers_dict[predict_variable].inverse_transform(k.reshape(1, -1))
+                unscaled_l = scalers_dict[predict_variable].inverse_transform(l.reshape(1, -1))
+                unscaled_error_sum += abs(unscaled_k - unscaled_l)
+        else:
+            error_sum += abs(i - j)
+            unscaled_i = scalers_dict[predict_variable].inverse_transform(i.reshape(1, -1))
+            unscaled_j = scalers_dict[predict_variable].inverse_transform(j.reshape(1, -1))
+            unscaled_error_sum += abs(unscaled_i - unscaled_j)
+        sample_errors.append(error_sum)
+        unscaled_sample_errors.append(unscaled_error_sum)
 
     total_unscaled_error = sum(unscaled_sample_errors)
     average_unscaled_error = total_unscaled_error / len(unscaled_sample_errors)
 
     scaled_error = sum(sample_errors) / (len(sample_errors))
 
-    return scaled_error, float(total_unscaled_error), float(average_unscaled_error)
+    return float(scaled_error), float(total_unscaled_error), float(average_unscaled_error)
 
 
 def external_run_forecast():
