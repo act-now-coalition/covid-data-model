@@ -698,6 +698,7 @@ def build_county_list(state):
     """
     state_obj = us.states.lookup(state)
     log.info(f"Get fips list for state {state_obj.name}")
+    log.info(state_obj.fips)
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]

@@ -1,6 +1,8 @@
 import logging
 import re
 
+import structlog
+
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.combined_datasets import (
@@ -9,6 +11,7 @@ from libs.datasets.combined_datasets import (
     _build_combined_dataset_from_sources,
     US_STATES_FILTER,
     FeatureDataSourceMap,
+    _to_timeseries_rows,
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.cmdc import CmdcDataSource
@@ -22,7 +25,7 @@ from libs.datasets import NevadaHospitalAssociationData
 
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.timeseries import TimeseriesDataset
-from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date
+from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date, to_dict
 import pandas as pd
 import numpy as np
 import pytest
@@ -244,6 +247,27 @@ def test_build_timeseries_override():
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
 
 
+def test_build_and_and_provenance_missing_fips():
+    data_a = read_csv_and_index_fips_date(
+        "fips,date,m1,m2\n" "97111,2020-04-01,1,\n" "97111,2020-04-02,,\n" "97111,2020-04-03,3,3\n"
+    )
+    data_b = read_csv_and_index_fips_date(
+        "fips,date,m1,m2\n" "97111,2020-04-01,,\n" "97111,2020-04-02,2,\n" "97444,2020-04-04,4,\n"
+    )
+    datasets = {"source_a": data_a, "source_b": data_b}
+
+    # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
+    combined, provenance = _build_data_and_provenance(
+        {"m1": ["source_a", "source_b"], "m2": ["source_a", "source_b"]},
+        datasets,
+        override=Override.BY_TIMESERIES,
+    )
+    assert combined.loc["97444", "m1"].dropna().tolist() == [4]
+    assert provenance.loc["97444", "m1"].dropna().tolist() == ["source_b"]
+    assert combined.loc["97444", "m2"].dropna().tolist() == []
+    assert provenance.loc["97444", "m2"].dropna().tolist() == []
+
+
 @pytest.mark.slow
 def test_build_combined_dataset_from_sources_smoke_test():
     # Quickly make sure _build_combined_dataset_from_sources doesn't crash when run with a small
@@ -263,3 +287,41 @@ def test_build_combined_dataset_from_sources_smoke_test():
     _build_combined_dataset_from_sources(
         LatestValuesDataset, feature_definition, filter=US_STATES_FILTER,
     )
+
+
+def test_melt_provenance():
+    wide = read_csv_and_index_fips_date(
+        "fips,date,cases,recovered\n"
+        "97111,2020-04-01,source_a,source_b\n"
+        "97111,2020-04-02,source_a,\n"
+        "97222,2020-04-01,source_c,\n"
+    )
+    with structlog.testing.capture_logs() as logs:
+        long = _to_timeseries_rows(wide, structlog.get_logger())
+
+    assert logs == []
+
+    assert long.to_dict() == {
+        ("97111", "cases"): "source_a",
+        ("97111", "recovered"): "source_b",
+        ("97222", "cases"): "source_c",
+    }
+
+
+def test_melt_provenance_multiple_sources():
+    wide = read_csv_and_index_fips_date(
+        "fips,date,cases,recovered\n"
+        "97111,2020-04-01,source_a,source_b\n"
+        "97111,2020-04-02,source_x,\n"
+        "97222,2020-04-01,source_c,\n"
+    )
+    with structlog.testing.capture_logs() as logs:
+        long = _to_timeseries_rows(wide, structlog.get_logger())
+
+    assert [l["event"] for l in logs] == ["Multiple rows for a timeseries"]
+
+    assert long.to_dict() == {
+        ("97111", "cases"): "source_a",
+        ("97111", "recovered"): "source_b",
+        ("97222", "cases"): "source_c",
+    }

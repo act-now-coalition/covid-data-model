@@ -7,6 +7,32 @@ from libs.datasets import dataset_utils
 from libs.datasets.common_fields import CommonIndexFields
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 
+# On 2020-07-24, CT reported a backfill of 440 additional positive cases.
+# https://portal.ct.gov/Office-of-the-Governor/News/Press-Releases/2020/07-2020/Governor-Lamont-Coronavirus-Update-July-24
+# See https://trello.com/c/rPiM6UF4/333-adjust-ct-case-data-based-on-reported-backfill-vs-current-cases
+# for more information on backfill.
+ESTIMATED_REMOVED_CT_CASES_COUNTY = {
+    "09001": 188,
+    "09003": 154,
+    "09005": 24,
+    "09007": 4,
+    "09009": 39,
+    "09011": 8,
+    "09013": 22,
+    "09015": 2,
+}
+
+
+def _remove_ct_backfill_cases(data: pd.DataFrame) -> pd.DataFrame:
+    # July 24th was the day there was a backfill of cases
+    is_on_or_after_july_24 = data[CommonFields.DATE] >= "2020-07-24"
+
+    # Remove backfilled tests from cumulatives on and after July 24th.
+    for fips, count in ESTIMATED_REMOVED_CT_CASES_COUNTY.items():
+        is_fips_data_after_jul_24 = is_on_or_after_july_24 & (data[CommonFields.FIPS] == fips)
+        data.loc[is_fips_data_after_jul_24, CommonFields.CASES] -= count
+    return data
+
 
 class NYTimesDataset(data_source.DataSource):
     SOURCE_NAME = "NYTimes"
@@ -87,5 +113,7 @@ class NYTimesDataset(data_source.DataSource):
         data.loc[unknown_fips, cls.Fields.FIPS] = data.loc[unknown_fips, cls.Fields.STATE].map(
             ABBREV_US_UNKNOWN_COUNTY_FIPS
         )
+
+        data = _remove_ct_backfill_cases(data)
 
         return data

@@ -1,6 +1,9 @@
 name: Update combined datasets
 
 on:
+  # This hook is automatically triggered by
+  # https://github.com/covid-projections/covid-data-public/blob/master/.github/workflows/update_data.yml
+  # after covid-data-public datasets have been updated.
   repository_dispatch:
     types: update-dataset-snapshot
 

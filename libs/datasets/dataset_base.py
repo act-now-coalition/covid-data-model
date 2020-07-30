@@ -1,5 +1,8 @@
 from typing import List, Union, TextIO, Mapping, Iterable, Optional
 import pathlib
+
+import structlog
+
 from covidactnow.datapublic import common_df
 import pandas as pd
 from libs.datasets.dataset_utils import AggregationLevel
@@ -11,7 +14,7 @@ class DatasetBase(object):
 
     COMMON_INDEX_FIELDS: List[str] = []
 
-    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.DataFrame] = None):
+    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
         self.data = data
         self.provenance = provenance
 
@@ -34,6 +37,13 @@ class DatasetBase(object):
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         raise NotImplementedError()
 
-    @classmethod
-    def to_csv(cls, path: pathlib.Path):
-        raise NotImplementedError()
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        common_df.write_csv(self.data, path, structlog.get_logger(), self.COMMON_INDEX_FIELDS)
+        if self.provenance is not None:
+            provenance_path = str(path).replace(".csv", "-provenance.csv")
+            self.provenance.sort_index().to_csv(provenance_path)

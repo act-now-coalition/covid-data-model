@@ -18,7 +18,9 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.dataset_utils import AggregationLevel
-from pyseir.utils import get_run_artifact_path, RunArtifact, ewma_smoothing
+import pyseir.utils
+
+# from pyseir.utils import get_run_artifact_path, RunArtifact, ewma_smoothing
 
 log = logging.getLogger(__name__)
 
@@ -218,7 +220,9 @@ def load_ensemble_results(fips):
     -------
     ensemble_results: dict
     """
-    output_filename = get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT)
+    output_filename = pyseir.utils.get_run_artifact_path(
+        fips, pyseir.utils.RunArtifact.ENSEMBLE_RESULT
+    )
     if not os.path.exists(output_filename):
         return None
 
@@ -639,7 +643,8 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
     df = df.loc[
         (df[CommonFields.POSITIVE_TESTS].notnull())
         & (df[CommonFields.NEGATIVE_TESTS].notnull())
-        & ((df[CommonFields.POSITIVE_TESTS] + df[CommonFields.NEGATIVE_TESTS]) > 0),
+        & (df[CommonFields.NEGATIVE_TESTS] > 0)
+        & (df[CommonFields.POSITIVE_TESTS] > 0),
         :,
     ]
 
@@ -670,7 +675,7 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
         ]
     ]
     df = df.loc[df.increase_in_new_tests.notnull() & df.positivity_rate.notnull(), :]
-    df["expected_positives_from_test_increase"] = ewma_smoothing(
+    df["expected_positives_from_test_increase"] = pyseir.utils.ewma_smoothing(
         df["expected_positives_from_test_increase"], smoothing_tau
     )
     df.loc[df["new_positive"] < 5, "expected_positives_from_test_increase"] = 0
@@ -781,7 +786,11 @@ def load_whitelist():
     """
     # Whitelist path isn't state specific, but the call requires ANY fips
     PLACEHOLDER_FIPS = "06"
-    path = get_run_artifact_path(fips=PLACEHOLDER_FIPS, artifact=RunArtifact.WHITELIST_RESULT)
+    path = pyseir.utils.get_run_artifact_path(
+        fips=PLACEHOLDER_FIPS, artifact=pyseir.utils.RunArtifact.WHITELIST_RESULT
+    )
+    log.info("path")
+    log.info(path)
     return pd.read_json(path, dtype={"fips": str})
 
 

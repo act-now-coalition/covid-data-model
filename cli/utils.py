@@ -50,9 +50,7 @@ def save_combined_csv(csv_path_format, output_dir):
     csv_path = form_path_name(csv_path_format, output_dir)
 
     timeseries = combined_datasets.load_us_timeseries_dataset()
-    timeseries_data = timeseries.data
-
-    common_df.write_csv(timeseries_data, csv_path, structlog.get_logger())
+    timeseries.to_csv(csv_path)
 
 
 @main.command()
@@ -68,9 +66,7 @@ def save_combined_latest_csv(csv_path_format, output_dir):
     csv_path = form_path_name(csv_path_format, output_dir)
 
     latest = combined_datasets.load_us_latest_dataset()
-    # This is a hacky modification of common_df.write_csv because it requires a date index.
-    latest_data = latest.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
-    latest_data.to_csv(csv_path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
+    latest.to_csv(csv_path)
 
 
 def form_path_name(csv_path_format, output_dir):

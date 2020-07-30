@@ -39,3 +39,6 @@ structlog==20.1.0
 structlog-sentry==1.2.2
 more_itertools==8.3.0
 -e ../covid-data-public
+# By default, installs from local directory, but when copying this
+# to binder/requirements.txt, uncomment the following line.
+# -e git://github.com/covid-projections/covid-data-public.git#egg=covidactnow

@@ -79,6 +79,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
         all_timeseries = api_pipeline.run_on_all_fips_for_intervention(
             us_latest, us_timeseries, intervention, input_dir
         )
+        _logger.info(f"Test")
         county_timeseries = [
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.COUNTY
         ]

@@ -177,18 +177,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         """
         return first(self.get_subset(fips=fips).yield_records(), default={})
 
-    def to_csv(self, path: pathlib.Path):
-        """Save data to CSV.
-
-        Args:
-            path: Path to save data to.
-        """
-        # Cannot use common_df.write_csv as it doesn't support data without a date index field.
-        data = self.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
-        data = common_df.only_common_columns(data, structlog.get_logger())  # Drops `index`
-        data = common_df.sort_common_field_columns(data).sort_index()
-        data.to_csv(path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
-
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         """Load CSV Latest Values Dataset."""
