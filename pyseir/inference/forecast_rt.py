@@ -181,11 +181,8 @@ class ForecastRt:
             df["new_positive_tests"] = df["positive_tests"].diff()
             df["new_negative_tests"] = df["negative_tests"].diff()
 
-            log.info("original df")
-            log.info(df)
             for var in self.smooth_variables:
                 df[f"smooth_{var}"] = df.iloc[:][var].rolling(window=5).mean()
-            log.info(df)
             # Calculate average of predict variable
             df[self.smooth_predict_variable] = (
                 df.iloc[:][self.raw_predict_variable].rolling(window=5).mean()
@@ -388,7 +385,7 @@ class ForecastRt:
         final_list_test_Y = np.concatenate(list_test_Y)
 
         skip_train = 0
-        skip_test = 8
+        skip_test = 9
         if skip_train > 0:
             final_list_train_X = final_list_train_X[:-skip_train]
             final_list_train_Y = final_list_train_Y[:-skip_train]
