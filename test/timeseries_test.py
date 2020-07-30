@@ -1,5 +1,5 @@
 from io import StringIO
-
+from covidactnow.datapublic import common_df
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources import cds_dataset
 from libs.datasets.timeseries import TimeseriesDataset
@@ -48,3 +48,18 @@ def test_get_subset_and_get_data():
         "mystate",
     }
     assert set(ts.get_data(None, states=["ZZ"], before="2020-03-23")["metric"]) == {"march22-nyc"}
+
+
+def test_latest_values():
+    input_df = common_df.read_csv(
+        StringIO(
+            "date,fips,state,country,aggregate_level,metric1,metric2\n"
+            "2020-07-29,12,MA,USA,state,,10\n"
+            "2020-07-30,12,MA,USA,state,10,\n"
+        )
+    ).reset_index()
+    print(input_df)
+
+    ts = TimeseriesDataset(input_df)
+    print(ts.latest_values())
+    assert 0
