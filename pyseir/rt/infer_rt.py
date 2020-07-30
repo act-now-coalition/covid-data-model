@@ -112,7 +112,7 @@ def filter_and_smooth_input_data(
             df[column].max() > MIN_INCIDENT_COUNTS[column],
         ]
         # Now Apply Input Outlier Detection and Smoothing
-        filtered = utils.replace_outliers(df[column], log=rt_log)
+        filtered = utils.replace_outliers(df[column], log=rt_log.new(column=column))
         # TODO find way to indicate which points filtered in figure below
 
         assert len(filtered) == len(df[column])

@@ -246,7 +246,7 @@ class ModelFitter:
 
             # See if we can do better based on the actual data
 
-            # Let's look at the time when we've got a fifth reported case in a fips
+            # Let's look at the time when we've got a second reported case in a fips
             OBSERVED_CUMULATIVE_MINIMUM = 2
             cumulative_cases = np.cumsum(self.observed_new_cases)
 
