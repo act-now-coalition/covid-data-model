@@ -74,11 +74,9 @@ class ForecastRt:
         self.smooth_predict_variable = f"smooth_{self.raw_predict_variable}"
         self.predict_variable = self.smooth_predict_variable
         self.d_predict_variable = f"d_{self.predict_variable}"
-        self.smooth_variabes = [
-            self.predict_variable,
+        self.smooth_variables = [
             self.daily_case_var,
             self.daily_death_var,
-            self.fips_var_name_int,
             "new_positive_tests",  # calculated by diffing input 'positive_tests' column
             "new_negative_tests",  # calculated by diffing input 'negative_tests' column
             "raw_search",  # raw google health trends data
@@ -93,25 +91,25 @@ class ForecastRt:
             "unsmoothed_community",
         ]
         self.forecast_variables = [
-            # self.sim_date_name,  # DO NOT MOVE THIS!!!!! EVA!!!!!
             self.predict_variable,
-            self.daily_case_var,
-            self.daily_death_var,
+            f"smooth_{self.daily_death_var}",
+            "smooth_raw_cli",  # fb raw covid like illness
+            "smooth_raw_ili",  # fb raw flu like illness
+            "smooth_contact_tracers_count",
+            "smooth_raw_community",
+            "smooth_raw_hh_cmnty_cli",
+            "smooth_raw_nohh_cmnty_cli",
+            "smooth_raw_wcli",
+            "smooth_raw_wili",
+            "smooth_new_positive_tests",  # calculated by diffing input 'positive_tests' column
+            "smooth_new_negative_tests",  # calculated by diffing input 'negative_tests' column
+            "smooth_raw_search",  # raw google health trends data
+            "smooth_unsmoothed_community",
+            "Rt_MAP__new_cases",
             self.fips_var_name_int,
-            "new_positive_tests",  # calculated by diffing input 'positive_tests' column
-            "new_negative_tests",  # calculated by diffing input 'negative_tests' column
-            "raw_search",  # raw google health trends data
             "smoothed_search",  # smoothed google health trends data
             "nmf_day_doc_fbc_fbs_ght",  # delphi combined indicator
-            "raw_cli",  # fb raw covid like illness
-            "raw_ili",  # fb raw flu like illness
-            "contact_tracers_count",
             "nmf_day_doc_fbs_ght",
-            "raw_community",
-            "raw_hh_cmnty_cli",
-            "raw_nohh_cmnty_cli",
-            "raw_wcli",
-            "raw_wili",
             "smoothed_cli",
             "smoothed_community",
             "smoothed_hh_cmnty_cli",
@@ -119,26 +117,25 @@ class ForecastRt:
             "smoothed_nohh_cmnty_cli",
             "smoothed_wcli",
             "smoothed_wili",
-            "unsmoothed_community",
         ]
         self.scaled_variable_suffix = "_scaled"
 
         # Seq2Seq Parameters
         self.max_scaling = 2  # multiply max feature values by this number for scaling set
         self.min_scaling = 0.5  # multiply min feature values by this number of scaling set
-        self.days_between_samples = 7
+        self.days_between_samples = 1
         self.mask_value = -10
         self.min_number_of_days = 31
         self.sequence_length = (
             30  # can pad sequence with numbers up to this length if input lenght is variable
         )
         self.sample_train_length = 30  # Set to -1 to use all historical data
-        self.predict_days = 7
+        self.predict_days = 3
         self.percent_train = True
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 10
-        self.n_epochs = 1000
+        self.n_epochs = 1
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 30
@@ -183,12 +180,12 @@ class ForecastRt:
                 df[self.daily_death_var] = df[self.death_var].diff()
             df["new_positive_tests"] = df["positive_tests"].diff()
             df["new_negative_tests"] = df["negative_tests"].diff()
-            """
-            for var in self.forecast_variables:
-              df[f'smooth_{var}'] = (
-                  df.iloc[:][var].rolling(window=5).mean()
-              )
-            """
+
+            log.info("original df")
+            log.info(df)
+            for var in self.smooth_variables:
+                df[f"smooth_{var}"] = df.iloc[:][var].rolling(window=5).mean()
+            log.info(df)
             # Calculate average of predict variable
             df[self.smooth_predict_variable] = (
                 df.iloc[:][self.raw_predict_variable].rolling(window=5).mean()
@@ -291,6 +288,7 @@ class ForecastRt:
         col = plt.cm.jet(np.linspace(0, 1, round(len(self.forecast_variables) + 1)))
         BOLD_LINEWIDTH = 3
         for df, state in zip(df_list, state_fips):
+            df.to_csv(self.csv_output_folder + us.states.lookup(state).name + ".csv")
             fig, ax = plt.subplots(figsize=(18, 12))
             for var, color in zip(self.forecast_variables, col):
                 if var != self.predict_variable:
@@ -364,6 +362,7 @@ class ForecastRt:
         # TODO add max min rows to avoid domain adaption issues
         train_scaling_set = pd.concat(area_scaling_samples)
         scalers_dict = self.get_scaling_dictionary(slim(train_scaling_set, self.forecast_variables))
+
         if self.debug_plots:
             self.plot_variables(
                 slim(area_df_list, self.forecast_variables), area_fips, scalers_dict
