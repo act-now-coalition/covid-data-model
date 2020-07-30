@@ -240,36 +240,47 @@ class ModelFitter:
             self.fit_params["hosp_fraction"] = 1
 
         if len(self.fips) == 5:
-            OBSERVED_NEW_CASES_GUESS_THRESHOLD = 2
-            idx_enough_cases = np.argwhere(
-                np.cumsum(self.observed_new_cases) >= OBSERVED_NEW_CASES_GUESS_THRESHOLD
-            )[0][0]
-            initial_cases_guess = np.cumsum(self.observed_new_cases)[idx_enough_cases]
-            t0_guess = list(self.times)[idx_enough_cases]
-
             state_fit_result = load_inference_result(fips=self.state_obj.fips)
-            self.fit_params["t0"] = t0_guess
+            T0_LEFT_PAD = 5
+            T0_RIGHT_PAD = 30
 
-            total_cases = np.sum(self.observed_new_cases)
-            self.fit_params["log10_I_initial"] = np.log10(
-                initial_cases_guess / self.fit_params["test_fraction"]
-            )
-            self.fit_params["limit_t0"] = t0_guess - 5, state_fit_result["t0"] + 30
-            self.fit_params["t_break"] = state_fit_result["t_break"] - (
-                t0_guess - state_fit_result["t0"]
-            )
+            # See if we can do better based on the actual data
+
+            # Let's look at the time when we've got a second reported case in a fips
+            OBSERVED_CUMULATIVE_MINIMUM = 2
+            cumulative_cases = np.cumsum(self.observed_new_cases)
+
+            idxs_above_threshold = np.flatnonzero(cumulative_cases >= OBSERVED_CUMULATIVE_MINIMUM)
+            if len(idxs_above_threshold) == 0:
+                # Cumulative didn't reach cutoff, use state values
+                self.fit_params["t0"] = state_fit_result["t0"]
+                self.fit_params["limit_t0"] = [
+                    state_fit_result["t0"] - T0_LEFT_PAD,
+                    state_fit_result["t0"] + T0_RIGHT_PAD,
+                ]
+            else:
+                idx_start = idxs_above_threshold[0]
+                self.fit_params["log10_I_initial"] = np.log10(
+                    cumulative_cases[idx_start] / self.fit_params["test_fraction"]
+                )
+
+                t0_guess = list(self.times)[idx_start]
+
+                self.fit_params["t0"] = t0_guess
+                self.fit_params["limit_t0"] = [t0_guess - T0_LEFT_PAD, t0_guess + T0_RIGHT_PAD]
+
+                self.fit_params["t_break"] = state_fit_result["t_break"] - (
+                    t0_guess - state_fit_result["t0"]
+                )
+
             self.fit_params["R0"] = state_fit_result["R0"]
             self.fit_params["test_fraction"] = state_fit_result["test_fraction"]
             self.fit_params["eps"] = state_fit_result["eps"]
-            if total_cases < 100:
+            if cumulative_cases[-1] < 100:
                 self.fit_params["t_break"] = 10
                 self.fit_params["fix_test_fraction"] = True
                 self.fit_params["fix_R0"] = True
-                self.fit_params["limit_t0"] = (
-                    state_fit_result["t0"] - 5,
-                    state_fit_result["t0"] + 30,
-                )
-            if total_cases < 50:
+            if cumulative_cases[-1] < 50:
                 self.fit_params["fix_eps"] = True
                 self.fit_params["fix_t_break"] = True
 

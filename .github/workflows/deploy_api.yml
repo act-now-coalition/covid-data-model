@@ -43,14 +43,14 @@ jobs:
     runs-on: self-hosted
     steps:
 
-    - name: Checkout covid-data-model
+    - name: Checkout covid-data-model (${{ env.COVID_DATA_MODEL_REF }})
       uses: actions/checkout@v2
       with:
         repository: covid-projections/covid-data-model
         path: covid-data-model
         lfs: true
         ref: '${{env.COVID_DATA_MODEL_REF}}'
-    - name: Checkout covid-data-public
+    - name: Checkout covid-data-public (${{ env.COVID_DATA_PUBLIC_REF }})
       uses: actions/checkout@v2
       with:
         repository: covid-projections/covid-data-public
