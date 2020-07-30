@@ -84,14 +84,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Return: DataFrame
         """
-
-        def latest_value(x):
-            return x.apply(lambda y: None if y.isna().all() else y[y.notnull()].iloc[-1])
-
         return (
-            self.data.groupby("fips")
-            .apply(latest_value)
-            .reset_index(drop=True)
+            self.data.sort_values([CommonFields.FIPS, CommonFields.DATE])
+            .ffill()
+            .groupby("fips")
+            .last()
+            .reset_index()
             .drop(columns=CommonFields.DATE)
         )
 
