@@ -288,7 +288,8 @@ class ForecastRt:
         col = plt.cm.jet(np.linspace(0, 1, round(len(self.forecast_variables) + 1)))
         BOLD_LINEWIDTH = 3
         for df, state in zip(df_list, state_fips):
-            df.to_csv(self.csv_output_folder + us.states.lookup(state).name + ".csv")
+            if self.save_csv_output:
+                df.to_csv(self.csv_output_folder + us.states.lookup(state).name + ".csv")
             fig, ax = plt.subplots(figsize=(18, 12))
             for var, color in zip(self.forecast_variables, col):
                 if var != self.predict_variable:
