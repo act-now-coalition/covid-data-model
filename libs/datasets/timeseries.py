@@ -84,24 +84,16 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         Return: DataFrame
         """
-        if aggregation_level is None:
-            county = self.latest_values(aggregation_level=AggregationLevel.COUNTY)
-            state = self.latest_values(aggregation_level=AggregationLevel.STATE)
-            return pd.concat([county, state])
-        elif aggregation_level is AggregationLevel.COUNTY:
-            group = [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS]
-        elif aggregation_level is AggregationLevel.STATE:
-            group = [CommonFields.COUNTRY, CommonFields.STATE]
-        else:
-            assert aggregation_level is AggregationLevel.COUNTRY
-            group = [CommonFields.COUNTRY]
 
-        data = self.data[
-            self.data[CommonFields.AGGREGATE_LEVEL] == aggregation_level.value
-        ].reset_index()
-        # If the groupby raises a ValueError check the dtype of date. If it was loaded
-        # by read_csv did you set parse_dates=["date"]?
-        return data.iloc[data.groupby(group).date.idxmax(), :]
+        def latest_value(x):
+            return x.apply(lambda y: None if y.isna().all() else y[y.notnull()].iloc[-1])
+
+        return (
+            self.data.groupby("fips")
+            .apply(latest_value)
+            .reset_index(drop=True)
+            .drop(columns=CommonFields.DATE)
+        )
 
     def get_subset(
         self,
@@ -228,17 +220,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return cls(data)
 
     @classmethod
-    def build_from_data_source(cls, source):
+    def build_from_data_source(cls, source) -> "TimeseriesDataset":
         """Build TimeseriesDataset from a data source."""
         if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
             raise ValueError("Index fields must match")
 
         return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
-
-    def to_latest_values_dataset(self):
-        from libs.datasets.latest_values_dataset import LatestValuesDataset
-
-        return LatestValuesDataset(self.latest_values())
 
     def summarize(self):
         dataset_utils.summarize(
