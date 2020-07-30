@@ -34,7 +34,6 @@ def _calculate_county_adjustments(
 
     Returns: Dictionary of estimated fips -> backfilled cases.
     """
-    is_county_level = data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY
     is_state = data[CommonFields.FIPS].str.match(f"{state_fips}[0-9][0-9][0-9]")
     is_not_unknown = data[CommonFields.FIPS] != f"{state_fips}999"
 
@@ -46,6 +45,8 @@ def _calculate_county_adjustments(
     )
     cases = cases.diff().reset_index(level=1)
     cases_on_date = cases[cases.date == date]["cases"]
+    # For states with more counties, rounding could lead to the sum of the counties diverging from
+    # the backfilled cases count.
     return (cases_on_date / cases_on_date.sum() * backfilled_cases).round().to_dict()
 
 
