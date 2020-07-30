@@ -26,6 +26,13 @@ from tensorflow.keras.callbacks import EarlyStopping
 from kerastuner import HyperModel
 from kerastuner.tuners import RandomSearch
 
+# Feature processing
+from pandas.core.window.indexers import (
+    BaseIndexer,
+    FixedForwardWindowIndexer,
+    VariableOffsetWindowIndexer,
+)
+
 # Aesthetics
 from cycler import cycler
 
@@ -44,7 +51,6 @@ class ForecastRt:
         self.df_all = df_all
         self.states = "All"  # All to use All
         self.csv_path = "./pyseir_data/merged_results_delphi.csv"
-        # self.csv_path = "./pyseir_data/delphi_merged.csv"
 
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet)
@@ -71,9 +77,11 @@ class ForecastRt:
         # self.predict_variable = "Rt_MAP__new_cases"
 
         self.raw_predict_variable = self.daily_case_var
-        self.smooth_predict_variable = f"smooth_{self.raw_predict_variable}"
-        self.predict_variable = self.smooth_predict_variable
+        self.predict_variable = "smooth_future_new_cases"
         self.d_predict_variable = f"d_{self.predict_variable}"
+        self.predict_var_input_feature = (
+            False  # set to true to include predict variable in input data
+        )
         self.smooth_variables = [
             self.daily_case_var,
             self.daily_death_var,
@@ -92,13 +100,25 @@ class ForecastRt:
         ]
         self.forecast_variables = [
             self.predict_variable,
+            f"smooth_{self.daily_case_var}",
             f"smooth_{self.daily_death_var}",
             "smooth_new_negative_tests",  # calculated by diffing input 'negative_tests' column
             "Rt_MAP__new_cases",
             self.fips_var_name_int,
+            "smooth_contact_tracers_count",  # number of contacts traced
+            "smoothed_cli",
+            "smoothed_hh_cmnty_cli",
+            "smoothed_nohh_cmnty_cli",
+            "smoothed_ili",
+            "smoothed_wcli",
+            "smoothed_wili",
+            "smoothed_search",  # smoothed google health trends da
+            "nmf_day_doc_fbc_fbs_ght",  # delphi combined indicator
+            "nmf_day_doc_fbs_ght",
+            # Not using variables below
             # "smooth_raw_cli",  # fb raw covid like illness
             # "smooth_raw_ili",  # fb raw flu like illness
-            "smooth_contact_tracers_count",  # number of contacts traced
+            # "smooth_raw_search",  # raw google health trends data
             # "smooth_raw_community",
             # "smooth_raw_hh_cmnty_cli", #fb estimated cli count including household
             # "smooth_raw_nohh_cmnty_cli", #fb estimated cli county not including household
@@ -106,16 +126,6 @@ class ForecastRt:
             # "smooth_raw_wili", #fb ili adjusted with weight surveys
             # "smooth_unsmoothed_community",
             # "smoothed_community",
-            "smoothed_cli",
-            "smoothed_hh_cmnty_cli",
-            "smoothed_nohh_cmnty_cli",
-            "smoothed_ili",
-            "smoothed_wcli",
-            "smoothed_wili",
-            # "smooth_raw_search",  # raw google health trends data
-            "smoothed_search",  # smoothed google health trends da
-            "nmf_day_doc_fbc_fbs_ght",  # delphi combined indicator
-            "nmf_day_doc_fbs_ght",
         ]
         self.scaled_variable_suffix = "_scaled"
 
@@ -183,9 +193,10 @@ class ForecastRt:
             for var in self.smooth_variables:
                 df[f"smooth_{var}"] = df.iloc[:][var].rolling(window=5).mean()
             # Calculate average of predict variable
-            df[self.smooth_predict_variable] = (
-                df.iloc[:][self.raw_predict_variable].rolling(window=5).mean()
-            )
+            indexer = pd.api.indexers.FixedForwardWindowIndexer(window_size=5)
+            df[self.predict_variable] = (
+                df.iloc[:][self.raw_predict_variable].rolling(window=indexer).mean()
+            )  # this just grabs the value of the variable 5 days forward, it is not a mean and I dunno why
             # Calculate Rt derivative, exclude first row since-- zero derivative
             df[self.d_predict_variable] = df[self.predict_variable].diff()
 
@@ -195,7 +206,7 @@ class ForecastRt:
 
             # dates.append(df.iloc[-self.predict_days:]['sim_day'])
             # TODO decide if first and last entry need to be removed
-            df = df[1:-1]
+            df = df[1:-5]
             df[self.fips_var_name_int] = df[self.fips_var_name].astype(int)
             df[self.sim_date_name] = (df.index - self.ref_date).days + 1
 
@@ -209,7 +220,8 @@ class ForecastRt:
             state_names.append(state_name)
             df_forecast_list.append(df_forecast)
             df_list.append(df)
-            if self.save_csv_output:
+            # if self.save_csv_output:
+            if 1 == 1:
                 df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
                 df.to_csv(self.csv_output_folder + df["state"][0] + "_OG_forecast.csv")
 
@@ -235,7 +247,6 @@ class ForecastRt:
                 - 1
             )
             test_samples = df_samples[first_test_index:]
-
             if self.save_csv_output:
                 for i in range(len(train_samples_not_spaced)):
                     df = train_samples_not_spaced[i]
@@ -246,7 +257,6 @@ class ForecastRt:
                     df = test_samples[i]
                     if self.save_csv_output:
                         df.to_csv(self.csv_output_folder + "df" + str(i) + "_test-notspaced.csv")
-
             # For training only keep samples that are days_between_samples apart (avoid forecast learning meaningless correlations between labels)
             train_samples = train_samples_not_spaced[0 :: self.days_between_samples]
 
@@ -284,8 +294,8 @@ class ForecastRt:
         col = plt.cm.jet(np.linspace(0, 1, round(len(self.forecast_variables) + 1)))
         BOLD_LINEWIDTH = 3
         for df, state in zip(df_list, state_fips):
-            if self.save_csv_output:
-                df.to_csv(self.csv_output_folder + us.states.lookup(state).name + ".csv")
+            # if self.save_csv_output:
+            df.to_csv(self.csv_output_folder + us.states.lookup(state).name + "forecast.csv")
             fig, ax = plt.subplots(figsize=(18, 12))
             for var, color in zip(self.forecast_variables, col):
                 if var != self.predict_variable:
@@ -407,10 +417,14 @@ class ForecastRt:
         n_hidden_layer_dimensions = 100
         n_layers = 4
         log.info(f"n_features: {len(self.forecast_variables)}")
+        if self.predict_var_input_feature:
+            n_features = len(self.forecast_variables)
+        else:
+            n_features = len(self.forecast_variables) - 1
         modelClass = MyHyperModel(
             train_sequence_length=self.sequence_length,
             predict_sequence_length=self.predict_days,
-            n_features=len(self.forecast_variables),
+            n_features=n_features,
             mask_value=self.mask_value,
             batch_size=self.n_batch,
         )
@@ -509,7 +523,7 @@ class ForecastRt:
         forecast_model_skeleton = MyHyperModel(
             train_sequence_length=self.sequence_length,
             predict_sequence_length=self.predict_days,
-            n_features=len(self.forecast_variables),
+            n_features=n_features,
             mask_value=self.mask_value,
             batch_size=1,
         )
@@ -813,6 +827,8 @@ class ForecastRt:
             X = df.iloc[
                 : -self.predict_days, :
             ]  # exclude last n entries of df to use for prediction
+            if not self.predict_var_input_feature:
+                X = X.drop(columns=PREDICT_VAR)
             Y = df.iloc[-self.predict_days :, :]
 
             # fips = X['fips_int'][0]
