@@ -75,22 +75,23 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         values = set(data.index.to_list())
         return sorted(values)
 
-    def latest_values(self, aggregation_level=None) -> pd.DataFrame:
+    def latest_values(self) -> pd.DataFrame:
         """Gets the most recent values.
-
-        Args:
-            aggregation_level: If specified, only gets latest values for that aggregation,
-                otherwise returns values for entire aggretation.
 
         Return: DataFrame
         """
+        columns_to_ffill = list(set(self.data.columns) - set(TimeseriesDataset.INDEX_FIELDS))
+        data_copy = self.data.set_index([CommonFields.FIPS, CommonFields.DATE]).sort_index()
+        # Groupby preserves the order of rows within a group so the last date will be the last row.
+        data_copy[columns_to_ffill] = data_copy.groupby([CommonFields.FIPS], sort=False)[
+            columns_to_ffill
+        ].ffill()
+        # Reset FIPS back to a regular column and drop the DATE index.
         return (
-            self.data.sort_values([CommonFields.FIPS, CommonFields.DATE])
-            .ffill()
-            .groupby("fips")
+            data_copy.groupby(CommonFields.FIPS)
             .last()
-            .reset_index()
-            .drop(columns=CommonFields.DATE)
+            .reset_index(CommonFields.FIPS)
+            .reset_index(drop=True)
         )
 
     def get_subset(
