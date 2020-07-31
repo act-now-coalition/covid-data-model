@@ -327,7 +327,7 @@ def test_melt_provenance_multiple_sources():
     }
 
 
-def test_make_latest_from_timeseries():
+def test_make_latest_from_timeseries_simple():
     data = read_csv_and_index_fips_date(
         "fips,county,state,country,date,aggregate_level,m1,m2\n"
         "97123,Smith County,ZZ,USA,2020-04-01,county,1,\n"
@@ -336,4 +336,19 @@ def test_make_latest_from_timeseries():
     ts = TimeseriesDataset(data)
     assert to_dict(["fips"], ts.latest_values()[["fips", "m1", "m2"]]) == {
         "97123": {"m1": 1, "m2": 2}
+    }
+
+
+def test_make_latest_from_timeseries_dont_touch_county():
+    data = read_csv_and_index_fips_date(
+        "fips,county,state,country,date,aggregate_level,m1,m2\n"
+        "95123,Smith Countyy,YY,USA,2020-04-01,county,1,\n"
+        "97123,Smith Countzz,ZZ,USA,2020-04-01,county,2,\n"
+        "97,,ZZ,USA,2020-04-01,state,3,\n"
+    ).reset_index()
+    ts = TimeseriesDataset(data)
+    assert to_dict(["fips"], ts.latest_values()[["fips", "county", "m1", "m2"]]) == {
+        "95123": {"m1": 1, "county": "Smith Countyy"},
+        "97123": {"m1": 2, "county": "Smith Countzz"},
+        "97": {"m1": 3},
     }
