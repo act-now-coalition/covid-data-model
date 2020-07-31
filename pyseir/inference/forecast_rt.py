@@ -143,7 +143,7 @@ class ForecastRt:
         self.percent_train = True
         self.train_size = 0.8
         self.n_test_days = 10
-        self.n_batch = 10
+        self.n_batch = 20
         self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
@@ -537,7 +537,7 @@ class ForecastRt:
         forecast_model.set_weights(trained_model_weights)
 
         DATA_LINEWIDTH = 1
-        MODEL_LINEWIDTH = 2
+        MODEL_LINEWIDTH = 0
         # plot training predictions
         train_unscaled_average_errors = []
         train_scaled_average_errors = []
@@ -556,11 +556,9 @@ class ForecastRt:
             forecasts_train, dates_train, unscaled_forecasts_train = self.get_forecasts(
                 train_df, train_X, train_Y, scalers_dict, forecast_model
             )
-
-            # log.info('forecasts')
-            # log.info(forecasts_train)
-            # log.info(train_Y)
-
+            forecasts_test, dates_test, unscaled_forecasts_test = self.get_forecasts(
+                test_df, test_X, test_Y, scalers_dict, forecast_model
+            )
             (
                 train_scaled_average_error,
                 train_unscaled_total_error,
@@ -576,41 +574,61 @@ class ForecastRt:
             train_scaled_average_errors.append(train_scaled_average_error)
             train_unscaled_average_errors.append(train_unscaled_average_error)
 
-            for n in range(len(dates_train)):
-                newdates = dates_train[n]
-                j = np.squeeze(forecasts_train[n])
-                if n == 0:
-                    plt.plot(
-                        newdates,
-                        j,
-                        color="green",
-                        label="Train Set",
-                        linewidth=MODEL_LINEWIDTH,
-                        markersize=5,
-                        marker="*",
-                    )
-                else:
-                    plt.plot(newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0)
+            if self.predict_days == 1:
+                plt.plot(
+                    np.squeeze(dates_train),
+                    np.squeeze(forecasts_train),
+                    color="green",
+                    label="Train Set",
+                    linewidth=MODEL_LINEWIDTH,
+                    markersize=5,
+                    marker="*",
+                )
+                plt.plot(
+                    np.squeeze(dates_test),
+                    np.squeeze(forecasts_test),
+                    color="orange",
+                    label="Test Set",
+                    linewidth=MODEL_LINEWIDTH,
+                    markersize=5,
+                    marker="*",
+                )
+            else:
+                for n in range(len(dates_train)):
+                    newdates = dates_train[n]
+                    j = np.squeeze(forecasts_train[n])
+                    if n == 0:
+                        plt.plot(
+                            newdates,
+                            j,
+                            color="green",
+                            label="Train Set",
+                            linewidth=MODEL_LINEWIDTH,
+                            markersize=5,
+                            marker="*",
+                        )
+                    else:
+                        plt.plot(
+                            newdates, j, color="green", linewidth=MODEL_LINEWIDTH, markersize=0
+                        )
 
-            forecasts_test, dates_test, unscaled_forecasts_test = self.get_forecasts(
-                test_df, test_X, test_Y, scalers_dict, forecast_model
-            )
-
-            for n in range(len(dates_test)):
-                newdates = dates_test[n]
-                j = np.squeeze(forecasts_test[n])
-                if n == 0:
-                    plt.plot(
-                        newdates,
-                        j,
-                        color="orange",
-                        label="Test Set",
-                        linewidth=MODEL_LINEWIDTH,
-                        markersize=5,
-                        marker="*",
-                    )
-                else:
-                    plt.plot(newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0)
+                for n in range(len(dates_test)):
+                    newdates = dates_test[n]
+                    j = np.squeeze(forecasts_test[n])
+                    if n == 0:
+                        plt.plot(
+                            newdates,
+                            j,
+                            color="orange",
+                            label="Test Set",
+                            linewidth=MODEL_LINEWIDTH,
+                            markersize=5,
+                            marker="*",
+                        )
+                    else:
+                        plt.plot(
+                            newdates, j, color="orange", linewidth=MODEL_LINEWIDTH, markersize=0
+                        )
 
             plt.plot(
                 area_df.index,
