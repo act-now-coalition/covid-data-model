@@ -220,8 +220,7 @@ class ForecastRt:
             state_names.append(state_name)
             df_forecast_list.append(df_forecast)
             df_list.append(df)
-            # if self.save_csv_output:
-            if 1 == 1:
+            if self.save_csv_output:
                 df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
                 df.to_csv(self.csv_output_folder + df["state"][0] + "_OG_forecast.csv")
 
@@ -294,8 +293,8 @@ class ForecastRt:
         col = plt.cm.jet(np.linspace(0, 1, round(len(self.forecast_variables) + 1)))
         BOLD_LINEWIDTH = 3
         for df, state in zip(df_list, state_fips):
-            # if self.save_csv_output:
-            df.to_csv(self.csv_output_folder + us.states.lookup(state).name + "forecast.csv")
+            if self.save_csv_output:
+                df.to_csv(self.csv_output_folder + us.states.lookup(state).name + "forecast.csv")
             fig, ax = plt.subplots(figsize=(18, 12))
             for var, color in zip(self.forecast_variables, col):
                 if var != self.predict_variable:
