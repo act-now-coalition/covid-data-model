@@ -20,7 +20,7 @@ rt_log = structlog.get_logger(__name__)
 def run_rt_for_fips(
     fips: str,
     include_deaths: bool = False,
-    include_testing_correction: bool = True,
+    include_testing_correction: bool = False,
     figure_collector: Optional[list] = None,
 ):
     """Entry Point for Infer Rt"""
@@ -112,6 +112,7 @@ def filter_and_smooth_input_data(
             df[column].max() > MIN_INCIDENT_COUNTS[column],
         ]
         # Now Apply Input Outlier Detection and Smoothing
+
         filtered = utils.replace_outliers(df[column], log=rt_log.new(column=column))
         # TODO find way to indicate which points filtered in figure below
 
