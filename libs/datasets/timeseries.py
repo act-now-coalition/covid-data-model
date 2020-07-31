@@ -82,14 +82,16 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         """
         columns_to_ffill = list(set(self.data.columns) - set(TimeseriesDataset.INDEX_FIELDS))
         data_copy = self.data.set_index([CommonFields.FIPS, CommonFields.DATE]).sort_index()
-        # Groupby preserves the order of rows within a group so the last date will be the last row.
-        data_copy[columns_to_ffill] = data_copy.groupby([CommonFields.FIPS], sort=False)[
-            columns_to_ffill
-        ].ffill()
-        # Reset FIPS back to a regular column and drop the DATE index.
+        # Groupby preserves the order of rows within a group so ffill will fill forwards by DATE.
+        groups_to_fill = data_copy.groupby([CommonFields.FIPS], sort=False)
+        # Consider using ffill(limit=...) to constrain how far in the past the latest values go. Currently, because
+        # there may be dates missing in the index an integer limit does not provide a consistent
+        # limit on the number of days in the past that may be used.
+        data_copy[columns_to_ffill] = groups_to_fill[columns_to_ffill].ffill()
         return (
-            data_copy.groupby(CommonFields.FIPS)
+            data_copy.groupby([CommonFields.FIPS], sort=False)
             .last()
+            # Reset FIPS back to a regular column and drop the DATE index.
             .reset_index(CommonFields.FIPS)
             .reset_index(drop=True)
         )
