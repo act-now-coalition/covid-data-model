@@ -9,7 +9,6 @@ from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
 from functools import partial
-from libs.datasets import dataset_cache
 from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.rt import infer_rt
 from pyseir.ensembles import ensemble_runner
@@ -40,7 +39,6 @@ def _cache_global_datasets():
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
-    dataset_cache.set_pickle_cache_dir()
     common_init.configure_logging()
 
 

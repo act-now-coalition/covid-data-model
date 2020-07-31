@@ -34,7 +34,6 @@ from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets import dataset_filter
-from libs.datasets import dataset_cache
 from libs import us_state_abbrev
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
@@ -116,15 +115,13 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 )
 
 
-@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_us_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
+def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
     return _build_combined_dataset_from_sources(
         TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
 
 
-@dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
-def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
+def build_us_latest_with_all_fields() -> LatestValuesDataset:
     return _build_combined_dataset_from_sources(
         LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
