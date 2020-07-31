@@ -9,6 +9,7 @@ from covidactnow.datapublic import common_df
 
 @pytest.mark.parametrize("is_ct_county", [True, False])
 def test_remove_ct_cases(is_ct_county):
+    backfill_records = [("09", "2020-07-24", 188)]
     if is_ct_county:
         fips = "09001"
     else:
@@ -24,7 +25,7 @@ def test_remove_ct_cases(is_ct_county):
     data = common_df.read_csv(data_buf)
     data = data.reset_index()
 
-    results = nytimes_dataset._remove_ct_backfill_cases(data)
+    results = nytimes_dataset.remove_backfilled_cases(data, backfill_records)
 
     if is_ct_county:
         expected_cases = pd.Series([1000, 1100, 1200], name="cases")

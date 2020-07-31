@@ -1,36 +1,73 @@
+from typing import Dict, List, Tuple
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import enums
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonIndexFields
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 
-# On 2020-07-24, CT reported a backfill of 440 additional positive cases.
-# https://portal.ct.gov/Office-of-the-Governor/News/Press-Releases/2020/07-2020/Governor-Lamont-Coronavirus-Update-July-24
-# See https://trello.com/c/rPiM6UF4/333-adjust-ct-case-data-based-on-reported-backfill-vs-current-cases
-# for more information on backfill.
-ESTIMATED_REMOVED_CT_CASES_COUNTY = {
-    "09001": 188,
-    "09003": 154,
-    "09005": 24,
-    "09007": 4,
-    "09009": 39,
-    "09011": 8,
-    "09013": 22,
-    "09015": 2,
-}
+BACKFILLED_CASES = [
+    # On 2020-07-24, CT reported a backfill of 440 additional positive cases.
+    # https://portal.ct.gov/Office-of-the-Governor/News/Press-Releases/2020/07-2020/Governor-Lamont-Coronavirus-Update-July-24
+    ("09", "2020-07-24", 440),
+    # https://portal.ct.gov/Office-of-the-Governor/News/Press-Releases/2020/07-2020/Governor-Lamont-Coronavirus-Update-July-29
+    ("09", "2020-07-29", 384),
+]
 
 
-def _remove_ct_backfill_cases(data: pd.DataFrame) -> pd.DataFrame:
-    # July 24th was the day there was a backfill of cases
-    is_on_or_after_july_24 = data[CommonFields.DATE] >= "2020-07-24"
+def _calculate_county_adjustments(
+    data: pd.DataFrame, date: str, backfilled_cases: int, state_fips: str
+) -> Dict[str, int]:
+    """Calculating number of cases to remove per county, weighted on number of new cases per county.
 
-    # Remove backfilled tests from cumulatives on and after July 24th.
-    for fips, count in ESTIMATED_REMOVED_CT_CASES_COUNTY.items():
-        is_fips_data_after_jul_24 = is_on_or_after_july_24 & (data[CommonFields.FIPS] == fips)
-        data.loc[is_fips_data_after_jul_24, CommonFields.CASES] -= count
+    Weighting on number of new cases per county gives a reasonable measure of where the backfilled
+    cases ended up.
+
+    Args:
+        data: Input Data.
+        date: Date of backfill.
+        backfilled_cases: Number of backfilled cases.
+        state_fips: FIPS code for state.
+
+    Returns: Dictionary of estimated fips -> backfilled cases.
+    """
+    is_state = data[CommonFields.FIPS].str.match(f"{state_fips}[0-9][0-9][0-9]")
+    is_not_unknown = data[CommonFields.FIPS] != f"{state_fips}999"
+
+    fields = [CommonFields.DATE, CommonFields.FIPS, CommonFields.CASES]
+    cases = (
+        data.loc[is_state & is_not_unknown, fields]
+        .set_index([CommonFields.FIPS, CommonFields.DATE])
+        .sort_index()
+    )
+    cases = cases.diff().reset_index(level=1)
+    cases_on_date = cases[cases.date == date]["cases"]
+    # For states with more counties, rounding could lead to the sum of the counties diverging from
+    # the backfilled cases count.
+    return (cases_on_date / cases_on_date.sum() * backfilled_cases).round().to_dict()
+
+
+def remove_backfilled_cases(
+    data: pd.DataFrame, backfilled_cases: List[Tuple[str, str, int]]
+) -> pd.DataFrame:
+    """Removes reported backfilled cases from case totals.
+
+    Args:
+        data: Data
+        backfilled_cases: List of backfilled case info.
+
+    Returns: Updated data frame.
+    """
+    for state_fips, date, cases in backfilled_cases:
+        adjustments = _calculate_county_adjustments(data, date, cases, state_fips)
+        is_on_or_after_date = data[CommonFields.DATE] >= date
+        for fips, count in adjustments.items():
+            is_fips_data_after_date = is_on_or_after_date & (data[CommonFields.FIPS] == fips)
+            data.loc[is_fips_data_after_date, CommonFields.CASES] -= int(count)
+
     return data
 
 
@@ -114,6 +151,6 @@ class NYTimesDataset(data_source.DataSource):
             ABBREV_US_UNKNOWN_COUNTY_FIPS
         )
 
-        data = _remove_ct_backfill_cases(data)
+        data = remove_backfilled_cases(data, BACKFILLED_CASES)
 
         return data
