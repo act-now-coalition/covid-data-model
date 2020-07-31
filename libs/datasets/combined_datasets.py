@@ -250,13 +250,38 @@ def _build_combined_dataset_from_sources(
         data_source_cls.SOURCE_NAME: filter.apply(target_dataset_cls.build_from_data_source(source))
         for data_source_cls, source in loaded_data_sources.items()
     }
-
+    preserve_columns = [
+        CommonFields.FIPS,
+        CommonFields.AGGREGATE_LEVEL,
+        CommonFields.STATE,
+        CommonFields.COUNTRY,
+        CommonFields.COUNTY,
+    ]
     datasets: MutableMapping[str, pd.DataFrame] = {}
     for name, dataset_obj in intermediate_datasets.items():
         data_with_index = dataset_obj.data.set_index(target_dataset_cls.COMMON_INDEX_FIELDS)
         if data_with_index.index.duplicated(keep=False).any():
             raise ValueError(f"Duplicate in {name}")
         datasets[name] = data_with_index
+
+        try:
+            cols = list(set(preserve_columns + ["date"]) & set(dataset_obj.data.columns))
+            all_identifiers = dataset_obj.data.loc[:, cols].drop_duplicates(subset=preserve_columns)
+        except:
+            print(f"Failure with data {dataset_obj.data} in {name}\n")
+            raise
+        dups = all_identifiers.duplicated(subset=[CommonFields.FIPS], keep=False)
+        if dups.any():
+            print(f"PROBLEM FIPS IN {name}")
+            print(all_identifiers.loc[dups, :].head(20))
+            raise ValueError()
+        state_with_county = (all_identifiers.aggregate_level == "state") & (
+            ~all_identifiers.county.isnull()
+        )
+        if state_with_county.any():
+            print(f"PROBLEM WITH STATE ROWS in {name}")
+            print(all_identifiers.loc[state_with_county, :].head(20))
+            raise ValueError()
         # If any duplicates slip in the following code may help you debug them:
         # https://stackoverflow.com/a/34297689
         # datasets[name] = data_with_index.loc[~data_with_index.duplicated(keep="first"), :]
@@ -301,15 +326,29 @@ def _build_data_and_provenance(
         CommonFields.COUNTRY,
         CommonFields.COUNTY,
     ]
-    all_identifiers = pd.concat(
-        df.reset_index().loc[
-            :, [CommonFields.FIPS] + list(df.columns.intersection(preserve_columns))
-        ]
-        for df in datasource_dataframes.values()
-    ).drop_duplicates()
+    all_identifiers = (
+        pd.concat(
+            df.reset_index().loc[
+                :, [CommonFields.FIPS] + list(df.columns.intersection(preserve_columns))
+            ]
+            for df in datasource_dataframes.values()
+        )
+        .drop_duplicates()
+        .sort_values([CommonFields.FIPS])
+    )
     # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
     # are rows in the input data sources that have different values for county name, state etc.
-    fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
+    try:
+        fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
+    except ValueError as exc:
+        print("Duplicate rows")
+        print(
+            all_identifiers.loc[
+                all_identifiers.duplicated(subset=[CommonFields.FIPS], keep=False), :
+            ].head(20)
+        )
+        print("end duplicate rows")
+        raise exc
 
     # Inspired by pd.Series.combine_first(). Create a new index which is a union of all the input dataframe
     # index.

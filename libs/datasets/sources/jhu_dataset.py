@@ -115,6 +115,34 @@ class JHUDataset(data_source.DataSource):
             data, county_key=cls.Fields.COUNTY, fips_key=cls.Fields.FIPS
         )
 
+        preserve_columns = [
+            cls.Fields.FIPS,
+            cls.Fields.STATE,
+            cls.Fields.AGGREGATE_LEVEL,
+            cls.Fields.COUNTRY,
+            cls.Fields.COUNTY,
+        ]
+
+        try:
+            all_identifiers = data.loc[
+                data[cls.Fields.FIPS].notnull(), preserve_columns + [cls.Fields.DATE]
+            ].drop_duplicates(subset=preserve_columns)
+        except:
+            print(f"Failure with data {data}")
+            raise
+        dups = all_identifiers.duplicated(subset=[cls.Fields.FIPS], keep=False)
+        if dups.any():
+            print(f"PROBLEM FIPS IN jhu_dataset")
+            print(all_identifiers.loc[dups, :].head(20))
+            raise ValueError()
+        state_with_county = (all_identifiers[cls.Fields.AGGREGATE_LEVEL] == "state") & (
+            ~all_identifiers[cls.Fields.COUNTY].isnull()
+        )
+        if state_with_county.any():
+            print(f"PROBLEM WITH STATE ROWS in jhu_dataset")
+            print(all_identifiers.loc[state_with_county, :].head(20))
+            raise ValueError()
+
         return data
 
     @classmethod
