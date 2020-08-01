@@ -43,42 +43,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
-    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
-        super().__init__(data, provenance)
-
-        geo_data_columns = set(data.columns) & {
-            CommonFields.FIPS,
-            CommonFields.AGGREGATE_LEVEL,
-            CommonFields.STATE,
-            CommonFields.COUNTRY,
-            CommonFields.COUNTY,
-            "city",
-        }
-        # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
-        # are rows in the input data sources that have different values for county name, state etc.
-        fips_indexed = (
-            data.loc[:, geo_data_columns]
-            .drop_duplicates()
-            .set_index(CommonFields.FIPS, verify_integrity=True)
-        )
-        ts_value_columns = set(data.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS) - geo_data_columns
-        long = (
-            data.loc[:, COMMON_FIELDS_TIMESERIES_KEYS + list(ts_value_columns)]
-            .melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS, value_vars=ts_value_columns,)
-            .dropna()
-            .set_index([CommonFields.FIPS, "variable", CommonFields.DATE])
-            .apply(pd.to_numeric)
-        )
-        data_date_columns = long.unstack(CommonFields.DATE)
-
-        data_date_columns = data_date_columns.loc[
-            data_date_columns.loc[:, "value"].notna().any(axis=1), :
-        ]
-        summary = data_date_columns.loc[:, "value"].apply(generate_field_summary, axis=1)
-        self.data_date_columns = pd.concat(
-            {"summary": summary, "value": data_date_columns["value"]}, axis=1
-        )
-
     @property
     def all_fips(self):
         return self.data.reset_index().fips.unique()
@@ -139,6 +103,40 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         # If the groupby raises a ValueError check the dtype of date. If it was loaded
         # by read_csv did you set parse_dates=["date"]?
         return data.iloc[data.groupby(group).date.idxmax(), :]
+
+    def get_date_columns(self) -> pd.DataFrame:
+        geo_data_columns = set(self.data.columns) & {
+            CommonFields.FIPS,
+            CommonFields.AGGREGATE_LEVEL,
+            CommonFields.STATE,
+            CommonFields.COUNTRY,
+            CommonFields.COUNTY,
+            "city",
+        }
+        # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
+        # are rows in the input data sources that have different values for county name, state etc.
+        fips_indexed = (
+            self.data.loc[:, geo_data_columns]
+            .drop_duplicates()
+            .set_index(CommonFields.FIPS, verify_integrity=True)
+        )
+        ts_value_columns = (
+            set(self.data.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS) - geo_data_columns
+        )
+        long = (
+            self.data.loc[:, COMMON_FIELDS_TIMESERIES_KEYS + list(ts_value_columns)]
+            .melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS, value_vars=ts_value_columns,)
+            .dropna()
+            .set_index([CommonFields.FIPS, "variable", CommonFields.DATE])
+            .apply(pd.to_numeric)
+        )
+        data_date_columns = long.unstack(CommonFields.DATE)
+
+        data_date_columns = data_date_columns.loc[
+            data_date_columns.loc[:, "value"].notna().any(axis=1), :
+        ]
+        summary = data_date_columns.loc[:, "value"].apply(generate_field_summary, axis=1)
+        return pd.concat({"summary": summary, "value": data_date_columns["value"]}, axis=1)
 
     def get_subset(
         self,

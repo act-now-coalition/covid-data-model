@@ -3,7 +3,7 @@ from io import StringIO
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources import cds_dataset
 from libs.datasets.timeseries import TimeseriesDataset
-from test.dataset_utils_test import to_dict
+from test.dataset_utils_test import to_dict, read_csv_and_index_fips_date
 import pandas as pd
 import pytest
 
@@ -51,14 +51,16 @@ def test_get_subset_and_get_data():
 
 
 def test_wide_dates():
-    input_df = pd.read_csv(
-        StringIO(
-            "fips,county,aggregate_level,date,m1,m2\n"
-            "97111,Bar County,county,2020-04-01,1,\n"
-            "97111,Bar County,county,2020-04-02,2,\n"
-            "97222,Foo County,county,2020-04-01,,10\n"
-            "97222,Foo County,county,2020-04-03,3,30\n"
-        )
-    )
+    input_df = read_csv_and_index_fips_date(
+        "fips,county,aggregate_level,date,m1,m2\n"
+        "97111,Bar County,county,2020-04-01,1,\n"
+        "97111,Bar County,county,2020-04-02,2,\n"
+        "97222,Foo County,county,2020-04-01,,10\n"
+        "97222,Foo County,county,2020-04-03,3,30\n"
+    ).reset_index()
     ts = TimeseriesDataset(input_df)
-    assert not ts.data_date_columns.empty
+    assert to_dict(["fips", "variable"], ts.get_date_columns()["value"]) == {
+        ("97111", "m1"): {pd.to_datetime("2020-04-01"): 1.0, pd.to_datetime("2020-04-02"): 2.0},
+        ("97222", "m1"): {pd.to_datetime("2020-04-03"): 3.0},
+        ("97222", "m2"): {pd.to_datetime("2020-04-01"): 10.0, pd.to_datetime("2020-04-03"): 30.0},
+    }
