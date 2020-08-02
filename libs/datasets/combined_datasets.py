@@ -1,17 +1,13 @@
 from enum import Enum
 from itertools import chain
-from typing import Dict, Type, List, NewType, Mapping, Optional, MutableMapping, Tuple
+from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
-import os
-import logging
 import pandas as pd
 import structlog
-from pandas import MultiIndex
 from structlog.threadlocal import tmp_bind
 
 from covidactnow.datapublic.common_fields import CommonFields
-from libs import git_lfs_object_helpers
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
@@ -19,7 +15,7 @@ from libs.datasets import dataset_pointer
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel, fips_index_geo_data
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.cmdc import CmdcDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -293,23 +289,7 @@ def _build_data_and_provenance(
     datasource_dataframes: Mapping[str, pd.DataFrame],
     override=Override.BY_TIMESERIES,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    # These are columns that are expected to have a single value for each FIPS. Get the columns
-    # from every row of each data source and then keep one of each unique row.
-    preserve_columns = [
-        CommonFields.AGGREGATE_LEVEL,
-        CommonFields.STATE,
-        CommonFields.COUNTRY,
-        CommonFields.COUNTY,
-    ]
-    all_identifiers = pd.concat(
-        df.reset_index().loc[
-            :, [CommonFields.FIPS] + list(df.columns.intersection(preserve_columns))
-        ]
-        for df in datasource_dataframes.values()
-    ).drop_duplicates()
-    # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
-    # are rows in the input data sources that have different values for county name, state etc.
-    fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
+    fips_indexed = fips_index_geo_data(pd.concat(datasource_dataframes.values()))
 
     # Inspired by pd.Series.combine_first(). Create a new index which is a union of all the input dataframe
     # index.

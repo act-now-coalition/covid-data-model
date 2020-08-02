@@ -105,24 +105,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return data.iloc[data.groupby(group).date.idxmax(), :]
 
     def get_date_columns(self) -> pd.DataFrame:
-        geo_data_columns = set(self.data.columns) & {
-            CommonFields.FIPS,
-            CommonFields.AGGREGATE_LEVEL,
-            CommonFields.STATE,
-            CommonFields.COUNTRY,
-            CommonFields.COUNTY,
-            "city",
-        }
-        # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
-        # are rows in the input data sources that have different values for county name, state etc.
-        fips_indexed = (
-            self.data.loc[:, geo_data_columns]
-            .drop_duplicates()
-            .set_index(CommonFields.FIPS, verify_integrity=True)
-        )
         ts_value_columns = (
-            set(self.data.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS) - geo_data_columns
+            set(self.data.columns)
+            - set(COMMON_FIELDS_TIMESERIES_KEYS)
+            - set(dataset_utils.GEO_DATA_COLUMNS)
         )
+        # Melt all the ts_value_columns into a single "value" column
         long = (
             self.data.loc[:, COMMON_FIELDS_TIMESERIES_KEYS + list(ts_value_columns)]
             .melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS, value_vars=ts_value_columns,)
@@ -130,13 +118,36 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             .set_index([CommonFields.FIPS, "variable", CommonFields.DATE])
             .apply(pd.to_numeric)
         )
+        # Unstack by DATE, creating a row for each timeseries and a column for each DATE.
         data_date_columns = long.unstack(CommonFields.DATE)
-
+        # Drop any rows without a real value for any date.
         data_date_columns = data_date_columns.loc[
             data_date_columns.loc[:, "value"].notna().any(axis=1), :
         ]
+
         summary = data_date_columns.loc[:, "value"].apply(generate_field_summary, axis=1)
-        return pd.concat({"summary": summary, "value": data_date_columns["value"]}, axis=1)
+
+        geo_data_per_fips = dataset_utils.fips_index_geo_data(self.data)
+        # Make a DataFrame with a row for each summary.index element
+        assert summary.index.names == [CommonFields.FIPS, "variable"]
+        geo_data = pd.merge(
+            pd.DataFrame(data=[], index=summary.index),
+            geo_data_per_fips,
+            how="left",
+            left_on=CommonFields.FIPS,  # FIPS is in the left MultiIndex
+            right_index=True,
+            suffixes=(False, False),
+        )
+
+        return pd.concat(
+            {
+                "geo_data": geo_data,
+                "provenance": self.provenance,
+                "summary": summary,
+                "value": data_date_columns["value"],
+            },
+            axis=1,
+        )
 
     def get_subset(
         self,
@@ -282,7 +293,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS,],
         )
 
-        print()
         dataset_utils.summarize(
             self.data,
             AggregationLevel.STATE,
@@ -305,7 +315,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             path: Path to write to.
         """
         super().to_csv(path)
-        self.data_date_columns.to_csv(
+        self.get_date_columns().to_csv(
             str(path).replace(".csv", "-wide-dates.csv"),
             date_format="%Y-%m-%d",
             index=True,

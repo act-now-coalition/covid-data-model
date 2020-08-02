@@ -4,10 +4,20 @@ import enum
 import logging
 import pathlib
 import pandas as pd
-import structlog
 from structlog.stdlib import BoundLogger
 
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.us_state_abbrev import US_STATE_ABBREV
+
+
+GEO_DATA_COLUMNS = [
+    CommonFields.FIPS,
+    CommonFields.AGGREGATE_LEVEL,
+    CommonFields.STATE,
+    CommonFields.COUNTRY,
+    CommonFields.COUNTY,
+    "city",
+]
 
 if os.getenv("COVID_DATA_PUBLIC"):
     LOCAL_PUBLIC_DATA_PATH = pathlib.Path(os.getenv("COVID_DATA_PUBLIC"))
@@ -331,3 +341,15 @@ def make_binary_array(
     if before:
         query_parts.append("date < @before")
     return data.eval(" and ".join(query_parts))
+
+
+def fips_index_geo_data(df):
+    # These are columns that are expected to have a single value for each FIPS. Get the columns
+    # from every row of each data source and then keep one of each unique row.
+    if df.index.names:
+        df = df.reset_index()
+    all_identifiers = df.loc[:, df.columns.intersection(GEO_DATA_COLUMNS)].drop_duplicates()
+    # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
+    # are rows in the input data sources that have different values for county name, state etc.
+    fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
+    return fips_indexed
