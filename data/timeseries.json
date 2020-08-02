@@ -2,14 +2,14 @@
   "dataset_type": "timeseries",
   "path": "data/timeseries.csv",
   "data_git_info": {
-    "sha": "a25b7ad6922dabd6348a7316d2c3bd24c0d8413f",
-    "branch": "tgb-20200731-covidcast-false-start",
+    "sha": "61c68b30a3cc2ffc801545158c9b945d59e3a576",
+    "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "9092ecec364420c2d82244238ac1607aa6aa1f5c",
-    "branch": "tgb-wide-dates",
+    "sha": "4be84e000a7ecff926f71389c2c9bad3783887b5",
+    "branch": "master",
     "is_dirty": true
   },
-  "updated_at": "2020-08-02T01:59:30.014136"
+  "updated_at": "2020-08-02T01:02:07.911675"
 }

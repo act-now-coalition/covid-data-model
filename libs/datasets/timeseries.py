@@ -76,33 +76,26 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         values = set(data.index.to_list())
         return sorted(values)
 
-    def latest_values(self, aggregation_level=None) -> pd.DataFrame:
+    def latest_values(self) -> pd.DataFrame:
         """Gets the most recent values.
-
-        Args:
-            aggregation_level: If specified, only gets latest values for that aggregation,
-                otherwise returns values for entire aggretation.
 
         Return: DataFrame
         """
-        if aggregation_level is None:
-            county = self.latest_values(aggregation_level=AggregationLevel.COUNTY)
-            state = self.latest_values(aggregation_level=AggregationLevel.STATE)
-            return pd.concat([county, state])
-        elif aggregation_level is AggregationLevel.COUNTY:
-            group = [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS]
-        elif aggregation_level is AggregationLevel.STATE:
-            group = [CommonFields.COUNTRY, CommonFields.STATE]
-        else:
-            assert aggregation_level is AggregationLevel.COUNTRY
-            group = [CommonFields.COUNTRY]
-
-        data = self.data[
-            self.data[CommonFields.AGGREGATE_LEVEL] == aggregation_level.value
-        ].reset_index()
-        # If the groupby raises a ValueError check the dtype of date. If it was loaded
-        # by read_csv did you set parse_dates=["date"]?
-        return data.iloc[data.groupby(group).date.idxmax(), :]
+        columns_to_ffill = list(set(self.data.columns) - set(TimeseriesDataset.INDEX_FIELDS))
+        data_copy = self.data.set_index([CommonFields.FIPS, CommonFields.DATE]).sort_index()
+        # Groupby preserves the order of rows within a group so ffill will fill forwards by DATE.
+        groups_to_fill = data_copy.groupby([CommonFields.FIPS], sort=False)
+        # Consider using ffill(limit=...) to constrain how far in the past the latest values go. Currently, because
+        # there may be dates missing in the index an integer limit does not provide a consistent
+        # limit on the number of days in the past that may be used.
+        data_copy[columns_to_ffill] = groups_to_fill[columns_to_ffill].ffill()
+        return (
+            data_copy.groupby([CommonFields.FIPS], sort=False)
+            .last()
+            # Reset FIPS back to a regular column and drop the DATE index.
+            .reset_index(CommonFields.FIPS)
+            .reset_index(drop=True)
+        )
 
     def get_date_columns(self) -> pd.DataFrame:
         ts_value_columns = (
@@ -274,17 +267,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return cls(data)
 
     @classmethod
-    def build_from_data_source(cls, source):
+    def build_from_data_source(cls, source) -> "TimeseriesDataset":
         """Build TimeseriesDataset from a data source."""
         if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
             raise ValueError("Index fields must match")
 
         return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
-
-    def to_latest_values_dataset(self):
-        from libs.datasets.latest_values_dataset import LatestValuesDataset
-
-        return LatestValuesDataset(self.latest_values())
 
     def summarize(self):
         dataset_utils.summarize(
