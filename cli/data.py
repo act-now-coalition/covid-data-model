@@ -36,8 +36,8 @@ def update(summary_filename):
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(path_prefix)
 
-    # dataset = timeseries_pointer.load_dataset()
-    # _save_field_summary(dataset, path_prefix / summary_filename)
+    dataset = timeseries_pointer.load_dataset()
+    _save_field_summary(dataset, path_prefix / summary_filename)
 
 
 @main.command()
