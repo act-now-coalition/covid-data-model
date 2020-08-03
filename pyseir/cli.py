@@ -144,7 +144,7 @@ def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict
             all_county_fips.update(county_fips_per_state)
             continue
 
-        if fips in county_fips_per_state:
+        if fips in county_fips_per_state and len(county_fips_per_state[fips]) > 0:
             root.info(f"Found {fips}, restricting run to found fips")
             all_county_fips.update({fips: state})
 
@@ -164,8 +164,10 @@ def _build_all_for_states(
     # prepare data
     _cache_global_datasets()
 
-    if not skip_whitelist:
-        _generate_whitelist()
+    # if not skip_whitelist:
+    #     _generate_whitelist()
+
+    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
 
     # do everything for just states in parallel
     with Pool(maxtasksperchild=1) as p:

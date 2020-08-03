@@ -4,9 +4,13 @@ from copy import deepcopy
 from datetime import timedelta, datetime
 import matplotlib.pyplot as plt
 import numpy as np
+import textwrap
+from covidactnow.datapublic.common_fields import CommonFields
+from libs import us_state_abbrev
+from libs.datasets import combined_datasets
+from libs.datasets import AggregationLevel
 from pyseir.reports.pdf_report import PDFReport
 from pyseir import OUTPUT_DIR
-import textwrap
 from pyseir.reports.names import compartment_to_name_map, policy_to_mitigation
 from pyseir import load_data
 from pyseir.inference import fit_results
@@ -27,22 +31,30 @@ class StateReport:
         self.primary_suppression_policy = primary_suppression_policy
 
         # Load the county metadata and extract names for the state.
-        county_metadata = load_data.load_county_metadata()
-        self.counties = county_metadata[county_metadata["state"].str.lower() == self.state.lower()][
-            "fips"
-        ]
+        county_latest = combined_datasets.load_us_latest_dataset().get_subset(
+            aggregation_level=AggregationLevel.COUNTY
+        )
+
+        self.county_fips = county_latest.get_subset(
+            state=us_state_abbrev.US_STATE_ABBREV[state]
+        ).all_fips
         self.ensemble_data_by_county = {
-            fips: load_data.load_ensemble_results(fips) for fips in self.counties
+            fips: load_data.load_ensemble_results(fips) for fips in self.county_fips
         }
-        self.county_metadata = county_metadata.set_index("fips")
         self.names = [
-            self.county_metadata.loc[fips, "county"].replace(" County", "")
-            for fips in self.counties
+            county_latest.get_record_for_fips(fips)[CommonFields.COUNTY].replace(" County", "")
+            for fips in self.county_fips
         ]
-        self.filename = os.path.join(
+
+    @property
+    def filename(self):
+        return os.path.join(
             OUTPUT_DIR, self.state, "reports", f"summary__{self.state}__state_report.pdf"
         )
-        self.surge_filename = os.path.join(
+
+    @property
+    def surge_filename(self):
+        return os.path.join(
             OUTPUT_DIR, self.state, "reports", f"summary__{self.state}__state_surge_report.xlsx"
         )
 
@@ -90,7 +102,7 @@ class StateReport:
                         "peak_time_ci50"
                     ]
                 )
-                for fips in self.counties
+                for fips in self.county_fips
             ]
 
             sorted_times = sorted(deepcopy(peak_times))
@@ -112,13 +124,13 @@ class StateReport:
                 self.ensemble_data_by_county[fips][suppression_policy][compartment][
                     "peak_value_ci50"
                 ]
-                for fips in self.counties
+                for fips in self.county_fips
             ]
             plt.scatter(peak_values, self.names, label=suppression_policy, c=color_cycle[i_plt])
 
             if suppression_policy == self.primary_suppression_policy:
                 plt.subplot(121)
-                for i, fips in enumerate(self.counties):
+                for i, fips in enumerate(self.county_fips):
                     value = "peak_time"
                     d = self.ensemble_data_by_county[fips][suppression_policy][compartment]
                     t0 = fit_results.load_t0(fips)
@@ -165,7 +177,7 @@ class StateReport:
                                 self.ensemble_data_by_county[fips][suppression_policy][compartment][
                                     "capacity"
                                 ]
-                                for fips in self.counties
+                                for fips in self.county_fips
                             ]
                         ),
                         axis=1,
@@ -174,7 +186,7 @@ class StateReport:
                         capacities, self.names, marker="<", s=100, c="r", label="Estimated Capacity"
                     )
 
-                for i, fips in enumerate(self.counties):
+                for i, fips in enumerate(self.county_fips):
                     value = "peak_value"
                     d = self.ensemble_data_by_county[fips][suppression_policy][compartment]
                     plt.fill_betweenx(
@@ -293,14 +305,11 @@ class StateReport:
         -------
 
         """
-        df = load_data.load_county_metadata()
-        all_fips = load_data.get_all_fips_codes_for_a_state(self.state)
-        all_data = {fips: load_data.load_ensemble_results(fips) for fips in all_fips}
-        df = df.set_index("fips")
+        all_data = {fips: load_data.load_ensemble_results(fips) for fips in self.county_fips}
 
         records = []
         for fips, ensembles in all_data.items():
-            county_name = df.loc[fips]["county"]
+            county_name = combined_datasets.get_us_latest_for_fips(fips)[CommonFields.COUNTY]
             t0 = fit_results.load_t0(fips)
 
             for suppression_policy, ensemble in ensembles.items():

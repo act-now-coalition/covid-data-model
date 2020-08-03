@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
+from libs.datasets import combined_datasets
+from libs import us_state_abbrev
 from pyseir import load_data
 from pyseir.inference.infer_t0 import infer_t0
 from pyseir.inference import fit_results
@@ -113,7 +115,7 @@ def generate_covidactnow_scenarios(t_list, R0, t0, scenario):
     """
     Generate a suppression policy for CovidActNow which generates an Reff on a
     given date according to the policies in place.
-    
+
     Implements CovidActNow's version, which sets Reff
         ```
         def get_interventions(start_date=datetime.now().date()):
@@ -364,7 +366,7 @@ def generate_empirical_distancing_policy_by_state(
     t_list: array-like
         List of times to interpolate over.
     state: str
-        State full name to lookup interventions against.
+        ISO-2 state code to lookup interventions against.
     future_suppression: float
         The suppression level to apply in an ongoing basis after today, and
         going backward as the lockdown / stay-at-home efficacy.
@@ -376,14 +378,16 @@ def generate_empirical_distancing_policy_by_state(
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t
     """
-    county_metadata = load_data.load_county_metadata()
-    counties_fips = county_metadata[county_metadata.state == state].fips.unique()
+    latest_values = combined_datasets.load_us_latest_dataset()
+    state_values = latest_values.get_subset(aggregation_level=AggregationLevel.COUNTY, state=state)
+    counties_fips = state_values.all_fips
 
     if reference_start_date is None:
         reference_start_date = min([infer_t0(fips) for fips in counties_fips])
 
     # Aggregate the counties to the state level, weighted by population.
-    weight = county_metadata.loc[county_metadata.state == state, "total_population"].values
+
+    weight = state_values.data.population
     weight = weight / weight.sum()
     results = []
     for fips in counties_fips:
