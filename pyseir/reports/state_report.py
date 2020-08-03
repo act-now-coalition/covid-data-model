@@ -31,10 +31,7 @@ class StateReport:
         self.primary_suppression_policy = primary_suppression_policy
 
         # Load the county metadata and extract names for the state.
-        county_latest = combined_datasets.load_us_latest_dataset().get_subset(
-            aggregation_level=AggregationLevel.COUNTY
-        )
-
+        county_latest = combined_datasets.load_us_latest_dataset().county
         self.county_fips = county_latest.get_subset(
             state=us_state_abbrev.US_STATE_ABBREV[state]
         ).all_fips

@@ -378,8 +378,8 @@ def generate_empirical_distancing_policy_by_state(
     suppression_model: callable
         suppression_model(t) returns the current suppression model at time t
     """
-    latest_values = combined_datasets.load_us_latest_dataset()
-    state_values = latest_values.get_subset(aggregation_level=AggregationLevel.COUNTY, state=state)
+    latest_values = combined_datasets.load_us_latest_dataset().county
+    state_values = latest_values.get_subset(state=state)
     counties_fips = state_values.all_fips
 
     if reference_start_date is None:
