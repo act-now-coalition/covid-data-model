@@ -177,6 +177,10 @@ class ModelFitter:
         self.dof_hosp = None
 
     @property
+    def state_fips(self):
+        return self.fips[:2]
+
+    @property
     def display_name(self):
         record = combined_datasets.get_us_latest_for_fips(self.fips)
         county = record[CommonFields.COUNTY]
@@ -218,7 +222,7 @@ class ModelFitter:
             self.fit_params["hosp_fraction"] = 1
 
         if len(self.fips) == 5:
-            state_fit_result = load_inference_result(fips=self.fips)
+            state_fit_result = load_inference_result(fips=self.state_fips)
             T0_LEFT_PAD = 5
             T0_RIGHT_PAD = 30
 
