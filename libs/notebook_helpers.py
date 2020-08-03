@@ -1,10 +1,9 @@
 from typing import Dict
 import logging
 import os
+import pandas as pd
 
 from libs.datasets import dataset_utils
-
-_logger = logging.getLogger(__name__)
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.sources import cmdc
 from libs.datasets.sources import cds_dataset
@@ -14,6 +13,8 @@ from libs.datasets.sources import jhu_dataset
 from libs.datasets.sources import nha_hospitalization
 from libs.datasets.sources import texas_hospitalizations
 from libs.datasets.combined_datasets import US_STATES_FILTER
+
+_logger = logging.getLogger(__name__)
 
 
 def set_covid_data_public():
