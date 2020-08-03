@@ -155,58 +155,6 @@ def load_county_metadata():
 
 
 @lru_cache(maxsize=32)
-def load_county_metadata_by_state(state=None):
-    """
-    Generate a dataframe that contains county metadata aggregated at state
-    level.
-
-    Parameters
-    ----------
-    state: str or list(str)
-        Name of state to load the metadata for.
-
-    Returns
-    -------
-    state_metadata: pd.DataFrame
-    """
-
-    # aggregate into state level metadata
-    state_metadata = load_county_metadata()
-
-    if state is not None:
-        state = [state] if isinstance(state, str) else list(state)
-    else:
-        state = state_metadata["state"].unique()
-
-    state = [s.title() for s in state]
-
-    state_metadata = state_metadata[state_metadata.state.isin(state)]
-
-    density_measures = ["housing_density", "population_density"]
-    for col in density_measures:
-        state_metadata.loc[:, col] = state_metadata[col] * state_metadata["total_population"]
-
-    age_dist = state_metadata.groupby("state")["age_distribution"].apply(
-        lambda l: np.stack(np.array(l)).sum(axis=0)
-    )
-    density_info = state_metadata.groupby("state").agg(
-        {
-            "population_density": lambda x: sum(x),
-            "housing_density": lambda x: sum(x),
-            "total_population": lambda x: sum(x),
-            "fips": list,
-        }
-    )
-    age_bins = state_metadata[["state", "age_bin_edges"]].groupby("state").first()
-    state_metadata = pd.concat([age_dist, density_info, age_bins], axis=1)
-
-    for col in density_measures:
-        state_metadata[col] /= state_metadata["total_population"]
-
-    return state_metadata
-
-
-@lru_cache(maxsize=32)
 def load_ensemble_results(fips):
     """
     Retrieve ensemble results for a given state or county fips code.
@@ -253,21 +201,6 @@ def load_county_metadata_by_fips(fips):
         if np.isscalar(value) and not isinstance(value, str):
             county_metadata_merged[key] = float(value)
     return county_metadata_merged
-
-
-@lru_cache(maxsize=32)
-def get_all_fips_codes_for_a_state(state: str):
-    """Returns a list of fips codes for a state
-
-    Arguments:
-        state {str} -- the full state name
-
-    Returns:
-        fips [list] -- a list of fips codes for a state
-    """
-    df = load_county_metadata()
-    all_fips = df[df["state"].str.lower() == state.lower()].fips
-    return all_fips
 
 
 @lru_cache(maxsize=32)
@@ -328,66 +261,6 @@ def load_new_case_data_by_fips(
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
-@lru_cache(maxsize=32)
-def load_new_case_data_by_state(
-    state, t0, include_testing_correction=False, testing_correction_smoothing_tau=5
-):
-    """
-    Get data for new cases at state level.
-
-    Parameters
-    ----------
-    state: str
-        State full name.
-    t0: datetime
-        Datetime to offset by.
-    include_testing_correction: bool
-        If True, include a correction for new expanded or decreaseed test
-        coverage.
-    testing_correction_smoothing_tau: float
-        expected_positives_from_test_increase is smoothed based on an
-        exponentially weighted moving average of decay factor specified here.
-
-    Returns
-    -------
-    times: array(float)
-        List of float days since t0 for the case and death counts below
-    observed_new_cases: array(int)
-        Array of new cases observed each day.
-    observed_new_deaths: array(int)
-        Array of new deaths observed each day.
-    """
-    state_abbrev = us.states.lookup(state).abbr
-    state_timeseries = combined_datasets.get_timeseries_for_state(
-        state_abbrev,
-        columns=[CommonFields.CASES, CommonFields.DEATHS],
-        min_range_with_some_value=True,
-    )
-    state_case_data = state_timeseries.data
-
-    times_new = (state_case_data[CommonFields.DATE] - t0).dt.days.iloc[1:]
-    observed_new_cases = (
-        state_case_data[CommonFields.CASES].values[1:]
-        - state_case_data[CommonFields.CASES].values[:-1]
-    )
-
-    if include_testing_correction:
-        df_new_tests = load_new_test_data_by_fips(
-            us.states.lookup(state).fips, t0, smoothing_tau=testing_correction_smoothing_tau
-        )
-        df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
-        df_cases = df_cases.merge(df_new_tests, how="left", on="times")
-        df_cases["new_cases"] -= df_cases["expected_positives_from_test_increase"].fillna(0)
-        observed_new_cases = df_cases["new_cases"].values
-
-    observed_new_deaths = (
-        state_case_data[CommonFields.DEATHS].values[1:]
-        - state_case_data[CommonFields.DEATHS].values[:-1]
-    )
-
-    return (times_new, np.array(observed_new_cases).clip(min=0), observed_new_deaths.clip(min=0))
-
-
 def get_hospitalization_data():
     """
     Since we're using this data for hospitalized data only, only returning
@@ -432,9 +305,7 @@ def load_hospitalization_data(
     type: HospitalizationDataType
         Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = get_hospitalization_data().get_data(
-        AggregationLevel.COUNTY, country="USA", fips=fips
-    )
+    hospitalization_data = get_hospitalization_data().get_data(fips=fips)
 
     if len(hospitalization_data) == 0:
         return None, None, None
@@ -460,72 +331,6 @@ def load_hospitalization_data(
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
         return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
-    else:
-        return None, None, None
-
-
-@lru_cache(maxsize=32)
-def load_hospitalization_data_by_state(
-    state: str,
-    t0: datetime,
-    category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
-):
-    """
-    Obtain hospitalization data. We clip because there are sometimes negatives
-    either due to data reporting or corrections in case count. These are always
-    tiny so we just make downstream easier to work with by clipping.
-
-    Parameters
-    ----------
-    state: str
-        State to lookup.
-    t0: datetime
-        Datetime to offset by.
-    category: HospitalizationCategory
-        'icu' for just ICU or 'hospitalized' for all ICU + Acute.
-
-    Returns
-    -------
-    times: array(float) or NoneType
-        List of float days since t0 for the hospitalization data.
-    observed_hospitalizations: array(int) or NoneType
-        Array of new cases observed each day.
-    type: HospitalizationDataType
-        Specifies cumulative or current hospitalizations.
-    """
-    abbr = us.states.lookup(state).abbr
-    hospitalization_data = combined_datasets.load_us_timeseries_dataset().get_data(
-        AggregationLevel.STATE, country="USA", state=abbr
-    )
-
-    if len(hospitalization_data) == 0:
-        return None, None, None
-
-    if (hospitalization_data[f"current_{category}"] > 0).any():
-        hospitalization_data = hospitalization_data[
-            hospitalization_data[f"current_{category}"].notnull()
-        ]
-        times_new = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
-        return (
-            times_new,
-            hospitalization_data[f"current_{category}"].values.clip(min=0),
-            HospitalizationDataType.CURRENT_HOSPITALIZATIONS,
-        )
-    elif (hospitalization_data[f"cumulative_{category}"] > 0).any():
-        hospitalization_data = hospitalization_data[
-            hospitalization_data[f"cumulative_{category}"].notnull()
-        ]
-        times_new = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
-        cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
-        # Some minor glitches for a few states..
-        for i, val in enumerate(cumulative[1:]):
-            if cumulative[i] > cumulative[i + 1]:
-                cumulative[i] = cumulative[i + 1]
-        return (
-            times_new,
-            hospitalization_data[f"cumulative_{category}"].values.clip(min=0),
-            HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS,
-        )
     else:
         return None, None, None
 

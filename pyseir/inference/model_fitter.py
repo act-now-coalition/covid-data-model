@@ -11,18 +11,21 @@ import pandas as pd
 import dill as pickle
 import numpy as np
 import iminuit
+from covidactnow.datapublic.common_fields import CommonFields
 
 from pyseir.inference import model_plotting
 from pyseir.models import suppression_policies
 from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
 from pyseir.models.seir_model_age import SEIRModelAge
-from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsembleGeneratorAge
 from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pyseir.inference.fit_results import load_inference_result
+
+from libs.datasets import combined_datasets
+from libs.datasets.dataset_utils import AggregationLevel
 
 log = structlog.getLogger()
 
@@ -121,6 +124,7 @@ class ModelFitter:
         np.random.seed(seed=42)
 
         self.fips = fips
+
         self.ref_date = ref_date
         self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=7)).days
         # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
@@ -133,56 +137,21 @@ class ModelFitter:
         self.t0_guess = 60
         self.with_age_structure = with_age_structure
 
-        if len(fips) == 2:  # State FIPS are 2 digits
-            self.agg_level = AggregationLevel.STATE
-            self.state_obj = us.states.lookup(self.fips)
-            self.state = self.state_obj.name
+        (
+            self.times,
+            self.observed_new_cases,
+            self.observed_new_deaths,
+        ) = load_data.load_new_case_data_by_fips(fips, self.ref_date)
 
-            (
-                self.times,
-                self.observed_new_cases,
-                self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_state(self.state, self.ref_date)
+        (
+            self.hospital_times,
+            self.hospitalizations,
+            self.hospitalization_data_type,
+        ) = load_data.load_hospitalization_data(fips, self.ref_date)
 
-            (
-                self.hospital_times,
-                self.hospitalizations,
-                self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
-
-            (
-                self.icu_times,
-                self.icu,
-                self.icu_data_type,
-            ) = load_data.load_hospitalization_data_by_state(
-                self.state_obj.abbr, t0=self.ref_date, category=HospitalizationCategory.ICU
-            )
-
-            self.display_name = self.state
-        else:
-            self.agg_level = AggregationLevel.COUNTY
-            geo_metadata = load_data.load_county_metadata().set_index("fips").loc[fips].to_dict()
-            state = geo_metadata["state"]
-            self.state_obj = us.states.lookup(state)
-            county = geo_metadata["county"]
-            if county:
-                self.display_name = county + ", " + state
-            else:
-                self.display_name = state
-            # TODO Swap for new data source.
-            (
-                self.times,
-                self.observed_new_cases,
-                self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
-            (
-                self.hospital_times,
-                self.hospitalizations,
-                self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-            (self.icu_times, self.icu, self.icu_data_type,) = load_data.load_hospitalization_data(
-                self.fips, t0=self.ref_date, category=HospitalizationCategory.ICU
-            )
+        self.icu_times, self.icu, self.icu_data_type = load_data.load_hospitalization_data(
+            fips, self.ref_date, category=HospitalizationCategory.ICU
+        )
 
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
@@ -206,6 +175,15 @@ class ModelFitter:
         self.dof_deaths = None
         self.dof_cases = None
         self.dof_hosp = None
+
+    @property
+    def display_name(self):
+        record = combined_datasets.get_us_latest_for_fips(self.fips)
+        county = record[CommonFields.COUNTY]
+        state = record[CommonFields.STATE]
+        if county:
+            return f"{county}, {state}"
+        return state
 
     def set_inference_parameters(self):
         """
@@ -240,7 +218,7 @@ class ModelFitter:
             self.fit_params["hosp_fraction"] = 1
 
         if len(self.fips) == 5:
-            state_fit_result = load_inference_result(fips=self.state_obj.fips)
+            state_fit_result = load_inference_result(fips=self.fips)
             T0_LEFT_PAD = 5
             T0_RIGHT_PAD = 30
 
@@ -593,7 +571,7 @@ class ModelFitter:
 
         if self.fit_results["eps"] < 0.1:
             raise RuntimeError(
-                f"Fit failed for {self.state, self.fips}: "
+                f"Fit failed for {self.display_name}: "
                 f"Epsilon == 0 which implies lack of convergence."
             )
 
