@@ -216,7 +216,7 @@ class ModelFitter:
         self.fit_params = self.DEFAULT_FIT_PARAMS
         # Update State specific SEIR initial guesses
         overwrite_params_df = pd.read_csv(
-            "./pyseir_data/pyseir_fitter_initial_conditions_2020_06_10.csv", dtype={"fips": object}
+            "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": object}
         )
 
         INITIAL_PARAM_SETS = [

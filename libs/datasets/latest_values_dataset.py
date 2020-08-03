@@ -76,7 +76,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
         if set(source.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
             timeseries = TimeseriesDataset.build_from_data_source(source)
-            return timeseries.to_latest_values_dataset()
+            return cls(timeseries.latest_values())
 
         if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
             raise ValueError("Index fields must match")
