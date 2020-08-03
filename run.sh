@@ -144,16 +144,14 @@ execute() {
 function generate_version_json() {
   local model_repo_json=$(get_repo_status_json)
 
-  pushd "${DATA_SOURCES_DIR}" > /dev/null
-  local data_repo_json=$(get_repo_status_json)
-  popd > /dev/null
+  data_repo_sha=$(jq .data_git_info.sha data/timeseries.json || echo '"<unknown: jq not installed>"')
 
   local timestamp=$(iso_timestamp)
 
   cat > "${API_OUTPUT_DIR}/version.json" << END
 {
   "timestamp": "${timestamp}",
-  "covid-data-public": ${data_repo_json},
+  "covid-data-public": ${data_repo_sha},
   "covid-data-model": ${model_repo_json}
 }
 END
