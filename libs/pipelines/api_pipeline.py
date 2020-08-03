@@ -74,7 +74,6 @@ def run_on_all_fips_for_intervention(
 def build_timeseries_for_fips(
     intervention, us_latest, us_timeseries, model_output_dir, fips
 ) -> Optional[RegionSummaryWithTimeseries]:
-    logger.info("in build_timeseries")
     fips_latest = us_latest.get_record_for_fips(fips)
 
     if intervention is Intervention.SELECTED_INTERVENTION:
