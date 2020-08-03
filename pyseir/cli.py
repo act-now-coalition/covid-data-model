@@ -164,10 +164,8 @@ def _build_all_for_states(
     # prepare data
     _cache_global_datasets()
 
-    # if not skip_whitelist:
-    #     _generate_whitelist()
-
-    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
+    if not skip_whitelist:
+        _generate_whitelist()
 
     # do everything for just states in parallel
     with Pool(maxtasksperchild=1) as p:
