@@ -9,12 +9,17 @@ from structlog.stdlib import BoundLogger
 
 from libs.us_state_abbrev import US_STATE_ABBREV
 
-if os.getenv("COVID_DATA_PUBLIC"):
-    LOCAL_PUBLIC_DATA_PATH = pathlib.Path(os.getenv("COVID_DATA_PUBLIC"))
-else:
-    LOCAL_PUBLIC_DATA_PATH = (
-        pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
-    )
+
+def _get_public_data_path():
+    """Sets global path to covid-data-public directory."""
+    if os.getenv("COVID_DATA_PUBLIC"):
+        return pathlib.Path(os.getenv("COVID_DATA_PUBLIC"))
+
+    return pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
+
+
+LOCAL_PUBLIC_DATA_PATH = _get_public_data_path()
+
 
 _logger = logging.getLogger(__name__)
 
@@ -55,6 +60,13 @@ class DuplicateValuesForIndex(Exception):
         self.index = index
         self.data = duplicate_data
         super().__init__()
+
+
+def set_global_public_data_path():
+    """Sets global public data path; useful if environment variable is updated after import."""
+    global LOCAL_PUBLIC_DATA_PATH
+
+    LOCAL_PUBLIC_DATA_PATH = _get_public_data_path()
 
 
 def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
