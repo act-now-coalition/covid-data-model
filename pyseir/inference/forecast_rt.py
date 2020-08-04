@@ -35,6 +35,8 @@ from pandas.core.window.indexers import (
 
 # Aesthetics
 from cycler import cycler
+import seaborn as sns
+from pandas.plotting import scatter_matrix
 
 configure(processors=[merge_threadlocal, structlog.processors.KeyValueRenderer()])
 log = structlog.get_logger(__name__)
@@ -55,7 +57,7 @@ class ForecastRt:
         self.merged_df = True  # set to true if input dataframe merges all areas
         self.states_only = True  # set to true if you only want to train on state level data (county level training not implemented...yet)
         self.ref_date = datetime(year=2020, month=1, day=1)
-        self.debug_plots = True
+        self.debug_plots = False
 
         # Variable Names
         self.aggregate_level_name = "aggregate_level"
@@ -144,7 +146,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 20
-        self.n_epochs = 1000
+        self.n_epochs = 300
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 30
@@ -220,6 +222,43 @@ class ForecastRt:
             state_names.append(state_name)
             df_forecast_list.append(df_forecast)
             df_list.append(df)
+            df_slim = slim(df_forecast, self.forecast_variables)
+            if self.debug_plots:
+                corr = df_slim.corr()
+                plt.close("all")
+                ax = sns.heatmap(
+                    corr,
+                    vmin=-1,
+                    vmax=1,
+                    center=0,
+                    cmap=sns.diverging_palette(20, 220, n=200),
+                    square=True,
+                )
+                ax.set_xticklabels(ax.get_xticklabels(), rotation=45, horizontalalignment="right")
+                plt.savefig(
+                    self.csv_output_folder + us.states.lookup(state_name).name + "_corr.pdf",
+                    bbox_inches="tight",
+                )
+
+                plt.close("all")
+                axs = pd.plotting.scatter_matrix(df_slim)
+                n = len(df_slim.columns)
+                for x in range(n):
+                    for y in range(n):
+                        # to get the axis of subplots
+                        ax = axs[x, y]
+                        # to make x axis name vertical
+                        ax.xaxis.label.set_rotation(90)
+                        # to make y axis name horizontal
+                        ax.yaxis.label.set_rotation(0)
+                        # to make sure y axis names are outside the plot area
+                        ax.yaxis.labelpad = 50
+
+                plt.savefig(
+                    self.csv_output_folder + us.states.lookup(state_name).name + "_scatter.pdf",
+                    bbox_inches="tight",
+                )
+
             if self.save_csv_output:
                 df_forecast.to_csv(self.csv_output_folder + df["state"][0] + "_forecast.csv")
                 df.to_csv(self.csv_output_folder + df["state"][0] + "_OG_forecast.csv")
@@ -478,12 +517,17 @@ class ForecastRt:
 
         plt.close("all")
         fig, ax = plt.subplots()
-        ax.plot(history.history["loss"], color="blue", linestyle="solid", label="Train Set")
+        ax.plot(history.history["loss"], color="blue", linestyle="solid", label="MAE Train Set")
         ax.plot(
-            history.history["val_loss"], color="green", linestyle="solid", label="Validation Set",
+            history.history["val_loss"], color="green", linestyle="solid", label="MAE Test Set",
+        )
+        ax.plot(history.history["mape"], color="black", linestyle="solid", label="MAPE Train Set")
+        ax.plot(
+            history.history["val_mape"], color="yellow", linestyle="solid", label="MAPE Test Set",
         )
         plt.legend()
-        plt.title("MAE vs. Epochs")
+        plt.title("Loss Functions vs. Epochs")
+
         log.info("train scaled average error")
         log.info(train_scaled_average_error)
         log.info("total error")
@@ -719,7 +763,7 @@ class ForecastRt:
         if self.save_csv_output:
             train_scaling_set.to_csv(self.csv_output_folder + "scalingset_now.csv")
         for columnName, columnData in train_scaling_set.iteritems():
-            scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+            scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
             reshaped_data = columnData.values.reshape(-1, 1)
 
             scaler = scaler.fit(reshaped_data)
@@ -936,7 +980,7 @@ class MyHyperModel(HyperModel):
         model.add(Dropout(dropout))
         model.add(Dense(self.predict_sequence_length))
         es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=3)
-        model.compile(loss="mae", optimizer="adam")
+        model.compile(loss="mae", optimizer="adam", metrics=["mae", "mape"])
 
         return model
 
