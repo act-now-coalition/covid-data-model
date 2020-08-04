@@ -1,3 +1,4 @@
+import pandas as pd
 from pyseir.utils import get_run_artifact_path, RunArtifact
 
 
