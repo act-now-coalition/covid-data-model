@@ -50,9 +50,6 @@ def run_on_all_fips_for_intervention(
     # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
     pool = pool or multiprocessing.Pool(maxtasksperchild=1)
     results = pool.map(run_fips, latest_values.all_fips)
-    logger.info("results:")
-    logger.info(results)
-    logger.info("end results")
     all_timeseries = []
 
     for region_timeseries in results:
@@ -67,7 +64,6 @@ def run_on_all_fips_for_intervention(
     if limit:
         all_timeseries = all_timeseries[:limit]
 
-    # logger.info(all_timeseries)
     return all_timeseries
 
 
@@ -111,7 +107,6 @@ def _deploy_timeseries(intervention, region_folder, timeseries):
 
 def deploy_single_level(intervention, all_timeseries, summary_folder, region_folder):
     if not all_timeseries:
-        logger.info("not all time series")
         return
     logger.info(f"Deploying {intervention.name}")
 
