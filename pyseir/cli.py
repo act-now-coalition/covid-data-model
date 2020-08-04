@@ -9,10 +9,8 @@ from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
 from functools import partial
-from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
 from pyseir.rt import infer_rt
 from pyseir.ensembles import ensemble_runner
-from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
@@ -47,16 +45,6 @@ def _generate_whitelist():
     gen.generate_whitelist()
 
 
-def _impute_start_dates(states, states_only=False):
-    if states_only:
-        raise NotImplementedError(
-            "Impute start dates does not yet implement support for states_only."
-        )
-
-    for state in states:
-        generate_start_times_for_state(state=state)
-
-
 def _run_infer_rt(states: List[str], states_only=False):
     for state_name in states:
         fips = us.states.lookup(state_name).fips
@@ -75,12 +63,6 @@ def _run_ensembles(states, ensemble_kwargs=dict(), states_only=False):
         )
 
 
-def _generate_state_reports(states):
-    for state in states:
-        report = StateReport(state)
-        report.generate_report()
-
-
 def _map_outputs(
     states, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
 ):
@@ -95,11 +77,7 @@ def _map_outputs(
 
 
 def _state_only_pipeline(
-    state,
-    run_mode=DEFAULT_RUN_MODE,
-    generate_reports=False,
-    output_interval_days=1,
-    output_dir=None,
+    state, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
 ):
     states_only = True
 
@@ -107,12 +85,8 @@ def _state_only_pipeline(
     _run_infer_rt(states, states_only=states_only)
     _run_mle_fits(states, states_only=states_only)
     _run_ensembles(
-        states,
-        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-        states_only=states_only,
+        states, ensemble_kwargs=dict(run_mode=run_mode), states_only=states_only,
     )
-    if generate_reports:
-        _generate_state_reports(states)
     # remove outputs atm. just output at the end
     _map_outputs(
         states,
@@ -154,7 +128,6 @@ def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict
 def _build_all_for_states(
     states: List[str],
     run_mode=DEFAULT_RUN_MODE,
-    generate_reports=False,
     output_interval_days=4,
     output_dir=None,
     skip_whitelist=False,
@@ -172,7 +145,6 @@ def _build_all_for_states(
         states_only_func = partial(
             _state_only_pipeline,
             run_mode=run_mode,
-            generate_reports=generate_reports,
             output_interval_days=output_interval_days,
             output_dir=output_dir,
         )
@@ -202,8 +174,7 @@ def _build_all_for_states(
         # calculate ensemble
         root.info(f"running ensemble for {len(all_county_fips)} counties")
         ensemble_func = partial(
-            ensemble_runner._run_county,
-            ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
+            ensemble_runner._run_county, ensemble_kwargs=dict(run_mode=run_mode),
         )
         p.map(ensemble_func, all_county_fips.keys())
 
@@ -228,18 +199,6 @@ def _build_all_for_states(
         )
 
     return
-
-
-@entry_point.command()
-@click.option(
-    "--state",
-    default="",
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def impute_start_dates(state, states_only):
-    states = [state] if state else ALL_STATES
-    _impute_start_dates(states, states_only=states_only)
 
 
 @entry_point.command()
@@ -272,35 +231,17 @@ def run_mle_fits(state, states_only):
     "--state", help="State to generate files for. If no state is given, all states are computed."
 )
 @click.option(
-    "--generate-reports",
-    default=False,
-    is_flag=True,
-    type=bool,
-    help="If False, skip pdf report generation.",
-)
-@click.option(
     "--run-mode",
     default=DEFAULT_RUN_MODE,
     type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def run_ensembles(state, run_mode, generate_reports, states_only):
+def run_ensembles(state, run_mode, states_only):
     states = [state] if state else ALL_STATES
     _run_ensembles(
-        states,
-        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-        states_only=states_only,
+        states, ensemble_kwargs=dict(run_mode=run_mode), states_only=states_only,
     )
-
-
-@entry_point.command()
-@click.option(
-    "--state", help="State to generate files for. If no state is given, all states are computed."
-)
-def generate_state_report(state):
-    states = [state] if state else ALL_STATES
-    _generate_state_reports(states)
 
 
 @entry_point.command()
@@ -344,13 +285,6 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     help="State to generate files for. If no state is given, all states are computed.",
 )
 @click.option(
-    "--generate-reports",
-    default=False,
-    type=bool,
-    is_flag=True,
-    help="If False, skip pdf report generation.",
-)
-@click.option(
     "--output-interval-days",
     default=1,
     type=int,
@@ -370,14 +304,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
-    states,
-    run_mode,
-    generate_reports,
-    output_interval_days,
-    output_dir,
-    skip_whitelist,
-    states_only,
-    fips,
+    states, run_mode, output_interval_days, output_dir, skip_whitelist, states_only, fips,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -391,7 +318,6 @@ def build_all(
     _build_all_for_states(
         states,
         run_mode=DEFAULT_RUN_MODE,
-        generate_reports=generate_reports,
         output_interval_days=output_interval_days,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,

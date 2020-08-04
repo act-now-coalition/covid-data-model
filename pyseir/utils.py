@@ -48,7 +48,6 @@ class RunArtifact(Enum):
     WHITELIST_RESULT = "whitelist_result"
 
     ENSEMBLE_RESULT = "ensemble_result"
-    ENSEMBLE_REPORT = "ensemble_report"
 
     WEB_UI_RESULT = "web_ui_result"
 
@@ -183,19 +182,6 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
                 STATE_SUMMARY_FOLDER(output_dir),
                 "data",
                 f"ensemble_projections__{state_obj.name}__{fips}.json",
-            )
-
-    elif artifact is RunArtifact.ENSEMBLE_REPORT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_obj.name),
-                f"ensemble_projections__{state_obj.name}__{county}__{fips}.pdf",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "reports",
-                f"ensemble_projections__{state_obj.name}__{fips}.pdf",
             )
 
     elif artifact is RunArtifact.WEB_UI_RESULT:

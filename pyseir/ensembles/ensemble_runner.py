@@ -13,7 +13,6 @@ from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
 from pyseir import load_data
-from pyseir.reports.county_report import CountyReport
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from pyseir.inference import fit_results
 from libs.datasets import AggregationLevel
@@ -66,7 +65,6 @@ class EnsembleRunner:
         suppression_policy=(0.35, 0.5, 0.75, 1),
         skip_plots=False,
         output_percentiles=(5, 25, 32, 50, 75, 68, 95),
-        generate_report=True,
         run_mode=RunMode.DEFAULT,
         min_hospitalization_threshold=5,
         hospitalization_to_confirmed_case_ratio=1 / 4,
@@ -85,30 +83,19 @@ class EnsembleRunner:
         if self.agg_level is AggregationLevel.COUNTY:
             self.county_metadata = load_data.load_county_metadata_by_fips(fips)
             self.state_name = us.states.lookup(self.county_metadata["state"]).name
-
-            self.output_file_report = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_REPORT)
             self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
-
         else:
             self.state_name = us.states.lookup(self.fips).name
-
-            self.output_file_report = None
             self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
 
         os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
-        if self.output_file_report:
-            os.makedirs(os.path.dirname(self.output_file_report), exist_ok=True)
-
         self.output_percentiles = output_percentiles
         self.n_samples = n_samples
         self.n_years = n_years
-        # TODO: Will be soon replaced with loaders for all the inferred params.
-        # self.t0 = fit_results.load_t0(fips)
         self.date_generated = datetime.datetime.utcnow().isoformat()
         self.suppression_policy = suppression_policy
         self.summary = copy.deepcopy(self.__dict__)
         self.summary.pop("t_list")
-        self.generate_report = generate_report
 
         self.suppression_policies = None
         self.override_params = dict()
@@ -256,16 +243,6 @@ class EnsembleRunner:
             self.all_outputs[
                 f"{suppression_policy_name}"
             ] = self._generate_output_for_suppression_policy(model_ensemble)
-
-        if self.generate_report and self.output_file_report:
-            report = CountyReport(
-                self.fips,
-                model_ensemble=model_ensemble,
-                county_outputs=self.all_outputs,
-                filename=self.output_file_report,
-                summary=self.summary,
-            )
-            report.generate_and_save()
 
         with open(self.output_file_data, "w") as f:
             json.dump(self.all_outputs, f)
