@@ -15,6 +15,8 @@ from libs.datasets import dataset_base
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 
+_log = structlog.get_logger()
+
 
 class LatestValuesDataset(dataset_base.DatasetBase):
 
@@ -53,6 +55,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data = data.rename(columns=to_common_fields)[final_columns]
 
         data = cls._aggregate_new_york_data(data)
+        _log.info("about to aggregate pr")
+        data = cls._aggregate_puerto_rico_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE
@@ -82,6 +86,34 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             raise ValueError("Index fields must match")
 
         return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
+
+    @classmethod
+    def _aggregate_puerto_rico_data(cls, data):
+        _log.info("aggregating puerto rico")
+        pr_data = data[data[CommonFields.FIPS].isin(custom_aggregations.ALL_PR_FIPS)]
+        weighted_icu_occupancy = None
+        weighted_all_bed_occupancy = None
+        group = cls.STATE_GROUP_KEY
+
+        if (
+            CommonFields.LICENSED_BEDS
+            and CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in pr_data.columns
+        ):
+            licensed_beds = pr_data[CommonFields.LICENSED_BEDS]
+            occupancy_rates = pr_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+            weighted_all_bed_occupancy = (
+                licensed_beds * occupancy_rates
+            ).sum() / licensed_beds.sum()
+            # should be updating here - in custom_aggregations file?
+            # data["72001"][CommonFields.MAX_BED_COUNT] = weighted_all_bed_occupancy
+        if CommonFields.ICU_BEDS and CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+            icu_beds = pr_data[CommonFields.ICU_BEDS]
+            occupancy_rates = pr_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+            weighted_icu_occupancy = (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
+            # should be updating here - in custom_aggregations file?
+            # data["72001"][CommonFields.ICU_BEDS] = 3333
+
+        return data
 
     @classmethod
     def _aggregate_new_york_data(cls, data):
