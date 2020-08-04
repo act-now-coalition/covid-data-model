@@ -146,7 +146,7 @@ class ForecastRt:
         self.train_size = 0.8
         self.n_test_days = 10
         self.n_batch = 20
-        self.n_epochs = 300
+        self.n_epochs = 1000
         self.n_hidden_layer_dimensions = 100
         self.dropout = 0
         self.patience = 30
@@ -490,6 +490,7 @@ class ForecastRt:
             train_scaled_average_error,
             train_unscaled_total_error,
             train_unscaled_average_error,
+            train_mape_average,
         ) = get_aggregate_errors(
             final_list_train_X,
             final_list_train_Y,
@@ -503,6 +504,7 @@ class ForecastRt:
             test_scaled_average_error,
             test_unscaled_total_error,
             test_unscaled_average_error,
+            test_mape_average,
         ) = get_aggregate_errors(
             final_list_test_X,
             final_list_test_Y,
@@ -521,12 +523,9 @@ class ForecastRt:
         ax.plot(
             history.history["val_loss"], color="green", linestyle="solid", label="MAE Test Set",
         )
-        ax.plot(history.history["mape"], color="black", linestyle="solid", label="MAPE Train Set")
-        ax.plot(
-            history.history["val_mape"], color="yellow", linestyle="solid", label="MAPE Test Set",
-        )
+
         plt.legend()
-        plt.title("Loss Functions vs. Epochs")
+        plt.title("MAE vs. Epochs")
 
         log.info("train scaled average error")
         log.info(train_scaled_average_error)
@@ -560,6 +559,16 @@ class ForecastRt:
         plt.xlabel("Epochs")
         plt.ylabel("MAE")
         output_path = get_run_artifact_path("01", RunArtifact.FORECAST_LOSS)
+        plt.savefig(output_path, bbox_inches="tight")
+        plt.close("all")
+
+        ax.plot(history.history["mape"], color="blue", linestyle="solid", label="MAPE Train Set")
+        ax.plot(
+            history.history["val_mape"], color="green", linestyle="solid", label="MAPE Test Set",
+        )
+        plt.legend()
+        plt.title("MAPE vs. Epochs")
+        output_path = get_run_artifact_path("01", RunArtifact.FORECAST_LOSS_MAPE)
         plt.savefig(output_path, bbox_inches="tight")
         plt.close("all")
 
@@ -607,9 +616,23 @@ class ForecastRt:
                 train_scaled_average_error,
                 train_unscaled_total_error,
                 train_unscaled_average_error,
+                train_mape_average,
             ) = get_aggregate_errors(
                 train_X,
                 train_Y,
+                forecast_model,
+                scalers_dict,
+                self.predict_variable,
+                self.predict_days,
+            )
+            (
+                test_scaled_average_error,
+                test_unscaled_total_error,
+                test_unscaled_average_error,
+                test_mape_average,
+            ) = get_aggregate_errors(
+                test_X,
+                test_Y,
                 forecast_model,
                 scalers_dict,
                 self.predict_variable,
@@ -700,6 +723,12 @@ class ForecastRt:
                 "patience": self.patience,
                 "validation split": self.validation_split,
                 "mask value": self.mask_value,
+                "train total error": train_unscaled_total_error,
+                "train avg error": train_unscaled_average_error,
+                "train avg mape": train_mape_average,
+                "test total error": test_unscaled_total_error,
+                "test avg error": test_unscaled_average_error,
+                "test avg mape": test_mape_average,
             }
             for i, (k, v) in enumerate(seq_params_dict.items()):
 
@@ -1011,6 +1040,7 @@ def get_aggregate_errors(X, Y, model, scalers_dict, predict_variable, sequence_l
 
     sample_errors = []
     unscaled_sample_errors = []
+    map_errors = []
     for i, j in zip(Y, forecast):  # iterate over samples
         error_sum = 0
         unscaled_error_sum = 0
@@ -1020,11 +1050,14 @@ def get_aggregate_errors(X, Y, model, scalers_dict, predict_variable, sequence_l
                 unscaled_k = scalers_dict[predict_variable].inverse_transform(k.reshape(1, -1))
                 unscaled_l = scalers_dict[predict_variable].inverse_transform(l.reshape(1, -1))
                 unscaled_error_sum += abs(unscaled_k - unscaled_l)
+                # mape.append(100*abs(unscaled_k - unscaled_l)/unscaled_k)
         else:
             error_sum += abs(i - j)
             unscaled_i = scalers_dict[predict_variable].inverse_transform(i.reshape(1, -1))
             unscaled_j = scalers_dict[predict_variable].inverse_transform(j.reshape(1, -1))
             unscaled_error_sum += abs(unscaled_i - unscaled_j)
+            mape = 100 * (abs(unscaled_i - unscaled_j) / unscaled_i)
+        map_errors.append(mape)
         sample_errors.append(error_sum)
         unscaled_sample_errors.append(unscaled_error_sum)
 
@@ -1033,7 +1066,19 @@ def get_aggregate_errors(X, Y, model, scalers_dict, predict_variable, sequence_l
 
     scaled_error = sum(sample_errors) / (len(sample_errors))
 
-    return float(scaled_error), float(total_unscaled_error), float(average_unscaled_error)
+    log.info("forecast")
+    log.info(forecast)
+    log.info("truth")
+    log.info(Y)
+    log.info("map errors")
+    log.info(map_errors)
+    average_mape = sum(map_errors) / (len(map_errors))
+    return (
+        float(scaled_error),
+        float(total_unscaled_error),
+        float(average_unscaled_error),
+        float(average_mape),
+    )
 
 
 def external_run_forecast():

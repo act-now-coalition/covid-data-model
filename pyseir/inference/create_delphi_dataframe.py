@@ -17,7 +17,8 @@ aggregate_level_name = "aggregate_level"
 aggregate_select = "state"
 
 # load CAN input data
-can_data = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/pyseir_data/merged_results.csv"
+#can_data = "/Users/natashawoods/Desktop/later.nosync/covid_act_now.nosync/covid-data-model/pyseir_data/merged_results.csv"
+can_data = "/Users/natashawoods/Desktop/covid-data-model/data/timeseries.csv"
 can_df = pd.read_csv(can_data, converters={"fips": str}, parse_dates=True, index_col="date")
 
 # Get list of all available CSV files
