@@ -229,6 +229,7 @@ def _fit_fips(fips, generate_report=False):
         return {"model_params": None, "t0_date": None, "reduced_chi2": None}
 
 
+# Chris: Can we delete??? Not used anywhere and I don't think start dates matter...
 def generate_start_times_for_state(state, generate_report=False):
     """
     Generate imputed start dates for each county.

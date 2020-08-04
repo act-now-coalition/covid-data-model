@@ -46,7 +46,7 @@ class CountyReport:
         self.fips = fips
         self.county_outputs = county_outputs
         self.model_ensemble = model_ensemble
-        self.county_metadata = load_data.load_county_metadata_by_fips(fips)
+        self.county_metadata = combined_datasets.get_us_latest_for_fips(fips)
         self.summary = summary
 
         timeseries = combined_datasets.get_timeseries_for_fips(
@@ -55,6 +55,14 @@ class CountyReport:
         self.county_case_data = timeseries.data
         self.report = PDFReport(filename=filename)
         self.xlim = xlim
+
+    @property
+    def county(self):
+        return self.county_metadata[CommonFields.COUNTY]
+
+    @property
+    def state_full_name(self):
+        return self.county_metadata[CommonFields.STATE_FULL_NAME]
 
     def generate_and_save(self):
         """
@@ -70,7 +78,7 @@ class CountyReport:
         """
         self.report.write_text_page(
             self.summary,
-            title=f'PySEIR COVID19 Estimates\n{self.county_metadata["county"]} County, {self.county_metadata["state"]}',
+            title=f"PySEIR COVID19 Estimates\n{self.county} County, {self.state_full_name}",
             page_heading=f'Generated {self.summary["date_generated"]}',
             body_fontsize=6,
             title_fontsize=12,
@@ -94,7 +102,7 @@ class CountyReport:
         # Add a sample model from the ensemble.
         fig = self.model_ensemble[0].plot_results(xlim=xlim)
         fig.suptitle(
-            f'PySEIR COVID19 Estimates: {self.county_metadata["county"]} County, {self.county_metadata["state"]}. '
+            f"PySEIR COVID19 Estimates: {self.county} County, {self.state_full_name}. "
             f"SAMPLE OF MODEL ENSEMBLE",
             fontsize=16,
         )
@@ -114,7 +122,7 @@ class CountyReport:
             # -----------------------------------
             fig = plt.figure(figsize=(20, 24))
             fig.suptitle(
-                f'PySEIR COVID19 Estimates: {self.county_metadata["county"]} County, {self.county_metadata["state"]}. '
+                f"PySEIR COVID19 Estimates: {self.county} County, {self.state_full_name}. "
                 f"\nSupression Policy={suppression_policy} (1=No Suppression)",
                 fontsize=16,
             )
@@ -300,14 +308,14 @@ class CountyReport:
                 plt.xscale("log")
 
             plt.vlines(
-                self.county_metadata["total_population"],
+                self.county_metadata[CommonFields.POPULATION],
                 *plt.ylim(),
                 label="Entire Population",
                 alpha=0.5,
                 color="g",
             )
             plt.vlines(
-                self.county_metadata["total_population"] * 0.65,
+                self.county_metadata[CommonFields.POPULATION] * 0.65,
                 *plt.ylim(),
                 label="Approx. Herd Immunity",
                 alpha=0.5,

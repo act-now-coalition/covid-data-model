@@ -80,18 +80,6 @@ def create_synthetic_df(data_generator) -> pd.DataFrame:
     return df
 
 
-# def load_hospitalization_data_by_state(state, t0=None):
-#     data_generator = DataGenerator(specs[state])
-#     times = list(range(0, 100))
-#     observed_new_cases = _get_cases_for_times(data_generator, times)
-#
-#     if data_generator.disable_deaths:
-#         hospitalizations = np.zeros(len(times))
-#     else:
-#         hospitalizations = 0.12 * observed_new_cases
-#     return (times, hospitalizations, HospitalizationDataType.CURRENT_HOSPITALIZATIONS)
-
-
 # _________________Other methods to mock__________________
 # (
 #                 self.times,

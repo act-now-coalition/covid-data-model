@@ -4,6 +4,9 @@ import numpy as np
 import logging
 from pyseir import load_data
 from datetime import datetime
+from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets import AggregationLevel
+from libs.datasets import combined_datasets
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pandarallel import pandarallel
 
@@ -32,7 +35,6 @@ class WhitelistGenerator:
     def __init__(
         self, total_cases=50, total_deaths=0, nonzero_case_datapoints=5, nonzero_death_datapoints=0
     ):
-        self.county_metadata = load_data.load_county_metadata()
         self.df_whitelist = None
 
         self.total_cases = total_cases
@@ -50,23 +52,21 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        # parallel load and compute
-        df_candidates = self.county_metadata.fips.parallel_apply(_whitelist_candidates_per_fips)
-
-        # join extra data
-        df_candidates = df_candidates.merge(
-            self.county_metadata[["fips", "state", "county"]],
-            left_on="fips",
-            right_on="fips",
-            how="inner",
+        latest_values = combined_datasets.load_us_latest_dataset().get_subset(
+            aggregation_level=AggregationLevel.COUNTY
         )
+        columns = [CommonFields.FIPS, CommonFields.STATE, CommonFields.COUNTY]
+        counties = latest_values.data[columns]
+        # parallel load and compute
+        df_candidates = counties.fips.parallel_apply(_whitelist_candidates_per_fips)
+        # join extra data
+        df_candidates = df_candidates.merge(counties, left_on="fips", right_on="fips", how="inner",)
         df_candidates["inference_ok"] = (
             (df_candidates.nonzero_case_datapoints >= self.nonzero_case_datapoints)
             & (df_candidates.nonzero_death_datapoints >= self.nonzero_death_datapoints)
             & (df_candidates.total_cases >= self.total_cases)
             & (df_candidates.total_deaths >= self.total_deaths)
         )
-
         output_path = get_run_artifact_path(
             fips="06", artifact=RunArtifact.WHITELIST_RESULT  # Dummy fips since not used here...
         )

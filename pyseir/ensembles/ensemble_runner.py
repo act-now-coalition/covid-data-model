@@ -16,7 +16,8 @@ from pyseir import load_data
 from pyseir.reports.county_report import CountyReport
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from pyseir.inference import fit_results
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import AggregationLevel
+from libs.datasets import combined_datasets
 
 
 _logger = logging.getLogger(__name__)
@@ -439,7 +440,7 @@ def _run_county(fips, ensemble_kwargs):
     runner.run_ensemble()
 
 
-def run_state(state, ensemble_kwargs, states_only=False):
+def run_state(state_full_name, ensemble_kwargs, states_only=False):
     """
     Run the EnsembleRunner for each county in a state.
 
@@ -453,12 +454,16 @@ def run_state(state, ensemble_kwargs, states_only=False):
         If True only run the state level.
     """
     # Run the state level
-    runner = EnsembleRunner(fips=us.states.lookup(state).fips, **ensemble_kwargs)
+    state_obj = us.states.lookup(state_full_name)
+    fips = state_obj.fips
+    runner = EnsembleRunner(fips=fips, **ensemble_kwargs)
     runner.run_ensemble()
 
     if not states_only:
         # Run county level
-        all_fips = load_data.get_all_fips_codes_for_a_state(state)
+        state = state_obj.abbr
+        county_latest = combined_datasets.load_us_latest_dataset().county
+        all_fips = county_latest.get_subset(state=state).all_fips
         with Pool(maxtasksperchild=1) as p:
             f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
             p.map(f, all_fips)

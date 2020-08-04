@@ -166,32 +166,17 @@ class Backtester:
         """
 
         observations = {}
-        if len(fips) == 5:
-            (
-                times,
-                observations["new_cases"],
-                observations["new_deaths"],
-            ) = load_data.load_new_case_data_by_fips(fips, ref_date)
-            (
-                hospital_times,
-                hospitalizations,
-                hospitalization_data_type,
-            ) = load_data.load_hospitalization_data(fips, t0=ref_date)
-            observations["times"] = times.values
-        elif len(fips) == 2:
-            state_obj = us.states.lookup(fips)
-            (
-                observations["times"],
-                observations["new_cases"],
-                observations["new_deaths"],
-            ) = load_data.load_new_case_data_by_state(state_obj.name, ref_date)
-            (
-                hospital_times,
-                hospitalizations,
-                hospitalization_data_type,
-            ) = load_data.load_hospitalization_data_by_state(state_obj.abbr, t0=ref_date)
-            observations["times"] = np.array(observations["times"])
-
+        (
+            times,
+            observations["new_cases"],
+            observations["new_deaths"],
+        ) = load_data.load_new_case_data_by_fips(fips, ref_date)
+        (
+            hospital_times,
+            hospitalizations,
+            hospitalization_data_type,
+        ) = load_data.load_hospitalization_data(fips, t0=ref_date)
+        observations["times"] = times.values
         observations["hospitalizations"] = np.full(observations["times"].shape[0], np.nan)
         if hospitalization_data_type is HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS:
             observations["hospitalizations"][

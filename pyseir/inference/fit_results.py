@@ -1,5 +1,7 @@
 import os
-from pyseir.load_data import load_county_metadata
+from libs import us_state_abbrev
+from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets import combined_datasets
 from pyseir import OUTPUT_DIR
 import pandas as pd
 from datetime import datetime
@@ -8,7 +10,7 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 
 def load_t0(fips):
     """
-    Load the simulation start time by county.
+    Load the simulation start time by county from fit_results
 
     Parameters
     ----------
@@ -20,10 +22,12 @@ def load_t0(fips):
     : datetime
         t0(C=1) cases.
     """
-    county_metadata = load_county_metadata().set_index("fips")
-    state = county_metadata.loc[fips]["state"]
+    fips_data = combined_datasets.get_us_latest_for_fips(fips)
+    state = fips_data[CommonFields.STATE]
+    state_full_name = us_state_abbrev.ABBREV_US_STATE[state]
+
     fit_results = os.path.join(
-        OUTPUT_DIR, "pyseir", state, "data", f"summary__{state}_imputed_start_times.pkl"
+        OUTPUT_DIR, "pyseir", state, "data", f"summary__{state_full_name}_imputed_start_times.pkl"
     )
     return datetime.fromtimestamp(
         pd.read_pickle(fit_results).set_index("fips").loc[fips]["t0_date"].timestamp()

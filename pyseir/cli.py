@@ -144,7 +144,7 @@ def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict
             all_county_fips.update(county_fips_per_state)
             continue
 
-        if fips in county_fips_per_state:
+        if fips in county_fips_per_state and len(county_fips_per_state[fips]) > 0:
             root.info(f"Found {fips}, restricting run to found fips")
             all_county_fips.update({fips: state})
 
