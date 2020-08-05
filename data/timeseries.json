@@ -7,9 +7,17 @@
     "is_dirty": false
   },
   "model_git_info": {
+<<<<<<< HEAD
     "sha": "e7fd34eaa7908d69ff1f289a273b5fba01538463",
     "branch": "puerto-rico",
     "is_dirty": true
   },
   "updated_at": "2020-08-05T18:31:17.853421"
+=======
+    "sha": "8894235aa8b1d6e8359bb9baf893978c84133535",
+    "branch": "master",
+    "is_dirty": true
+  },
+  "updated_at": "2020-08-05T11:56:02.131800"
+>>>>>>> master
 }

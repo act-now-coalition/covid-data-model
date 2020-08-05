@@ -153,6 +153,10 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return data
 
     @property
+    def county(self):
+        return self.get_subset(aggregation_level=AggregationLevel.COUNTY)
+
+    @property
     def state_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only state data."""
 

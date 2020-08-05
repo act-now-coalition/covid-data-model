@@ -14,7 +14,15 @@ import pyseir.rt.patches
 
 utils_log = logging.getLogger(__name__)
 
-NEW_ORLEANS_FIPS = ("22051", "22071", "22075", "22087", "22089", "22093", "22095", "22103")
+
+# PR598 Request by Greater New Orlean Public Health to have a consistent Rt across the following:
+NEW_ORLEANS_FIPS = (
+    "22051",  # Jefferson
+    "22071",  # Orleans
+    "22075",  # Plaquemines
+    "22087",  # St Bernard
+    "22103",  # St Tammany
+)
 
 
 class LagMonitor:

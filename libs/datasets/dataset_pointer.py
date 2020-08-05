@@ -11,6 +11,7 @@ import pydantic
 from libs import git_lfs_object_helpers
 from libs.datasets.dataset_base import DatasetBase
 from libs.datasets.dataset_utils import DatasetType
+from libs.datasets import dataset_utils
 from libs.github_utils import GitSummary
 
 _logger = structlog.getLogger(__name__)
@@ -59,14 +60,20 @@ class DatasetPointer(pydantic.BaseModel):
 
         Returns: Instantiated dataset.
         """
+        path = self.path
+        # If the path is not absolute, assume that the file was created from the repository
+        # root. Helpful when loading files from scripts not placed at repo root.
+        if not path.is_absolute():
+            path = dataset_utils.REPO_ROOT / path
+
         if before or previous_commit or commit:
             lfs_data = git_lfs_object_helpers.get_data_for_path(
-                self.path, before=before, previous_commit=previous_commit, commit=commit
+                path, before=before, previous_commit=previous_commit, commit=commit
             )
             lfs_buf = io.BytesIO(lfs_data)
             return self.dataset_type.dataset_class.load_csv(lfs_buf)
 
-        return self.dataset_type.dataset_class.load_csv(self.path)
+        return self.dataset_type.dataset_class.load_csv(path)
 
     def save(self, directory: pathlib.Path) -> pathlib.Path:
         filename = form_filename(self.dataset_type)
