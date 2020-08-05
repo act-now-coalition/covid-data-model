@@ -68,7 +68,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
-        data = cls._aggregate_puerto_rico_data(data)
+        data = cls._calculate_puerto_rico_bed_occupancy_rate(data)
 
         return cls(data)
 
@@ -86,7 +86,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
 
     @classmethod
-    def _aggregate_puerto_rico_data(cls, data):
+    def _calculate_puerto_rico_bed_occupancy_rate(cls, data):
         is_pr_county = data[CommonFields.FIPS].str.match("72[0-9][0-9][0-9]")
         pr_data = data.loc[is_pr_county.fillna(False)]
         weighted_icu_occupancy = None

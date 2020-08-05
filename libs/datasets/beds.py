@@ -104,46 +104,6 @@ class BedsDataset(object):
         return cls(data)
 
     @classmethod
-    def _aggregate_puerto_rico_data(cls, data):
-        _log.info("aggregating PR data in beds.py file")
-        is_pr_county = data[CommonFields.FIPS].str.match("72[0-9][0-9][0-9]")
-        pr_data = data.loc[is_pr_county.fillna(False)]
-        weighted_icu_occupancy = None
-        weighted_all_bed_occupancy = None
-
-        if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
-            _log.info("updating all bed rate")
-            licensed_beds = pr_data[CommonFields.LICENSED_BEDS]
-            occupancy_rates = pr_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
-            _log.info(licensed_beds)
-            _log.info(occupancy_rates)
-            _log.info("weighted occupancy")
-            _log.info((licensed_beds * occupancy_rates).sum())
-            _log.info(licensed_beds.sum())
-            weighted_all_bed_occupancy = (
-                licensed_beds * occupancy_rates
-            ).sum() / licensed_beds.sum()
-            _log.info(weighted_all_bed_occupancy)
-
-        if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
-            _log.info("updating icu rate")
-            icu_beds = pr_data[CommonFields.ICU_BEDS]
-            occupancy_rates = pr_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
-            _log.info(icu_beds)
-            _log.info(occupancy_rates)
-            weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
-
-        _log.info("trying a different update")
-        data.loc[
-            data[CommonFields.FIPS] == "72", CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
-        ] = weighted_all_bed_occupancy
-        data.loc[
-            data[CommonFields.FIPS] == "72", CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
-        ] = weighted_icu_occupancy
-
-        return data
-
-    @classmethod
     def _aggregate_new_york_data(cls, data):
         # When grouping nyc data, we don't want to count the generated field
         # as a value to sum.
