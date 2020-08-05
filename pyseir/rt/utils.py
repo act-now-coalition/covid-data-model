@@ -15,7 +15,7 @@ import pyseir.rt.patches
 utils_log = logging.getLogger(__name__)
 
 
-# PR597 Request by Greater New Orlean Public Health to have a consistent Rt across the following:
+# PR598 Request by Greater New Orlean Public Health to have a consistent Rt across the following:
 NEW_ORLEANS_FIPS = (
     "22051",  # Jefferson
     "22071",  # Orleans
