@@ -89,7 +89,6 @@ class BedsDataset(object):
         data[cls.Fields.MAX_BED_COUNT] = data[columns_to_consider].max(axis=1)
 
         data = cls._aggregate_new_york_data(data)
-        data = cls._aggregate_puerto_rico_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE,
