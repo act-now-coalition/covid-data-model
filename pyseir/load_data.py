@@ -594,8 +594,6 @@ def load_whitelist():
     path = pyseir.utils.get_run_artifact_path(
         fips=PLACEHOLDER_FIPS, artifact=pyseir.utils.RunArtifact.WHITELIST_RESULT
     )
-    log.info("path")
-    log.info(path)
     return pd.read_json(path, dtype={"fips": str})
 
 
