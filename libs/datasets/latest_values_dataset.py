@@ -15,8 +15,6 @@ from libs.datasets import dataset_base
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 
-_log = structlog.get_logger()
-
 
 class LatestValuesDataset(dataset_base.DatasetBase):
 
@@ -55,7 +53,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data = data.rename(columns=to_common_fields)[final_columns]
 
         data = cls._aggregate_new_york_data(data)
-        data = cls._aggregate_puerto_rico_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE
@@ -70,6 +67,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         is_state = data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
+
+        data = cls._aggregate_puerto_rico_data(data)
 
         return cls(data)
 
@@ -88,32 +87,21 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
     @classmethod
     def _aggregate_puerto_rico_data(cls, data):
-        _log.info("aggregating PR data")
         is_pr_county = data[CommonFields.FIPS].str.match("72[0-9][0-9][0-9]")
         pr_data = data.loc[is_pr_county.fillna(False)]
         weighted_icu_occupancy = None
         weighted_all_bed_occupancy = None
 
         if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
-            _log.info("updating all bed rate")
             licensed_beds = pr_data[CommonFields.LICENSED_BEDS]
             occupancy_rates = pr_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
-            # _log.info(licensed_beds)
-            # _log.info(occupancy_rates)
-            # _log.info("weighted occupancy")
-            # _log.info((licensed_beds*occupancy_rates).sum())
-            # _log.info(licensed_beds.sum())
             weighted_all_bed_occupancy = (
                 licensed_beds * occupancy_rates
             ).sum() / licensed_beds.sum()
-            _log.info(weighted_all_bed_occupancy)
 
         if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
-            _log.info("updating icu rate")
             icu_beds = pr_data[CommonFields.ICU_BEDS]
             occupancy_rates = pr_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
-            _log.info(icu_beds)
-            _log.info(occupancy_rates)
             weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
 
         data.loc[
