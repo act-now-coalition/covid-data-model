@@ -63,26 +63,20 @@ def persist_dataset(
 
 def update_data_public_head(
     data_directory: pathlib.Path,
-    latest_dataset: latest_values_dataset.LatestValuesDataset = None,
-    timeseries_dataset: timeseries.TimeseriesDataset = None,
+    latest_dataset: latest_values_dataset.LatestValuesDataset,
+    timeseries_dataset: timeseries.TimeseriesDataset,
 ) -> Tuple[DatasetPointer, DatasetPointer]:
     """Persists US latest and timeseries dataset and saves dataset pointers for Latest tag.
 
     Args:
         data_directory: Directory to save dataset and pointer.
         pointer_path_dir: Directory to save DatasetPointer files.
-        latest_dataset: Optionally specify a LatestValuesDataset to persist instead of building
-            from head.  Generally used in testing to sidestep building entire dataset.
-        timeseries_dataset: Optionally specify a TimeseriesDataset to persist instead of building
-            from head.  Generally used in testing to sidestep building entire dataset.
+        latest_dataset: a LatestValuesDataset to persist. Generally used in testing to sidestep building entire dataset.
+        timeseries_dataset: a TimeseriesDataset to persist. Generally used in testing to sidestep building entire dataset.
 
     Returns: Tuple of DatasetPointers to latest and timeseries datasets.
     """
-    if not latest_dataset:
-        latest_dataset = combined_datasets.build_us_latest_with_all_fields()
     latest_pointer = persist_dataset(latest_dataset, data_directory)
 
-    if not timeseries_dataset:
-        timeseries_dataset = combined_datasets.build_us_timeseries_with_all_fields()
     timeseries_pointer = persist_dataset(timeseries_dataset, data_directory)
     return latest_pointer, timeseries_pointer

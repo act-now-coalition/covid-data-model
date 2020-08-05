@@ -295,17 +295,3 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         # In the future, it would be good to standardize around index fields.
         df = df.reset_index()
         return cls(df)
-
-    def to_csv(self, path: pathlib.Path):
-        """Persists timeseries to CSV.
-
-        Args:
-            path: Path to write to.
-        """
-        super().to_csv(path)
-        self.get_date_columns().to_csv(
-            str(path).replace(".csv", "-wide-dates.csv"),
-            date_format="%Y-%m-%d",
-            index=True,
-            float_format="%.12g",
-        )
