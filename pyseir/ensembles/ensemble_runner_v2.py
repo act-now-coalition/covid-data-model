@@ -144,7 +144,7 @@ def _detect_peak_time_and_value(value_stack, t_list):
     values_at_peak_index = [val[idx] for val, idx in zip(value_stack, peak_indices)]
 
     peak_data = dict()
-    output_percentiles = ((5, 25, 32, 50, 75, 68, 95),)
+    output_percentiles = [5, 25, 32, 50, 75, 68, 95]
     for percentile in output_percentiles:
         peak_data[f"peak_value_ci{percentile}"] = np.percentile(
             values_at_peak_index, percentile
@@ -179,7 +179,7 @@ def _generate_output_for_suppression_policy(model_ensemble):
         compartment_output = dict()
 
         # Compute percentiles over the ensemble
-        output_percentiles = ((5, 25, 32, 50, 75, 68, 95),)
+        output_percentiles = [5, 25, 32, 50, 75, 68, 95]
         for percentile in output_percentiles:
             outputs[compartment][f"ci_{percentile}"] = np.percentile(
                 value_stack, percentile, axis=0

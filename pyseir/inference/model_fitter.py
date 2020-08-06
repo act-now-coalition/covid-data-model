@@ -420,7 +420,12 @@ class ModelFitter:
         """
 
         suppression_policy = suppression_policies.get_epsilon_interpolator(
-            eps, t_break, eps2, t_delta_phases, t_break_final, eps_final
+            eps=eps,
+            t_break=t_break,
+            eps2=eps2,
+            t_delta_phases=t_delta_phases,
+            t_break_final=t_break_final,
+            eps_final=eps_final,
         )
 
         if self.with_age_structure:
