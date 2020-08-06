@@ -14,7 +14,7 @@ from libs.datasets.combined_datasets import (
     _to_timeseries_rows,
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.sources.cmdc import CmdcDataSource
+from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets import JHUDataset
@@ -86,7 +86,7 @@ def test_combined_county_has_some_timeseries_data(fips):
         CDSDataset,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
-        CmdcDataSource,
+        CovidCountyDataDataSource,
         NYTimesDataset,
         TexasHospitalizations,
     ],
@@ -110,7 +110,7 @@ def test_unique_timeseries(data_source_cls):
         CDSDataset,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
-        CmdcDataSource,
+        CovidCountyDataDataSource,
     ],
 )
 def test_expected_field_in_sources(data_source_cls):
@@ -275,7 +275,7 @@ def test_build_combined_dataset_from_sources_smoke_test():
 
     # feature_definition = ALL_FIELDS_FEATURE_DEFINITION
     feature_definition: FeatureDataSourceMap = {
-        CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
+        CommonFields.CURRENT_ICU: [CovidCountyDataDataSource, CovidTrackingDataSource],
         CommonFields.CASES: [NYTimesDataset],
         CommonFields.RECOVERED: [JHUDataset],
     }
