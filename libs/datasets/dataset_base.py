@@ -6,7 +6,6 @@ import structlog
 from covidactnow.datapublic import common_df
 import pandas as pd
 
-from covidactnow.datapublic.common_fields import CommonFields, COMMON_FIELDS_TIMESERIES_KEYS
 from libs.datasets.dataset_utils import AggregationLevel
 
 
