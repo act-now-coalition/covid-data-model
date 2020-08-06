@@ -2,14 +2,14 @@
   "dataset_type": "latest",
   "path": "data/latest.csv",
   "data_git_info": {
-    "sha": "38dab6bf16a0af9aa705e15ce92cc9f300183b40",
-    "branch": "master",
+    "sha": "10453fdef3e2ca3ad869a9b85eb3f10cceccf1c3",
+    "branch": "puerto-rico-population",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "ed11ea95ce825d7be2567d1c8a3c86eebdd8e082",
+    "sha": "0664441a7419bd7989fd22f3b1f3680c4e9583d3",
     "branch": "puerto-rico",
     "is_dirty": false
   },
-  "updated_at": "2020-08-06T13:44:21.797153"
+  "updated_at": "2020-08-06T17:59:37.474686"
 }
