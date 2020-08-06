@@ -69,157 +69,19 @@ If included, the API will return the projected hospitalization data every day fo
 ### Fetching State Data
 #### Projections for a Specific State
 
-Returns projections for the selected state
+Returns projections for the selected state:
 
-```bash
-# Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_INTERVENTION.json
-/us/states/<ST>.<INTERVENTION>.json
+## API Endpoints
 
-# Full timeseries data: actuals + projected limits + data for every four days
-# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_INTERVENTION.timeseries.json
-/us/states/<ST>.<INTERVENTION>.timeseries.json
-```
-
-#### Aggregate Projections for All States
-
-Returns projections for all states
-
-```bash
-# Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.json
-/us/states.<INTERVENTION>.json
-
-# Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.timeseries.json
-/us/states.<INTERVENTION>.timeseries.json
-```
-
-State aggregates are also available as CSV files:
-
-```bash
-# Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.csv
-/latest/us/states.<INTERVENTION>.csv
-
-# Timeseries data
-# E.G. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.timeseries.csv
-/latest/us/states.<INTERVENTION>.timeseries.csv
-```
-
-### Fetching County Data
-#### Projections for a Specific County
-
-Returns projections for the selected county
-
-```bash
-# Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties/06077.WEAK_INTERVENTION.json
-/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json
-
-# Full timeseries data: actuals + projected limits + data for every four days
-# e.g. https://data.covidactnow.org/latest/us/counties/06077.WEAK_INTERVENTION.timeseries.json
-/latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json
-```
-
-#### Aggregate Projections for All Counties
-
-Returns projections for all counties
-
-```bash
-# Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.json
-/us/counties.<INTERVENTION>.json
-
-# Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.json
-/us/counties.<INTERVENTION>.timeseries.json
-```
-
-County aggregates are also available as CSV files:
-
-```bash
-# Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.csv
-/latest/us/counties.<INTERVENTION>.csv
-
-# Timeseries data
-# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.csv
-/latest/us/counties.<INTERVENTION>.timeseries.csv
-```
-
-### Data format:
-
-This is the data format for both states and counties. `timeseries` and `actualsTimeseries`
-are only included when requesting `*.timeseries.json` or `*.timeseries.csv`.
-```jsonc
-{
-  country,
-  stateName,
-  countyName, // null for states
-  fips, // 2 digit for states, 5 digit for counties
-  lat,
-  long,
-  lastUpdatedDate, // ISO 8601 date string
-  actuals: {
-    population,
-    intervention, // one of (NO_INTERVENTION, WEAK_INTERVENTION, STRONG_INTERVENTION, OBSERVED_INTERVENTION)
-    cumulativePositiveTests,
-    cumulativeNegativeTests,
-    cumulativeConfirmedCases,
-    cumulativeDeaths,
-    hospitalBeds: {
-      capacity,  // *deprecated*
-      totalCapacity,
-      currentUsageCovid,
-      currentUsageTotal,
-      typicalUsageRate
-    },
-    ICUBeds: { same as above },  // Coming soon where available, null currently
-    contactTracers
-  },
-  projections: {
-    totalHospitalBeds: {
-      shortageStartDate, // null if no shortage projected
-      peakDate,
-      peakShortfall
-    },
-    ICUBeds: { same as above },
-    Rt,
-    RtCI90
-  },
-  timeseries: [{
-    date,
-    hospitalBedsRequired,
-    hospitalBedCapacity,
-    ICUBedsInUse,
-    ICUBedCapacity,
-    ventilatorsInUse,
-    RtIndictator,
-    RtIndicatorCI90,
-    cumulativeDeaths,
-    cumulativeInfected,
-    currentInfected,
-    currentSusceptible,
-    currentExposed
-  }],
-  actualsTimeseries: [{
-    date,
-    population,
-    intervention, // one of (NO_INTERVENTION, WEAK_INTERVENTION, STRONG_INTERVENTION, OBSERVED_INTERVENTION)
-    cumulativePositiveTests,
-    cumulativeNegativeTests,
-    cumulativeConfirmedCases,
-    cumulativeDeaths,
-    hospitalBeds: {
-      capacity,  // *deprecated*
-      totalCapacity,
-      currentUsageCovid,
-      currentUsageTotal,
-      typicalUsageRate
-    },
-    ICUBeds: { same as above },  // Coming soon where available, null currently
-    contactTracers
-  }]
-};
-```
+| Endpoint | Description | Schema |
+| -------- | ----------- | ------ |
+| /us/states/<STATE>.<INTERVENTION>.json | State summary for <INTERVENTION> | RegionSummary |
+| /us/states/<STATE>.<INTERVENTION>.timeseries.json | State timeseries for intervention | RegionSummaryWithTimeseries |
+| /us/counties/<FIPS>.<INTERVENTION>.json | County summary for <INTERVENTION> | RegionSummary |
+| /us/counties/<FIPS>.<INTERVENTION>.timeseries.json | County timeseries for <INTERVENTION> | RegionSummaryWithTimeseries |
+| /us/states.<INTERVENTION>.{json,csv} | Summary for all states | AggregateRegionSummary |
+| /us/states.<INTERVENTION>.timeseries.json | Timeseries data for all states | AggregateRegionSummaryWithTimeseries |
+| /us/states.<INTERVENTION>.timeseries.csv | Timeseries data for all states | AggregateFlattenedTimeseries |
+| /us/counties.<INTERVENTION>.{json,csv} | Summary for all counties | AggregateRegionSummary |
+| /us/counties.<INTERVENTION>.timeseries.json | Timeseries data for all counties | AggregateRegionSummaryWithTimeseries |
+| /us/counties.<INTERVENTION>.timeseries.csv | Timeseries data for all counties | AggregateFlattenedTimeseries |
