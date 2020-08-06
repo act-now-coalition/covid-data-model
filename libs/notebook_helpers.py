@@ -5,7 +5,7 @@ import pandas as pd
 
 from libs.datasets import dataset_utils
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.sources import cmdc
+from libs.datasets.sources import covid_county_data
 from libs.datasets.sources import cds_dataset
 from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
@@ -37,7 +37,7 @@ def set_covid_data_public():
 def load_data_sources_by_name() -> Dict[str, TimeseriesDataset]:
 
     sources = [
-        cmdc.CmdcDataSource,
+        covid_county_data.CovidCountyDataDataSource,
         cds_dataset.CDSDataset,
         jhu_dataset.JHUDataset,
         nha_hospitalization.NevadaHospitalAssociationData,
