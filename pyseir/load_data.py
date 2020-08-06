@@ -134,27 +134,6 @@ def cache_public_implementations_data():
 
 
 @lru_cache(maxsize=32)
-def load_county_metadata():
-    """
-    Return county level metadata such as age distributions, populations etc..
-
-    Returns
-    -------
-    : pd.DataFrame
-
-    """
-
-    county_metadata = pd.read_json(
-        os.path.join(DATA_DIR, "county_metadata.json"), dtype={"fips": "str"}
-    )
-    # Fix state names
-    county_metadata.loc[:, "state"] = county_metadata["fips"].apply(
-        lambda x: us.states.lookup(x[:2]).name
-    )
-    return county_metadata
-
-
-@lru_cache(maxsize=32)
 def load_ensemble_results(fips):
     """
     Retrieve ensemble results for a given state or county fips code.
@@ -176,31 +155,6 @@ def load_ensemble_results(fips):
 
     with open(output_filename) as f:
         return json.load(f)
-
-
-@lru_cache(maxsize=32)
-def load_county_metadata_by_fips(fips):
-    """
-    Generate a dictionary for a county which includes county metadata.
-
-    Parameters
-    ----------
-    fips: str
-
-    Returns
-    -------
-    county_metadata: dict
-        Dictionary of metadata for the county. The keys are:
-
-        ['state', 'county', 'total_population', 'population_density',
-        'housing_density', 'age_distribution', 'age_bin_edges']
-    """
-    county_metadata = load_county_metadata()
-    county_metadata_merged = county_metadata.set_index("fips").loc[fips].to_dict()
-    for key, value in county_metadata_merged.items():
-        if np.isscalar(value) and not isinstance(value, str):
-            county_metadata_merged[key] = float(value)
-    return county_metadata_merged
 
 
 @lru_cache(maxsize=32)

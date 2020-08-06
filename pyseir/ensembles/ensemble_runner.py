@@ -12,7 +12,6 @@ from collections import defaultdict
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
-from pyseir import load_data
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from pyseir.inference import fit_results
 from libs.datasets import AggregationLevel
@@ -81,8 +80,7 @@ class EnsembleRunner:
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
         if self.agg_level is AggregationLevel.COUNTY:
-            self.county_metadata = load_data.load_county_metadata_by_fips(fips)
-            self.state_name = us.states.lookup(self.county_metadata["state"]).name
+            self.state_name = us.states.lookup(fips[:2]).name
             self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
         else:
             self.state_name = us.states.lookup(self.fips).name
@@ -231,15 +229,6 @@ class EnsembleRunner:
             else:
                 raise ValueError(f"Run mode {self.run_mode.value} not supported.")
 
-            if self.agg_level is AggregationLevel.COUNTY:
-                self.all_outputs["county_metadata"] = self.county_metadata
-                self.all_outputs["county_metadata"]["age_distribution"] = list(
-                    self.all_outputs["county_metadata"]["age_distribution"]
-                )
-                self.all_outputs["county_metadata"]["age_bins"] = list(
-                    self.all_outputs["county_metadata"]["age_distribution"]
-                )
-
             self.all_outputs[
                 f"{suppression_policy_name}"
             ] = self._generate_output_for_suppression_policy(model_ensemble)
@@ -264,9 +253,7 @@ class EnsembleRunner:
             Array with the stacked model output results.
         """
         compartments = {
-            key: []
-            for key in model_ensemble[0].results.keys()
-            if key not in ("t_list", "county_metadata")
+            key: [] for key in model_ensemble[0].results.keys() if key not in ("t_list")
         }
         for model in model_ensemble:
             for key in compartments:
