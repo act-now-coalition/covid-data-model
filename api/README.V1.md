@@ -75,13 +75,13 @@ Returns projections for the selected state:
 
 | Endpoint | Description | Schema |
 | -------- | ----------- | ------ |
-| /us/states/<STATE>.<INTERVENTION>.json | State summary for <INTERVENTION> | RegionSummary |
-| /us/states/<STATE>.<INTERVENTION>.timeseries.json | State timeseries for intervention | RegionSummaryWithTimeseries |
-| /us/counties/<FIPS>.<INTERVENTION>.json | County summary for <INTERVENTION> | RegionSummary |
-| /us/counties/<FIPS>.<INTERVENTION>.timeseries.json | County timeseries for <INTERVENTION> | RegionSummaryWithTimeseries |
-| /us/states.<INTERVENTION>.{json,csv} | Summary for all states | AggregateRegionSummary |
-| /us/states.<INTERVENTION>.timeseries.json | Timeseries data for all states | AggregateRegionSummaryWithTimeseries |
-| /us/states.<INTERVENTION>.timeseries.csv | Timeseries data for all states | AggregateFlattenedTimeseries |
-| /us/counties.<INTERVENTION>.{json,csv} | Summary for all counties | AggregateRegionSummary |
-| /us/counties.<INTERVENTION>.timeseries.json | Timeseries data for all counties | AggregateRegionSummaryWithTimeseries |
-| /us/counties.<INTERVENTION>.timeseries.csv | Timeseries data for all counties | AggregateFlattenedTimeseries |
+| `/us/states/<STATE>.<INTERVENTION>.json` | State summary for `<INTERVENTION>` | RegionSummary |
+| `/us/states/<STATE>.<INTERVENTION>.timeseries.json` | State timeseries for intervention | RegionSummaryWithTimeseries |
+| `/us/counties/<FIPS>.<INTERVENTION>.json` | County summary for `<INTERVENTION>` | RegionSummary |
+| `/us/counties/<FIPS>.<INTERVENTION>.timeseries.json` | County timeseries for `<INTERVENTION>` | RegionSummaryWithTimeseries |
+| `/us/states.<INTERVENTION>.{json,csv}` | Summary for all states | AggregateRegionSummary |
+| `/us/states.<INTERVENTION>.timeseries.json` | Timeseries data for all states | AggregateRegionSummaryWithTimeseries |
+| `/us/states.<INTERVENTION>.timeseries.csv` | Timeseries data for all states | AggregateFlattenedTimeseries |
+| `/us/counties.<INTERVENTION>.{json,csv}` | Summary for all counties | AggregateRegionSummary |
+| `/us/counties.<INTERVENTION>.timeseries.json` | Timeseries data for all counties | AggregateRegionSummaryWithTimeseries |
+| `/us/counties.<INTERVENTION>.timeseries.csv` | Timeseries data for all counties | AggregateFlattenedTimeseries |
