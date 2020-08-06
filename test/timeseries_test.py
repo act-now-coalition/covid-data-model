@@ -16,6 +16,8 @@ pytestmark = pytest.mark.filterwarnings("error")
 
 
 def test_get_subset_and_get_data():
+    # CSV with a unique FIPS value for every region, even countries. In production countries are removed before
+    # TimeseriesDataset is created. A future change may replace FIPS with a more general identifier.
     input_df = pd.read_csv(
         StringIO(
             "city,county,state,fips,country,aggregate_level,date,metric\n"

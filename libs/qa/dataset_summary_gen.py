@@ -1,3 +1,9 @@
+"""
+The core function of dataset_summmary, in its own module with few dependencies so it can be imported
+without creating an import loop.
+"""
+
+
 import pandas as pd
 
 
