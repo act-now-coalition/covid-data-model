@@ -106,6 +106,9 @@ class WebUIDataAdaptorV1:
         # for all policies is the same).
         baseline_policy = "suppression_policy__inferred"  # This could be any valid policy
 
+        log.info(fips)
+        log.info("fips")
+        log.info(fit_results)
         # We need the index in the model's temporal frame.
         idx_offset = int(fit_results["t_today"] - fit_results["t0"])
 
