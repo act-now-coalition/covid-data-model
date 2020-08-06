@@ -417,7 +417,7 @@ def _run_county(fips, ensemble_kwargs):
     runner.run_ensemble()
 
 
-def run_state(state_full_name, ensemble_kwargs, states_only=False):
+def run_state(state, ensemble_kwargs, states_only=False):
     """
     Run the EnsembleRunner for each county in a state.
 
@@ -431,14 +431,13 @@ def run_state(state_full_name, ensemble_kwargs, states_only=False):
         If True only run the state level.
     """
     # Run the state level
-    state_obj = us.states.lookup(state_full_name)
+    state_obj = us.states.lookup(state)
     fips = state_obj.fips
     runner = EnsembleRunner(fips=fips, **ensemble_kwargs)
     runner.run_ensemble()
 
     if not states_only:
         # Run county level
-        state = state_obj.abbr
         county_latest = combined_datasets.load_us_latest_dataset().county
         all_fips = county_latest.get_subset(state=state).all_fips
         with Pool(maxtasksperchild=1) as p:

@@ -37,19 +37,11 @@ class WebUIDataAdaptorV1:
     """
 
     def __init__(
-        self,
-        state,
-        output_interval_days=4,
-        run_mode="can-before",
-        output_dir=None,
-        include_imputed=False,
+        self, output_interval_days=4, run_mode="can-before", output_dir=None, include_imputed=False,
     ):
-
         self.output_interval_days = output_interval_days
-        self.state = state
         self.run_mode = RunMode(run_mode)
         self.include_imputed = include_imputed
-        self.state_abbreviation = us.states.lookup(state).abbr
         self.population_data = FIPSPopulation.local().population()
         self.output_dir = output_dir
 
@@ -94,7 +86,11 @@ class WebUIDataAdaptorV1:
         fips: str
             FIPS code to map.
         """
-        log.info("Mapping output to WebUI.", state=self.state, fips=fips)
+        # Get the latest observed values to use in calculating shims
+        observed_latest_dict = combined_datasets.get_us_latest_for_fips(fips)
+
+        state = observed_latest_dict[CommonFields.STATE]
+        log.info("Mapping output to WebUI.", state=state, fips=fips)
         shim_log = structlog.getLogger(fips=fips)
         pyseir_outputs = load_data.load_ensemble_results(fips)
 
@@ -112,9 +108,6 @@ class WebUIDataAdaptorV1:
 
         # We need the index in the model's temporal frame.
         idx_offset = int(fit_results["t_today"] - fit_results["t0"])
-
-        # Get the latest observed values to use in calculating shims
-        observed_latest_dict = combined_datasets.get_us_latest_for_fips(fips)
 
         observed_death_latest = observed_latest_dict[CommonFields.DEATHS]
         observed_total_hosps_latest = observed_latest_dict[CommonFields.CURRENT_HOSPITALIZED]
@@ -308,19 +301,21 @@ class WebUIDataAdaptorV1:
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
 
-    def generate_state(self, whitelisted_county_fips: list, states_only=False):
+    def generate_state(self, state: str, whitelisted_county_fips: list, states_only=False):
         """
         Generate the output for the webUI for the given state, and counties in that state if
         states_only=False.
 
         Parameters
         ----------
+        state: str
+            State
         whitelisted_county_fips
         states_only: bool
             If True only run the state level.
         """
 
-        state_fips = us.states.lookup(self.state).fips
+        state_fips = us.states.lookup(state).fips
         self.map_fips(state_fips)
 
         if states_only:
@@ -335,7 +330,5 @@ class WebUIDataAdaptorV1:
 if __name__ == "__main__":
     # Need to have a whitelist pre-generated
     # Need to have state output already built
-    mapper = WebUIDataAdaptorV1(
-        state="Texas", output_interval_days=1, run_mode="can-inference-derived"
-    )
-    mapper.generate_state(whitelisted_county_fips=["48201"], states_only=False)
+    mapper = WebUIDataAdaptorV1(output_interval_days=1, run_mode="can-inference-derived")
+    mapper.generate_state("TX", whitelisted_county_fips=["48201"], states_only=False)

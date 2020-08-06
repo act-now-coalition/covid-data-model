@@ -1,3 +1,4 @@
+from typing import List
 import os
 import us
 import json
@@ -685,14 +686,11 @@ def _persist_results_per_state(state_df):
             pickle.dump(county_series.mle_model, f)
 
 
-def build_county_list(state_full_name):
+def build_county_list(state: str) -> List[str]:
     """
     Build the and return the fips list
     """
-    state_obj = us.states.lookup(state_full_name)
-    state = state_obj.abbr
-    log.info(f"Get fips list for state {state_obj.name}")
-
+    log.info(f"Get fips list for state {state}")
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
     is_state = df_whitelist[CommonFields.STATE] == state
@@ -701,7 +699,7 @@ def build_county_list(state_full_name):
     return all_fips
 
 
-def run_state(state_full_name, states_only=False, with_age_structure=False):
+def run_state(state, states_only=False, with_age_structure=False):
     """
     Run the fitter for each county in a state.
 
@@ -714,10 +712,9 @@ def run_state(state_full_name, states_only=False, with_age_structure=False):
     with_age_structure: bool
         If True run model with age structure.
     """
-    state_obj = us.states.lookup(state_full_name)
-    state = state_obj.abbr
+    state_obj = us.states.lookup(state)
     fips = state_obj.fips
-    log.info(f"Running MLE fitter for state {state_full_name}")
+    log.info(f"Running MLE fitter for state {state}")
 
     model_fitter = ModelFitter.run_for_fips(fips, with_age_structure=with_age_structure)
 

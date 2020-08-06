@@ -17,7 +17,7 @@ from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import AggregationLevel, fips_index_geo_data
 from libs.datasets.dataset_utils import DatasetType
-from libs.datasets.sources.cmdc import CmdcDataSource
+from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
@@ -63,46 +63,46 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
-        CmdcDataSource,
+        CovidCountyDataDataSource,
         CovidTrackingDataSource,
         TexasHospitalizations,
     ],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
+    CommonFields.CURRENT_ICU: [CovidCountyDataDataSource, CovidTrackingDataSource],
+    CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource],
     CommonFields.CURRENT_VENTILATED: [
-        CmdcDataSource,
+        CovidCountyDataDataSource,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
     CommonFields.DEATHS: [NYTimesDataset],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
-    CommonFields.ICU_BEDS: [CmdcDataSource],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
+    CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
+    CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
     CommonFields.RECOVERED: [JHUDataset],
-    CommonFields.STAFFED_BEDS: [CmdcDataSource],
+    CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     **ALL_TIMESERIES_FEATURE_DEFINITION,
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.CURRENT_HOSPITALIZED: [
-        CmdcDataSource,
+        CovidCountyDataDataSource,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
         TexasHospitalizations,
     ],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds],
+    CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POPULATION: [FIPSPopulation],
-    CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
+    CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
 }
 
 
