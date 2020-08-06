@@ -15,7 +15,7 @@ from libs.datasets import dataset_pointer
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
-from libs.datasets.dataset_utils import AggregationLevel, fips_index_geo_data
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -289,7 +289,7 @@ def _build_data_and_provenance(
     datasource_dataframes: Mapping[str, pd.DataFrame],
     override=Override.BY_TIMESERIES,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    fips_indexed = fips_index_geo_data(pd.concat(datasource_dataframes.values()))
+    fips_indexed = dataset_utils.fips_index_geo_data(pd.concat(datasource_dataframes.values()))
 
     # Inspired by pd.Series.combine_first(). Create a new index which is a union of all the input dataframe
     # index.
