@@ -3,9 +3,12 @@ import us
 from datetime import datetime
 from enum import Enum
 from scipy import signal
+from covidactnow.datapublic.common_fields import CommonFields
+
 from pyseir import OUTPUT_DIR
 from pyseir import load_data
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import combined_datasets
 
 REPORTS_FOLDER = lambda output_dir, state_name: os.path.join(
     output_dir, "pyseir", state_name, "reports"
@@ -45,7 +48,6 @@ class RunArtifact(Enum):
     WHITELIST_RESULT = "whitelist_result"
 
     ENSEMBLE_RESULT = "ensemble_result"
-    ENSEMBLE_REPORT = "ensemble_report"
 
     WEB_UI_RESULT = "web_ui_result"
 
@@ -74,7 +76,7 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
     state_obj = us.states.lookup(fips[:2])
     if len(fips) == 5:
         agg_level = AggregationLevel.COUNTY
-        county = load_data.load_county_metadata_by_fips(fips)["county"]
+        county = combined_datasets.get_us_latest_for_fips(fips)[CommonFields.COUNTY]
     elif len(fips) == 2:
         agg_level = AggregationLevel.STATE
     else:
@@ -180,19 +182,6 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
                 STATE_SUMMARY_FOLDER(output_dir),
                 "data",
                 f"ensemble_projections__{state_obj.name}__{fips}.json",
-            )
-
-    elif artifact is RunArtifact.ENSEMBLE_REPORT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_obj.name),
-                f"ensemble_projections__{state_obj.name}__{county}__{fips}.pdf",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "reports",
-                f"ensemble_projections__{state_obj.name}__{fips}.pdf",
             )
 
     elif artifact is RunArtifact.WEB_UI_RESULT:

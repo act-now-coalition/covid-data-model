@@ -1,7 +1,6 @@
 import pandas as pd
 from libs.datasets import combined_datasets
 from libs.datasets import CommonFields
-from pyseir.inference import fit_results
 
 
 def infer_t0(fips, method="first_case", default=pd.Timestamp("2020-02-01")):
@@ -26,9 +25,7 @@ def infer_t0(fips, method="first_case", default=pd.Timestamp("2020-02-01")):
         Inferred t0 for given fips.
     """
 
-    if method == "impute":
-        t0 = fit_results.load_t0(fips)
-    elif method == "first_case":
+    if method == "first_case":
         fips_timeseries = combined_datasets.get_timeseries_for_fips(
             fips, columns=[CommonFields.CASES], min_range_with_some_value=True
         )
