@@ -16,7 +16,7 @@ pytestmark = pytest.mark.filterwarnings("error")
 def test_pyseir_end_to_end_idaho():
     # This covers a lot of edge cases.
     # cli._run_all(state='Idaho')
-    cli._build_all_for_states(states=["Idaho"], fips="16001")
+    cli._build_all_for_states(states=["ID"], fips="16001")
     path = get_run_artifact_path("16001", RunArtifact.WEB_UI_RESULT).replace(
         "__INTERVENTION_IDX__", "2"
     )
@@ -34,9 +34,9 @@ def test_pyseir_end_to_end_idaho():
 @pytest.mark.parametrize("fips,expected_results", [(None, True), ("16013", True), ("26013", False)])
 def test_filters_counties_properly(fips, expected_results):
     cli._generate_whitelist()
-    results = cli.build_counties_to_run_per_state(["Idaho"], fips=fips)
+    results = cli.build_counties_to_run_per_state(["ID"], fips=fips)
     if fips and expected_results:
-        assert results == {fips: "Idaho"}
+        assert results == {fips: "ID"}
     elif expected_results:
         assert results
 

@@ -1,4 +1,6 @@
 from typing import Dict, List
+
+
 import sys
 import os
 import click
@@ -23,7 +25,7 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."
 root = logging.getLogger()
 
 DEFAULT_RUN_MODE = "can-inference-derived"
-ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
+ALL_STATES = [state_obj.abbr for state_obj in us.STATES]
 
 
 def _cache_global_datasets():
@@ -46,9 +48,9 @@ def _generate_whitelist():
 
 
 def _run_infer_rt(states: List[str], states_only=False):
-    for state_name in states:
-        fips = us.states.lookup(state_name).fips
-        infer_rt.run_rt_for_fips(fips=fips)
+    for state in states:
+        fips = us.states.lookup(state).fips
+        infer_rt.run_rt_for_fips(fips)
 
 
 def _run_mle_fits(states: List[str], states_only=False):
@@ -57,23 +59,18 @@ def _run_mle_fits(states: List[str], states_only=False):
 
 
 def _run_ensembles(states, ensemble_kwargs=dict(), states_only=False):
-    for state_name in states:
-        ensemble_runner.run_state(
-            state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only
-        )
+    for state in states:
+        ensemble_runner.run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
 
 
 def _map_outputs(
     states, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
 ):
+    web_ui_mapper = WebUIDataAdaptorV1(
+        output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
+    )
     for state in states:
-        web_ui_mapper = WebUIDataAdaptorV1(
-            state,
-            output_interval_days=output_interval_days,
-            run_mode=run_mode,
-            output_dir=output_dir,
-        )
-        web_ui_mapper.generate_state(whitelisted_county_fips=[], states_only=states_only)
+        web_ui_mapper.generate_state(state, whitelisted_county_fips=[], states_only=states_only)
 
 
 def _state_only_pipeline(
@@ -186,14 +183,12 @@ def _build_all_for_states(
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
+    web_ui_mapper = WebUIDataAdaptorV1(
+        output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
+    )
     for state in states:
-        web_ui_mapper = WebUIDataAdaptorV1(
-            state,
-            output_interval_days=output_interval_days,
-            run_mode=run_mode,
-            output_dir=output_dir,
-        )
         web_ui_mapper.generate_state(
+            state,
             whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
             states_only=False,
         )
@@ -308,9 +303,7 @@ def build_all(
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
-    # Convert abbreviated states to the full state name, allowing states passed in
-    # to be the full name or the abbreviated name.
-    states = [ABBREV_US_STATE.get(state, state) for state in states]
+    states = [us.states.lookup(state).abbr for state in states]
     states = [state for state in states if state in ALL_STATES]
     if not len(states):
         states = ALL_STATES

@@ -98,8 +98,12 @@ If using conda, you can use the following:
 PySEIR provides a command line interface in the activated environment. You can access the model with `pyseir --help ` and `pyseir <subcommand> --help` providing more information.
 
 Example:
-`pyseir build-all --states="New York"` will run state and county models for New York.
+`pyseir build-all --states="NY"` will run state and county models for New York.
 States can also be specified by their state code: `--states="New York"` and `--states=NY` are equivalent.
+
+
+`pyseir build-all --states=NY --fips=36061` will run the New York state model and the model for the specified
+FIPS code (in this case New York City).
 
 
 Check the `output/` folder for results.
