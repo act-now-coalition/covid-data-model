@@ -3,6 +3,7 @@
 ### ResourceUsageProjection
 Base model for API output.
     
+| name              | type    | description                                          |
 |-------------------|---------|------------------------------------------------------|
 | peakShortfall     | integer | Shortfall of resource needed at the peak utilization |
 | peakDate          | string  | Date of peak resource utilization                    |
@@ -13,6 +14,7 @@ Base model for API output.
 ### Projections
 Base model for API output.
     
+| name              | type   | description                                            |
 |-------------------|--------|--------------------------------------------------------|
 | totalHospitalBeds |        | Projection about total hospital bed utilization        |
 | ICUBeds           |        | Projection about ICU hospital bed utilization          |
@@ -24,6 +26,7 @@ Base model for API output.
 ### ResourceUtilization
 Base model for API output.
     
+| name              | type    | description                                                                                                                                                                                                                             |
 |-------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | capacity          | integer | *deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07 |
 | totalCapacity     | integer | Total capacity for resource.                                                                                                                                                                                                            |
@@ -36,6 +39,7 @@ Base model for API output.
 ### Actuals
 Base model for API output.
     
+| name                     | type                                        | description                                                                     |
 |--------------------------|---------------------------------------------|---------------------------------------------------------------------------------|
 | population               | integer                                     | Total population in geographic region [*deprecated*: refer to summary for this] |
 | intervention             | string                                      | Name of high-level intervention in-place                                        |
@@ -52,6 +56,7 @@ Base model for API output.
 ### ActualsTimeseriesRow
 Base model for API output.
     
+| name                     | type                                        | description                                                                     |
 |--------------------------|---------------------------------------------|---------------------------------------------------------------------------------|
 | population               | integer                                     | Total population in geographic region [*deprecated*: refer to summary for this] |
 | intervention             | string                                      | Name of high-level intervention in-place                                        |
@@ -69,6 +74,7 @@ Base model for API output.
 ### RegionSummary
 Base model for API output.
     
+| name            | type                        | description                                                                          |
 |-----------------|-----------------------------|--------------------------------------------------------------------------------------|
 | countryName     | string                      |                                                                                      |
 | fips            | string                      | Fips Code.  For state level data, 2 characters, for county level data, 5 characters. |
@@ -86,6 +92,7 @@ Base model for API output.
 ### PredictionTimeseriesRow
 Base model for API output.
     
+| name                 | type    | description                                                                                  |
 |----------------------|---------|----------------------------------------------------------------------------------------------|
 | date                 | string  | Date of timeseries data point                                                                |
 | hospitalBedsRequired | integer | Number of hospital beds projected to be in-use or that were actually in use (if in the past) |
@@ -107,6 +114,7 @@ Base model for API output.
 ### RegionSummaryWithTimeseries
 Base model for API output.
     
+| name              | type                        | description                                                                          |
 |-------------------|-----------------------------|--------------------------------------------------------------------------------------|
 | countryName       | string                      |                                                                                      |
 | fips              | string                      | Fips Code.  For state level data, 2 characters, for county level data, 5 characters. |
@@ -126,6 +134,7 @@ Base model for API output.
 ### PredictionTimeseriesRowWithHeader
 Base model for API output.
     
+| name                 | type    | description                                                                                  |
 |----------------------|---------|----------------------------------------------------------------------------------------------|
 | date                 | string  | Date of timeseries data point                                                                |
 | hospitalBedsRequired | integer | Number of hospital beds projected to be in-use or that were actually in use (if in the past) |
