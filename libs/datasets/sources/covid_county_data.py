@@ -1,15 +1,16 @@
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic import common_df
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 
 
-class CmdcDataSource(data_source.DataSource):
-    DATA_PATH = "data/cases-cmdc/timeseries-common.csv"
-    SOURCE_NAME = "CMDC"
+class CovidCountyDataDataSource(data_source.DataSource):
+    DATA_PATH = "data/cases-covid-county-data/timeseries-common.csv"
+    SOURCE_NAME = "Valorum"
 
-    # CMDC data reports values at both the state and county level. However, state values
+    # Covid County Data reports values at both the state and county level. However, state values
     # are not reported until complete values from states are received.  The latest
     # row may contain some county data but not state data - instead of aggregating and returning
     # incomplete state data, we are choosing to not aggregate.
@@ -23,9 +24,10 @@ class CmdcDataSource(data_source.DataSource):
         CommonFields.FIPS: CommonFields.FIPS,
     }
 
-    # Keep in sync with update_cmdc.py in the covid-data-public repo.
-    # DataSource objects must have a map from CommonFields to fields in the source file. For CMDC the
-    # conversion is done in the covid-data-public repo so the map here doesn't represent any field renaming.
+    # Keep in sync with update_covid_county_data.py in the covid-data-public repo.
+    # DataSource objects must have a map from CommonFields to fields in the source file.
+    # For this source the conversion is done in the covid-data-public repo so the map
+    # here doesn't represent any field renaming.
     COMMON_FIELD_MAP = {
         f: f
         for f in {
@@ -47,7 +49,5 @@ class CmdcDataSource(data_source.DataSource):
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        data = pd.read_csv(
-            input_path, parse_dates=[CommonFields.DATE], dtype={CommonFields.FIPS: str}
-        )
+        data = common_df.read_csv(input_path).reset_index()
         return cls(data)
