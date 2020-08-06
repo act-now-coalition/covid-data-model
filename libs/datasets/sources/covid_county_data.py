@@ -8,7 +8,7 @@ from libs.datasets import dataset_utils
 
 class CovidCountyDataDataSource(data_source.DataSource):
     DATA_PATH = "data/cases-covid-county-data/timeseries-common.csv"
-    SOURCE_NAME = "CovidCountyData (Valorum)"
+    SOURCE_NAME = "Valorum"
 
     # Covid County Data reports values at both the state and county level. However, state values
     # are not reported until complete values from states are received.  The latest
