@@ -2,8 +2,8 @@
   "dataset_type": "timeseries",
   "path": "data/timeseries.csv",
   "data_git_info": {
-    "sha": "10453fdef3e2ca3ad869a9b85eb3f10cceccf1c3",
-    "branch": "puerto-rico-population",
+    "sha": "38dab6bf16a0af9aa705e15ce92cc9f300183b40",
+    "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
@@ -11,5 +11,5 @@
     "branch": "puerto-rico",
     "is_dirty": true
   },
-  "updated_at": "2020-08-05T21:09:12.997352"
+  "updated_at": "2020-08-06T13:46:48.344641"
 }
