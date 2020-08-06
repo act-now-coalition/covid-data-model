@@ -66,7 +66,8 @@ def update_schemas(output_dir):
 def generate_api(input_dir, output, summary_output, aggregation_level, state, fips):
     """The entry function for invocation"""
 
-    active_states = [state.abbr for state in us.STATES_AND_TERRITORIES]
+    active_states = [state.abbr for state in us.STATES]
+    active_states = active_states + ["PR"]
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
     )
@@ -108,7 +109,8 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 def generate_top_counties(disable_validation, input_dir, output, state, fips):
     """The entry function for invocation"""
     intervention = Intervention.SELECTED_INTERVENTION
-    active_states = [state.abbr for state in us.STATES_AND_TERRITORIES]
+    active_states = [state.abbr for state in us.STATES]
+    active_states = active_states + ["PR"]
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
     )
