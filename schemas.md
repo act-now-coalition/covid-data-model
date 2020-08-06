@@ -1,13 +1,16 @@
 
-###ResourceUsageProjection
+
+### ResourceUsageProjection
 Base model for API output.
     
 |-------------------|---------|------------------------------------------------------|
 | peakShortfall     | integer | Shortfall of resource needed at the peak utilization |
 | peakDate          | string  | Date of peak resource utilization                    |
 | shortageStartDate | string  | Date when resource shortage begins                   |
-    
-###Projections
+
+
+
+### Projections
 Base model for API output.
     
 |-------------------|--------|--------------------------------------------------------|
@@ -15,8 +18,10 @@ Base model for API output.
 | ICUBeds           |        | Projection about ICU hospital bed utilization          |
 | Rt                | number | Inferred Rt                                            |
 | RtCI90            | number | Rt 90th percentile confidence interval upper endpoint. |
-    
-###ResourceUtilization
+
+
+
+### ResourceUtilization
 Base model for API output.
     
 |-------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -25,8 +30,10 @@ Base model for API output.
 | currentUsageCovid | integer | Currently used capacity for resource by COVID                                                                                                                                                                                           |
 | currentUsageTotal | integer | Currently used capacity for resource by all patients (COVID + Non-COVID)                                                                                                                                                                |
 | typicalUsageRate  | number  | Typical used capacity rate for resource. This excludes any COVID usage.                                                                                                                                                                 |
-    
-###Actuals
+
+
+
+### Actuals
 Base model for API output.
     
 |--------------------------|---------------------------------------------|---------------------------------------------------------------------------------|
@@ -39,8 +46,10 @@ Base model for API output.
 | hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
 | ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
 | contactTracers           | integer                                     | # of Contact Tracers                                                            |
-    
-###ActualsTimeseriesRow
+
+
+
+### ActualsTimeseriesRow
 Base model for API output.
     
 |--------------------------|---------------------------------------------|---------------------------------------------------------------------------------|
@@ -54,8 +63,10 @@ Base model for API output.
 | ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
 | contactTracers           | integer                                     | # of Contact Tracers                                                            |
 | date                     | string                                      | Date of timeseries data point                                                   |
-    
-###RegionSummary
+
+
+
+### RegionSummary
 Base model for API output.
     
 |-----------------|-----------------------------|--------------------------------------------------------------------------------------|
@@ -69,8 +80,10 @@ Base model for API output.
 | projections     | [Projections](#Projections) | Base model for API output.                                                           |
 | actuals         | [Actuals](#Actuals)         | Base model for API output.                                                           |
 | population      | integer                     | Total Population in geographic region.                                               |
-    
-###PredictionTimeseriesRow
+
+
+
+### PredictionTimeseriesRow
 Base model for API output.
     
 |----------------------|---------|----------------------------------------------------------------------------------------------|
@@ -88,8 +101,10 @@ Base model for API output.
 | currentInfected      | integer | Number of current infections                                                                 |
 | currentSusceptible   | integer | Number of people currently susceptible                                                       |
 | currentExposed       | integer | Number of people currently exposed                                                           |
-    
-###RegionSummaryWithTimeseries
+
+
+
+### RegionSummaryWithTimeseries
 Base model for API output.
     
 |-------------------|-----------------------------|--------------------------------------------------------------------------------------|
@@ -105,8 +120,10 @@ Base model for API output.
 | population        | integer                     | Total Population in geographic region.                                               |
 | timeseries        | array                       |                                                                                      |
 | actualsTimeseries | array                       |                                                                                      |
-    
-###PredictionTimeseriesRowWithHeader
+
+
+
+### PredictionTimeseriesRowWithHeader
 Base model for API output.
     
 |----------------------|---------|----------------------------------------------------------------------------------------------|
@@ -132,4 +149,4 @@ Base model for API output.
 | lat                  | number  | Latitude of point within the state or county                                                 |
 | long                 | number  | Longitude of point within the state or county                                                |
 | lastUpdatedDate      | string  | Date of latest data                                                                          |
-    
+
