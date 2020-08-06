@@ -1,9 +1,7 @@
 from io import StringIO
 
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.sources import cds_dataset
 from libs.datasets.timeseries import TimeseriesDataset
-from test.dataset_utils_test import to_dict
 import pandas as pd
 import pytest
 
@@ -13,6 +11,8 @@ pytestmark = pytest.mark.filterwarnings("error")
 
 
 def test_get_subset_and_get_data():
+    # CSV with a unique FIPS value for every region, even countries. In production countries are removed before
+    # TimeseriesDataset is created. A future change may replace FIPS with a more general identifier.
     input_df = pd.read_csv(
         StringIO(
             "city,county,state,fips,country,aggregate_level,date,metric\n"
@@ -20,10 +20,10 @@ def test_get_subset_and_get_data():
             "New York City,,ZZ,97324,USA,city,2020-03-22,march22-nyc\n"
             "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
             ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
-            ",,ZZ,97001,USA,state,2020-03-23,mystate\n"
-            ",,XY,96001,USA,state,2020-03-23,other-state\n"
-            ",,,,UK,country,2020-03-23,you-kee\n"
-            ",,,,US,country,2020-03-23,you-ess-hey\n"
+            ",,ZZ,97,USA,state,2020-03-23,mystate\n"
+            ",,XY,96,USA,state,2020-03-23,other-state\n"
+            ",,,iso2:uk,UK,country,2020-03-23,you-kee\n"
+            ",,,iso2:us,US,country,2020-03-23,you-ess-hey\n"
         )
     )
     ts = TimeseriesDataset(input_df)

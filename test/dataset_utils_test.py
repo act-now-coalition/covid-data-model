@@ -53,7 +53,7 @@ def to_dict(keys: List[str], df: pd.DataFrame):
         return df.to_dict(orient="index", into=NoNanDict)
     except Exception:
         # Print df to provide more context when the above code raises.
-        print(f"Problem with {df}")
+        print(f"Exception in to_dict with\n{df}")
         raise
 
 

@@ -34,10 +34,16 @@ def _save_field_summary(timeseries_dataset: TimeseriesDataset, output_path: path
 def update(summary_filename):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
-    _, timeseries_pointer = combined_dataset_utils.update_data_public_head(path_prefix)
 
-    dataset = timeseries_pointer.load_dataset()
-    _save_field_summary(dataset, path_prefix / summary_filename)
+    latest_dataset = combined_datasets.build_us_latest_with_all_fields()
+    timeseries_dataset = combined_datasets.build_us_timeseries_with_all_fields()
+    _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
+        path_prefix, latest_dataset, timeseries_dataset
+    )
+
+    if summary_filename:
+        dataset = timeseries_pointer.load_dataset()
+        _save_field_summary(dataset, path_prefix / summary_filename)
 
 
 @main.command()

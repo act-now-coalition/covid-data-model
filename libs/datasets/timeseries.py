@@ -235,7 +235,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS,],
         )
 
-        print()
         dataset_utils.summarize(
             self.data,
             AggregationLevel.STATE,

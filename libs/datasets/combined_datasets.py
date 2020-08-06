@@ -1,17 +1,13 @@
 from enum import Enum
 from itertools import chain
-from typing import Dict, Type, List, NewType, Mapping, Optional, MutableMapping, Tuple
+from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
-import os
-import logging
 import pandas as pd
 import structlog
-from pandas import MultiIndex
 from structlog.threadlocal import tmp_bind
 
 from covidactnow.datapublic.common_fields import CommonFields
-from libs import git_lfs_object_helpers
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
@@ -293,23 +289,7 @@ def _build_data_and_provenance(
     datasource_dataframes: Mapping[str, pd.DataFrame],
     override=Override.BY_TIMESERIES,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    # These are columns that are expected to have a single value for each FIPS. Get the columns
-    # from every row of each data source and then keep one of each unique row.
-    preserve_columns = [
-        CommonFields.AGGREGATE_LEVEL,
-        CommonFields.STATE,
-        CommonFields.COUNTRY,
-        CommonFields.COUNTY,
-    ]
-    all_identifiers = pd.concat(
-        df.reset_index().loc[
-            :, [CommonFields.FIPS] + list(df.columns.intersection(preserve_columns))
-        ]
-        for df in datasource_dataframes.values()
-    ).drop_duplicates()
-    # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
-    # are rows in the input data sources that have different values for county name, state etc.
-    fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
+    fips_indexed = dataset_utils.fips_index_geo_data(pd.concat(datasource_dataframes.values()))
 
     # Inspired by pd.Series.combine_first(). Create a new index which is a union of all the input dataframe
     # index.
@@ -430,11 +410,14 @@ def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
 
     Args:
         wide: DataFrame with a row for each fips-date and a column containing the datasource for each variable.
-            The date and fips need to be regular columns, not in the index.
+            FIPS must be a named index. DATE, if present, must be a named index.
 
     Returns: A Series of string data source values with fips and variable in the index. In the unexpected
         case of multiple sources for a timeseries a warning is logged and one is returned arbitrarily.
     """
+    assert CommonFields.FIPS in wide.index.names
+    assert CommonFields.FIPS not in wide.columns
+    assert CommonFields.DATE not in wide.columns
     columns_without_timeseries_point_keys = set(wide.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS)
     long_unindexed = (
         wide.reset_index()
