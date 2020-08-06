@@ -1,23 +1,21 @@
-from typing import List, Optional, Type
+from typing import Optional, Type
 import os
 import enum
 import logging
 import pathlib
 import pandas as pd
-import structlog
-from structlog.stdlib import BoundLogger
-
+import structlog.stdlib
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.us_state_abbrev import US_STATE_ABBREV
 
 
+# Slowly changing attributes of a geographical region
 GEO_DATA_COLUMNS = [
     CommonFields.FIPS,
     CommonFields.AGGREGATE_LEVEL,
     CommonFields.STATE,
     CommonFields.COUNTRY,
     CommonFields.COUNTY,
-    "city",
 ]
 
 
@@ -299,7 +297,9 @@ def summarize(data, aggregate_level, groupby):
     print(index_size[index_size > 1])
 
 
-def _clear_common_values(log: BoundLogger, existing_df, data_source, index_fields, column_to_fill):
+def _clear_common_values(
+    log: structlog.stdlib.BoundLogger, existing_df, data_source, index_fields, column_to_fill
+):
     """For index labels shared between existing_df and data_source, clear column_to_fill in existing_df.
 
     existing_df is modified inplace. Index labels (the values in the index for one row) do not need to be unique in a
@@ -356,11 +356,20 @@ def make_binary_array(
     return data.eval(" and ".join(query_parts))
 
 
-def fips_index_geo_data(df):
-    # These are columns that are expected to have a single value for each FIPS. Get the columns
-    # from every row of each data source and then keep one of each unique row.
+def fips_index_geo_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Return a DataFrame containing slowly changing attributes of each FIPS. If an attribute varies for a single
+    FIPS there is a problem in the data and the set_index verify_integrity will fail.
+
+    Args:
+        df: a DataFrame that may contain data in named index and multiple rows per FIPS.
+
+    Returns: a DataFrame with a FIPS index and one row per FIPS
+    """
     if df.index.names:
         df = df.reset_index()
+    # The GEO_DATA_COLUMNS are expected to have a single value for each FIPS. Get the columns
+    # from every row of each data source and then keep one of each unique row.
     all_identifiers = df.loc[:, df.columns.intersection(GEO_DATA_COLUMNS)].drop_duplicates()
     # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
     # are rows in the input data sources that have different values for county name, state etc.

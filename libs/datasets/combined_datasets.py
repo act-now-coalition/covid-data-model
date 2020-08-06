@@ -410,11 +410,14 @@ def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
 
     Args:
         wide: DataFrame with a row for each fips-date and a column containing the datasource for each variable.
-            The date and fips are expected to be named levels in a MultiIndex.
+            FIPS must be a named index. DATE, if present, must be a named index.
 
     Returns: A Series of string data source values with fips and variable in the index. In the unexpected
         case of multiple sources for a timeseries a warning is logged and one is returned arbitrarily.
     """
+    assert CommonFields.FIPS in wide.index.names
+    assert CommonFields.FIPS not in wide.columns
+    assert CommonFields.DATE not in wide.columns
     columns_without_timeseries_point_keys = set(wide.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS)
     long_unindexed = (
         wide.reset_index()
