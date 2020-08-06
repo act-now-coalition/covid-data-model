@@ -380,7 +380,17 @@ class ModelFitter:
 
         return cases_stdev, hosp_stdev, deaths_stdev
 
-    def run_model(self, R0, eps, t_break, eps2, t_delta_phases, log10_I_initial):
+    def run_model(
+        self,
+        R0,
+        eps,
+        t_break,
+        eps2,
+        t_delta_phases,
+        log10_I_initial,
+        t_break_final=None,
+        eps_final=None,
+    ):
         """
         Generate the model and run.
 
@@ -398,6 +408,10 @@ class ModelFitter:
             Timing for the switch in from second to third stage.
         log10_I_initial:
             log10 initial infections.
+        t_break_final:
+            Time of Future Break
+        eps_final:
+            What to estimate in the future
 
         Returns
         -------
@@ -406,7 +420,7 @@ class ModelFitter:
         """
 
         suppression_policy = suppression_policies.get_epsilon_interpolator(
-            eps, t_break, eps2, t_delta_phases
+            eps, t_break, eps2, t_delta_phases, t_break_final, eps_final
         )
 
         if self.with_age_structure:

@@ -5,17 +5,20 @@ import click
 import us
 import logging
 import pandas as pd
+import json
 from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
 from functools import partial
 from pyseir.rt import infer_rt
-from pyseir.ensembles import ensemble_runner
+from pyseir.ensembles import ensemble_runner, ensemble_runner_v2
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 from libs.us_state_abbrev import ABBREV_US_STATE
 from pyseir.inference.whitelist_generator import WhitelistGenerator
+
+from pyseir.utils import get_run_artifact_path, RunArtifact
 
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -173,10 +176,21 @@ def _build_all_for_states(
 
         # calculate ensemble
         root.info(f"running ensemble for {len(all_county_fips)} counties")
-        ensemble_func = partial(
-            ensemble_runner._run_county, ensemble_kwargs=dict(run_mode=run_mode),
+        # ensemble_func = partial(
+        #     ensemble_runner._run_county, ensemble_kwargs=dict(run_mode=run_mode),
+        # )
+        # p.map(ensemble_func, all_county_fips.keys())
+
+        # calculate ensembles v2
+        ensembles = p.map(
+            ensemble_runner_v2.generate_ensemble, [fit.fit_results for fit in fitters if fit]
         )
-        p.map(ensemble_func, all_county_fips.keys())
+
+        # Dump it to just do baby steps
+        valid_fips = [fit.fit_results["fips"] for fit in fitters if fit]
+        for fips, ensemble in zip(valid_fips, ensembles):
+            with open(get_run_artifact_path(fips, RunArtifact.ENSEMBLE_RESULT), "w") as f:
+                json.dump(ensemble, f)
 
     # output it all
     output_interval_days = int(output_interval_days)
