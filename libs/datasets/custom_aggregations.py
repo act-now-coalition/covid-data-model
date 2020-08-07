@@ -45,7 +45,7 @@ def calculate_combined_new_york_counties(data, group, are_boroughs_zero=False):
 
     aggregated = new_york_county.groupby(group).sum().reset_index()
     aggregated["fips"] = NEW_YORK_COUNTY_FIPS
-    aggregated["generated"] = True
+    # aggregated["generated"] = True
 
     without_nyc = data[~is_nyc_fips]
     return pd.concat([without_nyc, aggregated])
