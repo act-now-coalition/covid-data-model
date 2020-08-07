@@ -29,7 +29,7 @@ def generate_field_summary(series: pd.Series) -> pd.Series:
         largest_delta = series.diff().abs().max()
         # If a
         if len(series.diff().abs().dropna()):
-            largest_delta_date = series.diff().abs().max()
+            largest_delta_date = series.diff().abs().idxmax()
 
     results = {
         "has_value": has_value,
