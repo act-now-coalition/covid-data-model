@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 # TODO setup JAX instead of numpy
 # initial trials showed no real improvement, but I remain optimstic
@@ -15,6 +16,382 @@ z0 = np.array([0])
 
 def derivative(t):
     return np.append(z0, (t[1:] - t[:-1]))
+
+
+def steady_state_ratios(r, suppression=1.0):
+
+    tlist = np.linspace(0, 60, 61)
+    if r > 1:
+        initial_infected = 100
+    else:
+        initial_infected = 10000
+    const_suppression = lambda t: suppression
+
+    model = SEIRModel(
+        N=10000000,
+        t_list=tlist,
+        suppression_policy=const_suppression,
+        R0=r,
+        A_initial=0.7 * initial_infected,
+        I_initial=initial_infected,
+    )
+
+    model.run()
+    last = lambda s: model.results[s][-1]
+    lastI = last("I")
+
+    return (
+        last("E") / lastI,
+        1.0,
+        last("A") / lastI,
+        last("HGen") / lastI,
+        last("HICU") / lastI,
+        last("HVent") / lastI,
+        last("direct_deaths_per_day") / lastI,
+    )
+
+
+class NowcastingSEIRModel:
+    """
+    Simplified SEIR Model sheds complexity where not needed to be accurate enough. The concept of running the
+    Model has been split off into another class (ModelRun).
+
+    Next steps:
+    1) Look at time dependent behaviour, hook up to standard graphing
+    1) Add delay assuming quantities have exponential behavior of R
+    2) Start adding demographics 
+    """
+
+    def __init__(
+        self,
+        # TODO sensitivity factors trained and passed in
+        lr_fh=(1.0, 0.0),
+        lr_fd=(1.0, 0.0),
+    ):
+        self.lr_fh = lr_fh
+        self.lr_fd = lr_fd
+
+        # delay
+        self.delay_ci_h = 0  # added days of delay between infection and hospitalization
+
+        # Fixed parameters
+        self.t_e = 2.0  # 2.0  # days
+        self.t_i = 6.0  # 6.0  # days
+        self.serial_period = self.t_e + 0.5 * self.t_i
+        self.t_h = 6.0  # days
+        self.fw0 = 0.5
+        self.fh0 = 0.2  # 0.05
+        self.fd0 = 0.2
+        self.pos0 = 0.5  # max positivity for testing -> 0
+        self.pos_c = 1.75
+        self.pos_x0 = 2.0
+        # Solution that ensures continuity of function below and its derivative
+        self.pos_b = (3.0 * self.pos_x0 - self.pos_c) / (4.0 * self.pos_x0 ** 1.5)
+        self.pos_d = self.pos_x0 ** 0.5 / 4.0 * (3.0 * self.pos_c - self.pos_x0)
+
+    def positivity(self, t_over_i):
+        """
+        Test positivity as a function of T = testing rate / I = number of infected
+        This function should match two constraints
+            p(x) = .5 for x->0
+            p(x) <~ 1/x for x-> infinity (almost all infections found as testing -> infinity)
+        To achieve this different functions are used (switching at x0) and the constants b and d
+        are solved for to ensure continuity of the function and its derivative across x0 
+        """
+        p = 0.5 / t_over_i
+        if t_over_i < self.pos_x0:  # approaches .5 for x -> 0
+            p = p * (t_over_i - self.pos_b * t_over_i ** 1.5)
+        else:  # approaches .875/x for x -> infinity
+            p = p * (self.pos_c - self.pos_d / t_over_i ** 0.5)
+        return p
+
+    def positivity_to_t_over_i(self, pos):
+        """
+        Rely on positivity to be a continuous, strictly decreasing function of t_over_i over [.001,1000]
+        to invert using binary search in log space
+        """
+        lo = -3.0
+        if pos > self.positivity(10.0 ** lo):
+            return 10.0 ** lo
+        hi = +3.0
+        if pos < self.positivity(10.0 ** hi):
+            return 10.0 ** hi
+        eps = 0.01
+        while hi - lo > eps:
+            x = 0.5 * (hi + lo)
+            if pos < self.positivity(10.0 ** x):
+                lo = x
+            else:
+                hi = x
+        return 10.0 ** x
+
+    def run(self):
+        model_run = ModelRun(self)
+        return model_run.execute()
+
+
+class ModelRun:
+    """
+    A run (in time) of a model with (previously fit) parameters maintained in nowcastModel
+    Run will also have the ability to "linearly" adjust the observed ratios of hopitalizations to cases and deaths
+    to hopitalizations to align with observed compartment histories without external shimming.
+
+    Model compartments (evolved in time):
+        S - susceptible (its really S/N that is important)
+        E - exposed -> will become I or A over time
+        I - infected, syptomatic -> can become C over time
+        W - infected, weakly or asympomatic
+        nC - new (confirmed) cases for tracking purposes
+        C - observed (confirmed) cases -> can become H over time
+        H - observed hosptializations (usually observable). 
+        D - observed deaths
+        R - recoveries (just to validate conservation of people)
+    Note R and HICU, HVent (generated from H - but outside of this model) are not included.
+
+    Observables, recent history smoothed and/or future projections, EVENTUALLY to be used to either inject known
+    important sources of time variation into, or constrain, the running model:
+        rt - growth rate for C (TODO will we adjust this to apply to I?)
+        case_median_age - allows for coarse adjustments for differing responses of age groups.
+            Might generalize to case_fraction_young, case_fraction_old with case_fraction_young + case_fraction_old < 1
+        test_positivity - fraction of tests that are positive
+        C, H, D described above. Note its the ratios H/C and D/H that provide constraints
+        test_processing_delay - in days from time sample supplied to test result available
+        case_fraction_traceable - fraction of cases that have been traced to their source
+    
+    Linear (ramp in time) adjustments (to I/C -> H and H->D rates) internally calculated during run - to better
+    align observed values of those ratios
+        TODO hospitalizations to cases
+        TODO deaths to hospitalizations
+    """
+
+    def __init__(
+        self,
+        nowcastModel,
+        N,  # population of the jurisdiction
+        t_list,  # array of days
+        testing_rate_f,  # tests per day assumed for the future
+        rt_f,  # instead of suppression_policy, R0
+        force_stationary=False,  # if True susceptible will be pinned to N
+        I_initial=None,  # initial infected
+        nC_initial=None,
+        S_initial=None,
+        compartment_ratios_initial=None,
+        # hospitalizations_threshold=None,  # At which point mortality starts to increase due to constrained resources
+        # Observables to be eventually used in further constraining the model
+        # observed_compartment_history=None,
+        test_positivity_f=None,
+        case_median_age_f=None,
+        # case_fraction_traceable_f=None,
+        # test_processing_delay_f=None,
+    ):
+        self.nowcastModel = nowcastModel
+        self.N = N
+        self.t_list = t_list
+        self.testing_rate_f = testing_rate_f
+        self.rt_f = rt_f
+        self.force_stationary = force_stationary
+        self.test_positivity_f = test_positivity_f
+
+        self.S_initial = S_initial if S_initial is not None else N
+        self.compartment_ratios_initial = compartment_ratios_initial  # get applied at run time
+
+        if nC_initial is not None:
+            self.nC_initial = nC_initial
+            self.I_initial = nC_initial
+        elif I_initial is not None:
+            self.I_initial = I_initial
+            self.nC_initial = 0.0
+        else:
+            self.I_initial = 100.0
+            self.nC_initial = 0.0
+
+    def execute(self):
+        if self.compartment_ratios_initial is None:  # starting from just I or C
+            y = (
+                self.S_initial,
+                0.0,  # E
+                self.I_initial,
+                0.0,  # W
+                self.nC_initial,  # nC (new cases)
+                7.0 * self.nC_initial,  # C (active cases)
+                0.0,  # H (active hospitalizations)
+                0.0,  # D
+                0.0,  # R
+            )
+        else:
+            if self.nC_initial > 0.0:  # starting from all compartments scaled
+                factor = self.nC_initial / self.compartment_ratios_initial[4]  # cases
+            else:
+                factor = self.I_initial / self.compartment_ratios_initial[2]  # cases
+            y = [x * factor for x in self.compartment_ratios_initial]
+            y[0] = self.S_initial
+            y[7] = 0.0  # start deaths over
+            y[8] = 0.0  # start recoveries over
+
+        y_accum = list()
+        y_accum.append(y)
+
+        implicit = False if self.force_stationary else True
+
+        # Iterate over all time steps
+        for t in self.t_list[:-1]:
+            # TODO determine dt from t_list and make sure _time_step using it correctly
+            y = list(y)
+            dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
+            (dS, dE, dI, dW, nC, dC, dH, dD, dR) = dy
+            y_new = [a + b for a, b in zip(y, dy)]
+            y_new[4] = nC  # do not accumulate daily new cases
+
+            if self.nC_initial > 0.0:
+                fractional_change = y_new[4] / y[4]
+            else:
+                fractional_change = y_new[2] / y[2]
+
+            # Apply stationarity if applicable
+            if self.force_stationary:
+                S_last = y[0]
+                y = [
+                    v / fractional_change for v in y_new
+                ]  # keep I constant apply same adjustment to all
+                y[0] = S_last  # but keep S exactly constant
+
+                # Ignore accumulating
+                D = dD
+                y[7] = D
+                R = dR
+                y[8] = R
+            else:
+                y = y_new
+
+            (S, E, I, W, nC, C, H, D, R) = y
+            r_dD_nC = dD / nC  # new deaths over new cases - apparent time dependent IFR
+            r_C_WIC = C / (W + I + C)  # fraction of sick that are official cases
+            r_C_IC = C / (I + C)  # fraction of true cases that are officially counted
+            r_H_IC = H / (C + I)  # hospitalizations per true case
+            r_dD_H = dD / H  # new deaths per hospitalization
+
+            y_accum.append(y)
+
+        r_T_I = (
+            self.testing_rate_f(t) / I
+        )  # Test rate divided by infected not yet found (new, left overs)
+        pos = self.nowcastModel.positivity(
+            r_T_I
+        )  # Assumed (TODO fit) test positivity that will result
+        exp_growth_factor = math.exp(
+            (self.rt_f(self.t_list[-1]) - 1.0) / self.nowcastModel.serial_period
+        )  # Expected growth factor (in steady state) given injected R(t)
+
+        # TODO pivot results to return
+        return (
+            y_accum,
+            {
+                "growth_factor": round(fractional_change, 3),
+                "exp_growth_factor": round(exp_growth_factor, 3),
+                "r_dD_nC": round(r_dD_nC, 4),
+                "r_C_IC": round(r_C_IC, 2),
+                "r_C_WIC": round(r_C_WIC, 2),
+                "r_H_IC": round(r_H_IC, 2),
+                "r_dD_H": round(r_dD_H, 3),
+                "r_T_I": round(r_T_I, 2),
+                "pos": round(pos, 3),
+            },
+        )
+
+    def _time_step(self, y, t, dt=1.0, implicit_infections=False):
+        """
+        One integral moment.
+        """
+        (S, E, I, W, nC, C, H, D, R) = y
+        model = self.nowcastModel
+        t_e = model.t_e
+        t_i = model.t_i
+        t_h = model.t_h
+
+        k = (self.rt_f(t) - 1.0) / model.serial_period
+        if implicit_infections:
+            k_expected = math.exp(k)  # captures exponential growth during timestep
+        else:
+            k_expected = math.exp(k) - 1.0
+
+        # Apply linear ramp corrections
+        fh = model.fh0 * model.lr_fh[0] + model.lr_fh[1] * (t - self.t_list[0])
+        fh = max(0.0, min(1.0, fh))
+        fd = model.fd0 * model.lr_fd[0] + model.lr_fd[1] * (t - self.t_list[0])
+        fd = max(0.0, min(1.0, fd))
+        fw = model.fw0  # might do something smarter later
+
+        # Use delayed Cases and Infected to drive hospitalizations
+        avg_R = self.rt_f(t)  # do better by averaging in the future
+        growth_over_delay = math.exp((avg_R - 1.0) / model.serial_period * model.delay_ci_h)
+        delayed_C = C / growth_over_delay
+        delayed_W = W / growth_over_delay
+        delayed_I = I / growth_over_delay
+
+        if implicit_infections:  # E,I,W,C are determined directly from C(t-1), R(t) and positivity
+            # C(t), nC determined directly from C(t-1) and R(t)
+            positive_tests = k_expected * nC
+            dCdt = positive_tests - delayed_C / t_i
+            C_new = C + dCdt * dt
+
+            # Which allows T/I to be inferred by inverting the positivity function
+            # which determines I and dIdt
+            pos_new = positive_tests / self.testing_rate_f(t)
+            T_over_I = model.positivity_to_t_over_i(pos_new)
+            I_new = self.testing_rate_f(t) / T_over_I
+            dIdt = (I_new - I) / dt
+
+            # Which allows E to be inferred and hence dEdt, number_exposed
+            E_new = max(0.0, (dIdt + positive_tests + delayed_I / t_i) * t_e / (1.0 - fw))
+            dEdt = (E_new - E) / dt
+            number_exposed = dEdt + E / t_e
+
+            # Which determines W
+            dWdt = fw * E / t_e - delayed_W / t_i
+            W_new = W + dWdt * dt
+
+            # And finally number_exposed and hence beta number_exposed = beta *
+            beta = number_exposed / (S * (I_new + W_new + C_new) / self.N)
+
+        else:  # Calculate E,W,C,I explicitly forward in time
+            beta = (k_expected + 1.0 / model.t_i) * (k_expected + 1.0 / t_e) * t_e
+            number_exposed = beta * S * (I + W + C) / self.N
+
+            tests_performed = self.testing_rate_f(t) * dt
+            positive_tests = tests_performed * model.positivity(
+                self.testing_rate_f(t) / max(I, 1.0)
+            )
+
+            dEdt = number_exposed - E / t_e
+            dCdt = positive_tests - delayed_C / t_i
+            dIdt = (1.0 - fw) * E / t_e - positive_tests - delayed_I / t_i
+            dWdt = fw * E / t_e - delayed_W / t_i
+
+        dSdt = -number_exposed
+
+        dHdt = fh * (delayed_I + delayed_C) / t_i - H / t_h
+        dDdt = fd * H / t_h
+        if implicit_infections:
+            dRdt = -(dSdt + dEdt + dIdt + dWdt + dCdt + dHdt + dDdt)
+        else:
+            dRdt = (1 - fh) * (delayed_I + delayed_C) / t_i + delayed_W / t_i + (1 - fd) * H / t_h
+
+        # Validate conservation
+        delta = dSdt + dEdt + dIdt + dWdt + dCdt + dHdt + dDdt + dRdt
+        if delta > 1.0:
+            assert True
+
+        return (
+            dt * dSdt,
+            dt * dEdt,
+            dt * dIdt,
+            dt * dWdt,
+            positive_tests,
+            dt * dCdt,
+            dt * dHdt,
+            dt * dDdt,
+            dt * dRdt,
+        )
 
 
 class SEIRModel:
@@ -503,7 +880,7 @@ class SEIRModel:
             HAdmissions_ICU
         )  # Derivative of the cumulative.
 
-    def plot_results(self, y_scale="log", xlim=None) -> plt.Figure:
+    def plot_results(self, y_scale="log", xlim=None, alternate_plots=False) -> plt.Figure:
         """
         Generate a summary plot for the simulation.
 
@@ -514,33 +891,48 @@ class SEIRModel:
         """
         # Plot the data on three separate curves for S(t), I(t) and R(t)
         fig = plt.figure(facecolor="w", figsize=(20, 6))
-        plt.subplot(131)
-        plt.plot(self.t_list, self.results["S"], alpha=1, lw=2, label="Susceptible")
-        plt.plot(self.t_list, self.results["E"], alpha=0.5, lw=2, label="Exposed")
-        plt.plot(self.t_list, self.results["A"], alpha=0.5, lw=2, label="Asymptomatic")
-        plt.plot(self.t_list, self.results["I"], alpha=0.5, lw=2, label="Infected")
-        plt.plot(
-            self.t_list,
-            self.results["R"],
-            alpha=1,
-            lw=2,
-            label="Recovered & Immune",
-            linestyle="--",
-        )
 
-        # Total for ensuring all compartments sum to 1.
-        plt.plot(
-            self.t_list,
-            self.results["S"]
-            + self.results["E"]
-            + self.results["A"]
-            + self.results["I"]
-            + self.results["R"]
-            + self.results["D"]
-            + self.results["HGen"]
-            + self.results["HICU"],
-            label="Total",
-        )
+        # ---------------------------- Left plot -------------------------
+        plt.subplot(131)
+        if not alternate_plots:
+            plt.plot(self.t_list, self.results["S"], alpha=1, lw=2, label="Susceptible")
+        plt.plot(self.t_list, self.results["E"], alpha=0.5, lw=2, label="Exposed", linestyle="--")
+
+        if not alternate_plots:
+            plt.plot(self.t_list, self.results["A"], alpha=0.5, lw=2, label="Asymptomatic")
+            plt.plot(self.t_list, self.results["I"], alpha=0.5, lw=2, label="Infected")
+            plt.plot(
+                self.t_list,
+                self.results["R"],
+                alpha=1,
+                lw=2,
+                label="Recovered & Immune",
+                linestyle="--",
+            )
+            plt.plot(
+                self.t_list,
+                self.results["S"]
+                + self.results["E"]
+                + self.results["A"]
+                + self.results["I"]
+                + self.results["R"]
+                + self.results["D"]
+                + self.results["HGen"]
+                + self.results["HICU"],
+                label="Total",
+            )
+        else:
+            a_plus_i = self.results["A"] + self.results["I"]
+            plt.plot(self.t_list, a_plus_i, alpha=0.5, lw=2, label="Infected + Asymptomatic")
+            h_all = self.results["HGen"] + self.results["HICU"] + self.results["HVent"]
+            plt.plot(self.t_list, h_all, alpha=0.5, lw=4, label="All Hospitalized")
+            plt.plot(
+                self.t_list,
+                self.results["direct_deaths_per_day"],
+                alpha=0.5,
+                lw=4,
+                label="New Deaths",
+            )
 
         plt.xlabel("Time [days]", fontsize=12)
         plt.yscale(y_scale)
@@ -550,8 +942,12 @@ class SEIRModel:
             plt.xlim(*xlim)
         else:
             plt.xlim(0, self.t_list.max())
-        plt.ylim(1, self.N * 1.1)
+        if not alternate_plots:
+            plt.ylim(1, self.N * 1.1)
+        else:
+            plt.gca().set_ylim(bottom=1)
 
+        # ---------------------------- Center plot -------------------------
         plt.subplot(132)
 
         plt.plot(
@@ -662,10 +1058,39 @@ class SEIRModel:
         else:
             plt.xlim(0, self.t_list.max())
 
+        # ---------------------------- Right plot -------------------------
         # Reproduction numbers
         plt.subplot(133)
-        plt.plot(self.t_list, [self.suppression_policy(t) for t in self.t_list], c="steelblue")
-        plt.ylabel("Contact Rate Reduction")
+
+        if not alternate_plots:
+            plt.plot(self.t_list, [self.suppression_policy(t) for t in self.t_list], c="steelblue")
+            plt.ylabel("Contact Rate Reduction")
+        else:
+            plt.plot(
+                self.t_list, self.results["E"] / self.results["I"], alpha=0.5, lw=2, label="E/I"
+            )
+            plt.plot(
+                self.t_list, self.results["A"] / self.results["I"], alpha=0.5, lw=2, label="A/I"
+            )
+            plt.plot(
+                self.t_list,
+                (self.results["HGen"] + self.results["HICU"] + self.results["HVent"])
+                / self.results["I"],
+                alpha=0.5,
+                lw=4,
+                label="H/I",
+            )
+            plt.plot(
+                self.t_list,
+                self.results["direct_deaths_per_day"]
+                / (self.results["HGen"] + self.results["HICU"] + self.results["HVent"]),
+                alpha=0.5,
+                lw=4,
+                label="D/H",
+            )
+            plt.ylabel("Ratios check")
+            plt.legend(framealpha=0.5)
+            plt.yscale("log")
         plt.xlabel("Time [days]", fontsize=12)
         plt.grid(True, which="both")
         return fig

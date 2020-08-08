@@ -1,0 +1,17 @@
+﻿state,when,peak_cases,peak_deaths,start_delay_days,peak_delay_days,notes,ratio_cases_to_deaths,peak_positivity_percent,positivity_lead
+AZ,Jun-Jul,3500,80,19,14,,45,27,-5
+TX,Jun-Jul,10000,200,21,16,,50,17,3
+FL,Jun-Jul,12000,200,21,17,,60,20,7
+GA,Jun-Jul,3500,50,26,0,,70,15,7
+SC,Jun-Jul,1900,50,19,12,,38,19,2
+MI,Jun-Jul,1200,30,21,7,Ongoing,40,24,-1
+LA,Jun-Jul,2300,33,23,10,,70,11,9
+WI,Jun-Jul,900,8,22,10,Ongoing,112,7,0
+NY,Apr-May,10000,760,,6,,13,40,
+CT,Apr-May,1000,100,,7,,10,40,-3
+WA,Apr-May,500,28,,5,Suspect positivity,18,11,
+IL,Apr-May,2500,115,,11,,23,22,14
+MA,Apr-May,2600,200,,-2,,13,28,8
+PA,Apr-May,1650,160,,20,,10,30,-9
+MI,Apr-May,1600,140,,8,,11.5,30,
+LA,Apr-May,1600,65,,10,,23,20,
