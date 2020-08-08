@@ -59,7 +59,7 @@ prepare () {
     echo "made dir"
   fi
 
-  TIMESERIES_SUMMARY_PATH="./data/timeseries_summary.csv"
+  SOURCE_DATA_DIR="./data"
 }
 
 execute_raw_data_qa() {
@@ -113,8 +113,8 @@ execute_api() {
   # echo ">>> Generate an QA doc for states to ${API_OUTPUT_DIR}/qa"
   # ./run.py compare-snapshots -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_DIR}/qa"
 
-  echo ">>> Copying timeseries summary to ${API_OUTPUT_QA}"
-  cp "${TIMESERIES_SUMMARY_PATH}" "${API_OUTPUT_QA}"
+  echo ">>> Copying source data (and summary, provenance, etc. reports) to ${API_OUTPUT_QA}"
+  cp -r "${SOURCE_DATA_DIR}"/* "${API_OUTPUT_QA}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
