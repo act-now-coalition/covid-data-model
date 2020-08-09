@@ -46,8 +46,7 @@ jobs:
     - name: Slack notification
       if: always() # Pick up events even if the job fails or is canceled.
       env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        SLACK_CHANNEL: dev-alerts
+        SLACK_WEBHOOK: ${{ SLACK_WEBHOOK_DAILY_DEPLOYS }}
         STATUS: ${{job.status}}
       uses: Ilshidur/action-slack@fb92a78
       with:
