@@ -77,15 +77,12 @@ Returns projections for the selected state:
 | -------- | ----------- | ---- |
 | [Single State Projections Summary](#projections-for-a-specific-state) | `/us/states/<STATE>.<INTERVENTION>.json` | [RegionSummary](#RegionSummary) |
 | [Single State Projections With Timeseries](#projections-for-a-specific-state) | `/us/states/<STATE>.<INTERVENTION>.json` | [RegionSummary](#RegionSummary) |
-
-| [Single County Projections Summary](#projections-for-a-specific-county) | `/us/counties/<FIPS>.<INTERVENTION>.json`  | [RegionSummary](#RegionSummary)|
-
-| [Single County Projections With Timeseries](#projections-for-a-specific-county) | `/us/counties/<FIPS>.<INTERVENTION>.timeseries.json` |[RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries)|
-
-| [Aggregate States Summary](#aggregate-projections-for-all-states)                     | `/us/states.<INTERVENTION>.{json,csv}`      | [AggregateRegionSummary](#AggregateRegionSummary)                             |
+| [Single County Projections Summary](#projections-for-a-specific-county) | `/us/counties/<FIPS>.<INTERVENTION>.json`  | [RegionSummary](#RegionSummary) |
+| [Single County Projections With Timeseries](#projections-for-a-specific-county) | `/us/counties/<FIPS>.<INTERVENTION>.timeseries.json` |[RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
+| [Aggregate States Summary](#aggregate-projections-for-all-states) | `/us/states.<INTERVENTION>.{json,csv}`      | [AggregateRegionSummary](#AggregateRegionSummary) |
 | [Aggregate States with Timeseries](#aggregate-projections-for-all-states)             | `/us/states.<INTERVENTION>.timeseries.json` | [AggregateRegionSummaryWithTimeseries](#AggregateRegionSummaryWithTimeseries) |
-| [Aggregate States with Projections Timeseries](#aggregate-projections-for-all-states) | `/us/states.<INTERVENTION>.timeseries.csv`  | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries)                 |
-| [Aggregate County Summary](#projections-for-a-specific-county) | `/us/counties.<INTERVENTION>.{json,csv}`                 | [AggregateRegionSummary](#AggregateRegionSummary)                             |
+| [Aggregate States with Projections Timeseries](#aggregate-projections-for-all-states) | `/us/states.<INTERVENTION>.timeseries.csv`  | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries) |
+| [Aggregate County Summary](#projections-for-a-specific-county) | `/us/counties.<INTERVENTION>.{json,csv}`                 | [AggregateRegionSummary](#AggregateRegionSummary) |
 | [Aggregate Counties with Timeseries](#projections-for-a-specific-county) | `/us/counties.<INTERVENTION>.timeseries.json` | [AggregateRegionSummaryWithTimeseries](#AggregateRegionSummaryWithTimeseries) |
 | [All County Projections with Timeseries](#aggregate-projections-for-all-counties) | `/us/counties.<INTERVENTION>.timeseries.csv` | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries) |
 
