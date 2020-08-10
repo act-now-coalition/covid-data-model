@@ -11,6 +11,7 @@ import gspread
 import gspread_formatting
 
 LOCATION_GROUP_KEY = "location_group"
+COMBINED_DATA_KEY = "Combined Data"
 
 
 def load_all_latest_sources():
@@ -19,7 +20,7 @@ def load_all_latest_sources():
     sources_latest = {name: source.latest_values() for name, source in sources.items()}
     combined_latest_data = latest.data.copy()
     combined_latest_data["source"] = "Combined"
-    sources_latest["Combined Data"] = combined_latest_data
+    sources_latest[COMBINED_DATA_KEY] = combined_latest_data
 
     for source_name in sources_latest:
         data = sources_latest[source_name]
@@ -68,9 +69,7 @@ def build_data_availability_report(latest: LatestValuesDataset) -> pd.DataFrame:
         CommonFields.COUNTY,
         CommonFields.AGGREGATE_LEVEL,
     ]
-    columns_to_drop = [
-        column for column in columns_to_drop if column in counts_per_location.columns
-    ]
+    columns_to_drop = counts_per_location.columns.intersection(columns_to_drop)
 
     counts_per_location = counts_per_location.drop(columns_to_drop, axis="columns")
     counts_per_location["total_population"] = data.groupby(LOCATION_GROUP_KEY).population.sum()
@@ -161,9 +160,8 @@ def update_multi_field_availability_report(
     # + sort columns for consistency.
     dataset = dataset.reset_index()
     columns = [column for column in dataset.columns.values if column not in columns_to_drop]
-    columns.pop(columns.index(LOCATION_GROUP_KEY))
-    columns.pop(columns.index("num_locations"))
-    columns = [LOCATION_GROUP_KEY, "num_locations"] + sorted(columns)
+    special_order = {LOCATION_GROUP_KEY: -2, "num_locations": -1}
+    columns = sorted(dataset.columns.values, key=lambda x: (special_order.get(x, 0), x))
     dataset = dataset[columns]
 
     worksheet = update_google_sheet_with_data(sheet, dataset, name)

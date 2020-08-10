@@ -59,11 +59,11 @@ def save_summary(output_dir: pathlib.Path, filename: str, level: Optional[Aggreg
 
 
 @main.command()
-@click.option("--name", envvar="DATA_AVAILIBILITY_SHEET_NAME", default="Data Availability - Dev")
+@click.option("--name", envvar="DATA_AVAILABILITY_SHEET_NAME", default="Data Availability - Dev")
 @click.option("--share-email")
 def update_availability_report(name: str, share_email: Optional[str]):
     sheet = google_sheet_helpers.open_or_create_spreadsheet(name, share_email=share_email)
-    google_sheet_helpers.update_info_sheet(sheet)
+    info_worksheet = google_sheet_helpers.update_info_sheet(sheet)
     data_sources_by_source_name = data_availability.load_all_latest_sources()
 
     for name, dataset in data_sources_by_source_name.items():
@@ -72,5 +72,11 @@ def update_availability_report(name: str, share_email: Optional[str]):
         data_availability.update_multi_field_availability_report(
             sheet, report, name, columns_to_drop=["source", "fips", "generated"]
         )
+
+    # Reorder sheets with combined data first and metadata last
+    COLUMN_ORDER_OVERRIDE = {data_availability.COMBINED_DATA_KEY: -5, info_worksheet.title: 5}
+    worksheets = sheet.worksheets()
+    worksheets = sorted(worksheets, key=lambda x: (COLUMN_ORDER_OVERRIDE.get(x.title, 0), x.title))
+    sheet.reorder_worksheets(worksheets)
 
     _logger.info("Finished updating data availability report")

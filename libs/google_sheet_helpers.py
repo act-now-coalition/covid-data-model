@@ -19,7 +19,7 @@ SERVICE_ACCOUNT_DATA_ENV_NAME = "GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA"
 
 
 def init_client() -> gspread.Client:
-    service_account_data = os.environ[SERVICE_ACCOUNT_DATA_ENV_NAME]
+    service_account_data = os.environ.get(SERVICE_ACCOUNT_DATA_ENV_NAME)
     if service_account_data:
         _logger.info("Loading service account from env variable data.")
         service_account_data = base64.b64decode(service_account_data)
@@ -111,3 +111,4 @@ def update_info_sheet(
     worksheet.update(data)
 
     _logger.info("Successfully updated Info worksheet")
+    return worksheet

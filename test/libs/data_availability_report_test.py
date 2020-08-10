@@ -14,8 +14,9 @@ def test_build_availability_report():
         "36,NY,state,10000,,10",
         "09,CT,state,10000,10,10",
     ]
+    input_csv = "\n".join(input_csv)
 
-    dataset = LatestValuesDataset.load_csv(io.StringIO("\n".join(input_csv)))
+    dataset = LatestValuesDataset.load_csv(io.StringIO())
 
     report = data_availability.build_data_availability_report(dataset)
 
@@ -24,5 +25,6 @@ def test_build_availability_report():
         "state data,2,2,1,2,2",
         "NY,3,3,3,2,3",
     ]
-    expected_df = pd.read_csv(io.StringIO("\n".join(expected_csv)))
+    expected_csv = "\n".join(expected_csv)
+    expected_df = pd.read_csv(io.StringIO(expected_csv))
     pd.testing.assert_frame_equal(expected_df, report.reset_index())
