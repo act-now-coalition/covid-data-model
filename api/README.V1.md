@@ -76,7 +76,7 @@ Returns projections for the selected state:
 
 | Endpoint | Schema |
 | -------- | ----------- |
-| [/us/states/<STATE>.<INTERVENTION>.json](#Projections for a Specific State) | [RegionSummary](#RegionSummary) |
+| [/us/states/\<STATE\>.\<INTERVENTION\>.json](#Projections for a Specific State) | [RegionSummary](#RegionSummary) |
 | [`/us/states/<STATE>.<INTERVENTION>.timeseries.json`](#Projections for a Specific State) | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
 
 
