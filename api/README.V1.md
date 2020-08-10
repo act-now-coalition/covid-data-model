@@ -67,7 +67,6 @@ If included, the API will return the projected hospitalization data every day fo
 
 ## Using the API
 ### Fetching State Data
-#### Projections for a Specific State
 
 Returns projections for the selected state:
 
