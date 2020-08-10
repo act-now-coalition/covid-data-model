@@ -336,15 +336,15 @@ Base model for API output.
 ### AggregateRegionSummary
 Base model for API output.
 
-List of [RegionSummary](RegionSummary)
+List of [RegionSummary](#RegionSummary)
         
 ### AggregateRegionSummaryWithTimeseries
 Base model for API output.
 
-List of [RegionSummaryWithTimeseries](RegionSummaryWithTimeseries)
+List of [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries)
         
 ### AggregateFlattenedTimeseries
 Base model for API output.
 
-List of [PredictionTimeseriesRowWithHeader](PredictionTimeseriesRowWithHeader)
+List of [PredictionTimeseriesRowWithHeader](#PredictionTimeseriesRowWithHeader)
         
