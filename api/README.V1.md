@@ -333,3 +333,18 @@ Base model for API output.
 | lastUpdatedDate      | string  | Date of latest data                                                                          |
 
 
+### AggregateRegionSummary
+Base model for API output.
+
+List of [RegionSummary](RegionSummary)
+        
+### AggregateRegionSummaryWithTimeseries
+Base model for API output.
+
+List of [RegionSummaryWithTimeseries](RegionSummaryWithTimeseries)
+        
+### AggregateFlattenedTimeseries
+Base model for API output.
+
+List of [PredictionTimeseriesRowWithHeader](PredictionTimeseriesRowWithHeader)
+        
