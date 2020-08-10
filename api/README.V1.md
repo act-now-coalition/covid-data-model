@@ -74,10 +74,13 @@ Returns projections for the selected state:
 ## API Endpoints
 
 
-| Endpoint | Schema |
-| -------- | ----------- |
-| [/us/states/\<STATE\>.\<INTERVENTION\>.json](#Projections for a Specific State) | [RegionSummary](#RegionSummary) |
-| [`/us/states/<STATE>.<INTERVENTION>.timeseries.json`](#Projections for a Specific State) | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
+| Description | Endpoint | Schema |
+| -------- | ----------- | ---- |
+| [Single State Projections Summary](#Projections for a Specific State) | `/us/states/<STATE>.<INTERVENTION>.json` | [RegionSummary](#RegionSummary) |
+| [Single State Projections With Timeseries](#Projections for a Specific State) | `/us/states/<STATE>.<INTERVENTION>.json` | [RegionSummary](#RegionSummary) |
+
+
+/*| [`/us/states/<STATE>.<INTERVENTION>.timeseries.json`](#Projections for a Specific State) | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |*/
 
 
 
