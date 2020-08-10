@@ -1,6 +1,6 @@
 {
   "title": "PredictionTimeseriesRow",
-  "description": "Base model for API output.",
+  "description": "Prediction data for a single day.",
   "type": "object",
   "properties": {
     "date": {

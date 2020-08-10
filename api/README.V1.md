@@ -174,7 +174,7 @@ County aggregates are also available as CSV files:
 
 
 ### ResourceUsageProjection
-Base model for API output.
+Resource usage projection data.
 
 | name              | type    | description                                          |
 |-------------------|---------|------------------------------------------------------|
@@ -185,7 +185,7 @@ Base model for API output.
 
 
 ### Projections
-Base model for API output.
+Summary of projection data.
 
 | name              | type   | description                                            |
 |-------------------|--------|--------------------------------------------------------|
@@ -197,7 +197,7 @@ Base model for API output.
 
 
 ### ResourceUtilization
-Base model for API output.
+Utilization of hospital resources.
 
 | name              | type    | description                                                                                                                                                                                                                             |
 |-------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -210,7 +210,7 @@ Base model for API output.
 
 
 ### Actuals
-Base model for API output.
+Known actuals data.
 
 | name                     | type                                        | description                                                                     |
 |--------------------------|---------------------------------------------|---------------------------------------------------------------------------------|
@@ -220,14 +220,14 @@ Base model for API output.
 | cumulativePositiveTests  | integer                                     | Number of positive test results to date                                         |
 | cumulativeNegativeTests  | integer                                     | Number of negative test results to date                                         |
 | cumulativeDeaths         | integer                                     | Number of deaths so far                                                         |
-| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
-| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
+| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
+| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
 | contactTracers           | integer                                     | # of Contact Tracers                                                            |
 
 
 
 ### ActualsTimeseriesRow
-Base model for API output.
+Actual data for a specific day.
 
 | name                     | type                                        | description                                                                     |
 |--------------------------|---------------------------------------------|---------------------------------------------------------------------------------|
@@ -237,15 +237,15 @@ Base model for API output.
 | cumulativePositiveTests  | integer                                     | Number of positive test results to date                                         |
 | cumulativeNegativeTests  | integer                                     | Number of negative test results to date                                         |
 | cumulativeDeaths         | integer                                     | Number of deaths so far                                                         |
-| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
-| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
+| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
+| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
 | contactTracers           | integer                                     | # of Contact Tracers                                                            |
 | date                     | string                                      |                                                                                 |
 
 
 
 ### RegionSummary
-Base model for API output.
+Summary of actual and prediction data for a single region.
 
 | name            | type                        | description                                                                          |
 |-----------------|-----------------------------|--------------------------------------------------------------------------------------|
@@ -256,14 +256,14 @@ Base model for API output.
 | stateName       | string                      | The state name                                                                       |
 | countyName      | string                      | The county name                                                                      |
 | lastUpdatedDate | string                      | Date of latest data                                                                  |
-| projections     | [Projections](#Projections) | Base model for API output.                                                           |
-| actuals         | [Actuals](#Actuals)         | Base model for API output.                                                           |
+| projections     | [Projections](#Projections) | Summary of projection data.                                                          |
+| actuals         | [Actuals](#Actuals)         | Known actuals data.                                                                  |
 | population      | integer                     | Total Population in geographic region.                                               |
 
 
 
 ### PredictionTimeseriesRow
-Base model for API output.
+Prediction data for a single day.
 
 | name                 | type    | description                                                                                  |
 |----------------------|---------|----------------------------------------------------------------------------------------------|
@@ -285,7 +285,7 @@ Base model for API output.
 
 
 ### RegionSummaryWithTimeseries
-Base model for API output.
+Summary data for a region with prediction timeseries data and actual timeseries data.
 
 | name              | type                        | description                                                                          |
 |-------------------|-----------------------------|--------------------------------------------------------------------------------------|
@@ -296,8 +296,8 @@ Base model for API output.
 | stateName         | string                      | The state name                                                                       |
 | countyName        | string                      | The county name                                                                      |
 | lastUpdatedDate   | string                      | Date of latest data                                                                  |
-| projections       | [Projections](#Projections) | Base model for API output.                                                           |
-| actuals           | [Actuals](#Actuals)         | Base model for API output.                                                           |
+| projections       | [Projections](#Projections) | Summary of projection data.                                                          |
+| actuals           | [Actuals](#Actuals)         | Known actuals data.                                                                  |
 | population        | integer                     | Total Population in geographic region.                                               |
 | timeseries        | array                       |                                                                                      |
 | actualsTimeseries | array                       |                                                                                      |
@@ -305,7 +305,7 @@ Base model for API output.
 
 
 ### PredictionTimeseriesRowWithHeader
-Base model for API output.
+Prediction timeseries row with location information.
 
 | name                 | type    | description                                                                                  |
 |----------------------|---------|----------------------------------------------------------------------------------------------|
@@ -334,17 +334,17 @@ Base model for API output.
 
 
 ### AggregateRegionSummary
-Base model for API output.
+Summary data for multiple regions.
 
 List of [RegionSummary](#RegionSummary)
         
 ### AggregateRegionSummaryWithTimeseries
-Base model for API output.
+Timeseries and summary data for multiple regions.
 
 List of [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries)
         
 ### AggregateFlattenedTimeseries
-Base model for API output.
+Flattened prediction timeseries data for multiple regions.
 
 List of [PredictionTimeseriesRowWithHeader](#PredictionTimeseriesRowWithHeader)
         

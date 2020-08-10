@@ -1,6 +1,6 @@
 {
   "title": "ResourceUtilization",
-  "description": "Base model for API output.",
+  "description": "Utilization of hospital resources.",
   "type": "object",
   "properties": {
     "capacity": {
