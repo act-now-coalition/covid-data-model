@@ -7,7 +7,13 @@ import math
 import structlog
 from matplotlib import pyplot as plt
 
-from pyseir.models.seir_model import SEIRModel, steady_state_ratios, NowcastingSEIRModel, ModelRun
+from pyseir.models.seir_model import (
+    Demographics,
+    SEIRModel,
+    steady_state_ratios,
+    NowcastingSEIRModel,
+    ModelRun,
+)
 
 # rom pyseir.utils import get_run_artifact_path, RunArtifact
 from test.mocks.inference import load_data
@@ -168,7 +174,7 @@ def run_stationary(rt, t_over_x, x_is_new_cases=True):
             force_stationary=True,
         )
 
-    (history, ratios) = run.execute()
+    (history, ratios) = run.execute_lists_ratios()
     compartments = history[-1]
     ratios["rt"] = rt
 
@@ -207,25 +213,55 @@ def test_scan_test_fraction():
     scan_rt("r_C_IC", "test fraction", x_is_new_cases=True)
 
 
+def test_median_to_age_fractions():
+    """
+    Test that Demographics.age_fraction_from_median generates reasonable yound, medium and old
+    distributions for a wide range of values
+    """
+    # In Florida when median age was 37, 62% of cases were under 45 years old
+    expected_young = 35.0 / 45.0 * 0.62
+    distro_37 = Demographics.age_fractions_from_median(37.0)
+    ratio = distro_37[0] / expected_young
+    assert ratio > 0.95 and ratio < 1.05
+
+    # FL during initial months
+    distro_48 = Demographics.age_fractions_from_median(48.0)
+    assert distro_48[2] > 0.25
+
+    # BC during the initial months
+    distro_53 = Demographics.age_fractions_from_median(53.0)
+    assert distro_53[2] > 0.3
+
+    # Push the other end
+    distro_65 = Demographics.age_fractions_from_median(64.9)
+    assert distro_65[2] > 0.45
+
+
 def test_reproduce_FL_late_peak():
     """
     Reproduce behaviour of late peak in Florida where (as of ~Aug 1)
     - was 800 cases per day (20k tests per day with 4% positivity) steady for some time with 30 deaths per day
     - then R(t) went to 1.1 and 1.3 and 1.0 each for two weeks
-    - deaths didn't start rising until at least 3 weeks later
-    - cases peaked at 120000/day and deaths at 250/day (2 weeks later)
+    - deaths didn't rise (by 20%) until at least 4 weeks later -31-(-59)=28 than cases did
+    - cases peaked at 120000/day and deaths at 185/day (2 weeks later)
+    - with median age of recent cases = 37 years old
     """
-
+    # new cases per day
     nC_initial = 800
+    nC_max_exp = 12000.0
     nC_final_exp = 9600.0
+
+    nD_max_exp = 185.0  # new deaths per day
+    death_peak_delay_exp = 14  # days
+    death_rising_start_delay = 28  # days
     # TODO change days below to be relative to Jan 1 not Aug 1
 
     def rt(t):
         adj = 0.0
         if t > -14:
-            rt = 0.95
+            rt = 0.9
         elif t > -21:
-            rt = 1.1
+            rt = 1.15
         elif t > -35:
             rt = 1.25
         elif t > -49:
@@ -252,20 +288,18 @@ def test_reproduce_FL_late_peak():
     (ignore, compartments) = run_stationary(1.0, t_over_x=20000.0 / nC_initial, x_is_new_cases=True)
 
     # Setup model and times
-    model = NowcastingSEIRModel()
+    model = NowcastingSEIRModel(median_age=37)
     t_list = np.linspace(-63, 0, 64)
 
-    # TODO check that integral of R(t) either
-    #   - doesn't explain case growth correctly - R(t) derived from cases is off a bit
-    #   - does explain case growth correctly - something wrong enforcing it
-    all_R = [rt(t) for t in t_list]
-    average_R = sum(all_R) / len(all_R)
-    growth_ratio = (nC_final_exp / nC_initial) / math.exp(
-        (average_R - 1) * (len(t_list) - 1) / model.serial_period
+    # TODO double check this with exact R(t) we have for FL as seemed to have to adjust up
+    up_R = [rt(t) for t in t_list[:-14]]
+    average_R = sum(up_R) / len(up_R)
+    growth_ratio = (nC_max_exp / nC_initial) / math.exp(
+        (average_R - 1) * (len(t_list) - 15) / model.serial_period
     )
     assert growth_ratio > 0.95 and growth_ratio < 1.05
 
-    # Initialize model run
+    # Initialize model run and execute it
     run = ModelRun(
         model,
         20e6,
@@ -275,21 +309,36 @@ def test_reproduce_FL_late_peak():
         nC_initial=nC_initial,
         compartment_ratios_initial=compartments,
     )
+    (results, ratios) = run.execute_dataframe_ratios()
 
-    (history, ratios) = run.execute()
-
-    # Check that people are conserved
-    (S, E, I, W, nC, C, H, D, R) = y = history[0]
-    start = S + E + I + W + C + H + D + R
-    (S, E, I, W, nC, C, H, D, R) = y = history[-1]
-    end = S + E + I + W + C + H + D + R
+    # TODO better check that people are conserved (see_model.py ModelRun._time_step)
+    rN = results.tail(1).to_dict(orient="records")[0]
+    r0 = results.head(1).to_dict(orient="records")[0]
+    start = r0["S"] + r0["E"] + r0["I"] + r0["W"] + r0["C"] + r0["H"] + r0["D"] + r0["R"]
+    end = rN["S"] + rN["E"] + rN["I"] + rN["W"] + rN["C"] + rN["H"] + rN["D"] + rN["R"]
     assert abs(start - end) < 1000.0
 
     # Check that new cases as expected
-    assert nC / nC_final_exp > 0.95 and nC / nC_final_exp < 1.05
+    assert rN["nC"] / nC_final_exp > 0.95 and rN["nC"] / nC_final_exp < 1.05
 
-    # Check that daily deaths as expected - note failing now with
-    last_D = history[-2][7]
-    nD = D - last_D
-    assert nD > 150.0 and nD > 250.0
+    # Check that daily deaths as expected - barely passing now
+    ratio = rN["nD"] / nD_max_exp
+    assert ratio > 0.9 and ratio < 1.1
 
+    # Check that peak in deaths happens at the right time
+    observed_peak_delay = results["nD"].argmax() - results["nC"].argmax()
+    diff_peak_delay = abs(observed_peak_delay - death_peak_delay_exp)
+    assert diff_peak_delay < 5
+
+    # Check that deaths start to ramp up (by 20%) as late as observed compared to cases
+    start_deaths = r0["nD"]
+    start_cases = r0["nC"]
+    cases_at = results[results["nC"] > 1.2 * start_cases].head(1).index.values[0]
+    deaths_at = results[results["nD"] > 1.2 * start_deaths].head(1).index.values[0]
+    diff_start_delay = abs(death_rising_start_delay - (deaths_at - cases_at))
+    assert diff_start_delay < 5  # TODO less than 5 fails
+
+    # TODO generate plot like in our current charts
+
+
+# TODO add a test for a recent peak with reasonably low test positivity

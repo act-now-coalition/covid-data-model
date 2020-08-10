@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import math
 
 # TODO setup JAX instead of numpy
@@ -51,37 +52,97 @@ def steady_state_ratios(r, suppression=1.0):
     )
 
 
+class Demographics:
+    """
+    Helper class for demographics information and how to map it onto age groups
+    used in adjusting hospitalization and deaths fractions.
+    """
+
+    r_lo_mid = 1.1
+    r_hi_mid = 0.4
+
+    @staticmethod
+    def default():
+        mid = 1.0 / (1.0 + Demographics.r_lo_mid + Demographics.r_hi_mid)
+        return [Demographics.r_lo_mid * mid, mid, Demographics.r_hi_mid * mid]
+
+    @staticmethod
+    def age_fractions_from_median(median_age):
+        center_pref = 4.0
+        assert median_age > 35 and median_age < 65
+        k = (median_age - 35.0) / 30.0
+
+        # Coefficients of quadratic equation for m - fraction of medium age
+        a = 2.0 / center_pref + 2 * k * (1.0 - k)
+        b = 1.0
+        c = -0.5
+
+        # Solution of quadratic equation
+        m = (-b + math.sqrt(b ** 2 - 4.0 * a * c)) / (2.0 * a)
+
+        # Then solve for young and old
+        y = 0.5 - k * m
+        o = 1.0 - m - y
+
+        avg_vs_median = (17.5 * y + 50.0 * m + 82.5 * o) - median_age
+
+        return (y, m, o)
+
+
+# Transition fractions to Hospitalizations and Deaths by age groups
+# 0-35, 35-65 and 65-100
+# TODO need to normalize contributions per decade by local demographics
+# TODO put this code inside NowcastingSEIRModel
+FH_BY_AGE = [  # Roughly rom BC data - need to cross check
+    (0.04 + 0.01 + 0.04 + 0.5 * 0.07) / 3.5,
+    (0.5 * 0.07 + 0.11 + 0.12 + 0.5 * 0.25) / 3,
+    (0.5 * 0.25 + 0.5 + 0.33 + 0.25) / 3.5,
+]
+CFR_BY_AGE = [  # Roughly rom BC data - need to cross check
+    0.0,
+    (0.5 * 0.0 + 0.004 + 0.009 + 0.5 * 0.04) / 3,
+    (0.5 * 0.04 + 0.125 + 0.333 + 0.333) / 3.5,
+]
+FD_BY_AGE = [CFR_BY_AGE[i] / FH_BY_AGE[i] for i in range(0, 3)]
+
+
 class NowcastingSEIRModel:
     """
-    Simplified SEIR Model sheds complexity where not needed to be accurate enough. The concept of running the
-    Model has been split off into another class (ModelRun).
+    Simplified SEIR Model sheds complexity where not needed to be accurate enough. See ModelRun and 
+    ModelRun._time_step for details
+    
+    The concept of running the Model has been split off into another class (ModelRun).
 
-    Next steps:
+    TODO Next steps:
     1) Look at time dependent behaviour, hook up to standard graphing
-    1) Add delay assuming quantities have exponential behavior of R
-    2) Start adding demographics 
+    2) Turn on delay and see if that helps match peak behaviour
+    3) Validate test positivity contribution to peaks against that observed
+
+    See test/seir_model_training_test.py for tests
     """
 
     def __init__(
         self,
-        # TODO sensitivity factors trained and passed in
+        # ____________These are (to be) trained factors that are passed in___________
+        median_age=None,
         lr_fh=(1.0, 0.0),
         lr_fd=(1.0, 0.0),
+        delay_ci_h=0,  # added days of delay between infection and hospitalization
     ):
+        # Retain passed in parameters
         self.lr_fh = lr_fh
         self.lr_fd = lr_fd
+        self.median_age = median_age
+        self.delay_ci_h = delay_ci_h  # not using this yet
 
-        # delay
-        self.delay_ci_h = 0  # added days of delay between infection and hospitalization
-
-        # Fixed parameters
+        # __________Fixed parameters not trained_________
         self.t_e = 2.0  # 2.0  # days
         self.t_i = 6.0  # 6.0  # days
         self.serial_period = self.t_e + 0.5 * self.t_i
         self.t_h = 6.0  # days
         self.fw0 = 0.5
-        self.fh0 = 0.2  # 0.05
-        self.fd0 = 0.2
+        self.fh0 = self.fh0_f(median_age=median_age)  # TODO use passed in demographics
+        self.fd0 = self.fd0_f(median_age=median_age)  # TODO use passed in demographics
         self.pos0 = 0.5  # max positivity for testing -> 0
         self.pos_c = 1.75
         self.pos_x0 = 2.0
@@ -125,9 +186,42 @@ class NowcastingSEIRModel:
                 hi = x
         return 10.0 ** x
 
-    def run(self):
-        model_run = ModelRun(self)
-        return model_run.execute()
+    def fh0_f(self, f_young=None, f_old=None, median_age=None):
+        """
+        Calculates the fraction of (C)ases and (I)nfections (not tested) that
+        will end up being (H)ospitalized.
+        """
+        rtn = self._interpolate_fractions(FH_BY_AGE, f_young, f_old, median_age)
+        return rtn
+
+    def fd0_f(self, f_young=None, f_old=None, median_age=None):
+        """
+        Calculates the fraction of (C)ases and (I)nfections (not tested) that
+        will end up being (H)ospitalized.
+        """
+        rtn = self._interpolate_fractions(FD_BY_AGE, f_young, f_old, median_age)
+        return rtn
+
+    def _interpolate_fractions(self, age_bins, f_young=None, f_old=None, median_age=None):
+        """
+        Interpolates fractions (fd, fh) over age distributions in 3 bins: young, old, and middle
+
+        Inputs
+        - f_young - observed fraction of cases below the age of 35
+        - f_old - observed faction of cases above the age of 65
+        Either f_young and f_old are specified, or mediang_age.
+
+        Returns fraction in range [0.,1.]
+        """
+        if f_young is not None and f_old is not None:
+            fractions = [f_young, (1.0 - f_yound - f_old), f_old]
+        elif median_age is not None:
+            fractions = Demographics.age_fractions_from_median(median_age)
+        else:
+            fractions = Demographics.default()
+
+        rtn = sum([fractions[i] * age_bins[i] for i in range(0, 3)])
+        return rtn
 
 
 class ModelRun:
@@ -150,7 +244,7 @@ class ModelRun:
 
     Observables, recent history smoothed and/or future projections, EVENTUALLY to be used to either inject known
     important sources of time variation into, or constrain, the running model:
-        rt - growth rate for C (TODO will we adjust this to apply to I?)
+        rt - growth rate for C (TODO will we adjust this to apply to I+C?)
         case_median_age - allows for coarse adjustments for differing responses of age groups.
             Might generalize to case_fraction_young, case_fraction_old with case_fraction_young + case_fraction_old < 1
         test_positivity - fraction of tests that are positive
@@ -158,10 +252,7 @@ class ModelRun:
         test_processing_delay - in days from time sample supplied to test result available
         case_fraction_traceable - fraction of cases that have been traced to their source
     
-    Linear (ramp in time) adjustments (to I/C -> H and H->D rates) internally calculated during run - to better
-    align observed values of those ratios
-        TODO hospitalizations to cases
-        TODO deaths to hospitalizations
+    Linear (ramp in time) adjustments (to I/C -> H and H->D rates) determined during model training.
     """
 
     def __init__(
@@ -205,7 +296,14 @@ class ModelRun:
             self.I_initial = 100.0
             self.nC_initial = 0.0
 
-    def execute(self):
+    def execute_dataframe_ratios(self):
+        (history, ratios) = self.execute_lists_ratios()
+        df = pd.DataFrame(history, columns=["S", "E", "I", "W", "nC", "C", "H", "D", "R"])
+        df["nD"] = df["D"] - df["D"].shift(fill_value=0.0)
+        df["nD"][0] = df["nD"][1]
+        return (df, ratios)
+
+    def execute_lists_ratios(self):
         if self.compartment_ratios_initial is None:  # starting from just I or C
             y = (
                 self.S_initial,
@@ -300,7 +398,21 @@ class ModelRun:
 
     def _time_step(self, y, t, dt=1.0, implicit_infections=False):
         """
-        One integral moment.
+        One integral moment. Included features beyond basic explicit integration forward in time
+        of coupled ordinary differential equations with constant coefficients:
+        0) It is possible to specify R(t) and use it adjust beta (infectivity) nonlinearly in each
+           time step to ensure that new cases will grow as specified.
+        1) When R(t) and implicit_infections are specified the C model compartment is not
+           determined by integration - instead it is directly determined from R(t). Additionally,
+           I is derived directly from the relationship between positivity and T/I while E and W
+           are thereafter derived from the ODE rate equations.
+        2) An additional delay in the input of values C, W, I to hospitalizations are also supported
+           to patch up the unrealistic delay in ODE formulations of SEIR (verified needed but not yet tested)
+        3) An approximate treatment of demographics is included that leverages input trends to adjust
+           f_h (fraction of C,W,I that lead to hospitalizations) and f_d (fraction of hospitalizations
+           that lead to deaths) using documented values by age segment
+        4) Additional (non physical for "fitting") variations in the conversion of C/W/I to H and H to D
+           are supported in the form of linear ramp coefficients (not yet tested)
         """
         (S, E, I, W, nC, C, H, D, R) = y
         model = self.nowcastModel
