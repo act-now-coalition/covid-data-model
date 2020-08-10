@@ -73,175 +73,96 @@ Returns projections for the selected state:
 
 ## API Endpoints
 
-| Endpoint | Description | Schema |
-| -------- | ----------- | ------ |
-| `/us/states/<STATE>.<INTERVENTION>.json` | State summary for `<INTERVENTION>` | [RegionSummary](#RegionSummary) |
-| `/us/states/<STATE>.<INTERVENTION>.timeseries.json` | State timeseries for intervention | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
-| `/us/counties/<FIPS>.<INTERVENTION>.json` | County summary for `<INTERVENTION>` | [RegionSummary](#RegionSummary)|
-| `/us/counties/<FIPS>.<INTERVENTION>.timeseries.json` | County timeseries for `<INTERVENTION>` | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries)|
-| `/us/states.<INTERVENTION>.{json,csv}` | Summary for all states | [AggregateRegionSummary](#AggregateRegionSummary)|
-| `/us/states.<INTERVENTION>.timeseries.json` | Timeseries data for all states | [AggregateRegionSummaryWithTimeseries](#AggregateRegionSummaryWithTimeseries)|
-| `/us/states.<INTERVENTION>.timeseries.csv` | Timeseries data for all states | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries)|
-| `/us/counties.<INTERVENTION>.{json,csv}` | Summary for all counties | [AggregateRegionSummary](#AggregateRegionSummary)|
-| `/us/counties.<INTERVENTION>.timeseries.json` | Timeseries data for all counties | [AggregateRegionSummaryWithTimeseries](#AggregateRegionSummaryWithTimeseries)|
-| `/us/counties.<INTERVENTION>.timeseries.csv` | Timeseries data for all counties | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries)|
 
-
-### ResourceUsageProjection
-Base model for API output.
-
-| name              | type    | description                                          |
-|-------------------|---------|------------------------------------------------------|
-| peakShortfall     | integer | Shortfall of resource needed at the peak utilization |
-| peakDate          | string  | Date of peak resource utilization                    |
-| shortageStartDate | string  | Date when resource shortage begins                   |
+| Endpoint | Schema |
+| -------- | ----------- |
+| [`/us/states/<STATE>.<INTERVENTION>.json`](#Projections for a Specific State) | [RegionSummary](#RegionSummary) |
+| [`/us/states/<STATE>.<INTERVENTION>.timeseries.json`](#Projections for a Specific State) | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
 
 
 
-### Projections
-Base model for API output.
-
-| name              | type   | description                                            |
-|-------------------|--------|--------------------------------------------------------|
-| totalHospitalBeds |        | Projection about total hospital bed utilization        |
-| ICUBeds           |        | Projection about ICU hospital bed utilization          |
-| Rt                | number | Inferred Rt                                            |
-| RtCI90            | number | Rt 90th percentile confidence interval upper endpoint. |
+### Fetching State Data
 
 
+#### Projections for a Specific State
 
-### ResourceUtilization
-Base model for API output.
+Returns projections for the selected state
 
-| name              | type    | description                                                                                                                                                                                                                             |
-|-------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| capacity          | integer | *deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07 |
-| totalCapacity     | integer | Total capacity for resource.                                                                                                                                                                                                            |
-| currentUsageCovid | integer | Currently used capacity for resource by COVID                                                                                                                                                                                           |
-| currentUsageTotal | integer | Currently used capacity for resource by all patients (COVID + Non-COVID)                                                                                                                                                                |
-| typicalUsageRate  | number  | Typical used capacity rate for resource. This excludes any COVID usage.                                                                                                                                                                 |
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_INTERVENTION.json
+/us/states/<ST>.<INTERVENTION>.json
 
+# Full timeseries data: actuals + projected limits + data for every four days
+# e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_INTERVENTION.timeseries.json
+/us/states/<ST>.<INTERVENTION>.timeseries.json
+```
 
+#### Aggregate Projections for All States
 
-### Actuals
-Base model for API output.
+Returns projections for all states
 
-| name                     | type                                        | description                                                                     |
-|--------------------------|---------------------------------------------|---------------------------------------------------------------------------------|
-| population               | integer                                     | Total population in geographic region [*deprecated*: refer to summary for this] |
-| intervention             | string                                      | Name of high-level intervention in-place                                        |
-| cumulativeConfirmedCases | integer                                     | Number of confirmed cases so far                                                |
-| cumulativePositiveTests  | integer                                     | Number of positive test results to date                                         |
-| cumulativeNegativeTests  | integer                                     | Number of negative test results to date                                         |
-| cumulativeDeaths         | integer                                     | Number of deaths so far                                                         |
-| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
-| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
-| contactTracers           | integer                                     | # of Contact Tracers                                                            |
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.json
+/us/states.<INTERVENTION>.json
 
+# Timeseries data
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.timeseries.json
+/us/states.<INTERVENTION>.timeseries.json
+```
 
+State aggregates are also available as CSV files:
 
-### ActualsTimeseriesRow
-Base model for API output.
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.csv
+/latest/us/states.<INTERVENTION>.csv
 
-| name                     | type                                        | description                                                                     |
-|--------------------------|---------------------------------------------|---------------------------------------------------------------------------------|
-| population               | integer                                     | Total population in geographic region [*deprecated*: refer to summary for this] |
-| intervention             | string                                      | Name of high-level intervention in-place                                        |
-| cumulativeConfirmedCases | integer                                     | Number of confirmed cases so far                                                |
-| cumulativePositiveTests  | integer                                     | Number of positive test results to date                                         |
-| cumulativeNegativeTests  | integer                                     | Number of negative test results to date                                         |
-| cumulativeDeaths         | integer                                     | Number of deaths so far                                                         |
-| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
-| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Base model for API output.                                                      |
-| contactTracers           | integer                                     | # of Contact Tracers                                                            |
-| date                     | string                                      | Date of timeseries data point                                                   |
+# Timeseries data
+# E.G. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.timeseries.csv
+/latest/us/states.<INTERVENTION>.timeseries.csv
+```
 
+### Fetching County Data
+#### Projections for a Specific County
 
+Returns projections for the selected county
 
-### RegionSummary
-Base model for API output.
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.WEAK_INTERVENTION.json
+/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json
 
-| name            | type                        | description                                                                          |
-|-----------------|-----------------------------|--------------------------------------------------------------------------------------|
-| countryName     | string                      |                                                                                      |
-| fips            | string                      | Fips Code.  For state level data, 2 characters, for county level data, 5 characters. |
-| lat             | number                      | Latitude of point within the state or county                                         |
-| long            | number                      | Longitude of point within the state or county                                        |
-| stateName       | string                      | The state name                                                                       |
-| countyName      | string                      | The county name                                                                      |
-| lastUpdatedDate | string                      | Date of latest data                                                                  |
-| projections     | [Projections](#Projections) | Base model for API output.                                                           |
-| actuals         | [Actuals](#Actuals)         | Base model for API output.                                                           |
-| population      | integer                     | Total Population in geographic region.                                               |
+# Full timeseries data: actuals + projected limits + data for every four days
+# e.g. https://data.covidactnow.org/latest/us/counties/06077.WEAK_INTERVENTION.timeseries.json
+/latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json
+```
 
+#### Aggregate Projections for All Counties
 
+Returns projections for all counties
 
-### PredictionTimeseriesRow
-Base model for API output.
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.json
+/us/counties.<INTERVENTION>.json
 
-| name                 | type    | description                                                                                  |
-|----------------------|---------|----------------------------------------------------------------------------------------------|
-| date                 | string  | Date of timeseries data point                                                                |
-| hospitalBedsRequired | integer | Number of hospital beds projected to be in-use or that were actually in use (if in the past) |
-| hospitalBedCapacity  | integer | Number of hospital beds projected to be in-use or actually in use (if in the past)           |
-| ICUBedsInUse         | integer | Number of ICU beds projected to be in-use or that were actually in use (if in the past)      |
-| ICUBedCapacity       | integer | Number of ICU beds projected to be in-use or actually in use (if in the past)                |
-| ventilatorsInUse     | integer | Number of ventilators projected to be in-use.                                                |
-| ventilatorCapacity   | integer | Total ventilator capacity.                                                                   |
-| RtIndicator          | number  | Historical or Inferred Rt                                                                    |
-| RtIndicatorCI90      | number  | Rt standard deviation                                                                        |
-| cumulativeDeaths     | integer | Number of cumulative deaths                                                                  |
-| cumulativeInfected   | integer | Number of cumulative infections                                                              |
-| currentInfected      | integer | Number of current infections                                                                 |
-| currentSusceptible   | integer | Number of people currently susceptible                                                       |
-| currentExposed       | integer | Number of people currently exposed                                                           |
+# Timeseries data
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.json
+/us/counties.<INTERVENTION>.timeseries.json
+```
 
+County aggregates are also available as CSV files:
 
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.csv
+/latest/us/counties.<INTERVENTION>.csv
 
-### RegionSummaryWithTimeseries
-Base model for API output.
+# Timeseries data
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.csv
+/latest/us/counties.<INTERVENTION>.timeseries.csv
+```
 
-| name              | type                        | description                                                                          |
-|-------------------|-----------------------------|--------------------------------------------------------------------------------------|
-| countryName       | string                      |                                                                                      |
-| fips              | string                      | Fips Code.  For state level data, 2 characters, for county level data, 5 characters. |
-| lat               | number                      | Latitude of point within the state or county                                         |
-| long              | number                      | Longitude of point within the state or county                                        |
-| stateName         | string                      | The state name                                                                       |
-| countyName        | string                      | The county name                                                                      |
-| lastUpdatedDate   | string                      | Date of latest data                                                                  |
-| projections       | [Projections](#Projections) | Base model for API output.                                                           |
-| actuals           | [Actuals](#Actuals)         | Base model for API output.                                                           |
-| population        | integer                     | Total Population in geographic region.                                               |
-| timeseries        | array                       |                                                                                      |
-| actualsTimeseries | array                       |                                                                                      |
-
-
-
-### PredictionTimeseriesRowWithHeader
-Base model for API output.
-
-| name                 | type    | description                                                                                  |
-|----------------------|---------|----------------------------------------------------------------------------------------------|
-| date                 | string  | Date of timeseries data point                                                                |
-| hospitalBedsRequired | integer | Number of hospital beds projected to be in-use or that were actually in use (if in the past) |
-| hospitalBedCapacity  | integer | Number of hospital beds projected to be in-use or actually in use (if in the past)           |
-| ICUBedsInUse         | integer | Number of ICU beds projected to be in-use or that were actually in use (if in the past)      |
-| ICUBedCapacity       | integer | Number of ICU beds projected to be in-use or actually in use (if in the past)                |
-| ventilatorsInUse     | integer | Number of ventilators projected to be in-use.                                                |
-| ventilatorCapacity   | integer | Total ventilator capacity.                                                                   |
-| RtIndicator          | number  | Historical or Inferred Rt                                                                    |
-| RtIndicatorCI90      | number  | Rt standard deviation                                                                        |
-| cumulativeDeaths     | integer | Number of cumulative deaths                                                                  |
-| cumulativeInfected   | integer | Number of cumulative infections                                                              |
-| currentInfected      | integer | Number of current infections                                                                 |
-| currentSusceptible   | integer | Number of people currently susceptible                                                       |
-| currentExposed       | integer | Number of people currently exposed                                                           |
-| countryName          | string  |                                                                                              |
-| stateName            | string  | The state name                                                                               |
-| countyName           | string  | The county name                                                                              |
-| intervention         | string  | Name of high-level intervention in-place                                                     |
-| fips                 | string  | Fips for State + County. Five character code                                                 |
-| lat                  | number  | Latitude of point within the state or county                                                 |
-| long                 | number  | Longitude of point within the state or county                                                |
-| lastUpdatedDate      | string  | Date of latest data                                                                          |
+####api descriptions####
