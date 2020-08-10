@@ -16,7 +16,7 @@ def test_build_availability_report():
     ]
     input_csv = "\n".join(input_csv)
 
-    dataset = LatestValuesDataset.load_csv(io.StringIO())
+    dataset = LatestValuesDataset.load_csv(io.StringIO(input_csv))
 
     report = data_availability.build_data_availability_report(dataset)
 
