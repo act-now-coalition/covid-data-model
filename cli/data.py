@@ -85,7 +85,7 @@ def update_availability_report(name: str, share_email: Optional[str]):
         _logger.info(f"Updating {name}")
         report = data_availability.build_data_availability_report(dataset)
         data_availability.update_multi_field_availability_report(
-            sheet, report, name, columns_to_drop=["source", "fips", "generated"]
+            sheet, report, name, columns_to_drop=["source", "fips"]
         )
 
     # Reorder sheets with combined data first and metadata last
