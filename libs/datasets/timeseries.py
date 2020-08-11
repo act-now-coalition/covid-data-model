@@ -12,7 +12,7 @@ from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.qa.dataset_summary_gen import generate_field_summary
+import libs.qa.dataset_summary_gen
 
 
 class DuplicateDataException(Exception):
@@ -98,6 +98,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         )
 
     def get_date_columns(self) -> pd.DataFrame:
+        """Create a DataFrame with a row for each FIPS-variable timeseries and hierarchical columns.
+
+        Returns:
+            A DataFrame with a row index of COMMON_FIELDS_TIMESERIES_KEYS and columns hierarchy separating
+            GEO_DATA_COLUMNS, provenance information, the timeseries summary and the complete timeseries.
+        """
         ts_value_columns = (
             set(self.data.columns)
             - set(COMMON_FIELDS_TIMESERIES_KEYS)
@@ -111,14 +117,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             .set_index([CommonFields.FIPS, "variable", CommonFields.DATE])
             .apply(pd.to_numeric)
         )
-        # Unstack by DATE, creating a row for each timeseries and a column for each DATE.
-        data_date_columns = long.unstack(CommonFields.DATE)
+        # Unstack by DATE, creating a row for each FIPS-variable timeseries and a column for each DATE.
+        wide_dates = long.unstack(CommonFields.DATE)
         # Drop any rows without a real value for any date.
-        data_date_columns = data_date_columns.loc[
-            data_date_columns.loc[:, "value"].notna().any(axis=1), :
-        ]
+        wide_dates = wide_dates.loc[wide_dates.loc[:, "value"].notna().any(axis=1), :]
 
-        summary = data_date_columns.loc[:, "value"].apply(generate_field_summary, axis=1)
+        summary = wide_dates.loc[:, "value"].apply(
+            libs.qa.dataset_summary_gen.generate_field_summary, axis=1
+        )
 
         geo_data_per_fips = dataset_utils.fips_index_geo_data(self.data)
         # Make a DataFrame with a row for each summary.index element
@@ -137,7 +143,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
                 "geo_data": geo_data,
                 "provenance": self.provenance,
                 "summary": summary,
-                "value": data_date_columns["value"],
+                "value": wide_dates["value"],
             },
             axis=1,
         )
