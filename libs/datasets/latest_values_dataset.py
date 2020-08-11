@@ -68,6 +68,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
+        data = cls._calculate_puerto_rico_bed_occupancy_rate(data)
+
         return cls(data)
 
     @classmethod
@@ -84,9 +86,36 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
 
     @classmethod
+    def _calculate_puerto_rico_bed_occupancy_rate(cls, data):
+        is_pr_county = data[CommonFields.FIPS].str.match("72[0-9][0-9][0-9]")
+        pr_data = data.loc[is_pr_county.fillna(False)]
+        weighted_icu_occupancy = None
+        weighted_all_bed_occupancy = None
+
+        if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+            licensed_beds = pr_data[CommonFields.LICENSED_BEDS]
+            occupancy_rates = pr_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+            weighted_all_bed_occupancy = (
+                licensed_beds * occupancy_rates
+            ).sum() / licensed_beds.sum()
+
+        if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+            icu_beds = pr_data[CommonFields.ICU_BEDS]
+            occupancy_rates = pr_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+            weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
+
+        data.loc[
+            data[CommonFields.FIPS] == "72", CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
+        ] = weighted_all_bed_occupancy
+        data.loc[
+            data[CommonFields.FIPS] == "72", CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
+        ] = weighted_icu_occupancy
+
+        return data
+
+    @classmethod
     def _aggregate_new_york_data(cls, data):
-        # When grouping nyc data, we don't want to count the generated field
-        # as a value to sum.
+        # When grouping nyc data, we don't want to the sum to include invalid FIPS.
         nyc_data = data[data[CommonFields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
         if not len(nyc_data):
             return data

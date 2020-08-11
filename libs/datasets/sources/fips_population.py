@@ -17,6 +17,9 @@ class FIPSPopulation(data_source.DataSource):
 
     https://www.census.gov/data/datasets/time-series/demo/popest/2010s-counties-total.html
     https://www.census.gov/geographies/reference-files/2018/demo/popest/2018-fips.html
+
+    Puerto Rico-specific county data:
+    https://www.census.gov/data/datasets/time-series/demo/popest/2010s-total-puerto-rico-municipios.html
     """
 
     FILE_PATH = CURRENT_FOLDER / "fips_population.csv"
