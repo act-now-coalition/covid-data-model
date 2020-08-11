@@ -115,8 +115,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
     @classmethod
     def _aggregate_new_york_data(cls, data):
-        # When grouping nyc data, we don't want to count the generated field
-        # as a value to sum.
+        # When grouping nyc data, we don't want to the sum to include invalid FIPS.
         nyc_data = data[data[CommonFields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
         if not len(nyc_data):
             return data
