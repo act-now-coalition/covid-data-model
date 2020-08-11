@@ -76,24 +76,24 @@ Returns projections for the selected state:
 ## API Endpoints
 
 
-| Description | Endpoint | Schema |
-| -------- | ----------- | ---- |
-| [State Projections Summary](#projections-for-a-specific-state) | `/us/states/<STATE>.<INTERVENTION>.json` | [RegionSummary](#RegionSummary) |
-| [State Projections With Timeseries](#projections-for-a-specific-state) | `/us/states/<STATE>.<INTERVENTION>.timeseries.json` | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
-| [County Projections Summary](#projections-for-a-specific-county) | `/us/counties/<FIPS>.<INTERVENTION>.json`  | [RegionSummary](#RegionSummary) |
-| [County Projections With Timeseries](#projections-for-a-specific-county) | `/us/counties/<FIPS>.<INTERVENTION>.timeseries.json` |[RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
-| [All States Summary](#aggregate-projections-for-all-states) | `/us/states.<INTERVENTION>.{json,csv}`      | [AggregateRegionSummary](#AggregateRegionSummary) |
-| [All States with Timeseries](#aggregate-projections-for-all-states) | `/us/states.<INTERVENTION>.timeseries.json` | [AggregateRegionSummaryWithTimeseries](#AggregateRegionSummaryWithTimeseries) |
-| [All States with Projections Timeseries](#aggregate-projections-for-all-states) | `/us/states.<INTERVENTION>.timeseries.csv`  | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries) |
-| [All Counties Summary](#projections-for-a-specific-county) | `/us/counties.<INTERVENTION>.{json,csv}`                 | [AggregateRegionSummary](#AggregateRegionSummary) |
-| [All Counties with Timeseries](#projections-for-a-specific-county) | `/us/counties.<INTERVENTION>.timeseries.json` | [AggregateRegionSummaryWithTimeseries](#AggregateRegionSummaryWithTimeseries) |
-| [All Counties Projections Timeseries](#aggregate-projections-for-all-counties) | `/us/counties.<INTERVENTION>.timeseries.csv` | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries) |
+| Description                                                                       | Endpoint                                             | Schema                                                                        |
+| --------                                                                          | -----------                                          | ----                                                                          |
+| [State projections summary](#state-projections-summary)                           | `/us/states/<STATE>.<INTERVENTION>.json`             | [RegionSummary](#RegionSummary)                                               |
+| [State projections with timeseries](#state-projections-with-timeseries)           | `/us/states/<STATE>.<INTERVENTION>.timeseries.json`  | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries)                   |
+| [County projections summary](#county-projections-summary)                         | `/us/counties/<FIPS>.<INTERVENTION>.json`            | [RegionSummary](#RegionSummary)                                               |
+| [County projections with timeseries](#county-projections-with-timeseries)         | `/us/counties/<FIPS>.<INTERVENTION>.timeseries.json` | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries)                   |
+| [All states summary](#all-states-summary)                                         | `/us/states.<INTERVENTION>.{json,csv}`               | [AggregateRegionSummary](#AggregateRegionSummary)                             |
+| [All states with timeseries](#all-states-with-timeseries)                         | `/us/states.<INTERVENTION>.timeseries.json`          | [AggregateRegionSummaryWithTimeseries](#AggregateRegionSummaryWithTimeseries) |
+| [All states with projections timeseries](#all-states-with-projections-timeseries) | `/us/states.<INTERVENTION>.timeseries.csv`           | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries)                 |
+| [All counties summary](#all-counties-summary)                                     | `/us/counties.<INTERVENTION>.{json,csv}`             | [AggregateRegionSummary](#AggregateRegionSummary)                             |
+| [All counties with timeseries](#all-counties-with-timeseries)                     | `/us/counties.<INTERVENTION>.timeseries.json`        | [AggregateRegionSummaryWithTimeseries](#AggregateRegionSummaryWithTimeseries) |
+| [All counties projections timeseries](#all-counties-with-projections-timeseries)  | `/us/counties.<INTERVENTION>.timeseries.csv`         | [AggregateFlattenedTimeseries](#AggregateFlattenedTimeseries)                 |
 
 
 ### Fetching State Data
 
 
-#### Projections for a Specific State
+#### State projections summary
 
 Returns projections for the selected state
 
@@ -101,13 +101,19 @@ Returns projections for the selected state
 # Current actuals + projections + limits
 # e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_INTERVENTION.json
 /us/states/<ST>.<INTERVENTION>.json
+```
 
+#### State projections with timeseries
+
+Returns projections for the selected state with timeseries data.
+
+```bash
 # Full timeseries data: actuals + projected limits + data for every four days
 # e.g. https://data.covidactnow.org/latest/us/states/CA.OBSERVED_INTERVENTION.timeseries.json
 /us/states/<ST>.<INTERVENTION>.timeseries.json
 ```
 
-#### Aggregate Projections for All States
+#### All state summaries
 
 Returns projections for all states
 
@@ -115,7 +121,13 @@ Returns projections for all states
 # Current actuals + projections + limits
 # e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.json
 /us/states.<INTERVENTION>.json
+```
 
+#### All states with timeseries
+
+Returns projections for all states with timeseries
+
+```bash
 # Timeseries data
 # e.g. https://data.covidactnow.org/latest/us/states.OBSERVED_INTERVENTION.timeseries.json
 /us/states.<INTERVENTION>.timeseries.json
@@ -134,7 +146,8 @@ State aggregates are also available as CSV files:
 ```
 
 ### Fetching County Data
-#### Projections for a Specific County
+
+#### County projections summary
 
 Returns projections for the selected county
 
@@ -142,13 +155,18 @@ Returns projections for the selected county
 # Current actuals + projections + limits
 # e.g. https://data.covidactnow.org/latest/us/counties/06077.WEAK_INTERVENTION.json
 /us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.json
+```
 
+#### County projections with timeseries
+
+Returns projections for the selected county with timeseries data
+```bash
 # Full timeseries data: actuals + projected limits + data for every four days
 # e.g. https://data.covidactnow.org/latest/us/counties/06077.WEAK_INTERVENTION.timeseries.json
 /latest/us/counties/<5-DIGIT-FIPS>.<INTERVENTION>.timeseries.json
 ```
 
-#### Aggregate Projections for All Counties
+#### All counties summary
 
 Returns projections for all counties
 
@@ -156,7 +174,13 @@ Returns projections for all counties
 # Current actuals + projections + limits
 # e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.json
 /us/counties.<INTERVENTION>.json
+```
 
+
+#### All counties with timeseries
+
+Returns projections for all counties with timeseries data
+```bash
 # Timeseries data
 # e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.json
 /us/counties.<INTERVENTION>.timeseries.json
@@ -168,7 +192,12 @@ County aggregates are also available as CSV files:
 # Current actuals + projections + limits
 # e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.csv
 /latest/us/counties.<INTERVENTION>.csv
+```
 
+#### All counties with projections timeseries
+
+County aggregates with projection timeseries data as a CSV:
+```bash
 # Timeseries data
 # e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.csv
 /latest/us/counties.<INTERVENTION>.timeseries.csv
