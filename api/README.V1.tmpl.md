@@ -76,7 +76,7 @@ Returns projections for the selected state:
 | Description | Endpoint | Schema |
 | -------- | ----------- | ---- |
 | [State Projections Summary](#projections-for-a-specific-state) | `/us/states/<STATE>.<INTERVENTION>.json` | [RegionSummary](#RegionSummary) |
-| [State Projections With Timeseries](#projections-for-a-specific-state) | `/us/states/<STATE>.<INTERVENTION>.timeseries.json` | [RegionSummary](#RegionSummary) |
+| [State Projections With Timeseries](#projections-for-a-specific-state) | `/us/states/<STATE>.<INTERVENTION>.timeseries.json` | [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
 | [County Projections Summary](#projections-for-a-specific-county) | `/us/counties/<FIPS>.<INTERVENTION>.json`  | [RegionSummary](#RegionSummary) |
 | [County Projections With Timeseries](#projections-for-a-specific-county) | `/us/counties/<FIPS>.<INTERVENTION>.timeseries.json` |[RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries) |
 | [All States Summary](#aggregate-projections-for-all-states) | `/us/states.<INTERVENTION>.{json,csv}`      | [AggregateRegionSummary](#AggregateRegionSummary) |
