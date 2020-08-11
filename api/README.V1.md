@@ -172,7 +172,6 @@ County aggregates are also available as CSV files:
 ```
 
 
-
 ### ResourceUsageProjection
 Resource usage projection data.
 
@@ -182,19 +181,15 @@ Resource usage projection data.
 | peakDate          | string  | Date of peak resource utilization                    |
 | shortageStartDate | string  | Date when resource shortage begins                   |
 
-
-
 ### Projections
 Summary of projection data.
 
-| name              | type   | description                                            |
-|-------------------|--------|--------------------------------------------------------|
-| totalHospitalBeds |        | Projection about total hospital bed utilization        |
-| ICUBeds           |        | Projection about ICU hospital bed utilization          |
-| Rt                | number | Inferred Rt                                            |
-| RtCI90            | number | Rt 90th percentile confidence interval upper endpoint. |
-
-
+| name              | type                                                | description                                            |
+|-------------------|-----------------------------------------------------|--------------------------------------------------------|
+| totalHospitalBeds | [ResourceUsageProjection](#ResourceUsageProjection) | Projection about total hospital bed utilization        |
+| ICUBeds           | [ResourceUsageProjection](#ResourceUsageProjection) | Projection about ICU hospital bed utilization          |
+| Rt                | number                                              | Inferred Rt                                            |
+| RtCI90            | number                                              | Rt 90th percentile confidence interval upper endpoint. |
 
 ### ResourceUtilization
 Utilization of hospital resources.
@@ -206,8 +201,6 @@ Utilization of hospital resources.
 | currentUsageCovid | integer | Currently used capacity for resource by COVID                                                                                                                                                                                           |
 | currentUsageTotal | integer | Currently used capacity for resource by all patients (COVID + Non-COVID)                                                                                                                                                                |
 | typicalUsageRate  | number  | Typical used capacity rate for resource. This excludes any COVID usage.                                                                                                                                                                 |
-
-
 
 ### Actuals
 Known actuals data.
@@ -223,8 +216,6 @@ Known actuals data.
 | hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
 | ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
 | contactTracers           | integer                                     | # of Contact Tracers                                                            |
-
-
 
 ### ActualsTimeseriesRow
 Actual data for a specific day.
@@ -242,8 +233,6 @@ Actual data for a specific day.
 | contactTracers           | integer                                     | # of Contact Tracers                                                            |
 | date                     | string                                      |                                                                                 |
 
-
-
 ### RegionSummary
 Summary of actual and prediction data for a single region.
 
@@ -259,8 +248,6 @@ Summary of actual and prediction data for a single region.
 | projections     | [Projections](#Projections) | Summary of projection data.                                                          |
 | actuals         | [Actuals](#Actuals)         | Known actuals data.                                                                  |
 | population      | integer                     | Total Population in geographic region.                                               |
-
-
 
 ### PredictionTimeseriesRow
 Prediction data for a single day.
@@ -282,8 +269,6 @@ Prediction data for a single day.
 | currentSusceptible   | integer | Number of people currently susceptible                                                       |
 | currentExposed       | integer | Number of people currently exposed                                                           |
 
-
-
 ### RegionSummaryWithTimeseries
 Summary data for a region with prediction timeseries data and actual timeseries data.
 
@@ -301,8 +286,6 @@ Summary data for a region with prediction timeseries data and actual timeseries 
 | population        | integer                     | Total Population in geographic region.                                               |
 | timeseries        | array                       |                                                                                      |
 | actualsTimeseries | array                       |                                                                                      |
-
-
 
 ### PredictionTimeseriesRowWithHeader
 Prediction timeseries row with location information.
@@ -332,19 +315,18 @@ Prediction timeseries row with location information.
 | long                 | number  | Longitude of point within the state or county                                                |
 | lastUpdatedDate      | string  | Date of latest data                                                                          |
 
-
 ### AggregateRegionSummary
 Summary data for multiple regions.
 
 List of [RegionSummary](#RegionSummary)
-        
+
 ### AggregateRegionSummaryWithTimeseries
 Timeseries and summary data for multiple regions.
 
 List of [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries)
-        
+
 ### AggregateFlattenedTimeseries
 Flattened prediction timeseries data for multiple regions.
 
 List of [PredictionTimeseriesRowWithHeader](#PredictionTimeseriesRowWithHeader)
-        
+
