@@ -116,6 +116,14 @@ def test_get_data():
     assert not data
 
 
+def test_pr_aggregation():
+    beds_data = CovidCareMapBeds.local().beds()
+    data = beds_data.get_record_for_fips("72")
+    assert data
+    assert data["all_beds_occupancy_rate"] < 1
+    assert data["icu_occupancy_rate"] < 1
+
+
 def test_nyc_aggregation():
     beds_data = CovidCareMapBeds.local().beds()
     data = beds_data.get_record_for_fips(custom_aggregations.NEW_YORK_COUNTY_FIPS)
