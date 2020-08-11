@@ -1,6 +1,6 @@
 {
   "title": "RegionSummary",
-  "description": "Base model for API output.",
+  "description": "Summary of actual and prediction data for a single region.",
   "type": "object",
   "properties": {
     "countryName": {
@@ -65,7 +65,7 @@
   "definitions": {
     "ResourceUsageProjection": {
       "title": "ResourceUsageProjection",
-      "description": "Base model for API output.",
+      "description": "Resource usage projection data.",
       "type": "object",
       "properties": {
         "peakShortfall": {
@@ -94,7 +94,7 @@
     },
     "Projections": {
       "title": "Projections",
-      "description": "Base model for API output.",
+      "description": "Summary of projection data.",
       "type": "object",
       "properties": {
         "totalHospitalBeds": {
@@ -135,7 +135,7 @@
     },
     "ResourceUtilization": {
       "title": "ResourceUtilization",
-      "description": "Base model for API output.",
+      "description": "Utilization of hospital resources.",
       "type": "object",
       "properties": {
         "capacity": {
@@ -174,7 +174,7 @@
     },
     "Actuals": {
       "title": "Actuals",
-      "description": "Base model for API output.",
+      "description": "Known actuals data.",
       "type": "object",
       "properties": {
         "population": {

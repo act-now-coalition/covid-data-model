@@ -14,6 +14,8 @@ Documentation at https://github.com/covid-projections/covid-data-model/tree/mast
 
 
 class ResourceUsageProjection(base_model.APIBaseModel):
+    """Resource usage projection data."""
+
     peakShortfall: int = pydantic.Field(
         ..., description="Shortfall of resource needed at the peak utilization"
     )
@@ -26,6 +28,8 @@ class ResourceUsageProjection(base_model.APIBaseModel):
 
 
 class Projections(base_model.APIBaseModel):
+    """Summary of projection data."""
+
     totalHospitalBeds: ResourceUsageProjection = pydantic.Field(
         ..., description="Projection about total hospital bed utilization"
     )
@@ -39,6 +43,8 @@ class Projections(base_model.APIBaseModel):
 
 
 class ResourceUtilization(base_model.APIBaseModel):
+    """Utilization of hospital resources."""
+
     capacity: Optional[int] = pydantic.Field(
         ...,
         description=(
@@ -60,6 +66,8 @@ class ResourceUtilization(base_model.APIBaseModel):
 
 
 class Actuals(base_model.APIBaseModel):
+    """Known actuals data."""
+
     population: Optional[int] = pydantic.Field(
         ...,
         description="Total population in geographic region [*deprecated*: refer to summary for this]",
@@ -83,6 +91,8 @@ class Actuals(base_model.APIBaseModel):
 
 
 class RegionSummary(base_model.APIBaseModel):
+    """Summary of actual and prediction data for a single region."""
+
     countryName: str = "US"
     fips: str = pydantic.Field(
         ...,
@@ -132,10 +142,14 @@ class RegionSummary(base_model.APIBaseModel):
 
 
 class ActualsTimeseriesRow(Actuals):
+    """Actual data for a specific day."""
+
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
 
 
 class PredictionTimeseriesRow(base_model.APIBaseModel):
+    """Prediction data for a single day."""
+
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
     hospitalBedsRequired: int = pydantic.Field(
         ...,
@@ -173,6 +187,8 @@ class PredictionTimeseriesRow(base_model.APIBaseModel):
 
 
 class PredictionTimeseriesRowWithHeader(PredictionTimeseriesRow):
+    """Prediction timeseries row with location information."""
+
     countryName: str = "US"
     stateName: str = pydantic.Field(..., description="The state name")
     countyName: Optional[str] = pydantic.Field(..., description="The county name")
@@ -196,6 +212,8 @@ class PredictionTimeseriesRowWithHeader(PredictionTimeseriesRow):
 
 
 class RegionSummaryWithTimeseries(RegionSummary):
+    """Summary data for a region with prediction timeseries data and actual timeseries data."""
+
     timeseries: Optional[List[PredictionTimeseriesRow]] = pydantic.Field(...)
     actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
 
@@ -245,6 +263,8 @@ class RegionSummaryWithTimeseries(RegionSummary):
 
 
 class AggregateRegionSummary(base_model.APIBaseModel):
+    """Summary data for multiple regions."""
+
     __root__: List[RegionSummary] = pydantic.Field(...)
 
     def output_key(self, intervention):
@@ -256,6 +276,8 @@ class AggregateRegionSummary(base_model.APIBaseModel):
 
 
 class AggregateRegionSummaryWithTimeseries(base_model.APIBaseModel):
+    """Timeseries and summary data for multiple regions."""
+
     __root__: List[RegionSummaryWithTimeseries] = pydantic.Field(...)
 
     def output_key(self, intervention):
@@ -267,6 +289,8 @@ class AggregateRegionSummaryWithTimeseries(base_model.APIBaseModel):
 
 
 class AggregateFlattenedTimeseries(base_model.APIBaseModel):
+    """Flattened prediction timeseries data for multiple regions."""
+
     __root__: List[PredictionTimeseriesRowWithHeader] = pydantic.Field(...)
 
     def output_key(self, intervention):
