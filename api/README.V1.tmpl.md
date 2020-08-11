@@ -110,7 +110,7 @@ Returns projections for the selected state with timeseries data.
 /us/states/<ST>.<INTERVENTION>.timeseries.json
 ```
 
-#### All state summaries
+#### All states summaries
 
 Returns projections for all states
 
@@ -130,6 +130,7 @@ Returns projections for all states with timeseries
 /us/states.<INTERVENTION>.timeseries.json
 ```
 
+#### All states with projections timeseries
 State aggregates are also available as CSV files:
 
 ```bash
@@ -173,6 +174,14 @@ Returns projections for all counties
 /us/counties.<INTERVENTION>.json
 ```
 
+County aggregates are also available as CSV files:
+
+```bash
+# Current actuals + projections + limits
+# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.csv
+/latest/us/counties.<INTERVENTION>.csv
+```
+
 
 #### All counties with timeseries
 
@@ -181,14 +190,6 @@ Returns projections for all counties with timeseries data
 # Timeseries data
 # e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.timeseries.json
 /us/counties.<INTERVENTION>.timeseries.json
-```
-
-County aggregates are also available as CSV files:
-
-```bash
-# Current actuals + projections + limits
-# e.g. https://data.covidactnow.org/latest/us/counties.WEAK_INTERVENTION.csv
-/latest/us/counties.<INTERVENTION>.csv
 ```
 
 #### All counties with projections timeseries
