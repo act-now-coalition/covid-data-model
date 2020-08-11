@@ -5,6 +5,7 @@ import structlog
 
 from covidactnow.datapublic import common_df
 import pandas as pd
+
 from libs.datasets.dataset_utils import AggregationLevel
 
 

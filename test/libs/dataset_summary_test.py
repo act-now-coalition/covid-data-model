@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+
+import libs.qa.dataset_summary_gen
 from libs.qa import dataset_summary
 
 
@@ -11,7 +13,7 @@ def test_generate_field_multiple_data_points():
         values, index=[(variable_name, f"2020-07-0{i + 1}") for i in range(len(values))]
     )
 
-    results = dataset_summary.generate_field_summary(series)
+    results = libs.qa.dataset_summary_gen.generate_field_summary(series)
     expected = {
         "has_value": True,
         "largest_delta": 20.0,
@@ -34,7 +36,7 @@ def test_generate_field_one_data_points():
         values, index=[(variable_name, f"2020-07-0{i + 1}") for i in range(len(values))]
     )
 
-    results = dataset_summary.generate_field_summary(series)
+    results = libs.qa.dataset_summary_gen.generate_field_summary(series)
     expected = {
         "has_value": True,
         "largest_delta": np.nan,
@@ -57,7 +59,7 @@ def test_generate_field_no_data_points():
         values, index=[(variable_name, f"2020-07-0{i + 1}") for i in range(len(values))]
     )
 
-    results = dataset_summary.generate_field_summary(series)
+    results = libs.qa.dataset_summary_gen.generate_field_summary(series)
     expected = {
         "has_value": False,
         "largest_delta": None,

@@ -2,14 +2,14 @@
   "dataset_type": "timeseries",
   "path": "data/timeseries.csv",
   "data_git_info": {
-    "sha": "d72baa0abc99113c18ec55e419fd148be4071b9d",
+    "sha": "0da1e1f5e3e9a145c6b51486aec29da23bee969f",
     "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "f1c8f8a3441bbc019dfa916ddbc572b5e3f0e2b8",
-    "branch": "puerto-rico",
+    "sha": "80d0a3f09ea66e8407cf856ad2a17e961b41d4a9",
+    "branch": "master",
     "is_dirty": true
   },
-  "updated_at": "2020-08-06T19:37:57.449004"
+  "updated_at": "2020-08-11T14:27:39.297543"
 }
