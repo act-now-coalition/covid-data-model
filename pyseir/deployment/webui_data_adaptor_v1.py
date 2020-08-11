@@ -10,6 +10,7 @@ from pyseir import load_data
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.inference.fit_results import load_inference_result
 from pyseir.rt.utils import load_Rt_result
+from pyseir.icu import infer_icu
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
 from libs.datasets import CommonFields
@@ -141,6 +142,8 @@ class WebUIDataAdaptorV1:
             observed_total_hosps=observed_total_hosps_latest,
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
+        # ICU PATCH
+        icu_patch_ts = infer_icu.get_icu_timeseries(fips=fips)
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
@@ -182,6 +185,12 @@ class WebUIDataAdaptorV1:
                 t_list_downsampled, t_list, raw_model_icu_values
             )
             output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
+
+            # Applying Patch for ICU Linear Regression
+            infer_icu_patch = icu_patch_ts.reindex(
+                [pd.Timestamp(x) for x in output_model[schema.DATE]]
+            )
+            output_model[schema.INFECTED_C] = infer_icu_patch.to_numpy()
 
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = (
