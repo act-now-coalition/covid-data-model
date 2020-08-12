@@ -27,5 +27,5 @@ class TexasHospitalizations(data_source.DataSource):
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        data = common_df.read_csv(input_path).reset_index()
+        data = cls._rename_to_common_fields(common_df.read_csv(input_path).reset_index())
         return cls(data)

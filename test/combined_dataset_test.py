@@ -116,11 +116,8 @@ def test_unique_timeseries(data_source_cls):
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()
-    ts = TimeseriesDataset.from_source(data_source)
-    # Extract the USA data from the raw DF. Replace this with cleaner access when the DataSource makes it easy.
-    rename_columns = {source: common for common, source in data_source.all_fields_map().items()}
-    renamed_data = data_source.data.rename(columns=rename_columns)
-    usa_data = renamed_data.loc[renamed_data["country"] == "USA"]
+    ts = data_source.timeseries()
+    usa_data = ts.get_data(country="USA")
 
     assert not usa_data.empty
 

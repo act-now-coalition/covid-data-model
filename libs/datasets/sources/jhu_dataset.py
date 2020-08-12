@@ -72,7 +72,7 @@ class JHUDataset(data_source.DataSource):
             loaded_data.append(data)
 
         data = pd.concat(loaded_data)
-        data = self._standardize_data(data)
+        data = self._rename_to_common_fields(self._standardize_data(data))
         super().__init__(data)
 
     @classmethod

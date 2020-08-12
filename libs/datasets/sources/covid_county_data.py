@@ -50,4 +50,5 @@ class CovidCountyDataDataSource(data_source.DataSource):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path).reset_index()
+        # Column names are already CommonFields so don't need to rename
         return cls(data)

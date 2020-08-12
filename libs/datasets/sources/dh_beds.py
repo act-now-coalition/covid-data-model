@@ -141,7 +141,7 @@ class DHBeds(data_source.DataSource):
 
     def __init__(self, path):
         data = pd.read_csv(path)
-        super().__init__(self.standardize_data(data))
+        super().__init__(self._rename_to_common_fields(self.standardize_data(data)))
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:

@@ -1,3 +1,5 @@
+from typing import Type
+
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
@@ -33,9 +35,6 @@ class DataSource(object):
 
     def __init__(self, data: pd.DataFrame):
         self.data = data
-
-    def all_fields_map(self):
-        return {**self.COMMON_FIELD_MAP, **self.INDEX_FIELD_MAP}
 
     @property
     def state_data(self) -> pd.DataFrame:
@@ -88,3 +87,10 @@ class DataSource(object):
         return LatestValuesDataset.from_source(
             self, fill_missing_state=self.FILL_MISSING_STATE_LEVEL_DATA
         )
+
+    @classmethod
+    def _rename_to_common_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
+        all_fields_map = {**cls.COMMON_FIELD_MAP, **cls.INDEX_FIELD_MAP}
+        to_common_fields = {value: key for key, value in all_fields_map.items()}
+        final_columns = to_common_fields.values()
+        return df.rename(columns=to_common_fields)[final_columns]

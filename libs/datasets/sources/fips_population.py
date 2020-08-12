@@ -45,12 +45,13 @@ class FIPSPopulation(data_source.DataSource):
 
     COMMON_FIELD_MAP = {
         CommonFields.POPULATION: Fields.POPULATION,
+        CommonFields.COUNTY: CommonFields.COUNTY,  # COUNTY isn't in the LatestValueDataset.INDEX_FIELDS
     }
 
     def __init__(self, path):
         data = pd.read_csv(path, dtype={"fips": str})
         data["fips"] = data.fips.str.zfill(5)
-        data = self.standardize_data(data)
+        data = self._rename_to_common_fields(self.standardize_data(data))
         super().__init__(data)
 
     @classmethod

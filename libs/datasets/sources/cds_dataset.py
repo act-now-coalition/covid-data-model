@@ -53,4 +53,4 @@ class CDSDataset(data_source.DataSource):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         df = common_df.read_csv(data_root / cls.DATA_PATH).reset_index()
         df[CommonFields.POSITIVE_TESTS] = df[CommonFields.CASES]
-        return cls(df)
+        return cls(CDSDataset._rename_to_common_fields(df))
