@@ -93,7 +93,7 @@ def test_combined_county_has_some_timeseries_data(fips):
 )
 def test_unique_timeseries(data_source_cls):
     data_source = data_source_cls.local()
-    timeseries = TimeseriesDataset.build_from_data_source(data_source)
+    timeseries = data_source.timeseries()
     timeseries = combined_datasets.US_STATES_FILTER.apply(timeseries)
     # Check for duplicate rows with the same INDEX_FIELDS. Sort by index so duplicates are next to
     # each other in the message if the assert fails.

@@ -73,19 +73,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return cls(data)
 
     @classmethod
-    def build_from_data_source(cls, source) -> "LatestValuesDataset":
-        from libs.datasets.timeseries import TimeseriesDataset
-
-        if set(source.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
-            timeseries = source.timeseries()
-            return cls(timeseries.latest_values())
-
-        if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
-            raise ValueError("Index fields must match")
-
-        return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
-
-    @classmethod
     def _calculate_puerto_rico_bed_occupancy_rate(cls, data):
         is_pr_county = data[CommonFields.FIPS].str.match("72[0-9][0-9][0-9]")
         pr_data = data.loc[is_pr_county.fillna(False)]
