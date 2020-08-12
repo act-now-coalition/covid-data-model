@@ -35,7 +35,8 @@ def _save_field_summary(timeseries_dataset: TimeseriesDataset, output_path: path
 
 @main.command()
 @click.option("--summary-filename", default="timeseries_summary.csv")
-def update(summary_filename):
+@click.option("--wide-dates-filename", default="timeseries-wide-dates.csv")
+def update(summary_filename, wide_dates_filename):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -44,6 +45,14 @@ def update(summary_filename):
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, timeseries_dataset
     )
+
+    if wide_dates_filename:
+        timeseries_dataset.get_date_columns().to_csv(
+            str(timeseries_pointer.path).replace("timeseries.csv", wide_dates_filename),
+            date_format="%Y-%m-%d",
+            index=True,
+            float_format="%.12g",
+        )
 
     if summary_filename:
         dataset = timeseries_pointer.load_dataset()
