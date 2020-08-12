@@ -248,9 +248,11 @@ def _build_combined_dataset_from_sources(
     """Builds a combined dataset from a feature definition.
 
     Args:
+        target_dataset_cls: Type of the returned combined dataset.
+        loaded_data_sources: Dictionary mapping source name to a DataSource object
         feature_definition_config: Dictionary mapping an output field to the
-            data sources that will be used to pull values from.
-        filters: A list of dataset filters applied to the datasets before
+            data source classes that will be used to pull values from.
+        filter: A dataset filters applied to the datasets before
             assembling features.
     """
 
