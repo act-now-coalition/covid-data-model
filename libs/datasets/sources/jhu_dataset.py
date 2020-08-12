@@ -118,7 +118,7 @@ class JHUDataset(data_source.DataSource):
         # Not including cases grouped in recovered state.
         # on 8/11 recovered cases were assigned to a specific fips which caused duplicates.
         is_recovered_state = data[cls.Fields.STATE] == "Recovered"
-        data = data.loc[~is_recovered_state]
+        data.loc[is_recovered_state, cls.Fields.FIPS] = None
 
         return data
 
