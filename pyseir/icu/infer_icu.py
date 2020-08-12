@@ -43,38 +43,35 @@ def get_data_for_icu_calc(fips: str) -> pd.DataFrame:
     )
 
 
-def get_icu_timeseries(fips: str) -> pd.Series:
+def get_icu_timeseries(
+    fips: str, use_actuals: bool = True, weight_by: str = "population"
+) -> pd.Series:
     """
     """
     log = logger.new(fips=fips, event=f"ICU for Fips = {fips}")
     df = get_data_for_icu_calc(fips)
-    is_empty = df.apply(lambda x: x.dropna().empty).to_dict()
+    has = df.apply(lambda x: not x.dropna().empty).to_dict()
 
-    if not is_empty["current_icu"]:
+    if use_actuals and has["current_icu"]:
         log.info(current_icu=True)
         return df["current_icu"]
+    elif has["current_hospitalized"]:
+        log.info(current_hosp=True)
+        return estimate_icu_from_hospitalized(df["current_hospitalized"])
     else:
-        log = log.bind(current_icu=False)
-
-    if not is_empty["current_icu_superset"]:
-        log.info(super_icu=True)
-        if len(fips) == 2:
-            return df["current_icu_superset"]
+        # Get Superset ICU Timeseries
+        if use_actuals and has["current_icu_superset"]:
+            superset_icu = df["current_icu_superset"]
         else:
-            weight = get_current_weight(fips)
-            return weight * df["current_icu_superset"]
-    else:
-        log = log.bind(super_icu=False)
+            # For now we are guaranteed to have the superset have at least current_hospitalized
+            # since all states have current_hospitalized. If we add another intermediate level, then
+            # this logic will have to be changed.
+            superset_icu = estimate_icu_from_hospitalized(df["current_hospitalized_superset"])
 
-    estimated_icu_superset = estimate_icu_from_hospitalized(df["current_hospitalized_superset"])
-
-    if len(fips) == 2:
-        log.info(estimate_icu=True, disaggregate=False)
-        return estimated_icu_superset
-    else:
-        log.info(estimate_icu=True, disaggregate=True)
-        weight = get_current_weight(fips)
-        return weight * estimated_icu_superset
+        # Get Disaggregation Weight
+        weight = get_weight_by_fips(fips, method=weight_by)
+        log.info(disaggregation=True)
+        return weight * superset_icu
 
 
 def estimate_icu_from_hospitalized(current_hospitalized: pd.Series) -> pd.Series:
@@ -83,10 +80,11 @@ def estimate_icu_from_hospitalized(current_hospitalized: pd.Series) -> pd.Series
     b = ICUConfig.LR_COEF["b"]
     estimated_icu = m * current_hospitalized + b
     estimated_icu = estimated_icu.clip(lower=0)
+    estimated_icu.name = "current_icu"
     return estimated_icu
 
 
-def get_current_weight(fips: str, method="population") -> float:
+def get_weight_by_fips(fips: str, method="population") -> float:
     if method == "population":
         with open(ICUConfig.WEIGHTS_PATHS[method]) as f:
             weights = json.load(f)
