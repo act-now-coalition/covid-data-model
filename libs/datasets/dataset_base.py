@@ -44,7 +44,7 @@ class DatasetBase(object):
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().to_csv(provenance_path)
 
-    def indexed_df(self) -> pd.DataFrame:
+    def indexed_data(self) -> pd.DataFrame:
         """Returns all the data in a DataFrame with FIPS or (FIPS, DATE) as the row index."""
         data_with_index = self.data.set_index(self.COMMON_INDEX_FIELDS)
         if data_with_index.index.duplicated(keep=False).any():

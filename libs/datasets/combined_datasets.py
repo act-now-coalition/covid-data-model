@@ -266,10 +266,10 @@ def _build_combined_dataset_from_sources(
     for source_name in chain.from_iterable(feature_definition.values()):
         source = loaded_data_sources[source_name]
         if target_dataset_cls == TimeseriesDataset:
-            datasets[source_name] = filter.apply(source.timeseries()).indexed_df()
+            datasets[source_name] = filter.apply(source.timeseries()).indexed_data()
         else:
             assert target_dataset_cls == LatestValuesDataset
-            datasets[source_name] = filter.apply(source.latest_values()).indexed_df()
+            datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
     return target_dataset_cls(data.reset_index(), provenance=_to_timeseries_rows(provenance, _log))
