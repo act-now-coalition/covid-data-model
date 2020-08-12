@@ -69,5 +69,8 @@ class DataSource(object):
 
     @lru_cache(None)
     def timeseries(self) -> TimeseriesDataset:
-        """Builds generic beds dataset"""
         return TimeseriesDataset.build_from_data_source(self)
+
+    @lru_cache(None)
+    def latest_values(self) -> LatestValuesDataset:
+        return LatestValuesDataset.build_from_data_source(self)

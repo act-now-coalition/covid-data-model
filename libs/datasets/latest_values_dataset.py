@@ -73,11 +73,11 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return cls(data)
 
     @classmethod
-    def build_from_data_source(cls, source):
+    def build_from_data_source(cls, source) -> "LatestValuesDataset":
         from libs.datasets.timeseries import TimeseriesDataset
 
         if set(source.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
-            timeseries = TimeseriesDataset.build_from_data_source(source)
+            timeseries = source.timeseries()
             return cls(timeseries.latest_values())
 
         if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):

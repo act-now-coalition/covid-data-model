@@ -3,13 +3,13 @@
   "path": "data/latest.csv",
   "data_git_info": {
     "sha": "dad635d89dc7c0780a8b306ef632f46b45e9a888",
-    "branch": "master",
+    "branch": "detached",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "3f1beb2e6ce9b5ffbb9b3bf4124787d0cf5e05b1",
+    "sha": "b530e06d0e2af1d7dcecbf70057895178a15ffce",
     "branch": "master",
-    "is_dirty": false
+    "is_dirty": true
   },
-  "updated_at": "2020-08-12T16:21:11.777553"
+  "updated_at": "2020-08-12T18:49:39.697650"
 }

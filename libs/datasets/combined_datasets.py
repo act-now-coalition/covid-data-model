@@ -237,27 +237,22 @@ def _build_combined_dataset_from_sources(
             assembling features.
     """
     loaded_data_sources = {
-        data_source_cls: data_source_cls.local()
+        data_source_cls.SOURCE_NAME: data_source_cls.local()
         for data_source_cls in set(chain.from_iterable(feature_definition_config.values()))
     }
 
-    # Convert data sources to instances of `target_data_cls` and apply filter
-    intermediate_datasets = {
-        data_source_cls.SOURCE_NAME: filter.apply(target_dataset_cls.build_from_data_source(source))
-        for data_source_cls, source in loaded_data_sources.items()
-    }
-
-    datasets: MutableMapping[str, pd.DataFrame] = {}
-    for name, dataset_obj in intermediate_datasets.items():
-        data_with_index = dataset_obj.data.set_index(target_dataset_cls.COMMON_INDEX_FIELDS)
-        if data_with_index.index.duplicated(keep=False).any():
-            raise ValueError(f"Duplicate in {name}")
-        datasets[name] = data_with_index
-        # If any duplicates slip in the following code may help you debug them:
-        # https://stackoverflow.com/a/34297689
-        # datasets[name] = data_with_index.loc[~data_with_index.duplicated(keep="first"), :]
-        # datasets[key] = dataset_obj.data.groupby(target_dataset_cls.COMMON_INDEX_FIELDS).first() fails
-        # due to <NA>s: cannot convert to 'float64'-dtype NumPy array with missing values. Specify an appropriate 'na_value' for this dtype.
+    datasets: MutableMapping[str, pd.DataFrame]
+    if target_dataset_cls == TimeseriesDataset:
+        datasets = {
+            name: filter.apply(source.timeseries()).indexed_df()
+            for name, source in loaded_data_sources.items()
+        }
+    else:
+        assert target_dataset_cls == LatestValuesDataset
+        datasets = {
+            name: filter.apply(source.latest_values()).indexed_df()
+            for name, source in loaded_data_sources.items()
+        }
 
     feature_definition = {
         field_name: [cls.SOURCE_NAME for cls in classes]
