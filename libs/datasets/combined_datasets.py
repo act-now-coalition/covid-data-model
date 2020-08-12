@@ -23,7 +23,6 @@ from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
-from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
@@ -83,7 +82,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.MAX_BED_COUNT: [],
     CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
     CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
-    CommonFields.RECOVERED: [JHUDataset],
+    CommonFields.RECOVERED: [],
     CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
 }
 
