@@ -30,11 +30,6 @@ class DatasetBase(object):
             yield row.where(pd.notnull(row), None).to_dict()
 
     @classmethod
-    def build_from_data_source(cls, source) -> "DatasetBase":
-        """Builds an instance of the dataset from a data source."""
-        raise NotImplementedError("Subsclass must implement")
-
-    @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         raise NotImplementedError()
 
