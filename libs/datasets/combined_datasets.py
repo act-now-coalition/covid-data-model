@@ -112,7 +112,7 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 )
 
 
-def build_us_timeseries_with_all_fields() -> Tuple[TimeseriesDataset, LatestValuesDataset]:
+def build_us_with_all_fields() -> Tuple[TimeseriesDataset, LatestValuesDataset]:
     data_source_classes = set(
         chain(
             chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),

@@ -1,5 +1,6 @@
 import logging
 import re
+from itertools import chain
 
 import structlog
 
@@ -280,12 +281,17 @@ def test_build_combined_dataset_from_sources_smoke_test():
         CommonFields.RECOVERED: [JHUDataset],
     }
 
+    loaded_data_sources = {
+        data_source_cls.SOURCE_NAME: data_source_cls.local()
+        for data_source_cls in chain.from_iterable(feature_definition.values())
+    }
+
     _build_combined_dataset_from_sources(
-        TimeseriesDataset, feature_definition, filter=US_STATES_FILTER,
+        TimeseriesDataset, loaded_data_sources, feature_definition, filter=US_STATES_FILTER,
     )
 
     _build_combined_dataset_from_sources(
-        LatestValuesDataset, feature_definition, filter=US_STATES_FILTER,
+        LatestValuesDataset, loaded_data_sources, feature_definition, filter=US_STATES_FILTER,
     )
 
 
