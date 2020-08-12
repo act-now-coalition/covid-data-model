@@ -45,7 +45,7 @@ def summarize_timeseries_fields(data: pd.DataFrame) -> pd.DataFrame:
     melted = pd.melt(data, id_vars=[CommonFields.FIPS, CommonFields.DATE]).set_index(
         CommonFields.DATE
     )
-    fips_variable_grouped = melted.groupby([CommonFields.FIPS, VARIABLE_FIELD], sort=False)
+    fips_variable_grouped = melted.groupby([CommonFields.FIPS, VARIABLE_FIELD])
     return fips_variable_grouped["value"].apply(generate_field_summary).unstack()
 
 
