@@ -4,6 +4,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.datasets.timeseries import TimeseriesDataset
 
 
 class CovidCountyDataDataSource(data_source.DataSource):
@@ -16,13 +17,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
     # incomplete state data, we are choosing to not aggregate.
     FILL_MISSING_STATE_LEVEL_DATA = False
 
-    INDEX_FIELD_MAP = {
-        CommonFields.DATE: CommonFields.DATE,
-        CommonFields.AGGREGATE_LEVEL: CommonFields.AGGREGATE_LEVEL,
-        CommonFields.COUNTRY: CommonFields.COUNTRY,
-        CommonFields.STATE: CommonFields.STATE,
-        CommonFields.FIPS: CommonFields.FIPS,
-    }
+    INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
 
     # Keep in sync with update_covid_county_data.py in the covid-data-public repo.
     # DataSource objects must have a map from CommonFields to fields in the source file.

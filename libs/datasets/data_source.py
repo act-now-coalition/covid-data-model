@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import Type
 
 import pandas as pd
@@ -90,7 +91,15 @@ class DataSource(object):
 
     @classmethod
     def _rename_to_common_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
+        """Returns a copy of the DataFrame with only common columns in the class field maps."""
         all_fields_map = {**cls.COMMON_FIELD_MAP, **cls.INDEX_FIELD_MAP}
         to_common_fields = {value: key for key, value in all_fields_map.items()}
         final_columns = to_common_fields.values()
         return df.rename(columns=to_common_fields)[final_columns]
+
+    @classmethod
+    def _drop_unlisted_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
+        """Returns a copy of the DataFrame with columns not in the class field maps dropped."""
+        # Use pd.unique to preserve order, unlike making a set.
+        all_keys = pd.unique(list(chain(cls.INDEX_FIELD_MAP.keys(), cls.COMMON_FIELD_MAP.keys())))
+        return df[all_keys]
