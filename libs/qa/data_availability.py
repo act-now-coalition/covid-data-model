@@ -111,7 +111,11 @@ def update_google_sheet_with_data(sheet, data: pd.DataFrame, worksheet_name):
 
     # Rotate first column and resize to make more readable
     # TODO: Make this range dynamic
-    worksheet.format("A1:X1", {"textRotation": {"angle": 75}})
+    num_columns = update_results["updatedColumns"]
+    start = gspread.utils.rowcol_to_a1(1, 1)
+    end = gspread.utils.rowcol_to_a1(1, num_columns)
+
+    worksheet.format(f"{start}:{end}", {"textRotation": {"angle": 75}})
     sheet.batch_update(
         {
             "requests": [
@@ -170,8 +174,8 @@ def update_multi_field_availability_report(
     rules = gspread_formatting.get_conditional_format_rules(worksheet)
     for i in range(len(dataset) + 1):
         row = i + 1
-        # TODO: make this range dynamic
-        rule = _build_color_scale_row_rule(worksheet, f"B{row}:X{row}")
+        end_column = gspread.utils.rowcol_to_a1(row, len(columns))
+        rule = _build_color_scale_row_rule(worksheet, f"B{row}:{end_column}")
 
         rules.append(rule)
     rules.save()
