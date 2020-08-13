@@ -120,7 +120,8 @@ class JHUDataset(data_source.DataSource):
         is_recovered_state = data[cls.Fields.STATE] == "Recovered"
         data.loc[is_recovered_state, cls.Fields.FIPS] = None
 
-        return data
+        common_fields_data = cls._rename_to_common_fields(data)
+        return common_fields_data
 
     @classmethod
     def _fill_incomplete_county_data(cls, data):

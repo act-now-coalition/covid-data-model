@@ -226,10 +226,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         Returns: Timeseries object.
         """
         data = source.data
-        # TODO(tom): Do this renaming upstream, when the source is loaded or when first copied from the third party.
-        to_common_fields = {value: key for key, value in source.all_fields_map().items()}
-        final_columns = to_common_fields.values()
-        data = data.rename(columns=to_common_fields)[final_columns]
         group = [
             CommonFields.DATE,
             CommonFields.COUNTRY,

@@ -6,6 +6,7 @@ from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.us_state_abbrev import US_STATE_ABBREV
 from libs.datasets.common_fields import CommonIndexFields
 
@@ -28,13 +29,7 @@ class CDSDataset(data_source.DataSource):
     DATA_PATH = "data/cases-cds/timeseries-common.csv"
     SOURCE_NAME = "CDS"
 
-    INDEX_FIELD_MAP = {
-        CommonFields.DATE: CommonFields.DATE,
-        CommonFields.AGGREGATE_LEVEL: CommonFields.AGGREGATE_LEVEL,
-        CommonFields.COUNTRY: CommonFields.COUNTRY,
-        CommonFields.STATE: CommonFields.STATE,
-        CommonFields.FIPS: CommonFields.FIPS,
-    }
+    INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
 
     COMMON_FIELD_MAP = {
         f: f
@@ -53,4 +48,6 @@ class CDSDataset(data_source.DataSource):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         df = common_df.read_csv(data_root / cls.DATA_PATH).reset_index()
         df[CommonFields.POSITIVE_TESTS] = df[CommonFields.CASES]
-        return cls(df)
+        # Column names are already CommonFields so don't need to rename, but do need to drop extra
+        # columns that will fail NYC aggregation.
+        return cls(cls._drop_unlisted_fields(df))

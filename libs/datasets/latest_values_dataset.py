@@ -47,10 +47,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             raise ValueError("Source must have metadata field map.")
 
         data = source.data
-        fields = source.all_fields_map().items()
-        to_common_fields = {value: key for key, value in fields}
-        final_columns = to_common_fields.values()
-        data = data.rename(columns=to_common_fields)[final_columns]
 
         data = cls._aggregate_new_york_data(data)
         if fill_missing_state:

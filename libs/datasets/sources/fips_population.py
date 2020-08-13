@@ -45,6 +45,7 @@ class FIPSPopulation(data_source.DataSource):
 
     COMMON_FIELD_MAP = {
         CommonFields.POPULATION: Fields.POPULATION,
+        CommonFields.COUNTY: CommonFields.COUNTY,  # COUNTY isn't in the LatestValueDataset.INDEX_FIELDS
     }
 
     def __init__(self, path):
@@ -85,7 +86,8 @@ class FIPSPopulation(data_source.DataSource):
         states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(ABBREV_US_FIPS)
         states_aggregated[cls.Fields.COUNTY] = None
 
-        return pd.concat([data, states_aggregated])
+        common_fields_data = cls._rename_to_common_fields(pd.concat([data, states_aggregated]))
+        return common_fields_data
 
 
 def build_fips_data_frame(census_csv, counties_csv):

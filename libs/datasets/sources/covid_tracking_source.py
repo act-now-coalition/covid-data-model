@@ -158,4 +158,4 @@ class CovidTrackingDataSource(data_source.DataSource):
 
         # TODO implement assertion to check for shift, as sliced by geo
         # df['totalTestResults'] - df['totalTestResultsIncrease']  ==  df['totalTestResults'].shift(-1)
-        return data
+        return cls._rename_to_common_fields(data)
