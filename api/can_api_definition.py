@@ -1,10 +1,12 @@
-from typing import List, Optional
-from libs.enums import Intervention
-from libs.datasets.dataset_utils import AggregationLevel
-from libs import us_state_abbrev
-from libs import base_model
-import pydantic
 import datetime
+from typing import List, Optional
+
+import pydantic
+
+from libs import base_model, us_state_abbrev
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.enums import Intervention
+
 
 """
 CovidActNow API
@@ -59,6 +61,20 @@ class ResourceUtilization(base_model.APIBaseModel):
     )
 
 
+class Metrics(base_model.APIBaseModel):
+    testPositivity: Optional[int] = pydantic.Field(
+        ..., description="The percentage of people who test positive."
+    )
+
+    caseDensity: Optional[int] = pydantic.Field(
+        ..., description="The number of cases per 100k population."
+    )
+
+
+class MetricsTimeseriesRow(Metrics):
+    date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
+
+
 class Actuals(base_model.APIBaseModel):
     population: Optional[int] = pydantic.Field(
         ...,
@@ -99,6 +115,7 @@ class RegionSummary(base_model.APIBaseModel):
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
     projections: Optional[Projections] = pydantic.Field(...)
     actuals: Optional[Actuals] = pydantic.Field(...)
+    metrics: Optional[Metrics] = pydantic.Field(...)
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
     )
@@ -198,6 +215,7 @@ class PredictionTimeseriesRowWithHeader(PredictionTimeseriesRow):
 class RegionSummaryWithTimeseries(RegionSummary):
     timeseries: Optional[List[PredictionTimeseriesRow]] = pydantic.Field(...)
     actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
+    metricsTimeseries: List[MetricsTimeseriesRow] = pydantic.Field(...)
 
     @property
     def region_summary(self) -> RegionSummary:

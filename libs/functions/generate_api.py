@@ -1,26 +1,30 @@
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional
+
+import pandas as pd
+
 from api.can_api_definition import (
+    Actuals,
+    ActualsTimeseriesRow,
+    AggregateFlattenedTimeseries,
     AggregateRegionSummary,
+    MetricsTimeseriesRow,
+    PredictionTimeseriesRow,
+    PredictionTimeseriesRowWithHeader,
+    Projections,
     RegionSummary,
     RegionSummaryWithTimeseries,
-    AggregateFlattenedTimeseries,
-    PredictionTimeseriesRowWithHeader,
-    PredictionTimeseriesRow,
-    ActualsTimeseriesRow,
-    Projections,
-    Actuals,
     ResourceUsageProjection,
 )
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.enums import Intervention
-from libs.functions import get_can_projection
 from libs import us_state_abbrev
 from libs.datasets import can_model_output_schema as can_schema
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.latest_values_dataset import LatestValuesDataset
-import pandas as pd
+from libs.enums import Intervention
+from libs.functions import get_can_projection
+from libs.top_level_metrics import calculate_top_level_metrics_for_timeseries
 
 
 def _generate_api_for_projections(model_output: CANPyseirLocationOutput):
@@ -156,9 +160,19 @@ def generate_region_timeseries(
             for row in model_output.data.to_dict(orient="records")
         ]
 
+    metrics_timeseries = []
+    region_level_metrics = calculate_top_level_metrics_for_timeseries(
+        timeseries, region_summary
+    ).to_dict(orient="records")
+    for metric_row in region_level_metrics:
+        MetricsTimeseriesRow(**metric_row, date=row[CommonFields.DATE])
+
     region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}
     return RegionSummaryWithTimeseries(
-        **region_summary_data, timeseries=model_timeseries, actualsTimeseries=actuals_timeseries
+        **region_summary_data,
+        timeseries=model_timeseries,
+        actualsTimeseries=actuals_timeseries,
+        metricsTimeseries=metrics_timeseries
     )
 
 

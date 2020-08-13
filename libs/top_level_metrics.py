@@ -33,7 +33,9 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
         pos_cases=pos_tests_daily, neg_tests=neg_tests_daily
     )
 
-    return {"case_density": case_density, "test_positivity": test_positivity}
+    return pd.DataFrame({"caseDensity": case_density, "testPositivity": test_positivity}).replace(
+        {np.nan: None}
+    )
 
 
 def calculate_case_density(
