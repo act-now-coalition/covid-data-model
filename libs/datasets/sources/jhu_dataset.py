@@ -72,7 +72,7 @@ class JHUDataset(data_source.DataSource):
             loaded_data.append(data)
 
         data = pd.concat(loaded_data)
-        data = self._rename_to_common_fields(self._standardize_data(data))
+        data = self._standardize_data(data)
         super().__init__(data)
 
     @classmethod
@@ -120,7 +120,8 @@ class JHUDataset(data_source.DataSource):
         is_recovered_state = data[cls.Fields.STATE] == "Recovered"
         data.loc[is_recovered_state, cls.Fields.FIPS] = None
 
-        return data
+        common_fields_data = cls._rename_to_common_fields(data)
+        return common_fields_data
 
     @classmethod
     def _fill_incomplete_county_data(cls, data):

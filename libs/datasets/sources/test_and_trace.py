@@ -37,6 +37,7 @@ class TestAndTraceData(data_source.DataSource):
     def standardize_data(cls, data):
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
+        data = cls._rename_to_common_fields(data)
         return data
 
     @classmethod
@@ -44,5 +45,5 @@ class TestAndTraceData(data_source.DataSource):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = pd.read_csv(input_path, parse_dates=[cls.Fields.DATE], dtype={cls.Fields.FIPS: str})
-        data = cls._rename_to_common_fields(cls.standardize_data(data))
+        data = cls.standardize_data(data)
         return cls(data)

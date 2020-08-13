@@ -54,6 +54,7 @@ class NevadaHospitalAssociationData(data_source.DataSource):
         data[cls.Fields.CURRENT_HOSPITALIZED_TOTAL] = (
             data[cls.Fields.ACCUTE_OCCUPIED] + data[cls.Fields.ICU_OCCUPIED]
         )
+        data = cls._rename_to_common_fields(data)
         return data
 
     @classmethod
@@ -63,4 +64,4 @@ class NevadaHospitalAssociationData(data_source.DataSource):
         data = pd.read_csv(input_path, parse_dates=[cls.Fields.DATE], dtype={cls.Fields.FIPS: str})
         data = cls.standardize_data(data)
 
-        return cls(cls._rename_to_common_fields(data))
+        return cls(data)

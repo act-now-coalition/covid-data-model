@@ -51,7 +51,7 @@ class FIPSPopulation(data_source.DataSource):
     def __init__(self, path):
         data = pd.read_csv(path, dtype={"fips": str})
         data["fips"] = data.fips.str.zfill(5)
-        data = self._rename_to_common_fields(self.standardize_data(data))
+        data = self.standardize_data(data)
         super().__init__(data)
 
     @classmethod
@@ -86,7 +86,8 @@ class FIPSPopulation(data_source.DataSource):
         states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(ABBREV_US_FIPS)
         states_aggregated[cls.Fields.COUNTY] = None
 
-        return pd.concat([data, states_aggregated])
+        common_fields_data = cls._rename_to_common_fields(pd.concat([data, states_aggregated]))
+        return common_fields_data
 
 
 def build_fips_data_frame(census_csv, counties_csv):

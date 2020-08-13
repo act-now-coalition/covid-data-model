@@ -45,7 +45,7 @@ class KinsaDataset(data_source.DataSource):
 
     def __init__(self):
         data = self.load_all_us_kinsa_data()
-        data = self._rename_to_common_fields(self.standardize_data(data))
+        data = self.standardize_data(data)
         super().__init__(data)
 
     @classmethod
@@ -70,4 +70,5 @@ class KinsaDataset(data_source.DataSource):
 
         data = data.rename(columns={"region_id": cls.Fields.FIPS, "region_name": cls.Fields.COUNTY})
         data = data.drop(columns=["region_type"])
+        data = cls._rename_to_common_fields(data)
         return data
