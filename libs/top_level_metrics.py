@@ -22,11 +22,12 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
     # Making sure that the timeseries object passed in is only for one fips.
     assert len(timeseries.all_fips) == 1
     population = latest[CommonFields.POPULATION]
-    cases = timeseries.data[CommonFields.CASES]
     neg_tests = timeseries.data[CommonFields.NEGATIVE_TESTS]
     pos_tests = timeseries.data[CommonFields.POSITIVE_TESTS]
 
-    case_density = calculate_case_density(cases=cases, population=population)
+    case_density = calculate_case_density(
+        cases=pos_tests, population=population
+    )  # do positive_tests == new cases?
     test_positivity = calculate_test_positivity(pos_cases=pos_tests, neg_tests=neg_tests)
 
     return {"case_density": case_density, "test_positivity": test_positivity}
