@@ -86,7 +86,20 @@ def calculate_metrics_for_counties_in_state(state: str):
 
 def smoothWithRollingAverage(series: pd.Series, window: int = 7, includeTrailingZeros: bool = True):
     """
-    If not includeTrailingZeros, return NaNs instead of zeros.
+    Smooths series with a min period of 1.
+
+    https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.rolling.html
+
+    Port of Projections.ts:
+    https://github.com/covid-projections/covid-projections/blob/master/src/common/models/Projection.ts#L715
+
+    Args:
+        series: Series to smooth.
+        window: Sliding window to average.
+        includeTrailingZeros: Whether or not to NaN out trailing zeroes.
+
+    Returns:
+        Smoothed series.
     """
     rolling_average = series.rolling(window, min_periods=1).mean()
     if includeTrailingZeros:
