@@ -60,14 +60,31 @@ class DataSource(object):
     @lru_cache(None)
     def beds(self) -> LatestValuesDataset:
         """Builds generic beds dataset"""
-        return LatestValuesDataset.build_from_data_source(self)
+        return self.latest_values()
 
     @lru_cache(None)
     def population(self) -> LatestValuesDataset:
         """Builds generic beds dataset"""
-        return LatestValuesDataset.build_from_data_source(self)
+        return self.latest_values()
 
     @lru_cache(None)
     def timeseries(self) -> TimeseriesDataset:
-        """Builds generic beds dataset"""
-        return TimeseriesDataset.build_from_data_source(self)
+        """Build TimeseriesDataset from this data source."""
+        if set(self.INDEX_FIELD_MAP.keys()) != set(TimeseriesDataset.INDEX_FIELDS):
+            raise ValueError("Index fields must match")
+
+        return TimeseriesDataset.from_source(
+            self, fill_missing_state=self.FILL_MISSING_STATE_LEVEL_DATA
+        )
+
+    @lru_cache(None)
+    def latest_values(self) -> LatestValuesDataset:
+        if set(self.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
+            return LatestValuesDataset(self.timeseries().latest_values())
+
+        if set(self.INDEX_FIELD_MAP.keys()) != set(LatestValuesDataset.INDEX_FIELDS):
+            raise ValueError("Index fields must match")
+
+        return LatestValuesDataset.from_source(
+            self, fill_missing_state=self.FILL_MISSING_STATE_LEVEL_DATA
+        )

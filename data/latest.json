@@ -2,14 +2,14 @@
   "dataset_type": "latest",
   "path": "data/latest.csv",
   "data_git_info": {
-    "sha": "b7aa38b4846aa04a2c97de07d8fc913d403ad640",
-    "branch": "master",
+    "sha": "dad635d89dc7c0780a8b306ef632f46b45e9a888",
+    "branch": "detached",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "d53a1136b2ecf8d4c67a879ca1eea2a50f388310",
-    "branch": "puerto-rico",
-    "is_dirty": false
+    "sha": "d14e13065d561b5adc565a81c92f59114f0838a6",
+    "branch": "master",
+    "is_dirty": true
   },
-  "updated_at": "2020-08-11T14:55:22.192967"
+  "updated_at": "2020-08-12T19:48:46.839324"
 }

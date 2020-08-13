@@ -272,14 +272,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         data = data.sort_values(CommonFields.DATE)
         return cls(data)
 
-    @classmethod
-    def build_from_data_source(cls, source) -> "TimeseriesDataset":
-        """Build TimeseriesDataset from a data source."""
-        if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
-            raise ValueError("Index fields must match")
-
-        return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
-
     def summarize(self):
         dataset_utils.summarize(
             self.data,

@@ -47,7 +47,7 @@ def load_data_sources_by_name() -> Dict[str, TimeseriesDataset]:
     ]
     source_map = {}
     for source_cls in sources:
-        dataset = TimeseriesDataset.build_from_data_source(source_cls.local())
+        dataset = source_cls.local().timeseries()
         dataset = US_STATES_FILTER.apply(dataset)
         dataset.data["source"] = source_cls.__name__
         source_map[source_cls.__name__] = dataset
