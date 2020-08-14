@@ -144,18 +144,6 @@ class CovidTrackingDataSource(data_source.DataSource):
             data[cls.Fields.IN_ICU_CURRENTLY] > data[cls.Fields.CURRENT_HOSPITALIZED]
         ).any(), "IN_ICU_CURRENTLY field is greater than CURRENT_HOSPITALIZED"
 
-        # must stay true: positive + negative  ==  total
-        assert (
-            data[cls.Fields.POSITIVE_TESTS] + data[cls.Fields.NEGATIVE_TESTS]
-            == data[cls.Fields.TOTAL_TEST_RESULTS]
-        ).all()
-
-        # must stay true: positive change + negative change ==  total change
-        assert (
-            data[cls.Fields.POSITIVE_INCREASE] + data[cls.Fields.NEGATIVE_INCREASE]
-            == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
-        ).all()
-
         # TODO implement assertion to check for shift, as sliced by geo
         # df['totalTestResults'] - df['totalTestResultsIncrease']  ==  df['totalTestResults'].shift(-1)
         return cls._rename_to_common_fields(data)
