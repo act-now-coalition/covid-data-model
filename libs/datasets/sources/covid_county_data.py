@@ -41,9 +41,57 @@ class CovidCountyDataDataSource(data_source.DataSource):
     }
 
     @classmethod
+    def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        negative_tests  positive_tests  total_tests  cases  count
+        True            False           False        True   6
+        False           False           True         False  39
+        True            True            True         False  245      Do nothing, leave cases blank
+        False           False           False        False  361      Do nothing, leave cases blank
+        True            False           True         True   627      pos = tests - neg
+        False           True            False        True   1079     Do nothing, no test data
+        True            True            False        True   7064     Do nothing, total_tests not used
+        False           True            True         True   25769    neg = tests - pos
+        False           False           True         True   32684    pos = cases, neg = tests - pos
+        True            True            True         True   61951    Have everything already
+        False           False           False        True   508238   No test data
+        """
+        # Make a copy to avoid modifying the argument.
+        df = data.copy()
+        tests_and_cases = df.eval(
+            "negative_tests.isna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
+        )
+        missing_neg = df.eval(
+            "negative_tests.isna() & positive_tests.notna() & total_tests.notna() & cases.notna()"
+        )
+        missing_pos = df.eval(
+            "negative_tests.notna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
+        )
+
+        df[CommonFields.POSITIVE_TESTS].mask(tests_and_cases, df[CommonFields.CASES], inplace=True)
+        df[CommonFields.NEGATIVE_TESTS].mask(
+            tests_and_cases, df[CommonFields.TOTAL_TESTS] - df[CommonFields.CASES], inplace=True
+        )
+
+        df[CommonFields.NEGATIVE_TESTS].mask(
+            missing_neg,
+            df[CommonFields.TOTAL_TESTS] - df[CommonFields.POSITIVE_TESTS],
+            inplace=True,
+        )
+
+        df[CommonFields.POSITIVE_TESTS].mask(
+            missing_pos,
+            df[CommonFields.TOTAL_TESTS] - df[CommonFields.NEGATIVE_TESTS],
+            inplace=True,
+        )
+
+        return df
+
+    @classmethod
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path).reset_index()
+        data = cls.standardize_data(data)
         # Column names are already CommonFields so don't need to rename
         return cls(data)
