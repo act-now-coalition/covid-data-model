@@ -82,8 +82,8 @@ class DatasetDiff(BaseModel):
 TS only in this file: {self.my_ts}
 TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()}
 """ + (
-            f"""TS diffs:\n{self.ts_diffs.sort_values('diff', ascending=False)}
-TS diffs by variable and has_overlap:\n{self.ts_diffs.groupby('variable has_overlap'.split()).mean()}
+            f"""TS diffs:\n{self.ts_diffs.sort_values('diff', ascending=False).head(20)}
+TS diffs by variable and has_overlap:\n{self.ts_diffs.groupby('variable has_overlap'.split()).mean().sort_values('diff', ascending=False).head(20)}
 """
             if not (self.ts_diffs is None or self.ts_diffs.empty)
             else ""
