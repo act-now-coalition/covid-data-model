@@ -123,6 +123,10 @@ def build_us_with_all_fields() -> Tuple[TimeseriesDataset, LatestValuesDataset]:
         for data_source_cls in data_source_classes
     }
 
+    for data_source in loaded_data_sources.values():
+        if data_source.provenance:
+            data_source.timeseries().to_csv(f"data/{data_source.SOURCE_NAME}-wide-dates.csv")
+
     return (
         _build_combined_dataset_from_sources(
             TimeseriesDataset,
@@ -434,5 +438,6 @@ def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
     dups = fips_var_grouped.transform("size") > 1
     if dups.any():
         log.warning("Multiple rows for a timeseries", bad_data=long_unindexed[dups])
-    first = fips_var_grouped.first()
-    return first
+    # https://stackoverflow.com/a/17841321/341400
+    joined = fips_var_grouped.agg(lambda col: ";".join(col))
+    return joined

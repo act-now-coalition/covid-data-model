@@ -1,10 +1,14 @@
+from typing import Tuple
+
 import pandas as pd
+import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.timeseries import TimeseriesDataset
+import libs.datasets.combined_datasets
 
 
 class CovidCountyDataDataSource(data_source.DataSource):
@@ -41,7 +45,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
     }
 
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+    def standardize_data(cls, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
         """
         negative_tests  positive_tests  total_tests  cases  count
         True            False           False        True   6
@@ -56,7 +60,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
         True            True            True         True   61951    Have everything already
         False           False           False        True   508238   No test data
         """
-        # Make a copy to avoid modifying the argument.
+        # Make a copy to avoid modifying the argument when using mask with inplace=True.
         df = data.copy()
         tests_and_cases = df.eval(
             "negative_tests.isna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
@@ -68,9 +72,22 @@ class CovidCountyDataDataSource(data_source.DataSource):
             "negative_tests.notna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
         )
 
+        # Keep the same order of rows in provenance as df so that the same masks can be used when
+        # writing it.
+        provenance = df.loc[:, [CommonFields.FIPS, CommonFields.DATE]]
+        provenance[CommonFields.POSITIVE_TESTS] = "none"
+        provenance[CommonFields.NEGATIVE_TESTS] = "none"
+
+        # Using where/mask is suggested by https://stackoverflow.com/a/36067403/341400
         df[CommonFields.POSITIVE_TESTS].mask(tests_and_cases, df[CommonFields.CASES], inplace=True)
         df[CommonFields.NEGATIVE_TESTS].mask(
             tests_and_cases, df[CommonFields.TOTAL_TESTS] - df[CommonFields.CASES], inplace=True
+        )
+        provenance[CommonFields.POSITIVE_TESTS].mask(
+            tests_and_cases, "tests_and_cases", inplace=True
+        )
+        provenance[CommonFields.NEGATIVE_TESTS].mask(
+            tests_and_cases, "tests_and_cases", inplace=True
         )
 
         df[CommonFields.NEGATIVE_TESTS].mask(
@@ -78,20 +95,27 @@ class CovidCountyDataDataSource(data_source.DataSource):
             df[CommonFields.TOTAL_TESTS] - df[CommonFields.POSITIVE_TESTS],
             inplace=True,
         )
+        provenance[CommonFields.NEGATIVE_TESTS].mask(missing_neg, "missing_neg", inplace=True)
 
         df[CommonFields.POSITIVE_TESTS].mask(
             missing_pos,
             df[CommonFields.TOTAL_TESTS] - df[CommonFields.NEGATIVE_TESTS],
             inplace=True,
         )
+        provenance[CommonFields.POSITIVE_TESTS].mask(missing_pos, "missing_pos", inplace=True)
 
-        return df
+        # Set the index as expected by _to_timeseries_rows.
+        provenance_series = libs.datasets.combined_datasets._to_timeseries_rows(
+            provenance.set_index([CommonFields.FIPS, CommonFields.DATE]), structlog.get_logger()
+        )
+
+        return df, provenance_series
 
     @classmethod
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path).reset_index()
-        data = cls.standardize_data(data)
+        data, provenance = cls.standardize_data(data)
         # Column names are already CommonFields so don't need to rename
-        return cls(data)
+        return cls(data, provenance)
