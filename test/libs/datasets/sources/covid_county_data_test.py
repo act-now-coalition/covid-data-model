@@ -24,7 +24,7 @@ def test_fix_tests_and_cases():
         "97123,2020-04-02,,,20,2\n"
     ).reset_index()
 
-    result_df = CovidCountyDataDataSource.standardize_data(df)
+    result_df, provenance = CovidCountyDataDataSource.standardize_data(df)
 
     assert to_dict([CommonFields.FIPS, CommonFields.DATE], result_df) == {
         ("97123", pd.to_datetime("2020-04-01")): {
@@ -40,6 +40,10 @@ def test_fix_tests_and_cases():
             CommonFields.CASES: 2,
         },
     }
+    assert provenance.to_dict() == {
+        ("97123", CommonFields.NEGATIVE_TESTS): "none;tests_and_cases",
+        ("97123", CommonFields.POSITIVE_TESTS): "none;tests_and_cases",
+    }
 
 
 def test_fix_missing_neg():
@@ -49,7 +53,7 @@ def test_fix_missing_neg():
         "97123,2020-04-02,,3,20,2\n"
     ).reset_index()
 
-    result_df = CovidCountyDataDataSource.standardize_data(df)
+    result_df, provenance = CovidCountyDataDataSource.standardize_data(df)
 
     assert to_dict([CommonFields.FIPS, CommonFields.DATE], result_df) == {
         ("97123", pd.to_datetime("2020-04-01")): {
@@ -65,6 +69,10 @@ def test_fix_missing_neg():
             CommonFields.CASES: 2,
         },
     }
+    assert provenance.to_dict() == {
+        ("97123", CommonFields.NEGATIVE_TESTS): "none;missing_neg",
+        ("97123", CommonFields.POSITIVE_TESTS): "none",
+    }
 
 
 def test_fix_missing_pos():
@@ -72,9 +80,10 @@ def test_fix_missing_pos():
         "fips,date,negative_tests,positive_tests,total_tests,cases\n"
         "97123,2020-04-01,9,1,10,1\n"
         "97123,2020-04-02,17,,20,2\n"
+        "97123,2020-04-03,26,4,30,4\n"
     ).reset_index()
 
-    result_df = CovidCountyDataDataSource.standardize_data(df)
+    result_df, provenance = CovidCountyDataDataSource.standardize_data(df)
 
     assert to_dict([CommonFields.FIPS, CommonFields.DATE], result_df) == {
         ("97123", pd.to_datetime("2020-04-01")): {
@@ -89,4 +98,14 @@ def test_fix_missing_pos():
             CommonFields.TOTAL_TESTS: 20,
             CommonFields.CASES: 2,
         },
+        ("97123", pd.to_datetime("2020-04-03")): {
+            CommonFields.NEGATIVE_TESTS: 26,
+            CommonFields.POSITIVE_TESTS: 4,
+            CommonFields.TOTAL_TESTS: 30,
+            CommonFields.CASES: 4,
+        },
+    }
+    assert provenance.to_dict() == {
+        ("97123", CommonFields.NEGATIVE_TESTS): "none",
+        ("97123", CommonFields.POSITIVE_TESTS): "none;missing_pos",
     }
