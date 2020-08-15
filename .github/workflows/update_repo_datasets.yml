@@ -91,4 +91,4 @@ jobs:
         DATA_AVAILABILITY_URL: http://tiny.cc/candata
       uses: Ilshidur/action-slack@fb92a78
       with:
-        args: 'update-dataset-snapshot succeeded. View Data Availability Report at ${{DATA_AVAILABILITY_URL)}'
+        args: 'update-dataset-snapshot succeeded. View Data Availability Report at ${{DATA_AVAILABILITY_URL}}'
