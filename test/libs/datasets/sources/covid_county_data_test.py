@@ -24,7 +24,7 @@ def test_fix_tests_and_cases():
         "97123,2020-04-02,,,20,2\n"
     ).reset_index()
 
-    result_df, provenance = CovidCountyDataDataSource.standardize_data(df)
+    result_df, provenance = CovidCountyDataDataSource.synthesize_test_metrics(df)
 
     assert to_dict([CommonFields.FIPS, CommonFields.DATE], result_df) == {
         ("97123", pd.to_datetime("2020-04-01")): {
@@ -53,7 +53,7 @@ def test_fix_missing_neg():
         "97123,2020-04-02,,3,20,2\n"
     ).reset_index()
 
-    result_df, provenance = CovidCountyDataDataSource.standardize_data(df)
+    result_df, provenance = CovidCountyDataDataSource.synthesize_test_metrics(df)
 
     assert to_dict([CommonFields.FIPS, CommonFields.DATE], result_df) == {
         ("97123", pd.to_datetime("2020-04-01")): {
@@ -83,7 +83,7 @@ def test_fix_missing_pos():
         "97123,2020-04-03,26,4,30,4\n"
     ).reset_index()
 
-    result_df, provenance = CovidCountyDataDataSource.standardize_data(df)
+    result_df, provenance = CovidCountyDataDataSource.synthesize_test_metrics(df)
 
     assert to_dict([CommonFields.FIPS, CommonFields.DATE], result_df) == {
         ("97123", pd.to_datetime("2020-04-01")): {

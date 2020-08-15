@@ -30,7 +30,7 @@ from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets import dataset_filter
-from libs import us_state_abbrev
+from libs import us_state_abbrev, wide_dates_df
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
@@ -124,8 +124,11 @@ def build_us_with_all_fields() -> Tuple[TimeseriesDataset, LatestValuesDataset]:
     }
 
     for data_source in loaded_data_sources.values():
-        if data_source.provenance:
-            data_source.timeseries().to_csv(f"data/{data_source.SOURCE_NAME}-wide-dates.csv")
+        if data_source.provenance is not None:
+            wide_dates_df.write_csv(
+                data_source.timeseries().get_date_columns(),
+                pathlib.Path(f"data/{data_source.SOURCE_NAME}-wide-dates.csv"),
+            )
 
     return (
         _build_combined_dataset_from_sources(

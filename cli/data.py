@@ -5,7 +5,7 @@ import pathlib
 import click
 import gspread
 
-from libs import google_sheet_helpers
+from libs import google_sheet_helpers, wide_dates_df
 from libs.qa import dataset_summary
 from libs.qa import data_availability
 from libs.datasets.timeseries import TimeseriesDataset
@@ -46,11 +46,9 @@ def update(summary_filename, wide_dates_filename):
     )
 
     if wide_dates_filename:
-        timeseries_dataset.get_date_columns().to_csv(
+        wide_dates_df.write_csv(
+            timeseries_dataset.get_date_columns(),
             str(timeseries_pointer.path).replace("timeseries.csv", wide_dates_filename),
-            date_format="%Y-%m-%d",
-            index=True,
-            float_format="%.12g",
         )
 
     if summary_filename:

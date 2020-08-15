@@ -324,7 +324,7 @@ def test_melt_provenance_multiple_sources():
     assert [l["event"] for l in logs] == ["Multiple rows for a timeseries"]
 
     assert long.to_dict() == {
-        ("97111", "cases"): "source_a",
+        ("97111", "cases"): "source_a;source_x",
         ("97111", "recovered"): "source_b",
         ("97222", "cases"): "source_c",
     }

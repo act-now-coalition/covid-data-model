@@ -45,21 +45,32 @@ class CovidCountyDataDataSource(data_source.DataSource):
     }
 
     @classmethod
-    def standardize_data(cls, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
+    def synthesize_test_metrics(cls, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
         """
-        negative_tests  positive_tests  total_tests  cases  count
-        True            False           False        True   6
-        False           False           True         False  39
-        True            True            True         False  245      Do nothing, leave cases blank
-        False           False           False        False  361      Do nothing, leave cases blank
+        Synthesize testing metrics where they can be calculated from other metrics.
+
+        This function processes each date independently. The fix applied depends on what testing and cases
+        metrics have a real value on that date. The following table lists the number of FIPS-date rows with
+        a given combination of metrics and the treatment applied by this function. The table was generated
+        with:
+
+        columns_to_check = ["negative_tests", "positive_tests", "total_tests", "cases"]
+        df[columns_to_check].notna().groupby(columns_to_check).size().reset_index(name="count").sort_values("count")
+
+        negative_tests  positive_tests  total_tests  cases  count    Treatment / reason for doing nothing
+        True            False           False        True   6        Very rare
+        False           False           True         False  39       Very rare
+        True            True            True         False  245      Testing data already set
+        False           False           False        False  361      No data available
         True            False           True         True   627      pos = tests - neg
-        False           True            False        True   1079     Do nothing, no test data
-        True            True            False        True   7064     Do nothing, total_tests not used
+        False           True            False        True   1079     Testing data not available
+        True            True            False        True   7064     Pos and neg tests set, total_tests not used
         False           True            True         True   25769    neg = tests - pos
         False           False           True         True   32684    pos = cases, neg = tests - pos
         True            True            True         True   61951    Have everything already
         False           False           False        True   508238   No test data
         """
+
         # Make a copy to avoid modifying the argument when using mask with inplace=True.
         df = data.copy()
         tests_and_cases = df.eval(
@@ -72,7 +83,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
             "negative_tests.notna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
         )
 
-        # Keep the same order of rows in provenance as df so that the same masks can be used when
+        # Keep the same order of rows in `provenance` as `df` so that the same masks can be used when
         # writing it.
         provenance = df.loc[:, [CommonFields.FIPS, CommonFields.DATE]]
         provenance[CommonFields.POSITIVE_TESTS] = "none"
@@ -104,7 +115,6 @@ class CovidCountyDataDataSource(data_source.DataSource):
         )
         provenance[CommonFields.POSITIVE_TESTS].mask(missing_pos, "missing_pos", inplace=True)
 
-        # Set the index as expected by _to_timeseries_rows.
         provenance_series = libs.datasets.combined_datasets._to_timeseries_rows(
             provenance.set_index([CommonFields.FIPS, CommonFields.DATE]), structlog.get_logger()
         )
@@ -116,6 +126,6 @@ class CovidCountyDataDataSource(data_source.DataSource):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path).reset_index()
-        data, provenance = cls.standardize_data(data)
+        data, provenance = cls.synthesize_test_metrics(data)
         # Column names are already CommonFields so don't need to rename
         return cls(data, provenance)
