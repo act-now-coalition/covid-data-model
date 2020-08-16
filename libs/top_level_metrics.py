@@ -22,7 +22,7 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
     # Making sure that the timeseries object passed in is only for one fips.
     assert len(timeseries.all_fips) == 1
     fips = timeseries.all_fips[0]
-    population = latest[CommonFields.POPULATION]
+    population = latest.population
     neg_tests_cumulative = timeseries.data[CommonFields.NEGATIVE_TESTS]
     neg_tests_daily = neg_tests_cumulative.diff()
 
@@ -122,5 +122,8 @@ def smooth_with_rolling_average(
     if includeTrailingZeros:
         return rolling_average
     last_valid_index = series.replace(0, np.nan).last_valid_index()
-    rolling_average[last_valid_index + 1 :] = np.nan
-    return rolling_average
+    if last_valid_index:
+        rolling_average[last_valid_index + 1 :] = np.nan
+        return rolling_average
+    else:  # entirely empty series:
+        return series

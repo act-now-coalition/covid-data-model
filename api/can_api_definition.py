@@ -119,7 +119,7 @@ class RegionSummary(base_model.APIBaseModel):
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
     projections: Optional[Projections] = pydantic.Field(...)
     actuals: Optional[Actuals] = pydantic.Field(...)
-    metrics: Optional[Metrics] = pydantic.Field(...)
+    metrics: Optional[Metrics] = pydantic.Field(default=None, description="Region level metrics")
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
     )
@@ -219,7 +219,7 @@ class PredictionTimeseriesRowWithHeader(PredictionTimeseriesRow):
 class RegionSummaryWithTimeseries(RegionSummary):
     timeseries: Optional[List[PredictionTimeseriesRow]] = pydantic.Field(...)
     actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
-    metricsTimeseries: List[MetricsTimeseriesRow] = pydantic.Field(...)
+    metricsTimeseries: Optional[List[MetricsTimeseriesRow]] = pydantic.Field(...)
 
     @property
     def region_summary(self) -> RegionSummary:
