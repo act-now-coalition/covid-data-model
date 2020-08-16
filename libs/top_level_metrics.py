@@ -25,10 +25,12 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
     neg_tests_cumulative = timeseries.data[CommonFields.NEGATIVE_TESTS]
     neg_tests_daily = neg_tests_cumulative.diff()
 
-    pos_tests_cumulative = timeseries.data[CommonFields.POSITIVE_TESTS]
+    cases_cumulative = timeseries.data[CommonFields.CASES]
+    pos_tests_cumulative = timeseries.data[CommonFields.CASES]
     pos_tests_daily = pos_tests_cumulative.diff()
+    cases_daily = cases_cumulative.diff()
 
-    case_density = calculate_case_density(cases=pos_tests_daily, population=population)
+    case_density = calculate_case_density(cases=cases_daily, population=population)
     test_positivity = calculate_test_positivity(
         pos_cases=pos_tests_daily, neg_tests=neg_tests_daily
     )
@@ -52,7 +54,7 @@ def calculate_case_density(
     Returns:
         Population cases density.
     """
-    smoothed = smoothWithRollingAverage(series=cases)
+    smoothed = smooth_with_rolling_average(series=cases)
     return smoothed / (population / normalize_by)
 
 
@@ -69,8 +71,8 @@ def calculate_test_positivity(
     Returns:
         Positive test rate.
     """
-    pos_smoothed = smoothWithRollingAverage(series=pos_cases)
-    neg_smoothed = smoothWithRollingAverage(series=neg_tests, includeTrailingZeros=False)
+    pos_smoothed = smooth_with_rolling_average(pos_cases)
+    neg_smoothed = smooth_with_rolling_average(neg_tests, includeTrailingZeros=False)
 
     last_n_pos = pos_smoothed[-lag_lookback:]
     last_n_neg = neg_smoothed[-lag_lookback:]
@@ -90,7 +92,9 @@ def calculate_metrics_for_counties_in_state(state: str):
         yield calculate_top_level_metrics_for_fips(fips)
 
 
-def smoothWithRollingAverage(series: pd.Series, window: int = 7, includeTrailingZeros: bool = True):
+def smooth_with_rolling_average(
+    series: pd.Series, window: int = 7, includeTrailingZeros: bool = True
+):
     """
     Smooths series with a min period of 1.
 
