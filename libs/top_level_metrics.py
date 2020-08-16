@@ -21,12 +21,14 @@ def calculate_top_level_metrics_for_fips(fips: str):
 def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, latest: dict):
     # Making sure that the timeseries object passed in is only for one fips.
     assert len(timeseries.all_fips) == 1
+    fips = timeseries.all_fips[0]
     population = latest[CommonFields.POPULATION]
     neg_tests_cumulative = timeseries.data[CommonFields.NEGATIVE_TESTS]
     neg_tests_daily = neg_tests_cumulative.diff()
 
     cases_cumulative = timeseries.data[CommonFields.CASES]
     pos_tests_cumulative = timeseries.data[CommonFields.CASES]
+    date = timeseries.data[CommonFields.DATE]
     pos_tests_daily = pos_tests_cumulative.diff()
     cases_daily = cases_cumulative.diff()
 
@@ -35,9 +37,14 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
         pos_cases=pos_tests_daily, neg_tests=neg_tests_daily
     )
 
-    return pd.DataFrame({"caseDensity": case_density, "testPositivity": test_positivity}).replace(
-        {np.nan: None}
-    )
+    top_level_metrics_data = {
+        "caseDensity": case_density,
+        "testPositivity": test_positivity,
+        "fips": fips,
+        "date": date,
+    }
+
+    return pd.DataFrame(top_level_metrics_data).replace({np.nan: None}).set_index("date")
 
 
 def calculate_case_density(
