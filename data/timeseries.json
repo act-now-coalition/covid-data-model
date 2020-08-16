@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "70eecbdb4e1a08f8ece79d06666ca6b4a5473483",
-    "branch": "master",
+    "sha": "a17169133d20347bac797315117394f5ba83464c",
+    "branch": "tgb-synthesize-testing-data",
     "is_dirty": true
   },
-  "updated_at": "2020-08-15T14:12:40.245522"
+  "updated_at": "2020-08-15T18:50:08.119054"
 }
