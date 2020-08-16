@@ -16,7 +16,6 @@ def generate_state_bed_row(**updates):
         "icu_beds": 1223,
         "aggregate_level": "state",
         "source": "DH",
-        "generated": True,
         "max_bed_count": 21480,
         "county": None,
         "country": "USA",
@@ -34,7 +33,6 @@ def generate_county_bed_row(**updates):
         "icu_beds": 206,
         "aggregate_level": "county",
         "source": "DH",
-        "generated": False,
         "max_bed_count": 4474,
         "county": "Middlesex County",
         "country": "USA",
@@ -114,6 +112,14 @@ def test_get_data():
 
     data = beds_data.get_record_for_fips("99")
     assert not data
+
+
+def test_pr_aggregation():
+    beds_data = CovidCareMapBeds.local().beds()
+    data = beds_data.get_record_for_fips("72")
+    assert data
+    assert data["all_beds_occupancy_rate"] < 1
+    assert data["icu_occupancy_rate"] < 1
 
 
 def test_nyc_aggregation():

@@ -17,6 +17,9 @@ class FIPSPopulation(data_source.DataSource):
 
     https://www.census.gov/data/datasets/time-series/demo/popest/2010s-counties-total.html
     https://www.census.gov/geographies/reference-files/2018/demo/popest/2018-fips.html
+
+    Puerto Rico-specific county data:
+    https://www.census.gov/data/datasets/time-series/demo/popest/2010s-total-puerto-rico-municipios.html
     """
 
     FILE_PATH = CURRENT_FOLDER / "fips_population.csv"
@@ -42,6 +45,7 @@ class FIPSPopulation(data_source.DataSource):
 
     COMMON_FIELD_MAP = {
         CommonFields.POPULATION: Fields.POPULATION,
+        CommonFields.COUNTY: CommonFields.COUNTY,  # COUNTY isn't in the LatestValueDataset.INDEX_FIELDS
     }
 
     def __init__(self, path):
@@ -82,7 +86,8 @@ class FIPSPopulation(data_source.DataSource):
         states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(ABBREV_US_FIPS)
         states_aggregated[cls.Fields.COUNTY] = None
 
-        return pd.concat([data, states_aggregated])
+        common_fields_data = cls._rename_to_common_fields(pd.concat([data, states_aggregated]))
+        return common_fields_data
 
 
 def build_fips_data_frame(census_csv, counties_csv):

@@ -70,4 +70,5 @@ class KinsaDataset(data_source.DataSource):
 
         data = data.rename(columns={"region_id": cls.Fields.FIPS, "region_name": cls.Fields.COUNTY})
         data = data.drop(columns=["region_type"])
+        data = cls._rename_to_common_fields(data)
         return data

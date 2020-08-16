@@ -37,6 +37,7 @@ class TestAndTraceData(data_source.DataSource):
     def standardize_data(cls, data):
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
+        data = cls._rename_to_common_fields(data)
         return data
 
     @classmethod

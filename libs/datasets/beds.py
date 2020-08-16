@@ -20,7 +20,6 @@ class BedsDataset(object):
 
         COUNTY = "county"
         SOURCE = "source"
-        GENERATED = "generated"
         # Combined beds are the max of staffed and licensed beds.
         # The need for this may be dataset specific, but there are cases in the
         # DH Beds dataset where a source only has either staffed or licensed.
@@ -82,7 +81,6 @@ class BedsDataset(object):
         final_columns = to_common_fields.values()
         data = data.rename(columns=to_common_fields)[final_columns]
         data[cls.Fields.SOURCE] = source.SOURCE_NAME
-        data[cls.Fields.GENERATED] = False
 
         # Generating max bed count.
         columns_to_consider = [cls.Fields.STAFFED_BEDS, cls.Fields.LICENSED_BEDS]
@@ -94,7 +92,6 @@ class BedsDataset(object):
                 data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE,
             ).reset_index()
 
-            non_matching[cls.Fields.GENERATED] = True
             data = pd.concat([data, non_matching])
 
         fips_data = dataset_utils.build_fips_data_frame()
@@ -109,7 +106,7 @@ class BedsDataset(object):
         nyc_data = data[data[cls.Fields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
         if not len(nyc_data):
             return data
-        group = cls.STATE_GROUP_KEY + [cls.Fields.GENERATED]
+        group = cls.STATE_GROUP_KEY
         weighted_all_bed_occupancy = None
 
         if cls.Fields.ALL_BED_TYPICAL_OCCUPANCY_RATE in data.columns:

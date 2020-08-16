@@ -12,6 +12,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
+from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
@@ -23,7 +24,6 @@ from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
-from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
@@ -83,7 +83,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.MAX_BED_COUNT: [],
     CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
     CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
-    CommonFields.RECOVERED: [JHUDataset],
+    CommonFields.RECOVERED: [],
     CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
 }
 
@@ -111,15 +111,31 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 )
 
 
-def build_us_timeseries_with_all_fields() -> TimeseriesDataset:
-    return _build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER,
+def build_us_with_all_fields() -> Tuple[TimeseriesDataset, LatestValuesDataset]:
+    data_source_classes = set(
+        chain(
+            chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),
+            chain.from_iterable(ALL_TIMESERIES_FEATURE_DEFINITION.values()),
+        )
     )
+    loaded_data_sources = {
+        data_source_cls.SOURCE_NAME: data_source_cls.local()
+        for data_source_cls in data_source_classes
+    }
 
-
-def build_us_latest_with_all_fields() -> LatestValuesDataset:
-    return _build_combined_dataset_from_sources(
-        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
+    return (
+        _build_combined_dataset_from_sources(
+            TimeseriesDataset,
+            loaded_data_sources,
+            ALL_TIMESERIES_FEATURE_DEFINITION,
+            filter=US_STATES_FILTER,
+        ),
+        _build_combined_dataset_from_sources(
+            LatestValuesDataset,
+            loaded_data_sources,
+            ALL_FIELDS_FEATURE_DEFINITION,
+            filter=US_STATES_FILTER,
+        ),
     )
 
 
@@ -224,46 +240,35 @@ def get_timeseries_for_state(
 
 def _build_combined_dataset_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
+    loaded_data_sources: Mapping[str, DataSource],
     feature_definition_config: FeatureDataSourceMap,
     filter: dataset_filter.DatasetFilter,
 ):
     """Builds a combined dataset from a feature definition.
 
     Args:
-        target_dataset_cls: Target dataset class.
+        target_dataset_cls: Type of the returned combined dataset.
+        loaded_data_sources: Dictionary mapping source name to a DataSource object
         feature_definition_config: Dictionary mapping an output field to the
-            data sources that will be used to pull values from.
-        filters: A list of dataset filters applied to the datasets before
+            data source classes that will be used to pull values from.
+        filter: A dataset filters applied to the datasets before
             assembling features.
     """
-    loaded_data_sources = {
-        data_source_cls: data_source_cls.local()
-        for data_source_cls in set(chain.from_iterable(feature_definition_config.values()))
-    }
-
-    # Convert data sources to instances of `target_data_cls` and apply filter
-    intermediate_datasets = {
-        data_source_cls.SOURCE_NAME: filter.apply(target_dataset_cls.build_from_data_source(source))
-        for data_source_cls, source in loaded_data_sources.items()
-    }
-
-    datasets: MutableMapping[str, pd.DataFrame] = {}
-    for name, dataset_obj in intermediate_datasets.items():
-        data_with_index = dataset_obj.data.set_index(target_dataset_cls.COMMON_INDEX_FIELDS)
-        if data_with_index.index.duplicated(keep=False).any():
-            raise ValueError(f"Duplicate in {name}")
-        datasets[name] = data_with_index
-        # If any duplicates slip in the following code may help you debug them:
-        # https://stackoverflow.com/a/34297689
-        # datasets[name] = data_with_index.loc[~data_with_index.duplicated(keep="first"), :]
-        # datasets[key] = dataset_obj.data.groupby(target_dataset_cls.COMMON_INDEX_FIELDS).first() fails
-        # due to <NA>s: cannot convert to 'float64'-dtype NumPy array with missing values. Specify an appropriate 'na_value' for this dtype.
 
     feature_definition = {
         field_name: [cls.SOURCE_NAME for cls in classes]
         for field_name, classes in feature_definition_config.items()
         if classes
     }
+
+    datasets: MutableMapping[str, pd.DataFrame] = {}
+    for source_name in chain.from_iterable(feature_definition.values()):
+        source = loaded_data_sources[source_name]
+        if target_dataset_cls == TimeseriesDataset:
+            datasets[source_name] = filter.apply(source.timeseries()).indexed_data()
+        else:
+            assert target_dataset_cls == LatestValuesDataset
+            datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
     return target_dataset_cls(data.reset_index(), provenance=_to_timeseries_rows(provenance, _log))

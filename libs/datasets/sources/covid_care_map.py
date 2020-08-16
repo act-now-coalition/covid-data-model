@@ -93,4 +93,4 @@ class CovidCareMapBeds(data_source.DataSource):
         path = data_root / cls.STATE_DATA_PATH
         data = pd.read_csv(path)
         state_data = cls.standardize_data(data, AggregationLevel.STATE)
-        return cls(pd.concat([county_data, state_data]))
+        return cls(cls._rename_to_common_fields(pd.concat([county_data, state_data])))

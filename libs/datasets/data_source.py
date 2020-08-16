@@ -1,3 +1,6 @@
+from itertools import chain
+from typing import Type
+
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
@@ -34,9 +37,6 @@ class DataSource(object):
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
-    def all_fields_map(self):
-        return {**self.COMMON_FIELD_MAP, **self.INDEX_FIELD_MAP}
-
     @property
     def state_data(self) -> pd.DataFrame:
         """Returns a new BedsDataset containing only state data."""
@@ -60,14 +60,46 @@ class DataSource(object):
     @lru_cache(None)
     def beds(self) -> LatestValuesDataset:
         """Builds generic beds dataset"""
-        return LatestValuesDataset.build_from_data_source(self)
+        return self.latest_values()
 
     @lru_cache(None)
     def population(self) -> LatestValuesDataset:
         """Builds generic beds dataset"""
-        return LatestValuesDataset.build_from_data_source(self)
+        return self.latest_values()
 
     @lru_cache(None)
     def timeseries(self) -> TimeseriesDataset:
-        """Builds generic beds dataset"""
-        return TimeseriesDataset.build_from_data_source(self)
+        """Build TimeseriesDataset from this data source."""
+        if set(self.INDEX_FIELD_MAP.keys()) != set(TimeseriesDataset.INDEX_FIELDS):
+            raise ValueError("Index fields must match")
+
+        return TimeseriesDataset.from_source(
+            self, fill_missing_state=self.FILL_MISSING_STATE_LEVEL_DATA
+        )
+
+    @lru_cache(None)
+    def latest_values(self) -> LatestValuesDataset:
+        if set(self.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
+            return LatestValuesDataset(self.timeseries().latest_values())
+
+        if set(self.INDEX_FIELD_MAP.keys()) != set(LatestValuesDataset.INDEX_FIELDS):
+            raise ValueError("Index fields must match")
+
+        return LatestValuesDataset.from_source(
+            self, fill_missing_state=self.FILL_MISSING_STATE_LEVEL_DATA
+        )
+
+    @classmethod
+    def _rename_to_common_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
+        """Returns a copy of the DataFrame with only common columns in the class field maps."""
+        all_fields_map = {**cls.COMMON_FIELD_MAP, **cls.INDEX_FIELD_MAP}
+        to_common_fields = {value: key for key, value in all_fields_map.items()}
+        final_columns = to_common_fields.values()
+        return df.rename(columns=to_common_fields)[final_columns]
+
+    @classmethod
+    def _drop_unlisted_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
+        """Returns a copy of the DataFrame with columns not in the class field maps dropped."""
+        # Use pd.unique to preserve order, unlike making a set.
+        all_keys = pd.unique(list(chain(cls.INDEX_FIELD_MAP.keys(), cls.COMMON_FIELD_MAP.keys())))
+        return df[all_keys]

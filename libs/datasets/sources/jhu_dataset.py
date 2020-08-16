@@ -115,7 +115,13 @@ class JHUDataset(data_source.DataSource):
             data, county_key=cls.Fields.COUNTY, fips_key=cls.Fields.FIPS
         )
 
-        return data
+        # Not including cases grouped in recovered state.
+        # on 8/11 recovered cases were assigned to a specific fips which caused duplicates.
+        is_recovered_state = data[cls.Fields.STATE] == "Recovered"
+        data.loc[is_recovered_state, cls.Fields.FIPS] = None
+
+        common_fields_data = cls._rename_to_common_fields(data)
+        return common_fields_data
 
     @classmethod
     def _fill_incomplete_county_data(cls, data):

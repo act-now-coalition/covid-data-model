@@ -1,6 +1,6 @@
 {
   "title": "RegionSummaryWithTimeseries",
-  "description": "Base model for API output.",
+  "description": "Summary data for a region with prediction timeseries data and actual timeseries data.",
   "type": "object",
   "properties": {
     "countryName": {
@@ -81,7 +81,7 @@
   "definitions": {
     "ResourceUsageProjection": {
       "title": "ResourceUsageProjection",
-      "description": "Base model for API output.",
+      "description": "Resource usage projection data.",
       "type": "object",
       "properties": {
         "peakShortfall": {
@@ -110,7 +110,7 @@
     },
     "Projections": {
       "title": "Projections",
-      "description": "Base model for API output.",
+      "description": "Summary of projection data.",
       "type": "object",
       "properties": {
         "totalHospitalBeds": {
@@ -151,7 +151,7 @@
     },
     "ResourceUtilization": {
       "title": "ResourceUtilization",
-      "description": "Base model for API output.",
+      "description": "Utilization of hospital resources.",
       "type": "object",
       "properties": {
         "capacity": {
@@ -190,7 +190,7 @@
     },
     "Actuals": {
       "title": "Actuals",
-      "description": "Base model for API output.",
+      "description": "Known actuals data.",
       "type": "object",
       "properties": {
         "population": {
@@ -249,7 +249,7 @@
     },
     "PredictionTimeseriesRow": {
       "title": "PredictionTimeseriesRow",
-      "description": "Base model for API output.",
+      "description": "Prediction data for a single day.",
       "type": "object",
       "properties": {
         "date": {
@@ -343,7 +343,7 @@
     },
     "ActualsTimeseriesRow": {
       "title": "ActualsTimeseriesRow",
-      "description": "Base model for API output.",
+      "description": "Actual data for a specific day.",
       "type": "object",
       "properties": {
         "population": {

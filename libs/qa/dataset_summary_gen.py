@@ -20,8 +20,8 @@ def generate_field_summary(series: pd.Series) -> pd.Series:
     largest_delta_date = None
 
     if has_value:
-        min_date = series.first_valid_index()[1]
-        max_date = series.last_valid_index()[1]
+        min_date = series.first_valid_index()
+        max_date = series.last_valid_index()
         latest_value = series[series.notnull()].iloc[-1]
         max_value = series.max()
         min_value = series.min()
@@ -29,7 +29,7 @@ def generate_field_summary(series: pd.Series) -> pd.Series:
         largest_delta = series.diff().abs().max()
         # If a
         if len(series.diff().abs().dropna()):
-            largest_delta_date = series.diff().abs().idxmax()[1]
+            largest_delta_date = series.diff().abs().idxmax()
 
     results = {
         "has_value": has_value,
