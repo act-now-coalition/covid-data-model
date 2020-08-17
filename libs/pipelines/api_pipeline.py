@@ -28,7 +28,7 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
 from libs.functions import get_can_projection
-from libs.top_level_metrics import calculate_top_level_metrics_for_fips
+from libs.top_level_metrics import calculate_top_level_metrics_for_timeseries
 from libs.us_state_abbrev import US_STATE_ABBREV
 
 logger = structlog.getLogger()
@@ -73,7 +73,7 @@ def run_on_all_fips_for_intervention(
 
 
 def generate_metrics_and_latest_for_fips(
-    fips,
+    timeseries: TimeseriesDataset, latest: dict
 ) -> [List[MetricsTimeseriesRow], Optional[MetricsTimeseriesRow]]:
     """
     For a FIPS, generate a MetricsTimeseriesRow per day and return the latest.
@@ -85,7 +85,9 @@ def generate_metrics_and_latest_for_fips(
         Tuple of MetricsTimeseriesRows for all days and the latest.
     """
     metrics_timeseries = (
-        calculate_top_level_metrics_for_fips(fips).reset_index().to_dict(orient="records")
+        calculate_top_level_metrics_for_timeseries(timeseries, latest)
+        .reset_index()
+        .to_dict(orient="records")
     )
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
     if len(metrics_for_fips):
@@ -99,7 +101,6 @@ def build_timeseries_for_fips(
     intervention, us_latest, us_timeseries, model_output_dir, fips
 ) -> Optional[RegionSummaryWithTimeseries]:
     fips_latest = us_latest.get_record_for_fips(fips)
-    metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(fips)
 
     if intervention is Intervention.SELECTED_INTERVENTION:
         state = fips_latest[CommonFields.STATE]
@@ -115,8 +116,11 @@ def build_timeseries_for_fips(
         return None
 
     try:
-        region_summary = api.generate_region_summary(fips_latest, metrics_latest, model_output)
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
+        metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
+            fips_timeseries, fips_latest
+        )
+        region_summary = api.generate_region_summary(fips_latest, metrics_latest, model_output)
         region_timeseries = api.generate_region_timeseries(
             region_summary, fips_timeseries, metrics_timeseries, model_output
         )
