@@ -27,7 +27,7 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
     neg_tests_daily = neg_tests_cumulative.diff()
 
     cases_cumulative = timeseries.data[CommonFields.CASES]
-    pos_tests_cumulative = timeseries.data[CommonFields.CASES]
+    pos_tests_cumulative = timeseries.data[CommonFields.POSITIVE_TESTS]
     date = timeseries.data[CommonFields.DATE]
     pos_tests_daily = pos_tests_cumulative.diff()
     cases_daily = cases_cumulative.diff()
