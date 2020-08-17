@@ -88,6 +88,37 @@ class Demographics:
 
         return (y, m, o)
 
+    @staticmethod
+    def median_age_f():
+        """
+        Median age of covid cases for all of US.
+        TODO this is from Florida so need to update.
+        """
+
+        def med_func(t):
+            t1 = 120.0
+            max = 48.0
+            t2 = 180.0
+            min = 37.0
+            if t < t1:
+                return max
+            elif t > t2:
+                return min
+            else:
+                return max - (max - min) * (t - t1) / (t2 - t1)
+
+        return med_func
+
+
+def ramp_function(t_list, start_value, end_value):
+    """
+    Returns a function that implements a linear ramp from start_value to end_value over
+    the time domain present in (an ordered) t_list
+    """
+    rate = (end_value - start_value) / (t_list[-1] - t_list[0])
+    ftn = lambda t: start_value + (t - t_list[0]) * rate
+    return ftn
+
 
 # Transition fractions to Hospitalizations and Deaths by age groups
 # 0-35, 35-65 and 65-100
@@ -132,23 +163,60 @@ class NowcastingSEIRModel:
         # Retain passed in parameters
         self.lr_fh = lr_fh
         self.lr_fd = lr_fd
-        self.median_age = median_age
         self.delay_ci_h = delay_ci_h  # not using this yet
 
         # __________Fixed parameters not trained_________
-        self.t_e = 2.0  # 2.0  # days
-        self.t_i = 6.0  # 6.0  # days
-        self.serial_period = self.t_e + 0.5 * self.t_i
-        self.t_h = 6.0  # days
+        self.t_e = 2.0  # 2.0  sigma was 1/3. days^-1 below
+        # TODO serial period as ~5 days in our old model runs. How is this not 6 = 3 + 1/2 * 6?
+        self.t_i = 6.0  # delta was 1/6. days^-1 below
+        self.serial_period = self.t_e + 0.5 * self.t_i  # this is 5 days agrees with delta below
+        self.t_h = 8.0  # delta_hospital below was 1./8. days^-1
         self.fw0 = 0.5
-        self.fh0 = self.fh0_f(median_age=median_age)  # TODO use passed in demographics
-        self.fd0 = self.fd0_f(median_age=median_age)  # TODO use passed in demographics
         self.pos0 = 0.5  # max positivity for testing -> 0
         self.pos_c = 1.75
         self.pos_x0 = 2.0
         # Solution that ensures continuity of function below and its derivative
         self.pos_b = (3.0 * self.pos_x0 - self.pos_c) / (4.0 * self.pos_x0 ** 1.5)
         self.pos_d = self.pos_x0 ** 0.5 / 4.0 * (3.0 * self.pos_c - self.pos_x0)
+
+    def run_stationary(self, rt, median_age, t_over_x, x_is_new_cases=True):
+        """
+        Given R(t) and T/I or T/C run to steady state and return ratios of all compartments
+        """
+
+        x_fixed = 1000.0
+        num_days = 100
+        t_list = np.linspace(0, num_days, num_days + 1)
+
+        if x_is_new_cases:
+            run = ModelRun(
+                self,
+                N=2e7,
+                t_list=t_list,
+                testing_rate_f=lambda t: t_over_x * x_fixed,
+                rt_f=lambda t: rt,
+                case_median_age_f=lambda t: median_age,
+                nC_initial=x_fixed,
+                force_stationary=True,
+            )
+        else:
+            i_fixed = 1000.0
+            run = ModelRun(
+                self,
+                N=2e7,
+                t_list=make_tlist(100),
+                testing_rate_f=lambda t: t_over_x * x_fixed,
+                rt_f=lambda t: rt,
+                case_median_age_f=lambda t: median_age,
+                I_initial=x_fixed,
+                force_stationary=True,
+            )
+
+        (history, ratios) = run.execute_lists_ratios()
+        compartments = history[-1]
+        ratios["rt"] = rt
+
+        return (ratios, compartments)
 
     def positivity(self, t_over_i):
         """
@@ -185,6 +253,15 @@ class NowcastingSEIRModel:
             else:
                 hi = x
         return 10.0 ** x
+
+    def adjustFractions(self, adj_H, adj_nD):
+        """
+        Adjusting the fractions (as a model is running)
+        """
+        (b, m) = self.lr_fh
+        self.lr_fh = (b * adj_H, m)
+        (b, m) = self.lr_fd
+        self.lr_fd = (b * adj_nD, m)
 
     def fh0_f(self, f_young=None, f_old=None, median_age=None):
         """
@@ -226,7 +303,7 @@ class NowcastingSEIRModel:
 
 class ModelRun:
     """
-    A run (in time) of a model with (previously fit) parameters maintained in nowcastModel
+    A run (in time) of a model with (previously fit) parameters maintained in model
     Run will also have the ability to "linearly" adjust the observed ratios of hopitalizations to cases and deaths
     to hopitalizations to align with observed compartment histories without external shimming.
 
@@ -253,78 +330,214 @@ class ModelRun:
         case_fraction_traceable - fraction of cases that have been traced to their source
     
     Linear (ramp in time) adjustments (to I/C -> H and H->D rates) determined during model training.
+
+    Parameters
+    ----------
+    model: NowcastingSEIRModel
+        Run independent parts of the base Model - parts that will be trained generally ahead of time
+    N: int
+        Total population TODO move this to the Model
+    t_list: int[]
+        Times relative to a reference date
+    rt_f: lambda(t)
+        instead of suppression_policy, R0
+        TODO option to provide smoothed cases directly
+    testing_rate_f: lambda(t)
+        Testing rate
+    case_median_age_f: lambda(t)
+        Median age of people that test positive each day
+
+    TODO how to specify compartments for initialization (up to today) that covers all cases
+        Starting from bare minimum of values: C or I
+        Starting from just a few observables for today: C, D, nC, H, nD (last 3 as constraints)
+        Starting from DataFrame outputs of a previous run
+
+    today: int[]
+        Day that represents "today". Days before this day are treated as burn in for the run while those
+        after it are the "predictions" of the future. When this parameter is not supplied the whole
+        run is treated as in the future (today is the 1st day in t_list)
+    force_stationary: boolean
+        This run used to determine steady state compartment distributions to initialize another run.
+        If True compartments are adjusted on each timestep to keep S and one of (I, nC) constant
+    auto_initialize_other_compartments: boolean
+        Controls (primarily non observable) compartment initialization. If set this flag causes a run
+        with force_stationary to be run to derive steady state compartment values for initialization
     """
+
+    @staticmethod
+    def array_to_df(arr):
+        df = pd.DataFrame(arr, columns=["S", "E", "I", "A", "nC", "C", "H", "nD", "R", "b"])
+        if len(df.index) > 1:
+            df["D"] = df["nD"].cumsum()
+            df["b"][0] = None
+        return df
+
+    @staticmethod
+    def df_to_array(df):
+        rtn = df[["S", "E", "I", "A", "nC", "C", "H", "nD", "R", "b"]].to_numpy()
+        return rtn
+
+    @staticmethod
+    def dict_to_array(d):
+        df = pd.DataFrame(d, index=[0])
+        return ModelRun.df_to_array(df)[0]
+
+    @staticmethod
+    def array_to_dict(arr):
+        rtn = {
+            "S": arr[0],
+            "E": arr[1],
+            "I": arr[2],
+            "A": arr[3],
+            "nC": arr[4],
+            "C": arr[5],
+            "H": arr[6],
+            "nD": arr[7],
+            "R": arr[8],
+            "b": arr[9],
+        }
+        return rtn
+
+    @staticmethod
+    def make_array(S, I=None, nC=None, H=None, nD=None):
+        if nC is not None:
+            nC0 = nC
+            I0 = nC
+        elif I is not None:
+            I0 = I
+            nC0 = 0.0
+        else:
+            I0 = 100.0
+            nC0 = 0.0
+        y = [
+            (
+                S,
+                0.0,  # E
+                I0,
+                0.0,  # A=W
+                nC0,
+                7.0 * nC0,  # C
+                0.0 if H is None else H,  # H
+                0.0 if nD is None else nD,  # D
+                0.0,  # R
+                0.0,  # beta
+            )
+        ]
+        return y
 
     def __init__(
         self,
-        nowcastModel,
+        model,
         N,  # population of the jurisdiction
         t_list,  # array of days
+        #### Time varying inputs needed into the future
         testing_rate_f,  # tests per day assumed for the future
         rt_f,  # instead of suppression_policy, R0
-        force_stationary=False,  # if True susceptible will be pinned to N
-        I_initial=None,  # initial infected
-        nC_initial=None,
-        S_initial=None,
-        compartment_ratios_initial=None,
-        # hospitalizations_threshold=None,  # At which point mortality starts to increase due to constrained resources
-        # Observables to be eventually used in further constraining the model
-        # observed_compartment_history=None,
-        test_positivity_f=None,
+        # TODO option to provide smoothed cases directly
         case_median_age_f=None,
         # case_fraction_traceable_f=None,
         # test_processing_delay_f=None,
+        test_positivity_f=None,
+        #### Initial conditions of major observables
+        I_initial=None,  # initial infected
+        nC_initial=None,
+        S_initial=None,
+        nD_initial=None,
+        H_initial=None,
+        initial_compartments=None,
+        compartment_ratios_initial=None,
+        # hospitalizations_threshold=None,  # At which point mortality starts to increase due to constrained resources
+        # Observable compartments to be eventually used in further constraining the model
+        # observed_compartment_history=None,
+        #### Optional controls for how the model run operates
+        force_stationary=False,  # if True susceptible will be pinned to N
+        auto_initialize_other_compartments=False,
+        auto_calibrate=False,
+        historical_compartments=None,
+        today=None,
     ):
-        self.nowcastModel = nowcastModel
+        self.model = model
         self.N = N
         self.t_list = t_list
         self.testing_rate_f = testing_rate_f
         self.rt_f = rt_f
         self.force_stationary = force_stationary
         self.test_positivity_f = test_positivity_f
+        self.case_median_age_f = case_median_age_f
+        self.auto_calibrate = auto_calibrate
+        self.initial_compartments = initial_compartments
+        self.historical_compartments = historical_compartments
+        self.today = today
 
-        self.S_initial = S_initial if S_initial is not None else N
-        self.compartment_ratios_initial = compartment_ratios_initial  # get applied at run time
+        t0 = t_list[0]
+        if self.historical_compartments is not None:
+            hc = self.historical_compartments
+            S_initial = hc["S"].values[0] if "S" in hc else None
+            I_initial = hc["I"].values[0] if "I" in hc else None
+            nC_initial = hc["nC"].values[0] if "nC" in hc else None
+            H_initial = hc["H"].values[0] if "H" in hc else None
+            nD_initial = hc["nD"].values[0] if "nD" in hc else None
+        elif self.initial_compartments is not None:
+            ic = self.initial_compartments
+            S_initial = ic["S"] if "S" in ic else None
+            I_initial = ic["I"] if "I" in ic else None
+            nC_initial = ic["nC"] if "nC" in ic else None
+            H_initial = ic["H"] if "H" in ic else None
+            nD_initial = ic["nD"] if "nD" in ic else None
 
-        if nC_initial is not None:
-            self.nC_initial = nC_initial
-            self.I_initial = nC_initial
-        elif I_initial is not None:
-            self.I_initial = I_initial
-            self.nC_initial = 0.0
+        if auto_initialize_other_compartments:
+            x = nC_initial if nC_initial is not None else I_initial
+            (ignore, compartments) = model.run_stationary(
+                rt_f(t0),
+                case_median_age_f(t0),
+                t_over_x=testing_rate_f(t0) / x,
+                x_is_new_cases=True if nC_initial is not None else False,
+            )
+            self.compartment_ratios_initial = compartments
         else:
-            self.I_initial = 100.0
-            self.nC_initial = 0.0
+            self.compartment_ratios_initial = compartment_ratios_initial  # get applied at run time
 
-    def execute_dataframe_ratios(self):
+        S = S_initial if S_initial is not None else self.N
+        self.history = ModelRun.make_array(
+            S=S, I=I_initial, nC=nC_initial, H=H_initial, nD=nD_initial
+        )
+
+    def execute_dataframe_ratios_fig(self):
         (history, ratios) = self.execute_lists_ratios()
-        df = pd.DataFrame(history, columns=["S", "E", "I", "W", "nC", "C", "H", "D", "R"])
-        df["nD"] = df["D"] - df["D"].shift(fill_value=0.0)
-        df["nD"][0] = df["nD"][1]
-        return (df, ratios)
+        df = ModelRun.array_to_df(history)
+        self.results = df
+        fig = self.plot_results()
+        return (df, ratios, fig)
 
     def execute_lists_ratios(self):
-        if self.compartment_ratios_initial is None:  # starting from just I or C
-            y = (
-                self.S_initial,
-                0.0,  # E
-                self.I_initial,
-                0.0,  # W
-                self.nC_initial,  # nC (new cases)
-                7.0 * self.nC_initial,  # C (active cases)
-                0.0,  # H (active hospitalizations)
-                0.0,  # D
-                0.0,  # R
-            )
-        else:
-            if self.nC_initial > 0.0:  # starting from all compartments scaled
-                factor = self.nC_initial / self.compartment_ratios_initial[4]  # cases
+        y = self.history[0]
+        y0 = ModelRun.array_to_dict(y)  # convenient to use dict
+        change_track_nC = True if y0["nC"] > 0.0 else False
+
+        if self.compartment_ratios_initial is not None:
+            y0 = ModelRun.array_to_dict(self.history[0])
+            # TODO do the same for compartments
+            if y0["nC"] > 0.0:  # starting from all compartments scaled
+                factor = y0["nC"] / self.compartment_ratios_initial[4]  # cases
             else:
-                factor = self.I_initial / self.compartment_ratios_initial[2]  # cases
+                factor = y0["I"] / self.compartment_ratios_initial[2]  # cases
             y = [x * factor for x in self.compartment_ratios_initial]
-            y[0] = self.S_initial
-            y[7] = 0.0  # start deaths over
+            y[0] = y0["S"]
             y[8] = 0.0  # start recoveries over
+            y[9] = 0.0
+
+        if self.auto_calibrate:
+            current = ModelRun.array_to_dict(y)
+            adj_H = 1.0
+            adj_nD = 1.0
+            if y0["H"] > 0.0 and current["H"] > 0.0:
+                adj_H = y0["H"] / current["H"]
+                current["H"] = y0["H"]
+            if y0["nD"] > 0.0 and current["nD"] > 0.0:
+                adj_nD = y0["nD"] / current["nD"] / adj_H
+                current["nD"] = y0["nD"]
+            y = ModelRun.dict_to_array(current)
+            self.model.adjustFractions(adj_H, adj_nD)
 
         y_accum = list()
         y_accum.append(y)
@@ -336,11 +549,14 @@ class ModelRun:
             # TODO determine dt from t_list and make sure _time_step using it correctly
             y = list(y)
             dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
-            (dS, dE, dI, dW, nC, dC, dH, dD, dR) = dy
+            (dS, dE, dI, dW, nC, dC, dH, dD, dR, b) = dy
             y_new = [a + b for a, b in zip(y, dy)]
-            y_new[4] = nC  # do not accumulate daily new cases
+            # do not accumulate daily new cases, deaths or beta
+            y_new[4] = nC
+            y_new[7] = dD
+            y_new[9] = b
 
-            if self.nC_initial > 0.0:
+            if change_track_nC:
                 fractional_change = y_new[4] / y[4]
             else:
                 fractional_change = y_new[2] / y[2]
@@ -348,36 +564,34 @@ class ModelRun:
             # Apply stationarity if applicable
             if self.force_stationary:
                 S_last = y[0]
-                y = [
-                    v / fractional_change for v in y_new
-                ]  # keep I constant apply same adjustment to all
-                y[0] = S_last  # but keep S exactly constant
+                # apply fractional change adjustments except to S and b(eta)
+                y = [v / fractional_change for v in y_new]
+                y[9] = y_new[9]
+                y[0] = S_last
 
                 # Ignore accumulating
-                D = dD
-                y[7] = D
+                # D = dD
+                # y[7] = D
                 R = dR
                 y[8] = R
             else:
                 y = y_new
 
-            (S, E, I, W, nC, C, H, D, R) = y
-            r_dD_nC = dD / nC  # new deaths over new cases - apparent time dependent IFR
+            (S, E, I, W, nC, C, H, nD, R, b) = y
+            r_dD_nC = nD / nC  # new deaths over new cases - apparent time dependent IFR
             r_C_WIC = C / (W + I + C)  # fraction of sick that are official cases
             r_C_IC = C / (I + C)  # fraction of true cases that are officially counted
             r_H_IC = H / (C + I)  # hospitalizations per true case
-            r_dD_H = dD / H  # new deaths per hospitalization
+            r_dD_H = nD / H  # new deaths per hospitalization
 
             y_accum.append(y)
 
         r_T_I = (
             self.testing_rate_f(t) / I
         )  # Test rate divided by infected not yet found (new, left overs)
-        pos = self.nowcastModel.positivity(
-            r_T_I
-        )  # Assumed (TODO fit) test positivity that will result
+        pos = self.model.positivity(r_T_I)  # Assumed (TODO fit) test positivity that will result
         exp_growth_factor = math.exp(
-            (self.rt_f(self.t_list[-1]) - 1.0) / self.nowcastModel.serial_period
+            (self.rt_f(self.t_list[-1]) - 1.0) / self.model.serial_period
         )  # Expected growth factor (in steady state) given injected R(t)
 
         # TODO pivot results to return
@@ -414,8 +628,8 @@ class ModelRun:
         4) Additional (non physical for "fitting") variations in the conversion of C/W/I to H and H to D
            are supported in the form of linear ramp coefficients (not yet tested)
         """
-        (S, E, I, W, nC, C, H, D, R) = y
-        model = self.nowcastModel
+        (S, E, I, W, nC, C, H, D, R, b) = y
+        model = self.model
         t_e = model.t_e
         t_i = model.t_i
         t_h = model.t_h
@@ -426,10 +640,17 @@ class ModelRun:
         else:
             k_expected = math.exp(k) - 1.0
 
-        # Apply linear ramp corrections
-        fh = model.fh0 * model.lr_fh[0] + model.lr_fh[1] * (t - self.t_list[0])
+        # transition fractions and linear ramp corrections
+        if self.case_median_age_f is not None:
+            median_age = self.case_median_age_f(t)
+            fh0 = model.fh0_f(median_age=median_age)
+            fd0 = model.fd0_f(median_age=median_age)
+        else:
+            fh0 = model.fh0_f()
+            fd0 = model.fd0_f()
+        fh = fh0 * model.lr_fh[0] + model.lr_fh[1] * (t - self.t_list[0])
         fh = max(0.0, min(1.0, fh))
-        fd = model.fd0 * model.lr_fd[0] + model.lr_fd[1] * (t - self.t_list[0])
+        fd = fd0 * model.lr_fd[0] + model.lr_fd[1] * (t - self.t_list[0])
         fd = max(0.0, min(1.0, fd))
         fw = model.fw0  # might do something smarter later
 
@@ -503,7 +724,126 @@ class ModelRun:
             dt * dHdt,
             dt * dDdt,
             dt * dRdt,
+            beta,
         )
+
+    def plot_results(self, y_scale="log", xlim=None) -> plt.Figure:
+        """
+        Generate a summary plot for the simulation.
+
+        Parameters
+        ----------
+        y_scale: str
+            Matplotlib scale to use on y-axis. Typically 'log' or 'linear'
+        """
+
+        all_infected = self.results["A"] + self.results["I"] + self.results["C"]
+
+        # Plot the data on three separate curves for S(t), I(t) and R(t)
+        fig = plt.figure(facecolor="w", figsize=(20, 6))
+
+        # ---------------------------- Left plot -------------------------
+        plt.subplot(131)
+        plt.plot(
+            self.t_list,
+            self.results["E"] / 100.0,
+            alpha=0.5,
+            lw=2,
+            label="Exposed/100.",
+            linestyle="--",
+        )
+
+        plt.plot(self.t_list, all_infected / 100.0, alpha=0.5, lw=2, label="Infected (A+I+C)/100.")
+        h_all = self.results["H"]
+        plt.plot(self.t_list, h_all / 10.0, alpha=0.5, lw=4, label="All Hospitalized/10.")
+        plt.plot(self.t_list, self.results["nD"], alpha=0.5, lw=4, label="New Deaths")
+
+        plt.xlabel("Time [days]", fontsize=12)
+        plt.yscale(y_scale)
+        plt.grid(True, which="both", alpha=0.35)
+        plt.legend(framealpha=0.5)
+
+        if self.historical_compartments is not None:
+            hc = self.historical_compartments
+            plt.scatter(hc["H"].index, hc["H"].values / 10.0, c="g", marker=".")
+            plt.scatter(hc["nD"].index, hc["nD"].values, c="r", marker=".")
+
+        if xlim:
+            plt.xlim(*xlim)
+        # plt.gca().set_ylim(bottom=1)
+
+        # ---------------------------- Center plot -------------------------
+        plt.subplot(132)
+        plt.plot(
+            self.t_list,
+            np.array([self.rt_f(t) / 10 for t in self.t_list]),
+            alpha=0.5,
+            lw=2,
+            label="R(t)/10",
+            linestyle="--",
+        )
+        plt.plot(
+            self.t_list,
+            self.results["I"] / np.array([self.testing_rate_f(t) for t in self.t_list]),
+            alpha=0.5,
+            lw=2,
+            label="I/T",
+        )
+        plt.plot(
+            self.t_list,
+            np.array([self.model.fh0_f(median_age=self.case_median_age_f(t)) for t in self.t_list]),
+            alpha=0.5,
+            lw=4,
+            label="fh(age)",
+        )
+        plt.plot(
+            self.t_list,
+            np.array([self.model.fd0_f(median_age=self.case_median_age_f(t)) for t in self.t_list]),
+            alpha=0.5,
+            lw=4,
+            label="fd(age)",
+        )
+        plt.plot(
+            self.t_list,
+            np.array([self.testing_rate_f(t) / 100000 for t in self.t_list]),
+            alpha=0.5,
+            lw=2,
+            label="Tests/100k",
+            linestyle="--",
+        )
+
+        plt.xlabel("Time [days]", fontsize=12)
+        plt.yscale(y_scale)
+        plt.ylabel("")
+        plt.grid(True, which="both", alpha=0.35)
+        plt.legend(framealpha=0.5)
+        if xlim:
+            plt.xlim(*xlim)
+
+        # ---------------------------- Right plot -------------------------
+        # Reproduction numbers
+        plt.subplot(133)
+
+        plt.plot(
+            self.t_list, self.results["b"], alpha=0.5, lw=2, label="beta", linestyle="--",
+        )
+        plt.plot(self.t_list, self.results["C"] / all_infected, alpha=0.5, lw=2, label="C/(I+C+A)")
+        plt.plot(
+            self.t_list, self.results["H"] / self.results["nC"], alpha=0.5, lw=4, label="H/nC",
+        )
+        plt.plot(
+            self.t_list,
+            10.0 * self.results["nD"] / self.results["nC"],
+            alpha=0.5,
+            lw=4,
+            label="10*nD/nC",
+        )
+        plt.ylabel("Ratios check")
+        plt.legend(framealpha=0.5)
+        plt.yscale("log")
+        plt.xlabel("Time [days]", fontsize=12)
+        plt.grid(True, which="both")
+        return fig
 
 
 class SEIRModel:
