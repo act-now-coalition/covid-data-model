@@ -8,6 +8,7 @@ from api.can_api_definition import (
     ActualsTimeseriesRow,
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
+    Metrics,
     MetricsTimeseriesRow,
     PredictionTimeseriesRow,
     PredictionTimeseriesRowWithHeader,
@@ -107,7 +108,9 @@ def _generate_prediction_timeseries_row(json_data_row) -> PredictionTimeseriesRo
 
 
 def generate_region_summary(
-    latest_values: dict, model_output: Optional[CANPyseirLocationOutput]
+    latest_values: dict,
+    latest_metrics: Optional[Metrics],
+    model_output: Optional[CANPyseirLocationOutput],
 ) -> RegionSummary:
     fips = latest_values[CommonFields.FIPS]
     state = latest_values[CommonFields.STATE]
@@ -127,6 +130,7 @@ def generate_region_summary(
         lat=latest_values.get(CommonFields.LATITUDE),
         long=latest_values.get(CommonFields.LONGITUDE),
         actuals=actuals,
+        metrics=latest_metrics,
         # TODO(chris): change this to reflect latest time data updated?
         lastUpdatedDate=datetime.utcnow(),
         projections=projections,
@@ -136,6 +140,7 @@ def generate_region_summary(
 def generate_region_timeseries(
     region_summary: RegionSummary,
     timeseries: TimeseriesDataset,
+    metrics_timeseries,
     model_output: Optional[CANPyseirLocationOutput],
 ) -> RegionSummaryWithTimeseries:
     if not region_summary.intervention:
@@ -159,15 +164,6 @@ def generate_region_timeseries(
             _generate_prediction_timeseries_row(row)
             for row in model_output.data.to_dict(orient="records")
         ]
-
-    metrics_timeseries = []
-    region_level_metrics = calculate_top_level_metrics_for_timeseries(
-        timeseries, region_summary
-    ).to_dict(orient="records")
-    for metric_row in region_level_metrics:
-        metrics_timeseries.append(
-            MetricsTimeseriesRow(**metric_row, date=metric_row[CommonFields.DATE])
-        )
 
     region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}
     return RegionSummaryWithTimeseries(

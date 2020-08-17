@@ -22,7 +22,7 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
     # Making sure that the timeseries object passed in is only for one fips.
     assert len(timeseries.all_fips) == 1
     fips = timeseries.all_fips[0]
-    population = latest.population
+    population = latest[CommonFields.POPULATION]
     neg_tests_cumulative = timeseries.data[CommonFields.NEGATIVE_TESTS]
     neg_tests_daily = neg_tests_cumulative.diff()
 

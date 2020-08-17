@@ -1,30 +1,35 @@
-from typing import List, Optional, Iterator, Tuple
-import pathlib
 import functools
-from collections import namedtuple
 import logging
-import structlog
 import multiprocessing
+import pathlib
+from collections import namedtuple
+from typing import Iterator, List, Optional, Tuple
+
 import pydantic
 import simplejson
-from libs.functions import get_can_projection
-from api.can_api_definition import RegionSummary
-from api.can_api_definition import RegionSummaryWithTimeseries
-from api.can_api_definition import AggregateRegionSummary
-from api.can_api_definition import AggregateRegionSummaryWithTimeseries
-from api.can_api_definition import AggregateFlattenedTimeseries
-from api.can_api_definition import PredictionTimeseriesRowWithHeader
-from libs.enums import Intervention
-from libs.datasets import CommonFields
-from libs.datasets.dataset_utils import AggregationLevel
+import structlog
+
+from api.can_api_definition import (
+    AggregateFlattenedTimeseries,
+    AggregateRegionSummary,
+    AggregateRegionSummaryWithTimeseries,
+    MetricsTimeseriesRow,
+    PredictionTimeseriesRowWithHeader,
+    RegionSummary,
+    RegionSummaryWithTimeseries,
+)
 from libs import dataset_deployer
-from libs.us_state_abbrev import US_STATE_ABBREV
-from libs.datasets import combined_datasets
-from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets import CommonFields, combined_datasets
 from libs.datasets import results_schema as rc
-from libs.functions import generate_api as api
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs.datasets.timeseries import TimeseriesDataset
+from libs.enums import Intervention
+from libs.functions import generate_api as api
+from libs.functions import get_can_projection
+from libs.top_level_metrics import calculate_top_level_metrics_for_fips
+from libs.us_state_abbrev import US_STATE_ABBREV
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
@@ -67,10 +72,25 @@ def run_on_all_fips_for_intervention(
     return all_timeseries
 
 
+def generate_metrics_and_latest_for_fips(
+    fips,
+) -> [List[MetricsTimeseriesRow], Optional[MetricsTimeseriesRow]]:
+    metrics_timeseries = (
+        calculate_top_level_metrics_for_fips(fips).reset_index().to_dict(orient="records")
+    )
+    metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
+    if len(metrics_for_fips):
+        latest = metrics_for_fips[-1]
+    else:
+        latest = None
+    return metrics_for_fips, latest
+
+
 def build_timeseries_for_fips(
     intervention, us_latest, us_timeseries, model_output_dir, fips
 ) -> Optional[RegionSummaryWithTimeseries]:
     fips_latest = us_latest.get_record_for_fips(fips)
+    metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(fips)
 
     if intervention is Intervention.SELECTED_INTERVENTION:
         state = fips_latest[CommonFields.STATE]
@@ -86,10 +106,10 @@ def build_timeseries_for_fips(
         return None
 
     try:
-        region_summary = api.generate_region_summary(fips_latest, model_output)
+        region_summary = api.generate_region_summary(fips_latest, metrics_latest, model_output)
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
         region_timeseries = api.generate_region_timeseries(
-            region_summary, fips_timeseries, model_output
+            region_summary, fips_timeseries, metrics_timeseries, model_output
         )
     except Exception:
         logger.error(f"failed to run output", fips=fips)
