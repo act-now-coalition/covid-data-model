@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import Optional
 import logging
 import pathlib
@@ -6,6 +7,13 @@ import click
 import gspread
 
 from libs import google_sheet_helpers, wide_dates_df
+from libs.datasets.combined_datasets import (
+    build_from_sources,
+    ALL_TIMESERIES_FEATURE_DEFINITION,
+    US_STATES_FILTER,
+    ALL_FIELDS_FEATURE_DEFINITION,
+)
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.qa import dataset_summary
 from libs.qa import data_availability
 from libs.datasets.timeseries import TimeseriesDataset
@@ -40,7 +48,22 @@ def update(summary_filename, wide_dates_filename):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
-    data_sources, timeseries_dataset, latest_dataset = combined_datasets.build_us_with_all_fields()
+    data_source_classes = set(
+        chain(
+            chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),
+            chain.from_iterable(ALL_TIMESERIES_FEATURE_DEFINITION.values()),
+        )
+    )
+    data_sources = {
+        data_source_cls.SOURCE_NAME: data_source_cls.local()
+        for data_source_cls in data_source_classes
+    }
+    timeseries_dataset = combined_datasets.build_from_sources(
+        TimeseriesDataset, data_sources, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER
+    )
+    latest_dataset = combined_datasets.build_from_sources(
+        LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
+    )
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, timeseries_dataset
     )

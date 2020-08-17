@@ -5,10 +5,10 @@ import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
+from libs.datasets import combined_datasets
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.timeseries import TimeseriesDataset
-import libs.datasets.combined_datasets
 
 
 class CovidCountyDataDataSource(data_source.DataSource):
@@ -115,7 +115,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
         )
         provenance[CommonFields.POSITIVE_TESTS].mask(missing_pos, "missing_pos", inplace=True)
 
-        provenance_series = libs.datasets.combined_datasets._to_timeseries_rows(
+        provenance_series = combined_datasets.provenance_wide_metrics_to_series(
             provenance.set_index([CommonFields.FIPS, CommonFields.DATE]), structlog.get_logger()
         )
 

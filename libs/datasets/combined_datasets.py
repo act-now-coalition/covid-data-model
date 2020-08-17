@@ -30,7 +30,7 @@ from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets import dataset_filter
-from libs import us_state_abbrev, wide_dates_df
+from libs import us_state_abbrev
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
@@ -109,37 +109,6 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 US_STATES_FILTER = dataset_filter.DatasetFilter(
     country="USA", states=list(us_state_abbrev.ABBREV_US_STATE.keys())
 )
-
-
-def build_us_with_all_fields() -> Tuple[
-    Mapping[str, DataSource], TimeseriesDataset, LatestValuesDataset
-]:
-    data_source_classes = set(
-        chain(
-            chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),
-            chain.from_iterable(ALL_TIMESERIES_FEATURE_DEFINITION.values()),
-        )
-    )
-    loaded_data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.local()
-        for data_source_cls in data_source_classes
-    }
-
-    return (
-        loaded_data_sources,
-        _build_combined_dataset_from_sources(
-            TimeseriesDataset,
-            loaded_data_sources,
-            ALL_TIMESERIES_FEATURE_DEFINITION,
-            filter=US_STATES_FILTER,
-        ),
-        _build_combined_dataset_from_sources(
-            LatestValuesDataset,
-            loaded_data_sources,
-            ALL_FIELDS_FEATURE_DEFINITION,
-            filter=US_STATES_FILTER,
-        ),
-    )
 
 
 @functools.lru_cache(None)
@@ -241,7 +210,7 @@ def get_timeseries_for_state(
     return state_ts
 
 
-def _build_combined_dataset_from_sources(
+def build_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
     loaded_data_sources: Mapping[str, DataSource],
     feature_definition_config: FeatureDataSourceMap,
@@ -274,7 +243,9 @@ def _build_combined_dataset_from_sources(
             datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    return target_dataset_cls(data.reset_index(), provenance=_to_timeseries_rows(provenance, _log))
+    return target_dataset_cls(
+        data.reset_index(), provenance=provenance_wide_metrics_to_series(provenance, _log)
+    )
 
 
 class Override(Enum):
@@ -413,15 +384,15 @@ def _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_inde
     return data, provenance
 
 
-def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
-    """Transform a DataFrame of sources with dateindex and variable columns to Series with one row per variable.
+def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
+    """Transforms a DataFrame of provenances with a variable columns to Series with one row per variable.
 
     Args:
-        wide: DataFrame with a row for each fips-date and a column containing the datasource for each variable.
+        wide: DataFrame with a row for each fips-date and a column containing the data source for each variable.
             FIPS must be a named index. DATE, if present, must be a named index.
 
-    Returns: A Series of string data source values with fips and variable in the index. In the unexpected
-        case of multiple sources for a timeseries a warning is logged and one is returned arbitrarily.
+    Returns: A Series of string data source values with fips and variable in the index. In the case
+        of multiple sources for a timeseries a warning is logged and the values are joined by ';'.
     """
     assert CommonFields.FIPS in wide.index.names
     assert CommonFields.FIPS not in wide.columns
