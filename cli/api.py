@@ -156,6 +156,4 @@ def generate_top_counties(disable_validation, input_dir, output, state, fips):
     api_pipeline.deploy_json_api_output(
         intervention, bulk_timeseries, output, filename_override="counties_top_100.json"
     )
-    # top_counties_pipeline.deploy_results(county_results_api, "counties_top_100", output)
-
-    # _logger.info("finished top counties job")
+    _logger.info("Finished top counties job")
