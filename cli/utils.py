@@ -6,14 +6,11 @@ from io import BytesIO
 
 import click
 import git
-import structlog
 
 from covidactnow.datapublic import common_df
-from covidactnow.datapublic.common_fields import CommonFields
 from libs import github_utils
-from libs.datasets import combined_datasets, dataset_utils
-import pandas as pd
-import numpy as np
+from libs.datasets import combined_datasets
+from libs.datasets import dataset_utils
 
 from libs.git_lfs_object_helpers import read_data_for_commit
 from libs.qa.common_df_diff import DatasetDiff
