@@ -40,10 +40,20 @@ def update(summary_filename, wide_dates_filename):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
-    timeseries_dataset, latest_dataset = combined_datasets.build_us_with_all_fields()
+    data_sources, timeseries_dataset, latest_dataset = combined_datasets.build_us_with_all_fields()
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, timeseries_dataset
     )
+
+    # Write DataSource objects that have provenance information, which is only set when significant
+    # processing of the source data is done in this repo before it is combined. The output is not
+    # used downstream, it is for debugging only.
+    for data_source in data_sources.values():
+        if data_source.provenance is not None:
+            wide_dates_df.write_csv(
+                data_source.timeseries().get_date_columns(),
+                path_prefix / f"{data_source.SOURCE_NAME}-wide-dates.csv",
+            )
 
     if wide_dates_filename:
         wide_dates_df.write_csv(

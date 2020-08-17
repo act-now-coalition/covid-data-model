@@ -111,7 +111,9 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 )
 
 
-def build_us_with_all_fields() -> Tuple[TimeseriesDataset, LatestValuesDataset]:
+def build_us_with_all_fields() -> Tuple[
+    Mapping[str, DataSource], TimeseriesDataset, LatestValuesDataset
+]:
     data_source_classes = set(
         chain(
             chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),
@@ -123,14 +125,8 @@ def build_us_with_all_fields() -> Tuple[TimeseriesDataset, LatestValuesDataset]:
         for data_source_cls in data_source_classes
     }
 
-    for data_source in loaded_data_sources.values():
-        if data_source.provenance is not None:
-            wide_dates_df.write_csv(
-                data_source.timeseries().get_date_columns(),
-                pathlib.Path(f"data/{data_source.SOURCE_NAME}-wide-dates.csv"),
-            )
-
     return (
+        loaded_data_sources,
         _build_combined_dataset_from_sources(
             TimeseriesDataset,
             loaded_data_sources,
