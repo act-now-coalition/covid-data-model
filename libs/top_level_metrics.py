@@ -54,7 +54,7 @@ def calculate_case_density(
     Calculates normalized cases density.
 
     Args:
-        cases: Number of cases in a given fips.
+        cases: Number of daily cases in a given fips.
         population: Population for a given fips.
         normalized_by: Normalize data by a constant.
 
@@ -72,8 +72,8 @@ def calculate_test_positivity(
     Calculates positive test rate.
 
     Args:
-        pos_cases: Number of positive cases.
-        neg_tests: Number of negative cases.
+        pos_cases: Number of daily positive cases.
+        neg_tests: Number of daily negative cases.
 
     Returns:
         Positive test rate.
