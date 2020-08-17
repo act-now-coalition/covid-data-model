@@ -75,6 +75,15 @@ def run_on_all_fips_for_intervention(
 def generate_metrics_and_latest_for_fips(
     fips,
 ) -> [List[MetricsTimeseriesRow], Optional[MetricsTimeseriesRow]]:
+    """
+    For a FIPS, generate a MetricsTimeseriesRow per day and return the latest.
+
+    Args:
+        fips: FIPS to run on.
+
+    Returns:
+        Tuple of MetricsTimeseriesRows for all days and the latest.
+    """
     metrics_timeseries = (
         calculate_top_level_metrics_for_fips(fips).reset_index().to_dict(orient="records")
     )
