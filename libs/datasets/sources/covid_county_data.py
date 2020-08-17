@@ -128,4 +128,4 @@ class CovidCountyDataDataSource(data_source.DataSource):
         data = common_df.read_csv(input_path).reset_index()
         data, provenance = cls.synthesize_test_metrics(data)
         # Column names are already CommonFields so don't need to rename
-        return cls(data, provenance)
+        return cls(data, provenance=provenance)
