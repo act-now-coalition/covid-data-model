@@ -266,7 +266,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         # Choosing to sort by date
         data = data.sort_values(CommonFields.DATE)
-        return cls(data)
+        return cls(data, provenance=source.provenance)
 
     def summarize(self):
         dataset_utils.summarize(

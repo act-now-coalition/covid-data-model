@@ -2,7 +2,7 @@ from io import StringIO
 
 import structlog
 
-from libs.datasets.combined_datasets import _to_timeseries_rows
+from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources import cds_dataset
 from libs.datasets.timeseries import TimeseriesDataset
@@ -63,7 +63,7 @@ def test_wide_dates():
         "97222,Foo County,county,2020-04-01,,10\n"
         "97222,Foo County,county,2020-04-03,3,30\n"
     )
-    provenance = _to_timeseries_rows(
+    provenance = provenance_wide_metrics_to_series(
         read_csv_and_index_fips_date(
             "fips,date,m1,m2\n"
             "97111,2020-04-01,src11,\n"

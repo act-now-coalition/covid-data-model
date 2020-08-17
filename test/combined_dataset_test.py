@@ -9,10 +9,10 @@ from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.combined_datasets import (
     _build_data_and_provenance,
     Override,
-    _build_combined_dataset_from_sources,
+    build_from_sources,
     US_STATES_FILTER,
     FeatureDataSourceMap,
-    _to_timeseries_rows,
+    provenance_wide_metrics_to_series,
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
@@ -267,8 +267,8 @@ def test_build_and_and_provenance_missing_fips():
 
 
 @pytest.mark.slow
-def test_build_combined_dataset_from_sources_smoke_test():
-    # Quickly make sure _build_combined_dataset_from_sources doesn't crash when run with a small
+def test_build_from_sources_smoke_test():
+    # Quickly make sure build_from_sources doesn't crash when run with a small
     # number of features.
 
     # feature_definition = ALL_FIELDS_FEATURE_DEFINITION
@@ -283,11 +283,11 @@ def test_build_combined_dataset_from_sources_smoke_test():
         for data_source_cls in chain.from_iterable(feature_definition.values())
     }
 
-    _build_combined_dataset_from_sources(
+    build_from_sources(
         TimeseriesDataset, loaded_data_sources, feature_definition, filter=US_STATES_FILTER,
     )
 
-    _build_combined_dataset_from_sources(
+    build_from_sources(
         LatestValuesDataset, loaded_data_sources, feature_definition, filter=US_STATES_FILTER,
     )
 
@@ -300,7 +300,7 @@ def test_melt_provenance():
         "97222,2020-04-01,source_c,\n"
     )
     with structlog.testing.capture_logs() as logs:
-        long = _to_timeseries_rows(wide, structlog.get_logger())
+        long = provenance_wide_metrics_to_series(wide, structlog.get_logger())
 
     assert logs == []
 
@@ -319,12 +319,12 @@ def test_melt_provenance_multiple_sources():
         "97222,2020-04-01,source_c,\n"
     )
     with structlog.testing.capture_logs() as logs:
-        long = _to_timeseries_rows(wide, structlog.get_logger())
+        long = provenance_wide_metrics_to_series(wide, structlog.get_logger())
 
     assert [l["event"] for l in logs] == ["Multiple rows for a timeseries"]
 
     assert long.to_dict() == {
-        ("97111", "cases"): "source_a",
+        ("97111", "cases"): "source_a;source_x",
         ("97111", "recovered"): "source_b",
         ("97222", "cases"): "source_c",
     }

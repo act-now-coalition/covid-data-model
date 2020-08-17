@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Type
+from typing import Type, Optional
 
 import pandas as pd
 
@@ -34,8 +34,9 @@ class DataSource(object):
     # assumptions about missing vs data that is just zero.
     FILL_MISSING_STATE_LEVEL_DATA = True
 
-    def __init__(self, data: pd.DataFrame):
+    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
         self.data = data
+        self.provenance = provenance
 
     @property
     def state_data(self) -> pd.DataFrame:

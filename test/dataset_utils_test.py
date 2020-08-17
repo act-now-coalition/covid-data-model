@@ -13,7 +13,6 @@ import pytest
 
 
 # turns all warnings into errors for this module
-
 pytestmark = pytest.mark.filterwarnings("error")
 
 
