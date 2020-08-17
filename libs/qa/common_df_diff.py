@@ -76,18 +76,27 @@ class DatasetDiff(BaseModel):
         arbitrary_types_allowed = True
 
     def __str__(self):
-        # TODO(tom): Make this easier to read. See idea in docstring at top of this file.
+        # TODO(tom): Make the output easier to read. See idea in docstring at top of this file.
+        if self.ts_diffs is None or self.ts_diffs.empty:
+            ts_diffs_str = ""
+        else:
+            most_diff_timeseries = self.ts_diffs.sort_values("diff", ascending=False).head(20)
+            most_diff_variables = (
+                self.ts_diffs.groupby("variable has_overlap".split())
+                .mean()
+                .sort_values("diff", ascending=False)
+                .head(20)
+            )
+            ts_diffs_str = f"""TS diffs:\n{most_diff_timeseries}
+TS diffs by variable and has_overlap:\n{most_diff_variables}
+"""
+
         return f"""Duplicate rows in this file: {self.duplicates_dropped.index.unique(level='fips')}
 {self.duplicates_dropped}
 TS only in this file: {self.my_ts}
 TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()}
-""" + (
-            f"""TS diffs:\n{self.ts_diffs.sort_values('diff', ascending=False).head(20)}
-TS diffs by variable and has_overlap:\n{self.ts_diffs.groupby('variable has_overlap'.split()).mean().sort_values('diff', ascending=False).head(20)}
+{ts_diffs_str}
 """
-            if not (self.ts_diffs is None or self.ts_diffs.empty)
-            else ""
-        )
 
     @staticmethod
     def make(df: pd.DataFrame) -> "DatasetDiff":
