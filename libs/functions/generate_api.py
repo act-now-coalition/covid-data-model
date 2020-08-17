@@ -165,7 +165,9 @@ def generate_region_timeseries(
         timeseries, region_summary
     ).to_dict(orient="records")
     for metric_row in region_level_metrics:
-        MetricsTimeseriesRow(**metric_row, date=row[CommonFields.DATE])
+        metrics_timeseries.append(
+            MetricsTimeseriesRow(**metric_row, date=metric_row[CommonFields.DATE])
+        )
 
     region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}
     return RegionSummaryWithTimeseries(
