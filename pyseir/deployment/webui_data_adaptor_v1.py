@@ -45,27 +45,6 @@ class WebUIDataAdaptorV1:
         self.population_data = FIPSPopulation.local().population()
         self.output_dir = output_dir
 
-    @staticmethod
-    def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
-        """
-        Fetches the latest county hospitalization and icu utilization.
-
-        If current data is available, we return that.
-        If not, current values are estimated from cumulative.
-        """
-        _, county_hosp = load_data.get_current_hospitalized(
-            fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
-        )
-        _, county_icu = load_data.get_current_hospitalized(
-            fips, t0_simulation, category=load_data.HospitalizationCategory.ICU
-        )
-
-        return county_hosp, county_icu
-
-    @staticmethod
-    def _is_valid_count_metric(metric: float) -> bool:
-        return metric is not None and metric > 0
-
     def _get_population(self, fips: str) -> int:
         """
         Get the population for a region.
