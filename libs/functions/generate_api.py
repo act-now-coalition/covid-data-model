@@ -1,26 +1,31 @@
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional
+
+import pandas as pd
+
 from api.can_api_definition import (
+    Actuals,
+    ActualsTimeseriesRow,
+    AggregateFlattenedTimeseries,
     AggregateRegionSummary,
+    Metrics,
+    MetricsTimeseriesRow,
+    PredictionTimeseriesRow,
+    PredictionTimeseriesRowWithHeader,
+    Projections,
     RegionSummary,
     RegionSummaryWithTimeseries,
-    AggregateFlattenedTimeseries,
-    PredictionTimeseriesRowWithHeader,
-    PredictionTimeseriesRow,
-    ActualsTimeseriesRow,
-    Projections,
-    Actuals,
     ResourceUsageProjection,
 )
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.enums import Intervention
-from libs.functions import get_can_projection
 from libs import us_state_abbrev
 from libs.datasets import can_model_output_schema as can_schema
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.latest_values_dataset import LatestValuesDataset
-import pandas as pd
+from libs.enums import Intervention
+from libs.functions import get_can_projection
+from libs.top_level_metrics import calculate_top_level_metrics_for_timeseries
 
 
 def _generate_api_for_projections(model_output: CANPyseirLocationOutput):
@@ -103,7 +108,9 @@ def _generate_prediction_timeseries_row(json_data_row) -> PredictionTimeseriesRo
 
 
 def generate_region_summary(
-    latest_values: dict, model_output: Optional[CANPyseirLocationOutput]
+    latest_values: dict,
+    latest_metrics: Optional[Metrics],
+    model_output: Optional[CANPyseirLocationOutput],
 ) -> RegionSummary:
     fips = latest_values[CommonFields.FIPS]
     state = latest_values[CommonFields.STATE]
@@ -123,6 +130,7 @@ def generate_region_summary(
         lat=latest_values.get(CommonFields.LATITUDE),
         long=latest_values.get(CommonFields.LONGITUDE),
         actuals=actuals,
+        metrics=latest_metrics,
         # TODO(chris): change this to reflect latest time data updated?
         lastUpdatedDate=datetime.utcnow(),
         projections=projections,
@@ -132,6 +140,7 @@ def generate_region_summary(
 def generate_region_timeseries(
     region_summary: RegionSummary,
     timeseries: TimeseriesDataset,
+    metrics_timeseries,
     model_output: Optional[CANPyseirLocationOutput],
 ) -> RegionSummaryWithTimeseries:
     if not region_summary.intervention:
@@ -158,7 +167,10 @@ def generate_region_timeseries(
 
     region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}
     return RegionSummaryWithTimeseries(
-        **region_summary_data, timeseries=model_timeseries, actualsTimeseries=actuals_timeseries
+        **region_summary_data,
+        timeseries=model_timeseries,
+        actualsTimeseries=actuals_timeseries,
+        metricsTimeseries=metrics_timeseries
     )
 
 
