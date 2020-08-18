@@ -3,7 +3,6 @@ import os
 import us
 import json
 import structlog
-from pprint import pformat
 import datetime as dt
 from datetime import datetime, timedelta
 from multiprocessing import Pool
@@ -19,15 +18,10 @@ from pyseir.inference import model_plotting
 from pyseir.models import suppression_policies
 from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
-from pyseir.models.seir_model_age import SEIRModelAge
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsembleGeneratorAge
 from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
 from pyseir.utils import get_run_artifact_path, RunArtifact
-from pyseir.inference.fit_results import load_inference_result
 
-from libs.datasets import combined_datasets
-from libs.datasets.dataset_utils import AggregationLevel
 
 log = structlog.getLogger()
 
@@ -68,8 +62,6 @@ class ModelFitter:
         relative to the max. The overall scale here doesn't influence the max
         likelihood fit, but it does influence the prior blending and error
         estimates.  0.5 = 50% error. Best to be conservatively high.
-    with_age_structure: bool
-        Whether run model with age structure.
     """
 
     DEFAULT_FIT_PARAMS = dict(
@@ -117,7 +109,6 @@ class ModelFitter:
         cases_to_deaths_err_factor=0.5,
         hospital_to_deaths_err_factor=0.5,
         percent_error_on_max_observation=0.5,
-        with_age_structure=False,
     ):
 
         # Seed the random state. It is unclear whether this propagates to the
@@ -136,7 +127,6 @@ class ModelFitter:
         self.hospital_to_deaths_err_factor = hospital_to_deaths_err_factor
         self.percent_error_on_max_observation = percent_error_on_max_observation
         self.t0_guess = 60
-        self.with_age_structure = with_age_structure
 
         (
             self.times,
@@ -194,9 +184,6 @@ class ModelFitter:
         """
         self.fit_params = self.DEFAULT_FIT_PARAMS
         # Update State specific SEIR initial guesses
-        overwrite_params_df = pd.read_csv(
-            "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": object}
-        )
 
         INITIAL_PARAM_SETS = [
             "R0",
@@ -211,7 +198,6 @@ class ModelFitter:
         ]
         if self.region.fips in overwrite_params_df["fips"].values:
             this_fips_df = overwrite_params_df.loc[overwrite_params_df["fips"] == self.region.fips]
-            assert False
             for param in INITIAL_PARAM_SETS:
                 self.fit_params[param] = this_fips_df[param]
 
@@ -274,12 +260,7 @@ class ModelFitter:
         SEIR_kwargs: dict
             The average ensemble params.
         """
-        if self.with_age_structure:
-            parameter_generator = ParameterEnsembleGeneratorAge
-        else:
-            parameter_generator = ParameterEnsembleGenerator
-
-        SEIR_kwargs = parameter_generator(
+        SEIR_kwargs = ParameterEnsembleGenerator(
             fips=self.region.fips, N_samples=5000, t_list=self.t_list, suppression_policy=None
         ).get_average_seir_parameters()
 
@@ -407,12 +388,8 @@ class ModelFitter:
             eps, t_break, eps2, t_delta_phases
         )
 
-        if self.with_age_structure:
-            age_distribution = self.SEIR_kwargs["N"] / self.SEIR_kwargs["N"].sum()
-            seir_model = SEIRModelAge
-        else:
-            age_distribution = 1
-            seir_model = SEIRModel
+        age_distribution = 1
+        seir_model = SEIRModel
 
         # Load up some number of initial exposed so the initial flow into
         # infected is stable.
@@ -616,7 +593,7 @@ class ModelFitter:
         self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     @classmethod
-    def run_for_fips(cls, region: pipeline.Region, n_retries=3, with_age_structure=False):
+    def run_for_region(cls, region: pipeline.Region, n_retries=3):
         """
         Run the model fitter for a region.
 
@@ -627,8 +604,6 @@ class ModelFitter:
             The model fitter is stochastic in nature and a seed cannot be set.
             This is a bandaid until more sophisticated retries can be
             implemented.
-        with_age_structure: bool
-            If True run model with age structure.
 
         Returns
         -------
@@ -644,7 +619,7 @@ class ModelFitter:
             retries_left = n_retries
             model_is_empty = True
             while retries_left > 0 and model_is_empty:
-                model_fitter = cls(region=region, with_age_structure=with_age_structure)
+                model_fitter = cls(region=region)
                 try:
                     model_fitter.fit()
                     if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
@@ -664,7 +639,7 @@ class ModelFitter:
 
 def execute_model_for_fips(fips):
     if fips:
-        model_fitter = ModelFitter.run_for_fips(pipeline.Region.from_fips(fips))
+        model_fitter = ModelFitter.run_for_region(pipeline.Region.from_fips(fips))
         return model_fitter
     log.warning(f"Not running model run for ${fips}")
     return None
@@ -693,7 +668,7 @@ def build_county_list(state: str) -> List[str]:
     return all_fips
 
 
-def run_state(state, states_only=False, with_age_structure=False):
+def run_state(state, states_only=False):
     """
     Run the fitter for each county in a state.
 
@@ -703,14 +678,12 @@ def run_state(state, states_only=False, with_age_structure=False):
         State to run against.
     states_only: bool
         If True only run the state level.
-    with_age_structure: bool
-        If True run model with age structure.
     """
     state_obj = us.states.lookup(state)
     fips = state_obj.fips
     log.info(f"Running MLE fitter for state {state}")
 
-    model_fitter = ModelFitter.run_for_fips(fips, with_age_structure=with_age_structure)
+    model_fitter = ModelFitter.run_for_region(pipeline.Region.from_fips(fips))
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
@@ -733,7 +706,9 @@ def run_state(state, states_only=False, with_age_structure=False):
 
         if len(all_fips) > 0:
             with Pool(maxtasksperchild=1) as p:
-                fitters = p.map(ModelFitter.run_for_fips, all_fips)
+                fitters = p.map(
+                    ModelFitter.run_for_region, map(pipeline.Region.from_fips, all_fips)
+                )
 
             county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
             data = pd.DataFrame([fit.fit_results for fit in fitters if fit])

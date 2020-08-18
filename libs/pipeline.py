@@ -22,6 +22,11 @@ from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact
 
 
+overwrite_params_df = pd.read_csv(
+    "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": object}
+)
+
+
 class Region(BaseModel):
     """Identifies and provides access to data about a geographical area."""
 
