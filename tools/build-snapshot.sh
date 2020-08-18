@@ -21,6 +21,14 @@ prepare () {
     echo "https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line"
     exit 1
   fi
+
+  # Set the sentry environment to allow quieting of alerts on
+  # non-master branches.
+  if [[ $BRANCH == "master" ]]; then
+      SENTRY_ENVIRONMENT="production"
+  else
+      SENTRY_ENVIRONMENT="staging"
+  fi
 }
 
 exit_with_usage () {
@@ -31,7 +39,7 @@ exit_with_usage () {
 execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
       --request POST \
-      --data "{\"event_type\": \"publish-api\", \"client_payload\": { \"branch\": \"${BRANCH}\" } }" \
+      --data "{\"event_type\": \"publish-api\", \"client_payload\": { \"branch\": \"${BRANCH}\", \"sentry_environment\": \"${SENTRY_ENVIRONMENT}\" } }" \
       https://api.github.com/repos/covid-projections/covid-data-model/dispatches
 
   echo "Publish requested. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."

@@ -111,34 +111,6 @@ US_STATES_FILTER = dataset_filter.DatasetFilter(
 )
 
 
-def build_us_with_all_fields() -> Tuple[TimeseriesDataset, LatestValuesDataset]:
-    data_source_classes = set(
-        chain(
-            chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),
-            chain.from_iterable(ALL_TIMESERIES_FEATURE_DEFINITION.values()),
-        )
-    )
-    loaded_data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.local()
-        for data_source_cls in data_source_classes
-    }
-
-    return (
-        _build_combined_dataset_from_sources(
-            TimeseriesDataset,
-            loaded_data_sources,
-            ALL_TIMESERIES_FEATURE_DEFINITION,
-            filter=US_STATES_FILTER,
-        ),
-        _build_combined_dataset_from_sources(
-            LatestValuesDataset,
-            loaded_data_sources,
-            ALL_FIELDS_FEATURE_DEFINITION,
-            filter=US_STATES_FILTER,
-        ),
-    )
-
-
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
@@ -238,7 +210,7 @@ def get_timeseries_for_state(
     return state_ts
 
 
-def _build_combined_dataset_from_sources(
+def build_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
     loaded_data_sources: Mapping[str, DataSource],
     feature_definition_config: FeatureDataSourceMap,
@@ -271,7 +243,9 @@ def _build_combined_dataset_from_sources(
             datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    return target_dataset_cls(data.reset_index(), provenance=_to_timeseries_rows(provenance, _log))
+    return target_dataset_cls(
+        data.reset_index(), provenance=provenance_wide_metrics_to_series(provenance, _log)
+    )
 
 
 class Override(Enum):
@@ -410,15 +384,15 @@ def _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_inde
     return data, provenance
 
 
-def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
-    """Transform a DataFrame of sources with dateindex and variable columns to Series with one row per variable.
+def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
+    """Transforms a DataFrame of provenances with a variable columns to Series with one row per variable.
 
     Args:
-        wide: DataFrame with a row for each fips-date and a column containing the datasource for each variable.
+        wide: DataFrame with a row for each fips-date and a column containing the data source for each variable.
             FIPS must be a named index. DATE, if present, must be a named index.
 
-    Returns: A Series of string data source values with fips and variable in the index. In the unexpected
-        case of multiple sources for a timeseries a warning is logged and one is returned arbitrarily.
+    Returns: A Series of string data source values with fips and variable in the index. In the case
+        of multiple sources for a timeseries a warning is logged and the values are joined by ';'.
     """
     assert CommonFields.FIPS in wide.index.names
     assert CommonFields.FIPS not in wide.columns
@@ -434,5 +408,6 @@ def _to_timeseries_rows(wide: pd.DataFrame, log) -> pd.Series:
     dups = fips_var_grouped.transform("size") > 1
     if dups.any():
         log.warning("Multiple rows for a timeseries", bad_data=long_unindexed[dups])
-    first = fips_var_grouped.first()
-    return first
+    # https://stackoverflow.com/a/17841321/341400
+    joined = fips_var_grouped.agg(lambda col: ";".join(col))
+    return joined
