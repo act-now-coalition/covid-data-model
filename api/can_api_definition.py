@@ -70,12 +70,12 @@ class ResourceUtilization(base_model.APIBaseModel):
 class Metrics(base_model.APIBaseModel):
     """Calculated metrics data based on known actuals."""
 
-    testPositivity: Optional[int] = pydantic.Field(
+    testPositivity: Optional[float] = pydantic.Field(
         ...,
         description="Ratio of people who test positive calculated using a 7 day rolling average.",
     )
 
-    caseDensity: Optional[int] = pydantic.Field(
+    caseDensity: Optional[float] = pydantic.Field(
         ...,
         description="The number of cases per 100k population calculated using a 7 day rolling average.",
     )
