@@ -46,3 +46,4 @@ execute () {
 }
 
 prepare "$@"
+execute
