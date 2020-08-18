@@ -1,10 +1,12 @@
-from typing import List, Optional
-from libs.enums import Intervention
-from libs.datasets.dataset_utils import AggregationLevel
-from libs import us_state_abbrev
-from libs import base_model
-import pydantic
 import datetime
+from typing import List, Optional
+
+import pydantic
+
+from libs import base_model, us_state_abbrev
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.enums import Intervention
+
 
 """
 CovidActNow API
@@ -65,6 +67,24 @@ class ResourceUtilization(base_model.APIBaseModel):
     )
 
 
+class Metrics(base_model.APIBaseModel):
+    """Calculated metrics data based on known actuals."""
+
+    testPositivity: Optional[float] = pydantic.Field(
+        ...,
+        description="Ratio of people who test positive calculated using a 7 day rolling average.",
+    )
+
+    caseDensity: Optional[float] = pydantic.Field(
+        ...,
+        description="The number of cases per 100k population calculated using a 7 day rolling average.",
+    )
+
+
+class MetricsTimeseriesRow(Metrics):
+    date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
+
+
 class Actuals(base_model.APIBaseModel):
     """Known actuals data."""
 
@@ -109,6 +129,7 @@ class RegionSummary(base_model.APIBaseModel):
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
     projections: Optional[Projections] = pydantic.Field(...)
     actuals: Optional[Actuals] = pydantic.Field(...)
+    metrics: Optional[Metrics] = pydantic.Field(default=None, description="Region level metrics")
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
     )
@@ -216,6 +237,7 @@ class RegionSummaryWithTimeseries(RegionSummary):
 
     timeseries: Optional[List[PredictionTimeseriesRow]] = pydantic.Field(...)
     actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
+    metricsTimeseries: Optional[List[MetricsTimeseriesRow]] = pydantic.Field(...)
 
     @property
     def region_summary(self) -> RegionSummary:
