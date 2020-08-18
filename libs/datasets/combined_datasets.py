@@ -68,7 +68,11 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         TexasHospitalizations,
     ],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
-    CommonFields.CURRENT_ICU: [CovidCountyDataDataSource, CovidTrackingDataSource],
+    CommonFields.CURRENT_ICU: [
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        TexasHospitalizations,
+    ],
     CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource],
     CommonFields.CURRENT_VENTILATED: [
         CovidCountyDataDataSource,
