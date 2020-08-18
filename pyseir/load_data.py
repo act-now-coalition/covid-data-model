@@ -134,30 +134,6 @@ def cache_public_implementations_data():
 
 
 @lru_cache(maxsize=32)
-def load_ensemble_results(fips):
-    """
-    Retrieve ensemble results for a given state or county fips code.
-
-    Parameters
-    ----------
-    fips: str
-        State or county FIPS to load.
-
-    Returns
-    -------
-    ensemble_results: dict
-    """
-    output_filename = pyseir.utils.get_run_artifact_path(
-        fips, pyseir.utils.RunArtifact.ENSEMBLE_RESULT
-    )
-    if not os.path.exists(output_filename):
-        return None
-
-    with open(output_filename) as f:
-        return json.load(f)
-
-
-@lru_cache(maxsize=32)
 def load_new_case_data_by_fips(
     fips, t0, include_testing_correction=False, testing_correction_smoothing_tau=5
 ):
@@ -532,37 +508,6 @@ def cache_all_data():
     """
     cache_mobility_data()
     cache_public_implementations_data()
-
-
-def get_compartment_value_on_date(fips, compartment, date, ensemble_results=None):
-    """
-    Return the value of compartment at a specified date.
-
-    Parameters
-    ----------
-    fips: str
-        State or County fips.
-    compartment: str
-        Name of the compartment to retrieve.
-    date: datetime
-        Date to retrieve values for.
-    ensemble_results: NoneType or dict
-        Pass in the pre-loaded simulation data to save time, else load it.
-        Pass in the pre-loaded simulation data to save time, else load it.
-
-    Returns
-    -------
-    value: float
-        Value of compartment on a given date.
-    """
-    if ensemble_results is None:
-        ensemble_results = load_ensemble_results(fips)
-    # Circular import avoidance
-    from pyseir.inference.fit_results import load_inference_result
-
-    simulation_start_date = datetime.fromisoformat(load_inference_result(fips)["t0_date"])
-    date_idx = int((date - simulation_start_date).days)
-    return ensemble_results["suppression_policy__inferred"][compartment]["ci_50"][date_idx]
 
 
 if __name__ == "__main__":

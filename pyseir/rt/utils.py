@@ -251,27 +251,3 @@ def align_time_series(series_a, series_b):
         return valid_shifts[np.argmax(xcor)]
     else:
         return 0
-
-
-def load_Rt_result(fips) -> Optional[pd.DataFrame]:
-    """
-    Load the Rt inference result.
-
-    Parameters
-    ----------
-    fips: str
-        State or County FIPS code.
-
-    Returns
-    -------
-    results: pd.DataFrame
-        DataFrame containing the R_t inferences.
-    """
-    if fips in NEW_ORLEANS_FIPS:
-        utils_log.info("Applying New Orleans Patch")
-        return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
-
-    path = pyseir.utils.get_run_artifact_path(fips, pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
-    if not os.path.exists(path):
-        return None
-    return pd.read_json(path)
