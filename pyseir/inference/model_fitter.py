@@ -13,6 +13,7 @@ import dill as pickle
 import numpy as np
 import iminuit
 from covidactnow.datapublic.common_fields import CommonFields
+from libs import pipeline
 
 from pyseir.inference import model_plotting
 from pyseir.models import suppression_policies
@@ -46,8 +47,7 @@ class ModelFitter:
 
     Parameters
     ----------
-    fips: str
-        State or county fips code.
+    region: pipeline.Region
     ref_date: datetime
         Date to reference against. This should be before the first case.
     min_deaths: int
@@ -110,7 +110,7 @@ class ModelFitter:
 
     def __init__(
         self,
-        fips,
+        region,
         ref_date=datetime(year=2020, month=1, day=1),
         min_deaths=2,
         n_years=1,
@@ -124,7 +124,7 @@ class ModelFitter:
         # Minuit optimizer.
         np.random.seed(seed=42)
 
-        self.fips = fips
+        self.region = region
 
         self.ref_date = ref_date
         self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=7)).days
@@ -142,16 +142,16 @@ class ModelFitter:
             self.times,
             self.observed_new_cases,
             self.observed_new_deaths,
-        ) = load_data.load_new_case_data_by_fips(fips, self.ref_date)
+        ) = region.load_new_case_data_by_fips(self.ref_date)
 
         (
             self.hospital_times,
             self.hospitalizations,
             self.hospitalization_data_type,
-        ) = load_data.load_hospitalization_data(fips, self.ref_date)
+        ) = region.load_hospitalization_data(self.ref_date)
 
-        self.icu_times, self.icu, self.icu_data_type = load_data.load_hospitalization_data(
-            fips, self.ref_date, category=HospitalizationCategory.ICU
+        self.icu_times, self.icu, self.icu_data_type = region.load_hospitalization_data(
+            self.ref_date, category=HospitalizationCategory.ICU
         )
 
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
@@ -178,12 +178,8 @@ class ModelFitter:
         self.dof_hosp = None
 
     @property
-    def state_fips(self):
-        return self.fips[:2]
-
-    @property
     def display_name(self):
-        record = combined_datasets.get_us_latest_for_fips(self.fips)
+        record = self.region.get_us_latest()
         county = record[CommonFields.COUNTY]
         state = record[CommonFields.STATE]
         if county:
@@ -213,8 +209,9 @@ class ModelFitter:
             "hosp_fraction",
             "log10_I_initial",
         ]
-        if self.fips in overwrite_params_df["fips"].values:
-            this_fips_df = overwrite_params_df.loc[overwrite_params_df["fips"] == self.fips]
+        if self.region.fips in overwrite_params_df["fips"].values:
+            this_fips_df = overwrite_params_df.loc[overwrite_params_df["fips"] == self.region.fips]
+            assert False
             for param in INITIAL_PARAM_SETS:
                 self.fit_params[param] = this_fips_df[param]
 
@@ -222,8 +219,8 @@ class ModelFitter:
         if self.fit_params["fix_hosp_fraction"]:
             self.fit_params["hosp_fraction"] = 1
 
-        if len(self.fips) == 5:
-            state_fit_result = load_inference_result(fips=self.state_fips)
+        if self.region.is_county():
+            state_fit_result = self.region.load_inference_result_of_state()
             T0_LEFT_PAD = 5
             T0_RIGHT_PAD = 30
 
@@ -283,7 +280,7 @@ class ModelFitter:
             parameter_generator = ParameterEnsembleGenerator
 
         SEIR_kwargs = parameter_generator(
-            fips=self.fips, N_samples=5000, t_list=self.t_list, suppression_policy=None
+            fips=self.region.fips, N_samples=5000, t_list=self.t_list, suppression_policy=None
         ).get_average_seir_parameters()
 
         SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
@@ -568,7 +565,7 @@ class ModelFitter:
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
-        self.fit_results = dict(fips=self.fips, **dict(minuit.values))
+        self.fit_results = dict(fips=self.region.fips, **dict(minuit.values))
         self.fit_results.update({k + "_error": v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
@@ -619,14 +616,13 @@ class ModelFitter:
         self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     @classmethod
-    def run_for_fips(cls, fips, n_retries=3, with_age_structure=False):
+    def run_for_fips(cls, region: pipeline.Region, n_retries=3, with_age_structure=False):
         """
-        Run the model fitter for a state or county fips code.
+        Run the model fitter for a region.
 
         Parameters
         ----------
-        fips: str
-            2-digit state or 5-digit county fips code.
+        region: pipeline.Region
         n_retries: int
             The model fitter is stochastic in nature and a seed cannot be set.
             This is a bandaid until more sophisticated retries can be
@@ -639,10 +635,8 @@ class ModelFitter:
         : ModelFitter
         """
         # Assert that there are some cases for counties
-        if len(fips) == 5:
-            _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
-                fips, t0=datetime.today()
-            )
+        if region.is_county():
+            _, observed_new_cases, _ = region.load_new_case_data_by_fips(t0=datetime.today())
             if observed_new_cases.sum() < 1:
                 return None
 
@@ -650,7 +644,7 @@ class ModelFitter:
             retries_left = n_retries
             model_is_empty = True
             while retries_left > 0 and model_is_empty:
-                model_fitter = cls(fips=fips, with_age_structure=with_age_structure)
+                model_fitter = cls(region=region, with_age_structure=with_age_structure)
                 try:
                     model_fitter.fit()
                     if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
@@ -661,16 +655,16 @@ class ModelFitter:
                 if model_fitter.mle_model:
                     model_is_empty = False
             if retries_left <= 0 and model_is_empty:
-                raise RuntimeError(f"Could not converge after {n_retries} for fips {fips}")
+                raise RuntimeError(f"Could not converge after {n_retries} for {region}")
             return model_fitter
         except Exception:
-            log.exception(f"Failed to run {fips}")
+            log.exception(f"Failed to run {region}")
             return None
 
 
 def execute_model_for_fips(fips):
     if fips:
-        model_fitter = ModelFitter.run_for_fips(fips)
+        model_fitter = ModelFitter.run_for_fips(pipeline.Region.from_fips(fips))
         return model_fitter
     log.warning(f"Not running model run for ${fips}")
     return None

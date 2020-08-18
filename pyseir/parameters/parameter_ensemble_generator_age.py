@@ -1,6 +1,8 @@
 import scipy
 import numpy as np
 import pandas as pd
+
+from libs import pipeline
 from pyseir import load_data
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 
@@ -34,16 +36,18 @@ class ParameterEnsembleGeneratorAge(ParameterEnsembleGenerator):
 
     """
 
-    def __init__(self, fips, N_samples, t_list, I_initial=1, suppression_policy=None):
+    def __init__(
+        self, region: pipeline.Region, N_samples, t_list, I_initial=1, suppression_policy=None
+    ):
 
         # Caching globally to avoid relatively significant performance overhead
         # of loading for each county.
-        super().__init__(fips, N_samples, t_list, I_initial, suppression_policy)
+        super().__init__(region, N_samples, t_list, I_initial, suppression_policy)
         global hosp_rate_data
         if hosp_rate_data is None:
             hosp_rate_data = load_data.load_cdc_hospitalization_data()
-        self.contact_matrix_data = load_data.load_contact_matrix_data_by_fips(fips)
-        self.population = np.array(self.contact_matrix_data[fips]["age_distribution"])
+        self.contact_matrix_data = load_data.load_contact_matrix_data_by_fips(region.fips)
+        self.population = np.array(self.contact_matrix_data[region.fips]["age_distribution"])
 
     def generate_age_specific_rates(self):
         """

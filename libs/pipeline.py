@@ -6,6 +6,7 @@ represents a geographical area (state, county, metro area, etc).
 
 import json
 import os
+from datetime import datetime
 from typing import Optional
 
 import pandas as pd
@@ -15,6 +16,8 @@ import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import FIPSPopulation
 from libs.datasets.combined_datasets import load_us_latest_dataset, _log
+from pyseir import load_data
+from pyseir.load_data import HospitalizationCategory
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact
 
@@ -87,3 +90,19 @@ class Region(BaseModel):
     @staticmethod
     def from_fips(fips: str):
         return Region(fips=fips)
+
+    def load_new_case_data_by_fips(self, t0):
+        return load_data.load_new_case_data_by_fips(self.fips, t0)
+
+    def load_hospitalization_data(
+        self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
+    ):
+        return load_data.load_hospitalization_data(self.fips, t0, category=category)
+
+    def is_county(self):
+        return len(self.fips) == 5
+
+    def load_inference_result_of_state(self):
+        if not self.is_county():
+            raise AssertionError(f"Attempt to find state of {self}")
+        return Region.from_fips(self.fips[:2]).load_inference_result()
