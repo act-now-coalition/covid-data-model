@@ -6,6 +6,8 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool
+
+import libs.pipeline
 from pyseir import load_data
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.inference.fit_results import load_inference_result
@@ -42,65 +44,30 @@ class WebUIDataAdaptorV1:
         self.output_interval_days = output_interval_days
         self.run_mode = RunMode(run_mode)
         self.include_imputed = include_imputed
-        self.population_data = FIPSPopulation.local().population()
         self.output_dir = output_dir
 
-    @staticmethod
-    def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
-        """
-        Fetches the latest county hospitalization and icu utilization.
-
-        If current data is available, we return that.
-        If not, current values are estimated from cumulative.
-        """
-        _, county_hosp = load_data.get_current_hospitalized(
-            fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
-        )
-        _, county_icu = load_data.get_current_hospitalized(
-            fips, t0_simulation, category=load_data.HospitalizationCategory.ICU
-        )
-
-        return county_hosp, county_icu
-
-    @staticmethod
-    def _is_valid_count_metric(metric: float) -> bool:
-        return metric is not None and metric > 0
-
-    def _get_population(self, fips: str) -> int:
-        """
-        Get the population for a region.
-
-        Parameters
-        ----------
-        fips: str
-            2 digits for a state or 5 digits for a county.
-        """
-        return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
-
-    def map_fips(self, fips: str) -> None:
+    def map_fips(self, region: libs.pipeline.Region) -> None:
         """
         For a given fips code, for either a county or state, generate the CAN UI output format.
 
         Parameters
         ----------
-        fips: str
-            FIPS code to map.
         """
         # Get the latest observed values to use in calculating shims
-        observed_latest_dict = combined_datasets.get_us_latest_for_fips(fips)
+        observed_latest_dict = region.get_us_latest()
 
         state = observed_latest_dict[CommonFields.STATE]
-        log.info("Mapping output to WebUI.", state=state, fips=fips)
-        shim_log = structlog.getLogger(fips=fips)
-        pyseir_outputs = load_data.load_ensemble_results(fips)
+        log.info("Mapping output to WebUI.", state=state, fips=region.fips)
+        shim_log = structlog.getLogger(fips=region.fips)
+        pyseir_outputs = region.load_ensemble_results()
 
         try:
-            fit_results = load_inference_result(fips)
+            fit_results = region.load_inference_result()
             t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
         except (KeyError, ValueError):
-            log.error("Fit result not found for fips. Skipping...", fips=fips)
+            log.error("Fit result not found for fips. Skipping...", fips=region.fips)
             return
-        population = self._get_population(fips)
+        population = region.get_population()
 
         # We will shim all suppression policies by the same amount (since historical tracking error
         # for all policies is the same).
@@ -241,7 +208,7 @@ class WebUIDataAdaptorV1:
             output_model = output_model.fillna(0)
 
             # Fill in results for the Rt indicator.
-            rt_results = load_Rt_result(fips)
+            rt_results = region.load_Rt_result()
             if rt_results is not None:
                 rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%Y-%m-%d")
                 merged = output_model.merge(
@@ -260,7 +227,7 @@ class WebUIDataAdaptorV1:
             else:
                 log.warning(
                     "No Rt Results found, clearing Rt in output.",
-                    fips=fips,
+                    fips=region.fips,
                     suppression_policy=suppression_policy,
                 )
                 output_model[schema.RT_INDICATOR] = "NaN"
@@ -292,11 +259,11 @@ class WebUIDataAdaptorV1:
                 0
             )
 
-            output_model[schema.FIPS] = fips
+            output_model[schema.FIPS] = region.fips
             intervention = Intervention.from_webui_data_adaptor(suppression_policy)
             output_model[schema.INTERVENTION] = intervention.value
             output_path = get_run_artifact_path(
-                fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
+                region.fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
@@ -316,13 +283,13 @@ class WebUIDataAdaptorV1:
         """
 
         state_fips = us.states.lookup(state).fips
-        self.map_fips(state_fips)
+        self.map_fips(libs.pipeline.Region.from_fips(state_fips))
 
         if states_only:
             return
         else:
             with Pool(maxtasksperchild=1) as p:
-                p.map(self.map_fips, whitelisted_county_fips)
+                p.map(self.map_fips, map(libs.pipeline.Region.from_fips, whitelisted_county_fips))
 
             return
 

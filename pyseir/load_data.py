@@ -289,31 +289,6 @@ def load_hospitalization_data(
         return None, None, None
 
 
-def get_current_hospitalized(fips, t0, category: HospitalizationCategory):
-    """
-    Return the current estimate for the number of people in the given category for a given fips.
-    Treats a length 2 fips as a state and a length 5 fips as a county
-
-    Parameters
-    ----------
-    fips: str
-        US fips to lookup.
-    t0: datetime
-        Datetime to offset by.
-    category: HospitalizationCategory
-        'icu' for just ICU or 'hospitalized' for all ICU + Acute.
-
-    Returns
-    -------
-    time: float
-        Days since t0 for the hospitalization data.
-    current estimate: float
-        The most recent provided value for the current occupied in the requested category.
-    """
-    df = combined_datasets.get_timeseries_for_fips(fips).data
-    return _get_current_hospitalized(df, t0, category)
-
-
 def _get_current_hospitalized(df: pd.DataFrame, t0: datetime, category: HospitalizationCategory):
     """
     Given a DataFrame that contains values icu or hospitalization data

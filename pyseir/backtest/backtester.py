@@ -143,7 +143,7 @@ class Backtester:
         self.historical_predictions = None
 
     @staticmethod
-    def load_observations(fips=None, ref_date=REF_DATE):
+    def load_observations(fips, ref_date):
         """
         Load observations (new cases, new deaths and hospitalizations) for
         given fips code.
