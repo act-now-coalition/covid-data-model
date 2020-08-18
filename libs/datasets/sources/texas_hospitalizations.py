@@ -16,6 +16,7 @@ class TexasHospitalizations(data_source.DataSource):
 
     COMMON_FIELD_MAP = {
         CommonFields.CURRENT_HOSPITALIZED: CommonFields.CURRENT_HOSPITALIZED,
+        CommonFields.CURRENT_ICU: CommonFields.CURRENT_ICU,
     }
 
     @classmethod
