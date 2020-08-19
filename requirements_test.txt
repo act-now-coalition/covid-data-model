@@ -10,3 +10,4 @@ nbstripout==0.3.7
 pylint==2.5.2
 pre-commit==2.6.0
 identify==1.4.23
+temppathlib==1.0.3

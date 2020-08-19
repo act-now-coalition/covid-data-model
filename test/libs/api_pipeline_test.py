@@ -1,17 +1,15 @@
 import datetime
 import pathlib
 import tempfile
+
 import pytest
-from libs.functions import generate_api
-from libs.pipelines import api_pipeline
+
+from api.can_api_definition import Actuals, Projections, RegionSummary, ResourceUsageProjection
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
-from api.can_api_definition import RegionSummary
-from api.can_api_definition import Actuals
-from api.can_api_definition import Projections
-from api.can_api_definition import ResourceUsageProjection
-
+from libs.functions import generate_api
+from libs.pipelines import api_pipeline
 from pyseir import cli
 
 NYC_FIPS = "36061"
@@ -77,3 +75,6 @@ def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_
         str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
     ]
     assert sorted(output_paths) == sorted(expected_outputs)
+
+
+# def test_generate_metrics_and_latest_for_fips():
