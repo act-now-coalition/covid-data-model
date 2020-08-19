@@ -1,0 +1,21 @@
+{
+  "title": "Metrics",
+  "description": "Calculated metrics data based on known actuals.",
+  "type": "object",
+  "properties": {
+    "testPositivity": {
+      "title": "Testpositivity",
+      "description": "Ratio of people who test positive calculated using a 7 day rolling average.",
+      "type": "number"
+    },
+    "caseDensity": {
+      "title": "Casedensity",
+      "description": "The number of cases per 100k population calculated using a 7 day rolling average.",
+      "type": "number"
+    }
+  },
+  "required": [
+    "testPositivity",
+    "caseDensity"
+  ]
+}

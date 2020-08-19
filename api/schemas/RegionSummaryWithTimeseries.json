@@ -45,6 +45,15 @@
     "actuals": {
       "$ref": "#/definitions/Actuals"
     },
+    "metrics": {
+      "title": "Metrics",
+      "description": "Region level metrics",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Metrics"
+        }
+      ]
+    },
     "population": {
       "title": "Population",
       "description": "Total Population in geographic region.",
@@ -64,6 +73,13 @@
       "items": {
         "$ref": "#/definitions/ActualsTimeseriesRow"
       }
+    },
+    "metricsTimeseries": {
+      "title": "Metricstimeseries",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MetricsTimeseriesRow"
+      }
     }
   },
   "required": [
@@ -76,7 +92,8 @@
     "actuals",
     "population",
     "timeseries",
-    "actualsTimeseries"
+    "actualsTimeseries",
+    "metricsTimeseries"
   ],
   "definitions": {
     "ResourceUsageProjection": {
@@ -247,6 +264,27 @@
         "ICUBeds"
       ]
     },
+    "Metrics": {
+      "title": "Metrics",
+      "description": "Calculated metrics data based on known actuals.",
+      "type": "object",
+      "properties": {
+        "testPositivity": {
+          "title": "Testpositivity",
+          "description": "Ratio of people who test positive calculated using a 7 day rolling average.",
+          "type": "number"
+        },
+        "caseDensity": {
+          "title": "Casedensity",
+          "description": "The number of cases per 100k population calculated using a 7 day rolling average.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "testPositivity",
+        "caseDensity"
+      ]
+    },
     "PredictionTimeseriesRow": {
       "title": "PredictionTimeseriesRow",
       "description": "Prediction data for a single day.",
@@ -404,6 +442,34 @@
         "cumulativeDeaths",
         "hospitalBeds",
         "ICUBeds",
+        "date"
+      ]
+    },
+    "MetricsTimeseriesRow": {
+      "title": "MetricsTimeseriesRow",
+      "description": "Calculated metrics data based on known actuals.",
+      "type": "object",
+      "properties": {
+        "testPositivity": {
+          "title": "Testpositivity",
+          "description": "Ratio of people who test positive calculated using a 7 day rolling average.",
+          "type": "number"
+        },
+        "caseDensity": {
+          "title": "Casedensity",
+          "description": "The number of cases per 100k population calculated using a 7 day rolling average.",
+          "type": "number"
+        },
+        "date": {
+          "title": "Date",
+          "descrition": "Date of timeseries data point",
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "testPositivity",
+        "caseDensity",
         "date"
       ]
     }
