@@ -41,11 +41,10 @@ class WebUIDataAdaptorV1:
         self.output_dir = output_dir
 
     def map_fips(self, region: libs.pipeline.Region) -> None:
-        """
-        For a given fips code, for either a county or state, generate the CAN UI output format.
+        """Generates the CAN UI output format for a given region.
 
-        Parameters
-        ----------
+        Args:
+            region: the region
         """
         # Get the latest observed values to use in calculating shims
         observed_latest_dict = region.get_us_latest()
@@ -202,7 +201,7 @@ class WebUIDataAdaptorV1:
             output_model = output_model.fillna(0)
 
             # Fill in results for the Rt indicator.
-            rt_results = region.load_Rt_result()
+            rt_results = region.load_rt_result()
             if rt_results is not None:
                 rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%Y-%m-%d")
                 merged = output_model.merge(
