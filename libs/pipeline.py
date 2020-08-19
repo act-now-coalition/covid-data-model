@@ -10,21 +10,19 @@ from datetime import datetime
 from typing import Optional
 
 import pandas as pd
+import structlog
 from pydantic import BaseModel
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import FIPSPopulation
-from libs.datasets.combined_datasets import load_us_latest_dataset, _log
+from libs.datasets import combined_datasets
 from pyseir import load_data
 from pyseir.load_data import HospitalizationCategory
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact
 
 
-overwrite_params_df = pd.read_csv(
-    "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": object}
-)
+_log = structlog.get_logger()
 
 
 class Region(BaseModel):
@@ -38,7 +36,7 @@ class Region(BaseModel):
 
     def get_us_latest(self):
         """Gets latest values for a given state or county fips code."""
-        us_latest = load_us_latest_dataset()
+        us_latest = combined_datasets.load_us_latest_dataset()
         return us_latest.get_record_for_fips(self.fips)
 
     def load_inference_result(self):
@@ -59,8 +57,7 @@ class Region(BaseModel):
 
     def get_population(self) -> int:
         """Gets the population for this region."""
-        population_data = FIPSPopulation.local().population()
-        return population_data.get_record_for_fips(self.fips)[CommonFields.POPULATION]
+        return self.get_us_latest()[CommonFields.POPULATION]
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
@@ -73,7 +70,7 @@ class Region(BaseModel):
         with open(output_filename) as f:
             return json.load(f)
 
-    def load_Rt_result(self) -> Optional[pd.DataFrame]:
+    def load_rt_result(self) -> Optional[pd.DataFrame]:
         """Loads the Rt inference result.
 
         Returns
