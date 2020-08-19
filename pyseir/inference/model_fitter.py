@@ -258,7 +258,7 @@ class ModelFitter:
             The average ensemble params.
         """
         SEIR_kwargs = ParameterEnsembleGenerator(
-            fips=self.region.fips, N_samples=5000, t_list=self.t_list, suppression_policy=None
+            region=self.region, N_samples=5000, t_list=self.t_list, suppression_policy=None
         ).get_average_seir_parameters()
 
         SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
