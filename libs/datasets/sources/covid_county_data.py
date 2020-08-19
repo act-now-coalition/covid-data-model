@@ -115,6 +115,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
         provenance[CommonFields.POSITIVE_TESTS].mask(missing_pos, "missing_pos", inplace=True)
 
         # preventing a circular import by importing combined datasets here.
+        # TODO(chris): Move provenance_wide_metrics_to_series to fix the circular import.
         from libs.datasets import combined_datasets
 
         provenance_series = combined_datasets.provenance_wide_metrics_to_series(
