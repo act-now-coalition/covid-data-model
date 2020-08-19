@@ -196,10 +196,7 @@ class ModelFitter:
             "hosp_fraction",
             "log10_I_initial",
         ]
-        if self.region.fips in overwrite_params_df["fips"].values:
-            this_fips_df = overwrite_params_df.loc[overwrite_params_df["fips"] == self.region.fips]
-            for param in INITIAL_PARAM_SETS:
-                self.fit_params[param] = this_fips_df[param]
+        self.fit_params.update(self.region.get_pyseir_fitter_initial_conditions(INITIAL_PARAM_SETS))
 
         self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
         if self.fit_params["fix_hosp_fraction"]:

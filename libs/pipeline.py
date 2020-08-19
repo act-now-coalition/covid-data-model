@@ -7,7 +7,7 @@ represents a geographical area (state, county, metro area, etc).
 import json
 import os
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Mapping, List, Any
 
 import pandas as pd
 import structlog
@@ -20,6 +20,11 @@ from pyseir import load_data
 from pyseir.load_data import HospitalizationCategory
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact
+
+
+overwrite_params_df = pd.read_csv(
+    "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": str}
+).set_index("fips")
 
 
 _log = structlog.get_logger()
@@ -108,3 +113,9 @@ class Region(BaseModel):
         if not self.is_county():
             raise AssertionError(f"Attempt to find state of {self}")
         return Region.from_fips(self.fips[:2]).load_inference_result()
+
+    def get_pyseir_fitter_initial_conditions(self, params: List[str]) -> Mapping[str, Any]:
+        if self.fips in overwrite_params_df.index:
+            return overwrite_params_df.loc[self.fips, params].to_dict()
+        else:
+            return {}
