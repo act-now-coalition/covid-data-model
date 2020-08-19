@@ -5,7 +5,6 @@ import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
-from libs.datasets import combined_datasets
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.timeseries import TimeseriesDataset
@@ -114,6 +113,10 @@ class CovidCountyDataDataSource(data_source.DataSource):
             inplace=True,
         )
         provenance[CommonFields.POSITIVE_TESTS].mask(missing_pos, "missing_pos", inplace=True)
+
+        # preventing a circular import by importing combined datasets here.
+        # TODO(chris): Move provenance_wide_metrics_to_series to fix the circular import.
+        from libs.datasets import combined_datasets
 
         provenance_series = combined_datasets.provenance_wide_metrics_to_series(
             provenance.set_index([CommonFields.FIPS, CommonFields.DATE]), structlog.get_logger()
