@@ -8,8 +8,8 @@ from libs import series_utils
 
 
 class MetricsFields:
-    CASE_DENSITY = "case_density"
-    TEST_POSITIVITY = "test_positivity"
+    CASE_DENSITY = "caseDensity"
+    TEST_POSITIVITY = "testPositivity"
 
 
 def calculate_top_level_metrics_for_fips(fips: str):
