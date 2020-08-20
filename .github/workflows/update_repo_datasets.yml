@@ -88,7 +88,7 @@ jobs:
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
         STATUS: ${{job.status}}
-        DATA_AVAILABILITY_URL: http://tiny.cc/candata
+        DATA_AVAILABILITY_URL: http://tiny.cc/can-data
       uses: Ilshidur/action-slack@fb92a78
       with:
         args: 'update-dataset-snapshot succeeded. View Data Availability Report at {{DATA_AVAILABILITY_URL}}'

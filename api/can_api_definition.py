@@ -82,6 +82,8 @@ class Metrics(base_model.APIBaseModel):
 
 
 class MetricsTimeseriesRow(Metrics):
+    """Metrics data for a single day."""
+
     date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
 
 
