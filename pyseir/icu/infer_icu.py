@@ -48,6 +48,10 @@ def _calculate_icu_timeseries(
     """
     has = data.apply(lambda x: not x.dropna().empty).to_dict()
 
+    if fips == "36061":
+        has["current_icu"] = False
+        has["current_hospitalized"] = False
+
     if use_actuals and has["current_icu"]:
         log.info(current_icu=True)
         return data["current_icu"]
