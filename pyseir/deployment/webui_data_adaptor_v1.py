@@ -7,8 +7,6 @@ from multiprocessing import Pool
 
 from libs import pipeline
 from pyseir.deployment import model_to_observed_shim as shim
-from pyseir.inference.fit_results import load_inference_result
-from pyseir.rt.utils import load_Rt_result
 from pyseir.icu import infer_icu
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
@@ -105,7 +103,7 @@ class WebUIDataAdaptorV1:
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
         # ICU PATCH
-        icu_patch_ts = infer_icu.get_icu_timeseries(fips=fips, weight_by="cases")
+        icu_patch_ts = infer_icu.get_icu_timeseries(fips=regional_input.fips, weight_by="cases")
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.

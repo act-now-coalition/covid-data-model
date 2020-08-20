@@ -38,16 +38,3 @@ def calculate_case_based_weights() -> dict:
     # Convert to dict mapping
     output = df.set_index("fips")["weight"].to_dict()
     return output
-
-
-def update_case_based_weights():
-    output_path = "one_month_trailing_weights_via_fips.json"
-    savepath = os.path.join(DATA_DIR, output_path)
-    output = calculate_case_based_weights()
-    with open(savepath, "w") as f:
-        json.dump(output, f)
-
-
-if __name__ == "__main__":
-    print("Updating Case Based Weights")
-    update_case_based_weights()

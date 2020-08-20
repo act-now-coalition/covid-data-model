@@ -2,6 +2,8 @@ from itertools import chain
 from typing import Optional
 import logging
 import pathlib
+import os
+import json
 
 import click
 import gspread
@@ -22,6 +24,8 @@ from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.combined_dataset_utils import DatasetType
 from libs.datasets.dataset_utils import AggregationLevel
+from pyseir import DATA_DIR
+import pyseir.icu.utils
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -125,3 +129,12 @@ def update_availability_report(name: str, share_email: Optional[str]):
     sheet.reorder_worksheets(worksheets)
 
     _logger.info("Finished updating data availability report")
+
+
+@main.command()
+def update_case_based_icu_utilization_weights():
+    output_path = "one_month_trailing_weights_via_fips.json"
+    savepath = os.path.join(DATA_DIR, output_path)
+    output = pyseir.icu.utils.calculate_case_based_weights()
+    with open(savepath, "w") as f:
+        json.dump(output, f)
