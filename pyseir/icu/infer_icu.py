@@ -11,8 +11,11 @@ logger = structlog.get_logger()
 
 
 class ICUConfig:
-    WEIGHTS_PATHS = dict(population=os.path.join(DATA_DIR, "population_weights_via_fips.json"))
-    LR_COEF = dict(m_hospitalized=0.275, b=-2.5)
+    WEIGHTS_PATHS = dict(
+        population=os.path.join(DATA_DIR, "population_weights_via_fips.json"),
+        one_month_trailing_cases=os.path.join(DATA_DIR, "one_month_trailing_weights_via_fips.json"),
+    )
+    LR_COEF = dict(m_hospitalized=0.2885, b=-1.6083)
     SUFFIX = "_superset"
     LOOKBACK_DAYS = 91
     LOOKBACK_DATE = pd.Timestamp.today() - pd.Timedelta(days=LOOKBACK_DAYS)
@@ -63,12 +66,12 @@ def get_icu_timeseries(
         if use_actuals and has["current_icu_superset"]:
             superset_icu = df["current_icu_superset"]
         else:
-            # For now we are guaranteed to have the superset have at least current_hospitalized
+            # For now we are guaranteed that the superset has at least current_hospitalized
             # since all states have current_hospitalized. If we add another intermediate level, then
             # this logic will have to be changed.
             superset_icu = estimate_icu_from_hospitalized(df["current_hospitalized_superset"])
 
-        # Get Disaggregation Weight
+        # Get Disaggregation Weighting
         weight = get_weight_by_fips(fips, method=weight_by)
         log.info(disaggregation=True)
         return weight * superset_icu
@@ -85,7 +88,18 @@ def estimate_icu_from_hospitalized(current_hospitalized: pd.Series) -> pd.Series
 
 
 def get_weight_by_fips(fips: str, method="population") -> float:
-    if method == "population":
+    """
+
+
+    Currently Supported Methods
+    population
+        Distribute unattributed covid icu patients based on county population
+    one_month_trailing_cases
+        Distribute unattributed covid icu patients based on a county's fraction of the last month's
+        total cases for that state.
+
+    """
+    if method in ICUConfig.WEIGHTS_PATHS:
         with open(ICUConfig.WEIGHTS_PATHS[method]) as f:
             weights = json.load(f)
     else:

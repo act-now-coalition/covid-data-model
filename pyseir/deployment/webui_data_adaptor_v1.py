@@ -143,7 +143,7 @@ class WebUIDataAdaptorV1:
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
         # ICU PATCH
-        icu_patch_ts = infer_icu.get_icu_timeseries(fips=fips)
+        icu_patch_ts = infer_icu.get_icu_timeseries(fips=fips, weight_by="one_month_trailing_cases")
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
