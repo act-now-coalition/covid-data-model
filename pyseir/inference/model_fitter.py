@@ -586,7 +586,7 @@ class ModelFitter:
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
-        self.fit_results = dict(fips=self.regional_input.region.fips, **dict(minuit.values))
+        self.fit_results = dict(minuit.values)
         self.fit_results.update({k + "_error": v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
