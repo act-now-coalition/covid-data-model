@@ -122,7 +122,7 @@ class WebUIDataAdaptorV1:
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
         # ICU PATCH
-        icu_patch_ts = infer_icu.get_icu_timeseries(fips=fips, weight_by="one_month_trailing_cases")
+        icu_patch_ts = infer_icu.get_icu_timeseries(fips=fips, weight_by="cases")
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
@@ -163,7 +163,8 @@ class WebUIDataAdaptorV1:
             interpolated_model_icu_values = np.interp(
                 t_list_downsampled, t_list, raw_model_icu_values
             )
-            output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
+
+            # output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
 
             # Applying Patch for ICU Linear Regression
             infer_icu_patch = icu_patch_ts.reindex(
