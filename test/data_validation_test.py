@@ -17,7 +17,6 @@ def default_timeseries_row(**updates):
         "deaths": 1.0,
         "recovered": 0.0,
         "source": "JHU",
-        "generated": False,
         "county": "Richland Parish",
     }
     data.update(updates)
@@ -46,7 +45,7 @@ def test_nyc_aggregation(are_boroughs_zero):
     df = pd.DataFrame(rows)
 
     # Todo: figure out a better way to define these groups.
-    group = ["date", "source", "country", "aggregate_level", "state", "generated"]
+    group = ["date", "source", "country", "aggregate_level", "state"]
     result = custom_aggregations.update_with_combined_new_york_counties(
         df, group, are_boroughs_zero=are_boroughs_zero
     )

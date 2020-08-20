@@ -1,18 +1,23 @@
 import datetime
 import pathlib
 import tempfile
+
 import pytest
-from libs.functions import generate_api
-from libs.pipelines import api_pipeline
-from libs.datasets import combined_datasets
+
+from api.can_api_definition import (
+    Actuals,
+    Metrics,
+    Projections,
+    RegionSummary,
+    RegionSummaryWithTimeseries,
+    ResourceUsageProjection,
+)
 from libs.datasets import can_model_output_schema as schema
+from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
-from api.can_api_definition import RegionSummary
-from api.can_api_definition import RegionSummaryWithTimeseries
-from api.can_api_definition import Actuals
-from api.can_api_definition import Projections
-from api.can_api_definition import ResourceUsageProjection
+from libs.functions import generate_api
+from libs.pipelines import api_pipeline
 
 
 @pytest.mark.parametrize(
@@ -21,6 +26,7 @@ from api.can_api_definition import ResourceUsageProjection
 def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_path, nyc_fips):
 
     us_latest = combined_datasets.load_us_latest_dataset()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
     model_output = None
     expected_projections = None
@@ -44,7 +50,11 @@ def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_p
         )
         intervention = Intervention.STRONG_INTERVENTION
 
-    summary = generate_api.generate_region_summary(nyc_latest, model_output)
+    fips_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
+    metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest_for_fips(
+        fips_timeseries, nyc_latest
+    )
+    summary = generate_api.generate_region_summary(nyc_latest, latest_metric, model_output)
 
     expected = RegionSummary(
         population=nyc_latest["population"],
@@ -53,6 +63,7 @@ def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_p
         fips="36061",
         lat=None,
         long=None,
+        metrics=latest_metric,
         actuals=Actuals(
             population=nyc_latest["population"],
             intervention="STRONG_INTERVENTION",
@@ -97,13 +108,16 @@ def test_generate_timeseries_for_fips(include_projections, nyc_model_output_path
     nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
     intervention = Intervention.OBSERVED_INTERVENTION
     model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
-
-    region_summary = generate_api.generate_region_summary(nyc_latest, model_output)
-    region_timeseries = generate_api.generate_region_timeseries(
-        region_summary, nyc_timeseries, model_output
+    metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest_for_fips(
+        nyc_timeseries, nyc_latest
     )
 
-    summary = generate_api.generate_region_summary(nyc_latest, model_output)
+    region_summary = generate_api.generate_region_summary(nyc_latest, latest_metric, model_output)
+    region_timeseries = generate_api.generate_region_timeseries(
+        region_summary, nyc_timeseries, metrics_series, model_output
+    )
+
+    summary = generate_api.generate_region_summary(nyc_latest, latest_metric, model_output)
 
     assert summary.dict() == region_timeseries.region_summary.dict()
     # Double checking that serialized json does not contain NaNs, all values should

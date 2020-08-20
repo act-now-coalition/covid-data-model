@@ -134,27 +134,6 @@ def cache_public_implementations_data():
 
 
 @lru_cache(maxsize=32)
-def load_county_metadata():
-    """
-    Return county level metadata such as age distributions, populations etc..
-
-    Returns
-    -------
-    : pd.DataFrame
-
-    """
-
-    county_metadata = pd.read_json(
-        os.path.join(DATA_DIR, "county_metadata.json"), dtype={"fips": "str"}
-    )
-    # Fix state names
-    county_metadata.loc[:, "state"] = county_metadata["fips"].apply(
-        lambda x: us.states.lookup(x[:2]).name
-    )
-    return county_metadata
-
-
-@lru_cache(maxsize=32)
 def load_ensemble_results(fips):
     """
     Retrieve ensemble results for a given state or county fips code.
@@ -176,31 +155,6 @@ def load_ensemble_results(fips):
 
     with open(output_filename) as f:
         return json.load(f)
-
-
-@lru_cache(maxsize=32)
-def load_county_metadata_by_fips(fips):
-    """
-    Generate a dictionary for a county which includes county metadata.
-
-    Parameters
-    ----------
-    fips: str
-
-    Returns
-    -------
-    county_metadata: dict
-        Dictionary of metadata for the county. The keys are:
-
-        ['state', 'county', 'total_population', 'population_density',
-        'housing_density', 'age_distribution', 'age_bin_edges']
-    """
-    county_metadata = load_county_metadata()
-    county_metadata_merged = county_metadata.set_index("fips").loc[fips].to_dict()
-    for key, value in county_metadata_merged.items():
-        if np.isscalar(value) and not isinstance(value, str):
-            county_metadata_merged[key] = float(value)
-    return county_metadata_merged
 
 
 @lru_cache(maxsize=32)
@@ -333,79 +287,6 @@ def load_hospitalization_data(
         return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
     else:
         return None, None, None
-
-
-def get_current_hospitalized(fips, t0, category: HospitalizationCategory):
-    """
-    Return the current estimate for the number of people in the given category for a given fips.
-    Treats a length 2 fips as a state and a length 5 fips as a county
-
-    Parameters
-    ----------
-    fips: str
-        US fips to lookup.
-    t0: datetime
-        Datetime to offset by.
-    category: HospitalizationCategory
-        'icu' for just ICU or 'hospitalized' for all ICU + Acute.
-
-    Returns
-    -------
-    time: float
-        Days since t0 for the hospitalization data.
-    current estimate: float
-        The most recent provided value for the current occupied in the requested category.
-    """
-    df = combined_datasets.get_timeseries_for_fips(fips).data
-    return _get_current_hospitalized(df, t0, category)
-
-
-def _get_current_hospitalized(df: pd.DataFrame, t0: datetime, category: HospitalizationCategory):
-    """
-    Given a DataFrame that contains values icu or hospitalization data
-    for a single county/state, this function returns the latest value.
-
-    Parameters
-    ----------
-    df
-        dataframe containing either current_ or cumulative_ values for a single county or state
-    t0
-        beginning of observation period
-    category
-        the type of current data to be returned
-
-    Returns
-    -------
-    time: float
-        Days since t0 for the hospitalization data.
-    current estimate: float
-        The most recent provided value for the current occupied in the requested category.
-    """
-
-    # TODO: No need to pass t0 down and back up. Can return a datetime that consumer converts.
-
-    NUM_DAYS_LOOKBACK = 3
-    # Agencies will start and stop reporting values. Also, depending on the time of day some columns
-    # in a day row may propagate before others. Therefore, we don't want to just take the most
-    # recent value which may be None, nor take just the most recent any value, which may be weeks
-    # ago.
-
-    # Datetimes are in naive but UTC. Look at possible values that are within this time window.
-    date_minimum = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=NUM_DAYS_LOOKBACK)
-    date_mask = df["date"] >= date_minimum.to_datetime64()
-    recent_days_index = df.index[date_mask]
-
-    # Look back from most recent and find the first (latest) non-null value. If the loop drops out,
-    # that means there were no non-null values in the window of interest, and we return Nones.
-    for idx in reversed(recent_days_index):  # Iterate from most recent backwards
-        if pd.notnull(df[f"current_{category}"][idx]):
-            current_latest = df[f"current_{category}"][idx]
-
-            times_new = df["date"].dt.date - t0.date()
-            times_new_latest = times_new[idx].days
-            return times_new_latest, current_latest
-    else:  # No values found in recent window, so return None
-        return None, None
 
 
 @lru_cache(maxsize=32)

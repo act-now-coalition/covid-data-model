@@ -1,18 +1,26 @@
-import api
 import logging
 import pathlib
 import click
 import itertools
 import us
+
+import pydantic
+import api
 from api.can_api_definition import RegionSummaryWithTimeseries
 from api.can_api_definition import AggregateRegionSummaryWithTimeseries
+from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import combined_datasets
-from libs.enums import Intervention
+from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.enums import Intervention
 
 PROD_BUCKET = "data.covidactnow.org"
+
+API_README_TEMPLATE_PATH = REPO_ROOT / "api" / "README.V1.tmpl.md"
+API_README_PATH = REPO_ROOT / "api" / "README.V1.md"
+
 
 _logger = logging.getLogger(__name__)
 
@@ -30,13 +38,28 @@ def main():
     help="Output directory to save schemas in.",
     default="api/schemas",
 )
-def update_schemas(output_dir):
+@click.option(
+    "--update-readme/--skip-update-readme",
+    type=bool,
+    help="If true, updates readme with schemas",
+    default=True,
+)
+def update_schemas(output_dir, update_readme):
     """Updates all public facing API schemas."""
     schemas = api.find_public_model_classes()
     for schema in schemas:
         path = output_dir / f"{schema.__name__}.json"
         _logger.info(f"Updating schema {schema} to {path}")
         path.write_text(schema.schema_json(indent=2))
+
+    if update_readme:
+        _logger.info(f"Updating {API_README_PATH} with schema definitions")
+        # Generate a single schema with all API schema definitions.
+        can_schema = pydantic.schema.schema(schemas)
+        schemas = update_readme_schemas.generate_markdown_for_schema_definitions(can_schema)
+        update_readme_schemas.generate_api_readme_from_template(
+            API_README_TEMPLATE_PATH, API_README_PATH, schemas
+        )
 
 
 @main.command()
@@ -67,6 +90,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
     """The entry function for invocation"""
 
     active_states = [state.abbr for state in us.STATES]
+    active_states = active_states + ["PR"]
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
     )
@@ -108,7 +132,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 def generate_top_counties(disable_validation, input_dir, output, state, fips):
     """The entry function for invocation"""
     intervention = Intervention.SELECTED_INTERVENTION
-    active_states = [state.abbr for state in us.STATES]
+    active_states = [state.abbr for state in us.STATES] + ["PR"]
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
     )
@@ -132,6 +156,4 @@ def generate_top_counties(disable_validation, input_dir, output, state, fips):
     api_pipeline.deploy_json_api_output(
         intervention, bulk_timeseries, output, filename_override="counties_top_100.json"
     )
-    # top_counties_pipeline.deploy_results(county_results_api, "counties_top_100", output)
-
-    # _logger.info("finished top counties job")
+    _logger.info("Finished top counties job")

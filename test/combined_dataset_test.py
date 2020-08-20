@@ -1,5 +1,6 @@
 import logging
 import re
+from itertools import chain
 
 import structlog
 
@@ -8,10 +9,10 @@ from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.combined_datasets import (
     _build_data_and_provenance,
     Override,
-    _build_combined_dataset_from_sources,
+    build_from_sources,
     US_STATES_FILTER,
     FeatureDataSourceMap,
-    _to_timeseries_rows,
+    provenance_wide_metrics_to_series,
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
@@ -93,7 +94,7 @@ def test_combined_county_has_some_timeseries_data(fips):
 )
 def test_unique_timeseries(data_source_cls):
     data_source = data_source_cls.local()
-    timeseries = TimeseriesDataset.build_from_data_source(data_source)
+    timeseries = data_source.timeseries()
     timeseries = combined_datasets.US_STATES_FILTER.apply(timeseries)
     # Check for duplicate rows with the same INDEX_FIELDS. Sort by index so duplicates are next to
     # each other in the message if the assert fails.
@@ -115,11 +116,8 @@ def test_unique_timeseries(data_source_cls):
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()
-    ts = TimeseriesDataset.from_source(data_source)
-    # Extract the USA data from the raw DF. Replace this with cleaner access when the DataSource makes it easy.
-    rename_columns = {source: common for common, source in data_source.all_fields_map().items()}
-    renamed_data = data_source.data.rename(columns=rename_columns)
-    usa_data = renamed_data.loc[renamed_data["country"] == "USA"]
+    ts = data_source.timeseries()
+    usa_data = ts.get_data(country="USA")
 
     assert not usa_data.empty
 
@@ -269,8 +267,8 @@ def test_build_and_and_provenance_missing_fips():
 
 
 @pytest.mark.slow
-def test_build_combined_dataset_from_sources_smoke_test():
-    # Quickly make sure _build_combined_dataset_from_sources doesn't crash when run with a small
+def test_build_from_sources_smoke_test():
+    # Quickly make sure build_from_sources doesn't crash when run with a small
     # number of features.
 
     # feature_definition = ALL_FIELDS_FEATURE_DEFINITION
@@ -280,12 +278,17 @@ def test_build_combined_dataset_from_sources_smoke_test():
         CommonFields.RECOVERED: [JHUDataset],
     }
 
-    _build_combined_dataset_from_sources(
-        TimeseriesDataset, feature_definition, filter=US_STATES_FILTER,
+    loaded_data_sources = {
+        data_source_cls.SOURCE_NAME: data_source_cls.local()
+        for data_source_cls in chain.from_iterable(feature_definition.values())
+    }
+
+    build_from_sources(
+        TimeseriesDataset, loaded_data_sources, feature_definition, filter=US_STATES_FILTER,
     )
 
-    _build_combined_dataset_from_sources(
-        LatestValuesDataset, feature_definition, filter=US_STATES_FILTER,
+    build_from_sources(
+        LatestValuesDataset, loaded_data_sources, feature_definition, filter=US_STATES_FILTER,
     )
 
 
@@ -297,7 +300,7 @@ def test_melt_provenance():
         "97222,2020-04-01,source_c,\n"
     )
     with structlog.testing.capture_logs() as logs:
-        long = _to_timeseries_rows(wide, structlog.get_logger())
+        long = provenance_wide_metrics_to_series(wide, structlog.get_logger())
 
     assert logs == []
 
@@ -316,12 +319,12 @@ def test_melt_provenance_multiple_sources():
         "97222,2020-04-01,source_c,\n"
     )
     with structlog.testing.capture_logs() as logs:
-        long = _to_timeseries_rows(wide, structlog.get_logger())
+        long = provenance_wide_metrics_to_series(wide, structlog.get_logger())
 
     assert [l["event"] for l in logs] == ["Multiple rows for a timeseries"]
 
     assert long.to_dict() == {
-        ("97111", "cases"): "source_a",
+        ("97111", "cases"): "source_a;source_x",
         ("97111", "recovered"): "source_b",
         ("97222", "cases"): "source_c",
     }

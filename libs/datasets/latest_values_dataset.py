@@ -47,10 +47,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             raise ValueError("Source must have metadata field map.")
 
         data = source.data
-        fields = source.all_fields_map().items()
-        to_common_fields = {value: key for key, value in fields}
-        final_columns = to_common_fields.values()
-        data = data.rename(columns=to_common_fields)[final_columns]
 
         data = cls._aggregate_new_york_data(data)
         if fill_missing_state:
@@ -68,25 +64,41 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
+        data = cls._calculate_puerto_rico_bed_occupancy_rate(data)
+
         return cls(data)
 
     @classmethod
-    def build_from_data_source(cls, source):
-        from libs.datasets.timeseries import TimeseriesDataset
+    def _calculate_puerto_rico_bed_occupancy_rate(cls, data):
+        is_pr_county = data[CommonFields.FIPS].str.match("72[0-9][0-9][0-9]")
+        pr_data = data.loc[is_pr_county.fillna(False)]
+        weighted_icu_occupancy = None
+        weighted_all_bed_occupancy = None
 
-        if set(source.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
-            timeseries = TimeseriesDataset.build_from_data_source(source)
-            return cls(timeseries.latest_values())
+        if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+            licensed_beds = pr_data[CommonFields.LICENSED_BEDS]
+            occupancy_rates = pr_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+            weighted_all_bed_occupancy = (
+                licensed_beds * occupancy_rates
+            ).sum() / licensed_beds.sum()
 
-        if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
-            raise ValueError("Index fields must match")
+        if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+            icu_beds = pr_data[CommonFields.ICU_BEDS]
+            occupancy_rates = pr_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+            weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
 
-        return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
+        data.loc[
+            data[CommonFields.FIPS] == "72", CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
+        ] = weighted_all_bed_occupancy
+        data.loc[
+            data[CommonFields.FIPS] == "72", CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
+        ] = weighted_icu_occupancy
+
+        return data
 
     @classmethod
     def _aggregate_new_york_data(cls, data):
-        # When grouping nyc data, we don't want to count the generated field
-        # as a value to sum.
+        # When grouping nyc data, we don't want to the sum to include invalid FIPS.
         nyc_data = data[data[CommonFields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
         if not len(nyc_data):
             return data

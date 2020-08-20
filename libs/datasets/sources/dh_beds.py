@@ -161,8 +161,10 @@ class DHBeds(data_source.DataSource):
 
         # The virgin islands do not currently have associated fips codes.
         # if VI is supported in the future, this should be removed.
-        is_virgin_islands = data[cls.Fields.STATE] == "VI"
-        return data[~is_virgin_islands]
+        data = data[data[cls.Fields.STATE] != "VI"]
+
+        common_fields_data = cls._rename_to_common_fields(data)
+        return common_fields_data
 
     @classmethod
     def local(cls) -> "DHBeds":
