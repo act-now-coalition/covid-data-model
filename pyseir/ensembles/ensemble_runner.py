@@ -178,8 +178,8 @@ class EnsembleRunner:
             # right now it runs an average over the ensemble (with N_samples not consistently set
             # across the code base).
             default_params = ParameterEnsembleGenerator(
-                self.fips,
                 N_samples=500,
+                combined_datasets_latest=combined_datasets.get_us_latest_for_fips(self.fips),
                 t_list=model.t_list,
                 suppression_policy=model.suppression_policy,
             ).get_average_seir_parameters()
