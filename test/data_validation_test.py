@@ -16,6 +16,7 @@ def default_timeseries_row(**updates):
         "cases": 10.0,
         "deaths": 1.0,
         "recovered": 0.0,
+        "current_icu": None,
         "source": "JHU",
         "county": "Richland Parish",
     }
@@ -58,3 +59,4 @@ def test_nyc_aggregation(are_boroughs_zero):
         assert nyc_result["cases"] == nyc_cases
     else:
         assert nyc_result["cases"] == nyc_cases + borough_cases
+        assert pd.isna(nyc_result["current_icu"])
