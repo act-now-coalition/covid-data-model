@@ -63,6 +63,15 @@ class RegionalCombinedData:
         """Gets the population for this region."""
         return self.get_us_latest()[CommonFields.POPULATION]
 
+    @property  # TODO(tom): Change to cached_property when we're using Python 3.8
+    def display_name(self) -> str:
+        record = self.get_us_latest()
+        county = record[CommonFields.COUNTY]
+        state = record[CommonFields.STATE]
+        if county:
+            return f"{county}, {state}"
+        return state
+
 
 @dataclass(frozen=True)
 class RegionalWebUIInput:

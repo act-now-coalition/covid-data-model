@@ -52,6 +52,10 @@ class RegionalInput:
             _combined_data=pipeline.RegionalCombinedData.from_fips(fips),
         )
 
+    @property
+    def display_name(self) -> str:
+        return self._combined_data.display_name
+
     def get_pyseir_fitter_initial_conditions(self, params: List[str]) -> Mapping[str, Any]:
         overwrite_params_df = load_pyseir_fitter_initial_conditions_df()
         if self.region.fips in overwrite_params_df.index:
@@ -229,13 +233,8 @@ class ModelFitter:
         self.dof_hosp = None
 
     @property
-    def display_name(self):
-        record = self.regional_input.get_us_latest()
-        county = record[CommonFields.COUNTY]
-        state = record[CommonFields.STATE]
-        if county:
-            return f"{county}, {state}"
-        return state
+    def display_name(self) -> str:
+        return self.regional_input.display_name
 
     def set_inference_parameters(self):
         """
@@ -684,7 +683,7 @@ class ModelFitter:
             retries_left = n_retries
             model_is_empty = True
             while retries_left > 0 and model_is_empty:
-                model_fitter = cls(regional_input=regional_input)
+                model_fitter = cls(regional_input)
                 try:
                     model_fitter.fit()
                     if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
@@ -771,7 +770,8 @@ def run_state(state, states_only=False):
 
         if len(all_fips) > 0:
             with Pool(maxtasksperchild=1) as p:
-                fitters = p.map(ModelFitter.run_for_region, map(RegionalInput.from_fips, all_fips))
+                regions = [RegionalInput.from_fips(fips) for fips in all_fips]
+                fitters = p.map(ModelFitter.run_for_region, regions)
 
             county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
             data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
