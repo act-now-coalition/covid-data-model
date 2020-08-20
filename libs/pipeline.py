@@ -89,7 +89,7 @@ class RegionalWebUIInput:
     def get_us_latest(self):
         return self._combined_data.get_us_latest()
 
-    def load_inference_result(self):
+    def load_inference_result(self) -> Mapping[str, Any]:
         """
         Load fit results by state or county fips code.
 
@@ -134,7 +134,7 @@ class RegionalWebUIInput:
         return self.region.is_county()
 
 
-def load_inference_result(region: Region):
+def load_inference_result(region: Region) -> Mapping[str, Any]:
     """
     Load fit results by state or county fips code.
 

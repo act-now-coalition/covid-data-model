@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import List, Any, Mapping
+from typing import List, Any, Mapping, Tuple
 import os
 import us
 import json
@@ -59,23 +59,27 @@ class RegionalInput:
         else:
             return {}
 
-    def load_new_case_data(self, t0):
-        return load_data.load_new_case_data_by_fips(self.region.fips, t0)
+    def load_new_case_data(self, t0) -> Tuple[pd.Series, np.array, np.array]:
+        t = load_data.load_new_case_data_by_fips(self.region.fips, t0)
+        log.info(f"load_new_case_date: {type(t)} {[type(el) for el in t]}")
+        return t
 
     def load_hospitalization_data(
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
-    ):
-        return load_data.load_hospitalization_data(self.region.fips, t0, category=category)
+    ) -> Tuple[np.array, np.array, HospitalizationDataType]:
+        t = load_data.load_hospitalization_data(self.region.fips, t0, category=category)
+        log.info(f"load_data.load_hospitalization_data: {type(t)} {[type(el) for el in t]}")
+        return t
 
-    def get_us_latest(self):
+    def get_us_latest(self) -> Mapping[str, Any]:
         return self._combined_data.get_us_latest()
 
-    def load_inference_result_of_state(self):
+    def load_inference_result_of_state(self) -> Mapping[str, Any]:
         if not self.region.is_county():
             raise AssertionError(f"Attempt to find state of {self}")
         return RegionalInput.from_fips(self.region.fips[:2]).load_inference_result()
 
-    def load_inference_result(self):
+    def load_inference_result(self) -> Mapping[str, Any]:
         """
         Load fit results by state or county fips code.
 
