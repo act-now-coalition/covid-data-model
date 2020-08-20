@@ -6,6 +6,7 @@ represents a geographical area (state, county, metro area, etc).
 
 import json
 import os
+from dataclasses import dataclass
 from typing import Optional
 
 import pandas as pd
@@ -23,22 +24,21 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 _log = structlog.get_logger()
 
 
-class Region(BaseModel):
+@dataclass(frozen=True)
+class Region:
     """Identifies a geographical area."""
 
     # The FIPS identifier for the region, either 2 digits for a state or 5 digits for a county.
     # TODO(tom): Add support for regions other than states and counties.
     fips: str
 
-    def __repr__(self) -> str:
-        return f"Region(fips={self.fips})"
-
     @staticmethod
     def from_fips(fips: str) -> "Region":
         return Region(fips=fips)
 
 
-class RegionalCombinedData(BaseModel):
+@dataclass(frozen=True)
+class RegionalCombinedData:
     """Identifies a geographical area and wraps access to `combined_datasets` of it."""
 
     region: Region
@@ -58,31 +58,30 @@ class RegionalCombinedData(BaseModel):
         return self.get_us_latest()[CommonFields.POPULATION]
 
 
-class RegionalApiInput(BaseModel):
+@dataclass(frozen=True)
+class RegionalWebUIInput:
     """Identifies a geographical area and wraps access to any related data read by the WebUIDataAdaptorV1."""
 
     region: Region
 
-    # Don't access this directly. It'd be private (_combined_data) if pydantic supported it or we
-    # were using attrs.
-    combined_data: RegionalCombinedData
+    _combined_data: RegionalCombinedData
 
     @staticmethod
-    def from_fips(fips: str) -> "RegionalApiInput":
-        return RegionalApiInput(
-            region=Region.from_fips(fips), combined_data=RegionalCombinedData.from_fips(fips)
+    def from_fips(fips: str) -> "RegionalWebUIInput":
+        return RegionalWebUIInput(
+            region=Region.from_fips(fips), _combined_data=RegionalCombinedData.from_fips(fips)
         )
 
     @property
     def population(self):
-        return self.combined_data.population
+        return self._combined_data.population
 
     @property
     def fips(self) -> str:
         return self.region.fips
 
     def get_us_latest(self):
-        return self.combined_data.get_us_latest()
+        return self._combined_data.get_us_latest()
 
     def load_inference_result(self):
         """
