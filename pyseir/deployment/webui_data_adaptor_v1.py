@@ -25,8 +25,6 @@ class WebUIDataAdaptorV1:
 
     Parameters
     ----------
-    state: str
-        State to map outputs for.
     include_imputed:
         If True, map the outputs for imputed counties as well as those with
         no data.

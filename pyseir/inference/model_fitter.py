@@ -71,6 +71,17 @@ class RegionalInput:
             raise AssertionError(f"Attempt to find state of {self}")
         return RegionalInput.from_fips(self.region.fips[:2]).load_inference_result()
 
+    def load_inference_result(self):
+        """
+        Load fit results by state or county fips code.
+
+        Returns
+        -------
+        : dict
+            Dictionary of fit result information.
+        """
+        return pipeline.load_inference_result(self.region)
+
 
 class ModelFitter:
     """
@@ -587,6 +598,8 @@ class ModelFitter:
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
         self.fit_results = dict(minuit.values)
+        # Needed to get fips into DataFrame read in cli._build_all_for_states
+        self.fit_results["fips"] = self.regional_input.region.fips
         self.fit_results.update({k + "_error": v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
