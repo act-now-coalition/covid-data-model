@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from multiprocessing import Pool
 
-import libs.pipeline
+from libs import pipeline
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
@@ -40,7 +40,7 @@ class WebUIDataAdaptorV1:
         self.include_imputed = include_imputed
         self.output_dir = output_dir
 
-    def map_fips(self, region: libs.pipeline.Region) -> None:
+    def map_fips(self, region: pipeline.RegionalApiInput) -> None:
         """Generates the CAN UI output format for a given region.
 
         Args:
@@ -60,7 +60,7 @@ class WebUIDataAdaptorV1:
         except (KeyError, ValueError):
             log.error("Fit result not found for fips. Skipping...", fips=region.fips)
             return
-        population = region.get_population()
+        population = region.population
 
         # We will shim all suppression policies by the same amount (since historical tracking error
         # for all policies is the same).
@@ -276,13 +276,15 @@ class WebUIDataAdaptorV1:
         """
 
         state_fips = us.states.lookup(state).fips
-        self.map_fips(libs.pipeline.Region.from_fips(state_fips))
+        self.map_fips(pipeline.RegionalApiInput.from_fips(state_fips))
 
         if states_only:
             return
         else:
             with Pool(maxtasksperchild=1) as p:
-                p.map(self.map_fips, map(libs.pipeline.Region.from_fips, whitelisted_county_fips))
+                p.map(
+                    self.map_fips, map(pipeline.RegionalApiInput.from_fips, whitelisted_county_fips)
+                )
 
             return
 

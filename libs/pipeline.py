@@ -24,18 +24,64 @@ _log = structlog.get_logger()
 
 
 class Region(BaseModel):
-    """Identifies and provides access to data about a geographical area."""
+    """Identifies a geographical area."""
 
     # The FIPS identifier for the region, either 2 digits for a state or 5 digits for a county.
+    # TODO(tom): Add support for regions other than states and counties.
     fips: str
 
     def __repr__(self) -> str:
         return f"Region(fips={self.fips})"
 
+    @staticmethod
+    def from_fips(fips: str) -> "Region":
+        return Region(fips=fips)
+
+
+class RegionalCombinedData(BaseModel):
+    """Identifies a geographical area and wraps access to `combined_datasets` of it."""
+
+    region: Region
+
+    @staticmethod
+    def from_fips(fips: str) -> "RegionalCombinedData":
+        return RegionalCombinedData(region=Region.from_fips(fips))
+
     def get_us_latest(self):
         """Gets latest values for a given state or county fips code."""
         us_latest = combined_datasets.load_us_latest_dataset()
-        return us_latest.get_record_for_fips(self.fips)
+        return us_latest.get_record_for_fips(self.region.fips)
+
+    def get_population(self) -> int:
+        """Gets the population for this region."""
+        return self.get_us_latest()[CommonFields.POPULATION]
+
+
+class RegionalApiInput(BaseModel):
+    """Identifies a geographical area and wraps access to any related data read by the WebUIDataAdaptorV1."""
+
+    region: Region
+
+    # Don't access this directly. It'd be private (_combined_data) if pydantic supported it or we
+    # were using attrs.
+    combined_data: RegionalCombinedData
+
+    @staticmethod
+    def from_fips(fips: str) -> "RegionalApiInput":
+        return RegionalApiInput(
+            region=Region.from_fips(fips), combined_data=RegionalCombinedData.from_fips(fips)
+        )
+
+    @property
+    def population(self):
+        return self.combined_data.get_population()
+
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
+    def get_us_latest(self):
+        return self.combined_data.get_us_latest()
 
     def load_inference_result(self):
         """
@@ -52,10 +98,6 @@ class Region(BaseModel):
             return df.iloc[0].to_dict()
         else:
             return df.set_index("fips").loc[self.fips].to_dict()
-
-    def get_population(self) -> int:
-        """Gets the population for this region."""
-        return self.get_us_latest()[CommonFields.POPULATION]
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
@@ -86,7 +128,3 @@ class Region(BaseModel):
         if not os.path.exists(path):
             return None
         return pd.read_json(path)
-
-    @staticmethod
-    def from_fips(fips: str):
-        return Region(fips=fips)
