@@ -1,4 +1,5 @@
-from typing import List
+from dataclasses import dataclass
+from typing import List, Any, Mapping
 import os
 import us
 import json
@@ -30,6 +31,47 @@ def calc_chi_sq(obs, predicted, stddev):
     return np.sum((obs - predicted) ** 2 / stddev ** 2)
 
 
+overwrite_params_df = pd.read_csv(
+    "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": str}
+).set_index("fips")
+
+
+@dataclass(frozen=True)
+class RegionalInput:
+    region: pipeline.Region
+
+    _combined_data: pipeline.RegionalCombinedData
+
+    @staticmethod
+    def from_fips(fips: str) -> "RegionalInput":
+        return RegionalInput(
+            region=pipeline.Region.from_fips(fips),
+            _combined_data=pipeline.RegionalCombinedData.from_fips(fips),
+        )
+
+    def get_pyseir_fitter_initial_conditions(self, params: List[str]) -> Mapping[str, Any]:
+        if self.region.fips in overwrite_params_df.index:
+            return overwrite_params_df.loc[self.region.fips, params].to_dict()
+        else:
+            return {}
+
+    def load_new_case_data_by_fips(self, t0):
+        return load_data.load_new_case_data_by_fips(self.region.fips, t0)
+
+    def load_hospitalization_data(
+        self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
+    ):
+        return load_data.load_hospitalization_data(self.region.fips, t0, category=category)
+
+    def get_us_latest(self):
+        return self._combined_data.get_us_latest()
+
+    def load_inference_result_of_state(self):
+        if not self.region.is_county():
+            raise AssertionError(f"Attempt to find state of {self}")
+        return RegionalInput.from_fips(self.region.fips[:2]).load_inference_result()
+
+
 class ModelFitter:
     """
     Fit a SEIR model and suppression policy for a geographic unit (county or
@@ -41,7 +83,7 @@ class ModelFitter:
 
     Parameters
     ----------
-    region: pipeline.Region
+    regional_input: RegionalInput
     ref_date: datetime
         Date to reference against. This should be before the first case.
     min_deaths: int
@@ -102,7 +144,7 @@ class ModelFitter:
 
     def __init__(
         self,
-        region,
+        regional_input,
         ref_date=datetime(year=2020, month=1, day=1),
         min_deaths=2,
         n_years=1,
@@ -115,7 +157,7 @@ class ModelFitter:
         # Minuit optimizer.
         np.random.seed(seed=42)
 
-        self.region = region
+        self.regional_input = regional_input
 
         self.ref_date = ref_date
         self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=7)).days
@@ -132,15 +174,15 @@ class ModelFitter:
             self.times,
             self.observed_new_cases,
             self.observed_new_deaths,
-        ) = region.load_new_case_data_by_fips(self.ref_date)
+        ) = regional_input.load_new_case_data_by_fips(self.ref_date)
 
         (
             self.hospital_times,
             self.hospitalizations,
             self.hospitalization_data_type,
-        ) = region.load_hospitalization_data(self.ref_date)
+        ) = regional_input.load_hospitalization_data(self.ref_date)
 
-        self.icu_times, self.icu, self.icu_data_type = region.load_hospitalization_data(
+        self.icu_times, self.icu, self.icu_data_type = regional_input.load_hospitalization_data(
             self.ref_date, category=HospitalizationCategory.ICU
         )
 
@@ -169,7 +211,7 @@ class ModelFitter:
 
     @property
     def display_name(self):
-        record = self.region.get_us_latest()
+        record = self.regional_input.get_us_latest()
         county = record[CommonFields.COUNTY]
         state = record[CommonFields.STATE]
         if county:
@@ -196,14 +238,16 @@ class ModelFitter:
             "hosp_fraction",
             "log10_I_initial",
         ]
-        self.fit_params.update(self.region.get_pyseir_fitter_initial_conditions(INITIAL_PARAM_SETS))
+        self.fit_params.update(
+            self.regional_input.get_pyseir_fitter_initial_conditions(INITIAL_PARAM_SETS)
+        )
 
         self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
         if self.fit_params["fix_hosp_fraction"]:
             self.fit_params["hosp_fraction"] = 1
 
-        if self.region.is_county():
-            state_fit_result = self.region.load_inference_result_of_state()
+        if self.regional_input.region.is_county():
+            state_fit_result = self.regional_input.load_inference_result_of_state()
             T0_LEFT_PAD = 5
             T0_RIGHT_PAD = 30
 
@@ -258,7 +302,10 @@ class ModelFitter:
             The average ensemble params.
         """
         SEIR_kwargs = ParameterEnsembleGenerator(
-            region=self.region, N_samples=5000, t_list=self.t_list, suppression_policy=None
+            N_samples=5000,
+            t_list=self.t_list,
+            combined_datasets_latest=self.regional_input.get_us_latest(),
+            suppression_policy=None,
         ).get_average_seir_parameters()
 
         SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
@@ -539,7 +586,7 @@ class ModelFitter:
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
-        self.fit_results = dict(fips=self.region.fips, **dict(minuit.values))
+        self.fit_results = dict(fips=self.regional_input.region.fips, **dict(minuit.values))
         self.fit_results.update({k + "_error": v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
@@ -590,9 +637,9 @@ class ModelFitter:
         self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     @classmethod
-    def run_for_region(cls, region: pipeline.Region, n_retries=3):
+    def run_for_region(cls, regional_input: RegionalInput, n_retries=3):
         """
-        Run the model fitter for a region.
+        Run the model fitter for a regional_input.
 
         Parameters
         ----------
@@ -607,8 +654,10 @@ class ModelFitter:
         : ModelFitter
         """
         # Assert that there are some cases for counties
-        if region.is_county():
-            _, observed_new_cases, _ = region.load_new_case_data_by_fips(t0=datetime.today())
+        if regional_input.region.is_county():
+            _, observed_new_cases, _ = regional_input.load_new_case_data_by_fips(
+                t0=datetime.today()
+            )
             if observed_new_cases.sum() < 1:
                 return None
 
@@ -616,7 +665,7 @@ class ModelFitter:
             retries_left = n_retries
             model_is_empty = True
             while retries_left > 0 and model_is_empty:
-                model_fitter = cls(region=region)
+                model_fitter = cls(regional_input=regional_input)
                 try:
                     model_fitter.fit()
                     if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
@@ -627,16 +676,16 @@ class ModelFitter:
                 if model_fitter.mle_model:
                     model_is_empty = False
             if retries_left <= 0 and model_is_empty:
-                raise RuntimeError(f"Could not converge after {n_retries} for {region}")
+                raise RuntimeError(f"Could not converge after {n_retries} for {regional_input}")
             return model_fitter
         except Exception:
-            log.exception(f"Failed to run {region}")
+            log.exception(f"Failed to run {regional_input}")
             return None
 
 
 def execute_model_for_fips(fips):
     if fips:
-        model_fitter = ModelFitter.run_for_region(pipeline.Region.from_fips(fips))
+        model_fitter = ModelFitter.run_for_region(RegionalInput.from_fips(fips))
         return model_fitter
     log.warning(f"Not running model run for ${fips}")
     return None
@@ -680,7 +729,7 @@ def run_state(state, states_only=False):
     fips = state_obj.fips
     log.info(f"Running MLE fitter for state {state}")
 
-    model_fitter = ModelFitter.run_for_region(pipeline.Region.from_fips(fips))
+    model_fitter = ModelFitter.run_for_region(RegionalInput.from_fips(fips))
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
@@ -703,9 +752,7 @@ def run_state(state, states_only=False):
 
         if len(all_fips) > 0:
             with Pool(maxtasksperchild=1) as p:
-                fitters = p.map(
-                    ModelFitter.run_for_region, map(pipeline.Region.from_fips, all_fips)
-                )
+                fitters = p.map(ModelFitter.run_for_region, map(RegionalInput.from_fips, all_fips))
 
             county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
             data = pd.DataFrame([fit.fit_results for fit in fitters if fit])

@@ -7,24 +7,19 @@ represents a geographical area (state, county, metro area, etc).
 import json
 import os
 from dataclasses import dataclass
-from typing import Optional
+from datetime import datetime
+from typing import Optional, Mapping, List, Any
 
 import pandas as pd
 import structlog
-from pydantic import BaseModel
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import FIPSPopulation
 from libs.datasets import combined_datasets
+from pyseir import load_data
+from pyseir.load_data import HospitalizationCategory
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
-from pyseir.utils import get_run_artifact_path, RunArtifact
-
-
-overwrite_params_df = pd.read_csv(
-    "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": str}
-).set_index("fips")
-
+from pyseir.utils import RunArtifact
 
 _log = structlog.get_logger()
 
@@ -40,6 +35,12 @@ class Region:
     @staticmethod
     def from_fips(fips: str) -> "Region":
         return Region(fips=fips)
+
+    def is_county(self):
+        return len(self.fips) == 5
+
+    def is_state(self):
+        return len(self.fips) == 2
 
 
 @dataclass(frozen=True)
@@ -97,12 +98,7 @@ class RegionalWebUIInput:
         : dict
             Dictionary of fit result information.
         """
-        output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_RESULT)
-        df = pd.read_json(output_file, dtype={"fips": "str"})
-        if len(self.fips) == 2:
-            return df.iloc[0].to_dict()
-        else:
-            return df.set_index("fips").loc[self.fips].to_dict()
+        return load_inference_result(self.region)
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
@@ -134,24 +130,22 @@ class RegionalWebUIInput:
             return None
         return pd.read_json(path)
 
-    def load_new_case_data_by_fips(self, t0):
-        return load_data.load_new_case_data_by_fips(self.fips, t0)
-
-    def load_hospitalization_data(
-        self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
-    ):
-        return load_data.load_hospitalization_data(self.fips, t0, category=category)
-
     def is_county(self):
-        return len(self.fips) == 5
+        return self.region.is_county()
 
-    def load_inference_result_of_state(self):
-        if not self.is_county():
-            raise AssertionError(f"Attempt to find state of {self}")
-        return Region.from_fips(self.fips[:2]).load_inference_result()
 
-    def get_pyseir_fitter_initial_conditions(self, params: List[str]) -> Mapping[str, Any]:
-        if self.fips in overwrite_params_df.index:
-            return overwrite_params_df.loc[self.fips, params].to_dict()
-        else:
-            return {}
+def load_inference_result(region: Region):
+    """
+    Load fit results by state or county fips code.
+
+    Returns
+    -------
+    : dict
+        Dictionary of fit result information.
+    """
+    output_file = pyseir.utils.get_run_artifact_path(region.fips, RunArtifact.MLE_FIT_RESULT)
+    df = pd.read_json(output_file, dtype={"fips": "str"})
+    if region.is_state():
+        return df.iloc[0].to_dict()
+    else:
+        return df.set_index("fips").loc[region.fips].to_dict()
