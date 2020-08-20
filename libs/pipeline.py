@@ -52,7 +52,8 @@ class RegionalCombinedData(BaseModel):
         us_latest = combined_datasets.load_us_latest_dataset()
         return us_latest.get_record_for_fips(self.region.fips)
 
-    def get_population(self) -> int:
+    @property
+    def population(self) -> int:
         """Gets the population for this region."""
         return self.get_us_latest()[CommonFields.POPULATION]
 
@@ -74,7 +75,7 @@ class RegionalApiInput(BaseModel):
 
     @property
     def population(self):
-        return self.combined_data.get_population()
+        return self.combined_data.population
 
     @property
     def fips(self) -> str:
