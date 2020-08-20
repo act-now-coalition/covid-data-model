@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import List, Any, Mapping
 import os
 import us
@@ -31,9 +32,11 @@ def calc_chi_sq(obs, predicted, stddev):
     return np.sum((obs - predicted) ** 2 / stddev ** 2)
 
 
-overwrite_params_df = pd.read_csv(
-    "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": str}
-).set_index("fips")
+@lru_cache(maxsize=None)
+def load_pyseir_fitter_initial_conditions_df():
+    return pd.read_csv(
+        "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": str}
+    ).set_index("fips")
 
 
 @dataclass(frozen=True)
@@ -50,12 +53,13 @@ class RegionalInput:
         )
 
     def get_pyseir_fitter_initial_conditions(self, params: List[str]) -> Mapping[str, Any]:
+        overwrite_params_df = load_pyseir_fitter_initial_conditions_df()
         if self.region.fips in overwrite_params_df.index:
             return overwrite_params_df.loc[self.region.fips, params].to_dict()
         else:
             return {}
 
-    def load_new_case_data_by_fips(self, t0):
+    def load_new_case_data(self, t0):
         return load_data.load_new_case_data_by_fips(self.region.fips, t0)
 
     def load_hospitalization_data(
@@ -185,7 +189,7 @@ class ModelFitter:
             self.times,
             self.observed_new_cases,
             self.observed_new_deaths,
-        ) = regional_input.load_new_case_data_by_fips(self.ref_date)
+        ) = regional_input.load_new_case_data(self.ref_date)
 
         (
             self.hospital_times,
@@ -264,7 +268,7 @@ class ModelFitter:
 
             # See if we can do better based on the actual data
 
-            # Let's look at the time when we've got a second reported case in a fips
+            # Let's look at the time when we've got a second reported case in a region
             OBSERVED_CUMULATIVE_MINIMUM = 2
             cumulative_cases = np.cumsum(self.observed_new_cases)
 
@@ -668,9 +672,7 @@ class ModelFitter:
         """
         # Assert that there are some cases for counties
         if regional_input.region.is_county():
-            _, observed_new_cases, _ = regional_input.load_new_case_data_by_fips(
-                t0=datetime.today()
-            )
+            _, observed_new_cases, _ = regional_input.load_new_case_data(t0=datetime.today())
             if observed_new_cases.sum() < 1:
                 return None
 

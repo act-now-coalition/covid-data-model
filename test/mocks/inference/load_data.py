@@ -85,7 +85,7 @@ def create_synthetic_df(data_generator) -> pd.DataFrame:
 #                 self.times,
 #                 self.observed_new_cases,
 #                 self.observed_new_deaths,
-#             ) = self.load_data.load_new_case_data_by_fips(
+#             ) = self.load_data.load_new_case_data(
 #                 self.fips,
 #                 t0=self.ref_date,
 #                 include_testing_correction=self.include_testing_correction,
