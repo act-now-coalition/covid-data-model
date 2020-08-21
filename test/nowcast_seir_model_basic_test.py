@@ -9,11 +9,9 @@ import structlog
 from matplotlib import pyplot as plt
 from datetime import datetime, timedelta
 
-from pyseir.models.seir_model import (
+from pyseir.models.nowcast_seir_model import (
     Demographics,
     ramp_function,
-    SEIRModel,
-    steady_state_ratios,
     NowcastingSEIRModel,
     ModelRun,
 )
@@ -69,6 +67,42 @@ def test_median_to_age_fractions():
     # Push the other end
     distro_65 = Demographics.age_fractions_from_median(64.9)
     assert distro_65[2] > 0.45
+
+
+def test_median_age_history():
+    t_list = t_list = np.linspace(80, 220, 200 - 80 + 1)
+    f = Demographics.median_age_f("FL")
+    m = [f(i) for i in t_list]
+    fig, ax = plt.subplots()
+    plt.plot(t_list, m)
+    fig.savefig(TEST_OUTPUT_DIR / "test_median_age_history.pdf", bbox_inches="tight")
+
+
+def test_validate_rt_over_time():
+    t_list = np.linspace(100, 200, 200 - 100 + 1)
+
+    results = []
+    for state in HistoricalData.get_states():  # ["MI", "FL", "TX", "NY", "CA"]:
+        (rt, nc, _1, _2, _3) = HistoricalData.get_state_data_for_dates(
+            state, t_list, as_functions=True
+        )
+
+        (avg, adj, adj_rt) = adjust_rt_to_match_cases(rt, nc, t_list)
+        (ignore1, check, ignore2) = adjust_rt_to_match_cases(adj_rt, nc, t_list)
+        assert check > 0.95 and check < 1.05
+
+        results.append((state, avg, adj))
+    df = pd.DataFrame(results, columns=["state", "avg", "adj"])
+
+    fig, ax = plt.subplots()
+    ax.scatter(df.avg, df.adj)
+    for i in df.index:
+        ax.annotate(df["state"][i], (df["avg"][i], df["adj"][i]))
+
+    plt.xlabel("Average R(t)")
+    plt.ylabel("Case Ratio / Integrated R(t)")
+    plt.yscale("log")
+    fig.savefig(TEST_OUTPUT_DIR / "test_validate_rt_over_time.pdf", bbox_inches="tight")
 
 
 def run_stationary(rt, median_age, t_over_x, x_is_new_cases=True):
@@ -142,28 +176,34 @@ def test_scan_test_fraction():
     scan_rt("r_C_IC", "test fraction", x_is_new_cases=True)
 
 
-def test_validate_rt_over_time():
-    t_list = np.linspace(100, 200, 200 - 100 + 1)
+def test_historical_peaks_positivity_to_real_cfr():
+    peaks = pd.read_csv("test/data/historical/historical_peaks.csv")
+    early_peaks = peaks[peaks["when"] == "Apr-May"]
+    late_peaks = peaks[peaks["when"] == "Jun-Jul"]
 
-    results = []
-    for state in HistoricalData.get_states():  # ["MI", "FL", "TX", "NY", "CA"]:
-        (rt, nc, _1, _2, _3) = HistoricalData.get_state_data_for_dates(
-            state, t_list, as_functions=True
-        )
+    early_peaks["adjusted"] = early_peaks["ratio_cases_to_deaths"] / 0.36
 
-        (avg, adj, adj_rt) = adjust_rt_to_match_cases(rt, nc, t_list)
-        (ignore1, check, ignore2) = adjust_rt_to_match_cases(adj_rt, nc, t_list)
-        assert check > 0.95 and check < 1.05
+    fig = plt.figure(facecolor="w", figsize=(10, 6))
+    plt.scatter(
+        late_peaks["peak_positivity_percent"],
+        1.0 / late_peaks["ratio_cases_to_deaths"],
+        color="g",
+        label="late peaks",
+    )
+    plt.scatter(
+        early_peaks["peak_positivity_percent"],
+        1.0 / early_peaks["adjusted"],
+        color="r",
+        label="early peaks (* .36)",
+    )
 
-        results.append((state, avg, adj))
-    df = pd.DataFrame(results, columns=["state", "avg", "adj"])
+    plt.plot([0, 40], [0.01, 0.032])
 
-    fig, ax = plt.subplots()
-    ax.scatter(df.avg, df.adj)
-    for i in df.index:
-        ax.annotate(df["state"][i], (df["avg"][i], df["adj"][i]))
+    plt.ylim((0, 0.05))
+    plt.ylabel("Peak deaths to cases (CFR)")
+    plt.xlabel("Max test positivity (%)")
+    plt.legend()
+    fig.savefig(TEST_OUTPUT_DIR / "test_historical_peaks_positivity_to_real_cfr.pdf")
 
-    plt.xlabel("Average R(t)")
-    plt.ylabel("Case Ratio / Integrated R(t)")
-    plt.yscale("log")
-    fig.savefig(TEST_OUTPUT_DIR / "test_validate_rt_over_time.pdf", bbox_inches="tight")
+    assert True
+

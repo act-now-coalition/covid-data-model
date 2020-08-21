@@ -7,7 +7,7 @@ from pyseir.rt.constants import InferRtConstants
 
 
 class HistoricalData:
-    raw = pd.read_csv("test/data/historical/historical_results_to_aug6.csv", parse_dates=["date"])
+    raw = pd.read_csv("test/data/historical/merged_results_2020_08_19.csv", parse_dates=["date"])
     data = raw[
         [
             "date",
