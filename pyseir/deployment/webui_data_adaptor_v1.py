@@ -26,8 +26,6 @@ class WebUIDataAdaptorV1:
 
     Parameters
     ----------
-    state: str
-        State to map outputs for.
     include_imputed:
         If True, map the outputs for imputed counties as well as those with
         no data.
@@ -103,7 +101,9 @@ class WebUIDataAdaptorV1:
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
         # ICU PATCH
-        icu_patch_ts = infer_icu.get_icu_timeseries(fips=regional_input.fips, weight_by="cases")
+        icu_patch_ts = infer_icu.get_icu_timeseries(
+            fips=regional_input.fips, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+        )
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
@@ -145,7 +145,13 @@ class WebUIDataAdaptorV1:
                 t_list_downsampled, t_list, raw_model_icu_values
             )
 
-            # output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
+            # 21 August 2020: The line assigning schema.INFECTED_C in the output_model is
+            # commented out while the Linear Regression estimator is patched through this pipeline
+            # to be consumed downstream by the ICU utilization calculations. It is left here as a
+            # marker for the future if the ICU utilization calculations is dis-entangled from the
+            # PySEIR model outputs.
+
+            # output_model[schema.INFECTED_C] = (icu_shim+interpolated_model_icu_values).clip(min=0)
 
             # Applying Patch for ICU Linear Regression
             infer_icu_patch = icu_patch_ts.reindex(

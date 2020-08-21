@@ -1,12 +1,8 @@
-import json
-import os
-
 import pandas as pd
 
 from libs.datasets import combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
-from pyseir import DATA_DIR
 
 
 def _quantile_range(x: pd.Series) -> float:
