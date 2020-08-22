@@ -235,6 +235,23 @@ Utilization of hospital resources.
 | currentUsageTotal | integer | Currently used capacity for resource by all patients (COVID + Non-COVID)                                                                                                                                                                |
 | typicalUsageRate  | number  | Typical used capacity rate for resource. This excludes any COVID usage.                                                                                                                                                                 |
 
+### Metrics
+Calculated metrics data based on known actuals.
+
+| name           | type   | description                                                                       |
+|----------------|--------|-----------------------------------------------------------------------------------|
+| testPositivity | number | Ratio of people who test positive calculated using a 7 day rolling average.       |
+| caseDensity    | number | The number of cases per 100k population calculated using a 7 day rolling average. |
+
+### MetricsTimeseriesRow
+Calculated metrics data based on known actuals.
+
+| name           | type   | description                                                                       |
+|----------------|--------|-----------------------------------------------------------------------------------|
+| testPositivity | number | Ratio of people who test positive calculated using a 7 day rolling average.       |
+| caseDensity    | number | The number of cases per 100k population calculated using a 7 day rolling average. |
+| date           | string |                                                                                   |
+
 ### Actuals
 Known actuals data.
 
@@ -280,6 +297,7 @@ Summary of actual and prediction data for a single region.
 | lastUpdatedDate | string                      | Date of latest data                                                                  |
 | projections     | [Projections](#Projections) | Summary of projection data.                                                          |
 | actuals         | [Actuals](#Actuals)         | Known actuals data.                                                                  |
+| metrics         | [Metrics](#Metrics)         | Region level metrics                                                                 |
 | population      | integer                     | Total Population in geographic region.                                               |
 
 ### PredictionTimeseriesRow
@@ -316,9 +334,11 @@ Summary data for a region with prediction timeseries data and actual timeseries 
 | lastUpdatedDate   | string                      | Date of latest data                                                                  |
 | projections       | [Projections](#Projections) | Summary of projection data.                                                          |
 | actuals           | [Actuals](#Actuals)         | Known actuals data.                                                                  |
+| metrics           | [Metrics](#Metrics)         | Region level metrics                                                                 |
 | population        | integer                     | Total Population in geographic region.                                               |
 | timeseries        | array                       |                                                                                      |
 | actualsTimeseries | array                       |                                                                                      |
+| metricsTimeseries | array                       |                                                                                      |
 
 ### PredictionTimeseriesRowWithHeader
 Prediction timeseries row with location information.
