@@ -3,6 +3,7 @@ import pandas as pd
 import us
 
 from covidactnow.datapublic.common_fields import CommonFields
+from libs import pipeline
 from pyseir import load_data
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import AggregationLevel
@@ -14,8 +15,6 @@ class ParameterEnsembleGenerator:
 
     Parameters
     ----------
-    fips: str
-        County or state fips code.
     N_samples: int
         Integer number of samples to generate.
     t_list: array-like
@@ -26,13 +25,14 @@ class ParameterEnsembleGenerator:
         Suppression policy to apply.
     """
 
-    def __init__(self, fips, N_samples, t_list, I_initial=1, suppression_policy=None):
-        self.fips = fips
+    def __init__(
+        self, N_samples, t_list, combined_datasets_latest, I_initial=1, suppression_policy=None,
+    ):
         self.N_samples = N_samples
         self.I_initial = I_initial
         self.suppression_policy = suppression_policy
         self.t_list = t_list
-        self._latest = combined_datasets.get_us_latest_for_fips(self.fips)
+        self._latest = combined_datasets_latest
 
     @property
     def population(self) -> int:
