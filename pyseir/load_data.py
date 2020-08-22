@@ -365,7 +365,7 @@ def load_cdc_hospitalization_data():
     return pd.read_csv(os.path.join(DATA_DIR, "cdc_hospitalization_data.csv"))
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=None)
 def load_mobility_data_m50():
     """
     Return mobility data without normalization
@@ -377,7 +377,7 @@ def load_mobility_data_m50():
     return pd.read_pickle(os.path.join(DATA_DIR, "mobility_data__m50.pkl"))
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=None)
 def load_mobility_data_m50_index():
     """
     Return mobility data with normalization: per
@@ -391,7 +391,7 @@ def load_mobility_data_m50_index():
     return pd.read_pickle(os.path.join(DATA_DIR, "mobility_data__m50_index.pkl")).set_index("fips")
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=None)
 def load_public_implementations_data():
     """
     Return public implementations data

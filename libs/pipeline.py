@@ -7,19 +7,19 @@ represents a geographical area (state, county, metro area, etc).
 import json
 import os
 from dataclasses import dataclass
-from typing import Optional
+from datetime import datetime
+from typing import Optional, Mapping, List, Any
 
 import pandas as pd
 import structlog
-from pydantic import BaseModel
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import FIPSPopulation
 from libs.datasets import combined_datasets
+from pyseir import load_data
+from pyseir.load_data import HospitalizationCategory
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
-from pyseir.utils import get_run_artifact_path, RunArtifact
-
+from pyseir.utils import RunArtifact
 
 _log = structlog.get_logger()
 
@@ -35,6 +35,12 @@ class Region:
     @staticmethod
     def from_fips(fips: str) -> "Region":
         return Region(fips=fips)
+
+    def is_county(self):
+        return len(self.fips) == 5
+
+    def is_state(self):
+        return len(self.fips) == 2
 
 
 @dataclass(frozen=True)
@@ -56,6 +62,15 @@ class RegionalCombinedData:
     def population(self) -> int:
         """Gets the population for this region."""
         return self.get_us_latest()[CommonFields.POPULATION]
+
+    @property  # TODO(tom): Change to cached_property when we're using Python 3.8
+    def display_name(self) -> str:
+        record = self.get_us_latest()
+        county = record[CommonFields.COUNTY]
+        state = record[CommonFields.STATE]
+        if county:
+            return f"{county}, {state}"
+        return state
 
 
 @dataclass(frozen=True)
@@ -83,7 +98,7 @@ class RegionalWebUIInput:
     def get_us_latest(self):
         return self._combined_data.get_us_latest()
 
-    def load_inference_result(self):
+    def load_inference_result(self) -> Mapping[str, Any]:
         """
         Load fit results by state or county fips code.
 
@@ -92,12 +107,7 @@ class RegionalWebUIInput:
         : dict
             Dictionary of fit result information.
         """
-        output_file = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_RESULT)
-        df = pd.read_json(output_file, dtype={"fips": "str"})
-        if len(self.fips) == 2:
-            return df.iloc[0].to_dict()
-        else:
-            return df.set_index("fips").loc[self.fips].to_dict()
+        return load_inference_result(self.region)
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
@@ -128,3 +138,23 @@ class RegionalWebUIInput:
         if not os.path.exists(path):
             return None
         return pd.read_json(path)
+
+    def is_county(self):
+        return self.region.is_county()
+
+
+def load_inference_result(region: Region) -> Mapping[str, Any]:
+    """
+    Load fit results by state or county fips code.
+
+    Returns
+    -------
+    : dict
+        Dictionary of fit result information.
+    """
+    output_file = pyseir.utils.get_run_artifact_path(region.fips, RunArtifact.MLE_FIT_RESULT)
+    df = pd.read_json(output_file, dtype={"fips": "str"})
+    if region.is_state():
+        return df.iloc[0].to_dict()
+    else:
+        return df.set_index("fips").loc[region.fips].to_dict()
