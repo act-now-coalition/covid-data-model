@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 from dataclasses import dataclass
 from typing import Mapping, Any, Optional
@@ -7,7 +6,8 @@ from typing import Mapping, Any, Optional
 import numpy as np
 from multiprocessing import Pool
 from functools import partial
-import us
+
+import structlog
 import pickle
 import json
 import copy
@@ -19,12 +19,10 @@ from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
-from pyseir.inference import fit_results
-from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 
-_logger = logging.getLogger(__name__)
+_log = structlog.get_logger()
 
 
 compartment_to_capacity_attr_map = {
@@ -150,10 +148,6 @@ class EnsembleRunner:
 
         self.all_outputs = {}
 
-    @property
-    def fips(self) -> str:
-        return self.regional_input.region.fips
-
     def init_run_mode(self):
         """
         Based on the run mode, generate suppression policies and ensemble
@@ -177,7 +171,9 @@ class EnsembleRunner:
                 self.suppression_policies[
                     f"suppression_policy__{suppression_policy}"
                 ] = sp.generate_empirical_distancing_policy(
-                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy
+                    t_list=self.t_list,
+                    fips=self.regional_input.region.fips,
+                    future_suppression=suppression_policy,
                 )
             self.override_params = dict()
         else:
@@ -202,17 +198,17 @@ class EnsembleRunner:
         model.run()
         return model
 
-    def _load_model_for_fips(self, scenario="inferred"):
+    def _load_model_for_region(self, scenario="inferred"):
         """
-        Try to load a model for the locale, else load the state level model
-        and update parameters for the county.
+        Try to load a model for the region, else load the state level model and update parameters
+        for the region.
         """
         model = self.regional_input.load_mle_fit_model()
         if model:
             inferred_params = self.regional_input.load_inference_result()
         else:
-            _logger.info(
-                f"No MLE model found for {self.state_name}: {self.fips}. Reverting to state level."
+            _log.info(
+                f"No MLE model found. Reverting to state level.", region=self.regional_input.region
             )
             model = self.regional_input.load_state_mle_fit_model()
             if model:
@@ -267,12 +263,14 @@ class EnsembleRunner:
         """
         for suppression_policy_name, suppression_policy in self.suppression_policies.items():
 
-            _logger.info(
-                f"Running simulation ensemble for {self.state_name} {self.fips} {suppression_policy_name}"
+            _log.info(
+                "Running simulation ensemble",
+                suppression_policy=suppression_policy_name,
+                region=self.regional_input.region,
             )
 
             if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
-                model_ensemble = [self._load_model_for_fips(scenario=suppression_policy)]
+                model_ensemble = [self._load_model_for_region(scenario=suppression_policy)]
 
             else:
                 raise ValueError(f"Run mode {self.run_mode.value} not supported.")
