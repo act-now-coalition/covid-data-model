@@ -236,6 +236,10 @@ class ModelFitter:
     def display_name(self) -> str:
         return self.regional_input.display_name
 
+    @property
+    def region(self) -> pipeline.Region:
+        return self.regional_input.region
+
     def set_inference_parameters(self):
         """
         Setup inference parameters based on data availability and manual
