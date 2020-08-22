@@ -11,6 +11,8 @@ from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
 from functools import partial
+
+from libs import pipeline
 from pyseir.rt import infer_rt
 from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
@@ -170,10 +172,13 @@ def _build_all_for_states(
 
         # calculate ensemble
         root.info(f"running ensemble for {len(all_county_fips)} counties")
+        counties = [
+            ensemble_runner.RegionalInput.from_fips(fips) for fips in all_county_fips.keys()
+        ]
         ensemble_func = partial(
             ensemble_runner._run_county, ensemble_kwargs=dict(run_mode=run_mode),
         )
-        p.map(ensemble_func, all_county_fips.keys())
+        p.map(ensemble_func, counties)
 
     # output it all
     output_interval_days = int(output_interval_days)

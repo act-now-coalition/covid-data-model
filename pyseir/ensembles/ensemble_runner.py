@@ -1,6 +1,9 @@
 import datetime
 import logging
 import os
+from dataclasses import dataclass
+from typing import Mapping, Any, Optional
+
 import numpy as np
 from multiprocessing import Pool
 from functools import partial
@@ -9,6 +12,9 @@ import pickle
 import json
 import copy
 from collections import defaultdict
+
+from libs import pipeline
+from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
@@ -28,6 +34,52 @@ compartment_to_capacity_attr_map = {
 }
 
 
+@dataclass(frozen=True)
+class RegionalInput:
+    region: pipeline.Region
+
+    _combined_data: pipeline.RegionalCombinedData
+
+    @staticmethod
+    def from_fips(fips: str) -> "RegionalInput":
+        return RegionalInput(
+            region=pipeline.Region.from_fips(fips),
+            _combined_data=pipeline.RegionalCombinedData.from_fips(fips),
+        )
+
+    @staticmethod
+    def from_state(state: str) -> "RegionalInput":
+        region = pipeline.Region.from_state(state)
+        return RegionalInput(
+            region=region, _combined_data=pipeline.RegionalCombinedData.from_fips(region.fips),
+        )
+
+    def get_us_latest(self) -> Mapping[str, Any]:
+        return self._combined_data.get_us_latest()
+
+    def load_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
+        artifact_path = get_run_artifact_path(self.region.fips, RunArtifact.MLE_FIT_MODEL)
+        if os.path.exists(artifact_path):
+            with open(artifact_path, "rb") as f:
+                return pickle.load(f)
+        else:
+            return None
+
+    def load_inference_result(self):
+        return fit_results.load_inference_result(self.region.fips)
+
+    def load_state_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
+        artifact_path = get_run_artifact_path(self.region.fips[:2], RunArtifact.MLE_FIT_MODEL)
+        if os.path.exists(artifact_path):
+            with open(artifact_path, "rb") as f:
+                return pickle.load(f)
+        else:
+            return None
+
+    def load_state_inference_result(self):
+        return fit_results.load_inference_result(self.region.fips[:2])
+
+
 class EnsembleRunner:
     """
     The EnsembleRunner executes a collection of N_samples simulations based on
@@ -35,8 +87,8 @@ class EnsembleRunner:
 
     Parameters
     ----------
-    fips: str
-        County or state fips code
+    regional_input: RegionalInput
+        County or state data
     n_years: int
         Number of years to simulate
     n_samples: int
@@ -58,7 +110,7 @@ class EnsembleRunner:
 
     def __init__(
         self,
-        fips,
+        regional_input,
         n_years=0.5,
         n_samples=250,
         suppression_policy=(0.35, 0.5, 0.75, 1),
@@ -69,8 +121,7 @@ class EnsembleRunner:
         hospitalization_to_confirmed_case_ratio=1 / 4,
     ):
 
-        self.fips = fips
-        self.agg_level = AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
+        self.regional_input = regional_input
 
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.skip_plots = skip_plots
@@ -79,12 +130,10 @@ class EnsembleRunner:
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
-        if self.agg_level is AggregationLevel.COUNTY:
-            self.state_name = us.states.lookup(fips[:2]).name
-            self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
-        else:
-            self.state_name = us.states.lookup(self.fips).name
-            self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
+        self.state_name = regional_input.region.state_obj().name
+        self.output_file_data = get_run_artifact_path(
+            regional_input.region.fips, RunArtifact.ENSEMBLE_RESULT
+        )
 
         os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
         self.output_percentiles = output_percentiles
@@ -100,6 +149,10 @@ class EnsembleRunner:
         self.init_run_mode()
 
         self.all_outputs = {}
+
+    @property
+    def fips(self) -> str:
+        return self.regional_input.region.fips
 
     def init_run_mode(self):
         """
@@ -124,7 +177,9 @@ class EnsembleRunner:
                 self.suppression_policies[
                     f"suppression_policy__{suppression_policy}"
                 ] = sp.generate_empirical_distancing_policy(
-                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy
+                    t_list=self.t_list,
+                    fips=self.regional_input.region.fips,
+                    future_suppression=suppression_policy,
                 )
             self.override_params = dict()
         else:
@@ -154,21 +209,16 @@ class EnsembleRunner:
         Try to load a model for the locale, else load the state level model
         and update parameters for the county.
         """
-        artifact_path = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL)
-        if os.path.exists(artifact_path):
-            with open(artifact_path, "rb") as f:
-                model = pickle.load(f)
-            inferred_params = fit_results.load_inference_result(self.fips)
-
+        model = self.regional_input.load_mle_fit_model()
+        if model:
+            inferred_params = self.regional_input.load_inference_result()
         else:
             _logger.info(
                 f"No MLE model found for {self.state_name}: {self.fips}. Reverting to state level."
             )
-            artifact_path = get_run_artifact_path(self.fips[:2], RunArtifact.MLE_FIT_MODEL)
-            if os.path.exists(artifact_path):
-                with open(artifact_path, "rb") as f:
-                    model = pickle.load(f)
-                inferred_params = fit_results.load_inference_result(self.fips[:2])
+            model = self.regional_input.load_state_mle_fit_model()
+            if model:
+                inferred_params = self.regional_input.load_state_inference_result()
             else:
                 raise FileNotFoundError(f"Could not locate state result for {self.state_name}")
 
@@ -179,7 +229,7 @@ class EnsembleRunner:
             # across the code base).
             default_params = ParameterEnsembleGenerator(
                 N_samples=500,
-                combined_datasets_latest=combined_datasets.get_us_latest_for_fips(self.fips),
+                combined_datasets_latest=self.regional_input.get_us_latest(),
                 t_list=model.t_list,
                 suppression_policy=model.suppression_policy,
             ).get_average_seir_parameters()
@@ -389,7 +439,7 @@ class EnsembleRunner:
         return outputs
 
 
-def _run_county(fips, ensemble_kwargs):
+def _run_county(regional_input: RegionalInput, ensemble_kwargs):
     """
     Execute the ensemble runner for a specific county.
 
@@ -400,11 +450,12 @@ def _run_county(fips, ensemble_kwargs):
     ensemble_kwargs: dict
         Kwargs passed to the EnsembleRunner object.
     """
-    runner = EnsembleRunner(fips=fips, **ensemble_kwargs)
+    assert regional_input.region.is_county()
+    runner = EnsembleRunner(regional_input, **ensemble_kwargs)
     runner.run_ensemble()
 
 
-def run_state(state, ensemble_kwargs, states_only=False):
+def run_state(state: str, ensemble_kwargs, states_only=False):
     """
     Run the EnsembleRunner for each county in a state.
 
@@ -418,15 +469,15 @@ def run_state(state, ensemble_kwargs, states_only=False):
         If True only run the state level.
     """
     # Run the state level
-    state_obj = us.states.lookup(state)
-    fips = state_obj.fips
-    runner = EnsembleRunner(fips=fips, **ensemble_kwargs)
+    regional_input = RegionalInput.from_state(state)
+    runner = EnsembleRunner(regional_input=regional_input, **ensemble_kwargs)
     runner.run_ensemble()
 
     if not states_only:
         # Run county level
         county_latest = combined_datasets.load_us_latest_dataset().county
         all_fips = county_latest.get_subset(state=state).all_fips
+        counties = [RegionalInput.from_fips(fips) for fips in all_fips]
         with Pool(maxtasksperchild=1) as p:
             f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
-            p.map(f, all_fips)
+            p.map(f, counties)
