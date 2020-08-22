@@ -65,8 +65,8 @@ def _map_outputs(
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
-    for state in states:
-        state_input = pipeline.RegionalWebUIInput.from_state(state)
+    for region in map(pipeline.Region.from_state, states):
+        state_input = pipeline.RegionalWebUIInput.from_region(region)
         web_ui_mapper.generate_state(
             state_input, whitelisted_county_fips=[], states_only=states_only
         )
@@ -190,7 +190,8 @@ def _build_all_for_states(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
     for state in states:
-        state_input = pipeline.RegionalWebUIInput.from_state(state)
+        region = pipeline.Region.from_state(state)
+        state_input = pipeline.RegionalWebUIInput.from_region(region)
         web_ui_mapper.generate_state(
             state_input,
             whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],

@@ -278,7 +278,10 @@ class WebUIDataAdaptorV1:
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
 
     def generate_state(
-        self, state: pipeline.RegionalWebUIInput, whitelisted_county_fips: list, states_only=False
+        self,
+        regional_input: pipeline.RegionalWebUIInput,
+        whitelisted_county_fips: list,
+        states_only=False,
     ):
         """
         Generate the output for the webUI for the given state, and counties in that state if
@@ -286,23 +289,23 @@ class WebUIDataAdaptorV1:
 
         Parameters
         ----------
-        state: str
-            State
-        whitelisted_county_fips
+        regional_input: pipeline.RegionalWebUIInput
+            Input for a state
+        whitelisted_county_fips:
+            Counties in the state
         states_only: bool
             If True only run the state level.
         """
 
-        self.map_fips(state)
+        self.map_fips(regional_input)
 
         if states_only:
             return
         else:
             with Pool(maxtasksperchild=1) as p:
-                p.map(
-                    self.map_fips,
-                    map(pipeline.RegionalWebUIInput.from_fips, whitelisted_county_fips),
-                )
+                regions = map(pipeline.Region.from_fips, whitelisted_county_fips)
+                regional_inputs = map(pipeline.RegionalWebUIInput.from_region, regions)
+                p.map(self.map_fips, regional_inputs)
 
             return
 

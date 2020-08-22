@@ -7,17 +7,15 @@ represents a geographical area (state, county, metro area, etc).
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional, Mapping, List, Any
+from typing import Optional, Mapping, Any
 
 import pandas as pd
 import structlog
+import us
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
-from pyseir import load_data
-from pyseir.load_data import HospitalizationCategory
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import RunArtifact
 
@@ -87,8 +85,12 @@ class RegionalCombinedData:
     region: Region
 
     @staticmethod
+    def from_region(region: Region) -> "RegionalCombinedData":
+        return RegionalCombinedData(region=region)
+
+    @staticmethod
     def from_fips(fips: str) -> "RegionalCombinedData":
-        return RegionalCombinedData(region=Region.from_fips(fips))
+        return RegionalCombinedData.from_region(Region.from_fips(fips))
 
     def get_us_latest(self):
         """Gets latest values for a given state or county fips code."""
@@ -117,6 +119,12 @@ class RegionalWebUIInput:
     region: Region
 
     _combined_data: RegionalCombinedData
+
+    @staticmethod
+    def from_region(region: Region) -> "RegionalWebUIInput":
+        return RegionalWebUIInput(
+            region=region, _combined_data=RegionalCombinedData.from_region(region)
+        )
 
     @staticmethod
     def from_fips(fips: str) -> "RegionalWebUIInput":
