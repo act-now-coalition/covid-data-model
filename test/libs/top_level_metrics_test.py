@@ -40,8 +40,18 @@ def test_calculate_test_positivity_lagging():
     It should return an empty series if there is missing negative case data.
     """
     positive_tests = pd.Series([0, 1, 2, 4, 8])
-    negative_tests = pd.Series([0, 0, 1, 2, np.nan])
+    negative_tests = pd.Series([0, 0, 1, 2, 2])
     positive_rate = top_level_metrics.calculate_test_positivity(
         positive_tests, negative_tests, smooth=2, lag_lookback=1
     )
     pd.testing.assert_series_equal(positive_rate, pd.Series([], dtype="float64"))
+
+
+def test_calculate_test_positivity_extra_day():
+    """
+    It should return an empty series if there is missing negative case data.
+    """
+    positive_tests = pd.Series([0, 4, np.nan])
+    negative_tests = pd.Series([0, 4, np.nan])
+    positive_rate = top_level_metrics.calculate_test_positivity(positive_tests, negative_tests)
+    pd.testing.assert_series_equal(positive_rate, pd.Series([np.nan, 0.5], dtype="float64"))

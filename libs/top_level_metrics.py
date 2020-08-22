@@ -32,7 +32,8 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
 
     data = timeseries.data
 
-    case_density = calculate_case_density(data[CommonFields.CASES], population)
+    cumulative_cases = series_utils.interpolate_stalled_values(data[CommonFields.CASES])
+    case_density = calculate_case_density(cumulative_cases, population)
 
     cumulative_positive_tests = series_utils.interpolate_stalled_values(
         data[CommonFields.POSITIVE_TESTS]
@@ -46,12 +47,11 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
 
     top_level_metrics_data = {
         MetricsFields.CASE_DENSITY: case_density,
+        CommonFields.DATE: data[CommonFields.DATE],
         MetricsFields.TEST_POSITIVITY: test_positivity,
         CommonFields.FIPS: fips,
-        CommonFields.DATE: data[CommonFields.DATE],
     }
-
-    return pd.DataFrame(top_level_metrics_data).replace({np.nan: None}).set_index(CommonFields.DATE)
+    return pd.DataFrame(top_level_metrics_data, index=test_positivity.index).replace({np.nan: None})
 
 
 def calculate_case_density(
@@ -76,8 +76,7 @@ def calculate_case_density(
 def calculate_test_positivity(
     positive_tests: pd.Series, negative_tests: pd.Series, smooth: int = 7, lag_lookback: int = 7
 ) -> pd.Series:
-    """
-    Calculates positive test rate.
+    """Calculates positive test rate.
 
     Args:
         positive_tests: Number of cumulative positive tests.
@@ -86,7 +85,6 @@ def calculate_test_positivity(
     Returns:
         Positive test rate.
     """
-
     daily_negative_tests = negative_tests.diff()
     daily_positive_tests = positive_tests.diff()
 

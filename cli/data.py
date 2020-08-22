@@ -2,6 +2,8 @@ from itertools import chain
 from typing import Optional
 import logging
 import pathlib
+import os
+import json
 
 import click
 import gspread
@@ -22,6 +24,10 @@ from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.combined_dataset_utils import DatasetType
 from libs.datasets.dataset_utils import AggregationLevel
+from pyseir import DATA_DIR
+import pyseir.icu.utils
+from pyseir.icu import infer_icu
+
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -125,3 +131,20 @@ def update_availability_report(name: str, share_email: Optional[str]):
     sheet.reorder_worksheets(worksheets)
 
     _logger.info("Finished updating data availability report")
+
+
+@main.command()
+def update_case_based_icu_utilization_weights():
+    """
+    Calculate the updated States to Counties disaggregation weights and save to disk. These
+    weights are used to estimate county level ICU heads-in-beds as an input for the ICU Utilization
+    metric.
+
+    The output is callable with county aggregation-level fips keys and returns a normalized [0,1]
+    value such that the weights for all counties in a given state sum to unity.
+    """
+    output_path = os.path.join(DATA_DIR, infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES.value)
+    output = pyseir.icu.utils.calculate_case_based_weights()
+    _logger.info(f"Saved case-based ICU Utilization weights to {output_path}")
+    with open(output_path, "w") as f:
+        json.dump(output, f)
