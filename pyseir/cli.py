@@ -18,7 +18,6 @@ from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
-from libs.us_state_abbrev import ABBREV_US_STATE
 from pyseir.inference.whitelist_generator import WhitelistGenerator
 
 
@@ -60,11 +59,6 @@ def _run_mle_fits(states: List[str], states_only=False):
         model_fitter.run_state(state, states_only=states_only)
 
 
-def _run_ensembles(states, ensemble_kwargs=dict(), states_only=False):
-    for state in states:
-        ensemble_runner.run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
-
-
 def _map_outputs(
     states, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
 ):
@@ -72,7 +66,10 @@ def _map_outputs(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
     for state in states:
-        web_ui_mapper.generate_state(state, whitelisted_county_fips=[], states_only=states_only)
+        state_input = pipeline.RegionalWebUIInput.from_state(state)
+        web_ui_mapper.generate_state(
+            state_input, whitelisted_county_fips=[], states_only=states_only
+        )
 
 
 def _state_only_pipeline(
@@ -83,8 +80,9 @@ def _state_only_pipeline(
     states = [state]
     _run_infer_rt(states, states_only=states_only)
     _run_mle_fits(states, states_only=states_only)
-    _run_ensembles(
-        states, ensemble_kwargs=dict(run_mode=run_mode), states_only=states_only,
+    ensembles_input = ensemble_runner.RegionalInput.from_state(state)
+    ensemble_runner.run_state(
+        ensembles_input, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
     )
     # remove outputs atm. just output at the end
     _map_outputs(
@@ -192,8 +190,9 @@ def _build_all_for_states(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
     for state in states:
+        state_input = pipeline.RegionalWebUIInput.from_state(state)
         web_ui_mapper.generate_state(
-            state,
+            state_input,
             whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
             states_only=False,
         )
@@ -239,9 +238,10 @@ def run_mle_fits(state, states_only):
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_ensembles(state, run_mode, states_only):
     states = [state] if state else ALL_STATES
-    _run_ensembles(
-        states, ensemble_kwargs=dict(run_mode=run_mode), states_only=states_only,
-    )
+    for region in map(ensemble_runner.RegionalInput.from_state, states):
+        ensemble_runner.run_state(
+            region, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
+        )
 
 
 @entry_point.command()

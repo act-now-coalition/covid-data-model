@@ -1,7 +1,7 @@
 import datetime
 import os
 from dataclasses import dataclass
-from typing import Mapping, Any, Optional
+from typing import Mapping, Any, Optional, Iterable
 
 import numpy as np
 from multiprocessing import Pool
@@ -51,6 +51,12 @@ class RegionalInput:
         return RegionalInput(
             region=region, _combined_data=pipeline.RegionalCombinedData.from_fips(region.fips),
         )
+
+    def get_counties_regional_input(self) -> "Iterable[RegionalInput]":
+        assert self.region.is_state()
+        county_latest = combined_datasets.load_us_latest_dataset().county
+        all_fips = county_latest.get_subset(state=self.region.state_obj().abbr).all_fips
+        return [RegionalInput.from_fips(fips) for fips in all_fips]
 
     def get_us_latest(self) -> Mapping[str, Any]:
         return self._combined_data.get_us_latest()
@@ -108,7 +114,7 @@ class EnsembleRunner:
 
     def __init__(
         self,
-        regional_input,
+        regional_input: RegionalInput,
         n_years=0.5,
         n_samples=250,
         suppression_policy=(0.35, 0.5, 0.75, 1),
@@ -168,6 +174,9 @@ class EnsembleRunner:
 
         elif self.run_mode is RunMode.DEFAULT:
             for suppression_policy in self.suppression_policy:
+                raise NotImplementedError(
+                    "Oh, this code is used? Ask Tom to add MSA support and a test."
+                )
                 self.suppression_policies[
                     f"suppression_policy__{suppression_policy}"
                 ] = sp.generate_empirical_distancing_policy(
@@ -451,7 +460,7 @@ def _run_county(regional_input: RegionalInput, ensemble_kwargs):
     runner.run_ensemble()
 
 
-def run_state(state: str, ensemble_kwargs, states_only=False):
+def run_state(regional_input: RegionalInput, ensemble_kwargs, states_only=False):
     """
     Run the EnsembleRunner for each county in a state.
 
@@ -465,15 +474,11 @@ def run_state(state: str, ensemble_kwargs, states_only=False):
         If True only run the state level.
     """
     # Run the state level
-    regional_input = RegionalInput.from_state(state)
     runner = EnsembleRunner(regional_input=regional_input, **ensemble_kwargs)
     runner.run_ensemble()
 
     if not states_only:
         # Run county level
-        county_latest = combined_datasets.load_us_latest_dataset().county
-        all_fips = county_latest.get_subset(state=state).all_fips
-        counties = [RegionalInput.from_fips(fips) for fips in all_fips]
         with Pool(maxtasksperchild=1) as p:
             f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
-            p.map(f, counties)
+            p.map(f, regional_input.get_counties_regional_input())

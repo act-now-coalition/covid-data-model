@@ -277,7 +277,9 @@ class WebUIDataAdaptorV1:
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
 
-    def generate_state(self, state: str, whitelisted_county_fips: list, states_only=False):
+    def generate_state(
+        self, state: pipeline.RegionalWebUIInput, whitelisted_county_fips: list, states_only=False
+    ):
         """
         Generate the output for the webUI for the given state, and counties in that state if
         states_only=False.
@@ -291,8 +293,7 @@ class WebUIDataAdaptorV1:
             If True only run the state level.
         """
 
-        state_fips = us.states.lookup(state).fips
-        self.map_fips(pipeline.RegionalWebUIInput.from_fips(state_fips))
+        self.map_fips(state)
 
         if states_only:
             return
