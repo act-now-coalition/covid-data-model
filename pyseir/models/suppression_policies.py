@@ -347,62 +347,6 @@ def generate_empirical_distancing_policy(
     return interp1d(t_list_since_reference_date, rho, fill_value="extrapolate")
 
 
-def generate_empirical_distancing_policy_by_state(
-    t_list, state, future_suppression, reference_start_date=None
-):
-    """
-    Produce a suppression policy at state level based on Imperial College
-    estimates of social distancing programs combined with County level
-    datasets about their implementation.
-
-    Note: This is about 250ms per state, which adds up when running e.g. MLE
-    optimization. Bottleneck is computing the suppression policy to date which
-    is done by summing counties. This should be done once per state and lru
-    cached, not done for each county every call. Also just using numpy instead
-    of pandas.
-
-    Parameters
-    ----------
-    t_list: array-like
-        List of times to interpolate over.
-    state: str
-        ISO-2 state code to lookup interventions against.
-    future_suppression: float
-        The suppression level to apply in an ongoing basis after today, and
-        going backward as the lockdown / stay-at-home efficacy.
-    reference_start_date: pd.Timestamp
-        Start date as reference to shift t_list.
-
-    Returns
-    -------
-    suppression_model: callable
-        suppression_model(t) returns the current suppression model at time t
-    """
-    latest_values = combined_datasets.load_us_latest_dataset().county
-    state_values = latest_values.get_subset(state=state)
-    counties_fips = state_values.all_fips
-
-    if reference_start_date is None:
-        reference_start_date = min([infer_t0(fips) for fips in counties_fips])
-
-    # Aggregate the counties to the state level, weighted by population.
-
-    weight = state_values.data.population
-    weight = weight / weight.sum()
-    results = []
-    for fips in counties_fips:
-        suppression_policy = generate_empirical_distancing_policy(
-            fips=fips,
-            t_list=t_list,
-            future_suppression=future_suppression,
-            reference_start_date=reference_start_date,
-        )
-        results.append(suppression_policy(t_list).clip(max=1, min=0))
-    results_for_state = (np.vstack(results).T * weight).sum(axis=1)
-
-    return interp1d(t_list, results_for_state, fill_value="extrapolate")
-
-
 def piecewise_parametric_policy(x, t_list):
     """
     Generate a piecewise suppression policy over n_days based on interval
