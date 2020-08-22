@@ -12,6 +12,7 @@ from typing import Optional, Mapping, List, Any
 
 import pandas as pd
 import structlog
+import us
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
@@ -36,11 +37,25 @@ class Region:
     def from_fips(fips: str) -> "Region":
         return Region(fips=fips)
 
+    @staticmethod
+    def from_state(state: str) -> "Region":
+        state_obj = us.states.lookup(state)
+        fips = state_obj.fips
+        return Region(fips=fips)
+
     def is_county(self):
         return len(self.fips) == 5
 
     def is_state(self):
         return len(self.fips) == 2
+
+    def state_obj(self):
+        if self.is_state():
+            return us.states.lookup(self.fips)
+        elif self.is_county():
+            return us.states.lookup(self.fips[:2])
+        else:
+            raise ValueError(f"No state_obj for {self}")
 
 
 @dataclass(frozen=True)
