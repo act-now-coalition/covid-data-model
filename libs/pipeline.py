@@ -88,10 +88,6 @@ class RegionalCombinedData:
     def from_region(region: Region) -> "RegionalCombinedData":
         return RegionalCombinedData(region=region)
 
-    @staticmethod
-    def from_fips(fips: str) -> "RegionalCombinedData":
-        return RegionalCombinedData.from_region(Region.from_fips(fips))
-
     def get_us_latest(self):
         """Gets latest values for a given state or county fips code."""
         us_latest = combined_datasets.load_us_latest_dataset()
@@ -124,12 +120,6 @@ class RegionalWebUIInput:
     def from_region(region: Region) -> "RegionalWebUIInput":
         return RegionalWebUIInput(
             region=region, _combined_data=RegionalCombinedData.from_region(region)
-        )
-
-    @staticmethod
-    def from_fips(fips: str) -> "RegionalWebUIInput":
-        return RegionalWebUIInput(
-            region=Region.from_fips(fips), _combined_data=RegionalCombinedData.from_fips(fips)
         )
 
     @property

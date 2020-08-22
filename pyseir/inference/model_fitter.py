@@ -47,9 +47,9 @@ class RegionalInput:
 
     @staticmethod
     def from_fips(fips: str) -> "RegionalInput":
+        region = pipeline.Region.from_fips(fips)
         return RegionalInput(
-            region=pipeline.Region.from_fips(fips),
-            _combined_data=pipeline.RegionalCombinedData.from_fips(fips),
+            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
         )
 
     @property

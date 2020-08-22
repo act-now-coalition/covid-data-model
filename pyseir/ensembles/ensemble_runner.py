@@ -40,16 +40,16 @@ class RegionalInput:
 
     @staticmethod
     def from_fips(fips: str) -> "RegionalInput":
+        region = pipeline.Region.from_fips(fips)
         return RegionalInput(
-            region=pipeline.Region.from_fips(fips),
-            _combined_data=pipeline.RegionalCombinedData.from_fips(fips),
+            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
         )
 
     @staticmethod
     def from_state(state: str) -> "RegionalInput":
         region = pipeline.Region.from_state(state)
         return RegionalInput(
-            region=region, _combined_data=pipeline.RegionalCombinedData.from_fips(region.fips),
+            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
         )
 
     def get_counties_regional_input(self) -> "Iterable[RegionalInput]":
@@ -62,7 +62,7 @@ class RegionalInput:
         return self._combined_data.get_us_latest()
 
     def load_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
-        artifact_path = get_run_artifact_path(self.region.fips, RunArtifact.MLE_FIT_MODEL)
+        artifact_path = self.region.run_artifact_path_to_read(RunArtifact.MLE_FIT_MODEL)
         if os.path.exists(artifact_path):
             with open(artifact_path, "rb") as f:
                 return pickle.load(f)
@@ -73,7 +73,9 @@ class RegionalInput:
         return pipeline.load_inference_result(self.region)
 
     def load_state_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
-        artifact_path = get_run_artifact_path(self.region.fips[:2], RunArtifact.MLE_FIT_MODEL)
+        artifact_path = self.region.get_state_region().run_artifact_path_to_read(
+            RunArtifact.MLE_FIT_MODEL
+        )
         if os.path.exists(artifact_path):
             with open(artifact_path, "rb") as f:
                 return pickle.load(f)
