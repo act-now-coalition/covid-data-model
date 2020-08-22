@@ -177,9 +177,7 @@ class EnsembleRunner:
                 self.suppression_policies[
                     f"suppression_policy__{suppression_policy}"
                 ] = sp.generate_empirical_distancing_policy(
-                    t_list=self.t_list,
-                    fips=self.regional_input.region.fips,
-                    future_suppression=suppression_policy,
+                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy
                 )
             self.override_params = dict()
         else:
