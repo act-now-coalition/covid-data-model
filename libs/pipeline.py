@@ -12,7 +12,6 @@ from typing import Optional, Mapping, List, Any
 
 import pandas as pd
 import structlog
-import us
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
@@ -61,6 +60,24 @@ class Region:
         if len(self.fips) != 5:
             raise ValueError(f"No state for {self}")
         return Region(fips=self.fips[:2])
+
+    def run_artifact_path_to_read(self, run_artifact: pyseir.utils.RunArtifact) -> str:
+        """Returns the path of given artifact, to be used for reading.
+
+        Call this function instead of directly passing a fips to get_run_artifact_path to reduce
+        the amount of code that handles a fips. `run_artifact_path_to_write` has identical
+        behavior but using the appropriate function helps track down inputs and outputs.
+        """
+        return pyseir.utils.get_run_artifact_path(self.fips, run_artifact)
+
+    def run_artifact_path_to_write(self, run_artifact: pyseir.utils.RunArtifact) -> str:
+        """Returns the path of given artifact, to be used for reading.
+
+        Call this function instead of directly passing a fips to get_run_artifact_path to reduce
+        the amount of code that handles a fips. `run_artifact_path_to_read` has identical
+        behavior but using the appropriate function helps track down inputs and outputs.
+        """
+        return pyseir.utils.get_run_artifact_path(self.fips, run_artifact)
 
 
 @dataclass(frozen=True)
@@ -131,8 +148,8 @@ class RegionalWebUIInput:
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
-        output_filename = pyseir.utils.get_run_artifact_path(
-            self.fips, pyseir.utils.RunArtifact.ENSEMBLE_RESULT
+        output_filename = self.region.run_artifact_path_to_write(
+            pyseir.utils.RunArtifact.ENSEMBLE_RESULT
         )
         if not os.path.exists(output_filename):
             return None
@@ -152,9 +169,7 @@ class RegionalWebUIInput:
             _log.info("Applying New Orleans Patch")
             return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
 
-        path = pyseir.utils.get_run_artifact_path(
-            self.fips, pyseir.utils.RunArtifact.RT_INFERENCE_RESULT
-        )
+        path = self.region.run_artifact_path_to_read(pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
         if not os.path.exists(path):
             return None
         return pd.read_json(path)
@@ -172,7 +187,7 @@ def load_inference_result(region: Region) -> Mapping[str, Any]:
     : dict
         Dictionary of fit result information.
     """
-    output_file = pyseir.utils.get_run_artifact_path(region.fips, RunArtifact.MLE_FIT_RESULT)
+    output_file = region.run_artifact_path_to_read(RunArtifact.MLE_FIT_RESULT)
     df = pd.read_json(output_file, dtype={"fips": "str"})
     if region.is_state():
         return df.iloc[0].to_dict()
