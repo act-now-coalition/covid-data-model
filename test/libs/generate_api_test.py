@@ -75,15 +75,15 @@ def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_p
                 # Manually calculated from capacity calculation in generate_api.py
                 "capacity": 12763,
                 "totalCapacity": nyc_latest["max_bed_count"],
-                "currentUsageCovid": 0,
+                "currentUsageCovid": None,
                 "currentUsageTotal": None,
                 "typicalUsageRate": nyc_latest["all_beds_occupancy_rate"],
             },
             ICUBeds={
                 "capacity": nyc_latest["icu_beds"],
                 "totalCapacity": nyc_latest["icu_beds"],
-                "currentUsageCovid": 0,
-                "currentUsageTotal": 0,
+                "currentUsageCovid": None,
+                "currentUsageTotal": None,
                 "typicalUsageRate": nyc_latest["icu_occupancy_rate"],
             },
             contactTracers=nyc_latest["contact_tracers_count"],
