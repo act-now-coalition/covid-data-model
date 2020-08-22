@@ -4,7 +4,10 @@ import numpy as np
 
 
 def smooth_with_rolling_average(
-    series: pd.Series, window: int = 7, include_trailing_zeros: bool = True
+    series: pd.Series,
+    window: int = 7,
+    include_trailing_zeros: bool = True,
+    exclude_negatives: bool = True,
 ):
     """Smoothes series with a min period of 1.
 
@@ -17,13 +20,23 @@ def smooth_with_rolling_average(
         series: Series to smooth.
         window: Sliding window to average.
         include_trailing_zeros: Whether or not to NaN out trailing zeroes.
+        exclude_negatives: Exclude negative values from rolling averages.
 
     Returns:
         Smoothed series.
     """
+
+    # Drop trailing NAs so that we don't smooth for day we don't yet have data.
+    series = series.loc[: series.last_valid_index()]
+
+    if exclude_negatives:
+        series = series.copy()
+        series.loc[series < 0] = None
+
     rolling_average = series.rolling(window, min_periods=1).mean()
     if include_trailing_zeros:
         return rolling_average
+
     last_valid_index = series.replace(0, np.nan).last_valid_index()
 
     if last_valid_index:

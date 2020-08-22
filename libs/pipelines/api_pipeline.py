@@ -84,10 +84,8 @@ def generate_metrics_and_latest_for_fips(
     Returns:
         Tuple of MetricsTimeseriesRows for all days and the latest.
     """
-    metrics_timeseries = (
-        calculate_top_level_metrics_for_timeseries(timeseries, latest)
-        .reset_index()
-        .to_dict(orient="records")
+    metrics_timeseries = calculate_top_level_metrics_for_timeseries(timeseries, latest).to_dict(
+        orient="records"
     )
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
     if len(metrics_for_fips):

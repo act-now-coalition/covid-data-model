@@ -7,6 +7,7 @@ from multiprocessing import Pool
 
 from libs import pipeline
 from pyseir.deployment import model_to_observed_shim as shim
+from pyseir.icu import infer_icu
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
 from libs.datasets import CommonFields
@@ -99,6 +100,10 @@ class WebUIDataAdaptorV1:
             observed_total_hosps=observed_total_hosps_latest,
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
+        # ICU PATCH
+        icu_patch_ts = infer_icu.get_icu_timeseries(
+            fips=regional_input.fips, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+        )
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
@@ -139,7 +144,20 @@ class WebUIDataAdaptorV1:
             interpolated_model_icu_values = np.interp(
                 t_list_downsampled, t_list, raw_model_icu_values
             )
-            output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
+
+            # 21 August 2020: The line assigning schema.INFECTED_C in the output_model is
+            # commented out while the Linear Regression estimator is patched through this pipeline
+            # to be consumed downstream by the ICU utilization calculations. It is left here as a
+            # marker for the future if the ICU utilization calculations is dis-entangled from the
+            # PySEIR model outputs.
+
+            # output_model[schema.INFECTED_C] = (icu_shim+interpolated_model_icu_values).clip(min=0)
+
+            # Applying Patch for ICU Linear Regression
+            infer_icu_patch = icu_patch_ts.reindex(
+                [pd.Timestamp(x) for x in output_model[schema.DATE]]
+            )
+            output_model[schema.INFECTED_C] = infer_icu_patch.to_numpy()
 
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = (
