@@ -66,7 +66,7 @@ class RegionalInput:
             return None
 
     def load_inference_result(self):
-        return fit_results.load_inference_result(self.region.fips)
+        return pipeline.load_inference_result(self.region)
 
     def load_state_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
         artifact_path = get_run_artifact_path(self.region.fips[:2], RunArtifact.MLE_FIT_MODEL)
@@ -77,7 +77,7 @@ class RegionalInput:
             return None
 
     def load_state_inference_result(self):
-        return fit_results.load_inference_result(self.region.fips[:2])
+        return pipeline.load_inference_result(self.region.get_state_region())
 
 
 class EnsembleRunner:

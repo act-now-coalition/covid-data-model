@@ -57,6 +57,11 @@ class Region:
         else:
             raise ValueError(f"No state_obj for {self}")
 
+    def get_state_region(self) -> "Region":
+        if len(self.fips) != 5:
+            raise ValueError(f"No state for {self}")
+        return Region(fips=self.fips[:2])
+
 
 @dataclass(frozen=True)
 class RegionalCombinedData:
