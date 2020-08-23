@@ -39,18 +39,14 @@ class RegionalInput:
     _combined_data: pipeline.RegionalCombinedData
 
     @staticmethod
-    def from_fips(fips: str) -> "RegionalInput":
-        region = pipeline.Region.from_fips(fips)
+    def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
             region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
         )
 
     @staticmethod
-    def from_state(state: str) -> "RegionalInput":
-        region = pipeline.Region.from_state(state)
-        return RegionalInput(
-            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
-        )
+    def from_fips(fips: str) -> "RegionalInput":
+        return RegionalInput.from_region(pipeline.Region.from_fips(fips))
 
     def get_counties_regional_input(self) -> "Iterable[RegionalInput]":
         assert self.region.is_state()
