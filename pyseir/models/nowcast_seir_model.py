@@ -1,8 +1,15 @@
 import numpy as np
 import pandas as pd
 import math
+from enum import Enum
 
 import matplotlib.pyplot as plt
+
+
+class ContactsType(Enum):
+    DEFAULT = 1
+    LOCKDOWN = 2
+    RESTRICTED = 3
 
 
 class Demographics:
@@ -11,13 +18,56 @@ class Demographics:
     used in adjusting hospitalization and deaths fractions.
     """
 
-    r_lo_mid = 1.1
-    r_hi_mid = 0.4
+    HOUSEHOLD = np.array([[0.2, 0.2, 0.0], [0.2, 0.2, 0.0], [0.0, 0.0, 0.0]])
+    SCHOOLS = np.array([[2.0, 0.2, 0.0], [0.2, 0.1, 0.0], [0.0, 0.0, 0.0]])
+    ESSENTIAL = np.array([[0.1, 0.1, 0.05], [0.1, 0.1, 0.05], [0.05, 0.05, 0.0]])
+    LT_VISITS = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.5], [0.0, 0.5, 0.5]])
+    SOCIAL_1 = np.array([[1.0, 0.0, 0.0], [0.0, 0.2, 0.0], [0.0, 0.0, 0.1]])
+    SOCIAL_2 = np.array([[2.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.5]])
+
+    CONTACTS = {
+        ContactsType.DEFAULT: (HOUSEHOLD + SCHOOLS + ESSENTIAL + LT_VISITS + SOCIAL_2),
+        ContactsType.LOCKDOWN: (ESSENTIAL + HOUSEHOLD),
+        ContactsType.RESTRICTED: (HOUSEHOLD + SCHOOLS + ESSENTIAL + SOCIAL_1),
+    }
+
+    def __init__(self, young, old, count, dwell_time):
+        assert young >= 0.0 and old >= 0.0 and young + old <= 1.0
+        self.young = young
+        self.old = old
+        self.medium = 1.0 - young - old
+        self.count = count
+        self.dwell_time = dwell_time
+
+    def as_array(self):
+        """
+        Return numpy array with the three classes as relative fractions
+        """
+        return np.array([self.young, self.medium, self.old])
+
+    def from_array(self, arr):
+        """
+        Update three classes from numpy array
+        """
+        (self.young, self.medium, self.old) = list(arr)
+
+    def update(self, contacts_type, adding, from_demo, dt=1.0):
+        """
+        Update demographics based on new set of individuals being added from a source based on contacts
+        """
+        raw_new = Demographics.CONTACTS[contacts_type] @ self.as_array() * from_demo.as_array()
+        scaled_new = raw_new * (adding / raw_new.sum())
+        new_counts = self.count * self.as_array() * (1.0 - dt / self.dwell_time) + scaled_new
+
+        new_fractions = new_counts / new_counts.sum()
+        self.from_array(new_fractions)
 
     @staticmethod
     def default():
-        mid = 1.0 / (1.0 + Demographics.r_lo_mid + Demographics.r_hi_mid)
-        return [Demographics.r_lo_mid * mid, mid, Demographics.r_hi_mid * mid]
+        r_lo_mid = 1.1
+        r_hi_mid = 0.4
+        mid = 1.0 / (1.0 + r_lo_mid + r_hi_mid)
+        return [r_lo_mid * mid, mid, r_hi_mid * mid]
 
     @staticmethod
     def age_fractions_from_median(median_age):
@@ -196,7 +246,7 @@ class NowcastingSEIRModel:
             run = ModelRun(
                 self,
                 N=2e7,
-                t_list=make_tlist(100),
+                t_list=np.linspace(0, 100, 100 + 1),
                 testing_rate_f=lambda t: t_over_x * x_fixed,
                 rt_f=lambda t: rt,
                 case_median_age_f=lambda t: median_age,
@@ -283,7 +333,7 @@ class NowcastingSEIRModel:
         Returns fraction in range [0.,1.]
         """
         if f_young is not None and f_old is not None:
-            fractions = [f_young, (1.0 - f_yound - f_old), f_old]
+            fractions = [f_young, (1.0 - f_young - f_old), f_old]
         elif median_age is not None:
             fractions = Demographics.age_fractions_from_median(median_age)
         else:

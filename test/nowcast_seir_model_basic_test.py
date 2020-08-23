@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from datetime import datetime, timedelta
 
 from pyseir.models.nowcast_seir_model import (
+    ContactsType,
     Demographics,
     ramp_function,
     NowcastingSEIRModel,
@@ -76,6 +77,23 @@ def test_median_age_history():
     fig, ax = plt.subplots()
     plt.plot(t_list, m)
     fig.savefig(TEST_OUTPUT_DIR / "test_median_age_history.pdf", bbox_inches="tight")
+
+
+def test_evolve_median_age():
+    pop = Demographics(0.4, 0.4, 0, 0.0)  # general population
+    inf = Demographics(0.2, 0.5, 1000, 6.0)  # infected
+    results = [inf.as_array()]
+    for i in range(1, 100):
+        c = ContactsType.RESTRICTED if i < 50 else ContactsType.LOCKDOWN
+        inf.update(c, 140, pop)
+        results.append(inf.as_array())
+    bins = ["young", "medium", "old"]
+    df = pd.DataFrame(results, columns=bins)
+    fig, ax = plt.subplots()
+    for bin in bins:
+        plt.plot(df.index, df[bin], label=bin)
+    fig.legend()
+    fig.savefig(TEST_OUTPUT_DIR / "test_evolve_median_age.pdf", bbox_inches="tight")
 
 
 def test_validate_rt_over_time():

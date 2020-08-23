@@ -137,7 +137,34 @@ def test_ratio_evolution():
 def test_random_periods_interesting_states():
     states = HistoricalData.get_states()
     starts = {"early": 90, "recent": 170}
-    early_start = {"NY": 75, "NJ": 80, "CT": 80}
+    early_start = {
+        "NY": 75,
+        "NJ": 80,
+        "CT": 80,
+        "WY": 100,
+        "AK": 115,
+        "AZ": 100,
+        "DC": 100,
+        "CA": 115,
+        "GA": 120,
+        "IL": 95,
+        "IN": 110,
+        "KY": 95,
+        "MD": 106,
+        "ME": 98,
+        "MI": 95,
+        "MS": 105,
+        "MT": 95,
+        "NH": 100,
+        "NV": 95,
+        "OH": 120,
+        "PA": 95,
+        "SD": 110,
+        "UT": 123,
+        "VA": 95,
+        "WI": 97,
+        "WV": 95,
+    }
 
     calibrations = []
 
@@ -154,6 +181,7 @@ def test_random_periods_interesting_states():
             # )  # Pick a random start time within a range
             t_list = np.linspace(start, start + num_days, num_days + 1)
             t0 = t_list[0]
+            h_delay = 0.0 if when == "early" else 7.0
 
             # Get historical data for that state and adjust R(t) for long term bias
             (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates(
@@ -165,7 +193,7 @@ def test_random_periods_interesting_states():
 
             # Run the model with history for initial constraints and to add actuals to charts
             run = ModelRun(
-                NowcastingSEIRModel(delay_ci_h=0, death_delay=0),
+                NowcastingSEIRModel(delay_ci_h=h_delay, death_delay=0),
                 20e6,  # N
                 t_list,
                 lambda t: tests[t],
@@ -238,7 +266,7 @@ def test_reproduce_FL_late_peak():
     # Setup model and times
     model = NowcastingSEIRModel()
     t_list = np.linspace(-63, 0, 64)
-    rt = FL_rt_divoc_times()
+    rt = None  # FL_rt_divoc_times()
 
     # TODO double check this with exact R(t) we have for FL as seemed to have to adjust up
     up_R = [rt(t) for t in t_list[:-14]]
@@ -253,7 +281,7 @@ def test_reproduce_FL_late_peak():
         model,
         20e6,
         t_list,
-        FL_test_rate_divoc_times(),
+        None,  # FL_test_rate_divoc_times(),
         rt,
         case_median_age_f=ramp_function(t_list, 48, 37),
         initial_compartments={"nC": nC_initial},
