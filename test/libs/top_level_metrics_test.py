@@ -74,7 +74,7 @@ def test_top_level_metrics_basic():
     }
     results = top_level_metrics.calculate_top_level_metrics_for_timeseries(timeseries, latest)
     expected = io.StringIO(
-        "date,fips,caseDensity,testPositivity,contactTracerCapacity\n"
+        "date,fips,caseDensity,testPositivityRatio,contactTracerCapacityRatio\n"
         "2020-08-17,36,,,\n"
         "2020-08-18,36,10,0.1,0.04\n"
         "2020-08-19,36,10,0.1,0.06\n"
