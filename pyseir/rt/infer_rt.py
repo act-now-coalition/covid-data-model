@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass
 from datetime import timedelta
 import logging
 import structlog
@@ -9,6 +10,7 @@ import pandas as pd
 from scipy import stats as sps
 from matplotlib import pyplot as plt
 
+from libs import pipeline
 from pyseir import load_data
 from pyseir.utils import TimeseriesType, get_run_artifact_path, RunArtifact
 from pyseir.rt.constants import InferRtConstants
@@ -17,16 +19,30 @@ from pyseir.rt import plotting, utils
 rt_log = structlog.get_logger(__name__)
 
 
+@dataclass(frozen=True)
+class RegionalInput:
+    region: pipeline.Region
+
+    _combined_data: pipeline.RegionalCombinedData
+
+    @staticmethod
+    def from_region(region: pipeline.Region) -> "RegionalInput":
+        return RegionalInput(
+            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
+        )
+
+    @staticmethod
+    def from_fips(fips: str) -> "RegionalInput":
+        return RegionalInput.from_region(pipeline.Region.from_fips(fips))
+
+
 def run_rt_for_fips(
-    fips: str,
+    regional_input: RegionalInput,
     include_deaths: bool = False,
     include_testing_correction: bool = False,
     figure_collector: Optional[list] = None,
 ):
     """Entry Point for Infer Rt"""
-
-    # TODO: This fails silently if you pass it a numeric fips instead of a string
-    # assert type(fips) == str
 
     # Generate the Data Packet to Pass to RtInferenceEngine
     input_df = _generate_input_data(

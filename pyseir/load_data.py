@@ -173,8 +173,9 @@ def load_new_case_data_by_fips(
     )
 
     if include_testing_correction:
+        fips_timeseries = combined_datasets.get_timeseries_for_fips(fips)
         df_new_tests = load_new_test_data_by_fips(
-            fips, t0, smoothing_tau=testing_correction_smoothing_tau
+            fips_timeseries, t0, smoothing_tau=testing_correction_smoothing_tau
         )
         df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
         df_cases = df_cases.merge(df_new_tests, how="left", on="times")
@@ -266,15 +267,17 @@ def load_hospitalization_data(
 
 
 @lru_cache(maxsize=32)
-def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5):
+def load_new_test_data_by_fips(
+    timeseries_dataset: TimeseriesDataset, t0, smoothing_tau=5, correction_threshold=5
+):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
     back as far as case data.
     Parameters
     ----------
-    fips: str
-        State or county fips code
+    timeseries_dataset
+        Data for the region
     t0: datetime
         Reference datetime to use.
     Returns
@@ -298,8 +301,7 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
         Do not apply a correction if the incident cases per day is lower than
         this value. There can be instability if case counts are very low.
     """
-    fips_timeseries = combined_datasets.get_timeseries_for_fips(fips)
-    df = fips_timeseries.data.copy()
+    df = timeseries_dataset.data.copy()
 
     # Aggregation level is None as fips is unique across aggregation levels.
     df = df.loc[
