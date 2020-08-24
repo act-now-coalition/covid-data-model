@@ -36,6 +36,7 @@ class Region:
 
     @staticmethod
     def from_state(state: str) -> "Region":
+        """Creates a Region object from a state abbreviation, name or 2 digit FIPS code."""
         state_obj = us.states.lookup(state)
         fips = state_obj.fips
         return Region(fips=fips)
@@ -55,6 +56,7 @@ class Region:
             raise ValueError(f"No state_obj for {self}")
 
     def get_state_region(self) -> "Region":
+        """Returns a Region object for the state of a county, otherwise raises a ValueError."""
         if len(self.fips) != 5:
             raise ValueError(f"No state for {self}")
         return Region(fips=self.fips[:2])
