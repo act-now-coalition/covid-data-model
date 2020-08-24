@@ -13,9 +13,9 @@ CONTACT_TRACERS_PER_CASE = 5
 
 
 class MetricsFields:
-    CASE_DENSITY = "caseDensity"
-    TEST_POSITIVITY = "testPositivity"
-    CONTACT_TRACER_CAPACITY = "contactTracerCapacity"
+    CASE_DENSITY_RATIO = "caseDensity"
+    TEST_POSITIVITY = "testPositivityRatio"
+    CONTACT_TRACER_CAPACITY_RATIO = "contactTracerCapacityRatio"
 
 
 def calculate_top_level_metrics_for_fips(fips: str):
@@ -58,9 +58,9 @@ def calculate_top_level_metrics_for_timeseries(
     top_level_metrics_data = {
         CommonFields.FIPS: fips,
         CommonFields.DATE: data[CommonFields.DATE],
-        MetricsFields.CASE_DENSITY: case_density,
+        MetricsFields.CASE_DENSITY_RATIO: case_density,
         MetricsFields.TEST_POSITIVITY: test_positivity,
-        MetricsFields.CONTACT_TRACER_CAPACITY: contact_tracer_capacity,
+        MetricsFields.CONTACT_TRACER_CAPACITY_RATIO: contact_tracer_capacity,
     }
     return pd.DataFrame(top_level_metrics_data, index=test_positivity.index)
 

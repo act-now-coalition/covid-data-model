@@ -3,8 +3,8 @@
   "description": "Metrics data for a single day.",
   "type": "object",
   "properties": {
-    "testPositivity": {
-      "title": "Testpositivity",
+    "testPositivityRatio": {
+      "title": "Testpositivityratio",
       "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
       "type": "number"
     },
@@ -13,8 +13,8 @@
       "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
       "type": "number"
     },
-    "contactTracerCapacity": {
-      "title": "Contacttracercapacity",
+    "contactTracerCapacityRatio": {
+      "title": "Contacttracercapacityratio",
       "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
       "type": "number"
     },
@@ -26,9 +26,9 @@
     }
   },
   "required": [
-    "testPositivity",
+    "testPositivityRatio",
     "caseDensity",
-    "contactTracerCapacity",
+    "contactTracerCapacityRatio",
     "date"
   ]
 }
