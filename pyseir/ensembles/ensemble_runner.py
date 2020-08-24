@@ -18,7 +18,7 @@ from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
-from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
+from pyseir.utils import RunArtifact, RunMode
 from libs.datasets import combined_datasets
 
 

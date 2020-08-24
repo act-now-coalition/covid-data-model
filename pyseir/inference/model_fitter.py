@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import List, Any, Mapping, Tuple
 import os
-import us
 import json
 import structlog
 import datetime as dt
