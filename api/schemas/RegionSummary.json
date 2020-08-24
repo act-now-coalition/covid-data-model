@@ -247,18 +247,24 @@
       "properties": {
         "testPositivity": {
           "title": "Testpositivity",
-          "description": "Ratio of people who test positive calculated using a 7 day rolling average.",
+          "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
           "type": "number"
         },
         "caseDensity": {
           "title": "Casedensity",
-          "description": "The number of cases per 100k population calculated using a 7 day rolling average.",
+          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+          "type": "number"
+        },
+        "contactTracerCapacity": {
+          "title": "Contacttracercapacity",
+          "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
           "type": "number"
         }
       },
       "required": [
         "testPositivity",
-        "caseDensity"
+        "caseDensity",
+        "contactTracerCapacity"
       ]
     }
   }
