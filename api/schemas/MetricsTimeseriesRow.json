@@ -1,16 +1,21 @@
 {
   "title": "MetricsTimeseriesRow",
-  "description": "Calculated metrics data based on known actuals.",
+  "description": "Metrics data for a single day.",
   "type": "object",
   "properties": {
-    "testPositivity": {
-      "title": "Testpositivity",
-      "description": "Ratio of people who test positive calculated using a 7 day rolling average.",
+    "testPositivityRatio": {
+      "title": "Testpositivityratio",
+      "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
       "type": "number"
     },
     "caseDensity": {
       "title": "Casedensity",
-      "description": "The number of cases per 100k population calculated using a 7 day rolling average.",
+      "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+      "type": "number"
+    },
+    "contactTracerCapacityRatio": {
+      "title": "Contacttracercapacityratio",
+      "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
       "type": "number"
     },
     "date": {
@@ -21,8 +26,9 @@
     }
   },
   "required": [
-    "testPositivity",
+    "testPositivityRatio",
     "caseDensity",
+    "contactTracerCapacityRatio",
     "date"
   ]
 }
