@@ -1,7 +1,6 @@
 import pandas as pd
 from libs.datasets import data_source
-from libs.datasets import dataset_utils
-from libs.datasets.common_fields import CommonFields, CommonIndexFields
+from libs.datasets.common_fields import CommonIndexFields
 import requests
 import structlog
 import us
@@ -11,7 +10,7 @@ log = structlog.get_logger()
 
 class KinsaDataset(data_source.DataSource):
     """
-    Wrapper class for accessing kinsa data via their api. 
+    Wrapper class for accessing kinsa data via their api.
     Data is not included in covid-data-public right now and is accessed directly from the kinsa API.
 
     """

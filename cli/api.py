@@ -1,7 +1,6 @@
 import logging
 import pathlib
 import click
-import itertools
 import us
 
 import pydantic

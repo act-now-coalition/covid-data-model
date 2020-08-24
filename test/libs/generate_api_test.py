@@ -1,15 +1,11 @@
 import datetime
-import pathlib
-import tempfile
 
 import pytest
 
 from api.can_api_definition import (
     Actuals,
-    Metrics,
     Projections,
     RegionSummary,
-    RegionSummaryWithTimeseries,
     ResourceUsageProjection,
 )
 from libs.datasets import can_model_output_schema as schema

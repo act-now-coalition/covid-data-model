@@ -1,7 +1,5 @@
 from typing import Dict
 import tabulate
-import pydantic
-import api
 import pathlib
 
 

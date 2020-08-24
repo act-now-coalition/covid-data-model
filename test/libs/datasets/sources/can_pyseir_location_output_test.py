@@ -1,5 +1,4 @@
 import datetime
-import pathlib
 import pandas as pd
 import pytest
 from libs.datasets import can_model_output_schema as schema

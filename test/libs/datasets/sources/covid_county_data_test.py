@@ -1,14 +1,9 @@
-import datetime
-import pathlib
 import pandas as pd
 import pytest
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_test_helpers import to_dict
-from libs.datasets import can_model_output_schema as schema
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
-from libs.enums import Intervention
 
 
 # turns all warnings into errors for this module

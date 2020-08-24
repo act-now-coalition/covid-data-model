@@ -17,7 +17,6 @@ import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.dataset_utils import AggregationLevel
 import pyseir.utils
 
 # from pyseir.utils import get_run_artifact_path, RunArtifact, ewma_smoothing
@@ -258,7 +257,7 @@ def load_hospitalization_data(
         relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
         # Some minor glitches for a few states..
-        for i, val in enumerate(cumulative[1:]):
+        for i in range(cumulative[1:]):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
         return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
