@@ -55,7 +55,7 @@ class RegionalInput:
     def state_name(self):
         return self.region.state_obj().name
 
-    def get_counties_regional_input(self) -> "Iterable[RegionalInput]":
+    def get_counties_regional_input(self) -> Iterable["RegionalInput"]:
         assert self.region.is_state()
         county_latest = combined_datasets.load_us_latest_dataset().county
         all_fips = county_latest.get_subset(state=self.region.state_obj().abbr).all_fips
