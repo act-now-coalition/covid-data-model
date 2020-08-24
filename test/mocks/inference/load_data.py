@@ -5,7 +5,6 @@ from enum import Enum
 
 import pandas as pd
 
-from pyseir.load_data import HospitalizationDataType
 from pyseir.rt.constants import InferRtConstants
 
 """

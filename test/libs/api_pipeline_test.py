@@ -1,16 +1,8 @@
-import datetime
-import pathlib
-import tempfile
-
 import pytest
 
-from api.can_api_definition import Actuals, Projections, RegionSummary, ResourceUsageProjection
 from libs.datasets import combined_datasets
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
-from libs.functions import generate_api
 from libs.pipelines import api_pipeline
-from pyseir import cli
 
 NYC_FIPS = "36061"
 

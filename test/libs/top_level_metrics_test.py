@@ -1,8 +1,6 @@
 import io
-import pytest
 import numpy as np
 import pandas as pd
-from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import top_level_metrics
 from libs.datasets.timeseries import TimeseriesDataset

@@ -16,7 +16,6 @@ from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
-from libs.us_state_abbrev import ABBREV_US_STATE
 from pyseir.inference.whitelist_generator import WhitelistGenerator
 
 

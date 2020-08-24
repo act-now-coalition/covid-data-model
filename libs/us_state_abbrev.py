@@ -9,8 +9,6 @@
 # Roger Allen has waived all copyright and related or neighboring
 # rights to this code.
 
-import us
-
 US_STATE_ABBREV = {
     "Alabama": "AL",
     "Alaska": "AK",

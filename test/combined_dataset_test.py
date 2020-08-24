@@ -4,7 +4,6 @@ from itertools import chain
 
 import structlog
 
-from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.combined_datasets import (
     _build_data_and_provenance,

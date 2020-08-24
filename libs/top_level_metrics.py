@@ -1,6 +1,4 @@
-import numpy as np
 import pandas as pd
-from datetime import timedelta
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
