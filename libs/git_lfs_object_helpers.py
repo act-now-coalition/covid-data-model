@@ -7,7 +7,6 @@ Provides a surface for easy loading of previous versions of Git LFS data.
 from typing import Optional
 import datetime
 import subprocess
-import re
 import pathlib
 import structlog
 import git

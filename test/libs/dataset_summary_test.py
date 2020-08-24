@@ -6,7 +6,6 @@ import libs.qa.dataset_summary_gen
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.qa import dataset_summary
 from libs.qa.dataset_summary import summarize_timeseries_fields
 
 

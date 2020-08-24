@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pyseir.load_data import HospitalizationDataType  # Do we still need this?
-from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import RunArtifact
 
 
 def plot_fitting_results(result: "pyseir.inference.ModelFitter") -> None:

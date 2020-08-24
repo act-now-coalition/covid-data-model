@@ -1,7 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
-
-import pandas as pd
 
 from api.can_api_definition import (
     Actuals,
@@ -9,7 +7,6 @@ from api.can_api_definition import (
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
     Metrics,
-    MetricsTimeseriesRow,
     PredictionTimeseriesRow,
     PredictionTimeseriesRowWithHeader,
     Projections,
@@ -20,12 +17,10 @@ from api.can_api_definition import (
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import us_state_abbrev
 from libs.datasets import can_model_output_schema as can_schema
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import get_can_projection
-from libs.top_level_metrics import calculate_top_level_metrics_for_timeseries
 
 
 def _generate_api_for_projections(model_output: CANPyseirLocationOutput):

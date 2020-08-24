@@ -3,7 +3,8 @@ Constants to use for a build. In a separate file to avoid
 auto-importing a dataset when we don't necessarily need to.
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime
+from datetime import timedelta
 
 
 def get_interventions(start_date=datetime.now().date()):

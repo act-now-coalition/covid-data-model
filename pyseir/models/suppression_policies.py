@@ -3,10 +3,8 @@ import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
 from libs.datasets import combined_datasets
-from libs import us_state_abbrev
 from pyseir import load_data
 from pyseir.inference.infer_t0 import infer_t0
-from pyseir.inference import fit_results
 
 
 # Fig 4 of Imperial college.

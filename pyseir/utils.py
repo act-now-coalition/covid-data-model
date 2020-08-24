@@ -6,9 +6,8 @@ from scipy import signal
 from covidactnow.datapublic.common_fields import CommonFields
 
 from pyseir import OUTPUT_DIR
-from pyseir import load_data
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets import combined_datasets
+from libs.datasets.dataset_utils import AggregationLevel
 
 REPORTS_FOLDER = lambda output_dir, state_name: os.path.join(
     output_dir, "pyseir", state_name, "reports"

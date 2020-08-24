@@ -3,12 +3,10 @@ Code that is used to help move information around in the pipeline, starting with
 represents a geographical area (state, county, metro area, etc).
 """
 
-
+from typing import Optional, Mapping, Any
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional, Mapping, List, Any
 
 import pandas as pd
 import structlog
@@ -16,8 +14,6 @@ import structlog
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
-from pyseir import load_data
-from pyseir.load_data import HospitalizationCategory
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import RunArtifact
 
