@@ -238,19 +238,21 @@ Utilization of hospital resources.
 ### Metrics
 Calculated metrics data based on known actuals.
 
-| name           | type   | description                                                                       |
-|----------------|--------|-----------------------------------------------------------------------------------|
-| testPositivity | number | Ratio of people who test positive calculated using a 7 day rolling average.       |
-| caseDensity    | number | The number of cases per 100k population calculated using a 7 day rolling average. |
+| name                       | type   | description                                                                                     |
+|----------------------------|--------|-------------------------------------------------------------------------------------------------|
+| testPositivityRatio        | number | Ratio of people who test positive calculated using a 7-day rolling average.                     |
+| caseDensity                | number | The number of cases per 100k population calculated using a 7-day rolling average.               |
+| contactTracerCapacityRatio | number | Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average. |
 
 ### MetricsTimeseriesRow
-Calculated metrics data based on known actuals.
+Metrics data for a single day.
 
-| name           | type   | description                                                                       |
-|----------------|--------|-----------------------------------------------------------------------------------|
-| testPositivity | number | Ratio of people who test positive calculated using a 7 day rolling average.       |
-| caseDensity    | number | The number of cases per 100k population calculated using a 7 day rolling average. |
-| date           | string |                                                                                   |
+| name                       | type   | description                                                                                     |
+|----------------------------|--------|-------------------------------------------------------------------------------------------------|
+| testPositivityRatio        | number | Ratio of people who test positive calculated using a 7-day rolling average.                     |
+| caseDensity                | number | The number of cases per 100k population calculated using a 7-day rolling average.               |
+| contactTracerCapacityRatio | number | Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average. |
+| date                       | string |                                                                                                 |
 
 ### Actuals
 Known actuals data.
