@@ -6,11 +6,9 @@ import os
 import json
 
 import click
-import gspread
 
 from libs import google_sheet_helpers, wide_dates_df
 from libs.datasets.combined_datasets import (
-    build_from_sources,
     ALL_TIMESERIES_FEATURE_DEFINITION,
     US_STATES_FILTER,
     ALL_FIELDS_FEATURE_DEFINITION,
@@ -22,7 +20,6 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
-from libs.datasets.combined_dataset_utils import DatasetType
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir import DATA_DIR
 import pyseir.icu.utils

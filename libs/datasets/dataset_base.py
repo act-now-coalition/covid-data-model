@@ -1,4 +1,4 @@
-from typing import List, Union, TextIO, Mapping, Iterable, Optional
+from typing import List, Union, TextIO, Iterable, Optional
 import pathlib
 
 import structlog

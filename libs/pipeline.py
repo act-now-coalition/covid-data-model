@@ -3,7 +3,6 @@ Code that is used to help move information around in the pipeline, starting with
 represents a geographical area (state, county, metro area, etc).
 """
 
-
 import json
 import os
 from dataclasses import dataclass

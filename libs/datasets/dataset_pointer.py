@@ -1,10 +1,7 @@
-from typing import Type, Tuple
-import os
 import io
 import pathlib
 import datetime
 
-import git
 import structlog
 import pydantic
 
