@@ -7,9 +7,15 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs import series_utils
 
 
+# We will assume roughly 5 tracers are needed to trace a case within 48h.
+# The range we give here could be between 5-15 contact tracers per case.
+CONTACT_TRACERS_PER_CASE = 5
+
+
 class MetricsFields:
     CASE_DENSITY = "caseDensity"
     TEST_POSITIVITY = "testPositivity"
+    CONTACT_TRACER_CAPACITY = "contactTracerCapacity"
 
 
 def calculate_top_level_metrics_for_fips(fips: str):
@@ -24,7 +30,9 @@ def calculate_top_level_metrics_for_fips(fips: str):
     return calculate_top_level_metrics_for_timeseries(fips_timeseries, fips_record)
 
 
-def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, latest: dict):
+def calculate_top_level_metrics_for_timeseries(
+    timeseries: TimeseriesDataset, latest: dict
+) -> pd.DataFrame:
     # Making sure that the timeseries object passed in is only for one fips.
     assert len(timeseries.all_fips) == 1
     fips = latest[CommonFields.FIPS]
@@ -44,14 +52,17 @@ def calculate_top_level_metrics_for_timeseries(timeseries: TimeseriesDataset, la
     test_positivity = calculate_test_positivity(
         cumulative_positive_tests, cumulative_negative_tests
     )
-
+    contact_tracer_capacity = calculate_contact_tracers(
+        cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
+    )
     top_level_metrics_data = {
-        MetricsFields.CASE_DENSITY: case_density,
-        CommonFields.DATE: data[CommonFields.DATE],
-        MetricsFields.TEST_POSITIVITY: test_positivity,
         CommonFields.FIPS: fips,
+        CommonFields.DATE: data[CommonFields.DATE],
+        MetricsFields.CASE_DENSITY: case_density,
+        MetricsFields.TEST_POSITIVITY: test_positivity,
+        MetricsFields.CONTACT_TRACER_CAPACITY: contact_tracer_capacity,
     }
-    return pd.DataFrame(top_level_metrics_data, index=test_positivity.index).replace({np.nan: None})
+    return pd.DataFrame(top_level_metrics_data, index=test_positivity.index)
 
 
 def calculate_case_density(
@@ -95,11 +106,31 @@ def calculate_test_positivity(
 
     last_n_positive = positive_smoothed[-lag_lookback:]
     last_n_negative = negative_smoothed[-lag_lookback:]
-    # TODO: Porting from: https://github.com/covid-projections/covid-projections/blob/master/src/common/models/Projection.ts#L521.
-    # Do we still want to return no data if there appears to be positive case data but lagging data for negative cases?
+
     if any(last_n_positive) and last_n_negative.isna().all():
         return pd.Series([], dtype="float64")
     return positive_smoothed / (negative_smoothed + positive_smoothed)
+
+
+def calculate_contact_tracers(
+    cases: pd.Series,
+    contact_tracers: pd.Series,
+    contact_tracers_per_case: int = CONTACT_TRACERS_PER_CASE,
+) -> pd.Series:
+    """Calculates ratio of hired tracers to estimated tracers needed based on daily cases.
+
+    Args:
+        cases: Cumulative cases.
+        contact_tracers: Current tracers hired.
+        contact_tracers_per_case: Number of tracers needed per case to effectively trace
+            related cases within 48 hours.
+
+    Returns: Series
+    """
+
+    daily_cases = cases.diff()
+    smoothed_daily_cases = series_utils.smooth_with_rolling_average(daily_cases)
+    return contact_tracers / (daily_cases * contact_tracers_per_case)
 
 
 # Example of running calculation for all counties in a state, using the latest dataset
