@@ -98,7 +98,6 @@ def calculate_test_positivity(
     """
     daily_negative_tests = negative_tests.diff()
     daily_positive_tests = positive_tests.diff()
-
     positive_smoothed = series_utils.smooth_with_rolling_average(daily_positive_tests)
     negative_smoothed = series_utils.smooth_with_rolling_average(
         daily_negative_tests, include_trailing_zeros=False
@@ -130,7 +129,7 @@ def calculate_contact_tracers(
 
     daily_cases = cases.diff()
     smoothed_daily_cases = series_utils.smooth_with_rolling_average(daily_cases)
-    return contact_tracers / (daily_cases * contact_tracers_per_case)
+    return contact_tracers / (smoothed_daily_cases * contact_tracers_per_case)
 
 
 # Example of running calculation for all counties in a state, using the latest dataset
