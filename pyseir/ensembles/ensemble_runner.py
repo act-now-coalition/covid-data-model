@@ -140,7 +140,6 @@ class EnsembleRunner:
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
         self.state_name = regional_input.state_name()
-        region.state_obj().name
         self.output_file_data = self.regional_input.region.run_artifact_path_to_write(
             RunArtifact.ENSEMBLE_RESULT
         )
