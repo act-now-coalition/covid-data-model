@@ -92,3 +92,13 @@ def test_calculate_contact_tracers():
     results = top_level_metrics.calculate_contact_tracers(cases, contact_tracers)
     expected = pd.Series([np.nan, 1.0, 0.5])
     pd.testing.assert_series_equal(results, expected)
+
+
+def test_calculate_contact_tracers_no_tracers():
+
+    cases = pd.Series([0.0, 1.0, 4.0])
+    contact_tracers = pd.Series([np.nan, np.nan, np.nan])
+
+    results = top_level_metrics.calculate_contact_tracers(cases, contact_tracers)
+    expected = pd.Series([np.nan, np.nan, np.nan])
+    pd.testing.assert_series_equal(results, expected)
