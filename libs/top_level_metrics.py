@@ -124,7 +124,7 @@ def calculate_contact_tracers(
         contact_tracers_per_case: Number of tracers needed per case to effectively trace
             related cases within 48 hours.
 
-    Returns: Series
+    Returns: Series aligned on the same index as cases.
     """
 
     daily_cases = cases.diff()
