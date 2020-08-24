@@ -55,16 +55,17 @@ def _run_infer_rt(states: List[str], states_only=False):
 
 
 def _map_outputs(
-    states: List[pipeline.Region],
+    state_regions: List[pipeline.Region],
     output_interval_days=1,
     states_only=False,
     output_dir=None,
     run_mode="default",
 ):
+    assert all([r.is_state() for r in state_regions])
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
-    for state in states:
+    for state in state_regions:
         state_input = pipeline.RegionalWebUIInput.from_region(state)
         web_ui_mapper.generate_state(
             state_input, whitelisted_county_fips=[], states_only=states_only
@@ -72,19 +73,20 @@ def _map_outputs(
 
 
 def _state_only_pipeline(
-    state: pipeline.Region, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
+    region: pipeline.Region, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
 ):
+    assert region.is_state()
     states_only = True
 
-    infer_rt.run_rt_for_fips(state.fips)
-    model_fitter.run_state(state, states_only=states_only)
-    ensembles_input = ensemble_runner.RegionalInput.from_region(state)
+    infer_rt.run_rt_for_fips(region.fips)
+    model_fitter.run_state(region, states_only=states_only)
+    ensembles_input = ensemble_runner.RegionalInput.from_region(region)
     ensemble_runner.run_state(
         ensembles_input, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
     )
     # remove outputs atm. just output at the end
     _map_outputs(
-        [state],
+        [region],
         output_interval_days,
         states_only=states_only,
         output_dir=output_dir,
@@ -143,7 +145,7 @@ def _build_all_for_states(
             output_interval_days=output_interval_days,
             output_dir=output_dir,
         )
-        states_regions = map(pipeline.Region.from_state, states)
+        states_regions = [pipeline.Region.from_state(s) for s in states]
         p.map(states_only_func, states_regions)
 
     if states_only:
