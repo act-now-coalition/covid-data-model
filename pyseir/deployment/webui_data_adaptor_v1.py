@@ -1,5 +1,4 @@
 import structlog
-import us
 from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd

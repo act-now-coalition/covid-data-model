@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import List, Any, Mapping, Tuple
 import os
-import us
 import json
 import structlog
 import datetime as dt
@@ -739,29 +738,30 @@ def build_county_list(state: str) -> List[str]:
     return all_fips
 
 
-def run_state(state: pipeline.Region, states_only=False):
+def run_state(region: pipeline.Region, states_only=False):
     """
     Run the fitter for each county in a state.
 
     Parameters
     ----------
-    state: str
+    region: Region
         State to run against.
     states_only: bool
         If True only run the state level.
     """
-    log.info(f"Running MLE fitter for state {state}")
+    assert region.is_state()
+    log.info(f"Running MLE fitter for state {region}")
 
-    model_fitter = ModelFitter.run_for_region(RegionalInput.from_region(state))
+    model_fitter = ModelFitter.run_for_region(RegionalInput.from_region(region))
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
-    output_path = state.run_artifact_path_to_write(RunArtifact.MLE_FIT_RESULT)
-    data = pd.DataFrame(model_fitter.fit_results, index=[state.fips])
+    output_path = region.run_artifact_path_to_write(RunArtifact.MLE_FIT_RESULT)
+    data = pd.DataFrame(model_fitter.fit_results, index=[region.fips])
     data.to_json(output_path)
 
-    with open(state.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
+    with open(region.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
         pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
@@ -770,7 +770,7 @@ def run_state(state: pipeline.Region, states_only=False):
         df_whitelist = load_data.load_whitelist()
         df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
-        is_state = df_whitelist[CommonFields.STATE] == state.state_obj().abbr
+        is_state = df_whitelist[CommonFields.STATE] == region.state_obj().abbr
         all_fips = df_whitelist.loc[is_state, CommonFields.FIPS].values
 
         if len(all_fips) > 0:

@@ -18,7 +18,7 @@ from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
-from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
+from pyseir.utils import RunArtifact, RunMode
 from libs.datasets import combined_datasets
 
 
@@ -48,7 +48,14 @@ class RegionalInput:
     def from_fips(fips: str) -> "RegionalInput":
         return RegionalInput.from_region(pipeline.Region.from_fips(fips))
 
-    def get_counties_regional_input(self) -> "Iterable[RegionalInput]":
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
+    def state_name(self):
+        return self.region.state_obj().name
+
+    def get_counties_regional_input(self) -> Iterable["RegionalInput"]:
         assert self.region.is_state()
         county_latest = combined_datasets.load_us_latest_dataset().county
         all_fips = county_latest.get_subset(state=self.region.state_obj().abbr).all_fips
@@ -132,9 +139,9 @@ class EnsembleRunner:
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
-        self.state_name = regional_input.region.state_obj().name
-        self.output_file_data = get_run_artifact_path(
-            regional_input.region.fips, RunArtifact.ENSEMBLE_RESULT
+        self.state_name = regional_input.state_name()
+        self.output_file_data = self.regional_input.region.run_artifact_path_to_write(
+            RunArtifact.ENSEMBLE_RESULT
         )
 
         os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
@@ -179,7 +186,7 @@ class EnsembleRunner:
                     f"suppression_policy__{suppression_policy}"
                 ] = sp.generate_empirical_distancing_policy(
                     t_list=self.t_list,
-                    fips=self.regional_input.region.fips,
+                    fips=self.regional_input.fips,
                     future_suppression=suppression_policy,
                 )
             self.override_params = dict()
