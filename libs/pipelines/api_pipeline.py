@@ -83,7 +83,7 @@ def generate_metrics_and_latest_for_fips(
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
     latest = None
     if metrics_for_fips:
-        latest = top_level_metrics.calculate_latest_metrics(metrics_timeseries)
+        latest = top_level_metrics.calculate_latest_metrics(metrics_results)
 
     return metrics_for_fips, latest
 
@@ -109,14 +109,14 @@ def build_timeseries_for_fips(
     try:
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
         metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
-            fips_timeseries, fips_latest
+            fips_timeseries, fips_latest, model_output
         )
         region_summary = api.generate_region_summary(fips_latest, metrics_latest, model_output)
         region_timeseries = api.generate_region_timeseries(
             region_summary, fips_timeseries, metrics_timeseries, model_output
         )
     except Exception:
-        logger.error(f"failed to run output", fips=fips)
+        logger.exception(f"Failed to build timeseries for fips.")
         return None
 
     return region_timeseries
