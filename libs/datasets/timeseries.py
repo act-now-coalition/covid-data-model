@@ -175,6 +175,16 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         )
         return self.__class__(self.data.loc[row_binary_array, :])
 
+    def get_columns_and_date_subset(
+        self, columns: List[str], min_range_with_some_value: bool
+    ) -> "TimeseriesDataset":
+        subset = self.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(drop=True)
+
+        if min_range_with_some_value:
+            subset = _remove_padded_nans(subset, columns)
+
+        return self.__class__(subset)
+
     def get_records_for_fips(self, fips) -> List[dict]:
         """Get data for FIPS code.
 
@@ -289,3 +299,13 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         # In the future, it would be good to standardize around index fields.
         df = df.reset_index()
         return cls(df)
+
+
+def _remove_padded_nans(df, columns):
+    if df[columns].isna().all().all():
+        return df.loc[[False] * len(df), :].reset_index(drop=True)
+
+    first_valid_index = min(df[column].first_valid_index() for column in columns)
+    last_valid_index = max(df[column].last_valid_index() for column in columns)
+    df = df.iloc[first_valid_index : last_valid_index + 1]
+    return df.reset_index(drop=True)
