@@ -66,9 +66,7 @@ class RegionalInput:
             return {}
 
     def load_new_case_data(self, t0) -> Tuple[pd.Series, np.array, np.array]:
-        t = load_data.load_new_case_data_by_fips(self.region.fips, t0)
-        log.info(f"load_new_case_date: {type(t)} {[type(el) for el in t]}")
-        return t
+        return load_data.calculate_new_case_data_by_region(self._combined_data.get_timeseries(), t0)
 
     def load_hospitalization_data(
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
