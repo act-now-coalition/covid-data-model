@@ -189,6 +189,13 @@ def calculate_metrics_for_counties_in_state(state: str):
 
 
 def calculate_latest_metrics(data: pd.DataFrame) -> Metrics:
+    """Calculate latest metrics from top level metrics data.
+
+    Args:
+        data: Top level metrics timeseries data.
+
+    Returns: Metrics
+    """
     metrics = {}
 
     # Get latest value from data where available.
