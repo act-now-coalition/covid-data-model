@@ -95,7 +95,7 @@ def _generate_input_data(
         If True, include a correction for testing increases and decreases.
     """
     # TODO: Outlier Removal Before Test Correction
-    times, observed_new_cases, observed_new_deaths = load_data.calc_new_case_data_by_region(
+    times, observed_new_cases, observed_new_deaths = load_data.calculate_new_case_data_by_region(
         regional_input.get_timeseries(),
         t0=InferRtConstants.REF_DATE,
         include_testing_correction=include_testing_correction,

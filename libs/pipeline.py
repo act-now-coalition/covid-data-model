@@ -14,7 +14,8 @@ import us
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import combined_datasets, timeseries
+from libs.datasets import combined_datasets
+from libs.datasets import timeseries
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import RunArtifact
 

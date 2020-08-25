@@ -132,9 +132,9 @@ def cache_public_implementations_data():
     df.to_pickle(os.path.join(DATA_DIR, "public_implementations_data.pkl"))
 
 
-def calc_new_case_data_by_region(
+def calculate_new_case_data_by_region(
     region_timeseries: TimeseriesDataset,
-    t0,
+    t0: datetime,
     include_testing_correction=False,
     testing_correction_smoothing_tau=5,
 ):
@@ -174,7 +174,7 @@ def calc_new_case_data_by_region(
     )
 
     if include_testing_correction:
-        df_new_tests = calc_new_test_data_by_region(
+        df_new_tests = calculate_new_test_data_by_region(
             region_timeseries, t0, smoothing_tau=testing_correction_smoothing_tau
         )
         df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
@@ -266,8 +266,8 @@ def load_hospitalization_data(
         return None, None, None
 
 
-def calc_new_test_data_by_region(
-    timeseries_dataset: TimeseriesDataset, t0, smoothing_tau=5, correction_threshold=5
+def calculate_new_test_data_by_region(
+    timeseries_dataset: TimeseriesDataset, t0: datetime, smoothing_tau=5, correction_threshold=5
 ):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
