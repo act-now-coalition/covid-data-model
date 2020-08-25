@@ -42,7 +42,7 @@ def calculate_top_level_metrics_for_fips(fips: str):
 
     # not sure of return type for now, could be a dictionary, or maybe it would be more effective
     # as a pandas dataframe with a column for each metric.
-    return calculate_metrics_for_timeseries(fips_timeseries, fips_record)
+    return calculate_metrics_for_timeseries(fips_timeseries, fips_record, None)
 
 
 def calculate_metrics_for_timeseries(

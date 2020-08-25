@@ -259,12 +259,24 @@
           "title": "Contacttracercapacityratio",
           "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
           "type": "number"
+        },
+        "infectionRate": {
+          "title": "Infectionrate",
+          "description": "R_t, or the estimated number of infections arising from a typical case.",
+          "type": "number"
+        },
+        "infectionRateCI90": {
+          "title": "Infectionrateci90",
+          "description": "90th percentile confidence interval upper endpoint of the infection rate.",
+          "type": "number"
         }
       },
       "required": [
         "testPositivityRatio",
         "caseDensity",
-        "contactTracerCapacityRatio"
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90"
       ]
     }
   }
