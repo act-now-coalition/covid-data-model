@@ -85,18 +85,12 @@ def test_top_level_metrics_basic():
     }
     results = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
 
-    header = (
-        "date,fips,caseDensity,testPositivityRatio,contactTracerCapacityRatio,"
-        "infectionRate,infectionRateCI90\n"
-    )
-    expected = io.StringIO(
-        f"{header}"
+    expected = _build_metrics_df(
         "2020-08-17,36,,,,,\n"
         "2020-08-18,36,10,0.1,0.04,,\n"
         "2020-08-19,36,10,0.1,0.06,,\n"
         "2020-08-20,36,10,0.1,0.08,,\n"
     )
-    expected = TimeseriesDataset.load_csv(expected).data
     pd.testing.assert_frame_equal(expected, results)
 
 
@@ -126,18 +120,12 @@ def test_top_level_metrics_with_rt():
         CommonFields.FIPS: "36",
     }
     results = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, model_output)
-    header = (
-        "date,fips,caseDensity,testPositivityRatio,contactTracerCapacityRatio,"
-        "infectionRate,infectionRateCI90\n"
-    )
-    expected = io.StringIO(
-        f"{header}"
+    expected = _build_metrics_df(
         "2020-08-17,36,,,,1.1,.1\n"
         "2020-08-18,36,10,0.1,0.04,1.2,.1\n"
         "2020-08-19,36,10,0.1,0.06,1.1,.2\n"
         "2020-08-20,36,10,0.1,0.08,1.1,.1\n"
     )
-    expected = TimeseriesDataset.load_csv(expected).data
     pd.testing.assert_frame_equal(expected, results)
 
 

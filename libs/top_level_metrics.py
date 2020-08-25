@@ -99,8 +99,8 @@ def calculate_metrics_for_timeseries(
         cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
     )
     top_level_metrics_data = {
-        CommonFields.FIPS: fips,
         CommonFields.DATE: data[CommonFields.DATE],
+        CommonFields.FIPS: fips,
         MetricsFields.CASE_DENSITY_RATIO: case_density,
         MetricsFields.TEST_POSITIVITY: test_positivity,
         MetricsFields.CONTACT_TRACER_CAPACITY_RATIO: contact_tracer_capacity,
