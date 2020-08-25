@@ -148,16 +148,6 @@ def get_us_latest_for_fips(fips) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
-def _remove_padded_nans(df, columns):
-    if df[columns].isna().all().all():
-        return df.loc[[False] * len(df), :].reset_index(drop=True)
-
-    first_valid_index = min(df[column].first_valid_index() for column in columns)
-    last_valid_index = max(df[column].last_valid_index() for column in columns)
-    df = df.iloc[first_valid_index : last_valid_index + 1]
-    return df.reset_index(drop=True)
-
-
 def get_timeseries_for_fips(
     fips: str, columns: List = None, min_range_with_some_value: bool = False
 ) -> TimeseriesDataset:
@@ -174,14 +164,9 @@ def get_timeseries_for_fips(
 
     state_ts = load_us_timeseries_dataset().get_subset(None, fips=fips)
     if columns:
-        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
-            drop=True
+        return state_ts.get_columns_and_date_subset(
+            columns, min_range_with_some_value=min_range_with_some_value
         )
-
-        if min_range_with_some_value:
-            subset = _remove_padded_nans(subset, columns)
-
-        state_ts = TimeseriesDataset(subset)
 
     return state_ts
 
@@ -202,14 +187,9 @@ def get_timeseries_for_state(
 
     state_ts = load_us_timeseries_dataset().get_subset(AggregationLevel.STATE, state=state)
     if columns:
-        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
-            drop=True
+        return state_ts.get_columns_and_date_subset(
+            columns, min_range_with_some_value=min_range_with_some_value
         )
-
-        if min_range_with_some_value:
-            subset = _remove_padded_nans(subset, columns)
-
-        state_ts = TimeseriesDataset(subset)
 
     return state_ts
 
