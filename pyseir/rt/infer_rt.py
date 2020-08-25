@@ -25,6 +25,10 @@ class RegionalInput:
 
     _combined_data: pipeline.RegionalCombinedData
 
+    @property
+    def display_name(self) -> str:
+        return str(self.region)
+
     @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
@@ -57,7 +61,7 @@ def run_rt(
     if input_df.dropna().empty:
         rt_log.warning(
             event="Infer Rt Skipped. No Data Passed Filter Requirements:",
-            region=regional_input.region,
+            region=regional_input.display_name,
         )
         return
 
@@ -65,7 +69,7 @@ def run_rt(
     # generation and saving so that I don't have to pass a display_name and fips into the class
     engine = RtInferenceEngine(
         data=input_df,
-        display_name=str(regional_input.region),
+        display_name=regional_input.display_name,
         regional_input=regional_input,
         include_deaths=include_deaths,
     )
@@ -108,7 +112,7 @@ def _generate_input_data(
         include_deaths=include_deaths,
         figure_collector=figure_collector,
         region=regional_input.region,
-        log=rt_log.new(region=repr(regional_input.region)),
+        log=rt_log.new(region=regional_input.display_name),
     )
     return df
 
