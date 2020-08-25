@@ -1,18 +1,18 @@
-import datetime
-from typing import List, Optional
-
-import pydantic
-
-from libs import base_model, us_state_abbrev
-from libs.datasets.dataset_utils import AggregationLevel
-from libs.enums import Intervention
-
-
 """
 CovidActNow API
 
 Documentation at https://github.com/covid-projections/covid-data-model/tree/master/api
 """
+
+
+from typing import List, Optional
+import datetime
+import pydantic
+
+from libs import base_model
+from libs import us_state_abbrev
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.enums import Intervention
 
 
 class ResourceUsageProjection(base_model.APIBaseModel):
@@ -86,6 +86,14 @@ class Metrics(base_model.APIBaseModel):
             "Ratio of currently hired tracers to estimated "
             "tracers needed based on 7-day daily case average."
         ),
+    )
+
+    infectionRate: Optional[float] = pydantic.Field(
+        ..., description="R_t, or the estimated number of infections arising from a typical case."
+    )
+
+    infectionRateCI90: Optional[float] = pydantic.Field(
+        ..., description="90th percentile confidence interval upper endpoint of the infection rate."
     )
 
 

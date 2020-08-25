@@ -78,7 +78,7 @@ def get_summary_artifact_path(artifact: SummaryArtifact, output_dir=None) -> str
     return os.path.join(output_dir, "pyseir", artifact.value)
 
 
-def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
+def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
     """
     Get an artifact path for a given locale and artifact type.
 
@@ -98,6 +98,8 @@ def get_run_artifact_path(fips, artifact, output_dir=None) -> str:
         Location of the artifact.
     """
     state_obj = us.states.lookup(fips[:2])
+    if not state_obj:
+        raise AssertionError(f"No state_obj for {fips}")
     if len(fips) == 5:
         agg_level = AggregationLevel.COUNTY
         county = combined_datasets.get_us_latest_for_fips(fips)[CommonFields.COUNTY]

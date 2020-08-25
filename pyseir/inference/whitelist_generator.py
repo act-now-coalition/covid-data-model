@@ -77,14 +77,28 @@ class WhitelistGenerator:
 
 
 def _whitelist_candidates_per_fips(fips):
-    times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
-        fips, t0=datetime(day=1, month=1, year=2020)
-    )
-    record = dict(
-        fips=fips,
-        total_cases=observed_new_cases.sum(),
-        total_deaths=observed_new_deaths.sum(),
-        nonzero_case_datapoints=np.sum(observed_new_cases > 0),
-        nonzero_death_datapoints=np.sum(observed_new_deaths > 0),
-    )
+    combined_data = combined_datasets.load_us_timeseries_dataset().get_subset(fips=fips)
+    if not combined_data.data.empty:
+        (
+            times,
+            observed_new_cases,
+            observed_new_deaths,
+        ) = load_data.calculate_new_case_data_by_region(
+            combined_data, t0=datetime(day=1, month=1, year=2020),
+        )
+        record = dict(
+            fips=fips,
+            total_cases=observed_new_cases.sum(),
+            total_deaths=observed_new_deaths.sum(),
+            nonzero_case_datapoints=np.sum(observed_new_cases > 0),
+            nonzero_death_datapoints=np.sum(observed_new_deaths > 0),
+        )
+    else:
+        record = dict(
+            fips=fips,
+            total_cases=0,
+            total_deaths=0,
+            nonzero_case_datapoints=0,
+            nonzero_death_datapoints=0,
+        )
     return pd.Series(record)

@@ -69,7 +69,6 @@ def _generate_infection_rate_metric(regions: List[pipeline.Region] = None):
     rt_df = pd.concat([label_data(region, data) for region, data in zip(regions, results)])
     return rt_df
 
-
 def _map_outputs(
     state_regions: List[pipeline.Region],
     output_interval_days=1,
@@ -94,12 +93,10 @@ def _state_only_pipeline(
     assert region.is_state()
     states_only = True
 
-    infer_rt.run_rt_for_fips(region.fips)
+    infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
     model_fitter.run_state(region, states_only=states_only)
     ensembles_input = ensemble_runner.RegionalInput.from_region(region)
-    ensemble_runner.run_state(
-        ensembles_input, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
-    )
+    ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": run_mode})
     # remove outputs atm. just output at the end
     _map_outputs(
         [region],
@@ -203,7 +200,7 @@ def _build_all_for_states(
             ensemble_runner.RegionalInput.from_fips(fips) for fips in all_county_fips.keys()
         ]
         ensemble_func = partial(
-            ensemble_runner._run_county, ensemble_kwargs=dict(run_mode=run_mode),
+            ensemble_runner.run_region, ensemble_kwargs=dict(run_mode=run_mode),
         )
         p.map(ensemble_func, counties)
 
@@ -272,13 +269,16 @@ def run_mle_fits(state, states_only):
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_ensembles(state, run_mode, states_only):
+    run_region = partial(ensemble_runner.run_region, ensemble_kwargs={"run_mode": run_mode})
     states = [state] if state else ALL_STATES
     for state in states:
         region = pipeline.Region.from_state(state)
-        regional_input = ensemble_runner.RegionalInput.from_region(region)
-        ensemble_runner.run_state(
-            regional_input, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
-        )
+        state_regional_input = ensemble_runner.RegionalInput.from_region(region)
+        run_region(state_regional_input)
+        if not states_only:
+            # Run county level
+            with Pool(maxtasksperchild=1) as p:
+                p.map(run_region, state_regional_input.get_counties_regional_input())
 
 
 @entry_point.command()
