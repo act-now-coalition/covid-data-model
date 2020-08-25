@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
+from api import can_api_definition
 from libs import top_level_metrics
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
@@ -185,3 +186,21 @@ def test_calculate_latest_rt_no_rt():
     metrics = top_level_metrics.calculate_latest_metrics(data)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
+
+
+def test_calculate_latest_different_latest_days():
+    prev_rt = 1.0
+    prev_rt_ci90 = 0.2
+    data = _build_metrics_df(
+        f"2020-08-13,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
+        "2020-08-20,36,,0.20,0.08,2.01,0.2\n"
+    )
+    expected_metrics = can_api_definition.Metrics(
+        testPositivityRatio=0.2,
+        caseDensity=10,
+        contactTracerCapacityRatio=0.08,
+        infectionRate=prev_rt,
+        infectionRateCI90=prev_rt_ci90,
+    )
+    metrics = top_level_metrics.calculate_latest_metrics(data)
+    assert metrics == expected_metrics
