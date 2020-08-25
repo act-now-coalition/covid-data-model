@@ -11,6 +11,8 @@ from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
 from functools import partial
+
+from libs import pipeline
 from pyseir.rt import infer_rt
 from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
@@ -52,40 +54,39 @@ def _run_infer_rt(states: List[str], states_only=False):
         infer_rt.run_rt_for_fips(fips)
 
 
-def _run_mle_fits(states: List[str], states_only=False):
-    for state in states:
-        model_fitter.run_state(state, states_only=states_only)
-
-
-def _run_ensembles(states, ensemble_kwargs=dict(), states_only=False):
-    for state in states:
-        ensemble_runner.run_state(state, ensemble_kwargs=ensemble_kwargs, states_only=states_only)
-
-
 def _map_outputs(
-    states, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
+    state_regions: List[pipeline.Region],
+    output_interval_days=1,
+    states_only=False,
+    output_dir=None,
+    run_mode="default",
 ):
+    assert all([r.is_state() for r in state_regions])
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
-    for state in states:
-        web_ui_mapper.generate_state(state, whitelisted_county_fips=[], states_only=states_only)
+    for state in state_regions:
+        state_input = pipeline.RegionalWebUIInput.from_region(state)
+        web_ui_mapper.generate_state(
+            state_input, whitelisted_county_fips=[], states_only=states_only
+        )
 
 
 def _state_only_pipeline(
-    state, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
+    region: pipeline.Region, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
 ):
+    assert region.is_state()
     states_only = True
 
-    states = [state]
-    _run_infer_rt(states, states_only=states_only)
-    _run_mle_fits(states, states_only=states_only)
-    _run_ensembles(
-        states, ensemble_kwargs=dict(run_mode=run_mode), states_only=states_only,
+    infer_rt.run_rt_for_fips(region.fips)
+    model_fitter.run_state(region, states_only=states_only)
+    ensembles_input = ensemble_runner.RegionalInput.from_region(region)
+    ensemble_runner.run_state(
+        ensembles_input, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
     )
     # remove outputs atm. just output at the end
     _map_outputs(
-        states,
+        [region],
         output_interval_days,
         states_only=states_only,
         output_dir=output_dir,
@@ -144,7 +145,8 @@ def _build_all_for_states(
             output_interval_days=output_interval_days,
             output_dir=output_dir,
         )
-        p.map(states_only_func, states)
+        states_regions = [pipeline.Region.from_state(s) for s in states]
+        p.map(states_only_func, states_regions)
 
     if states_only:
         root.info("Only executing for states. returning.")
@@ -169,10 +171,13 @@ def _build_all_for_states(
 
         # calculate ensemble
         root.info(f"running ensemble for {len(all_county_fips)} counties")
+        counties = [
+            ensemble_runner.RegionalInput.from_fips(fips) for fips in all_county_fips.keys()
+        ]
         ensemble_func = partial(
             ensemble_runner._run_county, ensemble_kwargs=dict(run_mode=run_mode),
         )
-        p.map(ensemble_func, all_county_fips.keys())
+        p.map(ensemble_func, counties)
 
     # output it all
     output_interval_days = int(output_interval_days)
@@ -186,8 +191,10 @@ def _build_all_for_states(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
     for state in states:
+        region = pipeline.Region.from_state(state)
+        state_input = pipeline.RegionalWebUIInput.from_region(region)
         web_ui_mapper.generate_state(
-            state,
+            state_input,
             whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
             states_only=False,
         )
@@ -217,7 +224,9 @@ def run_infer_rt(state, states_only):
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_mle_fits(state, states_only):
     states = [state] if state else ALL_STATES
-    _run_mle_fits(states, states_only=states_only)
+    for state in states:
+        region = pipeline.Region.from_state(state)
+        model_fitter.run_state(region, states_only=states_only)
 
 
 @entry_point.command()
@@ -233,9 +242,12 @@ def run_mle_fits(state, states_only):
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_ensembles(state, run_mode, states_only):
     states = [state] if state else ALL_STATES
-    _run_ensembles(
-        states, ensemble_kwargs=dict(run_mode=run_mode), states_only=states_only,
-    )
+    for state in states:
+        region = pipeline.Region.from_state(state)
+        regional_input = ensemble_runner.RegionalInput.from_region(region)
+        ensemble_runner.run_state(
+            regional_input, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
+        )
 
 
 @entry_point.command()
@@ -257,8 +269,9 @@ def run_ensembles(state, run_mode, states_only):
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def map_outputs(state, output_interval_days, run_mode, states_only):
     states = [state] if state else ALL_STATES
+    regions = [pipeline.Region.from_state(state) for state in states]
     _map_outputs(
-        states,
+        regions,
         output_interval_days=int(output_interval_days),
         run_mode=run_mode,
         states_only=states_only,

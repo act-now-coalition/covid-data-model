@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import List, Any, Mapping, Tuple
 import os
-import us
 import json
 import structlog
 import datetime as dt
@@ -46,11 +45,14 @@ class RegionalInput:
     _combined_data: pipeline.RegionalCombinedData
 
     @staticmethod
-    def from_fips(fips: str) -> "RegionalInput":
+    def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
-            region=pipeline.Region.from_fips(fips),
-            _combined_data=pipeline.RegionalCombinedData.from_fips(fips),
+            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
         )
+
+    @staticmethod
+    def from_fips(fips: str) -> "RegionalInput":
+        return RegionalInput.from_region(pipeline.Region.from_fips(fips))
 
     @property
     def display_name(self) -> str:
@@ -736,31 +738,30 @@ def build_county_list(state: str) -> List[str]:
     return all_fips
 
 
-def run_state(state, states_only=False):
+def run_state(region: pipeline.Region, states_only=False):
     """
     Run the fitter for each county in a state.
 
     Parameters
     ----------
-    state: str
+    region: Region
         State to run against.
     states_only: bool
         If True only run the state level.
     """
-    state_obj = us.states.lookup(state)
-    fips = state_obj.fips
-    log.info(f"Running MLE fitter for state {state}")
+    assert region.is_state()
+    log.info(f"Running MLE fitter for state {region}")
 
-    model_fitter = ModelFitter.run_for_region(RegionalInput.from_fips(fips))
+    model_fitter = ModelFitter.run_for_region(RegionalInput.from_region(region))
 
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
-    output_path = get_run_artifact_path(fips, RunArtifact.MLE_FIT_RESULT)
-    data = pd.DataFrame(model_fitter.fit_results, index=[fips])
+    output_path = region.run_artifact_path_to_write(RunArtifact.MLE_FIT_RESULT)
+    data = pd.DataFrame(model_fitter.fit_results, index=[region.fips])
     data.to_json(output_path)
 
-    with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
+    with open(region.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
         pickle.dump(model_fitter.mle_model, f)
 
     # Run the counties.
@@ -769,7 +770,7 @@ def run_state(state, states_only=False):
         df_whitelist = load_data.load_whitelist()
         df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
-        is_state = df_whitelist[CommonFields.STATE] == state
+        is_state = df_whitelist[CommonFields.STATE] == region.state_obj().abbr
         all_fips = df_whitelist.loc[is_state, CommonFields.FIPS].values
 
         if len(all_fips) > 0:
