@@ -14,7 +14,7 @@ import us
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import combined_datasets
+from libs.datasets import combined_datasets, timeseries
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import RunArtifact
 
@@ -93,6 +93,11 @@ class RegionalCombinedData:
         """Gets latest values for a given state or county fips code."""
         us_latest = combined_datasets.load_us_latest_dataset()
         return us_latest.get_record_for_fips(self.region.fips)
+
+    def get_timeseries(self) -> timeseries.TimeseriesDataset:
+        """Gets latest values for a given state or county fips code."""
+        us_latest = combined_datasets.load_us_timeseries_dataset()
+        return us_latest.get_subset(fips=self.region.fips)
 
     @property
     def population(self) -> int:

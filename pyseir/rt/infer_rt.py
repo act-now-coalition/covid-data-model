@@ -1,7 +1,6 @@
 import math
 from dataclasses import dataclass
 from datetime import timedelta
-import logging
 import structlog
 from typing import Optional
 
@@ -11,8 +10,9 @@ from scipy import stats as sps
 from matplotlib import pyplot as plt
 
 from libs import pipeline
+from libs.datasets import timeseries
 from pyseir import load_data
-from pyseir.utils import TimeseriesType, get_run_artifact_path, RunArtifact
+from pyseir.utils import TimeseriesType, RunArtifact
 from pyseir.rt.constants import InferRtConstants
 from pyseir.rt import plotting, utils
 
@@ -35,8 +35,11 @@ class RegionalInput:
     def from_fips(fips: str) -> "RegionalInput":
         return RegionalInput.from_region(pipeline.Region.from_fips(fips))
 
+    def get_timeseries(self) -> timeseries.TimeseriesDataset:
+        return self._combined_data.get_timeseries()
 
-def run_rt_for_fips(
+
+def run_rt(
     regional_input: RegionalInput,
     include_deaths: bool = False,
     include_testing_correction: bool = False,
@@ -46,21 +49,24 @@ def run_rt_for_fips(
 
     # Generate the Data Packet to Pass to RtInferenceEngine
     input_df = _generate_input_data(
-        fips=fips,
+        regional_input=regional_input,
         include_testing_correction=include_testing_correction,
         include_deaths=include_deaths,
         figure_collector=figure_collector,
     )
     if input_df.dropna().empty:
-        rt_log.warning(event="Infer Rt Skipped. No Data Passed Filter Requirements:", fips=fips)
+        rt_log.warning(
+            event="Infer Rt Skipped. No Data Passed Filter Requirements:",
+            region=regional_input.region,
+        )
         return
 
     # Save a reference to instantiated engine (eventually I want to pull out the figure
     # generation and saving so that I don't have to pass a display_name and fips into the class
     engine = RtInferenceEngine(
         data=input_df,
-        display_name=_get_display_name(fips),
-        fips=fips,
+        display_name=str(regional_input.region),
+        regional_input=regional_input,
         include_deaths=include_deaths,
     )
 
@@ -69,18 +75,15 @@ def run_rt_for_fips(
 
     # Save the output to json for downstream repacking and incorporation.
     if output_df is not None and not output_df.empty:
-        output_path = get_run_artifact_path(fips, RunArtifact.RT_INFERENCE_RESULT)
+        output_path = regional_input.region.run_artifact_path_to_write(
+            RunArtifact.RT_INFERENCE_RESULT
+        )
         output_df.to_json(output_path)
     return output_df
 
 
-def _get_display_name(fips: str) -> str:
-    """Need to find the right function for this. Right now just return the fips"""
-    return str(fips)
-
-
 def _generate_input_data(
-    fips: str,
+    regional_input: RegionalInput,
     include_testing_correction: bool,
     include_deaths: bool,
     figure_collector: Optional[list],
@@ -92,8 +95,10 @@ def _generate_input_data(
         If True, include a correction for testing increases and decreases.
     """
     # TODO: Outlier Removal Before Test Correction
-    times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
-        fips, t0=InferRtConstants.REF_DATE, include_testing_correction=include_testing_correction
+    times, observed_new_cases, observed_new_deaths = load_data.calc_new_case_data_by_region(
+        regional_input.get_timeseries(),
+        t0=InferRtConstants.REF_DATE,
+        include_testing_correction=include_testing_correction,
     )
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
@@ -102,18 +107,18 @@ def _generate_input_data(
         df=pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date),
         include_deaths=include_deaths,
         figure_collector=figure_collector,
-        display_name=fips,
-        log=rt_log.new(fips=fips),
+        region=regional_input.region,
+        log=rt_log.new(region=repr(regional_input.region)),
     )
     return df
 
 
 def filter_and_smooth_input_data(
     df: pd.DataFrame,
-    display_name: str,
+    region: pipeline.Region,
     include_deaths: bool,
     figure_collector: Optional[list],
-    log: logging.Logger,
+    log: structlog.BoundLoggerBase,
 ) -> pd.DataFrame:
     """Do Filtering Here Before it Gets to the Inference Engine"""
     MIN_CUMULATIVE_COUNTS = dict(cases=20, deaths=10)
@@ -169,7 +174,7 @@ def filter_and_smooth_input_data(
                 plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
 
                 if not figure_collector:
-                    plot_path = get_run_artifact_path(display_name, RunArtifact.RT_SMOOTHING_REPORT)
+                    plot_path = region.run_artifact_path_to_write(RunArtifact.RT_SMOOTHING_REPORT)
                     plt.savefig(plot_path, bbox_inches="tight")
                     plt.close(fig)
                 else:
@@ -197,11 +202,18 @@ class RtInferenceEngine:
     display_name: str
         Needed for Figures. Should just return figures along with dataframe and then deal with title
         and save location somewhere downstream.
-    fips: str
+    regional_input: RegionalInput
         Just used for output paths. Should remove with display_name later.
     """
 
-    def __init__(self, data, display_name, fips, include_deaths=False, figure_collector=None):
+    def __init__(
+        self,
+        data,
+        display_name,
+        regional_input: RegionalInput,
+        include_deaths=False,
+        figure_collector=None,
+    ):
 
         self.dates = data.index
         self.cases = data.cases if "cases" in data else None
@@ -209,7 +221,7 @@ class RtInferenceEngine:
 
         self.include_deaths = include_deaths
         self.display_name = display_name
-        self.fips = fips
+        self.regional_input = regional_input
         self.figure_collector = figure_collector
 
         # Load the InferRtConstants (TODO: turn into class constants)
@@ -374,14 +386,11 @@ class RtInferenceEngine:
         dates, timeseries = self.get_timeseries(timeseries_type=timeseries_type)
 
         if len(timeseries) == 0:
-            rt_log.info(
-                "%s: empty timeseries %s, skipping" % (self.display_name, timeseries_type.value)
-            )
+            self.log.info("empty timeseries, skipping", timeseries_type=str(timeseries_type.value))
             return None, None, None, None
         else:
-            rt_log.info(
-                "%s: Analyzing posteriors for timeseries %s"
-                % (self.display_name, timeseries_type.value)
+            self.log.info(
+                "Analyzing posteriors for timeseries", timeseries_type=str(timeseries_type.value)
             )
 
         # (1) Calculate Lambda (the Poisson likelihood given the data) based on
@@ -603,7 +612,7 @@ class RtInferenceEngine:
                 shift_in_days = utils.align_time_series(series_a=series_a, series_b=series_b)
 
                 df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
-                logging.debug(
+                self.log.debug(
                     "Using timeshift of: %s for timeseries type: %s ",
                     shift_in_days,
                     timeseries_type,
@@ -619,13 +628,13 @@ class RtInferenceEngine:
                         # of the missing values: For any nans appearing in between valid
                         # elements of the series, an interpolated value is filled in.
                         # For values at the end of the series, the last *valid* value is used.
-                        logging.debug("Filling in %s missing values", shift_in_days)
+                        self.log.debug("Filling in %s missing values", shift_in_days)
                         df_all[col] = df_all[col].interpolate(
                             limit_direction="forward", method="linear"
                         )
 
         if df_all is None:
-            logging.warning("Inference not possible for fips: %s", self.fips)
+            self.log.warning("Inference not possible")
             return None
 
         if self.include_deaths and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
@@ -690,10 +699,12 @@ class RtInferenceEngine:
                 display_name=self.display_name,
             )
             if self.figure_collector is None:
-                output_path = get_run_artifact_path(self.fips, RunArtifact.RT_INFERENCE_REPORT)
+                output_path = self.regional_input.region.run_artifact_path_to_write(
+                    RunArtifact.RT_INFERENCE_REPORT
+                )
                 fig.savefig(output_path, bbox_inches="tight")
             else:
                 self.figure_collector["3_Rt_inference"] = fig
         if df_all.empty:
-            logging.warning("Inference not possible for fips: %s", self.fips)
+            self.log.warning("Inference not possible")
         return df_all

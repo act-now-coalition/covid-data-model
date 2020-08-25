@@ -77,8 +77,9 @@ class WhitelistGenerator:
 
 
 def _whitelist_candidates_per_fips(fips):
-    times, observed_new_cases, observed_new_deaths = load_data.load_new_case_data_by_fips(
-        fips, t0=datetime(day=1, month=1, year=2020)
+    times, observed_new_cases, observed_new_deaths = load_data.calc_new_case_data_by_region(
+        combined_datasets.load_us_timeseries_dataset().get_subset(fips=fips),
+        t0=datetime(day=1, month=1, year=2020),
     )
     record = dict(
         fips=fips,

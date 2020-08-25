@@ -132,17 +132,19 @@ def cache_public_implementations_data():
     df.to_pickle(os.path.join(DATA_DIR, "public_implementations_data.pkl"))
 
 
-@lru_cache(maxsize=32)
-def load_new_case_data_by_fips(
-    fips, t0, include_testing_correction=False, testing_correction_smoothing_tau=5
+def calc_new_case_data_by_region(
+    region_timeseries: TimeseriesDataset,
+    t0,
+    include_testing_correction=False,
+    testing_correction_smoothing_tau=5,
 ):
     """
-    Get data for new cases.
+    Calculate new cases from combined data.
 
     Parameters
     ----------
-    fips: str
-        County fips to lookup.
+    region_timeseries: TimeseriesDataset
+        Combined data for a region
     t0: datetime
         Datetime to offset by.
     include_testing_correction: bool
@@ -161,8 +163,8 @@ def load_new_case_data_by_fips(
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-    county_case_timeseries = combined_datasets.get_timeseries_for_fips(
-        fips, columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
+    county_case_timeseries = region_timeseries.get_columns_and_date_subset(
+        columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
     )
     county_case_data = county_case_timeseries.data
 
@@ -172,9 +174,8 @@ def load_new_case_data_by_fips(
     )
 
     if include_testing_correction:
-        fips_timeseries = combined_datasets.get_timeseries_for_fips(fips)
-        df_new_tests = load_new_test_data_by_fips(
-            fips_timeseries, t0, smoothing_tau=testing_correction_smoothing_tau
+        df_new_tests = calc_new_test_data_by_region(
+            region_timeseries, t0, smoothing_tau=testing_correction_smoothing_tau
         )
         df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
         df_cases = df_cases.merge(df_new_tests, how="left", on="times")
@@ -265,8 +266,7 @@ def load_hospitalization_data(
         return None, None, None
 
 
-@lru_cache(maxsize=32)
-def load_new_test_data_by_fips(
+def calc_new_test_data_by_region(
     timeseries_dataset: TimeseriesDataset, t0, smoothing_tau=5, correction_threshold=5
 ):
     """
