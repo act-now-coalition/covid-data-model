@@ -9,10 +9,12 @@ import structlog
 from api.can_api_definition import (
     AggregateRegionSummary,
     AggregateRegionSummaryWithTimeseries,
+    Metrics,
     MetricsTimeseriesRow,
     RegionSummaryWithTimeseries,
 )
 from libs import dataset_deployer
+from libs import top_level_metrics
 from libs.datasets import CommonFields
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
@@ -20,7 +22,6 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
 from libs.functions import get_can_projection
-from libs.top_level_metrics import calculate_top_level_metrics_for_timeseries
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
@@ -64,8 +65,8 @@ def run_on_all_fips_for_intervention(
 
 
 def generate_metrics_and_latest_for_fips(
-    timeseries: TimeseriesDataset, latest: dict
-) -> [List[MetricsTimeseriesRow], Optional[MetricsTimeseriesRow]]:
+    timeseries: TimeseriesDataset, latest: dict, model_output: Optional[CANPyseirLocationOutput],
+) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
     For a FIPS, generate a MetricsTimeseriesRow per day and return the latest.
 
@@ -75,14 +76,15 @@ def generate_metrics_and_latest_for_fips(
     Returns:
         Tuple of MetricsTimeseriesRows for all days and the latest.
     """
-    metrics_timeseries = calculate_top_level_metrics_for_timeseries(timeseries, latest).to_dict(
-        orient="records"
+    metrics_results = top_level_metrics.calculate_metrics_for_timeseries(
+        timeseries, latest, model_output
     )
+    metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
-    if len(metrics_for_fips):
-        latest = metrics_for_fips[-1]
-    else:
-        latest = None
+    latest = None
+    if metrics_for_fips:
+        latest = top_level_metrics.calculate_latest_metrics(metrics_timeseries)
+
     return metrics_for_fips, latest
 
 
