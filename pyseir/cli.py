@@ -158,14 +158,6 @@ def _build_all_for_states(
         fitter_inputs = [model_fitter.RegionalInput.from_region(r) for r in all_county_regions]
         fitters = p.map(model_fitter.ModelFitter.run_for_region, fitter_inputs)
 
-        df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-        df["state"] = df.fips.replace(all_county_fips)
-        df["mle_model"] = [fit.mle_model for fit in fitters if fit]
-        df.index = df.fips
-
-        state_dfs = [state_df for name, state_df in df.groupby("state")]
-        p.map(model_fitter._persist_results_per_state, state_dfs)
-
         # calculate ensemble
         root.info(f"running ensemble for {len(all_county_fips)} counties")
         counties = [ensemble_runner.RegionalInput.from_model_fitter(f) for f in fitters]
