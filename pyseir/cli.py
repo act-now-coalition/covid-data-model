@@ -147,16 +147,16 @@ def _build_all_for_states(
         return
 
     all_county_fips = build_counties_to_run_per_state(states, fips=fips)
+    all_county_regions = [pipeline.Region.from_fips(f) for f in all_county_fips]
 
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
-        infer_rt_inputs = [
-            infer_rt.RegionalInput.from_fips(fips) for fips in all_county_fips.keys()
-        ]
+        infer_rt_inputs = [infer_rt.RegionalInput.from_region(r) for r in all_county_regions]
         p.map(infer_rt.run_rt, infer_rt_inputs)
         # calculate model fit
-        root.info(f"executing model for {len(all_county_fips)} counties")
-        fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
+        root.info(f"executing model for {len(all_county_regions)} counties")
+        fitter_inputs = [model_fitter.RegionalInput.from_region(r) for r in all_county_regions]
+        fitters = p.map(model_fitter.ModelFitter.run_for_region, fitter_inputs)
 
         df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
         df["state"] = df.fips.replace(all_county_fips)
@@ -168,9 +168,7 @@ def _build_all_for_states(
 
         # calculate ensemble
         root.info(f"running ensemble for {len(all_county_fips)} counties")
-        counties = [
-            ensemble_runner.RegionalInput.from_fips(fips) for fips in all_county_fips.keys()
-        ]
+        counties = [ensemble_runner.RegionalInput.from_model_fitter(f) for f in fitters]
         ensemble_func = partial(
             ensemble_runner._run_county, ensemble_kwargs=dict(run_mode=run_mode),
         )

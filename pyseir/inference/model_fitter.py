@@ -705,14 +705,6 @@ class ModelFitter:
             return None
 
 
-def execute_model_for_fips(fips):
-    if fips:
-        model_fitter = ModelFitter.run_for_region(RegionalInput.from_fips(fips))
-        return model_fitter
-    log.warning(f"Not running model run for ${fips}")
-    return None
-
-
 def _persist_results_per_state(state_df):
     county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
     data = state_df.drop(["state", "mle_model"], axis=1)
