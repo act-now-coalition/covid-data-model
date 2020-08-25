@@ -19,6 +19,7 @@ from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 from pyseir.inference.whitelist_generator import WhitelistGenerator
+from pyseir.utils import get_summary_artifact_path, SummaryArtifact
 
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -48,10 +49,25 @@ def _generate_whitelist():
     gen.generate_whitelist()
 
 
-def _run_infer_rt(states: List[str], states_only=False):
-    for state in states:
-        fips = us.states.lookup(state).fips
-        infer_rt.run_rt_for_fips(fips)
+def _generate_infection_rate_metric(regions: List[pipeline.Region] = None):
+    """
+    Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
+    with a unique row for each region+date combination.
+    """
+    if regions is None:
+        regions = combined_datasets.load_us_latest_dataset().all_fips
+
+    with Pool(maxtasksperchild=10) as p:
+        results = p.map(infer_rt.run_rt_for_fips, regions)
+
+    def label_data(label, data):
+        """Modify the returned dataframe to meet requirements"""
+        data = data.reset_index(drop=False)  # Move date column from index to columns
+        data["fips"] = label  # Add region column id
+        return data
+
+    rt_df = pd.concat([label_data(region, data) for region, data in zip(regions, results)])
+    return rt_df
 
 
 def _map_outputs(
@@ -152,11 +168,23 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
+    # Separating the Infection Rate Calculations
+    infection_rate_metric_df = _generate_infection_rate_metric()
+    # Note: This call currently still both writes (1) region by region JSON and (2) returns this
+    # combined dataset. Once the api generation is changed to point to the combined dataset, the
+    # individual objects can stop being persisted to disk. It also runs for all fips available, so
+    # currently it double calculates the state fips (since the state only is called earlier in this
+    # function. I would prefer to run the state only requirement instead of changing this behaviour,
+    # so that the saved csv has both state and county data.
+
+    infection_rate_metric_df.to_csv(
+        path_or_buf=get_summary_artifact_path(SummaryArtifact.RT_METRIC_COMBINED), index=False
+    )
+
+    # Run for all the other metrics.
     all_county_fips = build_counties_to_run_per_state(states, fips=fips)
 
     with Pool(maxtasksperchild=1) as p:
-        # calculate calculate county inference
-        p.map(infer_rt.run_rt_for_fips, all_county_fips.keys())
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
         fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
@@ -211,10 +239,13 @@ def generate_whitelist():
 @click.option(
     "--state", help="State to generate files for. If no state is given, all states are computed."
 )
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
+@click.option("--states-only", default=False, is_flag=True, type=bool, help="Deprecated")
 def run_infer_rt(state, states_only):
-    states = [state] if state else ALL_STATES
-    _run_infer_rt(states, states_only=states_only)
+    if state:
+        states = [us.states.lookup(state).fips]
+    else:
+        states = [us.states.lookup(s).fips for s in ALL_STATES]
+    _generate_infection_rate_metric(states)
 
 
 @entry_point.command()
