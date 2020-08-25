@@ -49,16 +49,13 @@ def _generate_whitelist():
     gen.generate_whitelist()
 
 
-def _generate_infection_rate_metric(regions: List[pipeline.Region] = None):
+def _generate_infection_rate_metric(regions: List[pipeline.Region]):
     """
     Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
     with a unique row for each region+date combination.
     """
-    if regions is None:
-        regions = combined_datasets.load_us_latest_dataset().all_fips
-
     with Pool(maxtasksperchild=10) as p:
-        results = p.map(infer_rt.run_rt_for_fips, regions)
+        results = p.map(infer_rt.run_rt, regions)
 
     def label_data(label, data):
         """Modify the returned dataframe to meet requirements"""
@@ -68,6 +65,7 @@ def _generate_infection_rate_metric(regions: List[pipeline.Region] = None):
 
     rt_df = pd.concat([label_data(region, data) for region, data in zip(regions, results)])
     return rt_df
+
 
 def _map_outputs(
     state_regions: List[pipeline.Region],
@@ -165,8 +163,13 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
+    # Get the Lists of Fips to Calculate
+    all_county_fips_pyseir = build_counties_to_run_per_state(states, fips=fips)
+    all_fips = combined_datasets.load_us_latest_dataset().all_fips
+    infer_rt_inputs = [infer_rt.RegionalInput.from_fips(fips) for fips in all_fips]
+
     # Separating the Infection Rate Calculations
-    infection_rate_metric_df = _generate_infection_rate_metric()
+    infection_rate_metric_df = _generate_infection_rate_metric(regions=infer_rt_inputs)
     # Note: This call currently still both writes (1) region by region JSON and (2) returns this
     # combined dataset. Once the api generation is changed to point to the combined dataset, the
     # individual objects can stop being persisted to disk. It also runs for all fips available, so
@@ -178,16 +181,13 @@ def _build_all_for_states(
         path_or_buf=get_summary_artifact_path(SummaryArtifact.RT_METRIC_COMBINED), index=False
     )
 
-    # Run for all the other metrics.
-    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
-
     with Pool(maxtasksperchild=1) as p:
         # calculate model fit
-        root.info(f"executing model for {len(all_county_fips)} counties")
-        fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
+        root.info(f"executing model for {len(all_county_fips_pyseir)} counties")
+        fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips_pyseir.keys())
 
         df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-        df["state"] = df.fips.replace(all_county_fips)
+        df["state"] = df.fips.replace(all_county_fips_pyseir)
         df["mle_model"] = [fit.mle_model for fit in fitters if fit]
         df.index = df.fips
 
@@ -195,9 +195,9 @@ def _build_all_for_states(
         p.map(model_fitter._persist_results_per_state, state_dfs)
 
         # calculate ensemble
-        root.info(f"running ensemble for {len(all_county_fips)} counties")
+        root.info(f"running ensemble for {len(all_county_fips_pyseir)} counties")
         counties = [
-            ensemble_runner.RegionalInput.from_fips(fips) for fips in all_county_fips.keys()
+            ensemble_runner.RegionalInput.from_fips(fips) for fips in all_county_fips_pyseir.keys()
         ]
         ensemble_func = partial(
             ensemble_runner.run_region, ensemble_kwargs=dict(run_mode=run_mode),
@@ -208,7 +208,7 @@ def _build_all_for_states(
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
-    root.info(f"outputting web results for states and {len(all_county_fips)} counties")
+    root.info(f"outputting web results for states and {len(all_county_fips_pyseir)} counties")
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
@@ -220,7 +220,7 @@ def _build_all_for_states(
         state_input = pipeline.RegionalWebUIInput.from_region(region)
         web_ui_mapper.generate_state(
             state_input,
-            whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
+            whitelisted_county_fips=[k for k, v in all_county_fips_pyseir.items() if v == state],
             states_only=False,
         )
 
@@ -242,7 +242,7 @@ def run_infer_rt(state, states_only):
         states = [us.states.lookup(state).fips]
     else:
         states = [us.states.lookup(s).fips for s in ALL_STATES]
-    _generate_infection_rate_metric(states)
+    _generate_infection_rate_metric([infer_rt.RegionalInput.from_fips(fips) for fips in states])
 
 
 @entry_point.command()
