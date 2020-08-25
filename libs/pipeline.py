@@ -13,6 +13,7 @@ import structlog
 import us
 
 import pyseir
+import pyseir.rt.patches
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
