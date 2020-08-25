@@ -4,7 +4,6 @@ import structlog
 
 from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.sources import cds_dataset
 from libs.datasets.timeseries import TimeseriesDataset
 from test.dataset_utils_test import to_dict, read_csv_and_index_fips_date
 import pandas as pd

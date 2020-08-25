@@ -1,5 +1,3 @@
-import pandas as pd
-
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from libs.datasets import data_source

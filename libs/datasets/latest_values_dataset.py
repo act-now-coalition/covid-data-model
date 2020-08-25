@@ -1,13 +1,10 @@
-from typing import Type, List, Optional, Iterable, Union, TextIO
+from typing import List, Optional, Union, TextIO
 import pathlib
 
-import structlog
 from more_itertools import first
 
-from covidactnow.datapublic import common_df
 from libs import us_state_abbrev
 import pandas as pd
-import numpy as np
 from libs.datasets.dataset_utils import AggregationLevel, make_binary_array
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations

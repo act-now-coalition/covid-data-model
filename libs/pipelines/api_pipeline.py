@@ -1,27 +1,19 @@
+from typing import Iterator, List, Optional
 import functools
-import logging
 import multiprocessing
 import pathlib
-from collections import namedtuple
-from typing import Iterator, List, Optional, Tuple
 
 import pydantic
-import simplejson
 import structlog
 
 from api.can_api_definition import (
-    AggregateFlattenedTimeseries,
     AggregateRegionSummary,
     AggregateRegionSummaryWithTimeseries,
     MetricsTimeseriesRow,
-    PredictionTimeseriesRowWithHeader,
-    RegionSummary,
     RegionSummaryWithTimeseries,
 )
 from libs import dataset_deployer
-from libs.datasets import CommonFields, combined_datasets
-from libs.datasets import results_schema as rc
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import CommonFields
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
@@ -29,7 +21,6 @@ from libs.enums import Intervention
 from libs.functions import generate_api as api
 from libs.functions import get_can_projection
 from libs.top_level_metrics import calculate_top_level_metrics_for_timeseries
-from libs.us_state_abbrev import US_STATE_ABBREV
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"

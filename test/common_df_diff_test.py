@@ -1,6 +1,5 @@
 import pandas as pd
 
-from covidactnow.datapublic.common_test_helpers import to_dict
 from libs.qa.common_df_diff import DatasetDiff
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 

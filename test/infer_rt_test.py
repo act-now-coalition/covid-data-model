@@ -3,11 +3,9 @@ import pathlib
 import pytest
 import pandas as pd
 import structlog
-from matplotlib import pyplot as plt
 
 from pyseir.rt import utils
 from pyseir.rt import infer_rt
-from pyseir.utils import get_run_artifact_path, RunArtifact
 from test.mocks.inference import load_data
 from test.mocks.inference.load_data import RateChange
 

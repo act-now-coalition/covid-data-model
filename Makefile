@@ -8,7 +8,7 @@ unittest:
 	pytest -n 2 test/
 
 lint:
-	pytest --pylint -m pylint --pylint-error-types=EF .
+	pytest --pylint -m pylint --pylint-jobs=2 .
 
 # Run unittests then linting
 test: unittest lint

@@ -3,21 +3,18 @@ Code that is used to help move information around in the pipeline, starting with
 represents a geographical area (state, county, metro area, etc).
 """
 
-
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional, Mapping, List, Any
+from typing import Optional, Mapping, Any
 
 import pandas as pd
 import structlog
+import us
 
 import pyseir
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
-from pyseir import load_data
-from pyseir.load_data import HospitalizationCategory
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import RunArtifact
 
@@ -36,11 +33,32 @@ class Region:
     def from_fips(fips: str) -> "Region":
         return Region(fips=fips)
 
+    @staticmethod
+    def from_state(state: str) -> "Region":
+        """Creates a Region object from a state abbreviation, name or 2 digit FIPS code."""
+        state_obj = us.states.lookup(state)
+        fips = state_obj.fips
+        return Region(fips=fips)
+
     def is_county(self):
         return len(self.fips) == 5
 
     def is_state(self):
         return len(self.fips) == 2
+
+    def state_obj(self):
+        if self.is_state():
+            return us.states.lookup(self.fips)
+        elif self.is_county():
+            return us.states.lookup(self.fips[:2])
+        else:
+            raise ValueError(f"No state_obj for {self}")
+
+    def get_state_region(self) -> "Region":
+        """Returns a Region object for the state of a county, otherwise raises a ValueError."""
+        if len(self.fips) != 5:
+            raise ValueError(f"No state for {self}")
+        return Region(fips=self.fips[:2])
 
     def run_artifact_path_to_read(self, run_artifact: pyseir.utils.RunArtifact) -> str:
         """Returns the path of given artifact, to be used for reading.
@@ -68,8 +86,8 @@ class RegionalCombinedData:
     region: Region
 
     @staticmethod
-    def from_fips(fips: str) -> "RegionalCombinedData":
-        return RegionalCombinedData(region=Region.from_fips(fips))
+    def from_region(region: Region) -> "RegionalCombinedData":
+        return RegionalCombinedData(region=region)
 
     def get_us_latest(self):
         """Gets latest values for a given state or county fips code."""
@@ -100,9 +118,9 @@ class RegionalWebUIInput:
     _combined_data: RegionalCombinedData
 
     @staticmethod
-    def from_fips(fips: str) -> "RegionalWebUIInput":
+    def from_region(region: Region) -> "RegionalWebUIInput":
         return RegionalWebUIInput(
-            region=Region.from_fips(fips), _combined_data=RegionalCombinedData.from_fips(fips)
+            region=region, _combined_data=RegionalCombinedData.from_region(region)
         )
 
     @property
