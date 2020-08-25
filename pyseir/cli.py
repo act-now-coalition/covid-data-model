@@ -73,7 +73,7 @@ def _state_only_pipeline(
     states_only = True
 
     infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
-    model_fitter.run_state(region, states_only=states_only)
+    model_fitter.run_state(region)
     ensembles_input = ensemble_runner.RegionalInput.from_region(region)
     ensemble_runner.run_state(
         ensembles_input, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
@@ -225,7 +225,9 @@ def run_mle_fits(state, states_only):
     states = [state] if state else ALL_STATES
     for state in states:
         region = pipeline.Region.from_state(state)
-        model_fitter.run_state(region, states_only=states_only)
+        model_fitter.run_state(region)
+        if not states_only:
+            model_fitter.run_counties_of_state(region)
 
 
 @entry_point.command()

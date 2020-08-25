@@ -736,7 +736,7 @@ def build_county_list(state: str) -> List[str]:
     return all_fips
 
 
-def run_state(region: pipeline.Region, states_only=False):
+def run_state(region: pipeline.Region):
     """
     Run the fitter for each county in a state.
 
@@ -752,9 +752,6 @@ def run_state(region: pipeline.Region, states_only=False):
 
     model_fitter = ModelFitter.run_for_region(RegionalInput.from_region(region))
 
-    df_whitelist = load_data.load_whitelist()
-    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-
     output_path = region.run_artifact_path_to_write(RunArtifact.MLE_FIT_RESULT)
     data = pd.DataFrame(model_fitter.fit_results, index=[region.fips])
     data.to_json(output_path)
@@ -762,26 +759,24 @@ def run_state(region: pipeline.Region, states_only=False):
     with open(region.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
         pickle.dump(model_fitter.mle_model, f)
 
-    # Run the counties.
-    if not states_only:
-        # TODO: Replace with build_county_list
-        df_whitelist = load_data.load_whitelist()
-        df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
 
-        is_state = df_whitelist[CommonFields.STATE] == region.state_obj().abbr
-        all_fips = df_whitelist.loc[is_state, CommonFields.FIPS].values
+def run_counties_of_state(region):
+    # TODO: Replace with build_county_list
+    df_whitelist = load_data.load_whitelist()
+    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
+    is_state = df_whitelist[CommonFields.STATE] == region.state_obj().abbr
+    all_fips = df_whitelist.loc[is_state, CommonFields.FIPS].values
+    if len(all_fips) > 0:
+        with Pool(maxtasksperchild=1) as p:
+            regions = [RegionalInput.from_fips(fips) for fips in all_fips]
+            fitters = p.map(ModelFitter.run_for_region, regions)
 
-        if len(all_fips) > 0:
-            with Pool(maxtasksperchild=1) as p:
-                regions = [RegionalInput.from_fips(fips) for fips in all_fips]
-                fitters = p.map(ModelFitter.run_for_region, regions)
+        county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
+        data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+        data.to_json(county_output_file)
 
-            county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
-            data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-            data.to_json(county_output_file)
-
-            # Serialize the model results.
-            for fips, fitter in zip(all_fips, fitters):
-                if fitter:
-                    with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
-                        pickle.dump(fitter.mle_model, f)
+        # Serialize the model results.
+        for fips, fitter in zip(all_fips, fitters):
+            if fitter:
+                with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
+                    pickle.dump(fitter.mle_model, f)
