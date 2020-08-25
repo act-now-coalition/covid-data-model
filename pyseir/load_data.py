@@ -260,7 +260,7 @@ def load_hospitalization_data(
         relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
         # Some minor glitches for a few states..
-        for i in range(cumulative[1:]):
+        for i in range(len(cumulative[1:])):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
         return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
