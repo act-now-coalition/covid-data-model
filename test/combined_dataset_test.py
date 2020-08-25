@@ -26,7 +26,6 @@ from libs.datasets import NevadaHospitalAssociationData
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.timeseries import TimeseriesDataset
 from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date, to_dict
-import pandas as pd
 import numpy as np
 import pytest
 
