@@ -163,6 +163,7 @@ def calculate_new_case_data_by_region(
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
+    assert region_timeseries.has_one_region()
     county_case_timeseries = region_timeseries.get_columns_and_date_subset(
         columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
     )
