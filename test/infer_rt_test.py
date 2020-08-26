@@ -4,6 +4,7 @@ import pytest
 import pandas as pd
 import structlog
 
+from pyseir import cli
 from pyseir.rt import utils
 from pyseir.rt import infer_rt
 from test.mocks.inference import load_data
@@ -193,3 +194,33 @@ def test_smoothing_and_causality():
         ),
         "test_smoothing_and_causality",
     )
+
+
+def test_generate_infection_rate_metric_no_region_given():
+    FIPS = []
+    REGIONS = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    df = cli._generate_infection_rate_metric(regions=REGIONS)
+    assert df.empty
+
+
+def test_generate_infection_rate_metric_one_empty():
+    FIPS = [
+        "51017",  # Bath County VA Almost No Cases. Will be filtered out under any thresholds.
+        "51153",  # Prince William VA Lots of Cases
+    ]
+    REGIONS = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+
+    df = cli._generate_infection_rate_metric(regions=REGIONS)
+    returned_fips = df.fips.unique()
+    assert "51153" in returned_fips
+    assert "51017" not in returned_fips
+
+
+def test_generate_infection_rate_metric_two_aggregate_levels():
+    FIPS = ["06", "06075"]  # CA  # San Francisco, CA
+    REGIONS = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+
+    df = cli._generate_infection_rate_metric(regions=REGIONS)
+    returned_fips = df.fips.unique()
+    assert "06" in returned_fips
+    assert "06075" in returned_fips
