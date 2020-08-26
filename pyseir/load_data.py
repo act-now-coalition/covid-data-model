@@ -132,17 +132,19 @@ def cache_public_implementations_data():
     df.to_pickle(os.path.join(DATA_DIR, "public_implementations_data.pkl"))
 
 
-@lru_cache(maxsize=32)
-def load_new_case_data_by_fips(
-    fips, t0, include_testing_correction=False, testing_correction_smoothing_tau=5
+def calculate_new_case_data_by_region(
+    region_timeseries: TimeseriesDataset,
+    t0: datetime,
+    include_testing_correction=False,
+    testing_correction_smoothing_tau=5,
 ):
     """
-    Get data for new cases.
+    Calculate new cases from combined data.
 
     Parameters
     ----------
-    fips: str
-        County fips to lookup.
+    region_timeseries: TimeseriesDataset
+        Combined data for a region
     t0: datetime
         Datetime to offset by.
     include_testing_correction: bool
@@ -161,8 +163,10 @@ def load_new_case_data_by_fips(
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-    county_case_timeseries = combined_datasets.get_timeseries_for_fips(
-        fips, columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
+    assert not region_timeseries.data.empty
+    assert region_timeseries.has_one_region()
+    county_case_timeseries = region_timeseries.get_columns_and_date_subset(
+        columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
     )
     county_case_data = county_case_timeseries.data
 
@@ -172,8 +176,8 @@ def load_new_case_data_by_fips(
     )
 
     if include_testing_correction:
-        df_new_tests = load_new_test_data_by_fips(
-            fips, t0, smoothing_tau=testing_correction_smoothing_tau
+        df_new_tests = calculate_new_test_data_by_region(
+            region_timeseries, t0, smoothing_tau=testing_correction_smoothing_tau
         )
         df_cases = pd.DataFrame({"times": times_new, "new_cases": observed_new_cases})
         df_cases = df_cases.merge(df_new_tests, how="left", on="times")
@@ -256,7 +260,7 @@ def load_hospitalization_data(
         relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
         cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
         # Some minor glitches for a few states..
-        for i in range(cumulative[1:]):
+        for i in range(len(cumulative[1:])):
             if cumulative[i] > cumulative[i + 1]:
                 cumulative[i] = cumulative[i + 1]
         return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
@@ -264,16 +268,17 @@ def load_hospitalization_data(
         return None, None, None
 
 
-@lru_cache(maxsize=32)
-def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5):
+def calculate_new_test_data_by_region(
+    timeseries_dataset: TimeseriesDataset, t0: datetime, smoothing_tau=5, correction_threshold=5
+):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
     back as far as case data.
     Parameters
     ----------
-    fips: str
-        State or county fips code
+    timeseries_dataset
+        Data for the region
     t0: datetime
         Reference datetime to use.
     Returns
@@ -297,8 +302,7 @@ def load_new_test_data_by_fips(fips, t0, smoothing_tau=5, correction_threshold=5
         Do not apply a correction if the incident cases per day is lower than
         this value. There can be instability if case counts are very low.
     """
-    fips_timeseries = combined_datasets.get_timeseries_for_fips(fips)
-    df = fips_timeseries.data.copy()
+    df = timeseries_dataset.data.copy()
 
     # Aggregation level is None as fips is unique across aggregation levels.
     df = df.loc[

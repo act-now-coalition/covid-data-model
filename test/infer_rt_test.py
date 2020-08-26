@@ -45,19 +45,23 @@ def run_individual(
     # TODO fails below if deaths not present even if not using
     data_generator = load_data.DataGenerator(spec)
     input_df = load_data.create_synthetic_df(data_generator)
+    regional_input = infer_rt.RegionalInput.from_fips(fips)
 
     # Now apply smoothing and filtering
     collector = {}
     smoothed_df = infer_rt.filter_and_smooth_input_data(
         df=input_df,
-        display_name=fips,
+        region=regional_input.region,
         include_deaths=False,
         figure_collector=collector,
         log=structlog.getLogger(),
     )
 
     engine = infer_rt.RtInferenceEngine(
-        data=smoothed_df, display_name=display_name, fips=fips, figure_collector=collector
+        data=smoothed_df,
+        display_name=display_name,
+        regional_input=regional_input,
+        figure_collector=collector,
     )  # Still Needed to Pipe Output For Now
     output_df = engine.infer_all()
 

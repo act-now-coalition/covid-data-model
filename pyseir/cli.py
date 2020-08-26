@@ -48,12 +48,6 @@ def _generate_whitelist():
     gen.generate_whitelist()
 
 
-def _run_infer_rt(states: List[str], states_only=False):
-    for state in states:
-        fips = us.states.lookup(state).fips
-        infer_rt.run_rt_for_fips(fips)
-
-
 def _map_outputs(
     state_regions: List[pipeline.Region],
     output_interval_days=1,
@@ -78,7 +72,7 @@ def _state_only_pipeline(
     assert region.is_state()
     states_only = True
 
-    infer_rt.run_rt_for_fips(region.fips)
+    infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
     model_fitter.run_state(region, states_only=states_only)
     ensembles_input = ensemble_runner.RegionalInput.from_region(region)
     ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": run_mode})
@@ -154,7 +148,10 @@ def _build_all_for_states(
 
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
-        p.map(infer_rt.run_rt_for_fips, all_county_fips.keys())
+        infer_rt_inputs = [
+            infer_rt.RegionalInput.from_fips(fips) for fips in all_county_fips.keys()
+        ]
+        p.map(infer_rt.run_rt, infer_rt_inputs)
         # calculate model fit
         root.info(f"executing model for {len(all_county_fips)} counties")
         fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
@@ -212,7 +209,9 @@ def generate_whitelist():
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_infer_rt(state, states_only):
     states = [state] if state else ALL_STATES
-    _run_infer_rt(states, states_only=states_only)
+    for state in states:
+        region = pipeline.Region.from_state(state)
+        infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
 
 
 @entry_point.command()

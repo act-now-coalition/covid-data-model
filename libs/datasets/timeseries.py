@@ -59,6 +59,9 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def county_data(self) -> pd.DataFrame:
         return self.get_subset(AggregationLevel.COUNTY).data
 
+    def has_one_region(self) -> bool:
+        return len(self.all_fips) == 1
+
     def county_keys(self) -> List:
         """Returns a list of all (country, state, county) combinations."""
         # Check to make sure all values are county values
