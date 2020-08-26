@@ -9,7 +9,6 @@ import structlog
 from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
-from multiprocessing import Pool
 
 import pyseir
 from libs import pipeline
