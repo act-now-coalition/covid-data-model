@@ -243,6 +243,8 @@ Calculated metrics data based on known actuals.
 | testPositivityRatio        | number | Ratio of people who test positive calculated using a 7-day rolling average.                     |
 | caseDensity                | number | The number of cases per 100k population calculated using a 7-day rolling average.               |
 | contactTracerCapacityRatio | number | Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average. |
+| infectionRate              | number | R_t, or the estimated number of infections arising from a typical case.                         |
+| infectionRateCI90          | number | 90th percentile confidence interval upper endpoint of the infection rate.                       |
 
 ### MetricsTimeseriesRow
 Metrics data for a single day.
@@ -252,6 +254,8 @@ Metrics data for a single day.
 | testPositivityRatio        | number | Ratio of people who test positive calculated using a 7-day rolling average.                     |
 | caseDensity                | number | The number of cases per 100k population calculated using a 7-day rolling average.               |
 | contactTracerCapacityRatio | number | Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average. |
+| infectionRate              | number | R_t, or the estimated number of infections arising from a typical case.                         |
+| infectionRateCI90          | number | 90th percentile confidence interval upper endpoint of the infection rate.                       |
 | date                       | string |                                                                                                 |
 
 ### Actuals
