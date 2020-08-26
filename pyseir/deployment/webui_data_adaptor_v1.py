@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Mapping
 from typing import Optional
-from typing import Optional
 
 import structlog
 from datetime import timedelta, datetime
@@ -15,15 +14,10 @@ from multiprocessing import Pool
 import pyseir
 from libs import pipeline
 from libs.pipeline import Region
-from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
-from libs.pipeline import RegionalCombinedData
-from libs.pipeline import _log
-from libs.pipeline import load_inference_result
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.icu import infer_icu
 from pyseir.inference import model_fitter
-from pyseir.models import seir_model
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
@@ -103,7 +97,7 @@ class RegionalInput:
             DataFrame containing the R_t inferences.
         """
         if self.fips in NEW_ORLEANS_FIPS:
-            _log.info("Applying New Orleans Patch")
+            log.info("Applying New Orleans Patch")
             return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
 
         path = self.region.run_artifact_path_to_read(pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)

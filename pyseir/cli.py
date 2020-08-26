@@ -7,7 +7,6 @@ import os
 import click
 import us
 import logging
-import pandas as pd
 from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
