@@ -53,7 +53,6 @@ def _state_only_pipeline(
     region: pipeline.Region, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
 ) -> model_fitter.ModelFitter:
     assert region.is_state()
-    states_only = True
 
     infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
     fitter = model_fitter.run_state(region)
