@@ -17,6 +17,8 @@ import pyseir.rt.patches
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets import timeseries
+from pyseir.inference import model_fitter
+from pyseir.models import seir_model
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import RunArtifact
 
@@ -123,11 +125,22 @@ class RegionalWebUIInput:
     region: Region
 
     _combined_data: RegionalCombinedData
+    _mle_fit_model: Optional[seir_model.SEIRModel] = None
+    _mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_region(region: Region) -> "RegionalWebUIInput":
         return RegionalWebUIInput(
             region=region, _combined_data=RegionalCombinedData.from_region(region)
+        )
+
+    @staticmethod
+    def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+        return RegionalWebUIInput(
+            region=fitter.region,
+            _combined_data=fitter.regional_input._combined_data,
+            _mle_fit_model=fitter.mle_model,
+            _mle_fit_result=fitter.fit_results,
         )
 
     @property

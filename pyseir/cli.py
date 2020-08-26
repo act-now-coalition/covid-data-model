@@ -1,3 +1,4 @@
+import itertools
 from typing import Dict, List
 
 
@@ -62,6 +63,7 @@ def _map_outputs(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
     for state in state_regions:
+        # XXX Somehow use from_model_fitter
         state_input = pipeline.RegionalWebUIInput.from_region(state)
         web_ui_mapper.generate_state(
             state_input, whitelisted_county_fips=[], states_only=states_only
@@ -141,7 +143,7 @@ def _build_all_for_states(
             output_dir=output_dir,
         )
         states_regions = [pipeline.Region.from_state(s) for s in states]
-        p.map(states_only_func, states_regions)
+        state_fitters = p.map(states_only_func, states_regions)
 
     if states_only:
         root.info("Only executing for states. returning.")
@@ -157,11 +159,11 @@ def _build_all_for_states(
         # calculate model fit
         root.info(f"executing model for {len(all_county_regions)} counties")
         fitter_inputs = [model_fitter.RegionalInput.from_region(r) for r in all_county_regions]
-        fitters = p.map(model_fitter.ModelFitter.run_for_region, fitter_inputs)
+        county_fitters = p.map(model_fitter.ModelFitter.run_for_region, fitter_inputs)
 
         # calculate ensemble
         root.info(f"running ensemble for {len(all_county_fips)} counties")
-        counties = [ensemble_runner.RegionalInput.from_model_fitter(f) for f in fitters]
+        counties = [ensemble_runner.RegionalInput.from_model_fitter(f) for f in county_fitters]
         ensemble_func = partial(
             ensemble_runner.run_region, ensemble_kwargs=dict(run_mode=run_mode),
         )
@@ -178,14 +180,8 @@ def _build_all_for_states(
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
-    for state in states:
-        region = pipeline.Region.from_state(state)
-        state_input = pipeline.RegionalWebUIInput.from_region(region)
-        web_ui_mapper.generate_state(
-            state_input,
-            whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
-            states_only=False,
-        )
+    for fitter in itertools.chain(state_fitters, county_fitters):
+        web_ui_mapper.map_fips(pipeline.RegionalWebUIInput.from_model_fitter(fitter))
 
     return
 
