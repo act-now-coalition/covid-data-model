@@ -3,10 +3,8 @@ Code that is used to help move information around in the pipeline, starting with
 represents a geographical area (state, county, metro area, etc).
 """
 
-import json
-import os
 from dataclasses import dataclass
-from typing import Optional, Mapping, Any
+from typing import Mapping, Any
 
 import pandas as pd
 import structlog
@@ -17,7 +15,6 @@ import pyseir.rt.patches
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets import timeseries
-from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import RunArtifact
 
 _log = structlog.get_logger()
@@ -114,74 +111,6 @@ class RegionalCombinedData:
         if county:
             return f"{county}, {state}"
         return state
-
-
-@dataclass(frozen=True)
-class RegionalWebUIInput:
-    """Identifies a geographical area and wraps access to any related data read by the WebUIDataAdaptorV1."""
-
-    region: Region
-
-    _combined_data: RegionalCombinedData
-
-    @staticmethod
-    def from_region(region: Region) -> "RegionalWebUIInput":
-        return RegionalWebUIInput(
-            region=region, _combined_data=RegionalCombinedData.from_region(region)
-        )
-
-    @property
-    def population(self):
-        return self._combined_data.population
-
-    @property
-    def fips(self) -> str:
-        return self.region.fips
-
-    def get_us_latest(self):
-        return self._combined_data.get_us_latest()
-
-    def load_inference_result(self) -> Mapping[str, Any]:
-        """
-        Load fit results by state or county fips code.
-
-        Returns
-        -------
-        : dict
-            Dictionary of fit result information.
-        """
-        return load_inference_result(self.region)
-
-    def load_ensemble_results(self) -> Optional[dict]:
-        """Retrieves ensemble results for this region."""
-        output_filename = self.region.run_artifact_path_to_write(
-            pyseir.utils.RunArtifact.ENSEMBLE_RESULT
-        )
-        if not os.path.exists(output_filename):
-            return None
-
-        with open(output_filename) as f:
-            return json.load(f)
-
-    def load_rt_result(self) -> Optional[pd.DataFrame]:
-        """Loads the Rt inference result.
-
-        Returns
-        -------
-        results: pd.DataFrame
-            DataFrame containing the R_t inferences.
-        """
-        if self.fips in NEW_ORLEANS_FIPS:
-            _log.info("Applying New Orleans Patch")
-            return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
-
-        path = self.region.run_artifact_path_to_read(pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
-        if not os.path.exists(path):
-            return None
-        return pd.read_json(path)
-
-    def is_county(self):
-        return self.region.is_county()
 
 
 def load_inference_result(region: Region) -> Mapping[str, Any]:
