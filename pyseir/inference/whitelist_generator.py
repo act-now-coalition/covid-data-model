@@ -42,7 +42,7 @@ class WhitelistGenerator:
         self.nonzero_case_datapoints = nonzero_case_datapoints
         self.nonzero_death_datapoints = nonzero_death_datapoints
 
-    def generate_whitelist(self):
+    def generate_whitelist(self) -> pd.DataFrame:
         """
         Generate a county whitelist based on the cuts above.
 

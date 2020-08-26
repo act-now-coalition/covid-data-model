@@ -4,10 +4,13 @@ from typing import Dict, List
 
 import sys
 import os
+from typing import Optional
+
 import click
 import us
 import logging
 from covidactnow.datapublic import common_init
+import pandas as pd
 
 from multiprocessing import Pool
 from functools import partial
@@ -44,9 +47,9 @@ def entry_point():
     common_init.configure_logging()
 
 
-def _generate_whitelist():
+def _generate_whitelist() -> pd.DataFrame:
     gen = WhitelistGenerator()
-    gen.generate_whitelist()
+    return gen.generate_whitelist()
 
 
 def _state_only_pipeline(
@@ -61,7 +64,9 @@ def _state_only_pipeline(
     return fitter
 
 
-def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict[str, str]:
+def build_counties_to_run_per_state(
+    states: List[str], fips: str = None, whitelist_df: Optional[pd.DataFrame] = None
+) -> Dict[str, str]:
     """Builds mapping from fips to state of counties to run.
 
     Restricts counties to those in the county whitelist.
@@ -69,13 +74,14 @@ def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict
     Args:
         states: List of states to run on.
         fips: Optional county fips code to restrict results to.
+        whitelist_df: A whitelist used to filter counties
 
     Returns: Map of counties to run with associated state.
     """
     # Build List of Counties
     all_county_fips = {}
     for state in states:
-        state_county_fips = model_fitter.build_county_list(state)
+        state_county_fips = model_fitter.build_county_list(state, whitelist_df)
         county_fips_per_state = {fips: state for fips in state_county_fips}
 
         if not fips:
@@ -101,8 +107,10 @@ def _build_all_for_states(
     # prepare data
     _cache_global_datasets()
 
-    if not skip_whitelist:
-        _generate_whitelist()
+    if skip_whitelist:
+        whitelist_df = None
+    else:
+        whitelist_df = _generate_whitelist()
 
     # do everything for just states in parallel
     with Pool(maxtasksperchild=1) as p:
@@ -119,7 +127,7 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
+    all_county_fips = build_counties_to_run_per_state(states, fips=fips, whitelist_df=whitelist_df)
     all_county_regions = [pipeline.Region.from_fips(f) for f in all_county_fips]
 
     with Pool(maxtasksperchild=1) as p:

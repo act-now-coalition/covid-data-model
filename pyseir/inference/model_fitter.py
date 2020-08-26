@@ -71,9 +71,7 @@ class RegionalInput:
     def load_hospitalization_data(
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
     ) -> Tuple[np.array, np.array, HospitalizationDataType]:
-        t = load_data.load_hospitalization_data(self.region.fips, t0, category=category)
-        log.info(f"load_data.load_hospitalization_data: {type(t)} {[type(el) for el in t]}")
-        return t
+        return load_data.load_hospitalization_data(self.region.fips, t0, category=category)
 
     def get_us_latest(self) -> Mapping[str, Any]:
         return self._combined_data.get_us_latest()
@@ -705,12 +703,11 @@ def _persist_results_per_state(state_df):
             pickle.dump(county_series.mle_model, f)
 
 
-def build_county_list(state: str) -> List[str]:
+def build_county_list(state: str, df_whitelist: pd.DataFrame) -> List[str]:
     """
     Build the and return the fips list
     """
     log.info(f"Get fips list for state {state}")
-    df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
     is_state = df_whitelist[CommonFields.STATE] == state
     all_fips = df_whitelist.loc[is_state, CommonFields.FIPS].tolist()
@@ -743,6 +740,7 @@ def run_state(region: pipeline.Region) -> ModelFitter:
 
 
 def run_counties_of_state(region):
+    # This function is not called from the main pipeline.
     # TODO: Replace with build_county_list
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
