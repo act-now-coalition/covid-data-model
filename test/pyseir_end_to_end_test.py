@@ -1,9 +1,12 @@
 import pathlib
+import unittest
+
 from pyseir import cli
 from pyseir.utils import get_run_artifact_path, RunArtifact
 import libs.datasets.can_model_output_schema as schema
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 import pytest
+import temppathlib
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error")
@@ -13,20 +16,21 @@ pytestmark = pytest.mark.filterwarnings("error")
 def test_pyseir_end_to_end_idaho():
     # This covers a lot of edge cases.
 
-    path = get_run_artifact_path("16001", RunArtifact.WEB_UI_RESULT).replace(
-        "__INTERVENTION_IDX__", "2"
-    )
-    path = pathlib.Path(path)
-    assert not path.exists()
+    with temppathlib.TemporaryDirectory() as tmp_dir:
+        with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", tmp_dir.path):
+            cli._build_all_for_states(states=["ID"], fips="16001")
 
-    cli._build_all_for_states(states=["ID"], fips="16001")
-    assert path.exists()
-    output = CANPyseirLocationOutput.load_from_path(path)
-    data = output.data
-    with_values = data[schema.RT_INDICATOR].dropna()
-    assert len(with_values) > 10
-    assert (with_values > 0).all()
-    assert (with_values < 6).all()
+            path = get_run_artifact_path("16001", RunArtifact.WEB_UI_RESULT).replace(
+                "__INTERVENTION_IDX__", "2"
+            )
+            path = pathlib.Path(path)
+            assert path.exists()
+            output = CANPyseirLocationOutput.load_from_path(path)
+            data = output.data
+            with_values = data[schema.RT_INDICATOR].dropna()
+            assert len(with_values) > 10
+            assert (with_values > 0).all()
+            assert (with_values < 6).all()
 
 
 @pytest.mark.slow
