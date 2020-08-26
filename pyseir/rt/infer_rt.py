@@ -711,4 +711,7 @@ class RtInferenceEngine:
                 self.figure_collector["3_Rt_inference"] = fig
         if df_all.empty:
             self.log.warning("Inference not possible")
+
+        df_all = df_all.reset_index(drop=False)  # Move date to column from index to column
+        df_all["fips"] = self.regional_input.region.fips
         return df_all

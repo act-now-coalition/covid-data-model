@@ -19,8 +19,9 @@ from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 from pyseir.inference.whitelist_generator import WhitelistGenerator
-from pyseir.utils import get_summary_artifact_path, SummaryArtifact
 
+# from pyseir.utils import get_summary_artifact_path, SummaryArtifact
+import pyseir.utils
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
@@ -49,7 +50,7 @@ def _generate_whitelist():
     gen.generate_whitelist()
 
 
-def _generate_infection_rate_metric(regions: List[pipeline.Region]):
+def _generate_infection_rate_metric(regions: List[pipeline.Region]) -> pd.DataFrame:
     """
     Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
     with a unique row for each region+date combination.
@@ -57,14 +58,10 @@ def _generate_infection_rate_metric(regions: List[pipeline.Region]):
     with Pool(maxtasksperchild=10) as p:
         results = p.map(infer_rt.run_rt, regions)
 
-    def label_data(label, data):
-        """Modify the returned dataframe to meet requirements"""
-        data = data.reset_index(drop=False)  # Move date column from index to columns
-        data["fips"] = label  # Add region column id
-        return data
-
-    rt_df = pd.concat([label_data(region, data) for region, data in zip(regions, results)])
-    return rt_df
+    if results:
+        return pd.concat(results)
+    else:
+        return pd.DataFrame()
 
 
 def _map_outputs(
@@ -178,7 +175,10 @@ def _build_all_for_states(
     # so that the saved csv has both state and county data.
 
     infection_rate_metric_df.to_csv(
-        path_or_buf=get_summary_artifact_path(SummaryArtifact.RT_METRIC_COMBINED), index=False
+        path_or_buf=pyseir.utils.get_summary_artifact_path(
+            pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED
+        ),
+        index=False,
     )
 
     with Pool(maxtasksperchild=1) as p:

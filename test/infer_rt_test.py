@@ -70,7 +70,7 @@ def run_individual(
         plot_path = output_dir / f"{display_name}__fips_{fips}__{key}.pdf"
         fig.savefig(plot_path, bbox_inches="tight")
 
-    rt = output_df["Rt_MAP_composite"]
+    rt = output_df["Rt_MAP_composite"].values
     t_switch = spec.ratechange2.t0
     rt1 = spec.ratechange1.reff
     rt2 = spec.ratechange2.reff
