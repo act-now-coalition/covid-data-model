@@ -22,6 +22,8 @@ from libs.pipeline import _log
 from libs.pipeline import load_inference_result
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.icu import infer_icu
+from pyseir.inference import model_fitter
+from pyseir.models import seir_model
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
@@ -43,10 +45,19 @@ class RegionalInput:
     region: Region
 
     _combined_data: RegionalCombinedData
+    _mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_region(region: Region) -> "RegionalInput":
         return RegionalInput(region=region, _combined_data=RegionalCombinedData.from_region(region))
+
+    @staticmethod
+    def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+        return RegionalInput(
+            region=fitter.region,
+            _combined_data=fitter.regional_input._combined_data,
+            _mle_fit_result=fitter.fit_results,
+        )
 
     @property
     def population(self):
@@ -68,7 +79,9 @@ class RegionalInput:
         : dict
             Dictionary of fit result information.
         """
-        return load_inference_result(self.region)
+        if self._mle_fit_result is not None:
+            return self._mle_fit_result
+        return pipeline.load_inference_result(self.region)
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
