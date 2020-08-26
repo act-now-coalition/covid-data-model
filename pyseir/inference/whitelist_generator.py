@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import numpy as np
 import logging
+
+from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import load_data
 from datetime import datetime
 from covidactnow.datapublic.common_fields import CommonFields
@@ -54,7 +56,7 @@ class WhitelistGenerator:
 
         counties = (
             combined_datasets.load_us_timeseries_dataset()
-            .get_subset(aggregation_level=AggregationLevel.COUNTY)
+            .get_data(aggregation_level=AggregationLevel.COUNTY)
             .set_index(CommonFields.FIPS)
         )
         df_candidates = counties.groupby(CommonFields.FIPS).apply(_whitelist_candidates_per_fips)
@@ -76,9 +78,9 @@ class WhitelistGenerator:
 
 def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
     assert not combined_data.empty
-    fips = combined_data.fips.iloc[0]
+    fips = combined_data.name
     (times, observed_new_cases, observed_new_deaths,) = load_data.calculate_new_case_data_by_region(
-        combined_data, t0=datetime(day=1, month=1, year=2020),
+        TimeseriesDataset(combined_data.reset_index()), t0=datetime(day=1, month=1, year=2020),
     )
     record = dict(
         fips=fips,
