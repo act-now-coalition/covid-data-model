@@ -365,39 +365,3 @@ class WebUIDataAdaptorV1:
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
-
-    def generate_state(
-        self, regional_input: RegionalInput, whitelisted_county_fips: list, states_only=False,
-    ):
-        """
-        Generate the output for the webUI for the given state, and counties in that state if
-        states_only=False.
-
-        Parameters
-        ----------
-        regional_input: RegionalInput
-            Input for a state
-        whitelisted_county_fips:
-            Counties in the state
-        states_only: bool
-            If True only run the state level.
-        """
-
-        self.map_fips(regional_input)
-
-        if states_only:
-            return
-        else:
-            with Pool(maxtasksperchild=1) as p:
-                regions = map(pipeline.Region.from_fips, whitelisted_county_fips)
-                regional_inputs = map(RegionalInput.from_region, regions)
-                p.map(self.map_fips, regional_inputs)
-
-            return
-
-
-if __name__ == "__main__":
-    # Need to have a whitelist pre-generated
-    # Need to have state output already built
-    mapper = WebUIDataAdaptorV1(output_interval_days=1, run_mode="can-inference-derived")
-    mapper.generate_state("TX", whitelisted_county_fips=["48201"], states_only=False)

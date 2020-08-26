@@ -238,9 +238,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     for state in states:
         region = pipeline.Region.from_state(state)
         state_input = webui_data_adaptor_v1.RegionalInput.from_region(region)
-        web_ui_mapper.generate_state(
-            state_input, whitelisted_county_fips=[], states_only=states_only
-        )
+        web_ui_mapper.map_fips(state_input)
 
 
 @entry_point.command()
