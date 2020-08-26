@@ -49,25 +49,6 @@ def _generate_whitelist():
     gen.generate_whitelist()
 
 
-def _map_outputs(
-    state_regions: List[pipeline.Region],
-    output_interval_days=1,
-    states_only=False,
-    output_dir=None,
-    run_mode="default",
-):
-    assert all([r.is_state() for r in state_regions])
-    web_ui_mapper = WebUIDataAdaptorV1(
-        output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
-    )
-    for state in state_regions:
-        # XXX Somehow use from_model_fitter
-        state_input = webui_data_adaptor_v1.RegionalInput.from_region(state)
-        web_ui_mapper.generate_state(
-            state_input, whitelisted_county_fips=[], states_only=states_only
-        )
-
-
 def _state_only_pipeline(
     region: pipeline.Region, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
 ) -> model_fitter.ModelFitter:
@@ -78,14 +59,6 @@ def _state_only_pipeline(
     fitter = model_fitter.run_state(region)
     ensembles_input = ensemble_runner.RegionalInput.from_model_fitter(fitter)
     ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": run_mode})
-    # remove outputs atm. just output at the end
-    _map_outputs(
-        [region],
-        output_interval_days,
-        states_only=states_only,
-        output_dir=output_dir,
-        run_mode=run_mode,
-    )
     return fitter
 
 
@@ -258,13 +231,16 @@ def run_ensembles(state, run_mode, states_only):
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def map_outputs(state, output_interval_days, run_mode, states_only):
     states = [state] if state else ALL_STATES
-    regions = [pipeline.Region.from_state(state) for state in states]
-    _map_outputs(
-        regions,
-        output_interval_days=int(output_interval_days),
-        run_mode=run_mode,
-        states_only=states_only,
+    days = int(output_interval_days)
+    web_ui_mapper = WebUIDataAdaptorV1(
+        output_interval_days=days, run_mode=run_mode, output_dir=None,
     )
+    for state in states:
+        region = pipeline.Region.from_state(state)
+        state_input = webui_data_adaptor_v1.RegionalInput.from_region(region)
+        web_ui_mapper.generate_state(
+            state_input, whitelisted_county_fips=[], states_only=states_only
+        )
 
 
 @entry_point.command()
