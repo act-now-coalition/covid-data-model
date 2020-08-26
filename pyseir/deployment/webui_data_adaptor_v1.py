@@ -218,7 +218,7 @@ class WebUIDataAdaptorV1:
             # Fill in results for the Rt indicator.
             rt_results = regional_input.load_rt_result()
             if rt_results is not None:
-                rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%Y-%m-%d")
+                rt_results.index = rt_results["date"].dt.strftime("%Y-%m-%d")
                 merged = output_model.merge(
                     rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
                     right_index=True,

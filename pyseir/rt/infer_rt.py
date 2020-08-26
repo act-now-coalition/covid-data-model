@@ -48,8 +48,11 @@ def run_rt(
     include_deaths: bool = False,
     include_testing_correction: bool = False,
     figure_collector: Optional[list] = None,
-):
-    """Entry Point for Infer Rt"""
+) -> pd.DataFrame:
+    """Entry Point for Infer Rt
+
+    Returns an empty DataFrame if inference was not possible.
+    """
 
     # Generate the Data Packet to Pass to RtInferenceEngine
     input_df = _generate_input_data(
@@ -63,7 +66,7 @@ def run_rt(
             event="Infer Rt Skipped. No Data Passed Filter Requirements:",
             region=regional_input.display_name,
         )
-        return
+        return pd.DataFrame()
 
     # Save a reference to instantiated engine (eventually I want to pull out the figure
     # generation and saving so that I don't have to pass a display_name and fips into the class
@@ -78,7 +81,7 @@ def run_rt(
     output_df = engine.infer_all()
 
     # Save the output to json for downstream repacking and incorporation.
-    if output_df is not None and not output_df.empty:
+    if not output_df.empty:
         output_path = regional_input.region.run_artifact_path_to_write(
             RunArtifact.RT_INFERENCE_RESULT
         )
@@ -537,7 +540,7 @@ class RtInferenceEngine:
 
         return available_timeseries
 
-    def infer_all(self, plot=True, shift_deaths=0):
+    def infer_all(self, plot=True, shift_deaths=0) -> pd.DataFrame:
         """
         Infer R_t from all available data sources.
 
@@ -638,8 +641,8 @@ class RtInferenceEngine:
                         )
 
         if df_all is None:
-            self.log.warning("Inference not possible")
-            return None
+            self.log.warning(f"Inference not possible for {self.regional_input.region.fips}")
+            return pd.DataFrame()
 
         if self.include_deaths and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
             df_all["Rt_MAP_composite"] = np.nanmean(
@@ -711,7 +714,7 @@ class RtInferenceEngine:
                 self.figure_collector["3_Rt_inference"] = fig
         if df_all.empty:
             self.log.warning("Inference not possible")
-
-        df_all = df_all.reset_index(drop=False)  # Move date to column from index to column
-        df_all["fips"] = self.regional_input.region.fips
+        else:
+            df_all = df_all.reset_index(drop=False)  # Move date to column from index to column
+            df_all["fips"] = self.regional_input.region.fips
         return df_all

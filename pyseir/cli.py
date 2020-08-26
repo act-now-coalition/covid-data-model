@@ -19,8 +19,6 @@ from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 from pyseir.inference.whitelist_generator import WhitelistGenerator
-
-# from pyseir.utils import get_summary_artifact_path, SummaryArtifact
 import pyseir.utils
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -137,7 +135,7 @@ def _build_all_for_states(
     output_dir=None,
     skip_whitelist=False,
     states_only=False,
-    fips=None,
+    fips: str = None,
 ):
     # prepare data
     _cache_global_datasets()
@@ -161,12 +159,15 @@ def _build_all_for_states(
         return
 
     # Get the Lists of Fips to Calculate
-    all_county_fips_pyseir = build_counties_to_run_per_state(states, fips=fips)
-    all_fips = combined_datasets.load_us_latest_dataset().all_fips
-    infer_rt_inputs = [infer_rt.RegionalInput.from_fips(fips) for fips in all_fips]
+    pyseir_target_fips = build_counties_to_run_per_state(states, fips=fips)
+
+    infer_rt_target_fips = [fips] if fips else combined_datasets.load_us_latest_dataset().all_fips
+    infer_rt_candidates = [
+        infer_rt.RegionalInput.from_fips(region) for region in infer_rt_target_fips
+    ]
 
     # Separating the Infection Rate Calculations
-    infection_rate_metric_df = _generate_infection_rate_metric(regions=infer_rt_inputs)
+    infection_rate_metric_df = _generate_infection_rate_metric(regions=infer_rt_candidates)
     # Note: This call currently still both writes (1) region by region JSON and (2) returns this
     # combined dataset. Once the api generation is changed to point to the combined dataset, the
     # individual objects can stop being persisted to disk. It also runs for all fips available, so
@@ -183,11 +184,11 @@ def _build_all_for_states(
 
     with Pool(maxtasksperchild=1) as p:
         # calculate model fit
-        root.info(f"executing model for {len(all_county_fips_pyseir)} counties")
-        fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips_pyseir.keys())
+        root.info(f"executing model for {len(pyseir_target_fips)} counties")
+        fitters = p.map(model_fitter.execute_model_for_fips, pyseir_target_fips.keys())
 
         df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-        df["state"] = df.fips.replace(all_county_fips_pyseir)
+        df["state"] = df.fips.replace(pyseir_target_fips)
         df["mle_model"] = [fit.mle_model for fit in fitters if fit]
         df.index = df.fips
 
@@ -195,9 +196,9 @@ def _build_all_for_states(
         p.map(model_fitter._persist_results_per_state, state_dfs)
 
         # calculate ensemble
-        root.info(f"running ensemble for {len(all_county_fips_pyseir)} counties")
+        root.info(f"running ensemble for {len(pyseir_target_fips)} counties")
         counties = [
-            ensemble_runner.RegionalInput.from_fips(fips) for fips in all_county_fips_pyseir.keys()
+            ensemble_runner.RegionalInput.from_fips(fips) for fips in pyseir_target_fips.keys()
         ]
         ensemble_func = partial(
             ensemble_runner.run_region, ensemble_kwargs=dict(run_mode=run_mode),
@@ -208,7 +209,7 @@ def _build_all_for_states(
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
-    root.info(f"outputting web results for states and {len(all_county_fips_pyseir)} counties")
+    root.info(f"outputting web results for states and {len(pyseir_target_fips)} counties")
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
@@ -220,7 +221,7 @@ def _build_all_for_states(
         state_input = pipeline.RegionalWebUIInput.from_region(region)
         web_ui_mapper.generate_state(
             state_input,
-            whitelisted_county_fips=[k for k, v in all_county_fips_pyseir.items() if v == state],
+            whitelisted_county_fips=[k for k, v in pyseir_target_fips.items() if v == state],
             states_only=False,
         )
 
