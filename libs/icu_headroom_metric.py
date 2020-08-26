@@ -18,28 +18,25 @@ class NonCovidPatientsMethod(enum.Enum):
     ESTIMATED_FROM_TOTAL_ICU_ACTUAL = 2
 
 
-def remaining_beds_from_estimated_covid_patients_actual_totals(
-    current_estimated_icu, current_total_icu, icu_beds
-):
-    current_icu_covid = data[schema.CURRENT_ICU]
-    current_icu_total = data[CommonFields.CURRENT_ICU_TOTAL]
+DEFAULT_ICU_DECOMP = 0.21
 
-    current_icu_non_covid = current_icu_total - current_icu_covid
-    return icu_beds - current_icu_non_covid
-
-
-def calculate_actual_covid_icu_usage(data, icu_beds: Union[pd.Series, int]):
-    """Calculates ratio of remaining beds used up by covid patients"""
-    current_icu_covid = data[CommonFields.CURRENT_ICU]
-    return current_icu_covid / remaining_beds
-
-
-def calculate_as_function_of_remaining_beds():
-    pass
+ICU_DECOMP_OVERRIDE = {
+    "AL": 0.15,
+    "AZ": 0.4,
+    "DE": 0.3,
+    "DC": 0.15,
+    "GA": 0.1,
+    # TODO(https://trello.com/c/1ddB5ntl/): CCM is currently giving us an
+    # extra-high utilization rate. If that gets fixed we may need to bump this
+    # back down.
+    "MS": 0.37,
+    "NV": 0.25,
+    "RI": 0,
+}
 
 
-def calculate_available_beds_estimated_from_icu():
-    pass
+def get_decomp_for_state(state: str) -> float:
+    return ICU_DECOMP_OVERRIDE.get(state, DEFAULT_ICU_DECOMP)
 
 
 class ICUMetricData:
@@ -161,8 +158,11 @@ def calculate_icu_utilization_metric(icu_data: ICUMetricData):
     current_icu_covid, covid_source = icu_data.current_icu_covid_with_source
     metric = current_icu_covid / (icu_data.total_icu_beds - non_covid_patients)
 
+    print(icu_data.total_icu_beds)
+    print(non_covid_patients, non_covid_source)
+
     return {
-        "remaining_covid_capacity_ratio": metric,
+        "metric": metric,
         "current_icu_covid_source": covid_source,
         "current_icu_non_covid_source": non_covid_source,
     }

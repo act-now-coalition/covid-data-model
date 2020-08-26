@@ -12,6 +12,7 @@ from libs.datasets import combined_datasets
 from libs.datasets import can_model_output_schema as schema
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs import icu_headroom_metric
 
 Metrics = can_api_definition.Metrics
 
@@ -31,6 +32,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     CONTACT_TRACER_CAPACITY_RATIO = "contactTracerCapacityRatio"
     INFECTION_RATE = "infectionRate"
     INFECTION_RATE_CI90 = "infectionRateCI90"
+    ICU_HEADROOM = "icuHeadroom"
 
 
 def calculate_top_level_metrics_for_fips(fips: str):
@@ -72,6 +74,7 @@ def calculate_metrics_for_timeseries(
             schema.FIPS,
             schema.RT_INDICATOR,
             schema.RT_INDICATOR_CI90,
+            schema.CURRENT_ICU,
         ]
         model_data = model_output.data.loc[up_to_latest_day, fields_to_include]
         data = data.merge(
@@ -98,6 +101,12 @@ def calculate_metrics_for_timeseries(
     contact_tracer_capacity = calculate_contact_tracers(
         cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
     )
+
+    # Caculate icu headroom
+    decomp = icu_headroom_metric.get_decomp_for_state(latest[CommonFields.STATE])
+    icu_data = icu_headroom_metric.ICUMetricData(data, latest, decomp)
+    icu_metric = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
+
     top_level_metrics_data = {
         CommonFields.DATE: data[CommonFields.DATE],
         CommonFields.FIPS: fips,
@@ -106,6 +115,7 @@ def calculate_metrics_for_timeseries(
         MetricsFields.CONTACT_TRACER_CAPACITY_RATIO: contact_tracer_capacity,
         MetricsFields.INFECTION_RATE: infection_rate,
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
+        MetricsFields.ICU_HEADROOM: icu_metric["metric"],
     }
     metrics = pd.DataFrame(top_level_metrics_data, index=test_positivity.index)
 

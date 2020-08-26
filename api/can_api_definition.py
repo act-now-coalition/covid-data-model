@@ -95,6 +95,7 @@ class Metrics(base_model.APIBaseModel):
     infectionRateCI90: Optional[float] = pydantic.Field(
         ..., description="90th percentile confidence interval upper endpoint of the infection rate."
     )
+    icuHeadroom: Optional[float] = pydantic.Field(...)
 
 
 class MetricsTimeseriesRow(Metrics):

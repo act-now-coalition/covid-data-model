@@ -108,6 +108,10 @@ def build_timeseries_for_fips(
 
     try:
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
+        if fips_timeseries.empty:
+            logger.warning("Missing data for fips, skipping region summary generation.", fips=fips)
+            return None
+
         metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
             fips_timeseries, fips_latest, model_output
         )
@@ -132,6 +136,7 @@ def _deploy_timeseries(intervention, region_folder, timeseries):
 def deploy_single_level(intervention, all_timeseries, summary_folder, region_folder):
     if not all_timeseries:
         return
+
     logger.info(f"Deploying {intervention.name}")
 
     all_summaries = []
@@ -142,6 +147,13 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
     bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
+    if not flattened_timeseries.__root__:
+        logger.error(
+            "No summaries, skipping deploying bulk data",
+            intervention=intervention,
+            summary_folder=summary_folder,
+        )
+        return
 
     deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
     deploy_csv_api_output(intervention, flattened_timeseries, summary_folder)
