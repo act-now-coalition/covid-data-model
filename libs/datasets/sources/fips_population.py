@@ -21,7 +21,7 @@ class FIPSPopulation(data_source.DataSource):
     https://www.census.gov/data/datasets/time-series/demo/popest/2010s-total-puerto-rico-municipios.html
     """
 
-    FILE_PATH = CURRENT_FOLDER / "fips_population.csv"
+    FILE_PATH = "data/misc/fips_population.csv"
 
     SOURCE_NAME = "FIPS"
 
@@ -55,7 +55,8 @@ class FIPSPopulation(data_source.DataSource):
 
     @classmethod
     def local(cls):
-        return cls(cls.FILE_PATH)
+        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        return cls(data_root / cls.FILE_PATH)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:

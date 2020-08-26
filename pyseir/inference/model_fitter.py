@@ -739,8 +739,10 @@ def run_state(region: pipeline.Region) -> ModelFitter:
     return model_fitter
 
 
-def run_counties_of_state(region):
+def run_counties_of_state(region: pipeline.Region):
+    """Runs the fitter for all counties in state `region`, writing artifacts to disk."""
     # This function is not called from the main pipeline.
+    assert region.is_state()
     # TODO: Replace with build_county_list
     df_whitelist = load_data.load_whitelist()
     df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]

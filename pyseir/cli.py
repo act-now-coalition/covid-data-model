@@ -141,11 +141,13 @@ def _build_all_for_states(
 
         # calculate ensemble
         root.info(f"running ensemble for {len(all_county_fips)} counties")
-        counties = [ensemble_runner.RegionalInput.from_model_fitter(f) for f in county_fitters]
+        ensemble_inputs = [
+            ensemble_runner.RegionalInput.from_model_fitter(f) for f in county_fitters
+        ]
         ensemble_func = partial(
             ensemble_runner.run_region, ensemble_kwargs=dict(run_mode=run_mode),
         )
-        p.map(ensemble_func, counties)
+        p.map(ensemble_func, ensemble_inputs)
 
     # output it all
     output_interval_days = int(output_interval_days)
@@ -158,10 +160,12 @@ def _build_all_for_states(
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
-    for fitter in itertools.chain(state_fitters, county_fitters):
-        web_ui_mapper.map_fips(webui_data_adaptor_v1.RegionalInput.from_model_fitter(fitter))
-
-    return
+    webui_inputs = [
+        webui_data_adaptor_v1.RegionalInput.from_model_fitter(fitter)
+        for fitter in itertools.chain(state_fitters, county_fitters)
+    ]
+    with Pool(maxtasksperchild=1) as p:
+        p.map(web_ui_mapper.write_region, webui_inputs)
 
 
 @entry_point.command()
@@ -238,14 +242,13 @@ def run_ensembles(state, run_mode, states_only):
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def map_outputs(state, output_interval_days, run_mode, states_only):
     states = [state] if state else ALL_STATES
-    days = int(output_interval_days)
     web_ui_mapper = WebUIDataAdaptorV1(
-        output_interval_days=days, run_mode=run_mode, output_dir=None,
+        output_interval_days=int(output_interval_days), run_mode=run_mode,
     )
     for state in states:
         region = pipeline.Region.from_state(state)
         state_input = webui_data_adaptor_v1.RegionalInput.from_region(region)
-        web_ui_mapper.map_fips(state_input)
+        web_ui_mapper.write_region(state_input)
 
 
 @entry_point.command()
