@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from typing import Mapping, Any, Optional, Iterable
 
 import numpy as np
-from multiprocessing import Pool
-from functools import partial
 
 import structlog
 import pickle
@@ -465,41 +463,17 @@ class EnsembleRunner:
         return outputs
 
 
-def _run_county(regional_input: RegionalInput, ensemble_kwargs):
-    """
-    Execute the ensemble runner for a specific county.
-
-    Parameters
-    ----------
-    fips: str
-        County fips.
-    ensemble_kwargs: dict
-        Kwargs passed to the EnsembleRunner object.
-    """
-    assert regional_input.region.is_county()
-    runner = EnsembleRunner(regional_input, **ensemble_kwargs)
-    runner.run_ensemble()
-
-
-def run_state(regional_input: RegionalInput, ensemble_kwargs, states_only=False):
+def run_region(regional_input: RegionalInput, ensemble_kwargs):
     """
     Run the EnsembleRunner for each county in a state.
 
     Parameters
     ----------
-    state: str
-        State to run against.
+    regional_input: RegionalInput
+        Region to run against.
     ensemble_kwargs: dict
         Kwargs passed to the EnsembleRunner object.
-    states_only: bool
-        If True only run the state level.
     """
     # Run the state level
     runner = EnsembleRunner(regional_input=regional_input, **ensemble_kwargs)
     runner.run_ensemble()
-
-    if not states_only:
-        # Run county level
-        with Pool(maxtasksperchild=1) as p:
-            f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
-            p.map(f, regional_input.get_counties_regional_input())
