@@ -59,7 +59,11 @@ class WhitelistGenerator:
             .get_data(aggregation_level=AggregationLevel.COUNTY)
             .set_index(CommonFields.FIPS)
         )
-        df_candidates = counties.groupby(CommonFields.FIPS).apply(_whitelist_candidates_per_fips)
+        df_candidates = (
+            counties.groupby(CommonFields.FIPS)
+            .apply(_whitelist_candidates_per_fips)
+            .reset_index(drop=True)
+        )
 
         df_candidates["inference_ok"] = (
             (df_candidates.nonzero_case_datapoints >= self.nonzero_case_datapoints)
