@@ -6,7 +6,6 @@ from pyseir.utils import get_run_artifact_path, RunArtifact
 import libs.datasets.can_model_output_schema as schema
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 import pytest
-import temppathlib
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error")
