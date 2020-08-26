@@ -1,11 +1,8 @@
-import itertools
 from typing import Dict, List
 
 
 import sys
 import os
-from typing import Mapping
-
 import click
 import us
 import logging
@@ -64,7 +61,7 @@ def _map_outputs(
     )
     for state in state_regions:
         # XXX Somehow use from_model_fitter
-        state_input = pipeline.RegionalWebUIInput.from_region(state)
+        state_input = webui_data_adaptor_v1.RegionalInput.from_region(state)
         web_ui_mapper.generate_state(
             state_input, whitelisted_county_fips=[], states_only=states_only
         )
@@ -181,7 +178,7 @@ def _build_all_for_states(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
     for fitter in itertools.chain(state_fitters, county_fitters):
-        web_ui_mapper.map_fips(pipeline.RegionalWebUIInput.from_model_fitter(fitter))
+        web_ui_mapper.map_fips(webui_data_adaptor_v1.RegionalInput.from_model_fitter(fitter))
 
     return
 

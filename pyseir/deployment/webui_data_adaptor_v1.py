@@ -1,12 +1,29 @@
+import json
+import os
+from dataclasses import dataclass
+from typing import Any
+from typing import Mapping
+from typing import Optional
+from typing import Optional
+
 import structlog
 from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool
 
+import pyseir
 from libs import pipeline
+from libs.pipeline import Region
+from libs.pipeline import Region
+from libs.pipeline import RegionalCombinedData
+from libs.pipeline import RegionalCombinedData
+from libs.pipeline import _log
+from libs.pipeline import load_inference_result
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.icu import infer_icu
+from pyseir.rt.utils import NEW_ORLEANS_FIPS
+from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
 from libs.enums import Intervention
 from libs.datasets import CommonFields
@@ -17,6 +34,72 @@ log = structlog.get_logger()
 
 # Value of orient argument in pandas dataframe json output.
 OUTPUT_JSON_ORIENT = "split"
+
+
+@dataclass(frozen=True)
+class RegionalInput:
+    """Identifies a geographical area and wraps access to any related data read by the WebUIDataAdaptorV1."""
+
+    region: Region
+
+    _combined_data: RegionalCombinedData
+
+    @staticmethod
+    def from_region(region: Region) -> "RegionalInput":
+        return RegionalInput(region=region, _combined_data=RegionalCombinedData.from_region(region))
+
+    @property
+    def population(self):
+        return self._combined_data.population
+
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
+    def get_us_latest(self):
+        return self._combined_data.get_us_latest()
+
+    def load_inference_result(self) -> Mapping[str, Any]:
+        """
+        Load fit results by state or county fips code.
+
+        Returns
+        -------
+        : dict
+            Dictionary of fit result information.
+        """
+        return load_inference_result(self.region)
+
+    def load_ensemble_results(self) -> Optional[dict]:
+        """Retrieves ensemble results for this region."""
+        output_filename = self.region.run_artifact_path_to_write(
+            pyseir.utils.RunArtifact.ENSEMBLE_RESULT
+        )
+        if not os.path.exists(output_filename):
+            return None
+
+        with open(output_filename) as f:
+            return json.load(f)
+
+    def load_rt_result(self) -> Optional[pd.DataFrame]:
+        """Loads the Rt inference result.
+
+        Returns
+        -------
+        results: pd.DataFrame
+            DataFrame containing the R_t inferences.
+        """
+        if self.fips in NEW_ORLEANS_FIPS:
+            _log.info("Applying New Orleans Patch")
+            return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
+
+        path = self.region.run_artifact_path_to_read(pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
+        if not os.path.exists(path):
+            return None
+        return pd.read_json(path)
+
+    def is_county(self):
+        return self.region.is_county()
 
 
 class WebUIDataAdaptorV1:
@@ -38,7 +121,7 @@ class WebUIDataAdaptorV1:
         self.include_imputed = include_imputed
         self.output_dir = output_dir
 
-    def map_fips(self, regional_input: pipeline.RegionalWebUIInput) -> None:
+    def map_fips(self, regional_input: RegionalInput) -> None:
         """Generates the CAN UI output format for a given region.
 
         Args:
@@ -277,10 +360,7 @@ class WebUIDataAdaptorV1:
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
 
     def generate_state(
-        self,
-        regional_input: pipeline.RegionalWebUIInput,
-        whitelisted_county_fips: list,
-        states_only=False,
+        self, regional_input: RegionalInput, whitelisted_county_fips: list, states_only=False,
     ):
         """
         Generate the output for the webUI for the given state, and counties in that state if
@@ -288,7 +368,7 @@ class WebUIDataAdaptorV1:
 
         Parameters
         ----------
-        regional_input: pipeline.RegionalWebUIInput
+        regional_input: RegionalInput
             Input for a state
         whitelisted_county_fips:
             Counties in the state
@@ -303,7 +383,7 @@ class WebUIDataAdaptorV1:
         else:
             with Pool(maxtasksperchild=1) as p:
                 regions = map(pipeline.Region.from_fips, whitelisted_county_fips)
-                regional_inputs = map(pipeline.RegionalWebUIInput.from_region, regions)
+                regional_inputs = map(RegionalInput.from_region, regions)
                 p.map(self.map_fips, regional_inputs)
 
             return
