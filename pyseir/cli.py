@@ -7,12 +7,14 @@ import click
 import us
 import logging
 import pandas as pd
+
 from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
 from functools import partial
 
 from libs import pipeline
+from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.rt import infer_rt
 from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
@@ -60,7 +62,7 @@ def _map_outputs(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
     for state in state_regions:
-        state_input = pipeline.RegionalWebUIInput.from_region(state)
+        state_input = webui_data_adaptor_v1.RegionalInput.from_region(state)
         web_ui_mapper.generate_state(
             state_input, whitelisted_county_fips=[], states_only=states_only
         )
@@ -187,7 +189,7 @@ def _build_all_for_states(
     )
     for state in states:
         region = pipeline.Region.from_state(state)
-        state_input = pipeline.RegionalWebUIInput.from_region(region)
+        state_input = webui_data_adaptor_v1.RegionalInput.from_region(region)
         web_ui_mapper.generate_state(
             state_input,
             whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
