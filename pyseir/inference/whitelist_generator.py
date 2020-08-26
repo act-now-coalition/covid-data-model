@@ -52,15 +52,13 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        latest_values = combined_datasets.load_us_latest_dataset().get_subset(
-            aggregation_level=AggregationLevel.COUNTY
+        counties = (
+            combined_datasets.load_us_timeseries_dataset()
+            .get_subset(aggregation_level=AggregationLevel.COUNTY)
+            .set_index(CommonFields.FIPS)
         )
-        columns = [CommonFields.FIPS, CommonFields.STATE, CommonFields.COUNTY]
-        counties = latest_values.data[columns]
-        # parallel load and compute
-        df_candidates = counties.fips.parallel_apply(_whitelist_candidates_per_fips)
-        # join extra data
-        df_candidates = df_candidates.merge(counties, left_on="fips", right_on="fips", how="inner",)
+        df_candidates = counties.groupby(CommonFields.FIPS).apply(_whitelist_candidates_per_fips)
+
         df_candidates["inference_ok"] = (
             (df_candidates.nonzero_case_datapoints >= self.nonzero_case_datapoints)
             & (df_candidates.nonzero_death_datapoints >= self.nonzero_death_datapoints)
@@ -76,29 +74,19 @@ class WhitelistGenerator:
         return df_whitelist
 
 
-def _whitelist_candidates_per_fips(fips):
-    combined_data = combined_datasets.load_us_timeseries_dataset().get_subset(fips=fips)
-    if not combined_data.data.empty:
-        (
-            times,
-            observed_new_cases,
-            observed_new_deaths,
-        ) = load_data.calculate_new_case_data_by_region(
-            combined_data, t0=datetime(day=1, month=1, year=2020),
-        )
-        record = dict(
-            fips=fips,
-            total_cases=observed_new_cases.sum(),
-            total_deaths=observed_new_deaths.sum(),
-            nonzero_case_datapoints=np.sum(observed_new_cases > 0),
-            nonzero_death_datapoints=np.sum(observed_new_deaths > 0),
-        )
-    else:
-        record = dict(
-            fips=fips,
-            total_cases=0,
-            total_deaths=0,
-            nonzero_case_datapoints=0,
-            nonzero_death_datapoints=0,
-        )
+def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
+    assert not combined_data.empty
+    fips = combined_data.fips.iloc[0]
+    (times, observed_new_cases, observed_new_deaths,) = load_data.calculate_new_case_data_by_region(
+        combined_data, t0=datetime(day=1, month=1, year=2020),
+    )
+    record = dict(
+        fips=fips,
+        state=combined_data.iat[0, combined_data.columns.get_loc(CommonFields.STATE)],
+        county=combined_data.iat[0, combined_data.columns.get_loc(CommonFields.COUNTY)],
+        total_cases=observed_new_cases.sum(),
+        total_deaths=observed_new_deaths.sum(),
+        nonzero_case_datapoints=np.sum(observed_new_cases > 0),
+        nonzero_death_datapoints=np.sum(observed_new_deaths > 0),
+    )
     return pd.Series(record)
