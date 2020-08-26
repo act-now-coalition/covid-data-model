@@ -152,10 +152,12 @@ def _build_all_for_states(
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
-    for fitter in itertools.chain(state_fitters, county_fitters):
-        web_ui_mapper.map_fips(webui_data_adaptor_v1.RegionalInput.from_model_fitter(fitter))
-
-    return
+    webui_inputs = [
+        webui_data_adaptor_v1.RegionalInput.from_model_fitter(fitter)
+        for fitter in itertools.chain(state_fitters, county_fitters)
+    ]
+    with Pool(maxtasksperchild=1) as p:
+        p.map(web_ui_mapper.write_region, webui_inputs)
 
 
 @entry_point.command()
@@ -238,7 +240,7 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     for state in states:
         region = pipeline.Region.from_state(state)
         state_input = webui_data_adaptor_v1.RegionalInput.from_region(region)
-        web_ui_mapper.map_fips(state_input)
+        web_ui_mapper.write_region(state_input)
 
 
 @entry_point.command()

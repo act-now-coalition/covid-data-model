@@ -127,7 +127,7 @@ class WebUIDataAdaptorV1:
         self.include_imputed = include_imputed
         self.output_dir = output_dir
 
-    def map_fips(self, regional_input: RegionalInput) -> None:
+    def write_region(self, regional_input: RegionalInput) -> None:
         """Generates the CAN UI output format for a given region.
 
         Args:
