@@ -3,6 +3,8 @@ from typing import Dict, List
 
 import sys
 import os
+from typing import Mapping
+
 import click
 import us
 import logging
@@ -68,13 +70,13 @@ def _map_outputs(
 
 def _state_only_pipeline(
     region: pipeline.Region, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
-):
+) -> model_fitter.ModelFitter:
     assert region.is_state()
     states_only = True
 
     infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
-    model_fitter.run_state(region)
-    ensembles_input = ensemble_runner.RegionalInput.from_region(region)
+    fitter = model_fitter.run_state(region)
+    ensembles_input = ensemble_runner.RegionalInput.from_model_fitter(fitter)
     ensemble_runner.run_state(
         ensembles_input, ensemble_kwargs={"run_mode": run_mode}, states_only=states_only
     )
@@ -86,6 +88,7 @@ def _state_only_pipeline(
         output_dir=output_dir,
         run_mode=run_mode,
     )
+    return fitter
 
 
 def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict[str, str]:

@@ -728,16 +728,14 @@ def build_county_list(state: str) -> List[str]:
     return all_fips
 
 
-def run_state(region: pipeline.Region):
+def run_state(region: pipeline.Region) -> ModelFitter:
     """
-    Run the fitter for each county in a state.
+    Run the fitter for a state.
 
     Parameters
     ----------
     region: Region
         State to run against.
-    states_only: bool
-        If True only run the state level.
     """
     assert region.is_state()
     log.info(f"Running MLE fitter for state {region}")
@@ -750,6 +748,8 @@ def run_state(region: pipeline.Region):
 
     with open(region.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
         pickle.dump(model_fitter.mle_model, f)
+
+    return model_fitter
 
 
 def run_counties_of_state(region):
