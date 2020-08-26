@@ -81,18 +81,8 @@ class RegionalInput:
     def load_inference_result_of_state(self) -> Mapping[str, Any]:
         if not self.region.is_county():
             raise AssertionError(f"Attempt to find state of {self}")
-        return RegionalInput.from_fips(self.region.fips[:2]).load_inference_result()
-
-    def load_inference_result(self) -> Mapping[str, Any]:
-        """
-        Load fit results by state or county fips code.
-
-        Returns
-        -------
-        : dict
-            Dictionary of fit result information.
-        """
-        return pipeline.load_inference_result(self.region)
+        region_of_state = self.region.get_state_region()
+        return pipeline.load_inference_result(region_of_state)
 
 
 class ModelFitter:
