@@ -1,7 +1,16 @@
 import os
+from typing import List
+from typing import List
+
 import pandas as pd
 import numpy as np
 import logging
+
+from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import CommonFields
+from libs import pipeline
+from libs import pipeline
+from libs import pipeline
 
 from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import load_data
@@ -94,3 +103,32 @@ def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
         nonzero_death_datapoints=np.sum(observed_new_deaths[~np.isnan(observed_new_deaths)] > 0),
     )
     return pd.Series(record)
+
+
+def regions_in_states(
+    states: List[pipeline.Region], whitelist_df: pd.DataFrame, fips: str = None,
+) -> List[pipeline.Region]:
+    """Builds mapping from fips to state of counties to run.
+
+    Restricts counties to those in the county whitelist.
+
+    Args:
+        states: List of states to run on.
+        fips: Optional county fips code to restrict results to.
+        whitelist_df: A whitelist used to filter counties
+
+    Returns: Map of counties to run with associated state.
+    """
+    states_values = [r.state_obj().abbr for r in states]
+    fips_in_states = whitelist_df.loc[
+        whitelist_df["inference_ok"] & whitelist_df[CommonFields.STATE].isin(states_values),
+        CommonFields.FIPS,
+    ].to_list()
+    if fips:
+        if fips in fips_in_states:
+            return [pipeline.Region.from_fips(fips)]
+        else:
+            print(f"{fips} not in {fips_in_states}")
+            return []
+    else:
+        return [pipeline.Region.from_fips(f) for f in fips_in_states]

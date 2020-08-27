@@ -1,8 +1,12 @@
 import pytest
 from covidactnow.datapublic.common_test_helpers import to_dict
+from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
+from libs.pipeline import Region
 from pyseir.inference.whitelist_generator import WhitelistGenerator
+from pyseir.inference.whitelist_generator import regions_in_states
+from test.dataset_utils_test import read_csv_and_index_fips
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
 # turns all warnings into errors for this module
@@ -56,3 +60,28 @@ def test_inference_ok_with_5_days_cases_changed():
         "97111": {"state": "ZZ", "county": "Bar County", "inference_ok": False},
         "97222": {"state": "ZZ", "county": "Foo County", "inference_ok": True},
     }
+
+
+def test_regions_in_states_basic():
+    whitelist_df = read_csv_and_index_fips(
+        "fips,state,county,inference_ok\n" "45111,TX,Bar County,True\n" "06222,CA,Foo County,True\n"
+    ).reset_index()
+
+    regions = regions_in_states([pipeline.Region.from_state(s) for s in ["CA", "TX"]], whitelist_df)
+    assert set(regions) == {Region.from_fips("45111"), Region.from_fips("06222")}
+
+
+def test_regions_in_states_fips():
+    whitelist_df = read_csv_and_index_fips(
+        "fips,state,county,inference_ok\n" "45111,TX,Bar County,True\n" "06222,CA,Foo County,True\n"
+    ).reset_index()
+
+    regions = regions_in_states(
+        [pipeline.Region.from_state(s) for s in ["CA", "TX"]], whitelist_df, fips="45111"
+    )
+    assert set(regions) == {Region.from_fips("45111")}
+
+    regions = regions_in_states(
+        [pipeline.Region.from_state(s) for s in ["CA", "TX"]], whitelist_df, fips="45444"
+    )
+    assert set(regions) == set()
