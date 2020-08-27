@@ -12,6 +12,7 @@ import copy
 from collections import defaultdict
 
 from libs import pipeline
+from pyseir.inference import model_fitter
 from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
@@ -35,6 +36,8 @@ class RegionalInput:
     region: pipeline.Region
 
     _combined_data: pipeline.RegionalCombinedData
+    _mle_fit_model: Optional[seir_model.SEIRModel] = None
+    _mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
@@ -45,6 +48,15 @@ class RegionalInput:
     @staticmethod
     def from_fips(fips: str) -> "RegionalInput":
         return RegionalInput.from_region(pipeline.Region.from_fips(fips))
+
+    @staticmethod
+    def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+        return RegionalInput(
+            region=fitter.region,
+            _combined_data=fitter.regional_input._combined_data,
+            _mle_fit_model=fitter.mle_model,
+            _mle_fit_result=fitter.fit_results,
+        )
 
     @property
     def fips(self) -> str:
@@ -63,6 +75,8 @@ class RegionalInput:
         return self._combined_data.get_us_latest()
 
     def load_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
+        if self._mle_fit_model is not None:
+            return self._mle_fit_model
         artifact_path = self.region.run_artifact_path_to_read(RunArtifact.MLE_FIT_MODEL)
         if os.path.exists(artifact_path):
             with open(artifact_path, "rb") as f:
@@ -71,6 +85,8 @@ class RegionalInput:
             return None
 
     def load_inference_result(self):
+        if self._mle_fit_result is not None:
+            return self._mle_fit_result
         return pipeline.load_inference_result(self.region)
 
     def load_state_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:

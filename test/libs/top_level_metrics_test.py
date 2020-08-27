@@ -19,6 +19,11 @@ def _build_metrics_df(content: str) -> pd.DataFrame:
     return common_df.read_csv(data, set_index=False)
 
 
+def _series_with_date_index(data, date: str = "2020-08-25", **series_kwargs):
+    date_series = pd.date_range(date, periods=len(data), freq="D")
+    return pd.Series(data, index=date_series, **series_kwargs)
+
+
 def test_calculate_case_density():
     """
     It should use population, smoothing and a normalizing factor to calculate case density.
@@ -39,12 +44,12 @@ def test_calculate_test_positivity():
     It should use smoothed case data to calculate positive test rate.
     """
 
-    positive_tests = pd.Series([0, 1, 3, 6])
-    negative_tests = pd.Series([0, 0, 1, 3])
+    positive_tests = _series_with_date_index([0, 1, 3, 6])
+    negative_tests = _series_with_date_index([0, 0, 1, 3])
     positive_rate = top_level_metrics.calculate_test_positivity(
         positive_tests, negative_tests, smooth=2, lag_lookback=1
     )
-    expected = pd.Series([np.nan, 1, 0.75, 2 / 3], dtype="float64")
+    expected = _series_with_date_index([np.nan, 1, 0.75, 2 / 3], dtype="float64")
     pd.testing.assert_series_equal(positive_rate, expected)
 
 
@@ -52,8 +57,8 @@ def test_calculate_test_positivity_lagging():
     """
     It should return an empty series if there is missing negative case data.
     """
-    positive_tests = pd.Series([0, 1, 2, 4, 8])
-    negative_tests = pd.Series([0, 0, 1, 2, 2])
+    positive_tests = _series_with_date_index([0, 1, 2, 4, 8])
+    negative_tests = _series_with_date_index([0, 0, 1, 2, 2])
     positive_rate = top_level_metrics.calculate_test_positivity(
         positive_tests, negative_tests, smooth=2, lag_lookback=1
     )
@@ -64,10 +69,11 @@ def test_calculate_test_positivity_extra_day():
     """
     It should return an empty series if there is missing negative case data.
     """
-    positive_tests = pd.Series([0, 4, np.nan])
-    negative_tests = pd.Series([0, 4, np.nan])
+    positive_tests = _series_with_date_index([0, 4, np.nan])
+    negative_tests = _series_with_date_index([0, 4, np.nan])
     positive_rate = top_level_metrics.calculate_test_positivity(positive_tests, negative_tests)
-    pd.testing.assert_series_equal(positive_rate, pd.Series([np.nan, 0.5], dtype="float64"))
+    expected = _series_with_date_index([np.nan, 0.5], dtype="float64")
+    pd.testing.assert_series_equal(positive_rate, expected)
 
 
 def test_top_level_metrics_basic():
@@ -90,6 +96,30 @@ def test_top_level_metrics_basic():
         "2020-08-18,36,10,0.1,0.04,,\n"
         "2020-08-19,36,10,0.1,0.06,,\n"
         "2020-08-20,36,10,0.1,0.08,,\n"
+    )
+    pd.testing.assert_frame_equal(expected, results)
+
+
+def test_top_level_metrics_no_test_positivity():
+    data = io.StringIO(
+        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count\n"
+        "2020-08-17,36,10,,,1\n"
+        "2020-08-18,36,20,,,2\n"
+        "2020-08-19,36,30,,,3\n"
+        "2020-08-20,36,40,,,4\n"
+    )
+    timeseries = TimeseriesDataset.load_csv(data)
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.FIPS: "36",
+    }
+    results = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
+
+    expected = _build_metrics_df(
+        "2020-08-17,36,,,,,\n"
+        "2020-08-18,36,10,,0.04,,\n"
+        "2020-08-19,36,10,,0.06,,\n"
+        "2020-08-20,36,10,,0.08,,\n"
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -131,21 +161,21 @@ def test_top_level_metrics_with_rt():
 
 def test_calculate_contact_tracers():
 
-    cases = pd.Series([0.0, 1.0, 4.0])
-    contact_tracers = pd.Series([5, 5, 5])
+    cases = _series_with_date_index([0.0, 1.0, 4.0])
+    contact_tracers = _series_with_date_index([5, 5, 5])
 
     results = top_level_metrics.calculate_contact_tracers(cases, contact_tracers)
-    expected = pd.Series([np.nan, 1.0, 0.5])
+    expected = _series_with_date_index([np.nan, 1.0, 0.5])
     pd.testing.assert_series_equal(results, expected)
 
 
 def test_calculate_contact_tracers_no_tracers():
 
-    cases = pd.Series([0.0, 1.0, 4.0])
-    contact_tracers = pd.Series([np.nan, np.nan, np.nan])
+    cases = _series_with_date_index([0.0, 1.0, 4.0])
+    contact_tracers = _series_with_date_index([np.nan, np.nan, np.nan])
 
     results = top_level_metrics.calculate_contact_tracers(cases, contact_tracers)
-    expected = pd.Series([np.nan, np.nan, np.nan])
+    expected = _series_with_date_index([np.nan, np.nan, np.nan])
     pd.testing.assert_series_equal(results, expected)
 
 
