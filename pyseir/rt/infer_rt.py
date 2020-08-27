@@ -585,7 +585,14 @@ class RtInferenceEngine:
             df_raw[timeseries_type.value] = timeseries_raw
 
             df = pd.DataFrame()
-            dates, posteriors, start_idx = self.get_posteriors(timeseries_type)
+            try:
+                dates, posteriors, start_idx = self.get_posteriors(timeseries_type)
+            except Exception as e:
+                structlog.getLogger().exception(
+                    event=f"Posterior Error for {self.regional_input.display_name}", error=e
+                )
+                raise e
+
             # Note that it is possible for the dates to be missing days
             # This can cause problems when:
             #   1) computing posteriors that assume continuous data (above),
