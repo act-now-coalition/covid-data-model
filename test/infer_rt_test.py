@@ -198,8 +198,8 @@ def test_smoothing_and_causality():
 
 def test_generate_infection_rate_metric_no_region_given():
     FIPS = []
-    REGIONS = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
-    df = cli._generate_infection_rate_metric(regions=REGIONS)
+    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    df = cli._generate_infection_rate_metric(regions=regions)
     assert df.empty
 
 
@@ -208,9 +208,9 @@ def test_generate_infection_rate_metric_one_empty():
         "51017",  # Bath County VA Almost No Cases. Will be filtered out under any thresholds.
         "51153",  # Prince William VA Lots of Cases
     ]
-    REGIONS = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
 
-    df = cli._generate_infection_rate_metric(regions=REGIONS)
+    df = cli._generate_infection_rate_metric(regions)
     returned_fips = df.fips.unique()
     assert "51153" in returned_fips
     assert "51017" not in returned_fips
@@ -218,9 +218,9 @@ def test_generate_infection_rate_metric_one_empty():
 
 def test_generate_infection_rate_metric_two_aggregate_levels():
     FIPS = ["06", "06075"]  # CA  # San Francisco, CA
-    REGIONS = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
 
-    df = cli._generate_infection_rate_metric(regions=REGIONS)
+    df = cli._generate_infection_rate_metric(regions)
     returned_fips = df.fips.unique()
     assert "06" in returned_fips
     assert "06075" in returned_fips
@@ -228,7 +228,7 @@ def test_generate_infection_rate_metric_two_aggregate_levels():
 
 def test_generate_infection_rate_metric_fake_fips():
     FIPS = ["48999"]  # TX Misc Fips Holder
-    REGIONS = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
 
-    df = cli._generate_infection_rate_metric(regions=REGIONS)
+    df = cli._generate_infection_rate_metric(regions)
     assert df.empty
