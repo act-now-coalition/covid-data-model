@@ -76,15 +76,11 @@ def generate_metrics_and_latest_for_fips(
     Returns:
         Tuple of MetricsTimeseriesRows for all days and the latest.
     """
-    metrics_results = top_level_metrics.calculate_metrics_for_timeseries(
+    metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
         timeseries, latest, model_output
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
-    latest = None
-    if metrics_for_fips:
-        latest = top_level_metrics.calculate_latest_metrics(metrics_results)
-
     return metrics_for_fips, latest
 
 
@@ -108,6 +104,10 @@ def build_timeseries_for_fips(
 
     try:
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
+        if fips_timeseries.empty:
+            logger.warning("Missing data for fips, skipping region summary generation.", fips=fips)
+            return None
+
         metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
             fips_timeseries, fips_latest, model_output
         )
@@ -132,6 +132,7 @@ def _deploy_timeseries(intervention, region_folder, timeseries):
 def deploy_single_level(intervention, all_timeseries, summary_folder, region_folder):
     if not all_timeseries:
         return
+
     logger.info(f"Deploying {intervention.name}")
 
     all_summaries = []
@@ -142,6 +143,13 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
     bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
+    if not flattened_timeseries.__root__:
+        logger.error(
+            "No summaries, skipping deploying bulk data",
+            intervention=intervention,
+            summary_folder=summary_folder,
+        )
+        return
 
     deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
     deploy_csv_api_output(intervention, flattened_timeseries, summary_folder)

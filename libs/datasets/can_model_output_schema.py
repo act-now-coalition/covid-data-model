@@ -26,6 +26,8 @@ VENTILATOR_CAPACITY = "ventilator_capacity"
 RT_INDICATOR = "Rt_indicator"
 RT_INDICATOR_CI90 = "Rt_indicator_ci90"
 
+CURRENT_ICU = INFECTED_C
+
 CAN_MODEL_OUTPUT_SCHEMA = [
     DAY_NUM,
     # ^ for index column
