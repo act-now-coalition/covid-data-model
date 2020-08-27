@@ -67,6 +67,3 @@ def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_
         str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
     ]
     assert sorted(output_paths) == sorted(expected_outputs)
-
-
-# def test_generate_metrics_and_latest_for_fips():
