@@ -1,21 +1,17 @@
 import itertools
-from typing import List
-
-
 import sys
 import os
 from typing import Optional
-
-import click
-import us
+from typing import List
 import logging
-import pandas as pd
-
-from covidactnow.datapublic import common_init
-
 from multiprocessing import Pool
 from functools import partial
 
+import us
+import pandas as pd
+import click
+
+from covidactnow.datapublic import common_init
 from libs import pipeline
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
@@ -78,7 +74,6 @@ def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeli
         return [pipeline.Region.from_state(s) for s in default]
 
 
-
 def _state_only_pipeline(
     region: pipeline.Region, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
 ) -> model_fitter.ModelFitter:
@@ -121,7 +116,7 @@ def _build_all_for_states(
 
     # Calculate the whitelist for the infection rate metric which makes no promises
     # about it's relationship to the SEIR subset
-    
+
     infection_rate_fips_whitelist = [
         infer_rt.RegionalInput.from_fips(x)
         for x in combined_datasets.load_us_latest_dataset().all_fips
@@ -181,7 +176,6 @@ def _build_all_for_states(
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
-
     root.info(f"outputting web results for states and {len(all_county_regions)} counties")
 
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
@@ -197,7 +191,6 @@ def _build_all_for_states(
     ]
     with Pool(maxtasksperchild=1) as p:
         p.map(web_ui_mapper.write_region, webui_inputs)
-
 
 
 @entry_point.command()
