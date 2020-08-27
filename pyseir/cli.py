@@ -1,12 +1,16 @@
 import itertools
-from typing import Dict, List
+from typing import List
 
 
 import sys
 import os
+from typing import Optional
+
 import click
 import us
 import logging
+import pandas as pd
+
 from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
@@ -14,12 +18,13 @@ from functools import partial
 
 from libs import pipeline
 from pyseir.deployment import webui_data_adaptor_v1
+from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
 from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
-from pyseir.inference.whitelist_generator import WhitelistGenerator
+from pyseir.inference.whitelist import WhitelistGenerator
 
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -27,7 +32,7 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."
 root = logging.getLogger()
 
 DEFAULT_RUN_MODE = "can-inference-derived"
-ALL_STATES = [state_obj.abbr for state_obj in us.STATES] + ["PR"]
+ALL_STATES: List[str] = [state_obj.abbr for state_obj in us.STATES] + ["PR"]
 
 
 def _cache_global_datasets():
@@ -44,9 +49,18 @@ def entry_point():
     common_init.configure_logging()
 
 
-def _generate_whitelist():
+def _generate_whitelist() -> pd.DataFrame:
     gen = WhitelistGenerator()
-    gen.generate_whitelist()
+    all_us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    return gen.generate_whitelist(all_us_timeseries)
+
+
+def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
+    """Create a list of Region objects containing just state or default."""
+    if state:
+        return [pipeline.Region.from_state(state)]
+    else:
+        return [pipeline.Region.from_state(s) for s in default]
 
 
 def _state_only_pipeline(
@@ -61,34 +75,6 @@ def _state_only_pipeline(
     return fitter
 
 
-def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict[str, str]:
-    """Builds mapping from fips to state of counties to run.
-
-    Restricts counties to those in the county whitelist.
-
-    Args:
-        states: List of states to run on.
-        fips: Optional county fips code to restrict results to.
-
-    Returns: Map of counties to run with associated state.
-    """
-    # Build List of Counties
-    all_county_fips = {}
-    for state in states:
-        state_county_fips = model_fitter.build_county_list(state)
-        county_fips_per_state = {fips: state for fips in state_county_fips}
-
-        if not fips:
-            all_county_fips.update(county_fips_per_state)
-            continue
-
-        if fips in county_fips_per_state and len(county_fips_per_state[fips]) > 0:
-            root.info(f"Found {fips}, restricting run to found fips")
-            all_county_fips.update({fips: state})
-
-    return all_county_fips
-
-
 def _build_all_for_states(
     states: List[str],
     run_mode=DEFAULT_RUN_MODE,
@@ -100,9 +86,6 @@ def _build_all_for_states(
 ):
     # prepare data
     _cache_global_datasets()
-
-    if not skip_whitelist:
-        _generate_whitelist()
 
     # do everything for just states in parallel
     with Pool(maxtasksperchild=1) as p:
@@ -119,8 +102,10 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
-    all_county_regions = [pipeline.Region.from_fips(f) for f in all_county_fips]
+    whitelist_df = _generate_whitelist()
+    all_county_regions = whitelist.regions_in_states(
+        states_regions, fips=fips, whitelist_df=whitelist_df
+    )
 
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
@@ -132,7 +117,7 @@ def _build_all_for_states(
         county_fitters = p.map(model_fitter.ModelFitter.run_for_region, fitter_inputs)
 
         # calculate ensemble
-        root.info(f"running ensemble for {len(all_county_fips)} counties")
+        root.info(f"running ensemble for {len(all_county_regions)} counties")
         ensemble_inputs = [
             ensemble_runner.RegionalInput.from_model_fitter(f) for f in county_fitters
         ]
@@ -145,7 +130,7 @@ def _build_all_for_states(
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
-    root.info(f"outputting web results for states and {len(all_county_fips)} counties")
+    root.info(f"outputting web results for states and {len(all_county_regions)} counties")
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
@@ -171,10 +156,8 @@ def generate_whitelist():
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_infer_rt(state, states_only):
-    states = [state] if state else ALL_STATES
-    for state in states:
-        region = pipeline.Region.from_state(state)
-        infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
+    for state in _states_region_list(state=state, default=ALL_STATES):
+        infer_rt.run_rt(infer_rt.RegionalInput.from_region(state))
 
 
 @entry_point.command()
@@ -183,12 +166,16 @@ def run_infer_rt(state, states_only):
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_mle_fits(state, states_only):
-    states = [state] if state else ALL_STATES
-    for state in states:
-        region = pipeline.Region.from_state(state)
+    states_regions = _states_region_list(state=state, default=ALL_STATES)
+
+    for region in states_regions:
         model_fitter.run_state(region)
-        if not states_only:
-            model_fitter.run_counties_of_state(region)
+
+    if not states_only:
+        whitelist_df = _generate_whitelist()
+        for region in states_regions:
+            county_regions = whitelist.regions_in_states([region], whitelist_df=whitelist_df)
+            model_fitter.run_counties_of_state(county_regions)
 
 
 @entry_point.command()
@@ -204,9 +191,7 @@ def run_mle_fits(state, states_only):
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def run_ensembles(state, run_mode, states_only):
     run_region = partial(ensemble_runner.run_region, ensemble_kwargs={"run_mode": run_mode})
-    states = [state] if state else ALL_STATES
-    for state in states:
-        region = pipeline.Region.from_state(state)
+    for region in _states_region_list(state=state, default=ALL_STATES):
         state_regional_input = ensemble_runner.RegionalInput.from_region(region)
         run_region(state_regional_input)
         if not states_only:
@@ -233,12 +218,10 @@ def run_ensembles(state, run_mode, states_only):
 )
 @click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
 def map_outputs(state, output_interval_days, run_mode, states_only):
-    states = [state] if state else ALL_STATES
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=int(output_interval_days), run_mode=run_mode,
     )
-    for state in states:
-        region = pipeline.Region.from_state(state)
+    for region in _states_region_list(state=state, default=ALL_STATES):
         state_input = webui_data_adaptor_v1.RegionalInput.from_region(region)
         web_ui_mapper.write_region(state_input)
 

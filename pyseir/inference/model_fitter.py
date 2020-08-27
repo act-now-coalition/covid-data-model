@@ -12,7 +12,6 @@ import pandas as pd
 import dill as pickle
 import numpy as np
 import iminuit
-from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 
 from pyseir.inference import model_plotting
@@ -703,19 +702,6 @@ def _persist_results_per_state(state_df):
             pickle.dump(county_series.mle_model, f)
 
 
-def build_county_list(state: str) -> List[str]:
-    """
-    Build the and return the fips list
-    """
-    log.info(f"Get fips list for state {state}")
-    df_whitelist = load_data.load_whitelist()
-    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-    is_state = df_whitelist[CommonFields.STATE] == state
-    all_fips = df_whitelist.loc[is_state, CommonFields.FIPS].tolist()
-
-    return all_fips
-
-
 def run_state(region: pipeline.Region) -> ModelFitter:
     """
     Run the fitter for a state.
@@ -740,25 +726,28 @@ def run_state(region: pipeline.Region) -> ModelFitter:
     return model_fitter
 
 
-def run_counties_of_state(region: pipeline.Region):
-    """Runs the fitter for all counties in state `region`, writing artifacts to disk."""
-    assert region.is_state()
-    # TODO: Replace with build_county_list
-    df_whitelist = load_data.load_whitelist()
-    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-    is_state = df_whitelist[CommonFields.STATE] == region.state_obj().abbr
-    all_fips = df_whitelist.loc[is_state, CommonFields.FIPS].values
-    if len(all_fips) > 0:
-        with Pool(maxtasksperchild=1) as p:
-            regions = [RegionalInput.from_fips(fips) for fips in all_fips]
-            fitters = p.map(ModelFitter.run_for_region, regions)
+def run_counties_of_state(regions: List[pipeline.Region]):
+    """Runs the fitter for given counties in a single state, writing artifacts to disk.
 
-        county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
-        data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-        data.to_json(county_output_file)
+    Args:
+        regions: The counties of one state to run and write together. This function does not
+          whitelist filter the list.
+    """
+    # This function is not called from the main pipeline.
+    assert len(regions) > 0
+    assert all([r.is_county() for r in regions])
+    # Make sure all of `regions` are in the same state
+    assert len(set(r.get_state_region() for r in regions)) == 1
 
-        # Serialize the model results.
-        for fips, fitter in zip(all_fips, fitters):
-            if fitter:
-                with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
-                    pickle.dump(fitter.mle_model, f)
+    with Pool(maxtasksperchild=1) as p:
+        fitters = p.map(ModelFitter.run_for_region, regions)
+
+    county_output_file = regions[0].run_artifact_path_to_write(RunArtifact.MLE_FIT_RESULT)
+    data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
+    data.to_json(county_output_file)
+
+    # Serialize the model results.
+    for region, fitter in zip(regions, fitters):
+        if fitter:
+            with open(region.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
+                pickle.dump(fitter.mle_model, f)
