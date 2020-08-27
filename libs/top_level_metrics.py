@@ -55,7 +55,7 @@ def calculate_metrics_for_timeseries(
     fips = latest[CommonFields.FIPS]
     population = latest[CommonFields.POPULATION]
 
-    data = timeseries.data
+    data = timeseries.data.set_index(CommonFields.DATE)
 
     infection_rate = np.nan
     infection_rate_ci90 = np.nan
@@ -68,23 +68,18 @@ def calculate_metrics_for_timeseries(
 
         # Only merging date up to the most recent timeseries date (model data includes
         # future projections for other values and we don't want to pad the end with NaNs).
-        up_to_latest_day = model_output.data[CommonFields.DATE] <= data[CommonFields.DATE].max()
+        up_to_latest_day = model_output.data[schema.DATE] <= data.index.max()
         fields_to_include = [
             schema.DATE,
-            schema.FIPS,
             schema.RT_INDICATOR,
             schema.RT_INDICATOR_CI90,
             schema.CURRENT_ICU,
         ]
         model_data = model_output.data.loc[up_to_latest_day, fields_to_include]
-        data = data.merge(
-            model_data,
-            left_on=[CommonFields.DATE, CommonFields.FIPS],
-            right_on=[schema.DATE, schema.FIPS],
-            how="outer",
-        )
-        infection_rate = data[schema.RT_INDICATOR]
-        infection_rate_ci90 = data[schema.RT_INDICATOR_CI90]
+        model_data = model_data.set_index(schema.DATE)
+
+        infection_rate = model_data[schema.RT_INDICATOR]
+        infection_rate_ci90 = model_data[schema.RT_INDICATOR_CI90]
 
     cumulative_cases = series_utils.interpolate_stalled_values(data[CommonFields.CASES])
     case_density = calculate_case_density(cumulative_cases, population)
@@ -108,7 +103,6 @@ def calculate_metrics_for_timeseries(
     icu_metric = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
 
     top_level_metrics_data = {
-        CommonFields.DATE: data[CommonFields.DATE],
         CommonFields.FIPS: fips,
         MetricsFields.CASE_DENSITY_RATIO: case_density,
         MetricsFields.TEST_POSITIVITY: test_positivity,
@@ -117,9 +111,8 @@ def calculate_metrics_for_timeseries(
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
         MetricsFields.ICU_HEADROOM: icu_metric["metric"],
     }
-    metrics = pd.DataFrame(top_level_metrics_data, index=test_positivity.index)
-
-    return metrics.reset_index(drop=True)
+    metrics = pd.DataFrame(top_level_metrics_data)
+    return metrics.reset_index()
 
 
 def calculate_case_density(
