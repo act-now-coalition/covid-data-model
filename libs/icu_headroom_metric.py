@@ -160,7 +160,7 @@ def calculate_icu_utilization_metric(
     """
     current_icu_covid, covid_source = icu_data.current_icu_covid_with_source
     if current_icu_covid is None:
-        return None, None
+        return np.nan, None
 
     non_covid_patients, non_covid_source = icu_data.current_icu_non_covid_with_source
     metric = current_icu_covid / (icu_data.total_icu_beds - non_covid_patients)

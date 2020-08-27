@@ -13,7 +13,7 @@ from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOu
 def _build_metrics_df(content: str) -> pd.DataFrame:
     header = (
         "date,fips,caseDensity,testPositivityRatio,contactTracerCapacityRatio,"
-        "infectionRate,infectionRateCI90,icuHeadroom\n"
+        "infectionRate,infectionRateCI90,icuHeadroomRatio\n"
     )
     data = io.StringIO(f"{header}\n{content}")
     return common_df.read_csv(data, set_index=False)
@@ -93,7 +93,7 @@ def test_top_level_metrics_basic():
         CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 30,
     }
-    results = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
 
     expected = _build_metrics_df(
         "2020-08-17,36,,,,,,0.5\n"
@@ -106,18 +106,19 @@ def test_top_level_metrics_basic():
 
 def test_top_level_metrics_no_test_positivity():
     data = io.StringIO(
-        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count\n"
-        "2020-08-17,36,10,,,1\n"
-        "2020-08-18,36,20,,,2\n"
-        "2020-08-19,36,30,,,3\n"
-        "2020-08-20,36,40,,,4\n"
+        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu\n"
+        "2020-08-17,36,10,,,1,\n"
+        "2020-08-18,36,20,,,2,\n"
+        "2020-08-19,36,30,,,3,\n"
+        "2020-08-20,36,40,,,4,\n"
     )
     timeseries = TimeseriesDataset.load_csv(data)
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
+        CommonFields.STATE: "NY",
     }
-    results = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
 
     expected = _build_metrics_df(
         "2020-08-17,36,,,,,\n"
@@ -157,7 +158,9 @@ def test_top_level_metrics_with_rt():
         CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 25,
     }
-    results = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, model_output)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+        timeseries, latest, model_output
+    )
     expected = _build_metrics_df(
         "2020-08-17,36,,,,1.1,.1\n"
         "2020-08-18,36,10,0.1,0.04,1.2,.1\n"
@@ -194,21 +197,21 @@ def test_calculate_latest_rt():
         f"2020-08-13,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
         "2020-08-20,36,10,0.1,0.08,2.0,0.2\n"
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert metrics.infectionRate == prev_rt
     assert metrics.infectionRateCI90 == prev_rt_ci90
 
 
 def test_calculate_latest_rt_no_previous_row():
     data = _build_metrics_df("2020-08-20,36,10,0.1,0.08,2.0,0.2\n")
-    metrics = top_level_metrics.calculate_latest_metrics(data)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
 
 
 def test_calculate_latest_rt_no_rt():
     data = _build_metrics_df("2020-08-20,36,10,0.1,0.08,,\n")
-    metrics = top_level_metrics.calculate_latest_metrics(data)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
 
@@ -226,7 +229,8 @@ def test_calculate_latest_different_latest_days():
         contactTracerCapacityRatio=0.08,
         infectionRate=prev_rt,
         infectionRateCI90=prev_rt_ci90,
-        icuHeadroom=None,
+        icuHeadroomRatio=None,
+        icuHeadroomDetails=None,
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert metrics == expected_metrics
