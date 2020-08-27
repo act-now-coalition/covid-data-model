@@ -96,7 +96,8 @@ def _build_all_for_states(
             output_dir=output_dir,
         )
         states_regions = [pipeline.Region.from_state(s) for s in states]
-        state_fitters = p.map(states_only_func, states_regions)
+        state_fitters: List[model_fitter.ModelFitter] = p.map(states_only_func, states_regions)
+        state_fitter_map = {f.region: f for f in state_fitters}
 
     if states_only:
         root.info("Only executing for states. returning.")
@@ -113,7 +114,12 @@ def _build_all_for_states(
         p.map(infer_rt.run_rt, infer_rt_inputs)
         # calculate model fit
         root.info(f"executing model for {len(all_county_regions)} counties")
-        fitter_inputs = [model_fitter.RegionalInput.from_region(r) for r in all_county_regions]
+        fitter_inputs = [
+            model_fitter.RegionalInput.from_region(
+                r, state_fitter=state_fitter_map.get(r.get_state_region())
+            )
+            for r in all_county_regions
+        ]
         county_fitters = p.map(model_fitter.ModelFitter.run_for_region, fitter_inputs)
 
         # calculate ensemble
