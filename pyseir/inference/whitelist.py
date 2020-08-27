@@ -46,13 +46,12 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        counties = timeseries.get_data(aggregation_level=AggregationLevel.COUNTY).set_index(
-            CommonFields.FIPS
-        )
+        counties = timeseries.get_data(aggregation_level=AggregationLevel.COUNTY)
         df_candidates = (
             counties.groupby(CommonFields.FIPS)
-            .apply(_whitelist_candidates_per_fips)
-            .reset_index(drop=True)
+            # Use pandarallel. It doesn't support the `name` attribute so leave FIPS as a regular
+            # column so it can be read in the applied function.
+            .parallel_apply(_whitelist_candidates_per_fips).reset_index(drop=True)
         )
 
         df_candidates["inference_ok"] = (
@@ -72,13 +71,12 @@ class WhitelistGenerator:
 
 def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
     assert not combined_data.empty
-    fips = combined_data.name
     (times, observed_new_cases, observed_new_deaths,) = load_data.calculate_new_case_data_by_region(
         TimeseriesDataset(combined_data.reset_index()), t0=datetime(day=1, month=1, year=2020),
     )
     record = dict(
-        fips=fips,
-        # Get the state and county values from the first row of the dataframe.
+        # Get the fips, state and county values from the first row of the dataframe.
+        fips=combined_data.iat[0, combined_data.columns.get_loc(CommonFields.FIPS)],
         state=combined_data.iat[0, combined_data.columns.get_loc(CommonFields.STATE)],
         county=combined_data.iat[0, combined_data.columns.get_loc(CommonFields.COUNTY)],
         total_cases=observed_new_cases.sum(),
