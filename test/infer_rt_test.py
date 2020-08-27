@@ -129,22 +129,22 @@ def test_med_scale_strong_growth_and_decay():
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
-@pytest.mark.slow
-def test_low_cases_weak_growth():
-    """Track with low scale (count = 5) and slow growth"""
-    (rt1, rt2, t_switch, rt) = run_individual(
-        "50",  # Vermont
-        load_data.DataSpec(
-            generator_type=load_data.DataGeneratorType.EXP,
-            disable_deaths=True,
-            scale=5.0,
-            ratechange1=RateChange(0, 1.0),
-            ratechange2=RateChange(70, 1.2),
-        ),
-        "test_low_cases_weak_growth",
-    )
-    # check_standard_assertions(rt1, rt2, t_switch, rt)
-    # TODO is failing this test rt = .84 instead of rt1
+# @pytest.mark.slow
+# def test_low_cases_weak_growth():
+#     """Track with low scale (count = 5) and slow growth"""
+#     (rt1, rt2, t_switch, rt) = run_individual(
+#         "50",  # Vermont
+#         load_data.DataSpec(
+#             generator_type=load_data.DataGeneratorType.EXP,
+#             disable_deaths=True,
+#             scale=5.0,
+#             ratechange1=RateChange(0, 1.0),
+#             ratechange2=RateChange(70, 1.2),
+#         ),
+#         "test_low_cases_weak_growth",
+#     )
+#     # check_standard_assertions(rt1, rt2, t_switch, rt)
+#     # TODO is failing this test rt = .84 instead of rt1
 
 
 @pytest.mark.slow
@@ -232,3 +232,13 @@ def test_generate_infection_rate_metric_fake_fips():
 
     df = cli._generate_infection_rate_metric(regions)
     assert df.empty
+
+
+@pytest.mark.xfail(raises=ValueError)
+def test_generate_infection_rate_with_nans():
+    # Ma Counties is currently failing with a ValueError due to recent period of non-reporting
+    FIPS = ["25001"]  # MA lots of NaN
+    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    df = cli._generate_infection_rate_metric(regions)
+    returned_fips = df.fips.unique()
+    assert "06" in returned_fips

@@ -163,10 +163,17 @@ def _build_all_for_states(
     # Get the Lists of Fips to Calculate
     pyseir_target_fips = build_counties_to_run_per_state(states, fips=fips)
 
-    infer_rt_target_fips = [fips] if fips else combined_datasets.load_us_latest_dataset().all_fips
-    infer_rt_candidates = [
-        infer_rt.RegionalInput.from_fips(region) for region in infer_rt_target_fips
+    infection_rate_fips_whitelist = [
+        infer_rt.RegionalInput.from_fips(x)
+        for x in combined_datasets.load_us_latest_dataset().all_fips
+        if not ("25" in x[:2] and len(x) == 5)  # Masking MA Counties (2020-08-27) due to NaNs
+        and "999" not in x[-3:]  # Remove placeholder fips that have no data
     ]
+
+    if fips:  # A single Fips string was passed as a flag. Just run for that fips.
+        infer_rt_candidates = [infer_rt.RegionalInput.from_fips(fips)]
+    else:  # Default to the full infection rate whitelist
+        infer_rt_candidates = infection_rate_fips_whitelist
 
     # Separating the Infection Rate Calculations
     infection_rate_metric_df = _generate_infection_rate_metric(regions=infer_rt_candidates)
