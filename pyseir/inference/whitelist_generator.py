@@ -44,7 +44,7 @@ class WhitelistGenerator:
         self.nonzero_case_datapoints = nonzero_case_datapoints
         self.nonzero_death_datapoints = nonzero_death_datapoints
 
-    def generate_whitelist(self) -> pd.DataFrame:
+    def generate_whitelist(self, timeseries: TimeseriesDataset) -> pd.DataFrame:
         """
         Generate a county whitelist based on the cuts above.
 
@@ -54,10 +54,8 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        counties = (
-            combined_datasets.load_us_timeseries_dataset()
-            .get_data(aggregation_level=AggregationLevel.COUNTY)
-            .set_index(CommonFields.FIPS)
+        counties = timeseries.get_data(aggregation_level=AggregationLevel.COUNTY).set_index(
+            CommonFields.FIPS
         )
         df_candidates = (
             counties.groupby(CommonFields.FIPS)

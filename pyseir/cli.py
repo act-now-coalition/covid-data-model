@@ -49,7 +49,8 @@ def entry_point():
 
 def _generate_whitelist() -> pd.DataFrame:
     gen = WhitelistGenerator()
-    return gen.generate_whitelist()
+    all_us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    return gen.generate_whitelist(all_us_timeseries).to_csv("output/whitelist.csv", index=False)
 
 
 def _state_only_pipeline(
