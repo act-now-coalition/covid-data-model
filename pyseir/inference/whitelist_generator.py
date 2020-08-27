@@ -1,15 +1,10 @@
 import os
 from typing import List
-from typing import List
 
 import pandas as pd
 import numpy as np
 import logging
 
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import CommonFields
-from libs import pipeline
-from libs import pipeline
 from libs import pipeline
 
 from libs.datasets.timeseries import TimeseriesDataset
@@ -108,16 +103,14 @@ def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
 def regions_in_states(
     states: List[pipeline.Region], whitelist_df: pd.DataFrame, fips: str = None,
 ) -> List[pipeline.Region]:
-    """Builds mapping from fips to state of counties to run.
-
-    Restricts counties to those in the county whitelist.
+    """Finds all whitelisted regions in a list of states.
 
     Args:
         states: List of states to run on.
         fips: Optional county fips code to restrict results to.
         whitelist_df: A whitelist used to filter counties
 
-    Returns: Map of counties to run with associated state.
+    Returns: List of counties in all states, represented as `Region` objects.
     """
     states_values = [r.state_obj().abbr for r in states]
     fips_in_states = whitelist_df.loc[

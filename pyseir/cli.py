@@ -18,7 +18,7 @@ from functools import partial
 
 from libs import pipeline
 from pyseir.deployment import webui_data_adaptor_v1
-from pyseir.inference.whitelist_generator import regions_in_states
+from pyseir.inference import whitelist_generator
 from pyseir.rt import infer_rt
 from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
@@ -103,7 +103,9 @@ def _build_all_for_states(
         return
 
     whitelist_df = _generate_whitelist()
-    all_county_regions = regions_in_states(states_regions, fips=fips, whitelist_df=whitelist_df)
+    all_county_regions = whitelist_generator.regions_in_states(
+        states_regions, fips=fips, whitelist_df=whitelist_df
+    )
 
     with Pool(maxtasksperchild=1) as p:
         # calculate calculate county inference
@@ -172,7 +174,9 @@ def run_mle_fits(state, states_only):
     if not states_only:
         whitelist_df = _generate_whitelist()
         for region in states_regions:
-            county_regions = regions_in_states([region], whitelist_df=whitelist_df)
+            county_regions = whitelist_generator.regions_in_states(
+                [region], whitelist_df=whitelist_df
+            )
             model_fitter.run_counties_of_state(county_regions)
 
 

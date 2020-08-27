@@ -727,7 +727,12 @@ def run_state(region: pipeline.Region) -> ModelFitter:
 
 
 def run_counties_of_state(regions: List[pipeline.Region]):
-    """Runs the fitter for all counties in a state, writing artifacts to disk."""
+    """Runs the fitter for given counties in a single state, writing artifacts to disk.
+
+    Args:
+        regions: The counties of one state to run and write together. This function does not
+          whitelist filter the list.
+    """
     # This function is not called from the main pipeline.
     assert len(regions) > 0
     assert all([r.is_county() for r in regions])
