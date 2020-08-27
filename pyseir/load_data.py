@@ -440,23 +440,6 @@ def load_contact_matrix_data_by_fips(fips):
     return {s: contact_matrix_data[s] for s in fips}
 
 
-def load_whitelist():
-    """
-    Load the whitelist result.
-
-    Returns
-    -------
-    whitelist: pd.DataFrame
-        DataFrame containing a whitelist of product features for counties.
-    """
-    # Whitelist path isn't state specific, but the call requires ANY fips
-    PLACEHOLDER_FIPS = "06"
-    path = pyseir.utils.get_run_artifact_path(
-        fips=PLACEHOLDER_FIPS, artifact=pyseir.utils.RunArtifact.WHITELIST_RESULT
-    )
-    return pd.read_json(path, dtype={"fips": str})
-
-
 def cache_all_data():
     """
     Download all datasets locally.

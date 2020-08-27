@@ -20,7 +20,7 @@ from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
-from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import RunArtifact
 
 
 log = structlog.getLogger()
