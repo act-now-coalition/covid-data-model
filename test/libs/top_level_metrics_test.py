@@ -104,6 +104,30 @@ def test_top_level_metrics_basic():
     pd.testing.assert_frame_equal(expected, results)
 
 
+def test_top_level_metrics_no_test_positivity():
+    data = io.StringIO(
+        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count\n"
+        "2020-08-17,36,10,,,1\n"
+        "2020-08-18,36,20,,,2\n"
+        "2020-08-19,36,30,,,3\n"
+        "2020-08-20,36,40,,,4\n"
+    )
+    timeseries = TimeseriesDataset.load_csv(data)
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.FIPS: "36",
+    }
+    results = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
+
+    expected = _build_metrics_df(
+        "2020-08-17,36,,,,,\n"
+        "2020-08-18,36,10,,0.04,,\n"
+        "2020-08-19,36,10,,0.06,,\n"
+        "2020-08-20,36,10,,0.08,,\n"
+    )
+    pd.testing.assert_frame_equal(expected, results)
+
+
 def test_top_level_metrics_with_rt():
     data = io.StringIO(
         "date,fips,cases,positive_tests,negative_tests,contact_tracers_count"
