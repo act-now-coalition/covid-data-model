@@ -83,5 +83,5 @@ def has_recent_data(
     start_date = today - timedelta(days=days_back)
     recent_series = series[start_date:]
     num_datapoints = recent_series.notnull().sum()
-    nonzero_points = (recent_series > 0).sum()
-    return num_datapoints >= required_non_null_datapoints and nonzero_points
+    has_nonzero_points = (recent_series > 0).any()
+    return num_datapoints >= required_non_null_datapoints and has_nonzero_points
