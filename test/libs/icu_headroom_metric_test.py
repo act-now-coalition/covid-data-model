@@ -1,4 +1,5 @@
 import io
+import numpy as np
 import pandas as pd
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
@@ -105,19 +106,22 @@ def test_icu_utilization_metric():
         "date,fips,current_icu,current_icu_total,icu_beds\n"
         "2020-08-11,36,20,40,40\n"
         "2020-08-12,36,15,30,40\n"
+        "2020-08-13,36,,,40\n"
     )
     data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
-    estimated_icu = pd.Series([30, 30], index=data.index)
+    estimated_icu = pd.Series([30, 30, np.nan], index=data.index)
 
     icu_data = ICUMetricData(data, estimated_icu, {}, 0.0, require_recent_data=False)
 
     metrics, details = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
 
-    expected_metric = pd.Series([1.0, 0.6], index=data.index)
+    expected_metric = pd.Series([1.0, 0.6, np.nan], index=data.index)
 
     expected_details = can_api_definition.ICUHeadroomMetricDetails(
         currentIcuCovidMethod=icu_headroom_metric.CovidPatientsMethod.ACTUAL,
+        currentIcuCovid=15,
         currentIcuNonCovidMethod=icu_headroom_metric.NonCovidPatientsMethod.ACTUAL,
+        currentIcuNonCovid=15,
     )
 
     pd.testing.assert_series_equal(metrics, expected_metric)

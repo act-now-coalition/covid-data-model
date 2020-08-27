@@ -181,6 +181,9 @@ def calculate_icu_utilization_metric(
     metric = current_icu_covid / (icu_data.total_icu_beds - non_covid_patients)
 
     details = can_api_definition.ICUHeadroomMetricDetails(
-        currentIcuCovidMethod=covid_source, currentIcuNonCovidMethod=non_covid_source
+        currentIcuCovidMethod=covid_source,
+        currentIcuCovid=current_icu_covid[current_icu_covid.last_valid_index()],
+        currentIcuNonCovidMethod=non_covid_source,
+        currentIcuNonCovid=non_covid_patients[non_covid_patients.last_valid_index()],
     )
     return metric, details
