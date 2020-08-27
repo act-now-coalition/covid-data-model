@@ -1,4 +1,5 @@
 from datetime import timedelta
+import datetime
 import pandas as pd
 import numpy as np
 
@@ -64,3 +65,23 @@ def interpolate_stalled_values(series: pd.Series) -> pd.Series:
     series.loc[start:end] = series_with_values.interpolate(method="time").round()
 
     return series
+
+
+def has_recent_data(
+    series: pd.Series, days_back: int = 14, required_non_null_datapoints: int = 7
+) -> bool:
+    """Checks to see if series has recent non-null data with at least one non-zero data point
+
+    Args:
+        series: Series with a datetime index.
+        days_back: Number of days back to look
+        required_non_null_datapoints: Number of non-null data points required.
+
+    Returns: True if has recent data, otherwise false.
+    """
+    today = datetime.datetime.today().date()
+    start_date = today - timedelta(days=days_back)
+    recent_series = series[start_date:]
+    num_datapoints = recent_series.notnull().sum()
+    nonzero_points = (recent_series > 0).sum()
+    return num_datapoints >= required_non_null_datapoints and nonzero_points

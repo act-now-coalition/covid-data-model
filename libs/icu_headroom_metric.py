@@ -3,6 +3,7 @@ import enum
 import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import can_model_output_schema as schema
+from libs import series_utils
 from api import can_api_definition
 
 import pandas as pd
@@ -11,6 +12,10 @@ import pandas as pd
 NonCovidPatientsMethod = can_api_definition.NonCovidPatientsMethod
 CovidPatientsMethod = can_api_definition.CovidPatientsMethod
 
+
+# Default utilization to use (before decomp) if there isn't a location-specific
+# value in the API.
+DEFAULT_ICU_UTILIZATION = 0.75
 
 DEFAULT_ICU_DECOMP = 0.21
 
@@ -40,16 +45,32 @@ class ICUMetricData:
         estimated_current_icu: Optional[pd.Series],
         latest_values: Dict[CommonFields, Any],
         decomp_factor: float,
+        require_recent_data: bool = True,
     ):
         self._data = timeseries_data
         self._estimated_current_icu = estimated_current_icu
         self._latest_values = latest_values
         self.decomp_factor = decomp_factor
+        self._require_recent_data = require_recent_data
 
     @property
     def actual_current_icu_covid(self) -> Optional[pd.Series]:
         actuals = self._data[CommonFields.CURRENT_ICU]
         if not actuals.any():
+            return None
+
+        if self._require_recent_data and not series_utils.has_recent_data(actuals):
+            return None
+
+        return actuals
+
+    @property
+    def actual_current_icu_total(self) -> Optional[pd.Series]:
+        actuals = self._data[CommonFields.CURRENT_ICU_TOTAL]
+        if not actuals.any():
+            return None
+
+        if self._require_recent_data and not series_utils.has_recent_data(actuals):
             return None
 
         return actuals
@@ -63,14 +84,6 @@ class ICUMetricData:
         return estimated
 
     @property
-    def actual_current_icu_total(self) -> Optional[pd.Series]:
-        actuals = self._data[CommonFields.CURRENT_ICU_TOTAL]
-        if not actuals.any():
-            return None
-
-        return actuals
-
-    @property
     def total_icu_beds(self) -> Union[pd.Series, float]:
         timeseries = self._data[CommonFields.ICU_BEDS]
         if timeseries.any():
@@ -79,7 +92,11 @@ class ICUMetricData:
 
     @property
     def typical_usage_rate(self) -> float:
-        return self._latest_values[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+        typical_occupancy = self._latest_values[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+        if typical_occupancy is None or np.isnan(typical_occupancy):
+            return DEFAULT_ICU_UTILIZATION
+
+        return typical_occupancy
 
     @property
     def current_icu_non_covid_with_source(self) -> Tuple[pd.Series, NonCovidPatientsMethod]:

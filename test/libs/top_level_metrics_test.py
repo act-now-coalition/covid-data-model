@@ -93,7 +93,9 @@ def test_top_level_metrics_basic():
         CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 30,
     }
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+        timeseries, latest, None, require_recent_icu_data=False
+    )
 
     expected = _build_metrics_df(
         "2020-08-17,36,,,,,,0.5\n"

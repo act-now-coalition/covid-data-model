@@ -2,6 +2,7 @@ import io
 import pandas as pd
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
+from api import can_api_definition
 from libs import icu_headroom_metric
 
 ICUMetricData = icu_headroom_metric.ICUMetricData
@@ -17,7 +18,7 @@ def test_icu_metric_data_with_all_timeseries_actuals():
     data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
     estimated_icu = pd.Series([20, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, estimated_icu, {}, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, {}, 0.0, require_recent_data=False)
     pd.testing.assert_series_equal(icu_data.actual_current_icu_covid, data.current_icu)
     pd.testing.assert_series_equal(icu_data.estimated_current_icu_covid, estimated_icu)
     pd.testing.assert_series_equal(icu_data.actual_current_icu_total, data.current_icu_total)
@@ -42,7 +43,7 @@ def test_icu_metric_data_with_estimated_from_total_icu_actuals():
     data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
     estimated_icu = pd.Series([20, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0, require_recent_data=False)
     assert not icu_data.actual_current_icu_covid
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
@@ -64,7 +65,7 @@ def test_icu_metric_data_with_estimated_from_decomp_and_total_beds_timeseries():
     data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
     estimated_icu = pd.Series([20, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0, require_recent_data=False)
     assert not icu_data.actual_current_icu_covid
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
@@ -86,7 +87,7 @@ def test_icu_metric_data_with_estimated_from_decomp_and_latest_total_beds():
     data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
     estimated_icu = pd.Series([20, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0, require_recent_data=False)
     assert not icu_data.actual_current_icu_covid
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
@@ -108,20 +109,16 @@ def test_icu_utilization_metric():
     data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
     estimated_icu = pd.Series([30, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, estimated_icu, {}, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, {}, 0.0, require_recent_data=False)
 
-    results = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
+    metrics, details = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
 
-    expected = {
-        "metric": pd.Series([1.0, 0.6], index=data.index),
-        "current_icu_covid_source": icu_headroom_metric.CovidPatientsMethod.ACTUAL,
-        "current_icu_non_covid_source": icu_headroom_metric.NonCovidPatientsMethod.ACTUAL,
-    }
+    expected_metric = pd.Series([1.0, 0.6], index=data.index)
 
-    assert expected.keys() == results.keys()
-    for key, value in expected.items():
-        other_value = results[key]
-        if isinstance(value, pd.Series):
-            pd.testing.assert_series_equal(value, other_value)
-        else:
-            assert value == other_value
+    expected_details = can_api_definition.ICUHeadroomMetricDetails(
+        currentIcuCovidMethod=icu_headroom_metric.CovidPatientsMethod.ACTUAL,
+        currentIcuNonCovidMethod=icu_headroom_metric.NonCovidPatientsMethod.ACTUAL,
+    )
+
+    pd.testing.assert_series_equal(metrics, expected_metric)
+    assert details == expected_details

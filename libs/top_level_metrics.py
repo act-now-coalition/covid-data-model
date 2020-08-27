@@ -48,7 +48,10 @@ def calculate_top_level_metrics_for_fips(fips: str):
 
 
 def calculate_metrics_for_timeseries(
-    timeseries: TimeseriesDataset, latest: dict, model_output: Optional[CANPyseirLocationOutput]
+    timeseries: TimeseriesDataset,
+    latest: dict,
+    model_output: Optional[CANPyseirLocationOutput],
+    require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
     assert len(timeseries.all_fips) == 1
@@ -100,7 +103,9 @@ def calculate_metrics_for_timeseries(
 
     # Caculate icu headroom
     decomp = icu_headroom_metric.get_decomp_for_state(latest[CommonFields.STATE])
-    icu_data = icu_headroom_metric.ICUMetricData(data, estimated_current_icu, latest, decomp)
+    icu_data = icu_headroom_metric.ICUMetricData(
+        data, estimated_current_icu, latest, decomp, require_recent_data=require_recent_icu_data
+    )
     icu_metric, icu_metric_details = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
 
     top_level_metrics_data = {
