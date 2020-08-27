@@ -224,3 +224,11 @@ def test_generate_infection_rate_metric_two_aggregate_levels():
     returned_fips = df.fips.unique()
     assert "06" in returned_fips
     assert "06075" in returned_fips
+
+
+def test_generate_infection_rate_metric_fake_fips():
+    FIPS = ["48999"]  # TX Misc Fips Holder
+    REGIONS = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+
+    df = cli._generate_infection_rate_metric(regions=REGIONS)
+    assert df.empty

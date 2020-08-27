@@ -94,7 +94,7 @@ def _generate_input_data(
     include_testing_correction: bool,
     include_deaths: bool,
     figure_collector: Optional[list],
-):
+) -> pd.DataFrame:
     """
     Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
 
@@ -102,11 +102,23 @@ def _generate_input_data(
         If True, include a correction for testing increases and decreases.
     """
     # TODO: Outlier Removal Before Test Correction
-    times, observed_new_cases, observed_new_deaths = load_data.calculate_new_case_data_by_region(
-        regional_input.get_timeseries(),
-        t0=InferRtConstants.REF_DATE,
-        include_testing_correction=include_testing_correction,
-    )
+    try:
+        (
+            times,
+            observed_new_cases,
+            observed_new_deaths,
+        ) = load_data.calculate_new_case_data_by_region(
+            regional_input.get_timeseries(),
+            t0=InferRtConstants.REF_DATE,
+            include_testing_correction=include_testing_correction,
+        )
+    except AssertionError as e:
+        rt_log.exception(
+            event=f"An AssertionError was raised in the loading of {regional_input.display_name}"
+            f" for the calculation of the Infection Rate Metric",
+            error=e,
+        )
+        return pd.DataFrame()
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
 
