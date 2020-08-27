@@ -67,6 +67,23 @@ class ResourceUtilization(base_model.APIBaseModel):
     )
 
 
+class CovidPatientsMethod(enum.Enum):
+    ACTUAL = 0
+    ESTIMATED = 1
+
+
+class NonCovidPatientsMethod(enum.Enum):
+    ACTUAL = 0
+    ESTIMATED_FROM_TYPICAL_UTILIZATION = 1
+    ESTIMATED_FROM_TOTAL_ICU_ACTUAL = 2
+
+
+class ICUHeadroomMetricDetails(base_model.APIBaseModel):
+
+    currentIcuCovidMethod: CovidPatientsMethod
+    currentIcuNonCovidMethod: NonCovidPatientsMethod
+
+
 class Metrics(base_model.APIBaseModel):
     """Calculated metrics data based on known actuals."""
 
@@ -95,7 +112,8 @@ class Metrics(base_model.APIBaseModel):
     infectionRateCI90: Optional[float] = pydantic.Field(
         ..., description="90th percentile confidence interval upper endpoint of the infection rate."
     )
-    icuHeadroom: Optional[float] = pydantic.Field(...)
+    icuHeadroomRatio: Optional[float] = pydantic.Field(...)
+    icuHeadroomDetails: Optional[ICUHeadroomMetricDetails] = pydantic.Field(None)
 
 
 class MetricsTimeseriesRow(Metrics):

@@ -3,20 +3,13 @@ import enum
 import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import can_model_output_schema as schema
-
+from api import can_api_definition
 
 import pandas as pd
 
 
-class CovidPatientsMethod(enum.Enum):
-    ACTUAL = 0
-    ESTIMATED = 1
-
-
-class NonCovidPatientsMethod(enum.Enum):
-    ACTUAL = 0
-    ESTIMATED_FROM_TYPICAL_UTILIZATION = 1
-    ESTIMATED_FROM_TOTAL_ICU_ACTUAL = 2
+NonCovidPatientsMethod = can_api_definition.NonCovidPatientsMethod
+CovidPatientsMethod = can_api_definition.CovidPatientsMethod
 
 
 DEFAULT_ICU_DECOMP = 0.21
@@ -123,7 +116,9 @@ class ICUMetricData:
         return self.estimated_current_icu_covid, source
 
 
-def calculate_icu_utilization_metric(icu_data: ICUMetricData):
+def calculate_icu_utilization_metric(
+    icu_data: ICUMetricData,
+) -> Tuple[Optional[pd.Series], Optional[can_api_definition.ICUHeadroomMetricDetails]]:
     """
 
              covid icu patients
@@ -165,17 +160,12 @@ def calculate_icu_utilization_metric(icu_data: ICUMetricData):
     """
     current_icu_covid, covid_source = icu_data.current_icu_covid_with_source
     if current_icu_covid is None:
-        return {
-            "metric": np.nan,
-            "current_icu_covid_source": None,
-            "current_icu_non_covid_source": None,
-        }
+        return None, None
 
     non_covid_patients, non_covid_source = icu_data.current_icu_non_covid_with_source
     metric = current_icu_covid / (icu_data.total_icu_beds - non_covid_patients)
 
-    return {
-        "metric": metric,
-        "current_icu_covid_source": covid_source,
-        "current_icu_non_covid_source": non_covid_source,
-    }
+    details = can_api_definition.ICUHeadroomMetricDetails(
+        currentIcuCovidMethod=covid_source, currentIcuNonCovidMethod=non_covid_source
+    )
+    return metric, details
