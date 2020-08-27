@@ -129,22 +129,22 @@ def test_med_scale_strong_growth_and_decay():
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
-# @pytest.mark.slow
-# def test_low_cases_weak_growth():
-#     """Track with low scale (count = 5) and slow growth"""
-#     (rt1, rt2, t_switch, rt) = run_individual(
-#         "50",  # Vermont
-#         load_data.DataSpec(
-#             generator_type=load_data.DataGeneratorType.EXP,
-#             disable_deaths=True,
-#             scale=5.0,
-#             ratechange1=RateChange(0, 1.0),
-#             ratechange2=RateChange(70, 1.2),
-#         ),
-#         "test_low_cases_weak_growth",
-#     )
-#     # check_standard_assertions(rt1, rt2, t_switch, rt)
-#     # TODO is failing this test rt = .84 instead of rt1
+@pytest.mark.skip(reason="From Alex: Test is failing rt = .84 instead of rt1")
+@pytest.mark.slow
+def test_low_cases_weak_growth():
+    """Track with low scale (count = 5) and slow growth"""
+    (rt1, rt2, t_switch, rt) = run_individual(
+        "50",  # Vermont
+        load_data.DataSpec(
+            generator_type=load_data.DataGeneratorType.EXP,
+            disable_deaths=True,
+            scale=5.0,
+            ratechange1=RateChange(0, 1.0),
+            ratechange2=RateChange(70, 1.2),
+        ),
+        "test_low_cases_weak_growth",
+    )
+    check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow

@@ -117,7 +117,6 @@ def _generate_input_data(
             event="An AssertionError was raised in the loading of the data for the calculation of "
             "the Infection Rate Metric",
             region=regional_input.display_name,
-            error=e,
         )
         return pd.DataFrame()
 
@@ -589,10 +588,8 @@ class RtInferenceEngine:
             try:
                 dates, posteriors, start_idx = self.get_posteriors(timeseries_type)
             except Exception as e:
-                structlog.getLogger().exception(
-                    event="Posterior Calculation Error",
-                    region=self.regional_input.display_name,
-                    error=e,
+                rt_log.exception(
+                    event="Posterior Calculation Error", region=self.regional_input.display_name,
                 )
                 raise e
 

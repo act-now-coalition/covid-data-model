@@ -50,7 +50,7 @@ def _generate_whitelist():
     gen.generate_whitelist()
 
 
-def _generate_infection_rate_metric(regions: List[pipeline.Region]) -> pd.DataFrame:
+def _generate_infection_rate_metric(regions: List[infer_rt.RegionalInput]) -> pd.DataFrame:
     """
     Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
     with a unique row for each region+date combination.
@@ -246,7 +246,14 @@ def generate_whitelist():
 @click.option(
     "--state", help="State to generate files for. If no state is given, all states are computed."
 )
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Deprecated")
+@click.option(
+    "--states-only",
+    default=False,
+    is_flag=True,
+    type=bool,
+    help="Warning: This flag is unused and the function always defaults to only state "
+    "level regions",
+)
 def run_infer_rt(state, states_only):
     if state:
         states = [us.states.lookup(state).fips]
