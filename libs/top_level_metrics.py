@@ -102,6 +102,7 @@ def calculate_metrics_for_timeseries(
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
     }
     metrics = pd.DataFrame(top_level_metrics_data)
+    metrics.index.name = CommonFields.DATE
     return metrics.reset_index()
 
 
@@ -148,6 +149,7 @@ def calculate_test_positivity(
 
     if any(last_n_positive) and last_n_negative.isna().all():
         return pd.Series([], dtype="float64")
+
     return positive_smoothed / (negative_smoothed + positive_smoothed)
 
 
