@@ -76,8 +76,8 @@ execute_model() {
 
   echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
   # TODO(#148): We need to clean up the output of these scripts!
-#  pyseir build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
-  pyseir build-all -s "Idaho" --fips "16001" --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
+  pyseir build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
+#  pyseir build-all -s "Idaho" -s "California" --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
@@ -90,6 +90,7 @@ execute_model() {
   echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
   pushd output
   zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
+  echo ">>> Moving Rt Combined Metric to Artifact Directory"
   mv pyseir/rt_combined_metric.csv "${API_OUTPUT_DIR}/rt_combined_metric.csv"
   popd
 }
