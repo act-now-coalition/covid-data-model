@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Union, Optional, Dict, Any
 import enum
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import can_model_output_schema as schema
@@ -40,7 +40,9 @@ def get_decomp_for_state(state: str) -> float:
 
 
 class ICUMetricData:
-    def __init__(self, data, latest_values, decomp_factor):
+    def __init__(
+        self, data: pd.DataFrame, latest_values: Dict[CommonFields, Any], decomp_factor: float
+    ):
         self.data = data
         self.latest_values = latest_values
         self.decomp_factor = decomp_factor
@@ -70,18 +72,18 @@ class ICUMetricData:
         return actuals
 
     @property
-    def total_icu_beds(self):
+    def total_icu_beds(self) -> Union[pd.Series, float]:
         timeseries = self.data[CommonFields.ICU_BEDS]
         if timeseries.any():
             return timeseries
         return self.latest_values[CommonFields.ICU_BEDS]
 
     @property
-    def typical_usage_rate(self):
+    def typical_usage_rate(self) -> float:
         return self.latest_values[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
 
     @property
-    def current_icu_non_covid_with_source(self):
+    def current_icu_non_covid_with_source(self) -> Tuple[pd.Series, NonCovidPatientsMethod]:
         if self.actual_current_icu_covid is not None and self.actual_current_icu_total is not None:
             source = NonCovidPatientsMethod.ACTUAL
             return (self.actual_current_icu_total - self.actual_current_icu_covid, source)
@@ -105,7 +107,7 @@ class ICUMetricData:
         return (decomp, source)
 
     @property
-    def current_icu_covid_with_source(self):
+    def current_icu_covid_with_source(self) -> Tuple[pd.Series, CovidPatientsMethod]:
         if self.actual_current_icu_covid is not None:
             source = CovidPatientsMethod.ACTUAL
             return self.actual_current_icu_covid, source
