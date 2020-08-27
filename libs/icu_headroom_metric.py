@@ -1,5 +1,6 @@
-from typing import Union, Optional, Dict, Any
+from typing import Union, Optional, Dict, Any, Tuple
 import enum
+import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import can_model_output_schema as schema
 
@@ -41,15 +42,20 @@ def get_decomp_for_state(state: str) -> float:
 
 class ICUMetricData:
     def __init__(
-        self, data: pd.DataFrame, latest_values: Dict[CommonFields, Any], decomp_factor: float
+        self,
+        timeseries_data: pd.DataFrame,
+        estimated_current_icu: Optional[pd.Series],
+        latest_values: Dict[CommonFields, Any],
+        decomp_factor: float,
     ):
-        self.data = data
-        self.latest_values = latest_values
+        self._data = timeseries_data
+        self._estimated_current_icu = estimated_current_icu
+        self._latest_values = latest_values
         self.decomp_factor = decomp_factor
 
     @property
     def actual_current_icu_covid(self) -> Optional[pd.Series]:
-        actuals = self.data[CommonFields.CURRENT_ICU]
+        actuals = self._data[CommonFields.CURRENT_ICU]
         if not actuals.any():
             return None
 
@@ -57,15 +63,15 @@ class ICUMetricData:
 
     @property
     def estimated_current_icu_covid(self) -> Optional[pd.Series]:
-        estimated = self.data[schema.CURRENT_ICU]
-        if not estimated.any():
+        estimated = self._estimated_current_icu
+        if estimated is None or not estimated.any():
             return None
 
         return estimated
 
     @property
     def actual_current_icu_total(self) -> Optional[pd.Series]:
-        actuals = self.data[CommonFields.CURRENT_ICU_TOTAL]
+        actuals = self._data[CommonFields.CURRENT_ICU_TOTAL]
         if not actuals.any():
             return None
 
@@ -73,17 +79,18 @@ class ICUMetricData:
 
     @property
     def total_icu_beds(self) -> Union[pd.Series, float]:
-        timeseries = self.data[CommonFields.ICU_BEDS]
+        timeseries = self._data[CommonFields.ICU_BEDS]
         if timeseries.any():
             return timeseries
-        return self.latest_values[CommonFields.ICU_BEDS]
+        return self._latest_values[CommonFields.ICU_BEDS]
 
     @property
     def typical_usage_rate(self) -> float:
-        return self.latest_values[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+        return self._latest_values[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
 
     @property
     def current_icu_non_covid_with_source(self) -> Tuple[pd.Series, NonCovidPatientsMethod]:
+        """Returns non-covid ICU patients and method used in calculation."""
         if self.actual_current_icu_covid is not None and self.actual_current_icu_total is not None:
             source = NonCovidPatientsMethod.ACTUAL
             return (self.actual_current_icu_total - self.actual_current_icu_covid, source)
@@ -101,7 +108,7 @@ class ICUMetricData:
             decomp.name = None
             return (decomp, source)
 
-        total_icu_beds = pd.Series([self.total_icu_beds] * len(self.data), index=self.data.index)
+        total_icu_beds = pd.Series([self.total_icu_beds] * len(self._data), index=self._data.index)
         decomp = non_covid_utilization * total_icu_beds
 
         return (decomp, source)
@@ -156,12 +163,16 @@ def calculate_icu_utilization_metric(icu_data: ICUMetricData):
     covid patient source:     Actuals | Estimates
 
     """
-    non_covid_patients, non_covid_source = icu_data.current_icu_non_covid_with_source
     current_icu_covid, covid_source = icu_data.current_icu_covid_with_source
-    metric = current_icu_covid / (icu_data.total_icu_beds - non_covid_patients)
+    if current_icu_covid is None:
+        return {
+            "metric": np.nan,
+            "current_icu_covid_source": None,
+            "current_icu_non_covid_source": None,
+        }
 
-    print(icu_data.total_icu_beds)
-    print(non_covid_patients, non_covid_source)
+    non_covid_patients, non_covid_source = icu_data.current_icu_non_covid_with_source
+    metric = current_icu_covid / (icu_data.total_icu_beds - non_covid_patients)
 
     return {
         "metric": metric,

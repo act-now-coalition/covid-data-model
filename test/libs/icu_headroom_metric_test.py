@@ -10,20 +10,21 @@ ICUMetricData = icu_headroom_metric.ICUMetricData
 def test_icu_metric_data_with_all_timeseries_actuals():
 
     data = io.StringIO(
-        "date,fips,current_icu,current_icu_total,icu_beds,infected_c\n"
-        "2020-08-10,36,10,25,50,20\n"
-        "2020-08-11,35,20,40,50,30\n"
+        "date,fips,current_icu,current_icu_total,icu_beds\n"
+        "2020-08-10,36,10,25,50\n"
+        "2020-08-11,35,20,40,50\n"
     )
-    data = common_df.read_csv(data, set_index=False)
+    data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
+    estimated_icu = pd.Series([20, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, {}, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, {}, 0.0)
     pd.testing.assert_series_equal(icu_data.actual_current_icu_covid, data.current_icu)
-    pd.testing.assert_series_equal(icu_data.estimated_current_icu_covid, data.infected_c)
+    pd.testing.assert_series_equal(icu_data.estimated_current_icu_covid, estimated_icu)
     pd.testing.assert_series_equal(icu_data.actual_current_icu_total, data.current_icu_total)
     pd.testing.assert_series_equal(icu_data.total_icu_beds, data.icu_beds)
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
-    pd.testing.assert_series_equal(non_covid, pd.Series([15, 20]))
+    pd.testing.assert_series_equal(non_covid, pd.Series([15, 20], index=data.index))
     assert source is icu_headroom_metric.NonCovidPatientsMethod.ACTUAL
 
     covid, source = icu_data.current_icu_covid_with_source
@@ -34,81 +35,85 @@ def test_icu_metric_data_with_all_timeseries_actuals():
 def test_icu_metric_data_with_estimated_from_total_icu_actuals():
     latest = {}
     data = io.StringIO(
-        "date,fips,current_icu,current_icu_total,icu_beds,infected_c\n"
-        "2020-08-10,36,,25,50,20\n"
-        "2020-08-11,35,,40,50,30\n"
+        "date,fips,current_icu,current_icu_total,icu_beds\n"
+        "2020-08-10,36,,25,50\n"
+        "2020-08-11,35,,40,50\n"
     )
-    data = common_df.read_csv(data, set_index=False)
+    data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
+    estimated_icu = pd.Series([20, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, latest, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0)
     assert not icu_data.actual_current_icu_covid
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
-    pd.testing.assert_series_equal(non_covid, pd.Series([5, 10]))
+    pd.testing.assert_series_equal(non_covid, pd.Series([5, 10], index=data.index))
     assert source is icu_headroom_metric.NonCovidPatientsMethod.ESTIMATED_FROM_TOTAL_ICU_ACTUAL
 
     covid, source = icu_data.current_icu_covid_with_source
-    pd.testing.assert_series_equal(covid, data.infected_c)
+    pd.testing.assert_series_equal(covid, estimated_icu)
     assert source is icu_headroom_metric.CovidPatientsMethod.ESTIMATED
 
 
 def test_icu_metric_data_with_estimated_from_decomp_and_total_beds_timeseries():
     latest = {CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5}
     data = io.StringIO(
-        "date,fips,current_icu,current_icu_total,icu_beds,infected_c\n"
-        "2020-08-10,36,,,50,20\n"
-        "2020-08-11,35,,,50,30\n"
+        "date,fips,current_icu,current_icu_total,icu_beds\n"
+        "2020-08-10,36,,,50\n"
+        "2020-08-11,35,,,50\n"
     )
-    data = common_df.read_csv(data, set_index=False)
+    data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
+    estimated_icu = pd.Series([20, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, latest, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0)
     assert not icu_data.actual_current_icu_covid
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
-    pd.testing.assert_series_equal(non_covid, pd.Series([25.0, 25.0]))
+    pd.testing.assert_series_equal(non_covid, pd.Series([25.0, 25.0], index=data.index))
     assert source is icu_headroom_metric.NonCovidPatientsMethod.ESTIMATED_FROM_TYPICAL_UTILIZATION
 
     covid, source = icu_data.current_icu_covid_with_source
-    pd.testing.assert_series_equal(covid, data.infected_c)
+    pd.testing.assert_series_equal(covid, estimated_icu)
     assert source is icu_headroom_metric.CovidPatientsMethod.ESTIMATED
 
 
 def test_icu_metric_data_with_estimated_from_decomp_and_latest_total_beds():
     latest = {CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5, CommonFields.ICU_BEDS: 50}
     data = io.StringIO(
-        "date,fips,current_icu,current_icu_total,icu_beds,infected_c\n"
-        "2020-08-10,36,,,,20\n"
-        "2020-08-11,35,,,,30\n"
+        "date,fips,current_icu,current_icu_total,icu_beds\n"
+        "2020-08-10,36,,,\n"
+        "2020-08-11,35,,,\n"
     )
-    data = common_df.read_csv(data, set_index=False)
+    data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
+    estimated_icu = pd.Series([20, 30], index=data.index)
 
-    icu_data = ICUMetricData(data, latest, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, latest, 0.0)
     assert not icu_data.actual_current_icu_covid
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
-    pd.testing.assert_series_equal(non_covid, pd.Series([25.0, 25.0]))
+    pd.testing.assert_series_equal(non_covid, pd.Series([25.0, 25.0], index=data.index))
     assert source is icu_headroom_metric.NonCovidPatientsMethod.ESTIMATED_FROM_TYPICAL_UTILIZATION
 
     covid, source = icu_data.current_icu_covid_with_source
-    pd.testing.assert_series_equal(covid, data.infected_c)
+    pd.testing.assert_series_equal(covid, estimated_icu)
     assert source is icu_headroom_metric.CovidPatientsMethod.ESTIMATED
 
 
 def test_icu_utilization_metric():
 
     data = io.StringIO(
-        "date,fips,current_icu,current_icu_total,icu_beds,infected_c\n"
-        "2020-08-11,36,20,40,40,30\n"
-        "2020-08-11,36,15,30,40,30\n"
+        "date,fips,current_icu,current_icu_total,icu_beds\n"
+        "2020-08-11,36,20,40,40\n"
+        "2020-08-12,36,15,30,40\n"
     )
+    data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
+    estimated_icu = pd.Series([30, 30], index=data.index)
 
-    data = common_df.read_csv(data, set_index=False)
-    icu_data = ICUMetricData(data, {}, 0.0)
+    icu_data = ICUMetricData(data, estimated_icu, {}, 0.0)
 
     results = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
 
     expected = {
-        "remaining_covid_capacity_ratio": pd.Series([1.0, 0.6]),
+        "metric": pd.Series([1.0, 0.6], index=data.index),
         "current_icu_covid_source": icu_headroom_metric.CovidPatientsMethod.ACTUAL,
         "current_icu_non_covid_source": icu_headroom_metric.NonCovidPatientsMethod.ACTUAL,
     }

@@ -57,9 +57,9 @@ def calculate_metrics_for_timeseries(
 
     data = timeseries.data.set_index(CommonFields.DATE)
 
+    estimated_current_icu = None
     infection_rate = np.nan
     infection_rate_ci90 = np.nan
-
     if model_output:
         # TODO(chris): Currently merging model output data into the timeseries data to align model
         # data with raw data.  However, if the index was properly set on both datasets to be DATE,
@@ -80,6 +80,7 @@ def calculate_metrics_for_timeseries(
 
         infection_rate = model_data[schema.RT_INDICATOR]
         infection_rate_ci90 = model_data[schema.RT_INDICATOR_CI90]
+        estimated_current_icu = model_data[schema.CURRENT_ICU]
 
     cumulative_cases = series_utils.interpolate_stalled_values(data[CommonFields.CASES])
     case_density = calculate_case_density(cumulative_cases, population)
@@ -99,7 +100,7 @@ def calculate_metrics_for_timeseries(
 
     # Caculate icu headroom
     decomp = icu_headroom_metric.get_decomp_for_state(latest[CommonFields.STATE])
-    icu_data = icu_headroom_metric.ICUMetricData(data, latest, decomp)
+    icu_data = icu_headroom_metric.ICUMetricData(data, estimated_current_icu, latest, decomp)
     icu_metric = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
 
     top_level_metrics_data = {
