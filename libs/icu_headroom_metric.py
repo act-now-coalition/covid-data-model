@@ -1,12 +1,10 @@
 from typing import Union, Optional, Dict, Any, Tuple
-import enum
 import numpy as np
+import pandas as pd
+
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import can_model_output_schema as schema
 from libs import series_utils
 from api import can_api_definition
-
-import pandas as pd
 
 
 NonCovidPatientsMethod = can_api_definition.NonCovidPatientsMethod
