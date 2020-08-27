@@ -692,16 +692,6 @@ class ModelFitter:
             return None
 
 
-def _persist_results_per_state(state_df):
-    county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
-    data = state_df.drop(["state", "mle_model"], axis=1)
-    data.to_json(county_output_file)
-
-    for fips, county_series in state_df.iterrows():
-        with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
-            pickle.dump(county_series.mle_model, f)
-
-
 def run_state(region: pipeline.Region) -> ModelFitter:
     """
     Run the fitter for a state.
