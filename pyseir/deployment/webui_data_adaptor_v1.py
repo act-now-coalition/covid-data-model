@@ -4,24 +4,19 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Mapping
 from typing import Optional
-from typing import Optional
 
 import structlog
 from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
-from multiprocessing import Pool
 
 import pyseir
 from libs import pipeline
 from libs.pipeline import Region
-from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
-from libs.pipeline import RegionalCombinedData
-from libs.pipeline import _log
-from libs.pipeline import load_inference_result
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.icu import infer_icu
+from pyseir.inference import model_fitter
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
@@ -43,10 +38,19 @@ class RegionalInput:
     region: Region
 
     _combined_data: RegionalCombinedData
+    _mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_region(region: Region) -> "RegionalInput":
         return RegionalInput(region=region, _combined_data=RegionalCombinedData.from_region(region))
+
+    @staticmethod
+    def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+        return RegionalInput(
+            region=fitter.region,
+            _combined_data=fitter.regional_input._combined_data,
+            _mle_fit_result=fitter.fit_results,
+        )
 
     @property
     def population(self):
@@ -68,11 +72,13 @@ class RegionalInput:
         : dict
             Dictionary of fit result information.
         """
-        return load_inference_result(self.region)
+        if self._mle_fit_result is not None:
+            return self._mle_fit_result
+        return pipeline.load_inference_result(self.region)
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
-        output_filename = self.region.run_artifact_path_to_write(
+        output_filename = self.region.run_artifact_path_to_read(
             pyseir.utils.RunArtifact.ENSEMBLE_RESULT
         )
         if not os.path.exists(output_filename):
@@ -90,7 +96,7 @@ class RegionalInput:
             DataFrame containing the R_t inferences.
         """
         if self.fips in NEW_ORLEANS_FIPS:
-            _log.info("Applying New Orleans Patch")
+            log.info("Applying New Orleans Patch")
             return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
 
         path = self.region.run_artifact_path_to_read(pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
@@ -121,7 +127,7 @@ class WebUIDataAdaptorV1:
         self.include_imputed = include_imputed
         self.output_dir = output_dir
 
-    def map_fips(self, regional_input: RegionalInput) -> None:
+    def write_region(self, regional_input: RegionalInput) -> None:
         """Generates the CAN UI output format for a given region.
 
         Args:
@@ -358,39 +364,3 @@ class WebUIDataAdaptorV1:
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
-
-    def generate_state(
-        self, regional_input: RegionalInput, whitelisted_county_fips: list, states_only=False,
-    ):
-        """
-        Generate the output for the webUI for the given state, and counties in that state if
-        states_only=False.
-
-        Parameters
-        ----------
-        regional_input: RegionalInput
-            Input for a state
-        whitelisted_county_fips:
-            Counties in the state
-        states_only: bool
-            If True only run the state level.
-        """
-
-        self.map_fips(regional_input)
-
-        if states_only:
-            return
-        else:
-            with Pool(maxtasksperchild=1) as p:
-                regions = map(pipeline.Region.from_fips, whitelisted_county_fips)
-                regional_inputs = map(RegionalInput.from_region, regions)
-                p.map(self.map_fips, regional_inputs)
-
-            return
-
-
-if __name__ == "__main__":
-    # Need to have a whitelist pre-generated
-    # Need to have state output already built
-    mapper = WebUIDataAdaptorV1(output_interval_days=1, run_mode="can-inference-derived")
-    mapper.generate_state("TX", whitelisted_county_fips=["48201"], states_only=False)

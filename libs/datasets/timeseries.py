@@ -44,6 +44,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
     @property
+    def empty(self):
+        return self.data.empty
+
+    @property
     def all_fips(self):
         return self.data.reset_index().fips.unique()
 
@@ -60,7 +64,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return self.get_subset(AggregationLevel.COUNTY).data
 
     def has_one_region(self) -> bool:
-        return len(self.all_fips) == 1
+        return self.data[CommonFields.FIPS].nunique() == 1
 
     def county_keys(self) -> List:
         """Returns a list of all (country, state, county) combinations."""
@@ -305,7 +309,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
 
 def _remove_padded_nans(df, columns):
-    if df[columns].isna().all().all():
+    if df[columns].isna().all(axis=None):
         return df.loc[[False] * len(df), :].reset_index(drop=True)
 
     first_valid_index = min(df[column].first_valid_index() for column in columns)

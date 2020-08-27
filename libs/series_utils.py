@@ -1,3 +1,5 @@
+from datetime import timedelta
+import datetime
 import pandas as pd
 import numpy as np
 
@@ -10,13 +12,15 @@ def smooth_with_rolling_average(
 ):
     """Smoothes series with a min period of 1.
 
+    Series must have a datetime index.
+
     https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.rolling.html
 
     Port of Projections.ts:
     https://github.com/covid-projections/covid-projections/blob/master/src/common/models/Projection.ts#L715
 
     Args:
-        series: Series to smooth.
+        series: Series with datetime index to smooth.
         window: Sliding window to average.
         include_trailing_zeros: Whether or not to NaN out trailing zeroes.
         exclude_negatives: Exclude negative values from rolling averages.
@@ -39,7 +43,7 @@ def smooth_with_rolling_average(
     last_valid_index = series.replace(0, np.nan).last_valid_index()
 
     if last_valid_index:
-        rolling_average[last_valid_index + 1 :] = np.nan
+        rolling_average[last_valid_index + timedelta(days=1) :] = np.nan
         return rolling_average
     else:  # entirely empty series:
         return series
@@ -49,8 +53,7 @@ def interpolate_stalled_values(series: pd.Series) -> pd.Series:
     """Interpolates periods where values have stopped increasing,
 
     Args:
-        series: Series
-
+        series: Series with a datetime index
     """
     series = series.copy()
     start, end = series.first_valid_index(), series.last_valid_index()
@@ -59,6 +62,26 @@ def interpolate_stalled_values(series: pd.Series) -> pd.Series:
     series_with_values[(series_with_values.diff() == 0)] = None
     # Use the index to determine breaks between data (so
     # missing data is not improperly interpolated)
-    series.loc[start:end] = series_with_values.interpolate(method="index").round()
+    series.loc[start:end] = series_with_values.interpolate(method="time").round()
 
     return series
+
+
+def has_recent_data(
+    series: pd.Series, days_back: int = 14, required_non_null_datapoints: int = 7
+) -> bool:
+    """Checks to see if series has recent non-null data with at least one non-zero data point
+
+    Args:
+        series: Series with a datetime index.
+        days_back: Number of days back to look
+        required_non_null_datapoints: Number of non-null data points required.
+
+    Returns: True if has recent data, otherwise false.
+    """
+    today = datetime.datetime.today().date()
+    start_date = today - timedelta(days=days_back)
+    recent_series = series[start_date:]
+    num_datapoints = recent_series.notnull().sum()
+    has_nonzero_points = (recent_series > 0).any()
+    return num_datapoints >= required_non_null_datapoints and has_nonzero_points

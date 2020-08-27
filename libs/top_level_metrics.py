@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 import enum
 from datetime import timedelta
 import pandas as pd
@@ -12,9 +12,10 @@ from libs.datasets import combined_datasets
 from libs.datasets import can_model_output_schema as schema
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs import icu_headroom_metric
 
 Metrics = can_api_definition.Metrics
-
+ICUHeadroomMetricDetails = can_api_definition.ICUHeadroomMetricDetails
 # We will assume roughly 5 tracers are needed to trace a case within 48h.
 # The range we give here could be between 5-15 contact tracers per case.
 CONTACT_TRACERS_PER_CASE = 5
@@ -31,6 +32,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     CONTACT_TRACER_CAPACITY_RATIO = "contactTracerCapacityRatio"
     INFECTION_RATE = "infectionRate"
     INFECTION_RATE_CI90 = "infectionRateCI90"
+    ICU_HEADROOM_RATIO = "icuHeadroomRatio"
 
 
 def calculate_top_level_metrics_for_fips(fips: str):
@@ -46,18 +48,21 @@ def calculate_top_level_metrics_for_fips(fips: str):
 
 
 def calculate_metrics_for_timeseries(
-    timeseries: TimeseriesDataset, latest: dict, model_output: Optional[CANPyseirLocationOutput]
-) -> pd.DataFrame:
+    timeseries: TimeseriesDataset,
+    latest: dict,
+    model_output: Optional[CANPyseirLocationOutput],
+    require_recent_icu_data: bool = True,
+) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
     assert len(timeseries.all_fips) == 1
     fips = latest[CommonFields.FIPS]
     population = latest[CommonFields.POPULATION]
 
-    data = timeseries.data
+    data = timeseries.data.set_index(CommonFields.DATE)
 
+    estimated_current_icu = None
     infection_rate = np.nan
     infection_rate_ci90 = np.nan
-
     if model_output:
         # TODO(chris): Currently merging model output data into the timeseries data to align model
         # data with raw data.  However, if the index was properly set on both datasets to be DATE,
@@ -66,22 +71,19 @@ def calculate_metrics_for_timeseries(
 
         # Only merging date up to the most recent timeseries date (model data includes
         # future projections for other values and we don't want to pad the end with NaNs).
-        up_to_latest_day = model_output.data[CommonFields.DATE] <= data[CommonFields.DATE].max()
+        up_to_latest_day = model_output.data[schema.DATE] <= data.index.max()
         fields_to_include = [
             schema.DATE,
-            schema.FIPS,
             schema.RT_INDICATOR,
             schema.RT_INDICATOR_CI90,
+            schema.CURRENT_ICU,
         ]
         model_data = model_output.data.loc[up_to_latest_day, fields_to_include]
-        data = data.merge(
-            model_data,
-            left_on=[CommonFields.DATE, CommonFields.FIPS],
-            right_on=[schema.DATE, schema.FIPS],
-            how="outer",
-        )
-        infection_rate = data[schema.RT_INDICATOR]
-        infection_rate_ci90 = data[schema.RT_INDICATOR_CI90]
+        model_data = model_data.set_index(schema.DATE)
+
+        infection_rate = model_data[schema.RT_INDICATOR]
+        infection_rate_ci90 = model_data[schema.RT_INDICATOR_CI90]
+        estimated_current_icu = model_data[schema.CURRENT_ICU]
 
     cumulative_cases = series_utils.interpolate_stalled_values(data[CommonFields.CASES])
     case_density = calculate_case_density(cumulative_cases, population)
@@ -98,18 +100,32 @@ def calculate_metrics_for_timeseries(
     contact_tracer_capacity = calculate_contact_tracers(
         cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
     )
+
+    # Caculate icu headroom
+    decomp = icu_headroom_metric.get_decomp_for_state(latest[CommonFields.STATE])
+    icu_data = icu_headroom_metric.ICUMetricData(
+        data, estimated_current_icu, latest, decomp, require_recent_data=require_recent_icu_data
+    )
+    icu_metric, icu_metric_details = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
+
     top_level_metrics_data = {
-        CommonFields.DATE: data[CommonFields.DATE],
         CommonFields.FIPS: fips,
         MetricsFields.CASE_DENSITY_RATIO: case_density,
         MetricsFields.TEST_POSITIVITY: test_positivity,
         MetricsFields.CONTACT_TRACER_CAPACITY_RATIO: contact_tracer_capacity,
         MetricsFields.INFECTION_RATE: infection_rate,
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
+        MetricsFields.ICU_HEADROOM_RATIO: icu_metric,
     }
-    metrics = pd.DataFrame(top_level_metrics_data, index=test_positivity.index)
+    metrics = pd.DataFrame(top_level_metrics_data)
+    metrics.index.name = CommonFields.DATE
+    metrics = metrics.reset_index()
 
-    return metrics.reset_index(drop=True)
+    metric_summary = None
+    if not metrics.empty:
+        metric_summary = calculate_latest_metrics(metrics, icu_metric_details)
+
+    return metrics, metric_summary
 
 
 def calculate_case_density(
@@ -155,6 +171,7 @@ def calculate_test_positivity(
 
     if any(last_n_positive) and last_n_negative.isna().all():
         return pd.Series([], dtype="float64")
+
     return positive_smoothed / (negative_smoothed + positive_smoothed)
 
 
@@ -188,7 +205,9 @@ def calculate_metrics_for_counties_in_state(state: str):
         yield calculate_top_level_metrics_for_fips(fips)
 
 
-def calculate_latest_metrics(data: pd.DataFrame) -> Metrics:
+def calculate_latest_metrics(
+    data: pd.DataFrame, icu_metric_details: Optional[ICUHeadroomMetricDetails]
+) -> Metrics:
     """Calculate latest metrics from top level metrics data.
 
     Args:
@@ -224,4 +243,4 @@ def calculate_latest_metrics(data: pd.DataFrame) -> Metrics:
 
     metrics[MetricsFields.INFECTION_RATE] = data[MetricsFields.INFECTION_RATE][rt_index]
     metrics[MetricsFields.INFECTION_RATE_CI90] = data[MetricsFields.INFECTION_RATE_CI90][rt_index]
-    return Metrics(**metrics)
+    return Metrics(**metrics, icuHeadroomDetails=icu_metric_details)
