@@ -4,8 +4,8 @@ from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
-from pyseir.inference.whitelist_generator import WhitelistGenerator
-from pyseir.inference.whitelist_generator import regions_in_states
+from pyseir.inference.whitelist import WhitelistGenerator
+from pyseir.inference.whitelist import regions_in_states
 from test.dataset_utils_test import read_csv_and_index_fips
 from test.dataset_utils_test import read_csv_and_index_fips_date
 

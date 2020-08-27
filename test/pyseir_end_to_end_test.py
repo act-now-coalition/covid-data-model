@@ -3,7 +3,7 @@ import unittest
 
 from libs import pipeline
 from pyseir import cli
-from pyseir.inference import whitelist_generator
+from pyseir.inference import whitelist
 from pyseir.utils import get_run_artifact_path, RunArtifact
 import libs.datasets.can_model_output_schema as schema
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
@@ -37,7 +37,7 @@ def test_pyseir_end_to_end_idaho(tmp_path):
 def test_filters_counties_properly(fips, expected_results):
     whitelist_df = cli._generate_whitelist()
     state_regions = [pipeline.Region.from_state("ID")]
-    results = whitelist_generator.regions_in_states(state_regions, whitelist_df, fips=fips)
+    results = whitelist.regions_in_states(state_regions, whitelist_df, fips=fips)
     if fips and expected_results:
         assert results == [pipeline.Region.from_fips(fips)]
     elif expected_results:
