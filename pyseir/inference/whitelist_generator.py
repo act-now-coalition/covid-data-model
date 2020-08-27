@@ -90,7 +90,7 @@ def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
         county=combined_data.iat[0, combined_data.columns.get_loc(CommonFields.COUNTY)],
         total_cases=observed_new_cases.sum(),
         total_deaths=observed_new_deaths.sum(),
-        nonzero_case_datapoints=np.sum(observed_new_cases > 0),
-        nonzero_death_datapoints=np.sum(observed_new_deaths > 0),
+        nonzero_case_datapoints=np.sum(observed_new_cases[~np.isnan(observed_new_cases)] > 0),
+        nonzero_death_datapoints=np.sum(observed_new_deaths[~np.isnan(observed_new_deaths)] > 0),
     )
     return pd.Series(record)
