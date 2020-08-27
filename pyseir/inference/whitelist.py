@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass
 from typing import List
 
 import pandas as pd
@@ -19,33 +20,21 @@ VISIBIBLE_PROGRESS_BAR = os.environ.get("PYSEIR_VERBOSITY") == "True"
 pandarallel.initialize(progress_bar=VISIBIBLE_PROGRESS_BAR)
 
 
+@dataclass
 class WhitelistGenerator:
     """
     This class applies filters to inference results to determine a set of
     Counties to whitelist in the API.
-
-    Parameters
-    ----------
-    total_cases: int
-        Min number of total cases to whitelist.
-    total_deaths: int
-        Min number of total cases to whitelist.
-    nonzero_case_datapoints: int
-        Nonzero case datapoints.
-    nonzero_death_datapoints: int
-        Minimum number of nonzero death datapoints in the time series to allow
-        display.
     """
 
-    def __init__(
-        self, total_cases=50, total_deaths=0, nonzero_case_datapoints=5, nonzero_death_datapoints=0
-    ):
-        self.df_whitelist = None
-
-        self.total_cases = total_cases
-        self.total_deaths = total_deaths
-        self.nonzero_case_datapoints = nonzero_case_datapoints
-        self.nonzero_death_datapoints = nonzero_death_datapoints
+    # Min number of total cases to whitelist.
+    total_cases: int = 50
+    # Min number of total cases to whitelist.
+    total_deaths: int = 0
+    # Nonzero case datapoints.
+    nonzero_case_datapoints: int = 5
+    # Minimum number of nonzero death datapoints in the time series to allow display.
+    nonzero_death_datapoints: int = 0
 
     def generate_whitelist(self, timeseries: TimeseriesDataset) -> pd.DataFrame:
         """
@@ -75,10 +64,10 @@ class WhitelistGenerator:
         output_path = get_run_artifact_path(
             fips="06", artifact=RunArtifact.WHITELIST_RESULT  # Dummy fips since not used here...
         )
-        df_whitelist = df_candidates[["fips", "state", "county", "inference_ok"]]
-        df_whitelist.to_json(output_path)
+        whitelist_df = df_candidates[["fips", "state", "county", "inference_ok"]]
+        whitelist_df.to_json(output_path)
 
-        return df_whitelist
+        return whitelist_df
 
 
 def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
