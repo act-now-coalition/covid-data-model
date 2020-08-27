@@ -8,7 +8,6 @@ from pyseir import load_data
 from datetime import datetime
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import AggregationLevel
-from libs.datasets import combined_datasets
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from pandarallel import pandarallel
 
@@ -86,6 +85,7 @@ def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
     )
     record = dict(
         fips=fips,
+        # Get the state and county values from the first row of the dataframe.
         state=combined_data.iat[0, combined_data.columns.get_loc(CommonFields.STATE)],
         county=combined_data.iat[0, combined_data.columns.get_loc(CommonFields.COUNTY)],
         total_cases=observed_new_cases.sum(),

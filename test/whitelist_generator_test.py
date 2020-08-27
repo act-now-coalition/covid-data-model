@@ -1,15 +1,11 @@
 import pytest
 from covidactnow.datapublic.common_test_helpers import to_dict
-
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from pyseir.inference.whitelist_generator import WhitelistGenerator
-
-
-# turns all warnings into errors for this module
-from test.dataset_utils_test import read_csv_and_index_fips
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
+# turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error")
 
 
