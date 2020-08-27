@@ -9,8 +9,9 @@ from typing import Optional
 import click
 import us
 import logging
-from covidactnow.datapublic import common_init
 import pandas as pd
+
+from covidactnow.datapublic import common_init
 
 from multiprocessing import Pool
 from functools import partial
