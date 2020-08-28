@@ -229,9 +229,8 @@ def test_generate_infection_rate_metric_two_aggregate_levels():
 def test_generate_infection_rate_metric_fake_fips():
     FIPS = ["48999"]  # TX Misc Fips Holder
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
-
-    df = cli._generate_infection_rate_metric(regions)
-    assert df.empty
+    with pytest.raises(AssertionError):
+        cli._generate_infection_rate_metric(regions)
 
 
 @pytest.mark.xfail(raises=ValueError)

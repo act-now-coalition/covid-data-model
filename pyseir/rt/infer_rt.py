@@ -54,6 +54,9 @@ def run_rt(
     """Entry Point for Infer Rt
 
     Returns an empty DataFrame if inference was not possible.
+
+    Note: 28 August 2020: The include_deaths flag is deprecated and will soon be removed with the
+    infection rate only calculated from the cases timeseries.
     """
 
     # Generate the Data Packet to Pass to RtInferenceEngine
@@ -177,6 +180,9 @@ def filter_and_smooth_input_data(
                 figure_collector["1_smoothed_cases"] = fig
 
         df[column] = smoothed
+
+    if not include_deaths:
+        df = df.drop(columns=CommonFields.DEATHS, inplace=False)
 
     return df
 
