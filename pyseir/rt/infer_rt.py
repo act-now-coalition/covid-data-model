@@ -7,14 +7,17 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
-from matplotlib import pyplot as plt
+
+# from matplotlib import pyplot as plt
 
 from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import load_data
 from pyseir.utils import TimeseriesType, RunArtifact
 from pyseir.rt.constants import InferRtConstants
-from pyseir.rt import plotting, utils, whitelist
+from pyseir.rt import utils, whitelist
+
+# from pyseir.rt import plotting
 from covidactnow.datapublic.common_fields import CommonFields
 
 
@@ -141,8 +144,6 @@ def filter_and_smooth_input_data(
     log: structlog.BoundLoggerBase,
 ) -> pd.DataFrame:
 
-    dates = df.index
-    # Apply Business Logic To Filter Raw Data
     for column in [CommonFields.CASES, CommonFields.DEATHS]:
         # Now Apply Input Outlier Detection and Smoothing
 
@@ -158,28 +159,29 @@ def filter_and_smooth_input_data(
         ).mean(std=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD)
         # TODO: Only start once non-zero to maintain backwards compatibility?
 
-        if column == "cases":
-            fig = plt.figure(figsize=(10, 6))
-            ax = fig.add_subplot(111)  # plt.axes
-            ax.set_yscale("log")
-            chart_min = max(0.1, smoothed.min())
-            ax.set_ylim((chart_min, df[column].max()))
-            plt.scatter(
-                dates[-len(df[column]) :], df[column], alpha=0.3, label=f"Smoothing of: {column}",
-            )
-            plt.plot(dates[-len(df[column]) :], smoothed)
-            plt.grid(True, which="both")
-            plt.xticks(rotation=30)
-            plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
-
-            if not figure_collector:
-                plot_path = region.run_artifact_path_to_write(RunArtifact.RT_SMOOTHING_REPORT)
-                plt.savefig(plot_path, bbox_inches="tight")
-                plt.close(fig)
-            else:
-                figure_collector["1_smoothed_cases"] = fig
-
         df[column] = smoothed
+
+        # if column == CommonFields.CASES:
+        #     dates = df.index
+        #     fig = plt.figure(figsize=(10, 6))
+        #     ax = fig.add_subplot(111)  # plt.axes
+        #     ax.set_yscale("log")
+        #     chart_min = max(0.1, smoothed.min())
+        #     ax.set_ylim((chart_min, df[column].max()))
+        #     plt.scatter(
+        #         dates[-len(df[column]):], df[column], alpha=0.3, label=f"Smoothing of: {column}",
+        #     )
+        #     plt.plot(dates[-len(df[column]) :], smoothed)
+        #     plt.grid(True, which="both")
+        #     plt.xticks(rotation=30)
+        #     plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
+        #
+        #     if not figure_collector:
+        #         plot_path = region.run_artifact_path_to_write(RunArtifact.RT_SMOOTHING_REPORT)
+        #         plt.savefig(plot_path, bbox_inches="tight")
+        #         plt.close(fig)
+        #     else:
+        #         figure_collector["1_smoothed_cases"] = fig
 
     if not include_deaths:
         df = df.drop(columns=CommonFields.DEATHS, inplace=False)
@@ -501,9 +503,9 @@ class RtInferenceEngine:
 
         self.log_likelihood = log_likelihood
 
-        if plot:
-            plotting.plot_posteriors(x=posteriors)  # Returns Figure.
-            # The interpreter will handle this as it sees fit. Normal builds never call plot flag.
+        # if plot:
+        #     plotting.plot_posteriors(x=posteriors)  # Returns Figure.
+        #     # The interpreter will handle this as it sees fit. Normal builds never call plot flag.
 
         start_idx = -len(posteriors.columns)
 
@@ -697,20 +699,20 @@ class RtInferenceEngine:
                 / np.power(suppression, self.tail_suppression_correction / 2)
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
-        if plot:
-            fig = plotting.plot_rt(
-                df=df_all,
-                include_deaths=self.include_deaths,
-                shift_deaths=shift_deaths,
-                display_name=self.display_name,
-            )
-            if self.figure_collector is None:
-                output_path = self.regional_input.region.run_artifact_path_to_write(
-                    RunArtifact.RT_INFERENCE_REPORT
-                )
-                fig.savefig(output_path, bbox_inches="tight")
-            else:
-                self.figure_collector["3_Rt_inference"] = fig
+        # if plot:
+        #     fig = plotting.plot_rt(
+        #         df=df_all,
+        #         include_deaths=self.include_deaths,
+        #         shift_deaths=shift_deaths,
+        #         display_name=self.display_name,
+        #     )
+        #     if self.figure_collector is None:
+        #         output_path = self.regional_input.region.run_artifact_path_to_write(
+        #             RunArtifact.RT_INFERENCE_REPORT
+        #         )
+        #         fig.savefig(output_path, bbox_inches="tight")
+        #     else:
+        #         self.figure_collector["3_Rt_inference"] = fig
         if df_all.empty:
             self.log.warning("Inference not possible")
         else:
