@@ -14,7 +14,9 @@ from libs.datasets import timeseries
 from pyseir import load_data
 from pyseir.utils import TimeseriesType, RunArtifact
 from pyseir.rt.constants import InferRtConstants
-from pyseir.rt import plotting, utils
+from pyseir.rt import plotting, utils, whitelist
+from covidactnow.datapublic.common_fields import CommonFields
+
 
 rt_log = structlog.get_logger(__name__)
 
@@ -101,24 +103,13 @@ def _generate_input_data(
     include_testing_correction: bool
         If True, include a correction for testing increases and decreases.
     """
+    log = rt_log.bind(region=regional_input.display_name)
     # TODO: Outlier Removal Before Test Correction
-    try:
-        (
-            times,
-            observed_new_cases,
-            observed_new_deaths,
-        ) = load_data.calculate_new_case_data_by_region(
-            regional_input.get_timeseries(),
-            t0=InferRtConstants.REF_DATE,
-            include_testing_correction=include_testing_correction,
-        )
-    except AssertionError as e:
-        rt_log.exception(
-            event="An AssertionError was raised in the loading of the data for the calculation of "
-            "the Infection Rate Metric",
-            region=regional_input.display_name,
-        )
-        return pd.DataFrame()
+    (times, observed_new_cases, observed_new_deaths,) = load_data.calculate_new_case_data_by_region(
+        regional_input.get_timeseries(),
+        t0=InferRtConstants.REF_DATE,
+        include_testing_correction=include_testing_correction,
+    )
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
 
@@ -127,9 +118,16 @@ def _generate_input_data(
         include_deaths=include_deaths,
         figure_collector=figure_collector,
         region=regional_input.region,
-        log=rt_log.new(region=regional_input.display_name),
+        log=log,
     )
-    return df
+
+    # Evaluate if smoothed values meet acceptance criteria
+    if whitelist.evaluate_tests(
+        s=df[CommonFields.CASES], tests=whitelist.get_full_test_suite(), log=log
+    ):
+        return df
+    else:
+        return pd.DataFrame()
 
 
 def filter_and_smooth_input_data(
@@ -139,18 +137,10 @@ def filter_and_smooth_input_data(
     figure_collector: Optional[list],
     log: structlog.BoundLoggerBase,
 ) -> pd.DataFrame:
-    """Do Filtering Here Before it Gets to the Inference Engine"""
-    MIN_CUMULATIVE_COUNTS = dict(cases=20, deaths=10)
-    MIN_INCIDENT_COUNTS = dict(cases=5, deaths=5)
 
     dates = df.index
     # Apply Business Logic To Filter Raw Data
-    for column in ["cases", "deaths"]:
-        requirements = [  # All Must Be True
-            df[column].count() > InferRtConstants.MIN_TIMESERIES_LENGTH,
-            df[column].sum() > MIN_CUMULATIVE_COUNTS[column],
-            df[column].max() > MIN_INCIDENT_COUNTS[column],
-        ]
+    for column in [CommonFields.CASES, CommonFields.DEATHS]:
         # Now Apply Input Outlier Detection and Smoothing
 
         filtered = utils.replace_outliers(df[column], log=rt_log.new(column=column))
@@ -165,44 +155,28 @@ def filter_and_smooth_input_data(
         ).mean(std=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD)
         # TODO: Only start once non-zero to maintain backwards compatibility?
 
-        # Check if the Post Smoothed Meets the Requirements
-        requirements.append(smoothed.max() > MIN_INCIDENT_COUNTS[column])
+        if column == "cases":
+            fig = plt.figure(figsize=(10, 6))
+            ax = fig.add_subplot(111)  # plt.axes
+            ax.set_yscale("log")
+            chart_min = max(0.1, smoothed.min())
+            ax.set_ylim((chart_min, df[column].max()))
+            plt.scatter(
+                dates[-len(df[column]) :], df[column], alpha=0.3, label=f"Smoothing of: {column}",
+            )
+            plt.plot(dates[-len(df[column]) :], smoothed)
+            plt.grid(True, which="both")
+            plt.xticks(rotation=30)
+            plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
 
-        # Check include_deaths Flag
-        if column == "deaths" and not include_deaths:
-            requirements.append(False)
-        else:
-            requirements.append(True)
+            if not figure_collector:
+                plot_path = region.run_artifact_path_to_write(RunArtifact.RT_SMOOTHING_REPORT)
+                plt.savefig(plot_path, bbox_inches="tight")
+                plt.close(fig)
+            else:
+                figure_collector["1_smoothed_cases"] = fig
 
-        if all(requirements):
-            if column == "cases":
-                fig = plt.figure(figsize=(10, 6))
-                ax = fig.add_subplot(111)  # plt.axes
-                ax.set_yscale("log")
-                chart_min = max(0.1, smoothed.min())
-                ax.set_ylim((chart_min, df[column].max()))
-                plt.scatter(
-                    dates[-len(df[column]) :],
-                    df[column],
-                    alpha=0.3,
-                    label=f"Smoothing of: {column}",
-                )
-                plt.plot(dates[-len(df[column]) :], smoothed)
-                plt.grid(True, which="both")
-                plt.xticks(rotation=30)
-                plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
-
-                if not figure_collector:
-                    plot_path = region.run_artifact_path_to_write(RunArtifact.RT_SMOOTHING_REPORT)
-                    plt.savefig(plot_path, bbox_inches="tight")
-                    plt.close(fig)
-                else:
-                    figure_collector["1_smoothed_cases"] = fig
-
-            df[column] = smoothed
-        else:
-            df = df.drop(columns=column, inplace=False)
-            log.info("Dropping:", columns=column, requirements=requirements)
+        df[column] = smoothed
 
     return df
 
