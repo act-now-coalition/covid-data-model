@@ -26,8 +26,9 @@ def get_full_test_suite() -> List[InclusionCriteria]:
         InclusionCriteria("Sufficient_Cumulative_Cases", lambda x: check_total_counts(x)),
         InclusionCriteria("Sufficient_Incident_Cases", lambda x: check_min_incident_counts(x)),
         InclusionCriteria("Sufficient_Number_of_Datapoints", lambda x: check_min_length(x)),
-        InclusionCriteria("Sufficient_Recent_Data", lambda x: series_utils.has_recent_data(x)),
-        InclusionCriteria("Sufficient_Recent_Cases", lambda x: check_recent_cases(x)),
+        # Additional Criteria to be included after confirming refactor is stable
+        # InclusionCriteria("Sufficient_Recent_Data", lambda x: series_utils.has_recent_data(x)),
+        # InclusionCriteria("Sufficient_Recent_Cases", lambda x: check_recent_cases(x)),
     ]
 
 
