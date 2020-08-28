@@ -194,6 +194,7 @@ def calculate_new_case_data_by_region(
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
+@lru_cache(maxsize=None)
 def get_hospitalization_data():
     """
     Since we're using this data for hospitalized data only, only returning
@@ -204,15 +205,16 @@ def get_hospitalization_data():
     -------
     TimeseriesDataset
     """
+    # TODO(tom): Change this function to accept the combined TimeseriesDataset as a parameter
+    # and call it once so the cache can be removed.
     data = combined_datasets.load_us_timeseries_dataset().data
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
     return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
 
 
-@lru_cache(maxsize=32)
-def load_hospitalization_data(
-    fips: str,
+def calculate_hospitalization_data(
+    hospitalization_df: pd.DataFrame,
     t0: datetime,
     category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
 ):
@@ -223,8 +225,8 @@ def load_hospitalization_data(
 
     Parameters
     ----------
-    fips: str
-        County fips to lookup.
+    hospitalization_df: pd.DataFrame
+        A DataFrame containing only one region of data returned by `get_hospitalization_data`
     t0: datetime
         Datetime to offset by.
     category: HospitalizationCategory
@@ -238,27 +240,23 @@ def load_hospitalization_data(
     type: HospitalizationDataType
         Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = get_hospitalization_data().get_data(fips=fips)
-
-    if len(hospitalization_data) == 0:
+    if len(hospitalization_df) == 0:
         return None, None, None
 
-    if (hospitalization_data[f"current_{category}"] > 0).any():
-        hospitalization_data = hospitalization_data[
-            hospitalization_data[f"current_{category}"].notnull()
-        ]
-        relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
+    if (hospitalization_df[f"current_{category}"] > 0).any():
+        hospitalization_df = hospitalization_df[hospitalization_df[f"current_{category}"].notnull()]
+        relative_days = (hospitalization_df["date"].dt.date - t0.date()).dt.days.values
         return (
             relative_days,
-            hospitalization_data[f"current_{category}"].values.clip(min=0),
+            hospitalization_df[f"current_{category}"].values.clip(min=0),
             HospitalizationDataType.CURRENT_HOSPITALIZATIONS,
         )
-    elif (hospitalization_data[f"cumulative_{category}"] > 0).any():
-        hospitalization_data = hospitalization_data[
-            hospitalization_data[f"cumulative_{category}"].notnull()
+    elif (hospitalization_df[f"cumulative_{category}"] > 0).any():
+        hospitalization_df = hospitalization_df[
+            hospitalization_df[f"cumulative_{category}"].notnull()
         ]
-        relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
-        cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
+        relative_days = (hospitalization_df["date"].dt.date - t0.date()).dt.days.values
+        cumulative = hospitalization_df[f"cumulative_{category}"].values.clip(min=0)
         # Some minor glitches for a few states..
         for i in range(len(cumulative[1:])):
             if cumulative[i] > cumulative[i + 1]:
