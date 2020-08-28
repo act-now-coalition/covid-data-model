@@ -241,4 +241,4 @@ def test_generate_infection_rate_with_nans():
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
     df = cli._generate_infection_rate_metric(regions)
     returned_fips = df.fips.unique()
-    assert "06" in returned_fips
+    assert "25001" in returned_fips
