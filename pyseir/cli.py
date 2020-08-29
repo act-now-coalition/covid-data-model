@@ -68,8 +68,9 @@ def _state_only_pipeline(
 ) -> model_fitter.ModelFitter:
     assert region.is_state()
 
-    infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
-    fitter = model_fitter.run_state(region)
+    infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
+    fitter_input = model_fitter.RegionalInput.from_state_region(region)
+    fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
     ensembles_input = ensemble_runner.RegionalInput.from_model_fitter(fitter)
     ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": run_mode})
     return fitter
@@ -115,7 +116,7 @@ def _build_all_for_states(
         # calculate model fit
         root.info(f"executing model for {len(all_county_regions)} counties")
         fitter_inputs = [
-            model_fitter.RegionalInput.from_region(
+            model_fitter.RegionalInput.from_substate_region(
                 r, state_fitter=state_fitter_map.get(r.get_state_region())
             )
             for r in all_county_regions
@@ -164,24 +165,6 @@ def generate_whitelist():
 def run_infer_rt(state, states_only):
     for state in _states_region_list(state=state, default=ALL_STATES):
         infer_rt.run_rt(infer_rt.RegionalInput.from_region(state))
-
-
-@entry_point.command()
-@click.option(
-    "--state", help="State to generate files for. If no state is given, all states are computed."
-)
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def run_mle_fits(state, states_only):
-    states_regions = _states_region_list(state=state, default=ALL_STATES)
-
-    for region in states_regions:
-        model_fitter.run_state(region)
-
-    if not states_only:
-        whitelist_df = _generate_whitelist()
-        for region in states_regions:
-            county_regions = whitelist.regions_in_states([region], whitelist_df=whitelist_df)
-            model_fitter.run_counties_of_state(county_regions)
 
 
 @entry_point.command()

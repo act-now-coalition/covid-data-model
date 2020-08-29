@@ -1,3 +1,4 @@
+from libs import pipeline
 from pyseir.inference import model_fitter
 
 
@@ -13,9 +14,10 @@ def test_get_pyseir_fitter_initial_conditions():
         "hosp_fraction",
     ]
 
-    mapping = model_fitter.RegionalInput.from_fips("01").get_pyseir_fitter_initial_conditions(
-        params
-    )
+    region = pipeline.Region.from_fips("01")
+    mapping = model_fitter.RegionalInput.from_state_region(
+        region
+    ).get_pyseir_fitter_initial_conditions(params)
 
     assert mapping["R0"] > 0
     assert mapping["t0"] > 0
@@ -33,8 +35,9 @@ def test_get_pyseir_fitter_initial_conditions_none():
         "hosp_fraction",
     ]
 
-    mapping = model_fitter.RegionalInput.from_fips("99").get_pyseir_fitter_initial_conditions(
-        params
-    )
+    region = pipeline.Region.from_fips("99")
+    mapping = model_fitter.RegionalInput.from_state_region(
+        region
+    ).get_pyseir_fitter_initial_conditions(params)
 
     assert mapping == {}

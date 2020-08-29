@@ -48,7 +48,7 @@ def run_rt(
     include_deaths: bool = False,
     include_testing_correction: bool = False,
     figure_collector: Optional[list] = None,
-):
+) -> Optional[pd.DataFrame]:
     """Entry Point for Infer Rt"""
 
     # Generate the Data Packet to Pass to RtInferenceEngine
@@ -537,7 +537,7 @@ class RtInferenceEngine:
 
         return available_timeseries
 
-    def infer_all(self, plot=True, shift_deaths=0):
+    def infer_all(self, plot=True, shift_deaths=0) -> Optional[pd.DataFrame]:
         """
         Infer R_t from all available data sources.
 
