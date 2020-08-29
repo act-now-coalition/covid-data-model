@@ -697,22 +697,26 @@ class ModelFitter:
             if observed_new_cases.sum() < 1:
                 return None
 
-        retries_left = n_retries
-        model_is_empty = True
-        while retries_left > 0 and model_is_empty:
-            model_fitter = cls(regional_input)
-            try:
-                model_fitter.fit()
-                if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
-                    model_plotting.plot_fitting_results(model_fitter)
-            except RuntimeError as e:
-                log.warning("No convergence.. Retrying " + str(e))
-            retries_left = retries_left - 1
-            if model_fitter.mle_model:
-                model_is_empty = False
-        if retries_left <= 0 and model_is_empty:
-            raise RuntimeError(f"Could not converge after {n_retries} for {regional_input}")
-        return model_fitter
+        try:
+            retries_left = n_retries
+            model_is_empty = True
+            while retries_left > 0 and model_is_empty:
+                model_fitter = cls(regional_input)
+                try:
+                    model_fitter.fit()
+                    if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
+                        model_plotting.plot_fitting_results(model_fitter)
+                except RuntimeError as e:
+                    log.warning("No convergence.. Retrying " + str(e))
+                retries_left = retries_left - 1
+                if model_fitter.mle_model:
+                    model_is_empty = False
+            if retries_left <= 0 and model_is_empty:
+                raise RuntimeError(f"Could not converge after {n_retries} for {regional_input}")
+            return model_fitter
+        except Exception:
+            log.exception(f"Failed to run {regional_input}")
+            return None
 
 
 def run_state(region: pipeline.Region) -> ModelFitter:
