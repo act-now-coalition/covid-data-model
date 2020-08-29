@@ -89,6 +89,8 @@ execute_model() {
   echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
   pushd output
   zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
+  echo ">>> Moving Rt Combined Metric to Artifact Directory"
+  mv pyseir/rt_combined_metric.csv "${API_OUTPUT_DIR}/rt_combined_metric.csv"
   popd
 }
 

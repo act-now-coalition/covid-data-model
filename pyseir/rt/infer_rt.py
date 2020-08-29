@@ -48,8 +48,11 @@ def run_rt(
     include_deaths: bool = False,
     include_testing_correction: bool = False,
     figure_collector: Optional[list] = None,
-) -> Optional[pd.DataFrame]:
-    """Entry Point for Infer Rt"""
+) -> pd.DataFrame:
+    """Entry Point for Infer Rt
+
+    Returns an empty DataFrame if inference was not possible.
+    """
 
     # Generate the Data Packet to Pass to RtInferenceEngine
     input_df = _generate_input_data(
@@ -63,7 +66,7 @@ def run_rt(
             event="Infer Rt Skipped. No Data Passed Filter Requirements:",
             region=regional_input.display_name,
         )
-        return
+        return pd.DataFrame()
 
     # Save a reference to instantiated engine (eventually I want to pull out the figure
     # generation and saving so that I don't have to pass a display_name and fips into the class
@@ -78,7 +81,7 @@ def run_rt(
     output_df = engine.infer_all()
 
     # Save the output to json for downstream repacking and incorporation.
-    if output_df is not None and not output_df.empty:
+    if not output_df.empty:
         output_path = regional_input.region.run_artifact_path_to_write(
             RunArtifact.RT_INFERENCE_RESULT
         )
@@ -91,7 +94,7 @@ def _generate_input_data(
     include_testing_correction: bool,
     include_deaths: bool,
     figure_collector: Optional[list],
-):
+) -> pd.DataFrame:
     """
     Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
 
@@ -99,11 +102,23 @@ def _generate_input_data(
         If True, include a correction for testing increases and decreases.
     """
     # TODO: Outlier Removal Before Test Correction
-    times, observed_new_cases, observed_new_deaths = load_data.calculate_new_case_data_by_region(
-        regional_input.get_timeseries(),
-        t0=InferRtConstants.REF_DATE,
-        include_testing_correction=include_testing_correction,
-    )
+    try:
+        (
+            times,
+            observed_new_cases,
+            observed_new_deaths,
+        ) = load_data.calculate_new_case_data_by_region(
+            regional_input.get_timeseries(),
+            t0=InferRtConstants.REF_DATE,
+            include_testing_correction=include_testing_correction,
+        )
+    except AssertionError as e:
+        rt_log.exception(
+            event="An AssertionError was raised in the loading of the data for the calculation of "
+            "the Infection Rate Metric",
+            region=regional_input.display_name,
+        )
+        return pd.DataFrame()
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
 
@@ -537,7 +552,7 @@ class RtInferenceEngine:
 
         return available_timeseries
 
-    def infer_all(self, plot=True, shift_deaths=0) -> Optional[pd.DataFrame]:
+    def infer_all(self, plot=True, shift_deaths=0) -> pd.DataFrame:
         """
         Infer R_t from all available data sources.
 
@@ -570,7 +585,14 @@ class RtInferenceEngine:
             df_raw[timeseries_type.value] = timeseries_raw
 
             df = pd.DataFrame()
-            dates, posteriors, start_idx = self.get_posteriors(timeseries_type)
+            try:
+                dates, posteriors, start_idx = self.get_posteriors(timeseries_type)
+            except Exception as e:
+                rt_log.exception(
+                    event="Posterior Calculation Error", region=self.regional_input.display_name,
+                )
+                raise e
+
             # Note that it is possible for the dates to be missing days
             # This can cause problems when:
             #   1) computing posteriors that assume continuous data (above),
@@ -638,8 +660,8 @@ class RtInferenceEngine:
                         )
 
         if df_all is None:
-            self.log.warning("Inference not possible")
-            return None
+            self.log.warning(f"Inference not possible for {self.regional_input.region.fips}")
+            return pd.DataFrame()
 
         if self.include_deaths and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
             df_all["Rt_MAP_composite"] = np.nanmean(
@@ -711,4 +733,7 @@ class RtInferenceEngine:
                 self.figure_collector["3_Rt_inference"] = fig
         if df_all.empty:
             self.log.warning("Inference not possible")
+        else:
+            df_all = df_all.reset_index(drop=False)  # Move date to column from index to column
+            df_all["fips"] = self.regional_input.region.fips
         return df_all
