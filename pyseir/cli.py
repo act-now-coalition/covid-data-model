@@ -1,6 +1,7 @@
 import itertools
 import sys
 import os
+from dataclasses import dataclass
 from typing import Optional
 from typing import List
 import logging
@@ -11,6 +12,7 @@ import us
 import pandas as pd
 import click
 
+from cli import utils
 from covidactnow.datapublic import common_init
 from libs import pipeline
 from pyseir.deployment import webui_data_adaptor_v1
@@ -52,20 +54,6 @@ def _generate_whitelist() -> pd.DataFrame:
     return gen.generate_whitelist(all_us_timeseries)
 
 
-def _generate_infection_rate_metric(regions: List[infer_rt.RegionalInput]) -> pd.DataFrame:
-    """
-    Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
-    with a unique row for each region+date combination.
-    """
-    with Pool(maxtasksperchild=10) as p:
-        results = p.map(infer_rt.run_rt, regions)
-
-    if results:
-        return pd.concat(results)
-    else:
-        return pd.DataFrame()
-
-
 def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
     """Create a list of Region objects containing just state or default."""
     if state:
@@ -74,22 +62,57 @@ def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeli
         return [pipeline.Region.from_state(s) for s in default]
 
 
-def _state_only_pipeline(
-    region: pipeline.Region, run_mode=DEFAULT_RUN_MODE, output_interval_days=1, output_dir=None,
-) -> model_fitter.ModelFitter:
-    assert region.is_state()
+@dataclass
+class StatePipeline:
+    """Runs the pipeline for one state and stores the output."""
 
-    infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
-    fitter_input = model_fitter.RegionalInput.from_state_region(region)
-    fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-    ensembles_input = ensemble_runner.RegionalInput.from_model_fitter(fitter)
-    ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": run_mode})
-    return fitter
+    region: pipeline.Region
+    infer_df: pd.DataFrame
+    fitter: model_fitter.ModelFitter
+
+    @staticmethod
+    def run(region: pipeline.Region, run_mode: pyseir.utils.RunMode) -> "StatePipeline":
+        assert region.is_state()
+        infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
+        fitter_input = model_fitter.RegionalInput.from_state_region(region)
+        fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
+        ensembles_input = ensemble_runner.RegionalInput.from_model_fitter(fitter)
+        ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": run_mode})
+        return StatePipeline(region=region, infer_df=infer_df, fitter=fitter)
+
+
+@dataclass
+class SubStateRegionPipelineInput:
+    region: pipeline.Region
+    run_fitter: bool
+    state_fitter: model_fitter.ModelFitter
+    run_mode: pyseir.utils.RunMode
+
+
+@dataclass
+class SubStatePipeline:
+    """Runs the pipeline for one region smaller than a state and stores the output."""
+
+    region: pipeline.Region
+    infer_df: pd.DataFrame
+    fitter: Optional[model_fitter.ModelFitter]
+
+    @staticmethod
+    def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
+        assert not input.region.is_state()
+        infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(input.region))
+        fitter_input = model_fitter.RegionalInput.from_substate_region(
+            input.region, input.state_fitter
+        )
+        fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
+        ensembles_input = ensemble_runner.RegionalInput.from_model_fitter(fitter)
+        ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": input.run_mode})
+        return SubStatePipeline(region=input.region, infer_df=infer_df, fitter=fitter)
 
 
 def _build_all_for_states(
     states: List[str],
-    run_mode=DEFAULT_RUN_MODE,
+    run_mode: pyseir.utils.RunMode,
     output_interval_days=4,
     output_dir=None,
     skip_whitelist=False,
@@ -101,15 +124,10 @@ def _build_all_for_states(
 
     # do everything for just states in parallel
     with Pool(maxtasksperchild=1) as p:
-        states_only_func = partial(
-            _state_only_pipeline,
-            run_mode=run_mode,
-            output_interval_days=output_interval_days,
-            output_dir=output_dir,
-        )
+        states_only_func = partial(StatePipeline.run, run_mode=run_mode,)
         states_regions = [pipeline.Region.from_state(s) for s in states]
-        state_fitters: List[model_fitter.ModelFitter] = p.map(states_only_func, states_regions)
-        state_fitter_map = {f.region: f for f in state_fitters}
+        state_pipelines: List[StatePipeline] = p.map(states_only_func, states_regions)
+        state_fitter_map = {p.region: p.fitter for p in state_pipelines}
 
     if states_only:
         root.info("Only executing for states. returning.")
@@ -117,27 +135,40 @@ def _build_all_for_states(
 
     # Calculate the whitelist for the infection rate metric which makes no promises
     # about it's relationship to the SEIR subset
-
-    infection_rate_fips_whitelist = [
-        infer_rt.RegionalInput.from_fips(x)
-        for x in combined_datasets.load_us_latest_dataset().all_fips
-        if not ("25" in x[:2] and len(x) == 5)  # Masking MA Counties (2020-08-27) due to NaNs
-        and "999" not in x[-3:]  # Remove placeholder fips that have no data
-    ]
-
     if fips:  # A single Fips string was passed as a flag. Just run for that fips.
-        infer_rt_candidates = [infer_rt.RegionalInput.from_fips(fips)]
+        infer_rt_regions = {pipeline.Region.from_fips(fips)}
     else:  # Default to the full infection rate whitelist
-        infer_rt_candidates = infection_rate_fips_whitelist
+        infer_rt_regions = {
+            pipeline.Region.from_fips(x)
+            for x in combined_datasets.load_us_latest_dataset().all_fips
+            if len(x) == 5
+            and "25" != x[:2]  # Counties only  # Masking MA Counties (2020-08-27) due to NaNs
+            and "999" != x[-3:]  # Remove placeholder fips that have no data
+        }
 
-    # Separating the Infection Rate Calculations
-    infection_rate_metric_df = _generate_infection_rate_metric(regions=infer_rt_candidates)
-    # Note: This call currently still both writes (1) region by region JSON and (2) returns this
-    # combined dataset. Once the api generation is changed to point to the combined dataset, the
-    # individual objects can stop being persisted to disk. It also runs for all fips available, so
-    # currently it double calculates the state fips (since the state only is called earlier in this
-    # function. I would prefer to run the state only requirement instead of changing this behaviour,
-    # so that the saved csv has both state and county data.
+    # Now calculate the pyseir dependent whitelist
+    whitelist_df = _generate_whitelist()
+    all_county_regions = set(
+        whitelist.regions_in_states(states_regions, fips=fips, whitelist_df=whitelist_df)
+    )
+
+    with Pool(maxtasksperchild=1) as p:
+        pipeline_inputs = [
+            SubStateRegionPipelineInput(
+                region=region,
+                run_fitter=(region in all_county_regions),
+                state_fitter=state_fitter_map.get(region.get_state_region()),
+                run_mode=run_mode,
+            )
+            for region in (infer_rt_regions | all_county_regions)
+        ]
+
+        root.info(f"executing pipeline for {len(pipeline_inputs)} counties")
+        substate_pipelines = p.map(SubStatePipeline.run, pipeline_inputs)
+
+    infection_rate_metric_df = pd.concat(
+        [p.infer_df for p in itertools.chain(state_pipelines, substate_pipelines)]
+    )
 
     infection_rate_metric_df.to_csv(
         path_or_buf=pyseir.utils.get_summary_artifact_path(
@@ -145,33 +176,6 @@ def _build_all_for_states(
         ),
         index=False,
     )
-
-    # Now calculate the pyseir dependent whitelist
-    whitelist_df = _generate_whitelist()
-    all_county_regions = whitelist.regions_in_states(
-        states_regions, fips=fips, whitelist_df=whitelist_df
-    )
-
-    with Pool(maxtasksperchild=1) as p:
-        # calculate model fit
-        root.info(f"executing model for {len(all_county_regions)} counties")
-        fitter_inputs = [
-            model_fitter.RegionalInput.from_substate_region(
-                r, state_fitter=state_fitter_map.get(r.get_state_region())
-            )
-            for r in all_county_regions
-        ]
-        county_fitters = p.map(model_fitter.ModelFitter.run_for_region, fitter_inputs)
-
-        # calculate ensemble
-        root.info(f"running ensemble for {len(all_county_regions)} counties")
-        ensemble_inputs = [
-            ensemble_runner.RegionalInput.from_model_fitter(f) for f in county_fitters
-        ]
-        ensemble_func = partial(
-            ensemble_runner.run_region, ensemble_kwargs=dict(run_mode=run_mode),
-        )
-        p.map(ensemble_func, ensemble_inputs)
 
     # output it all
     output_interval_days = int(output_interval_days)
@@ -187,8 +191,9 @@ def _build_all_for_states(
     )
 
     webui_inputs = [
-        webui_data_adaptor_v1.RegionalInput.from_model_fitter(fitter)
-        for fitter in itertools.chain(state_fitters, county_fitters)
+        webui_data_adaptor_v1.RegionalInput.from_model_fitter(p.fitter)
+        for p in itertools.chain(state_pipelines, substate_pipelines)
+        if p.fitter
     ]
     with Pool(maxtasksperchild=1) as p:
         p.map(web_ui_mapper.write_region, webui_inputs)
@@ -308,7 +313,7 @@ def build_all(
 
     _build_all_for_states(
         states,
-        run_mode=DEFAULT_RUN_MODE,
+        run_mode=pyseir.utils.RunMode(run_mode),
         output_interval_days=output_interval_days,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,

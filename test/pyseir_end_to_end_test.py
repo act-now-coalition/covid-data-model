@@ -1,6 +1,7 @@
 import pathlib
 import unittest
 
+import pyseir
 from libs import pipeline
 from pyseir import cli
 from pyseir.inference import whitelist
@@ -19,7 +20,9 @@ import pytest
 def test_pyseir_end_to_end_idaho(tmp_path):
     # This covers a lot of edge cases.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
-        cli._build_all_for_states(states=["ID"], fips="16001")
+        cli._build_all_for_states(
+            states=["ID"], fips="16001", run_mode=pyseir.utils.RunMode(cli.DEFAULT_RUN_MODE)
+        )
 
         path = get_run_artifact_path("16001", RunArtifact.WEB_UI_RESULT).replace(
             "__INTERVENTION_IDX__", "2"
