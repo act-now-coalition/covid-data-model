@@ -1,12 +1,11 @@
 import datetime
 import os
 from dataclasses import dataclass
-from typing import Mapping, Any, Optional, Iterable
+from typing import Mapping, Any, Optional
 
 import numpy as np
 
 import structlog
-import pickle
 import json
 import copy
 from collections import defaultdict
@@ -18,7 +17,6 @@ from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
 from pyseir.utils import RunArtifact, RunMode
-from libs.datasets import combined_datasets
 
 
 _log = structlog.get_logger()
@@ -36,26 +34,31 @@ class RegionalInput:
     region: pipeline.Region
 
     _combined_data: pipeline.RegionalCombinedData
-    _mle_fit_model: Optional[seir_model.SEIRModel] = None
-    _mle_fit_result: Optional[Mapping[str, Any]] = None
+    _mle_fit_model: seir_model.SEIRModel
+    _mle_fit_result: Mapping[str, Any]
+    _state_mle_fit_model: Optional[seir_model.SEIRModel] = None
+    _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
-    def from_region(region: pipeline.Region) -> "RegionalInput":
-        return RegionalInput(
-            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
-        )
-
-    @staticmethod
-    def from_fips(fips: str) -> "RegionalInput":
-        return RegionalInput.from_region(pipeline.Region.from_fips(fips))
-
-    @staticmethod
-    def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+    def for_state(fitter: model_fitter.ModelFitter) -> "RegionalInput":
         return RegionalInput(
             region=fitter.region,
             _combined_data=fitter.regional_input._combined_data,
             _mle_fit_model=fitter.mle_model,
             _mle_fit_result=fitter.fit_results,
+        )
+
+    @staticmethod
+    def for_substate(
+        fitter: model_fitter.ModelFitter, state_fitter: model_fitter.ModelFitter
+    ) -> "RegionalInput":
+        return RegionalInput(
+            region=fitter.region,
+            _combined_data=fitter.regional_input._combined_data,
+            _mle_fit_model=fitter.mle_model,
+            _mle_fit_result=fitter.fit_results,
+            _state_mle_fit_model=state_fitter.mle_model,
+            _state_mle_fit_result=state_fitter.fit_results,
         )
 
     @property
@@ -65,42 +68,20 @@ class RegionalInput:
     def state_name(self):
         return self.region.state_obj().name
 
-    def get_counties_regional_input(self) -> Iterable["RegionalInput"]:
-        assert self.region.is_state()
-        county_latest = combined_datasets.load_us_latest_dataset().county
-        all_fips = county_latest.get_subset(state=self.region.state_obj().abbr).all_fips
-        return [RegionalInput.from_fips(fips) for fips in all_fips]
-
     def get_us_latest(self) -> Mapping[str, Any]:
         return self._combined_data.get_us_latest()
 
     def load_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
-        if self._mle_fit_model is not None:
-            return self._mle_fit_model
-        artifact_path = self.region.run_artifact_path_to_read(RunArtifact.MLE_FIT_MODEL)
-        if os.path.exists(artifact_path):
-            with open(artifact_path, "rb") as f:
-                return pickle.load(f)
-        else:
-            return None
+        return self._mle_fit_model
 
     def load_inference_result(self):
-        if self._mle_fit_result is not None:
-            return self._mle_fit_result
-        return pipeline.load_inference_result(self.region)
+        return self._mle_fit_result
 
     def load_state_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
-        artifact_path = self.region.get_state_region().run_artifact_path_to_read(
-            RunArtifact.MLE_FIT_MODEL
-        )
-        if os.path.exists(artifact_path):
-            with open(artifact_path, "rb") as f:
-                return pickle.load(f)
-        else:
-            return None
+        return self._state_mle_fit_model
 
     def load_state_inference_result(self):
-        return pipeline.load_inference_result(self.region.get_state_region())
+        return self._state_mle_fit_result
 
 
 class EnsembleRunner:

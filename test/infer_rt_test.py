@@ -4,7 +4,6 @@ import pytest
 import pandas as pd
 import structlog
 
-from pyseir import cli
 from pyseir.rt import utils
 from pyseir.rt import infer_rt
 from test.mocks.inference import load_data
@@ -196,13 +195,7 @@ def test_smoothing_and_causality():
     )
 
 
-def test_generate_infection_rate_metric_no_region_given():
-    FIPS = []
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
-    df = cli._generate_infection_rate_metric(regions=regions)
-    assert df.empty
-
-
+@pytest.mark.slow
 def test_generate_infection_rate_metric_one_empty():
     FIPS = [
         "51017",  # Bath County VA Almost No Cases. Will be filtered out under any thresholds.
@@ -210,17 +203,18 @@ def test_generate_infection_rate_metric_one_empty():
     ]
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
 
-    df = cli._generate_infection_rate_metric(regions)
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
     returned_fips = df.fips.unique()
     assert "51153" in returned_fips
     assert "51017" not in returned_fips
 
 
+@pytest.mark.slow
 def test_generate_infection_rate_metric_two_aggregate_levels():
     FIPS = ["06", "06075"]  # CA  # San Francisco, CA
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
 
-    df = cli._generate_infection_rate_metric(regions)
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
     returned_fips = df.fips.unique()
     assert "06" in returned_fips
     assert "06075" in returned_fips
@@ -230,7 +224,7 @@ def test_generate_infection_rate_metric_fake_fips():
     FIPS = ["48999"]  # TX Misc Fips Holder
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
 
-    df = cli._generate_infection_rate_metric(regions)
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
     assert df.empty
 
 
@@ -239,6 +233,6 @@ def test_generate_infection_rate_with_nans():
     # Ma Counties is currently failing with a ValueError due to recent period of non-reporting
     FIPS = ["25001"]  # MA lots of NaN
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
-    df = cli._generate_infection_rate_metric(regions)
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
     returned_fips = df.fips.unique()
     assert "25001" in returned_fips

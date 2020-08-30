@@ -2,6 +2,7 @@ import itertools
 import sys
 import os
 from dataclasses import dataclass
+from typing import Mapping
 from typing import Optional
 from typing import List
 import logging
@@ -12,7 +13,6 @@ import us
 import pandas as pd
 import click
 
-from cli import utils
 from covidactnow.datapublic import common_init
 from libs import pipeline
 from pyseir.deployment import webui_data_adaptor_v1
@@ -76,7 +76,7 @@ class StatePipeline:
         infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
         fitter_input = model_fitter.RegionalInput.from_state_region(region)
         fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-        ensembles_input = ensemble_runner.RegionalInput.from_model_fitter(fitter)
+        ensembles_input = ensemble_runner.RegionalInput.for_state(fitter)
         ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": run_mode})
         return StatePipeline(region=region, infer_df=infer_df, fitter=fitter)
 
@@ -87,6 +87,44 @@ class SubStateRegionPipelineInput:
     run_fitter: bool
     state_fitter: model_fitter.ModelFitter
     run_mode: pyseir.utils.RunMode
+
+    @staticmethod
+    def build_all(
+        fips: Optional[str],
+        run_mode: pyseir.utils.RunMode,
+        state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
+    ) -> List["SubStateRegionPipelineInput"]:
+        """For each region smaller than a state, build the input object used to run the pipeline."""
+        # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
+        # Calculate the whitelist for the infection rate metric which makes no promises
+        # about it's relationship to the SEIR subset
+        if fips:  # A single Fips string was passed as a flag. Just run for that fips.
+            infer_rt_regions = {pipeline.Region.from_fips(fips)}
+        else:  # Default to the full infection rate whitelist
+            infer_rt_regions = {
+                pipeline.Region.from_fips(x)
+                for x in combined_datasets.load_us_latest_dataset().all_fips
+                if len(x) == 5
+                and "25" != x[:2]  # Counties only  # Masking MA Counties (2020-08-27) due to NaNs
+                and "999" != x[-3:]  # Remove placeholder fips that have no data
+            }
+        # Now calculate the pyseir dependent whitelist
+        whitelist_df = _generate_whitelist()
+        all_county_regions = set(
+            whitelist.regions_in_states(
+                list(state_fitter_map.keys()), fips=fips, whitelist_df=whitelist_df
+            )
+        )
+        pipeline_inputs = [
+            SubStateRegionPipelineInput(
+                region=region,
+                run_fitter=(region in all_county_regions),
+                state_fitter=state_fitter_map.get(region.get_state_region()),
+                run_mode=run_mode,
+            )
+            for region in (infer_rt_regions | all_county_regions)
+        ]
+        return pipeline_inputs
 
 
 @dataclass
@@ -105,7 +143,9 @@ class SubStatePipeline:
             input.region, input.state_fitter
         )
         fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-        ensembles_input = ensemble_runner.RegionalInput.from_model_fitter(fitter)
+        ensembles_input = ensemble_runner.RegionalInput.for_substate(
+            fitter, state_fitter=input.state_fitter
+        )
         ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": input.run_mode})
         return SubStatePipeline(region=input.region, infer_df=infer_df, fitter=fitter)
 
@@ -133,38 +173,11 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    # Calculate the whitelist for the infection rate metric which makes no promises
-    # about it's relationship to the SEIR subset
-    if fips:  # A single Fips string was passed as a flag. Just run for that fips.
-        infer_rt_regions = {pipeline.Region.from_fips(fips)}
-    else:  # Default to the full infection rate whitelist
-        infer_rt_regions = {
-            pipeline.Region.from_fips(x)
-            for x in combined_datasets.load_us_latest_dataset().all_fips
-            if len(x) == 5
-            and "25" != x[:2]  # Counties only  # Masking MA Counties (2020-08-27) due to NaNs
-            and "999" != x[-3:]  # Remove placeholder fips that have no data
-        }
-
-    # Now calculate the pyseir dependent whitelist
-    whitelist_df = _generate_whitelist()
-    all_county_regions = set(
-        whitelist.regions_in_states(states_regions, fips=fips, whitelist_df=whitelist_df)
-    )
+    substate_inputs = SubStateRegionPipelineInput.build_all(fips, run_mode, state_fitter_map)
 
     with Pool(maxtasksperchild=1) as p:
-        pipeline_inputs = [
-            SubStateRegionPipelineInput(
-                region=region,
-                run_fitter=(region in all_county_regions),
-                state_fitter=state_fitter_map.get(region.get_state_region()),
-                run_mode=run_mode,
-            )
-            for region in (infer_rt_regions | all_county_regions)
-        ]
-
-        root.info(f"executing pipeline for {len(pipeline_inputs)} counties")
-        substate_pipelines = p.map(SubStatePipeline.run, pipeline_inputs)
+        root.info(f"executing pipeline for {len(substate_inputs)} counties")
+        substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
 
     infection_rate_metric_df = pd.concat(
         [p.infer_df for p in itertools.chain(state_pipelines, substate_pipelines)]
@@ -181,7 +194,7 @@ def _build_all_for_states(
     output_interval_days = int(output_interval_days)
     _cache_global_datasets()
 
-    root.info(f"outputting web results for states and {len(all_county_regions)} counties")
+    root.info(f"outputting web results for states and {len(substate_pipelines)} counties")
 
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
@@ -219,28 +232,6 @@ def generate_whitelist():
 def run_infer_rt(state, states_only):
     for state in _states_region_list(state=state, default=ALL_STATES):
         infer_rt.run_rt(infer_rt.RegionalInput.from_region(state))
-
-
-@entry_point.command()
-@click.option(
-    "--state", help="State to generate files for. If no state is given, all states are computed."
-)
-@click.option(
-    "--run-mode",
-    default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def run_ensembles(state, run_mode, states_only):
-    run_region = partial(ensemble_runner.run_region, ensemble_kwargs={"run_mode": run_mode})
-    for region in _states_region_list(state=state, default=ALL_STATES):
-        state_regional_input = ensemble_runner.RegionalInput.from_region(region)
-        run_region(state_regional_input)
-        if not states_only:
-            # Run county level
-            with Pool(maxtasksperchild=1) as p:
-                p.map(run_region, state_regional_input.get_counties_regional_input())
 
 
 @entry_point.command()

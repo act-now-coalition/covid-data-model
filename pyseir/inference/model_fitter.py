@@ -8,10 +8,8 @@ from typing import Optional
 import structlog
 import datetime as dt
 from datetime import datetime, timedelta
-from multiprocessing import Pool
 
 import pandas as pd
-import dill as pickle
 import numpy as np
 import iminuit
 from libs import pipeline
@@ -22,7 +20,6 @@ from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
-from pyseir.utils import RunArtifact
 
 
 log = structlog.getLogger()
@@ -710,26 +707,3 @@ class ModelFitter:
         if retries_left <= 0 and model_is_empty:
             raise RuntimeError(f"Could not converge after {n_retries} for {regional_input}")
         return model_fitter
-
-
-def run_counties_of_state(regions: List[pipeline.Region]):
-    """Runs the fitter for given counties in a single state, writing artifacts to disk.
-
-    Args:
-        regions: The counties of one state to run and write together. This function does not
-          whitelist filter the list.
-    """
-    # This function is not called from the main pipeline.
-    assert len(regions) > 0
-    assert all([r.is_county() for r in regions])
-    # Make sure all of `regions` are in the same state
-    assert len(set(r.get_state_region() for r in regions)) == 1
-
-    with Pool(maxtasksperchild=1) as p:
-        fitters = p.map(ModelFitter.run_for_region, regions)
-
-    # Serialize the model results.
-    for region, fitter in zip(regions, fitters):
-        if fitter:
-            with open(region.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
-                pickle.dump(fitter.mle_model, f)
