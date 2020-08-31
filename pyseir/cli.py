@@ -7,7 +7,6 @@ from typing import Optional
 from typing import List
 import logging
 from multiprocessing import Pool
-from functools import partial
 
 import us
 import pandas as pd
@@ -73,13 +72,13 @@ class StatePipeline:
     fitter: model_fitter.ModelFitter
 
     @staticmethod
-    def run(region: pipeline.Region, run_mode: pyseir.utils.RunMode) -> "StatePipeline":
+    def run(region: pipeline.Region) -> "StatePipeline":
         assert region.is_state()
         infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
         fitter_input = model_fitter.RegionalInput.from_state_region(region)
         fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
         ensembles_input = ensemble_runner.RegionalInput.for_state(fitter)
-        ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": run_mode})
+        ensemble_runner.run_region(ensembles_input)
         return StatePipeline(region=region, infer_df=infer_df, fitter=fitter)
 
 
@@ -88,11 +87,9 @@ class SubStateRegionPipelineInput:
     region: pipeline.Region
     run_fitter: bool
     state_fitter: model_fitter.ModelFitter
-    run_mode: pyseir.utils.RunMode
 
     @staticmethod
     def build_all(
-        run_mode: pyseir.utils.RunMode,
         state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
         fips: Optional[str] = None,
     ) -> List["SubStateRegionPipelineInput"]:
@@ -124,7 +121,6 @@ class SubStateRegionPipelineInput:
                 region=region,
                 run_fitter=(region in whitelist_regions),
                 state_fitter=state_fitter_map.get(region.get_state_region()),
-                run_mode=run_mode,
             )
             for region in (infer_rt_regions | whitelist_regions)
         ]
@@ -150,7 +146,7 @@ class SubStatePipeline:
         ensembles_input = ensemble_runner.RegionalInput.for_substate(
             fitter, state_fitter=input.state_fitter
         )
-        ensemble_runner.run_region(ensembles_input, ensemble_kwargs={"run_mode": input.run_mode})
+        ensemble_runner.run_region(ensembles_input)
         return SubStatePipeline(region=input.region, infer_df=infer_df, fitter=fitter)
 
 
@@ -174,7 +170,7 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    substate_inputs = SubStateRegionPipelineInput.build_all(run_mode, state_fitter_map, fips=fips)
+    substate_inputs = SubStateRegionPipelineInput.build_all(state_fitter_map, fips=fips)
 
     with Pool(maxtasksperchild=1) as p:
         root.info(f"executing pipeline for {len(substate_inputs)} counties")
@@ -275,7 +271,6 @@ def build_all(
         states,
         output_interval_days=output_interval_days,
         output_dir=output_dir,
-        skip_whitelist=skip_whitelist,
         states_only=states_only,
         fips=fips,
     )

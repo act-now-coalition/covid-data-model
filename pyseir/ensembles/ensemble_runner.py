@@ -1,12 +1,11 @@
 import datetime
 import os
 from dataclasses import dataclass
-from typing import Mapping, Any, Optional, Iterable
+from typing import Mapping, Any, Optional
 
 import numpy as np
 
 import structlog
-import pickle
 import json
 import copy
 from collections import defaultdict
@@ -17,8 +16,7 @@ from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
-from pyseir.utils import RunArtifact, RunMode
-from libs.datasets import combined_datasets
+from pyseir.utils import RunArtifact
 
 
 _log = structlog.get_logger()
