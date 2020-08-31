@@ -236,32 +236,6 @@ def run_infer_rt(state, states_only):
 
 @entry_point.command()
 @click.option(
-    "--state", help="State to generate files for. If no state is given, all states are computed."
-)
-@click.option(
-    "--output-interval-days",
-    default=1,
-    type=int,
-    help="Number of days between outputs for the WebUI payload.",
-)
-@click.option(
-    "--run-mode",
-    default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def map_outputs(state, output_interval_days, run_mode, states_only):
-    web_ui_mapper = WebUIDataAdaptorV1(
-        output_interval_days=int(output_interval_days), run_mode=run_mode,
-    )
-    for region in _states_region_list(state=state, default=ALL_STATES):
-        state_input = webui_data_adaptor_v1.RegionalInput.from_region(region)
-        web_ui_mapper.write_region(state_input)
-
-
-@entry_point.command()
-@click.option(
     "--states",
     "-s",
     multiple=True,

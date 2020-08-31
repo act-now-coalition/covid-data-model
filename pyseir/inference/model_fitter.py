@@ -95,12 +95,9 @@ class RegionalInput:
         return self._combined_data.get_us_latest()
 
     def load_inference_result_of_state(self) -> Mapping[str, Any]:
-        if not self.region.is_county():
-            raise AssertionError(f"Attempt to find state of {self}")
-        if self._state_mle_fit_result is not None:
-            return self._state_mle_fit_result
-        region_of_state = self.region.get_state_region()
-        return pipeline.load_inference_result(region_of_state)
+        if self._state_mle_fit_result is None:
+            raise AssertionError(f"No state data of {self}")
+        return self._state_mle_fit_result
 
 
 class ModelFitter:

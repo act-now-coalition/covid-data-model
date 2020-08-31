@@ -4,18 +4,15 @@ represents a geographical area (state, county, metro area, etc).
 """
 
 from dataclasses import dataclass
-from typing import Mapping, Any
 
-import pandas as pd
 import structlog
 import us
 
-import pyseir
+import pyseir.utils
 import pyseir.rt.patches
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets import timeseries
-from pyseir.utils import RunArtifact
 
 _log = structlog.get_logger()
 
@@ -111,20 +108,3 @@ class RegionalCombinedData:
         if county:
             return f"{county}, {state}"
         return state
-
-
-def load_inference_result(region: Region) -> Mapping[str, Any]:
-    """
-    Load fit results by state or county fips code.
-
-    Returns
-    -------
-    : dict
-        Dictionary of fit result information.
-    """
-    output_file = region.run_artifact_path_to_read(RunArtifact.MLE_FIT_RESULT)
-    df = pd.read_json(output_file, dtype={"fips": "str"})
-    if region.is_state():
-        return df.iloc[0].to_dict()
-    else:
-        return df.set_index("fips").loc[region.fips].to_dict()

@@ -40,8 +40,6 @@ class RunArtifact(Enum):
     RT_INFERENCE_REPORT = "rt_inference_report"
     RT_SMOOTHING_REPORT = "rt_smoothing_report"
 
-    MLE_FIT_RESULT = "mle_fit_result"
-    MLE_FIT_MODEL = "mle_fit_model"
     MLE_FIT_REPORT = "mle_fit_report"
 
     ENSEMBLE_RESULT = "ensemble_result"
@@ -166,33 +164,6 @@ def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
                 f"mle_fit_results__{state_obj.name}__{fips}.pdf",
-            )
-
-    elif artifact is RunArtifact.MLE_FIT_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_results__{state_obj.name}_counties.json",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_results__{state_obj.name}_state_only.json",
-            )
-
-    elif artifact is RunArtifact.MLE_FIT_MODEL:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                DATA_FOLDER(output_dir, state_obj.name),
-                f"mle_fit_model__{state_obj.name}__{county}__{fips}.pkl",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_model__{state_obj.name}_state_only.pkl",
             )
 
     elif artifact is RunArtifact.ENSEMBLE_RESULT:

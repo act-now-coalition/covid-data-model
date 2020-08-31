@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 
 import pyseir
-from libs import pipeline
 from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
 from pyseir.deployment import model_to_observed_shim as shim
@@ -38,11 +37,7 @@ class RegionalInput:
     region: Region
 
     _combined_data: RegionalCombinedData
-    _mle_fit_result: Optional[Mapping[str, Any]] = None
-
-    @staticmethod
-    def from_region(region: Region) -> "RegionalInput":
-        return RegionalInput(region=region, _combined_data=RegionalCombinedData.from_region(region))
+    _mle_fit_result: Mapping[str, Any]
 
     @staticmethod
     def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
@@ -72,9 +67,7 @@ class RegionalInput:
         : dict
             Dictionary of fit result information.
         """
-        if self._mle_fit_result is not None:
-            return self._mle_fit_result
-        return pipeline.load_inference_result(self.region)
+        return self._mle_fit_result
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
