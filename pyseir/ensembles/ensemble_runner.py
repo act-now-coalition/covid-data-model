@@ -165,11 +165,11 @@ class EnsembleRunner:
 
         self.suppression_policies = None
         self.override_params = dict()
-        self.init()
+        self.initialize_suppression_policies()
 
         self.all_outputs = {}
 
-    def init(self):
+    def initialize_suppression_policies(self):
         """
         Based on the run mode, generate suppression policies and ensemble
         parameters.  This enables different model combinations and project
