@@ -8,8 +8,10 @@ from typing import Optional
 import structlog
 import datetime as dt
 from datetime import datetime, timedelta
+from multiprocessing import Pool
 
 import pandas as pd
+import dill as pickle
 import numpy as np
 import iminuit
 from libs import pipeline
@@ -20,6 +22,7 @@ from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
+from pyseir.utils import RunArtifact
 
 
 log = structlog.getLogger()

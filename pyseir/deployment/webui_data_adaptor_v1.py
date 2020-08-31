@@ -18,7 +18,7 @@ from pyseir.icu import infer_icu
 from pyseir.inference import model_fitter
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
-from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from libs.enums import Intervention
 from libs.datasets import CommonFields
 import libs.datasets.can_model_output_schema as schema
@@ -113,10 +113,9 @@ class WebUIDataAdaptorV1:
     """
 
     def __init__(
-        self, output_interval_days=4, run_mode="can-before", output_dir=None, include_imputed=False,
+        self, output_interval_days=4, output_dir=None, include_imputed=False,
     ):
         self.output_interval_days = output_interval_days
-        self.run_mode = RunMode(run_mode)
         self.include_imputed = include_imputed
         self.output_dir = output_dir
 

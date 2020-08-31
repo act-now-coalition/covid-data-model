@@ -156,7 +156,6 @@ class SubStatePipeline:
 
 def _build_all_for_states(
     states: List[str],
-    run_mode: pyseir.utils.RunMode,
     output_interval_days=4,
     output_dir=None,
     states_only=False,
@@ -167,9 +166,8 @@ def _build_all_for_states(
 
     # do everything for just states in parallel
     with Pool(maxtasksperchild=1) as p:
-        states_only_func = partial(StatePipeline.run, run_mode=run_mode,)
         states_regions = [pipeline.Region.from_state(s) for s in states]
-        state_pipelines: List[StatePipeline] = p.map(states_only_func, states_regions)
+        state_pipelines: List[StatePipeline] = p.map(StatePipeline.run, states_regions)
         state_fitter_map = {p.region: p.fitter for p in state_pipelines}
 
     if states_only:
@@ -203,7 +201,7 @@ def _build_all_for_states(
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
     web_ui_mapper = WebUIDataAdaptorV1(
-        output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
+        output_interval_days=output_interval_days, output_dir=output_dir,
     )
 
     webui_inputs = [
@@ -245,12 +243,6 @@ def run_infer_rt(state, states_only):
     help="a list of states to generate files for. If no state is given, all states are computed.",
 )
 @click.option(
-    "--run-mode",
-    default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option(
     "--output-interval-days",
     default=1,
     type=int,
@@ -270,7 +262,7 @@ def run_infer_rt(state, states_only):
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
-    states, run_mode, output_interval_days, output_dir, skip_whitelist, states_only, fips,
+    states, output_interval_days, output_dir, skip_whitelist, states_only, fips,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -281,7 +273,6 @@ def build_all(
 
     _build_all_for_states(
         states,
-        run_mode=pyseir.utils.RunMode(run_mode),
         output_interval_days=output_interval_days,
         output_dir=output_dir,
         skip_whitelist=skip_whitelist,
