@@ -1,21 +1,17 @@
 import itertools
-from typing import List
-
-
 import sys
 import os
 from typing import Optional
-
-import click
-import us
+from typing import List
 import logging
-import pandas as pd
-
-from covidactnow.datapublic import common_init
-
 from multiprocessing import Pool
 from functools import partial
 
+import us
+import pandas as pd
+import click
+
+from covidactnow.datapublic import common_init
 from libs import pipeline
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
@@ -24,6 +20,7 @@ from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
+import pyseir.utils
 from pyseir.inference.whitelist import WhitelistGenerator
 
 
@@ -55,6 +52,20 @@ def _generate_whitelist() -> pd.DataFrame:
     return gen.generate_whitelist(all_us_timeseries)
 
 
+def _generate_infection_rate_metric(regions: List[infer_rt.RegionalInput]) -> pd.DataFrame:
+    """
+    Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
+    with a unique row for each region+date combination.
+    """
+    with Pool(maxtasksperchild=10) as p:
+        results = p.map(infer_rt.run_rt, regions)
+
+    if results:
+        return pd.concat(results)
+    else:
+        return pd.DataFrame()
+
+
 def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
     """Create a list of Region objects containing just state or default."""
     if state:
@@ -82,7 +93,7 @@ def _build_all_for_states(
     output_dir=None,
     skip_whitelist=False,
     states_only=False,
-    fips=None,
+    fips: str = None,
 ):
     # prepare data
     _cache_global_datasets()
@@ -103,15 +114,44 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
+    # Calculate the whitelist for the infection rate metric which makes no promises
+    # about it's relationship to the SEIR subset
+
+    infection_rate_fips_whitelist = [
+        infer_rt.RegionalInput.from_fips(x)
+        for x in combined_datasets.load_us_latest_dataset().all_fips
+        if not ("25" in x[:2] and len(x) == 5)  # Masking MA Counties (2020-08-27) due to NaNs
+        and "999" not in x[-3:]  # Remove placeholder fips that have no data
+    ]
+
+    if fips:  # A single Fips string was passed as a flag. Just run for that fips.
+        infer_rt_candidates = [infer_rt.RegionalInput.from_fips(fips)]
+    else:  # Default to the full infection rate whitelist
+        infer_rt_candidates = infection_rate_fips_whitelist
+
+    # Separating the Infection Rate Calculations
+    infection_rate_metric_df = _generate_infection_rate_metric(regions=infer_rt_candidates)
+    # Note: This call currently still both writes (1) region by region JSON and (2) returns this
+    # combined dataset. Once the api generation is changed to point to the combined dataset, the
+    # individual objects can stop being persisted to disk. It also runs for all fips available, so
+    # currently it double calculates the state fips (since the state only is called earlier in this
+    # function. I would prefer to run the state only requirement instead of changing this behaviour,
+    # so that the saved csv has both state and county data.
+
+    infection_rate_metric_df.to_csv(
+        path_or_buf=pyseir.utils.get_summary_artifact_path(
+            pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED
+        ),
+        index=False,
+    )
+
+    # Now calculate the pyseir dependent whitelist
     whitelist_df = _generate_whitelist()
     all_county_regions = whitelist.regions_in_states(
         states_regions, fips=fips, whitelist_df=whitelist_df
     )
 
     with Pool(maxtasksperchild=1) as p:
-        # calculate calculate county inference
-        infer_rt_inputs = [infer_rt.RegionalInput.from_region(r) for r in all_county_regions]
-        p.map(infer_rt.run_rt, infer_rt_inputs)
         # calculate model fit
         root.info(f"executing model for {len(all_county_regions)} counties")
         fitter_inputs = [
@@ -137,12 +177,14 @@ def _build_all_for_states(
     _cache_global_datasets()
 
     root.info(f"outputting web results for states and {len(all_county_regions)} counties")
+
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=output_interval_days, run_mode=run_mode, output_dir=output_dir,
     )
+
     webui_inputs = [
         webui_data_adaptor_v1.RegionalInput.from_model_fitter(fitter)
         for fitter in itertools.chain(state_fitters, county_fitters)
@@ -160,7 +202,14 @@ def generate_whitelist():
 @click.option(
     "--state", help="State to generate files for. If no state is given, all states are computed."
 )
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
+@click.option(
+    "--states-only",
+    default=False,
+    is_flag=True,
+    type=bool,
+    help="Warning: This flag is unused and the function always defaults to only state "
+    "level regions",
+)
 def run_infer_rt(state, states_only):
     for state in _states_region_list(state=state, default=ALL_STATES):
         infer_rt.run_rt(infer_rt.RegionalInput.from_region(state))
