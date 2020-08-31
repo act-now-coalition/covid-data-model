@@ -162,8 +162,7 @@ def _build_all_for_states(
         ensemble_inputs = [
             ensemble_runner.RegionalInput.from_model_fitter(f) for f in county_fitters
         ]
-        ensemble_func = ensemble_runner
-        p.map(ensemble_func, ensemble_inputs)
+        p.map(ensemble_runner.run_region, ensemble_inputs)
 
     # output it all
     output_interval_days = int(output_interval_days)
