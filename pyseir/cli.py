@@ -67,6 +67,8 @@ class StatePipeline:
     """Runs the pipeline for one state and stores the output."""
 
     region: pipeline.Region
+    # infer_df provides support for the infection rate result.
+    # TODO(tom): Rename when not refactoring it.
     infer_df: pd.DataFrame
     fitter: model_fitter.ModelFitter
 
@@ -90,9 +92,9 @@ class SubStateRegionPipelineInput:
 
     @staticmethod
     def build_all(
-        fips: Optional[str],
         run_mode: pyseir.utils.RunMode,
         state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
+        fips: Optional[str] = None,
     ) -> List["SubStateRegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
@@ -110,7 +112,9 @@ class SubStateRegionPipelineInput:
             }
         # Now calculate the pyseir dependent whitelist
         whitelist_df = _generate_whitelist()
-        all_county_regions = set(
+        # Make Region objects for all sub-state regions (counties, MSAs etc) that pass the whitelist
+        # and parameters used to select subsets of regions.
+        whitelist_regions = set(
             whitelist.regions_in_states(
                 list(state_fitter_map.keys()), fips=fips, whitelist_df=whitelist_df
             )
@@ -118,11 +122,11 @@ class SubStateRegionPipelineInput:
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                run_fitter=(region in all_county_regions),
+                run_fitter=(region in whitelist_regions),
                 state_fitter=state_fitter_map.get(region.get_state_region()),
                 run_mode=run_mode,
             )
-            for region in (infer_rt_regions | all_county_regions)
+            for region in (infer_rt_regions | whitelist_regions)
         ]
         return pipeline_inputs
 
@@ -155,9 +159,8 @@ def _build_all_for_states(
     run_mode: pyseir.utils.RunMode,
     output_interval_days=4,
     output_dir=None,
-    skip_whitelist=False,
     states_only=False,
-    fips: str = None,
+    fips: Optional[str] = None,
 ):
     # prepare data
     _cache_global_datasets()
@@ -173,7 +176,7 @@ def _build_all_for_states(
         root.info("Only executing for states. returning.")
         return
 
-    substate_inputs = SubStateRegionPipelineInput.build_all(fips, run_mode, state_fitter_map)
+    substate_inputs = SubStateRegionPipelineInput.build_all(run_mode, state_fitter_map, fips=fips)
 
     with Pool(maxtasksperchild=1) as p:
         root.info(f"executing pipeline for {len(substate_inputs)} counties")
