@@ -106,7 +106,7 @@ def test_icu_utilization_metric():
         "date,fips,current_icu,current_icu_total,icu_beds\n"
         "2020-08-11,36,20,40,40\n"
         "2020-08-12,36,15,30,40\n"
-        "2020-08-13,36,,,40\n"
+        "2020-08-13,36,20,,40\n"
     )
     data = common_df.read_csv(data, set_index=False).set_index(CommonFields.DATE)
     estimated_icu = pd.Series([30, 30, np.nan], index=data.index)

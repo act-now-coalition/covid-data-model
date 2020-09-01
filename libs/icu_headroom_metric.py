@@ -173,17 +173,22 @@ def calculate_icu_utilization_metric(
     covid patient source:     Actuals | Estimates
 
     """
-    current_icu_covid, covid_source = icu_data.current_icu_covid_with_source
-    if current_icu_covid is None:
+    current_covid_patients, covid_source = icu_data.current_icu_covid_with_source
+    if current_covid_patients is None:
         return np.nan, None
 
-    non_covid_patients, non_covid_source = icu_data.current_icu_non_covid_with_source
-    metric = current_icu_covid / (icu_data.total_icu_beds - non_covid_patients)
+    current_non_covid_patients, non_covid_source = icu_data.current_icu_non_covid_with_source
+    metric = current_covid_patients / (icu_data.total_icu_beds - current_non_covid_patients)
+
+    # current_non_covid_patients and current_covid_patients timeseries could have
+    # different end dates (i.e. may rely on two different data sources), using the last
+    # available date from the metrics timeseries to pull current values from.
+    latest_metric_date = metric.last_valid_index()
 
     details = can_api_definition.ICUHeadroomMetricDetails(
         currentIcuCovidMethod=covid_source,
-        currentIcuCovid=current_icu_covid[current_icu_covid.last_valid_index()],
+        currentIcuCovid=current_covid_patients[latest_metric_date],
         currentIcuNonCovidMethod=non_covid_source,
-        currentIcuNonCovid=non_covid_patients[non_covid_patients.last_valid_index()],
+        currentIcuNonCovid=current_non_covid_patients[latest_metric_date],
     )
     return metric, details
