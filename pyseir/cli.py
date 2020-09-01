@@ -76,18 +76,18 @@ def _generate_infection_rate_metric(regions: List[infer_rt.RegionalInput]) -> pd
         unpatched = results.loc[~results.fips.isin(need_patch), :]
 
         # Aggregate the results created so far into one timeseries of metrics in a DataFrame
-        nola_rt_inferences = pyseir.rt.patches.patch_aggregate_rt_results(need_patch)
+        nola_infection_rate = pyseir.rt.patches.patch_aggregate_rt_results(need_patch)
 
         patched: List[pd.DataFrame] = []
         for fips in need_patch:
-            fips_rt_inferences = nola_rt_inferences.copy()
-            fips_rt_inferences.insert(0, CommonFields.FIPS, fips)
-            patched.append(fips_rt_inferences)
+            fips_infection_rate = nola_infection_rate.copy()
+            fips_infection_rate.insert(0, CommonFields.FIPS, fips)
+            patched.append(fips_infection_rate)
             # TODO(tom): Delete when no longer read
             output_path = pipeline.Region.from_fips(fips).run_artifact_path_to_write(
                 pyseir.utils.RunArtifact.RT_INFERENCE_RESULT
             )
-            fips_rt_inferences.to_json(output_path)
+            fips_infection_rate.to_json(output_path)
         results = pd.concat(patched + [unpatched])
 
     return results
