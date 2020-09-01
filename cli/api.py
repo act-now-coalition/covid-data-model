@@ -89,7 +89,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
     """The entry function for invocation"""
 
     active_states = [state.abbr for state in us.STATES]
-    active_states = active_states + ["PR"]
+    active_states = active_states + ["PR", "MP"]
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
     )
