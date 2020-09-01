@@ -1,4 +1,6 @@
 import json
+from typing import Optional
+
 import structlog
 import os.path
 from dataclasses import dataclass
@@ -6,6 +8,7 @@ from enum import Enum
 
 import pandas as pd
 
+from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import DATA_DIR
 import libs.datasets.combined_datasets as combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
@@ -32,7 +35,11 @@ class LinearRegressionCoefficients:
 
 
 def get_icu_timeseries(
-    fips: str, use_actuals: bool = True, weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION
+    fips: str,
+    regional_combined_data: TimeseriesDataset,
+    state_combined_data: Optional[TimeseriesDataset],
+    use_actuals: bool = True,
+    weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
 ) -> pd.Series:
     """
     Load data for region of interest and return ICU Utilization numerator.
@@ -54,7 +61,7 @@ def get_icu_timeseries(
 
     """
     log = logger.new(fips=fips, event=f"ICU for Fips = {fips}")
-    data = _get_data_for_icu_calc(fips)
+    data = _get_data_for_icu_calc(regional_combined_data, state_combined_data)
     return _calculate_icu_timeseries(
         data=data, fips=fips, use_actuals=use_actuals, weight_by=weight_by, log=log
     )
@@ -118,7 +125,11 @@ def _calculate_icu_timeseries(
         return weight * superset_icu
 
 
-def _get_data_for_icu_calc(fips: str, lookback_date=ICUConfig.LOOKBACK_DATE) -> pd.DataFrame:
+def _get_data_for_icu_calc(
+    regional_combined_data: TimeseriesDataset,
+    state_combined_data: Optional[TimeseriesDataset],
+    lookback_date=ICUConfig.LOOKBACK_DATE,
+) -> pd.DataFrame:
     """
     Get the timeseries data for the current aggregation level and the superset aggregation level.
     In the case where the current aggregation level is the highest (state), return the superset as
@@ -147,16 +158,15 @@ def _get_data_for_icu_calc(fips: str, lookback_date=ICUConfig.LOOKBACK_DATE) -> 
         CommonFields.CURRENT_HOSPITALIZED,
     ]
 
-    this_level_df = (
-        combined_datasets.get_timeseries_for_fips(fips, columns=COLUMNS)
-        .get_subset(after=lookback_date)
-        .data.set_index("date")
-    )
-    super_level_df = (
-        combined_datasets.get_timeseries_for_fips(fips[:2], columns=COLUMNS)
-        .get_subset(after=lookback_date)
-        .data.set_index("date")
-    )
+    this_level_df = regional_combined_data.get_subset(
+        after=lookback_date, columns=COLUMNS
+    ).data.set_index("date")
+    if state_combined_data:
+        super_level_df = state_combined_data.get_subset(
+            after=lookback_date, columns=COLUMNS
+        ).data.set_index("date")
+    else:
+        super_level_df = this_level_df
     return pd.merge(
         this_level_df,
         super_level_df,

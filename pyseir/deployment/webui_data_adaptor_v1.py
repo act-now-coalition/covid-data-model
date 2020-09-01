@@ -1,3 +1,5 @@
+import json
+import os
 from dataclasses import dataclass
 from typing import Any
 from typing import Mapping
@@ -8,12 +10,17 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
+import pyseir
+from libs import pipeline
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.ensembles import ensemble_runner
 from pyseir.icu import infer_icu
 from pyseir.inference import model_fitter
+from pyseir.rt.utils import NEW_ORLEANS_FIPS
+from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from libs.enums import Intervention
 from libs.datasets import CommonFields
@@ -33,6 +40,7 @@ class RegionalInput:
     region: Region
 
     _combined_data: RegionalCombinedData
+    _state_combined_data: Optional[RegionalCombinedData]
     _mle_fit_result: Mapping[str, Any]
     _ensemble_results: Mapping[str, Any]
     _infection_rate: Optional[pd.DataFrame]
@@ -43,9 +51,16 @@ class RegionalInput:
         ensemble: ensemble_runner.EnsembleRunner,
         infection_rate: Optional[pd.DataFrame],
     ) -> "RegionalInput":
+        region = fitter.region
+        state_combined_data = (
+            RegionalCombinedData.from_region(region.get_state_region())
+            if region.is_county()
+            else None
+        )
         return RegionalInput(
-            region=fitter.region,
+            region=region,
             _combined_data=fitter.regional_input._combined_data,
+            _state_combined_data=state_combined_data,
             _mle_fit_result=fitter.fit_results,
             _ensemble_results=ensemble.all_outputs,
             _infection_rate=infection_rate,
@@ -89,6 +104,9 @@ class RegionalInput:
 
     def is_county(self):
         return self.region.is_county()
+
+    def get_timeseries(self) -> TimeseriesDataset:
+        return self._combined_data.get_timeseries()
 
 
 class WebUIDataAdaptorV1:
@@ -172,7 +190,9 @@ class WebUIDataAdaptorV1:
         )
         # ICU PATCH
         icu_patch_ts = infer_icu.get_icu_timeseries(
-            fips=regional_input.fips, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+            fips=regional_input.fips,
+            regional_combined_data=regional_input.get_timeseries(),
+            weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES,
         )
 
         # Iterate through each suppression policy.
