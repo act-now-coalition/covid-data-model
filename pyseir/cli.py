@@ -9,7 +9,6 @@ from functools import partial
 
 import us
 import pandas as pd
-import numpy as np
 import click
 from covidactnow.datapublic.common_fields import CommonFields
 
