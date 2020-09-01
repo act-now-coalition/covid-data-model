@@ -135,20 +135,24 @@ class SubStatePipeline:
     region: pipeline.Region
     infer_df: pd.DataFrame
     fitter: Optional[model_fitter.ModelFitter]
-    ensemble: ensemble_runner.EnsembleRunner
+    ensemble: Optional[ensemble_runner.EnsembleRunner]
 
     @staticmethod
     def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
         assert not input.region.is_state()
         infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(input.region))
-        fitter_input = model_fitter.RegionalInput.from_substate_region(
-            input.region, input.state_fitter
-        )
-        fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-        ensembles_input = ensemble_runner.RegionalInput.for_substate(
-            fitter, state_fitter=input.state_fitter
-        )
-        ensemble = ensemble_runner.make_and_run(ensembles_input)
+        if input.run_fitter:
+            fitter_input = model_fitter.RegionalInput.from_substate_region(
+                input.region, input.state_fitter
+            )
+            fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
+            ensembles_input = ensemble_runner.RegionalInput.for_substate(
+                fitter, state_fitter=input.state_fitter
+            )
+            ensemble = ensemble_runner.make_and_run(ensembles_input)
+        else:
+            fitter = None
+            ensemble = None
         return SubStatePipeline(
             region=input.region, infer_df=infer_df, fitter=fitter, ensemble=ensemble
         )
@@ -205,7 +209,7 @@ def _build_all_for_states(
     )
 
     webui_inputs = [
-        webui_data_adaptor_v1.RegionalInput.from_model_fitter(p.fitter)
+        webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble)
         for p in itertools.chain(state_pipelines, substate_pipelines)
         if p.fitter
     ]

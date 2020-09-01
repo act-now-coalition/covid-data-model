@@ -1,12 +1,10 @@
 import datetime
-import os
 from dataclasses import dataclass
 from typing import Mapping, Any, Optional
 
 import numpy as np
 
 import structlog
-import json
 import copy
 from collections import defaultdict
 
@@ -16,7 +14,6 @@ from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
-from pyseir.utils import RunArtifact
 
 
 _log = structlog.get_logger()
@@ -131,11 +128,6 @@ class EnsembleRunner:
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
         self.state_name = regional_input.state_name()
-        self.output_file_data = self.regional_input.region.run_artifact_path_to_write(
-            RunArtifact.ENSEMBLE_RESULT
-        )
-
-        os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
         self.output_percentiles = output_percentiles
         self.n_samples = n_samples
         self.n_years = n_years
@@ -262,9 +254,6 @@ class EnsembleRunner:
             self.all_outputs[
                 f"{suppression_policy_name}"
             ] = self._generate_output_for_suppression_policy(model_ensemble)
-
-        with open(self.output_file_data, "w") as f:
-            json.dump(self.all_outputs, f)
 
     @staticmethod
     def _generate_compartment_arrays(model_ensemble):

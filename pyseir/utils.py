@@ -35,8 +35,6 @@ class RunArtifact(Enum):
 
     MLE_FIT_REPORT = "mle_fit_report"
 
-    ENSEMBLE_RESULT = "ensemble_result"
-
     WEB_UI_RESULT = "web_ui_result"
 
     BACKTEST_RESULT = "backtest_result"
@@ -157,19 +155,6 @@ def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
                 f"mle_fit_results__{state_obj.name}__{fips}.pdf",
-            )
-
-    elif artifact is RunArtifact.ENSEMBLE_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                DATA_FOLDER(output_dir, state_obj.name),
-                f"ensemble_projections__{state_obj.name}__{county}__{fips}.json",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"ensemble_projections__{state_obj.name}__{fips}.json",
             )
 
     elif artifact is RunArtifact.WEB_UI_RESULT:

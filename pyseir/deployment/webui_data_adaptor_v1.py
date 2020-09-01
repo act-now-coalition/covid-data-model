@@ -1,4 +1,3 @@
-import json
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -14,6 +13,7 @@ import pyseir
 from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
 from pyseir.deployment import model_to_observed_shim as shim
+from pyseir.ensembles import ensemble_runner
 from pyseir.icu import infer_icu
 from pyseir.inference import model_fitter
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
@@ -38,13 +38,17 @@ class RegionalInput:
 
     _combined_data: RegionalCombinedData
     _mle_fit_result: Mapping[str, Any]
+    _ensemble_results: Mapping[str, Any]
 
     @staticmethod
-    def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+    def from_results(
+        fitter: model_fitter.ModelFitter, ensemble: ensemble_runner.EnsembleRunner
+    ) -> "RegionalInput":
         return RegionalInput(
             region=fitter.region,
             _combined_data=fitter.regional_input._combined_data,
             _mle_fit_result=fitter.fit_results,
+            _ensemble_results=ensemble.all_outputs,
         )
 
     @property
@@ -71,14 +75,7 @@ class RegionalInput:
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
-        output_filename = self.region.run_artifact_path_to_read(
-            pyseir.utils.RunArtifact.ENSEMBLE_RESULT
-        )
-        if not os.path.exists(output_filename):
-            return None
-
-        with open(output_filename) as f:
-            return json.load(f)
+        return self._ensemble_results
 
     def load_rt_result(self) -> Optional[pd.DataFrame]:
         """Loads the Rt inference result.
