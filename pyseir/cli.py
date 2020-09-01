@@ -9,7 +9,9 @@ from functools import partial
 
 import us
 import pandas as pd
+import numpy as np
 import click
+from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
 from libs import pipeline
@@ -22,7 +24,7 @@ from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 import pyseir.utils
 from pyseir.inference.whitelist import WhitelistGenerator
-
+from pyseir.rt.utils import NEW_ORLEANS_FIPS
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
@@ -56,13 +58,36 @@ def _generate_infection_rate_metric(regions: List[infer_rt.RegionalInput]) -> pd
     Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
     with a unique row for each region+date combination.
     """
-    with Pool(maxtasksperchild=10) as p:
-        results = p.map(infer_rt.run_rt, regions)
-
-    if results:
-        return pd.concat(results)
-    else:
+    if not regions:
         return pd.DataFrame()
+
+    with Pool(maxtasksperchild=10) as p:
+        results = pd.concat(p.map(infer_rt.run_rt, regions))
+
+    if results.empty:
+        return pd.DataFrame()
+
+    need_patch = set(results.fips) & set(NEW_ORLEANS_FIPS)
+    if need_patch:
+        logging.info("Applying New Orleans Patch")
+        unpatched = results.loc[~results.fips.isin(need_patch), :]
+
+        # Aggregate the results created so far into one timeseries of metrics in a DataFrame
+        nola_rt_inferences = pyseir.rt.patches.patch_aggregate_rt_results(need_patch)
+
+        patched: List[pd.DataFrame] = []
+        for fips in need_patch:
+            fips_rt_inferences = nola_rt_inferences.copy()
+            fips_rt_inferences.insert(0, CommonFields.FIPS, fips)
+            patched.append(fips_rt_inferences)
+            # TODO(tom): Delete when no longer read
+            output_path = pipeline.Region.from_fips(fips).run_artifact_path_to_write(
+                pyseir.utils.RunArtifact.RT_INFERENCE_RESULT
+            )
+            fips_rt_inferences.to_json(output_path)
+        results = pd.concat(patched + [unpatched])
+
+    return results
 
 
 def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:

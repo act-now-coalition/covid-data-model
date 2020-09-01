@@ -3,6 +3,7 @@ import pathlib
 import pytest
 import pandas as pd
 import structlog
+from covidactnow.datapublic.common_fields import CommonFields
 
 from pyseir import cli
 from pyseir.rt import utils
@@ -203,6 +204,7 @@ def test_generate_infection_rate_metric_no_region_given():
     assert df.empty
 
 
+@pytest.mark.slow
 def test_generate_infection_rate_metric_one_empty():
     FIPS = [
         "51017",  # Bath County VA Almost No Cases. Will be filtered out under any thresholds.
@@ -216,6 +218,7 @@ def test_generate_infection_rate_metric_one_empty():
     assert "51017" not in returned_fips
 
 
+@pytest.mark.slow
 def test_generate_infection_rate_metric_two_aggregate_levels():
     FIPS = ["06", "06075"]  # CA  # San Francisco, CA
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
@@ -224,6 +227,20 @@ def test_generate_infection_rate_metric_two_aggregate_levels():
     returned_fips = df.fips.unique()
     assert "06" in returned_fips
     assert "06075" in returned_fips
+
+
+@pytest.mark.slow
+def test_generate_infection_rate_new_orleans_patch():
+    FIPS = ["22", "22051", "22071"]  # LA, Jefferson and Orleans
+    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+
+    df = cli._generate_infection_rate_metric(regions)
+    returned_fips = df.fips.unique()
+    assert "22" in returned_fips
+    assert "22051" in returned_fips
+    assert "22071" in returned_fips
+    assert not df[CommonFields.DATE].isna().any()
+    assert not df[CommonFields.FIPS].isna().any()
 
 
 def test_generate_infection_rate_metric_fake_fips():
