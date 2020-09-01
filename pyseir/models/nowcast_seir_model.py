@@ -663,6 +663,15 @@ class ModelRun:
 
         # Iterate over all time steps
         remaining = np.linspace(start_main, self.t_list[-1], int(self.t_list[-1] - start_main + 1))
+
+        if self.historical_compartments is not None:
+            hc = self.historical_compartments
+            smape_sum = 0.0
+            smape_count = 0.0
+            calculating_smape = True
+        else:
+            calculating_smape = False
+
         for t in remaining[:-1]:  # self.t_list[:-1]:
             y = list(y)
             dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
@@ -701,8 +710,15 @@ class ModelRun:
             r_H_IC = H / (C + I)  # hospitalizations per true case
             r_dD_H = nD / H  # new deaths per hospitalization
 
+            if calculating_smape:
+                for c in ["H", "nD"]:
+                    if hc[c] is not None and hc[c][t] is not None and not math.isnan(hc[c][t]):
+                        val = H if c == "H" else nD
+                        smape_sum += abs(val - hc[c][t]) / ((abs(val) + abs(hc[c][t])) / 2.0)
+                        smape_count += 1
             y_accum.append(y)
 
+        smape = smape_sum / smape_count if calculating_smape else 0.0
         r_T_I = (
             self.testing_rate_f(t) / I if self.testing_rate_f is not None else 100.0
         )  # Test rate divided by infected not yet found (new, left overs)
@@ -724,6 +740,7 @@ class ModelRun:
                 "r_dD_H": round(r_dD_H, 3),
                 "r_T_I": round(r_T_I, 2),
                 "pos": round(pos, 3),
+                "SMAPE": round(smape, 3),
             },
         )
 
@@ -904,6 +921,8 @@ class ModelRun:
             plt.scatter(hc["nC"].index, hc["nC"].values / 10.0, c="orange", marker=".")
             plt.scatter(hc["H"].index, hc["H"].values / 10.0, c="green", marker=".")
             plt.scatter(hc["nD"].index, hc["nD"].values, c="red", marker=".")
+
+        # TODO set scale
 
         if xlim:
             plt.xlim(*xlim)

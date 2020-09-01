@@ -215,13 +215,19 @@ def test_random_periods_interesting_states():
             )
             (results, ratios, fig) = run.execute_dataframe_ratios_fig()
             calibrations.append(
-                (state, when, run.model.lr_fh[0] * run.model.lr_fd[0], run.model.lr_fh[0])
+                (
+                    state,
+                    when,
+                    run.model.lr_fh[0] * run.model.lr_fd[0],
+                    run.model.lr_fh[0],
+                    ratios["SMAPE"],
+                )
             )
 
             fig.savefig(
                 test_dir[when]
                 / (
-                    f"test_random_periods_%s_%s_start=%d_calibration=(%.2f,%.2f->%.2f).pdf"
+                    f"test_random_periods_%s_%s_start=%d_calibration=(%.2f,%.2f->%.2f)_smape=%.2f.pdf"
                     % (
                         state,
                         when,
@@ -229,19 +235,22 @@ def test_random_periods_interesting_states():
                         run.model.lr_fh[0],
                         run.model.lr_fd[0],
                         run.model.lr_fh[0] * run.model.lr_fd[0],
+                        ratios["SMAPE"],
                     )
                 ),
                 bbox_inches="tight",
             )
             plt.close(fig)
-    df = pd.DataFrame(calibrations, columns=["state", "when", "fh0", "fd0"])
+    df = pd.DataFrame(calibrations, columns=["state", "when", "fh0", "fd0", "smape"])
+    df["markersize"] = (10.0 * df["smape"] + 1.0).astype(int)
     for when in ["early", "recent"]:
         sub = df[df["when"] == when]
         fig, ax = plt.subplots()
         rect = plt.Rectangle([0.5, 0.5], 1.5, 1.5, facecolor="g", alpha=0.2)
         ax.add_patch(rect)
-        ax.scatter(sub.fh0, sub.fd0)
+        # ax.scatter(sub.fh0, sub.fd0, markersize=sub.markersize)
         for i in sub.index:
+            plt.plot([sub.fh0[i],], [sub.fd0[i],], "o", markersize=sub.markersize[i], color="b")
             ax.annotate(sub["state"][i], (sub["fh0"][i], sub["fd0"][i]))
 
         plt.xlabel("fd0*fh0 (gmean =%.2f)" % stats.gmean(sub.fh0 * sub.fd0))
@@ -251,6 +260,10 @@ def test_random_periods_interesting_states():
         fig.savefig(
             test_dir[when] / (f"test_random_state_calibrations_%s.pdf" % when), bbox_inches="tight"
         )
+
+    avg_mape = df["mape"].mean()
+    print("average mape = %.3f" % avg_mape)
+    assert avg_mape < 0.5
 
 
 def test_reproduce_TX_late_peak():
@@ -440,7 +453,7 @@ def test_simulate_iowa():
     median_age_fl = Demographics.median_age_f("FL")
 
     def rt(t):
-        return rt_fl(t - lag)
+        return rt_fl(t - lag) - 0.1  # due to mask wearing
 
     def median_age(t):  # Iowa has younger population
         ma = median_age_fl(t - lag)
@@ -462,6 +475,8 @@ def test_simulate_iowa():
 
     # Execute the run, results are a DataFrame, fig is Matplotlib Figure, ratios are key metrics
     (results, ratios, fig) = run.execute_dataframe_ratios_fig()
+
+    results.to_csv(TEST_OUTPUT_DIR / "test_simulate_iowa_results.csv")
     fig.savefig(TEST_OUTPUT_DIR / "test_simulate_iowa.pdf", bbox_inches="tight")
 
 
