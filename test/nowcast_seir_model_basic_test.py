@@ -31,6 +31,10 @@ def make_tlist(num_days):
 
 
 def test_positivity_function():
+    """
+    Validate that the positivity function is continuous (in value and 1st derivative)
+    and that it has the rigth behaviour for low and high values
+    """
     t_over_i = np.array([math.pow(10.0, x) for x in np.linspace(-1.0, 2.0, 100)])
     model = NowcastingSEIRModel()
 
@@ -71,6 +75,9 @@ def test_median_to_age_fractions():
 
 
 def test_median_age_history():
+    """
+    Plot median age history for Florida so that it can be checked visually
+    """
     t_list = t_list = np.linspace(80, 220, 200 - 80 + 1)
     f = Demographics.median_age_f("FL")
     m = [f(i) for i in t_list]
@@ -80,6 +87,10 @@ def test_median_age_history():
 
 
 def test_evolve_median_age():
+    """
+    Considering having model equations to evolve the median age of new cases forward
+    in time rather than requiring it to be an input
+    """
     pop = Demographics(0.4, 0.4, 0, 0.0)  # general population
     inf = Demographics(0.2, 0.5, 1000, 6.0)  # infected
     results = [inf.as_array()]
@@ -97,12 +108,16 @@ def test_evolve_median_age():
 
 
 def test_validate_rt_over_time():
+    """
+    Check that our Bettencourt R(t) predictions integrate properly to explain
+    the growth in new casees over time
+    """
     t_list = np.linspace(100, 200, 200 - 100 + 1)
 
     results = []
     for state in HistoricalData.get_states():  # ["MI", "FL", "TX", "NY", "CA"]:
         (rt, nc, _1, _2, _3) = HistoricalData.get_state_data_for_dates(
-            state, t_list, as_functions=True
+            state, t_list, compartments_as_functions=True
         )
 
         (avg, adj, adj_rt) = adjust_rt_to_match_cases(rt, nc, t_list)
@@ -163,6 +178,10 @@ def run_stationary(rt, median_age, t_over_x, x_is_new_cases=True):
 
 
 def scan_rt(ratio, label, scales=(None, None), x_is_new_cases=True):
+    """
+    Check positivity function impact on various ratios by scanning R(t)
+    at constant values of T (test rate) over x
+    """
     fig = plt.figure(facecolor="w", figsize=(10, 6))
     for t_over_x in [0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0]:
         rows = list()
@@ -195,6 +214,10 @@ def test_scan_test_fraction():
 
 
 def test_historical_peaks_positivity_to_real_cfr():
+    """
+    Illustrate dependence between peaks in deaths and cases (ratio) as a 
+    function of positivity
+    """
     peaks = pd.read_csv("test/data/historical/historical_peaks.csv")
     early_peaks = peaks[peaks["when"] == "Apr-May"]
     late_peaks = peaks[peaks["when"] == "Jun-Jul"]
@@ -224,4 +247,3 @@ def test_historical_peaks_positivity_to_real_cfr():
     fig.savefig(TEST_OUTPUT_DIR / "test_historical_peaks_positivity_to_real_cfr.pdf")
 
     assert True
-

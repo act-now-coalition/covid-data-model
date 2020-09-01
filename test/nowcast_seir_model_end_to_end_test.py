@@ -41,8 +41,9 @@ def test_run_new_model_incrementally():
 
     # Need assumptions for R(t) and testing_rate(t) for the future as inputs
     (rt, ignore_0, tests, ignore_1, ignore_2) = HistoricalData.get_state_data_for_dates(
-        "FL", t_list, as_functions=True
-    )  # Here taken from historical data but typically will use R(t) projections
+        "FL", t_list
+    )
+    # Here taken from historical data but typically will use R(t) projections
 
     start = datetime.now()
     # Create a ModelRun (with specific assumptions) based on a Model (potentially with some trained inputs)
@@ -52,7 +53,7 @@ def test_run_new_model_incrementally():
         ),  # creating a default model here with no trained parameters
         20e6,  # N, population of jurisdiction
         t_list,
-        tests,
+        None,  # tests,
         rt,
         case_median_age_f=Demographics.median_age_f("FL"),
         # ramp_function( t_list, 48, 37),  # Optional, will use US defaults if not supplied
@@ -108,7 +109,7 @@ def test_ratio_evolution():
     t_list = np.linspace(0, 230, 230 + 1)
     sets = {
         "early": {"states": ["NY", "NJ", "CT"], "delay": 0},
-        "late": {"states": ["FL", "TX", "GA", "CA", "AZ"], "delay": 14},
+        "late": {"states": ["FL", "TX", "GA", "CA", "AZ"], "delay": 12},
         "steady": {"states": ["PA", "IL"], "delay": 7},
     }
 
@@ -117,16 +118,19 @@ def test_ratio_evolution():
         fig, ax = plt.subplots()
         for state in s["states"]:
             (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates(
-                state, t_list, as_functions=False
+                state, t_list, no_functions=True
             )
-            fh = h / (nc * model.t_i)  # .shift(7)
-            fd = (nd * model.t_h) / h  # .shift(7)
+            fh = h / (nc * model.t_i)
+            fd = (nd * model.t_h()) / h
             pos = nc / tests
             hdelay = h.shift(s["delay"])
 
             plt.scatter(hdelay.values, nd.values, marker=".", label=state)
             plt.plot([hdelay.values[-1]], [nd.values[-1]], marker="o")
 
+        plt.plot([1e3, 1e4], [2e1, 2e2], linestyle="--")
+        plt.xlabel(f"Hospitalizations (delayed %s days" % s["delay"])
+        plt.ylabel("new Deaths")
         plt.yscale("log")
         plt.xscale("log")
         # plt.ylim((0.01, 1.0))
@@ -136,7 +140,7 @@ def test_ratio_evolution():
 
 def test_random_periods_interesting_states():
     states = HistoricalData.get_states()
-    starts = {"early": 90, "recent": 170}
+    starts = {"early": 90, "recent": 155}
     early_start = {
         "NY": 75,
         "NJ": 80,
@@ -168,10 +172,15 @@ def test_random_periods_interesting_states():
 
     calibrations = []
 
+    test_dir = {}
+    for when in starts.keys():
+        test_dir[when] = pathlib.Path(TEST_OUTPUT_DIR / when)
+        test_dir[when].mkdir(exist_ok=True)
+
     for state in states:  # ["TX"]:  #
         # Do a test early and late in the pandemic for each state
         for (when, std_start) in starts.items():
-            num_days = 60  # duration of test
+            num_days = 75  # duration of test
             earliest = (
                 early_start[state] if (when == "early" and state in early_start) else std_start
             )
@@ -181,28 +190,28 @@ def test_random_periods_interesting_states():
             # )  # Pick a random start time within a range
             t_list = np.linspace(start, start + num_days, num_days + 1)
             t0 = t_list[0]
-            h_delay = 0.0 if when == "early" else 7.0
+
+            # Adjusting for change in delay over time
+            # h_delay = 3.0 if when == "early" else 10.0
+            h_delay = 0.0
 
             # Get historical data for that state and adjust R(t) for long term bias
-            (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates(
-                state, t_list, as_functions=False
-            )
+            (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates(state, t_list)
             (average_R, growth_ratio, adj_r_f) = adjust_rt_to_match_cases(
-                lambda t: rt[t], lambda t: nc[t], t_list
+                rt, lambda t: nc[t], t_list
             )
 
             # Run the model with history for initial constraints and to add actuals to charts
             run = ModelRun(
-                NowcastingSEIRModel(delay_ci_h=h_delay, death_delay=0),
+                NowcastingSEIRModel(),  # delay_ci_h=h_delay, death_delay=0),
                 20e6,  # N
                 t_list,
-                lambda t: tests[t],
+                tests,
                 adj_r_f,
                 case_median_age_f=Demographics.median_age_f(state),
-                # initial_compartments={"nC": nc(t0), "H": h(t0), "nD": nd(t0)},
                 historical_compartments={"nC": nc, "H": h, "nD": nd},
                 auto_initialize_other_compartments=True,
-                auto_calibrate=True,
+                auto_calibrate=True,  # True
             )
             (results, ratios, fig) = run.execute_dataframe_ratios_fig()
             calibrations.append(
@@ -210,7 +219,7 @@ def test_random_periods_interesting_states():
             )
 
             fig.savefig(
-                TEST_OUTPUT_DIR
+                test_dir[when]
                 / (
                     f"test_random_periods_%s_%s_start=%d_calibration=(%.2f,%.2f->%.2f).pdf"
                     % (
@@ -224,10 +233,13 @@ def test_random_periods_interesting_states():
                 ),
                 bbox_inches="tight",
             )
+            plt.close(fig)
     df = pd.DataFrame(calibrations, columns=["state", "when", "fh0", "fd0"])
     for when in ["early", "recent"]:
         sub = df[df["when"] == when]
         fig, ax = plt.subplots()
+        rect = plt.Rectangle([0.5, 0.5], 1.5, 1.5, facecolor="g", alpha=0.2)
+        ax.add_patch(rect)
         ax.scatter(sub.fh0, sub.fd0)
         for i in sub.index:
             ax.annotate(sub["state"][i], (sub["fh0"][i], sub["fd0"][i]))
@@ -237,19 +249,52 @@ def test_random_periods_interesting_states():
         plt.xscale("log")
         plt.yscale("log")
         fig.savefig(
-            TEST_OUTPUT_DIR / (f"test_random_state_calibrations_%s.pdf" % when), bbox_inches="tight"
+            test_dir[when] / (f"test_random_state_calibrations_%s.pdf" % when), bbox_inches="tight"
         )
+
+
+def test_reproduce_TX_late_peak():
+    """
+    Reproduce behaviour of late peaks for Texas starting from t0 = 170
+    - peak H=1050 at t=200
+    - peak nD=200 at t=220
+    - using median age of FL for now as substitute
+    - and TODO linear ramp on (at least) fh0 to get slope right at the start
+    - using times from 170 to 180 to manually constraint fh0 = a + b(t-t0)
+    - and where fh0 = 2.58, fd0 = .73 had been selected to match at t0=170
+    """
+    # Time period for the run (again relative to Jan 1, 2020)
+    t_list = np.linspace(
+        170, 230, 230 - 170 + 1
+    )  # Here starts from when FL started to ramp up cases
+
+    # Need assumptions for R(t) and testing_rate(t) for the future as inputs
+    (rt, nC, tests, H, nD) = HistoricalData.get_state_data_for_dates("TX", t_list)
+    # Here taken from historical data but typically will use R(t) projections
+
+    # Create a ModelRun (with specific assumptions) based on a Model (potentially with some trained inputs)
+    run = ModelRun(
+        NowcastingSEIRModel(
+            # delay_ci_h=5
+        ),  # creating a default model here with no trained parameters
+        20e6,  # N, population of jurisdiction
+        t_list,
+        tests,
+        rt,
+        case_median_age_f=Demographics.median_age_f("TX"),
+        historical_compartments={"nC": nC, "H": H, "nD": nD},
+        auto_initialize_other_compartments=True,  # By running to steady state at initial R(t=t0)
+        auto_calibrate=False,  # Override some model constants to ensure continuity with initial compartments
+    )
+
+    # Execute the run, results are a DataFrame, fig is Matplotlib Figure, ratios are key metrics
+    (results, ratios, fig) = run.execute_dataframe_ratios_fig()
+    fig.savefig(TEST_OUTPUT_DIR / "test_reproduce_TX_late_peak.pdf", bbox_inches="tight")
 
 
 def test_reproduce_FL_late_peak():
     """
-    TODO fix to use historical data
-    Reproduce behaviour of late peak in Florida where (as of ~Aug 1)
-    - was 800 cases per day (20k tests per day with 4% positivity) steady for some time with 30 deaths per day
-    - then R(t) went to 1.1 and 1.3 and 1.0 each for two weeks
-    - deaths didn't rise (by 20%) until at least 4 weeks later -31-(-59)=28 than cases did
-    - cases peaked at 120000/day and deaths at 185/day (2 weeks later)
-    - with median age of recent cases = 37 years old
+    TODO use all of these asserts somewhere else
     """
     # new cases per day
     nC_initial = 800.0
@@ -320,6 +365,104 @@ def test_reproduce_FL_late_peak():
     assert diff_start_delay < 5  # TODO less than 5 fails
 
     # TODO check if deaths and hospitalizations are exactly right (slopes close) at the start of the run
+
+
+def test_intertia_of_model():
+    """
+    Explores delay of H and D relative to C and overshoot/undershoot with variable dwell time
+    parameters.
+    """
+
+    # Time period for the run (again relative to Jan 1, 2020)
+    t_list = np.linspace(0, 100, 100 + 1)  # Here starts from when FL started to ramp up cases
+
+    # Need assumptions for R(t) and testing_rate(t) for the future as inputs
+    rt = lambda t: 1.0 + 0.2 * math.sin(t / 12.0)
+    model = NowcastingSEIRModel()
+    delays = []
+
+    t_i = 6
+    t_h = 8
+
+    for (t_i, t_h) in [(3, 8), (6, 8), (12, 8), (6, 4), (6, 16), (12, 16)]:
+        model.t_i = t_i
+        model.th0 = t_h
+
+        # Create a ModelRun (with specific assumptions) based on a Model (potentially with some trained inputs)
+        run = ModelRun(
+            model,  # TODO experiment with dwell times
+            20e6,  # N, population of jurisdiction
+            t_list,
+            None,  # tests,
+            rt,
+            case_median_age_f=lambda t: 48,
+            initial_compartments={"nC": 1000.0},
+            auto_initialize_other_compartments=True,  # By running to steady state at initial R(t=t0)
+            auto_calibrate=False,  # Override some model constants to ensure continuity with initial compartments
+        )
+
+        # Execute the run, results are a DataFrame, fig is Matplotlib Figure, ratios are key metrics
+        (results, ratios, fig) = run.execute_dataframe_ratios_fig()
+
+        nC_peak_at = results["nC"].argmax()
+        h_peak_at = results["H"].argmax()
+        nD_peak_at = results["nD"].argmax()
+
+        h_delay = h_peak_at - nC_peak_at
+        d_delay = nD_peak_at - h_peak_at
+
+        h_to_nC = results["H"][h_peak_at] / results["nC"][nC_peak_at]
+        nD_to_h = results["nD"][nD_peak_at] / results["H"][h_peak_at]
+
+        delays.append([t_i, model.t_h(48), h_delay, h_to_nC, d_delay, nD_to_h])
+        assert h_delay - int(t_i + model.t_h(48) / 2) in [-2, -1, 0, 1, 2]  # 0 +/- 1
+        assert (d_delay) in [2, 1, 0]  # 1 +/- 1
+
+    fig.savefig(TEST_OUTPUT_DIR / "test_intertia_of_model.pdf", bbox_inches="tight")
+    delays
+
+
+def test_simulate_iowa():
+    """
+    What could happen in Iowa given similar behaviour as in Florida
+    """
+    lag = 85
+    days = 60
+
+    # Time period for the run (again relative to Jan 1, 2020)
+    t_list = np.linspace(244, 244 + days, days + 1)
+    fl_t_list = np.linspace(244 - (lag + 5), 244 - (lag + 5) + days + 2 * lag, days + 2 * lag + 1)
+
+    # Need assumptions for R(t) and testing_rate(t) for the future as inputs
+    (rt_fl, ignore_0, ignore_1, ignore_2, ignore_3) = HistoricalData.get_state_data_for_dates(
+        "FL", fl_t_list
+    )
+    median_age_fl = Demographics.median_age_f("FL")
+
+    def rt(t):
+        return rt_fl(t - lag)
+
+    def median_age(t):  # Iowa has younger population
+        ma = median_age_fl(t - lag)
+        adj = 35.0 + 0.75 * (ma - 35)  # turn 50 into 46
+        return adj
+
+    # Create a ModelRun (with specific assumptions) based on a Model (potentially with some trained inputs)
+    run = ModelRun(
+        NowcastingSEIRModel(),  # creating a default model here with no trained parameters
+        5e6,  # N, population of jurisdiction
+        t_list,
+        None,  # tests,
+        rt,
+        case_median_age_f=median_age,
+        initial_compartments={"nC": 1170.0, "H": 500.0, "nD": 18.0},
+        auto_initialize_other_compartments=True,  # By running to steady state at initial R(t=t0)
+        auto_calibrate=True,  # Override some model constants to ensure continuity with initial compartments
+    )
+
+    # Execute the run, results are a DataFrame, fig is Matplotlib Figure, ratios are key metrics
+    (results, ratios, fig) = run.execute_dataframe_ratios_fig()
+    fig.savefig(TEST_OUTPUT_DIR / "test_simulate_iowa.pdf", bbox_inches="tight")
 
 
 # TODO add a test for a recent peak with reasonably low test positivity

@@ -18,6 +18,7 @@ class Demographics:
     used in adjusting hospitalization and deaths fractions.
     """
 
+    # Note these contact matrices are only used in testing so far
     HOUSEHOLD = np.array([[0.2, 0.2, 0.0], [0.2, 0.2, 0.0], [0.0, 0.0, 0.0]])
     SCHOOLS = np.array([[2.0, 0.2, 0.0], [0.2, 0.1, 0.0], [0.0, 0.0, 0.0]])
     ESSENTIAL = np.array([[0.1, 0.1, 0.05], [0.1, 0.1, 0.05], [0.05, 0.05, 0.0]])
@@ -94,11 +95,10 @@ class Demographics:
     @staticmethod
     def median_age_f(state=None):
         """
-        Median age of covid cases for all of US.
-        TODO this is from Florida so need to update.
+        Median age of covid cases for all of US and specific individual states
         """
         if state in ["FL", "TX"]:
-            # sourced from reports in http://ww11.doh.state.fl.us/comm/_partners/covid19_report_archive/
+            # From reports in http://ww11.doh.state.fl.us/comm/_partners/covid19_report_archive/
             data = {
                 133: 52,
                 140: 49,
@@ -116,38 +116,50 @@ class Demographics:
                 224: 43,
                 231: 43,
             }
-            days = list(data.keys())
-            values = list(data.values())
-
-            def med_func(t):
-                if t <= days[0]:
-                    return values[0]
-                elif t >= days[-1]:
-                    return values[-1]
-                else:
-                    for (day, value) in data.items():
-                        if t >= day:
-                            last = value
-                        else:  # interpolate between values
-                            return 1.0 / 7.0 * ((day - t) * last + (t - day + 7) * value)
-
-            return med_func
-
         else:
+            # From https://www.cdc.gov/coronavirus/2019-ncov/covid-data/covidview/index.html
+            data = {
+                68: 56.3,
+                75: 53.5,
+                82: 54.7,
+                89: 57.1,
+                96: 59.2,
+                103: 61.9,
+                110: 59.5,
+                117: 55.1,
+                124: 53.7,
+                131: 51.8,
+                138: 50.4,
+                145: 48.6,
+                152: 47.8,
+                159: 44.7,
+                166: 42.7,
+                173: 41.5,
+                180: 40.2,
+                187: 40,
+                194: 40.7,
+                201: 39.8,
+                208: 40,
+                215: 40.5,
+                222: 40.7,
+                229: 40.6,
+            }
+        days = list(data.keys())
+        values = list(data.values())
 
-            def med_func(t):
-                t1 = 120.0
-                max = 48.0
-                t2 = 180.0
-                min = 37.0
-                if t < t1:
-                    return max
-                elif t > t2:
-                    return min
-                else:
-                    return max - (max - min) * (t - t1) / (t2 - t1)
+        def med_func(t):
+            if t <= days[0]:
+                return values[0]
+            elif t >= days[-1]:
+                return values[-1]
+            else:
+                for (day, value) in data.items():
+                    if t >= day:
+                        last = value
+                    else:  # interpolate between values
+                        return 1.0 / 7.0 * ((day - t) * last + (t - day + 7) * value)
 
-            return med_func
+        return med_func
 
 
 def ramp_function(t_list, start_value, end_value):
@@ -160,20 +172,46 @@ def ramp_function(t_list, start_value, end_value):
     return ftn
 
 
-# Transition fractions to Hospitalizations and Deaths by age groups
-# 0-35, 35-65 and 65-100
+# Transition fractions to Hospitalizations and Deaths by decade
+# to age groups: 0-35, 35-65 and 65-100
 # TODO need to normalize contributions per decade by local demographics
-# TODO put this code inside NowcastingSEIRModel
-FH_BY_AGE = [  # Roughly rom BC data - need to cross check
-    (0.04 + 0.01 + 0.04 + 0.5 * 0.07) / 3.5,
-    (0.5 * 0.07 + 0.11 + 0.12 + 0.5 * 0.25) / 3,
-    (0.5 * 0.25 + 0.5 + 0.33 + 0.25) / 3.5,
+
+# First started with BC data
+FH_BY_DECADE_BC = [0.04, 0.01, 0.04, 0.07, 0.11, 0.12, 0.25, 0.5, 0.33, 0.25]
+CFR_BY_DECADE_BC = [0.0, 0.0, 0.0, 0.0, 0.004, 0.009, 0.04, 0.125, 0.333, 0.333]
+
+DEATHS_PRCNT_BY_2DECADE_IA = [0.0022, 0.0178, 0.090, 0.411, 0.479]
+CASES_PRCNT_BY_2DECADE_IA = [0.10, 0.46, 0.28, 0.12, 0.04]
+CFR_BY_2DECADE_IA = [
+    1116.0 / 64888.0 * DEATHS_PRCNT_BY_2DECADE_IA[i] / CASES_PRCNT_BY_2DECADE_IA[i]
+    for i in range(0, 5)
 ]
-CFR_BY_AGE = [  # Roughly rom BC data - need to cross check
-    0.0,
-    (0.5 * 0.0 + 0.004 + 0.009 + 0.5 * 0.04) / 3,
-    (0.5 * 0.04 + 0.125 + 0.333 + 0.333) / 3.5,
+
+# AB data from https://www.cbc.ca/news/canada/calgary/alberta-covid-19-hospital-icu-average-stay-1.5667884
+# Note AB hospitalization rate much lower for young people, higher for middle age
+FH_BY_DECADE_AB = [0.005, 0.009, 0.008, 0.021, 0.027, 0.062, 0.112, 0.294, 0.226, 0.226]
+
+# TODO still decide which is more appropriate for US
+FH = FH_BY_DECADE_BC
+CFR = CFR_BY_DECADE_BC  # CFR_BY_2DECADE_IA
+
+FH_BY_AGE = [
+    (FH[0] + FH[1] + FH[2] + 0.5 * FH[3]) / 3.5,
+    (0.5 * FH[3] + FH[4] + FH[5] + 0.5 * FH[6]) / 3,
+    (0.5 * FH[6] + FH[7] + FH[8] + FH[9]) / 3.5,
 ]
+if len(CFR) > 5:  # by decade
+    CFR_BY_AGE = [
+        (CFR[0] + CFR[1] + CFR[2] + 0.5 * CFR[3]) / 3.5,
+        (0.5 * CFR[3] + CFR[4] + CFR[5] + 0.5 * CFR[6]) / 3,
+        (0.5 * CFR[6] + CFR[7] + CFR[8] + CFR[9]) / 3.5,
+    ]
+else:  # by 2 decades
+    CFR_BY_AGE = [
+        (CFR[0] + 0.75 * CFR[1]) / 1.75,
+        (0.25 * CFR[1] + CFR[2] + 0.25 * CFR[3]) / 1.5,
+        (0.75 * CFR[3] + CFR[4]) / 1.75,
+    ]
 FD_BY_AGE = [CFR_BY_AGE[i] / FH_BY_AGE[i] for i in range(0, 3)]
 
 
@@ -185,9 +223,8 @@ class NowcastingSEIRModel:
     The concept of running the Model has been split off into another class (ModelRun).
 
     TODO Next steps:
-    1) Look at time dependent behaviour, hook up to standard graphing
-    2) Turn on delay and see if that helps match peak behaviour
-    3) Validate test positivity contribution to peaks against that observed
+    * Turn on delay and see if that helps match peak behaviour
+    * Validate test positivity contribution to peaks against that observed
 
     See test/seir_model_training_test.py for tests
     """
@@ -199,20 +236,35 @@ class NowcastingSEIRModel:
         lr_fh=(1.0, 0.0),
         lr_fd=(1.0, 0.0),
         delay_ci_h=0,  # added days of delay between infection and hospitalization
-        death_delay=14,
+        age_eval_delay=None,  # 14,
     ):
         # Retain passed in parameters
         self.lr_fh = lr_fh
         self.lr_fd = lr_fd
         self.delay_ci_h = delay_ci_h  # not using this yet
-        self.death_delay = death_delay
+        self.age_eval_delay = age_eval_delay
 
         # __________Fixed parameters not trained_________
         self.t_e = 2.0  # 2.0  sigma was 1/3. days^-1 below
         # TODO serial period as ~5 days in our old model runs. How is this not 6 = 3 + 1/2 * 6?
         self.t_i = 6.0  # delta was 1/6. days^-1 below
         self.serial_period = self.t_e + 0.5 * self.t_i  # this is 5 days agrees with delta below
-        self.t_h = 8.0  # delta_hospital below was 1./8. days^-1
+
+        # Hospitalization stay length is important driver of total Hospitalizations (due to accumulation)
+        # Range of reported values from 5-8 days. Some examples
+        # https://www.medrxiv.org/content/medrxiv/early/2020/05/05/2020.04.30.20084780.full.pdf
+        self.th0 = 6.0
+
+        def th_f(med_age=None):
+            if med_age is None:
+                return self.th0
+            else:
+                return self.th0 * (1.0 + 0.5 * max(1.0, (med_age - 30.0) / 30.0))
+
+        self.t_h = th_f
+
+        if self.age_eval_delay is None:
+            self.age_eval_delay = self.t_i + self.t_h()
         self.fw0 = 0.5
         self.pos0 = 0.5  # max positivity for testing -> 0
         self.pos_c = 1.75
@@ -390,9 +442,9 @@ class ModelRun:
         Median age of people that test positive each day
 
     TODO how to specify compartments for initialization (up to today) that covers all cases
-        Starting from bare minimum of values: C or I
-        Starting from just a few observables for today: C, D, nC, H, nD (last 3 as constraints)
-        Starting from DataFrame outputs of a previous run
+    * Starting from bare minimum of values: C or I
+    * Starting from just a few observables for today: C, D, nC, H, nD (last 3 as constraints)
+    * Starting from DataFrame outputs of a previous run
 
     today: int[]
         Day that represents "today". Days before this day are treated as burn in for the run while those
@@ -531,8 +583,8 @@ class ModelRun:
             x = nC_initial if nC_initial is not None else I_initial
             (ignore, compartments) = model.run_stationary(
                 rt_f(t0),
-                case_median_age_f(t0 - model.death_delay),
-                t_over_x=max(testing_rate_f(t0) / x, 2.2),
+                case_median_age_f(t0 - model.age_eval_delay),
+                t_over_x=max(testing_rate_f(t0) / x, 2.2) if testing_rate_f is not None else 100.0,
                 x_is_new_cases=True if nC_initial is not None else False,
             )
             self.compartment_ratios_initial = compartments
@@ -565,7 +617,8 @@ class ModelRun:
                 factor = y0["I"] / self.compartment_ratios_initial[2]  # cases
             y = [x * factor for x in self.compartment_ratios_initial]
             y[0] = y0["S"]
-            y[8] = 0.0  # start recoveries over
+            # reset new recoveries and deaths
+            y[8] = 0.0
             y[9] = 0.0
 
         if self.auto_calibrate:
@@ -586,9 +639,31 @@ class ModelRun:
 
         implicit = False if self.force_stationary else True
 
+        # If today is set and is in the future than we are calibrating on more than one day
+        if self.today is not None and self.today > self.t_list[0] + 7:  # days
+
+            # Run without adjustments up until today, then compute adjustments needed to match today
+            for t in np.linspace(self.t_list[0], today, int(today - self.t_list[0] + 1)):
+                y = list(y)
+                dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
+                (dS, dE, dI, dW, nC, dC, dH, dD, dR, b) = dy
+                y_new = [max(0.1, a + b) for a, b in zip(y, dy)]
+                # do not accumulate daily new cases, deaths or beta
+                y_new[4] = nC
+                y_new[7] = dD
+                y_new[9] = b
+
+                y = y_new
+                y_accum.append(y)
+            start_main = today
+
+            # TODO calculate and apply adjustments
+        else:
+            start_main = self.t_list[0]
+
         # Iterate over all time steps
-        for t in self.t_list[:-1]:
-            # TODO determine dt from t_list and make sure _time_step using it correctly
+        remaining = np.linspace(start_main, self.t_list[-1], int(self.t_list[-1] - start_main + 1))
+        for t in remaining[:-1]:  # self.t_list[:-1]:
             y = list(y)
             dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
             (dS, dE, dI, dW, nC, dC, dH, dD, dR, b) = dy
@@ -629,7 +704,7 @@ class ModelRun:
             y_accum.append(y)
 
         r_T_I = (
-            self.testing_rate_f(t) / I
+            self.testing_rate_f(t) / I if self.testing_rate_f is not None else 100.0
         )  # Test rate divided by infected not yet found (new, left overs)
         pos = self.model.positivity(r_T_I)  # Assumed (TODO fit) test positivity that will result
         exp_growth_factor = math.exp(
@@ -673,9 +748,13 @@ class ModelRun:
         (S, E, I, W, nC, C, H, D, R, b) = y
 
         model = self.model
+
+        med_age_h = self.case_median_age_f(t - int(model.age_eval_delay / 2))
+        med_age_d = self.case_median_age_f(t - model.age_eval_delay)
+
         t_e = model.t_e
         t_i = model.t_i
-        t_h = model.t_h
+        t_h = model.t_h(med_age_h)
 
         k = (self.rt_f(t) - 1.0) / model.serial_period
         if implicit_infections:
@@ -685,9 +764,8 @@ class ModelRun:
 
         # transition fractions and linear ramp corrections
         if self.case_median_age_f is not None:
-            median_age = self.case_median_age_f(t - model.death_delay)
-            fh0 = model.fh0_f(median_age=median_age)
-            fd0 = model.fd0_f(median_age=median_age)
+            fh0 = model.fh0_f(median_age=med_age_h)
+            fd0 = model.fd0_f(median_age=med_age_d)
         else:
             fh0 = model.fh0_f()
             fd0 = model.fd0_f()
@@ -696,6 +774,9 @@ class ModelRun:
         fd = fd0 * model.lr_fd[0] + model.lr_fd[1] * (t - self.t_list[0])
         fd = max(0.0, min(1.0, fd))
         fw = model.fw0  # might do something smarter later
+
+        # Damping factors for numerical stability
+        e_max_growth = 2.0
 
         # Use delayed Cases and Infected to drive hospitalizations
         avg_R = self.rt_f(t)  # do better by averaging in the future
@@ -714,14 +795,20 @@ class ModelRun:
 
             # Which allows T/I to be inferred by inverting the positivity function
             # which determines I and dIdt
-            pos_new = min(0.4, positive_tests / self.testing_rate_f(t))
-            T_over_I = model.positivity_to_t_over_i(pos_new)
-            I_new = self.testing_rate_f(t) / T_over_I
+            if self.testing_rate_f is not None:
+                pos_new = min(0.4, positive_tests / self.testing_rate_f(t))
+                T_over_I = model.positivity_to_t_over_i(pos_new)
+                I_new = self.testing_rate_f(t) / T_over_I
+            else:  # no testing function -> assume I -> 0 with only C and W
+                pos_new = 0.01
+                I_new = 1.0
             dIdt = (I_new - I) / dt
 
             # Which allows E to be inferred and hence dEdt, number_exposed
             E_new = max(10.0, (dIdt + positive_tests + delayed_I / t_i) * t_e / (1.0 - fw))
-            E_new = max(min(2.0 * E, E_new), 0.5 * E)  # Damp down rapid changes
+            E_new = max(
+                min(e_max_growth * E, E_new), 1.0 / e_max_growth * E
+            )  # Damp down rapid changes
             dEdt = (E_new - E) / dt
             number_exposed = dEdt + E / t_e
 
@@ -786,6 +873,8 @@ class ModelRun:
 
         all_infected = self.results["A"] + self.results["I"] + self.results["C"]
 
+        low_ratio = [0.03 for t in self.t_list]
+
         # Plot the data on three separate curves for S(t), I(t) and R(t)
         fig = plt.figure(facecolor="w", figsize=(20, 6))
 
@@ -800,7 +889,7 @@ class ModelRun:
             linestyle="--",
         )
 
-        plt.plot(self.t_list, all_infected / 100.0, alpha=0.5, lw=2, label="Infected (A+I+C)/100.")
+        plt.plot(self.t_list, self.results["nC"] / 10.0, alpha=0.5, lw=2, label="New Cases/10.")
         h_all = self.results["H"]
         plt.plot(self.t_list, h_all / 10.0, alpha=0.5, lw=4, label="All Hospitalized/10.")
         plt.plot(self.t_list, self.results["nD"], alpha=0.5, lw=4, label="New Deaths")
@@ -812,8 +901,9 @@ class ModelRun:
 
         if self.historical_compartments is not None:
             hc = self.historical_compartments
-            plt.scatter(hc["H"].index, hc["H"].values / 10.0, c="g", marker=".")
-            plt.scatter(hc["nD"].index, hc["nD"].values, c="r", marker=".")
+            plt.scatter(hc["nC"].index, hc["nC"].values / 10.0, c="orange", marker=".")
+            plt.scatter(hc["H"].index, hc["H"].values / 10.0, c="green", marker=".")
+            plt.scatter(hc["nD"].index, hc["nD"].values, c="red", marker=".")
 
         if xlim:
             plt.xlim(*xlim)
@@ -829,35 +919,60 @@ class ModelRun:
             label="R(t)/10",
             linestyle="--",
         )
+        if self.testing_rate_f is not None:
+            it_ratio = self.results["I"] / np.array([self.testing_rate_f(t) for t in self.t_list])
+        else:
+            it_ratio = low_ratio
         plt.plot(
-            self.t_list,
-            self.results["I"] / np.array([self.testing_rate_f(t) for t in self.t_list]),
-            alpha=0.5,
-            lw=2,
-            label="I/T",
+            self.t_list, it_ratio, alpha=0.5, lw=2, label="I/T",
         )
         plt.plot(
             self.t_list,
-            np.array([self.model.fh0_f(median_age=self.case_median_age_f(t)) for t in self.t_list]),
+            np.array(
+                [
+                    self.model.fh0_f(
+                        median_age=self.case_median_age_f(t - int(self.model.age_eval_delay / 2))
+                    )
+                    for t in self.t_list
+                ]
+            ),
             alpha=0.5,
             lw=4,
-            label="fh(age)",
+            label="fh(age) delayed",
         )
         plt.plot(
             self.t_list,
-            np.array([self.model.fd0_f(median_age=self.case_median_age_f(t)) for t in self.t_list]),
+            np.array(
+                [
+                    self.model.fd0_f(
+                        median_age=self.case_median_age_f(t - self.model.age_eval_delay)
+                    )
+                    for t in self.t_list
+                ]
+            ),
             alpha=0.5,
             lw=4,
-            label="fd(age)",
+            label="fd(age) delayed",
         )
-        plt.plot(
-            self.t_list,
-            np.array([self.testing_rate_f(t) / 100000 for t in self.t_list]),
-            alpha=0.5,
-            lw=2,
-            label="Tests/100k",
-            linestyle="--",
-        )
+        if self.testing_rate_f is not None:
+            plt.plot(
+                self.t_list,
+                np.array([self.testing_rate_f(t) / 100000 for t in self.t_list]),
+                alpha=0.5,
+                lw=2,
+                label="Tests/100k",
+                linestyle="--",
+            )
+
+        if self.historical_compartments is not None:
+            hc = self.historical_compartments
+            plt.scatter(
+                hc["nD"].index,
+                hc["nD"].values / hc["H"].values * self.model.t_h(),
+                c="red",
+                marker=".",
+                label="fd actual",
+            )
 
         plt.xlabel("Time [days]", fontsize=12)
         plt.yscale(y_scale)

@@ -36,7 +36,9 @@ class HistoricalData:
         return smoothed
 
     @staticmethod
-    def get_state_data_for_dates(state, t_list, as_functions=False):
+    def get_state_data_for_dates(
+        state, t_list, compartments_as_functions=False, no_functions=False
+    ):
         start_date = HistoricalData.ref_date + timedelta(days=t_list[0])
         end_date = HistoricalData.ref_date + timedelta(days=t_list[-1])
         rows = HistoricalData.data[
@@ -61,7 +63,7 @@ class HistoricalData:
         # Apply date filter last
         rows = rows[(rows["date"] >= start_date) & (rows["date"] <= end_date)]
 
-        if as_functions:
+        if compartments_as_functions:
             return (
                 lambda t: rows["rt"][t],
                 lambda t: rows["nC"][t],
@@ -69,8 +71,22 @@ class HistoricalData:
                 lambda t: rows["H"][t],
                 lambda t: rows["nD"][t],
             )
+        elif no_functions:
+            return (
+                rows["rt"],
+                rows["nC"],
+                rows["tests"],
+                rows["H"],
+                rows["nD"],
+            )
         else:
-            return (rows["rt"], rows["nC"], rows["tests"], rows["H"], rows["nD"])
+            return (
+                lambda t: rows["rt"][t],
+                rows["nC"],
+                lambda t: rows["tests"][t],
+                rows["H"],
+                rows["nD"],
+            )
 
     @staticmethod
     def get_states():
