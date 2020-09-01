@@ -70,6 +70,7 @@ class StatePipeline:
     # TODO(tom): Rename when not refactoring it.
     infer_df: pd.DataFrame
     fitter: model_fitter.ModelFitter
+    ensemble: ensemble_runner.EnsembleRunner
 
     @staticmethod
     def run(region: pipeline.Region) -> "StatePipeline":
@@ -78,8 +79,8 @@ class StatePipeline:
         fitter_input = model_fitter.RegionalInput.from_state_region(region)
         fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
         ensembles_input = ensemble_runner.RegionalInput.for_state(fitter)
-        ensemble_runner.run_region(ensembles_input)
-        return StatePipeline(region=region, infer_df=infer_df, fitter=fitter)
+        ensemble = ensemble_runner.make_and_run(ensembles_input)
+        return StatePipeline(region=region, infer_df=infer_df, fitter=fitter, ensemble=ensemble)
 
 
 @dataclass
@@ -134,6 +135,7 @@ class SubStatePipeline:
     region: pipeline.Region
     infer_df: pd.DataFrame
     fitter: Optional[model_fitter.ModelFitter]
+    ensemble: ensemble_runner.EnsembleRunner
 
     @staticmethod
     def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
@@ -146,8 +148,10 @@ class SubStatePipeline:
         ensembles_input = ensemble_runner.RegionalInput.for_substate(
             fitter, state_fitter=input.state_fitter
         )
-        ensemble_runner.run_region(ensembles_input)
-        return SubStatePipeline(region=input.region, infer_df=infer_df, fitter=fitter)
+        ensemble = ensemble_runner.make_and_run(ensembles_input)
+        return SubStatePipeline(
+            region=input.region, infer_df=infer_df, fitter=fitter, ensemble=ensemble
+        )
 
 
 def _build_all_for_states(

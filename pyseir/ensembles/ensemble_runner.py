@@ -419,15 +419,8 @@ class EnsembleRunner:
         return outputs
 
 
-def run_region(regional_input: RegionalInput):
-    """
-    Run the EnsembleRunner for each county in a state.
-
-    Parameters
-    ----------
-    regional_input: RegionalInput
-        Region to run against.
-    """
-    # Run the state level
+def make_and_run(regional_input: RegionalInput) -> EnsembleRunner:
+    """Make and run an EnsembleRunner for a county or state."""
     runner = EnsembleRunner(regional_input=regional_input)
     runner.run_ensemble()
+    return runner
