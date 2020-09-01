@@ -69,6 +69,10 @@ def _generate_infection_rate_metric(regions: List[infer_rt.RegionalInput]) -> pd
     need_patch = set(results.fips) & set(NEW_ORLEANS_FIPS)
     if need_patch:
         logging.info("Applying New Orleans Patch")
+        if len(need_patch) != len(NEW_ORLEANS_FIPS):
+            logging.warning(
+                f"Missing New Orleans counties break patch: {set(NEW_ORLEANS_FIPS) - set(results.fips)}"
+            )
         unpatched = results.loc[~results.fips.isin(need_patch), :]
 
         # Aggregate the results created so far into one timeseries of metrics in a DataFrame
