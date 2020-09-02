@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from typing import Any
 from typing import Mapping
@@ -9,7 +8,6 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
-import pyseir
 from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
 from pyseir.deployment import model_to_observed_shim as shim
@@ -37,16 +35,20 @@ class RegionalInput:
     _combined_data: RegionalCombinedData
     _mle_fit_result: Mapping[str, Any]
     _ensemble_results: Mapping[str, Any]
+    _infection_rate: Optional[pd.DataFrame]
 
     @staticmethod
     def from_results(
-        fitter: model_fitter.ModelFitter, ensemble: ensemble_runner.EnsembleRunner
+        fitter: model_fitter.ModelFitter,
+        ensemble: ensemble_runner.EnsembleRunner,
+        infection_rate: Optional[pd.DataFrame],
     ) -> "RegionalInput":
         return RegionalInput(
             region=fitter.region,
             _combined_data=fitter.regional_input._combined_data,
             _mle_fit_result=fitter.fit_results,
             _ensemble_results=ensemble.all_outputs,
+            _infection_rate=infection_rate,
         )
 
     @property
@@ -83,10 +85,7 @@ class RegionalInput:
         results: pd.DataFrame
             DataFrame containing the R_t inferences.
         """
-        path = self.region.run_artifact_path_to_read(pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
-        if not os.path.exists(path):
-            return None
-        return pd.read_json(path)
+        return self._infection_rate
 
     def is_county(self):
         return self.region.is_county()

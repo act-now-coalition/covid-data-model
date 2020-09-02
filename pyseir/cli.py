@@ -262,7 +262,7 @@ def _build_all_for_states(
     )
 
     webui_inputs = [
-        webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble)
+        webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
         for p in itertools.chain(state_pipelines, substate_pipelines)
         if p.fitter
     ]
