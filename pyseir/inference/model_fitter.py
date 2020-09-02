@@ -46,7 +46,7 @@ class RegionalInput:
 
     @staticmethod
     def from_state_region(region: pipeline.Region) -> "RegionalInput":
-        """Creates a RegionalInput for given region with optional copy of state data of a county."""
+        """Creates a RegionalInput for given state region."""
         hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
         assert region.is_state()
         return RegionalInput(
@@ -59,7 +59,12 @@ class RegionalInput:
     def from_substate_region(
         region: pipeline.Region, state_fitter: "ModelFitter"
     ) -> "RegionalInput":
-        """Creates a RegionalInput for given region with optional copy of state data of a county."""
+        """Creates a RegionalInput for given substate/county region.
+
+        Args:
+            region: a sub-state region such as a county
+            state_fitter: ModelFitter for the state containing region
+        """
         hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
         assert region.is_county()
         assert state_fitter
