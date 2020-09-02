@@ -4,6 +4,7 @@ import pytest
 import pandas as pd
 import structlog
 
+from pyseir import cli
 from pyseir.rt import utils
 from pyseir.rt import infer_rt
 from test.mocks.inference import load_data
@@ -42,6 +43,8 @@ def run_individual(
     display_name: str,
     output_dir: pathlib.Path = TEST_OUTPUT_DIR,
 ):
+    output_dir.mkdir(exist_ok=True)
+
     # TODO fails below if deaths not present even if not using
     data_generator = load_data.DataGenerator(spec)
     input_df = load_data.create_synthetic_df(data_generator)
@@ -218,6 +221,20 @@ def test_generate_infection_rate_metric_two_aggregate_levels():
     returned_fips = df.fips.unique()
     assert "06" in returned_fips
     assert "06075" in returned_fips
+
+
+@pytest.mark.slow
+def test_generate_infection_rate_new_orleans_patch():
+    FIPS = ["22", "22051", "22071"]  # LA, Jefferson and Orleans
+    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
+    returned_fips = df.fips.unique()
+    assert "22" in returned_fips
+    assert "22051" in returned_fips
+    assert "22071" in returned_fips
+    assert not df[CommonFields.DATE].isna().any()
+    assert not df[CommonFields.FIPS].isna().any()
 
 
 def test_generate_infection_rate_metric_fake_fips():

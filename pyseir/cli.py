@@ -53,6 +53,47 @@ def _generate_whitelist() -> pd.DataFrame:
     return gen.generate_whitelist(all_us_timeseries)
 
 
+def _generate_infection_rate_metric(regions: List[infer_rt.RegionalInput]) -> pd.DataFrame:
+    """
+    Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
+    with a unique row for each region+date combination.
+    """
+    if not regions:
+        return pd.DataFrame()
+
+    with Pool(maxtasksperchild=10) as p:
+        results = pd.concat(p.map(infer_rt.run_rt, regions))
+
+    if results.empty:
+        return pd.DataFrame()
+
+    need_patch = set(results.fips) & set(NEW_ORLEANS_FIPS)
+    if need_patch:
+        logging.info("Applying New Orleans Patch")
+        if len(need_patch) != len(NEW_ORLEANS_FIPS):
+            logging.warning(
+                f"Missing New Orleans counties break patch: {set(NEW_ORLEANS_FIPS) - set(results.fips)}"
+            )
+        unpatched = results.loc[~results.fips.isin(need_patch), :]
+
+        # Aggregate the results created so far into one timeseries of metrics in a DataFrame
+        nola_infection_rate = pyseir.rt.patches.patch_aggregate_rt_results(need_patch)
+
+        patched: List[pd.DataFrame] = []
+        for fips in need_patch:
+            fips_infection_rate = nola_infection_rate.copy()
+            fips_infection_rate.insert(0, CommonFields.FIPS, fips)
+            patched.append(fips_infection_rate)
+            # TODO(tom): Delete when no longer read
+            output_path = pipeline.Region.from_fips(fips).run_artifact_path_to_write(
+                pyseir.utils.RunArtifact.RT_INFERENCE_RESULT
+            )
+            fips_infection_rate.to_json(output_path)
+        results = pd.concat(patched + [unpatched])
+
+    return results
+
+
 def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
     """Create a list of Region objects containing just state or default."""
     if state:
