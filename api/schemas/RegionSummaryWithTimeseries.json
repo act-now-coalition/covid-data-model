@@ -264,6 +264,34 @@
         "ICUBeds"
       ]
     },
+    "ICUHeadroomMetricDetails": {
+      "title": "ICUHeadroomMetricDetails",
+      "description": "Details about how the ICU Headroom Metric was calculated.",
+      "type": "object",
+      "properties": {
+        "currentIcuCovidMethod": {
+          "title": "Currenticucovidmethod",
+          "description": "Method used to determine number of current ICU patients with covid.",
+          "enum": [
+            "actual",
+            "estimated"
+          ]
+        },
+        "currentIcuNonCovidMethod": {
+          "title": "Currenticunoncovidmethod",
+          "description": "Method used to determine number of current ICU patients without covid.",
+          "enum": [
+            "actual",
+            "estimated_from_typical_utilization",
+            "estimated_from_total_icu_actual"
+          ]
+        }
+      },
+      "required": [
+        "currentIcuCovidMethod",
+        "currentIcuNonCovidMethod"
+      ]
+    },
     "Metrics": {
       "title": "Metrics",
       "description": "Calculated metrics data based on known actuals.",
@@ -293,6 +321,13 @@
           "title": "Infectionrateci90",
           "description": "90th percentile confidence interval upper endpoint of the infection rate.",
           "type": "number"
+        },
+        "icuHeadroomRatio": {
+          "title": "Icuheadroomratio",
+          "type": "number"
+        },
+        "icuHeadroomDetails": {
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
         }
       },
       "required": [
@@ -300,7 +335,8 @@
         "caseDensity",
         "contactTracerCapacityRatio",
         "infectionRate",
-        "infectionRateCI90"
+        "infectionRateCI90",
+        "icuHeadroomRatio"
       ]
     },
     "PredictionTimeseriesRow": {
@@ -493,6 +529,13 @@
           "description": "90th percentile confidence interval upper endpoint of the infection rate.",
           "type": "number"
         },
+        "icuHeadroomRatio": {
+          "title": "Icuheadroomratio",
+          "type": "number"
+        },
+        "icuHeadroomDetails": {
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+        },
         "date": {
           "title": "Date",
           "descrition": "Date of timeseries data point",
@@ -506,6 +549,7 @@
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
+        "icuHeadroomRatio",
         "date"
       ]
     }

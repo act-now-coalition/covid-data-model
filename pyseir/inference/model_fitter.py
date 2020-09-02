@@ -22,7 +22,7 @@ from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
-from pyseir.utils import get_run_artifact_path, RunArtifact
+from pyseir.utils import RunArtifact
 
 
 log = structlog.getLogger()
@@ -710,16 +710,6 @@ class ModelFitter:
         except Exception:
             log.exception(f"Failed to run {regional_input}")
             return None
-
-
-def _persist_results_per_state(state_df):
-    county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
-    data = state_df.drop(["state", "mle_model"], axis=1)
-    data.to_json(county_output_file)
-
-    for fips, county_series in state_df.iterrows():
-        with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
-            pickle.dump(county_series.mle_model, f)
 
 
 def run_state(region: pipeline.Region) -> ModelFitter:

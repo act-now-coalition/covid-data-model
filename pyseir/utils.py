@@ -44,8 +44,6 @@ class RunArtifact(Enum):
     MLE_FIT_MODEL = "mle_fit_model"
     MLE_FIT_REPORT = "mle_fit_report"
 
-    WHITELIST_RESULT = "whitelist_result"
-
     ENSEMBLE_RESULT = "ensemble_result"
 
     WEB_UI_RESULT = "web_ui_result"
@@ -187,9 +185,6 @@ def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
 
     elif artifact is RunArtifact.WEB_UI_RESULT:
         path = os.path.join(WEB_UI_FOLDER(output_dir), f"{fips}.__INTERVENTION_IDX__.json")
-
-    elif artifact is RunArtifact.WHITELIST_RESULT:
-        path = os.path.join(output_dir, "api_whitelist.json")
 
     elif artifact is RunArtifact.BACKTEST_RESULT:
         if agg_level is AggregationLevel.COUNTY:

@@ -44,6 +44,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
     @property
+    def empty(self):
+        return self.data.empty
+
+    @property
     def all_fips(self):
         return self.data.reset_index().fips.unique()
 

@@ -140,38 +140,7 @@ def check_index_values_are_unique(data, index=None, duplicates_as_error=True):
     return None
 
 
-def compare_datasets(base, other, group, first_name="first", other_name="second", values="cases"):
-    other = other.groupby(group).sum().reset_index().set_index(group)
-    base = base.groupby(group).sum().reset_index().set_index(group)
-    # Filling missing values
-    base.loc[:, values] = base[values].fillna(0)
-    other.loc[:, values] = other[values].fillna(0)
-
-    base["info"] = first_name
-    other["info"] = other_name
-    common = pd.concat([base, other])
-    all_combined = common.pivot_table(index=group, columns="info", values=values).rename_axis(
-        None, axis=1
-    )
-    first_notnull = all_combined[first_name].notnull()
-    other_notnull = all_combined[other_name].notnull()
-
-    has_both = first_notnull & other_notnull
-    contains_both = all_combined[first_notnull & other_notnull]
-    contains_both = contains_both.reset_index()
-    values_matching = contains_both[first_name] == contains_both[other_name]
-    not_matching = contains_both[~values_matching]
-    not_matching["delta_" + values] = contains_both[first_name] - contains_both[other_name]
-    not_matching["delta_ratio_" + values] = (
-        contains_both[first_name] - contains_both[other_name]
-    ) / contains_both[first_name]
-    matching = contains_both.loc[values_matching, :]
-    missing = all_combined[~has_both & (first_notnull | other_notnull)]
-    return all_combined, matching, not_matching.dropna(), missing
-
-
 def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_aggregation):
-
     from_data = data[data.aggregate_level == from_aggregation.value]
     new_data = from_data.groupby(groupby_fields).sum().reset_index()
     new_data["aggregate_level"] = to_aggregation.value
@@ -182,27 +151,6 @@ def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_agg
 
     non_matching = new_data[~new_data.index.isin(existing_data.index)]
     return non_matching
-
-
-def get_state_level_data(data, country, state):
-    country_filter = data.country == country
-    state_filter = data.state == state
-    aggregation_filter = data.aggregate_level == AggregationLevel.STATE.value
-
-    return data[country_filter & state_filter & aggregation_filter]
-
-
-def get_county_level_data(data, country, state, county=None, fips=None):
-    country_filter = data.country == country
-    state_filter = data.state == state
-    aggregation_filter = data.aggregate_level == AggregationLevel.COUNTY.value
-
-    if county:
-        county_filter = data.county == county
-        return data[country_filter & state_filter & aggregation_filter & county_filter]
-    else:
-        fips_filter = data.fips == fips
-        return data[country_filter & state_filter & aggregation_filter & fips_filter]
 
 
 def build_fips_data_frame():
@@ -248,38 +196,6 @@ def assert_counties_have_fips(data, county_key="county", fips_key="fips"):
     is_fips_null = is_county & data[fips_key].isnull()
     if sum(is_fips_null):
         print(data[is_fips_null])
-
-
-def add_fips_using_county(data, fips_data) -> pd.Series:
-    """Gets FIPS code from a data frame with a county."""
-    data = data.set_index(["county", "state"])
-    original_rows = len(data)
-    fips_data = fips_data.set_index(["county", "state"])
-    data = data.join(
-        fips_data[["fips"]], how="left", on=["county", "state"], rsuffix="_r"
-    ).reset_index()
-
-    if len(data) != original_rows:
-        raise Exception("Non-unique join, check for duplicate fips data.")
-
-    non_matching = data.loc[data.county.notnull() & data.fips.isnull(), :]
-
-    # Not all datasources have country.  If the dataset doesn't have country,
-    # assuming that data is from the us.
-    if "country" in non_matching.columns:
-        non_matching = non_matching.loc[data.country == "USA", :]
-
-    if len(non_matching):
-        unique_counties = sorted(non_matching.county.unique())
-        _logger.warning(f"Did not match {len(unique_counties)} counties to fips data.")
-        # _logger.warning(f"{non_matching}")  # This is debugging info and crowding out the stdout
-        # TODO: Make this an error?
-
-    # Handles if a fips column already in the dataframe.
-    if "fips_r" in data.columns:
-        return data.drop("fips").rename({"fips_r": "fips"}, axis=1)
-
-    return data
 
 
 def summarize(data, aggregate_level, groupby):

@@ -6,6 +6,7 @@ Documentation at https://github.com/covid-projections/covid-data-model/tree/mast
 
 
 from typing import List, Optional
+import enum
 import datetime
 import pydantic
 
@@ -67,6 +68,32 @@ class ResourceUtilization(base_model.APIBaseModel):
     )
 
 
+class CovidPatientsMethod(enum.Enum):
+    """Method used to determine number of current ICU patients with covid."""
+
+    ACTUAL = "actual"
+    ESTIMATED = "estimated"
+
+
+class NonCovidPatientsMethod(enum.Enum):
+    """Method used to determine number of current ICU patients without covid."""
+
+    ACTUAL = "actual"
+    ESTIMATED_FROM_TYPICAL_UTILIZATION = "estimated_from_typical_utilization"
+    ESTIMATED_FROM_TOTAL_ICU_ACTUAL = "estimated_from_total_icu_actual"
+
+
+class ICUHeadroomMetricDetails(base_model.APIBaseModel):
+    """Details about how the ICU Headroom Metric was calculated."""
+
+    currentIcuCovidMethod: CovidPatientsMethod = pydantic.Field(
+        ..., description="Method used to determine number of current ICU patients with covid."
+    )
+    currentIcuNonCovidMethod: NonCovidPatientsMethod = pydantic.Field(
+        ..., description="Method used to determine number of current ICU patients without covid."
+    )
+
+
 class Metrics(base_model.APIBaseModel):
     """Calculated metrics data based on known actuals."""
 
@@ -95,6 +122,8 @@ class Metrics(base_model.APIBaseModel):
     infectionRateCI90: Optional[float] = pydantic.Field(
         ..., description="90th percentile confidence interval upper endpoint of the infection rate."
     )
+    icuHeadroomRatio: Optional[float] = pydantic.Field(...)
+    icuHeadroomDetails: Optional[ICUHeadroomMetricDetails] = pydantic.Field(None)
 
 
 class MetricsTimeseriesRow(Metrics):

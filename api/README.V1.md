@@ -235,28 +235,40 @@ Utilization of hospital resources.
 | currentUsageTotal | integer | Currently used capacity for resource by all patients (COVID + Non-COVID)                                                                                                                                                                |
 | typicalUsageRate  | number  | Typical used capacity rate for resource. This excludes any COVID usage.                                                                                                                                                                 |
 
+### ICUHeadroomMetricDetails
+Details about how the ICU Headroom Metric was calculated.
+
+| name                     | type   | description                                                            |
+|--------------------------|--------|------------------------------------------------------------------------|
+| currentIcuCovidMethod    |        | Method used to determine number of current ICU patients with covid.    |
+| currentIcuNonCovidMethod |        | Method used to determine number of current ICU patients without covid. |
+
 ### Metrics
 Calculated metrics data based on known actuals.
 
-| name                       | type   | description                                                                                     |
-|----------------------------|--------|-------------------------------------------------------------------------------------------------|
-| testPositivityRatio        | number | Ratio of people who test positive calculated using a 7-day rolling average.                     |
-| caseDensity                | number | The number of cases per 100k population calculated using a 7-day rolling average.               |
-| contactTracerCapacityRatio | number | Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average. |
-| infectionRate              | number | R_t, or the estimated number of infections arising from a typical case.                         |
-| infectionRateCI90          | number | 90th percentile confidence interval upper endpoint of the infection rate.                       |
+| name                       | type                                                  | description                                                                                     |
+|----------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| testPositivityRatio        | number                                                | Ratio of people who test positive calculated using a 7-day rolling average.                     |
+| caseDensity                | number                                                | The number of cases per 100k population calculated using a 7-day rolling average.               |
+| contactTracerCapacityRatio | number                                                | Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average. |
+| infectionRate              | number                                                | R_t, or the estimated number of infections arising from a typical case.                         |
+| infectionRateCI90          | number                                                | 90th percentile confidence interval upper endpoint of the infection rate.                       |
+| icuHeadroomRatio           | number                                                |                                                                                                 |
+| icuHeadroomDetails         | [ICUHeadroomMetricDetails](#ICUHeadroomMetricDetails) | Details about how the ICU Headroom Metric was calculated.                                       |
 
 ### MetricsTimeseriesRow
 Metrics data for a single day.
 
-| name                       | type   | description                                                                                     |
-|----------------------------|--------|-------------------------------------------------------------------------------------------------|
-| testPositivityRatio        | number | Ratio of people who test positive calculated using a 7-day rolling average.                     |
-| caseDensity                | number | The number of cases per 100k population calculated using a 7-day rolling average.               |
-| contactTracerCapacityRatio | number | Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average. |
-| infectionRate              | number | R_t, or the estimated number of infections arising from a typical case.                         |
-| infectionRateCI90          | number | 90th percentile confidence interval upper endpoint of the infection rate.                       |
-| date                       | string |                                                                                                 |
+| name                       | type                                                  | description                                                                                     |
+|----------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| testPositivityRatio        | number                                                | Ratio of people who test positive calculated using a 7-day rolling average.                     |
+| caseDensity                | number                                                | The number of cases per 100k population calculated using a 7-day rolling average.               |
+| contactTracerCapacityRatio | number                                                | Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average. |
+| infectionRate              | number                                                | R_t, or the estimated number of infections arising from a typical case.                         |
+| infectionRateCI90          | number                                                | 90th percentile confidence interval upper endpoint of the infection rate.                       |
+| icuHeadroomRatio           | number                                                |                                                                                                 |
+| icuHeadroomDetails         | [ICUHeadroomMetricDetails](#ICUHeadroomMetricDetails) | Details about how the ICU Headroom Metric was calculated.                                       |
+| date                       | string                                                |                                                                                                 |
 
 ### Actuals
 Known actuals data.

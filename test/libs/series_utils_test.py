@@ -1,3 +1,5 @@
+import datetime
+from datetime import timedelta
 import pandas as pd
 import numpy as np
 from libs import series_utils
@@ -62,3 +64,24 @@ def test_interpolation_missing_index():
     results = series_utils.interpolate_stalled_values(series)
     expected = pd.Series([np.nan, 1, 2, 3, 5], index=index)
     pd.testing.assert_series_equal(results, expected)
+
+
+def test_has_recent_data():
+    start_date = datetime.datetime.today().date() - timedelta(days=15)
+    series = _series_with_date_index([0] * 15, date=start_date)
+    assert not series_utils.has_recent_data(series)
+
+    series = _series_with_date_index([1] * 15, date=start_date)
+    assert series_utils.has_recent_data(series)
+
+    series = _series_with_date_index([1] * 7, date=start_date)
+    assert not series_utils.has_recent_data(series)
+
+    series = _series_with_date_index([1] * 8, date=start_date)
+    assert series_utils.has_recent_data(series)
+
+    series = _series_with_date_index([np.nan] * 8, date=start_date)
+    assert not series_utils.has_recent_data(series)
+
+    series = _series_with_date_index([1] * 8, date=start_date)
+    assert not series_utils.has_recent_data(series, days_back=5)
