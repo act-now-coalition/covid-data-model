@@ -44,6 +44,7 @@ class RegionalInput:
     region: pipeline.Region
 
     _combined_data: pipeline.RegionalCombinedData
+    _hospitalization_df: pd.DataFrame
     _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
@@ -51,13 +52,16 @@ class RegionalInput:
         region: pipeline.Region, state_fitter: Optional["ModelFitter"] = None
     ) -> "RegionalInput":
         """Creates a RegionalInput for given region with optional copy of state data of a county."""
+        hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
         # TODO(tom): Once we can be sure state_fitter is set everytime it is needed remove the
         #  fall-back logic in load_inference_result_of_state and split this constructor into
         # from_state_region(Region) and from_substate_region(Region, ModelFitter).
         if state_fitter is None:
             assert region.is_state()
             return RegionalInput(
-                region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
+                region=region,
+                _combined_data=pipeline.RegionalCombinedData.from_region(region),
+                _hospitalization_df=hospitalization_df,
             )
         else:
             assert region.is_county()
@@ -65,6 +69,7 @@ class RegionalInput:
                 region=region,
                 _combined_data=pipeline.RegionalCombinedData.from_region(region),
                 _state_mle_fit_result=state_fitter.fit_results,
+                _hospitalization_df=hospitalization_df,
             )
 
     @staticmethod
@@ -88,7 +93,9 @@ class RegionalInput:
     def load_hospitalization_data(
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
     ) -> Tuple[np.array, np.array, HospitalizationDataType]:
-        return load_data.load_hospitalization_data(self.region.fips, t0, category=category)
+        return load_data.calculate_hospitalization_data(
+            self._hospitalization_df, t0, category=category
+        )
 
     def get_us_latest(self) -> Mapping[str, Any]:
         return self._combined_data.get_us_latest()

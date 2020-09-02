@@ -51,6 +51,31 @@ class RunArtifact(Enum):
     BACKTEST_RESULT = "backtest_result"
 
 
+class SummaryArtifact(Enum):
+    RT_METRIC_COMBINED = "rt_combined_metric.csv"
+    ICU_METRIC_COMBINED = "icu_combined_metric.csv"
+
+
+def get_summary_artifact_path(artifact: SummaryArtifact, output_dir=None) -> str:
+    """
+    Get an artifact path for a summary object
+
+    Parameters
+    ----------
+    artifact: SummaryArtifact
+        The artifact type to retrieve the pointer for.
+    output_dir: str or NoneType
+        Output directory to obtain the path for.
+
+    Returns
+    -------
+    path: str
+        Location of the artifact.
+    """
+    output_dir = output_dir or OUTPUT_DIR
+    return os.path.join(output_dir, "pyseir", artifact.value)
+
+
 def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
     """
     Get an artifact path for a given locale and artifact type.
