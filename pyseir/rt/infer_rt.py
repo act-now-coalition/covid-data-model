@@ -80,12 +80,6 @@ def run_rt(
     # Generate the output DataFrame (consider renaming the function infer_all to be clearer)
     output_df = engine.infer_all()
 
-    # Save the output to json for downstream repacking and incorporation.
-    if not output_df.empty:
-        output_path = regional_input.region.run_artifact_path_to_write(
-            RunArtifact.RT_INFERENCE_RESULT
-        )
-        output_df.to_json(output_path)
     return output_df
 
 
