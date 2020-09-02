@@ -8,11 +8,9 @@ from typing import Optional
 import structlog
 import datetime as dt
 from datetime import datetime, timedelta
-from multiprocessing import Pool
 
-import pandas as pd
-import dill as pickle
 import numpy as np
+import pandas as pd
 import iminuit
 from libs import pipeline
 
@@ -22,7 +20,6 @@ from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
-from pyseir.utils import RunArtifact
 
 
 log = structlog.getLogger()
@@ -48,33 +45,35 @@ class RegionalInput:
     _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
-    def from_region(
-        region: pipeline.Region, state_fitter: Optional["ModelFitter"] = None
-    ) -> "RegionalInput":
-        """Creates a RegionalInput for given region with optional copy of state data of a county."""
+    def from_state_region(region: pipeline.Region) -> "RegionalInput":
+        """Creates a RegionalInput for given state region."""
         hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
-        # TODO(tom): Once we can be sure state_fitter is set everytime it is needed remove the
-        #  fall-back logic in load_inference_result_of_state and split this constructor into
-        # from_state_region(Region) and from_substate_region(Region, ModelFitter).
-        if state_fitter is None:
-            assert region.is_state()
-            return RegionalInput(
-                region=region,
-                _combined_data=pipeline.RegionalCombinedData.from_region(region),
-                _hospitalization_df=hospitalization_df,
-            )
-        else:
-            assert region.is_county()
-            return RegionalInput(
-                region=region,
-                _combined_data=pipeline.RegionalCombinedData.from_region(region),
-                _state_mle_fit_result=state_fitter.fit_results,
-                _hospitalization_df=hospitalization_df,
-            )
+        assert region.is_state()
+        return RegionalInput(
+            region=region,
+            _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            _hospitalization_df=hospitalization_df,
+        )
 
     @staticmethod
-    def from_fips(fips: str) -> "RegionalInput":
-        return RegionalInput.from_region(pipeline.Region.from_fips(fips))
+    def from_substate_region(
+        region: pipeline.Region, state_fitter: "ModelFitter"
+    ) -> "RegionalInput":
+        """Creates a RegionalInput for given substate/county region.
+
+        Args:
+            region: a sub-state region such as a county
+            state_fitter: ModelFitter for the state containing region
+        """
+        hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
+        assert region.is_county()
+        assert state_fitter
+        return RegionalInput(
+            region=region,
+            _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            _state_mle_fit_result=state_fitter.fit_results,
+            _hospitalization_df=hospitalization_df,
+        )
 
     @property
     def display_name(self) -> str:
@@ -87,10 +86,10 @@ class RegionalInput:
         else:
             return {}
 
-    def load_new_case_data(self, t0) -> Tuple[pd.Series, np.array, np.array]:
+    def new_case_data(self, t0) -> Tuple[pd.Series, np.array, np.array]:
         return load_data.calculate_new_case_data_by_region(self._combined_data.get_timeseries(), t0)
 
-    def load_hospitalization_data(
+    def hospitalization_data(
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
     ) -> Tuple[np.array, np.array, HospitalizationDataType]:
         return load_data.calculate_hospitalization_data(
@@ -100,13 +99,10 @@ class RegionalInput:
     def get_us_latest(self) -> Mapping[str, Any]:
         return self._combined_data.get_us_latest()
 
-    def load_inference_result_of_state(self) -> Mapping[str, Any]:
-        if not self.region.is_county():
-            raise AssertionError(f"Attempt to find state of {self}")
-        if self._state_mle_fit_result is not None:
-            return self._state_mle_fit_result
-        region_of_state = self.region.get_state_region()
-        return pipeline.load_inference_result(region_of_state)
+    def inference_result_of_state(self) -> Mapping[str, Any]:
+        if self._state_mle_fit_result is None:
+            raise AssertionError(f"No state data of {self}")
+        return self._state_mle_fit_result
 
 
 class ModelFitter:
@@ -211,15 +207,15 @@ class ModelFitter:
             self.times,
             self.observed_new_cases,
             self.observed_new_deaths,
-        ) = regional_input.load_new_case_data(self.ref_date)
+        ) = regional_input.new_case_data(self.ref_date)
 
         (
             self.hospital_times,
             self.hospitalizations,
             self.hospitalization_data_type,
-        ) = regional_input.load_hospitalization_data(self.ref_date)
+        ) = regional_input.hospitalization_data(self.ref_date)
 
-        self.icu_times, self.icu, self.icu_data_type = regional_input.load_hospitalization_data(
+        self.icu_times, self.icu, self.icu_data_type = regional_input.hospitalization_data(
             self.ref_date, category=HospitalizationCategory.ICU
         )
 
@@ -283,7 +279,7 @@ class ModelFitter:
             self.fit_params["hosp_fraction"] = 1
 
         if self.regional_input.region.is_county():
-            state_fit_result = self.regional_input.load_inference_result_of_state()
+            state_fit_result = self.regional_input.inference_result_of_state()
             T0_LEFT_PAD = 5
             T0_RIGHT_PAD = 30
 
@@ -693,7 +689,7 @@ class ModelFitter:
         """
         # Assert that there are some cases for counties
         if regional_input.region.is_county():
-            _, observed_new_cases, _ = regional_input.load_new_case_data(t0=datetime.today())
+            _, observed_new_cases, _ = regional_input.new_case_data(t0=datetime.today())
             if observed_new_cases.sum() < 1:
                 return None
 
@@ -717,54 +713,3 @@ class ModelFitter:
         except Exception:
             log.exception(f"Failed to run {regional_input}")
             return None
-
-
-def run_state(region: pipeline.Region) -> ModelFitter:
-    """
-    Run the fitter for a state.
-
-    Parameters
-    ----------
-    region: Region
-        State to run against.
-    """
-    assert region.is_state()
-    log.info(f"Running MLE fitter for state {region}")
-
-    model_fitter = ModelFitter.run_for_region(RegionalInput.from_region(region))
-
-    output_path = region.run_artifact_path_to_write(RunArtifact.MLE_FIT_RESULT)
-    data = pd.DataFrame(model_fitter.fit_results, index=[region.fips])
-    data.to_json(output_path)
-
-    with open(region.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
-        pickle.dump(model_fitter.mle_model, f)
-
-    return model_fitter
-
-
-def run_counties_of_state(regions: List[pipeline.Region]):
-    """Runs the fitter for given counties in a single state, writing artifacts to disk.
-
-    Args:
-        regions: The counties of one state to run and write together. This function does not
-          whitelist filter the list.
-    """
-    # This function is not called from the main pipeline.
-    assert len(regions) > 0
-    assert all([r.is_county() for r in regions])
-    # Make sure all of `regions` are in the same state
-    assert len(set(r.get_state_region() for r in regions)) == 1
-
-    with Pool(maxtasksperchild=1) as p:
-        fitters = p.map(ModelFitter.run_for_region, regions)
-
-    county_output_file = regions[0].run_artifact_path_to_write(RunArtifact.MLE_FIT_RESULT)
-    data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-    data.to_json(county_output_file)
-
-    # Serialize the model results.
-    for region, fitter in zip(regions, fitters):
-        if fitter:
-            with open(region.run_artifact_path_to_write(RunArtifact.MLE_FIT_MODEL), "wb") as f:
-                pickle.dump(fitter.mle_model, f)
