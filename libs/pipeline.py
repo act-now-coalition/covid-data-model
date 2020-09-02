@@ -9,7 +9,6 @@ import structlog
 import us
 
 import pyseir.utils
-import pyseir.rt.patches
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets import timeseries

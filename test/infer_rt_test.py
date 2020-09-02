@@ -3,8 +3,10 @@ import pathlib
 import pytest
 import pandas as pd
 import structlog
-
+from covidactnow.datapublic.common_fields import CommonFields
+from libs import pipeline
 from pyseir import cli
+
 from pyseir.rt import utils
 from pyseir.rt import infer_rt
 from test.mocks.inference import load_data
@@ -253,3 +255,30 @@ def test_generate_infection_rate_with_nans():
     df = pd.concat(infer_rt.run_rt(input) for input in regions)
     returned_fips = df.fips.unique()
     assert "25001" in returned_fips
+
+
+@pytest.mark.slow
+def test_patch_substatepipeline_nola_infection_rate():
+    FIPS = [
+        "22051",  # Jefferson
+        "22071",  # Orleans
+    ]
+    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    pipelines = []
+    for fips in FIPS:
+        region = pipeline.Region.from_fips(fips)
+        infection_rate_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
+        pipelines.append(
+            cli.SubStatePipeline(
+                region=region,
+                infer_df=infection_rate_df,
+                _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            )
+        )
+
+    patched = cli._patch_substatepipeline_nola_infection_rate(pipelines)
+
+    df = pd.concat(p.infer_df for p in patched)
+    returned_fips = df.fips.unique()
+    assert "22051" in returned_fips
+    assert "51017" not in returned_fips

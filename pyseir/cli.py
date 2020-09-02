@@ -1,3 +1,4 @@
+import dataclasses
 import itertools
 import sys
 import os
@@ -11,19 +12,21 @@ from multiprocessing import Pool
 import us
 import pandas as pd
 import click
+from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
 from libs import pipeline
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
+import pyseir.rt.patches
 from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
 import pyseir.utils
 from pyseir.inference.whitelist import WhitelistGenerator
-
+from pyseir.rt.utils import NEW_ORLEANS_FIPS
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
@@ -51,47 +54,6 @@ def _generate_whitelist() -> pd.DataFrame:
     gen = WhitelistGenerator()
     all_us_timeseries = combined_datasets.load_us_timeseries_dataset()
     return gen.generate_whitelist(all_us_timeseries)
-
-
-def _generate_infection_rate_metric(regions: List[infer_rt.RegionalInput]) -> pd.DataFrame:
-    """
-    Apply infer_rt.run_rt_for_fips for each region in regions and return a combined results table
-    with a unique row for each region+date combination.
-    """
-    if not regions:
-        return pd.DataFrame()
-
-    with Pool(maxtasksperchild=10) as p:
-        results = pd.concat(p.map(infer_rt.run_rt, regions))
-
-    if results.empty:
-        return pd.DataFrame()
-
-    need_patch = set(results.fips) & set(NEW_ORLEANS_FIPS)
-    if need_patch:
-        logging.info("Applying New Orleans Patch")
-        if len(need_patch) != len(NEW_ORLEANS_FIPS):
-            logging.warning(
-                f"Missing New Orleans counties break patch: {set(NEW_ORLEANS_FIPS) - set(results.fips)}"
-            )
-        unpatched = results.loc[~results.fips.isin(need_patch), :]
-
-        # Aggregate the results created so far into one timeseries of metrics in a DataFrame
-        nola_infection_rate = pyseir.rt.patches.patch_aggregate_rt_results(need_patch)
-
-        patched: List[pd.DataFrame] = []
-        for fips in need_patch:
-            fips_infection_rate = nola_infection_rate.copy()
-            fips_infection_rate.insert(0, CommonFields.FIPS, fips)
-            patched.append(fips_infection_rate)
-            # TODO(tom): Delete when no longer read
-            output_path = pipeline.Region.from_fips(fips).run_artifact_path_to_write(
-                pyseir.utils.RunArtifact.RT_INFERENCE_RESULT
-            )
-            fips_infection_rate.to_json(output_path)
-        results = pd.concat(patched + [unpatched])
-
-    return results
 
 
 def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
@@ -129,6 +91,7 @@ class SubStateRegionPipelineInput:
     region: pipeline.Region
     run_fitter: bool
     state_fitter: model_fitter.ModelFitter
+    regional_combined_dataset: pipeline.RegionalCombinedData
 
     @staticmethod
     def build_all(
@@ -163,6 +126,7 @@ class SubStateRegionPipelineInput:
                 region=region,
                 run_fitter=(region in whitelist_regions),
                 state_fitter=state_fitter_map.get(region.get_state_region()),
+                regional_combined_dataset=pipeline.RegionalCombinedData.from_region(region),
             )
             for region in (infer_rt_regions | whitelist_regions)
         ]
@@ -175,13 +139,17 @@ class SubStatePipeline:
 
     region: pipeline.Region
     infer_df: pd.DataFrame
-    fitter: Optional[model_fitter.ModelFitter]
-    ensemble: Optional[ensemble_runner.EnsembleRunner]
+    _combined_data: pipeline.RegionalCombinedData
+    fitter: Optional[model_fitter.ModelFitter] = None
+    ensemble: Optional[ensemble_runner.EnsembleRunner] = None
 
     @staticmethod
     def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
         assert not input.region.is_state()
-        infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(input.region))
+        # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
+        # infection_rate.
+        infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
+        infer_df = infer_rt.run_rt(infer_rt_input)
         if input.run_fitter:
             fitter_input = model_fitter.RegionalInput.from_substate_region(
                 input.region, input.state_fitter
@@ -195,8 +163,50 @@ class SubStatePipeline:
             fitter = None
             ensemble = None
         return SubStatePipeline(
-            region=input.region, infer_df=infer_df, fitter=fitter, ensemble=ensemble
+            region=input.region,
+            infer_df=infer_df,
+            fitter=fitter,
+            ensemble=ensemble,
+            _combined_data=input.regional_combined_dataset,
         )
+
+    def population(self) -> float:
+        return self._combined_data.get_us_latest()[CommonFields.POPULATION]
+
+
+def _patch_substatepipeline_nola_infection_rate(
+    input_pipelines: List[SubStatePipeline],
+) -> List[SubStatePipeline]:
+    """Returns a new list of pipeline objects with New Orleans infection rate patched."""
+    pipeline_map = {p.region.fips: p for p in input_pipelines}
+
+    input_fips = set(pipeline_map.keys())
+    need_patch = input_fips & set(NEW_ORLEANS_FIPS)
+    if need_patch:
+        logging.info("Applying New Orleans Patch")
+        if len(need_patch) != len(NEW_ORLEANS_FIPS):
+            logging.warning(
+                f"Missing New Orleans counties break patch: {set(NEW_ORLEANS_FIPS) - input_fips}"
+            )
+
+        nola_input_pipelines = [pipeline_map[fips] for fips in need_patch]
+        infection_rate_map = {p.region: p.infer_df for p in nola_input_pipelines}
+        population_map = {p.region: p.population() for p in nola_input_pipelines}
+
+        # Aggregate the results created so far into one timeseries of metrics in a DataFrame
+        nola_infection_rate = pyseir.rt.patches.patch_aggregate_rt_results(
+            infection_rate_map, population_map
+        )
+
+        for fips in need_patch:
+            this_fips_infection_rate = nola_infection_rate.copy()
+            this_fips_infection_rate.insert(0, CommonFields.FIPS, fips)
+            # Make a new SubStatePipeline object with the new infer_df
+            pipeline_map[fips] = dataclasses.replace(
+                pipeline_map[fips], infer_df=this_fips_infection_rate,
+            )
+
+    return list(pipeline_map.values())
 
 
 def _build_all_for_states(
@@ -224,6 +234,8 @@ def _build_all_for_states(
     with Pool(maxtasksperchild=1) as p:
         root.info(f"executing pipeline for {len(substate_inputs)} counties")
         substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
+
+    substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
 
     infection_rate_metric_df = pd.concat(
         [p.infer_df for p in itertools.chain(state_pipelines, substate_pipelines)]
