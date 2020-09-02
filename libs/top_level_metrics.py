@@ -85,7 +85,7 @@ def calculate_metrics_for_timeseries(
         infection_rate_ci90 = model_data[schema.RT_INDICATOR_CI90]
         estimated_current_icu = model_data[schema.CURRENT_ICU]
 
-    cumulative_cases = series_utils.interpolate_stalled_values(data[CommonFields.CASES])
+    cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)
 
     cumulative_positive_tests = series_utils.interpolate_stalled_values(
@@ -142,6 +142,8 @@ def calculate_case_density(
     Returns:
         Population cases density.
     """
+    cases = cases.copy()
+    cases[: cases.first_valid_index() - timedelta(days=1)] = 0
     cases_daily = cases.diff()
     smoothed = series_utils.smooth_with_rolling_average(cases_daily)
     return smoothed / (population / normalize_by)

@@ -28,7 +28,6 @@ def smooth_with_rolling_average(
     Returns:
         Smoothed series.
     """
-
     # Drop trailing NAs so that we don't smooth for day we don't yet have data.
     series = series.loc[: series.last_valid_index()]
 
