@@ -192,3 +192,14 @@ ABBREV_US_UNKNOWN_COUNTY_FIPS = {abbrev: f"{fips}999" for abbrev, fips in ABBREV
 
 # thank you to @kinghelix and @trevormarburger for this idea
 ABBREV_US_STATE = dict(map(reversed, US_STATE_ABBREV.items()))
+
+
+def is_unknown_county(fips: str) -> bool:
+    """Checks if fips is an unknown county.
+
+    Args:
+        fips: fips code to check.
+
+    Returns: True if unkown, false otherwise.
+    """
+    return len(fips) == 5 and fips.endswith("999")
