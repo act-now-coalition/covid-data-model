@@ -95,10 +95,6 @@ class RegionalInput:
         results: pd.DataFrame
             DataFrame containing the R_t inferences.
         """
-        if self.fips in NEW_ORLEANS_FIPS:
-            log.info("Applying New Orleans Patch")
-            return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
-
         path = self.region.run_artifact_path_to_read(pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
         if not os.path.exists(path):
             return None
