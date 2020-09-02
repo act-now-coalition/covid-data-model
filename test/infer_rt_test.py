@@ -111,13 +111,13 @@ def test_constant_cases_high_count(tmp_path):
         ratechange2=RateChange(80, 1.5),  # To avoid plotting issues
     )
     rt1, rt2, t_switch, rt = run_individual(
-        "20", data_spec, "test_constant_cases_high_count"  # Kansas
+        "20", data_spec, "test_constant_cases_high_count", output_dir=tmp_path  # Kansas
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow
-def test_med_scale_strong_growth_and_decay():
+def test_med_scale_strong_growth_and_decay(tmp_path):
     """Track cases growing strongly and then decaying strongly"""
     (rt1, rt2, t_switch, rt) = run_individual(
         "36",  # New York
@@ -129,13 +129,14 @@ def test_med_scale_strong_growth_and_decay():
             ratechange2=RateChange(50, 0.7),
         ),
         "test_med_scale_strong_growth_and_decay",
+        output_dir=tmp_path,
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.skip(reason="From Alex: Test is failing rt = .84 instead of rt1")
 @pytest.mark.slow
-def test_low_cases_weak_growth():
+def test_low_cases_weak_growth(tmp_path):
     """Track with low scale (count = 5) and slow growth"""
     (rt1, rt2, t_switch, rt) = run_individual(
         "50",  # Vermont
@@ -147,12 +148,13 @@ def test_low_cases_weak_growth():
             ratechange2=RateChange(70, 1.2),
         ),
         "test_low_cases_weak_growth",
+        output_dir=tmp_path,
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow
-def test_high_scale_late_growth():
+def test_high_scale_late_growth(tmp_path):
     """Track decaying from high initial count to low number then strong growth"""
     (rt1, rt2, t_switch, rt) = run_individual(
         "02",  # Alaska
@@ -164,12 +166,13 @@ def test_high_scale_late_growth():
             ratechange2=RateChange(70, 1.5),
         ),
         "test_high_scale_late_growth",
+        output_dir=tmp_path,
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow
-def test_low_scale_two_decays():
+def test_low_scale_two_decays(tmp_path):
     """Track low scale decay at two different rates"""
     (rt1, rt2, t_switch, rt) = run_individual(
         "06",  # California
@@ -181,12 +184,13 @@ def test_low_scale_two_decays():
             ratechange2=RateChange(50, 0.7),
         ),
         "test_low_scale_two_decays",
+        output_dir=tmp_path,
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow
-def test_smoothing_and_causality():
+def test_smoothing_and_causality(tmp_path):
     run_individual(
         "56",  # Wyoming
         load_data.DataSpec(
@@ -197,6 +201,7 @@ def test_smoothing_and_causality():
             ratechange2=RateChange(95, 5.0),
         ),
         "test_smoothing_and_causality",
+        output_dir=tmp_path,
     )
 
 
