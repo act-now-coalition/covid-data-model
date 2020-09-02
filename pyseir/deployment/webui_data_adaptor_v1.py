@@ -78,7 +78,7 @@ class RegionalInput:
 
     def load_ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
-        output_filename = self.region.run_artifact_path_to_write(
+        output_filename = self.region.run_artifact_path_to_read(
             pyseir.utils.RunArtifact.ENSEMBLE_RESULT
         )
         if not os.path.exists(output_filename):

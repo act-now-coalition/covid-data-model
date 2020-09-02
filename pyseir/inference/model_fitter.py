@@ -3,6 +3,8 @@ from functools import lru_cache
 from typing import List, Any, Mapping, Tuple
 import os
 import json
+from typing import Optional
+
 import structlog
 import datetime as dt
 from datetime import datetime, timedelta
@@ -42,12 +44,28 @@ class RegionalInput:
     region: pipeline.Region
 
     _combined_data: pipeline.RegionalCombinedData
+    _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
-    def from_region(region: pipeline.Region) -> "RegionalInput":
-        return RegionalInput(
-            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
-        )
+    def from_region(
+        region: pipeline.Region, state_fitter: Optional["ModelFitter"] = None
+    ) -> "RegionalInput":
+        """Creates a RegionalInput for given region with optional copy of state data of a county."""
+        # TODO(tom): Once we can be sure state_fitter is set everytime it is needed remove the
+        #  fall-back logic in load_inference_result_of_state and split this constructor into
+        # from_state_region(Region) and from_substate_region(Region, ModelFitter).
+        if state_fitter is None:
+            assert region.is_state()
+            return RegionalInput(
+                region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            )
+        else:
+            assert region.is_county()
+            return RegionalInput(
+                region=region,
+                _combined_data=pipeline.RegionalCombinedData.from_region(region),
+                _state_mle_fit_result=state_fitter.fit_results,
+            )
 
     @staticmethod
     def from_fips(fips: str) -> "RegionalInput":
@@ -78,6 +96,8 @@ class RegionalInput:
     def load_inference_result_of_state(self) -> Mapping[str, Any]:
         if not self.region.is_county():
             raise AssertionError(f"Attempt to find state of {self}")
+        if self._state_mle_fit_result is not None:
+            return self._state_mle_fit_result
         region_of_state = self.region.get_state_region()
         return pipeline.load_inference_result(region_of_state)
 
