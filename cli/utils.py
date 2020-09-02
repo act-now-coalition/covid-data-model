@@ -3,7 +3,9 @@ import pathlib
 import subprocess
 from datetime import datetime
 from io import BytesIO
+import json
 
+import pandas as pd
 import click
 import git
 
@@ -11,9 +13,9 @@ from covidactnow.datapublic import common_df
 from libs import github_utils
 from libs.datasets import combined_datasets
 from libs.datasets import dataset_utils
-
 from libs.git_lfs_object_helpers import read_data_for_commit
 from libs.qa.common_df_diff import DatasetDiff
+from libs.utils import college_data_utils
 
 _logger = logging.getLogger(__name__)
 
@@ -112,3 +114,20 @@ def csv_diff(csv_path_or_rev_left, csv_path_right):
     print(differ_l)
     print(f"File: {csv_path_right}")
     print(differ_r)
+
+
+@main.command()
+@click.argument("input-path", type=pathlib.Path, required=True)
+@click.option("--output-path", type=pathlib.Path, default="colleges_by_fips.json")
+@click.option("--full-time-threshold", "-t", type=int, default=1000)
+def build_colleges_by_fips(
+    input_path: pathlib.Path, output_path: pathlib.Path, full_time_threshold: int
+):
+    """Build colleges by fips json file."""
+    college_df = pd.read_csv(input_path)
+    colleges_by_fips = college_data_utils.build_colleges_by_fips(
+        college_df, full_time_enrollement_threshold=full_time_threshold
+    )
+
+    _logger.info(f"Writing output to {output_path}")
+    output_path.write_text(json.dumps(colleges_by_fips, indent=2))
