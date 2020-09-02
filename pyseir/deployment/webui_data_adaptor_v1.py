@@ -62,7 +62,7 @@ class RegionalInput:
     def get_us_latest(self):
         return self._combined_data.get_us_latest()
 
-    def load_inference_result(self) -> Mapping[str, Any]:
+    def inference_result(self) -> Mapping[str, Any]:
         """
         Load fit results by state or county fips code.
 
@@ -73,11 +73,11 @@ class RegionalInput:
         """
         return self._mle_fit_result
 
-    def load_ensemble_results(self) -> Optional[dict]:
+    def ensemble_results(self) -> Optional[dict]:
         """Retrieves ensemble results for this region."""
         return self._ensemble_results
 
-    def load_rt_result(self) -> Optional[pd.DataFrame]:
+    def inferred_infection_rate(self) -> Optional[pd.DataFrame]:
         """Loads the Rt inference result.
 
         Returns
@@ -121,10 +121,10 @@ class WebUIDataAdaptorV1:
         state = observed_latest_dict[CommonFields.STATE]
         log.info("Mapping output to WebUI.", state=state, fips=regional_input.fips)
         shim_log = structlog.getLogger(fips=regional_input.fips)
-        pyseir_outputs = regional_input.load_ensemble_results()
+        pyseir_outputs = regional_input.ensemble_results()
 
         try:
-            fit_results = regional_input.load_inference_result()
+            fit_results = regional_input.inference_result()
             t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
         except (KeyError, ValueError):
             log.error("Fit result not found for fips. Skipping...", fips=regional_input.fips)
@@ -287,7 +287,7 @@ class WebUIDataAdaptorV1:
             output_model = output_model.fillna(0)
 
             # Fill in results for the Rt indicator.
-            rt_results = regional_input.load_rt_result()
+            rt_results = regional_input.inferred_infection_rate()
             if rt_results is not None:
                 rt_results.index = rt_results["date"].dt.strftime("%Y-%m-%d")
                 merged = output_model.merge(

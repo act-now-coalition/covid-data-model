@@ -170,26 +170,30 @@ class SubStatePipeline:
             _combined_data=input.regional_combined_dataset,
         )
 
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
     def population(self) -> float:
         return self._combined_data.get_us_latest()[CommonFields.POPULATION]
 
 
 def _patch_substatepipeline_nola_infection_rate(
-    input_pipelines: List[SubStatePipeline],
+    pipelines: List[SubStatePipeline],
 ) -> List[SubStatePipeline]:
     """Returns a new list of pipeline objects with New Orleans infection rate patched."""
-    pipeline_map = {p.region.fips: p for p in input_pipelines}
+    pipeline_map = {p.fips: p for p in pipelines}
 
     input_fips = set(pipeline_map.keys())
-    need_patch = input_fips & set(NEW_ORLEANS_FIPS)
-    if need_patch:
-        logging.info("Applying New Orleans Patch")
-        if len(need_patch) != len(NEW_ORLEANS_FIPS):
-            logging.warning(
+    fips_to_patch = input_fips & set(NEW_ORLEANS_FIPS)
+    if fips_to_patch:
+        root.info("Applying New Orleans Patch")
+        if len(fips_to_patch) != len(NEW_ORLEANS_FIPS):
+            root.warning(
                 f"Missing New Orleans counties break patch: {set(NEW_ORLEANS_FIPS) - input_fips}"
             )
 
-        nola_input_pipelines = [pipeline_map[fips] for fips in need_patch]
+        nola_input_pipelines = [pipeline_map[fips] for fips in fips_to_patch]
         infection_rate_map = {p.region: p.infer_df for p in nola_input_pipelines}
         population_map = {p.region: p.population() for p in nola_input_pipelines}
 
@@ -198,7 +202,7 @@ def _patch_substatepipeline_nola_infection_rate(
             infection_rate_map, population_map
         )
 
-        for fips in need_patch:
+        for fips in fips_to_patch:
             this_fips_infection_rate = nola_infection_rate.copy()
             this_fips_infection_rate.insert(0, CommonFields.FIPS, fips)
             # Make a new SubStatePipeline object with the new infer_df
@@ -220,9 +224,9 @@ def _build_all_for_states(
     _cache_global_datasets()
 
     # do everything for just states in parallel
-    with Pool(maxtasksperchild=1) as p:
+    with Pool(maxtasksperchild=1) as pool:
         states_regions = [pipeline.Region.from_state(s) for s in states]
-        state_pipelines: List[StatePipeline] = p.map(StatePipeline.run, states_regions)
+        state_pipelines: List[StatePipeline] = pool.map(StatePipeline.run, states_regions)
         state_fitter_map = {p.region: p.fitter for p in state_pipelines}
 
     if states_only:

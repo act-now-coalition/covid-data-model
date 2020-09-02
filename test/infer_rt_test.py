@@ -264,13 +264,12 @@ def test_generate_infection_rate_with_nans():
 
 @pytest.mark.slow
 def test_patch_substatepipeline_nola_infection_rate():
-    FIPS = [
+    nola_fips = [
         "22051",  # Jefferson
         "22071",  # Orleans
     ]
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
     pipelines = []
-    for fips in FIPS:
+    for fips in nola_fips:
         region = pipeline.Region.from_fips(fips)
         infection_rate_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
         pipelines.append(

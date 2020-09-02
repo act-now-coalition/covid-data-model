@@ -86,10 +86,10 @@ class RegionalInput:
         else:
             return {}
 
-    def load_new_case_data(self, t0) -> Tuple[pd.Series, np.array, np.array]:
+    def new_case_data(self, t0) -> Tuple[pd.Series, np.array, np.array]:
         return load_data.calculate_new_case_data_by_region(self._combined_data.get_timeseries(), t0)
 
-    def load_hospitalization_data(
+    def hospitalization_data(
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
     ) -> Tuple[np.array, np.array, HospitalizationDataType]:
         return load_data.calculate_hospitalization_data(
@@ -99,7 +99,7 @@ class RegionalInput:
     def get_us_latest(self) -> Mapping[str, Any]:
         return self._combined_data.get_us_latest()
 
-    def load_inference_result_of_state(self) -> Mapping[str, Any]:
+    def inference_result_of_state(self) -> Mapping[str, Any]:
         if self._state_mle_fit_result is None:
             raise AssertionError(f"No state data of {self}")
         return self._state_mle_fit_result
@@ -207,15 +207,15 @@ class ModelFitter:
             self.times,
             self.observed_new_cases,
             self.observed_new_deaths,
-        ) = regional_input.load_new_case_data(self.ref_date)
+        ) = regional_input.new_case_data(self.ref_date)
 
         (
             self.hospital_times,
             self.hospitalizations,
             self.hospitalization_data_type,
-        ) = regional_input.load_hospitalization_data(self.ref_date)
+        ) = regional_input.hospitalization_data(self.ref_date)
 
-        self.icu_times, self.icu, self.icu_data_type = regional_input.load_hospitalization_data(
+        self.icu_times, self.icu, self.icu_data_type = regional_input.hospitalization_data(
             self.ref_date, category=HospitalizationCategory.ICU
         )
 
@@ -279,7 +279,7 @@ class ModelFitter:
             self.fit_params["hosp_fraction"] = 1
 
         if self.regional_input.region.is_county():
-            state_fit_result = self.regional_input.load_inference_result_of_state()
+            state_fit_result = self.regional_input.inference_result_of_state()
             T0_LEFT_PAD = 5
             T0_RIGHT_PAD = 30
 
@@ -689,7 +689,7 @@ class ModelFitter:
         """
         # Assert that there are some cases for counties
         if regional_input.region.is_county():
-            _, observed_new_cases, _ = regional_input.load_new_case_data(t0=datetime.today())
+            _, observed_new_cases, _ = regional_input.new_case_data(t0=datetime.today())
             if observed_new_cases.sum() < 1:
                 return None
 
