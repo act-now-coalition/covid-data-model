@@ -44,6 +44,8 @@ def run_individual(
     display_name: str,
     output_dir: pathlib.Path = TEST_OUTPUT_DIR,
 ):
+    output_dir.mkdir(exist_ok=True)
+
     # TODO fails below if deaths not present even if not using
     data_generator = load_data.DataGenerator(spec)
     input_df = load_data.create_synthetic_df(data_generator)
