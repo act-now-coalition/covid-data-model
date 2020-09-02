@@ -13,6 +13,7 @@ from api.can_api_definition import (
     MetricsTimeseriesRow,
     RegionSummaryWithTimeseries,
 )
+from libs import us_state_abbrev
 from libs import dataset_deployer
 from libs import top_level_metrics
 from libs.datasets import CommonFields
@@ -25,10 +26,6 @@ from libs.functions import get_can_projection
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
-
-
-def _is_unknown_county(fips: str) -> bool:
-    return len(fips) == 5 and fips.endswith("999")
 
 
 def run_on_all_fips_for_intervention(
@@ -52,7 +49,7 @@ def run_on_all_fips_for_intervention(
     pool = pool or multiprocessing.Pool(maxtasksperchild=1)
 
     all_fips = latest_values.all_fips
-    all_fips = [fips for fips in all_fips if not _is_unknown_county(fips)]
+    all_fips = [fips for fips in all_fips if not us_state_abbrev.is_unknown_county(fips)]
 
     results = pool.map(run_fips, all_fips)
     all_timeseries = []
