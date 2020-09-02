@@ -17,8 +17,6 @@ from libs.pipeline import RegionalCombinedData
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.icu import infer_icu
 from pyseir.inference import model_fitter
-from pyseir.rt.utils import NEW_ORLEANS_FIPS
-from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from libs.enums import Intervention
 from libs.datasets import CommonFields
