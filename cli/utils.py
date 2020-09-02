@@ -123,7 +123,12 @@ def csv_diff(csv_path_or_rev_left, csv_path_right):
 def build_colleges_by_fips(
     input_path: pathlib.Path, output_path: pathlib.Path, full_time_threshold: int
 ):
-    """Build colleges by fips json file."""
+    """Build colleges by fips json file.
+
+    Download dataset at:
+        https://hifld-geoplatform.opendata.arcgis.com/datasets/colleges-and-universities
+
+    """
     college_df = pd.read_csv(input_path)
     colleges_by_fips = college_data_utils.build_colleges_by_fips(
         college_df, full_time_enrollement_threshold=full_time_threshold
