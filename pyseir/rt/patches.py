@@ -39,8 +39,9 @@ def patch_aggregate_rt_results(fips_superset: list) -> pd.DataFrame:
         weighted_data = dict(
             Rt_MAP_composite=np.average(x["Rt_MAP_composite"], weights=x["population"]),
             Rt_ci95_composite=np.average(x["Rt_ci95_composite"], weights=x["population"]),
+            date=x.name,
         )
 
-        return pd.Series(weighted_data, index=["Rt_MAP_composite", "Rt_ci95_composite"])
+        return pd.Series(weighted_data)
 
-    return combined_df.groupby(combined_df.index).apply(f)
+    return combined_df.groupby(CommonFields.DATE).apply(f)
