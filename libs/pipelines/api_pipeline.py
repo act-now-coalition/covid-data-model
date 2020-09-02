@@ -27,6 +27,10 @@ logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
 
 
+def _is_unknown_county(fips: str) -> bool:
+    return len(fips) == 5 and fips.endswith("999")
+
+
 def run_on_all_fips_for_intervention(
     latest_values: LatestValuesDataset,
     timeseries: TimeseriesDataset,
@@ -46,7 +50,11 @@ def run_on_all_fips_for_intervention(
     # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
     # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
     pool = pool or multiprocessing.Pool(maxtasksperchild=1)
-    results = pool.map(run_fips, latest_values.all_fips)
+
+    all_fips = latest_values.all_fips
+    all_fips = [fips for fips in all_fips if not _is_unknown_county(fips)]
+
+    results = pool.map(run_fips, all_fips)
     all_timeseries = []
 
     for region_timeseries in results:
@@ -76,6 +84,8 @@ def generate_metrics_and_latest_for_fips(
     Returns:
         Tuple of MetricsTimeseriesRows for all days and the latest.
     """
+    if timeseries.empty:
+        return [], None
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
         timeseries, latest, model_output
     )
@@ -104,10 +114,6 @@ def build_timeseries_for_fips(
 
     try:
         fips_timeseries = us_timeseries.get_subset(None, fips=fips)
-        if fips_timeseries.empty:
-            logger.warning("Missing data for fips, skipping region summary generation.", fips=fips)
-            return None
-
         metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
             fips_timeseries, fips_latest, model_output
         )
