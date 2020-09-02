@@ -17,7 +17,7 @@ from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
-from pyseir.utils import RunArtifact, RunMode
+from pyseir.utils import RunArtifact
 from libs.datasets import combined_datasets
 
 
@@ -121,8 +121,6 @@ class EnsembleRunner:
     output_percentiles: list
         List of output percentiles desired. These will be computed for each
         compartment.
-    run_mode: str
-        Individual parameters can be overridden here.
     min_hospitalization_threshold: int
         Require this number of hospitalizations before initializing based on
         observations. Fallback to cases otherwise.
@@ -139,7 +137,6 @@ class EnsembleRunner:
         suppression_policy=(0.35, 0.5, 0.75, 1),
         skip_plots=False,
         output_percentiles=(5, 25, 32, 50, 75, 68, 95),
-        run_mode=RunMode.DEFAULT,
         min_hospitalization_threshold=5,
         hospitalization_to_confirmed_case_ratio=1 / 4,
     ):
@@ -148,7 +145,6 @@ class EnsembleRunner:
 
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.skip_plots = skip_plots
-        self.run_mode = RunMode(run_mode)
         self.hospitalizations_for_state = None
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
@@ -169,11 +165,11 @@ class EnsembleRunner:
 
         self.suppression_policies = None
         self.override_params = dict()
-        self.init_run_mode()
+        self.initialize_suppression_policies()
 
         self.all_outputs = {}
 
-    def init_run_mode(self):
+    def initialize_suppression_policies(self):
         """
         Based on the run mode, generate suppression policies and ensemble
         parameters.  This enables different model combinations and project
@@ -181,31 +177,14 @@ class EnsembleRunner:
         """
         self.suppression_policies = dict()
 
-        if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
-            self.n_samples = 1
-            for scenario in [
-                "no_intervention",
-                "flatten_the_curve",
-                "inferred",
-                "social_distancing",
-            ]:
-                self.suppression_policies[f"suppression_policy__{scenario}"] = scenario
-
-        elif self.run_mode is RunMode.DEFAULT:
-            for suppression_policy in self.suppression_policy:
-                raise NotImplementedError(
-                    "Oh, this code is used? Ask Tom to add MSA support and a test."
-                )
-                self.suppression_policies[
-                    f"suppression_policy__{suppression_policy}"
-                ] = sp.generate_empirical_distancing_policy(
-                    t_list=self.t_list,
-                    fips=self.regional_input.fips,
-                    future_suppression=suppression_policy,
-                )
-            self.override_params = dict()
-        else:
-            raise ValueError("Invalid run mode.")
+        self.n_samples = 1
+        for scenario in [
+            "no_intervention",
+            "flatten_the_curve",
+            "inferred",
+            "social_distancing",
+        ]:
+            self.suppression_policies[f"suppression_policy__{scenario}"] = scenario
 
     @staticmethod
     def _run_single_simulation(parameter_set):
@@ -297,11 +276,7 @@ class EnsembleRunner:
                 region=self.regional_input.region,
             )
 
-            if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
-                model_ensemble = [self._load_model_for_region(scenario=suppression_policy)]
-
-            else:
-                raise ValueError(f"Run mode {self.run_mode.value} not supported.")
+            model_ensemble = [self._load_model_for_region(scenario=suppression_policy)]
 
             self.all_outputs[
                 f"{suppression_policy_name}"
@@ -463,7 +438,7 @@ class EnsembleRunner:
         return outputs
 
 
-def run_region(regional_input: RegionalInput, ensemble_kwargs):
+def run_region(regional_input: RegionalInput):
     """
     Run the EnsembleRunner for each county in a state.
 
@@ -471,9 +446,7 @@ def run_region(regional_input: RegionalInput, ensemble_kwargs):
     ----------
     regional_input: RegionalInput
         Region to run against.
-    ensemble_kwargs: dict
-        Kwargs passed to the EnsembleRunner object.
     """
     # Run the state level
-    runner = EnsembleRunner(regional_input=regional_input, **ensemble_kwargs)
+    runner = EnsembleRunner(regional_input=regional_input)
     runner.run_ensemble()

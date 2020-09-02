@@ -28,13 +28,6 @@ class TimeseriesType(Enum):
     NEW_TESTS = "new_tests"
 
 
-class RunMode(Enum):
-    DEFAULT = "default"
-
-    # Inference based + future suppression policy.
-    CAN_INFERENCE_DERIVED = "can-inference-derived"
-
-
 class RunArtifact(Enum):
     RT_INFERENCE_RESULT = "rt_inference_result"
     RT_INFERENCE_REPORT = "rt_inference_report"
