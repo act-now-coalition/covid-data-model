@@ -271,7 +271,7 @@ def _build_all_for_states(
         if p.fitter
     ]
     with Pool(maxtasksperchild=1) as p:
-        p.map(web_ui_mapper.write_region, webui_inputs)
+        p.map(web_ui_mapper.write_region_safely, webui_inputs)
 
 
 @entry_point.command()
