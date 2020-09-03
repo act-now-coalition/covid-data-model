@@ -1,6 +1,5 @@
 from typing import Mapping, Optional, List, Union
 import dataclasses
-import itertools
 import sys
 import os
 from dataclasses import dataclass
