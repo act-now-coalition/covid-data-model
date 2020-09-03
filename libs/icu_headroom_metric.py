@@ -82,11 +82,30 @@ class ICUMetricData:
         return estimated
 
     @property
+    def _latest_icu_beds(self):
+        timeseries = self._data[CommonFields.ICU_BEDS]
+        has_recent_data = series_utils.has_recent_data(
+            timeseries, days_back=7, required_non_null_datapoints=1
+        )
+        has_any_data = timeseries.any()
+
+        if has_recent_data:
+            return timeseries.loc[timeseries.last_valid_index()]
+
+        if has_any_data and not self._require_recent_data:
+            return timeseries.loc[timeseries.last_valid_index()]
+
+        return self._latest_values[CommonFields.ICU_BEDS]
+
+    @property
     def total_icu_beds(self) -> Union[pd.Series, float]:
         timeseries = self._data[CommonFields.ICU_BEDS]
+        latest_icu_beds = self._latest_icu_beds
+
         if timeseries.any():
-            return timeseries
-        return self._latest_values[CommonFields.ICU_BEDS]
+            return timeseries.fillna(latest_icu_beds)
+
+        return latest_icu_beds
 
     @property
     def typical_usage_rate(self) -> float:
