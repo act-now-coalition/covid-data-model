@@ -111,17 +111,18 @@ def test_top_level_metrics_basic():
 
 def test_top_level_metrics_no_test_positivity():
     data = io.StringIO(
-        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu\n"
-        "2020-08-17,36,10,,,1,\n"
-        "2020-08-18,36,20,,,2,\n"
-        "2020-08-19,36,30,,,3,\n"
-        "2020-08-20,36,40,,,4,\n"
+        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
+        "2020-08-17,36,10,,,1,,\n"
+        "2020-08-18,36,20,,,2,,\n"
+        "2020-08-19,36,30,,,3,,\n"
+        "2020-08-20,36,40,,,4,,\n"
     )
     timeseries = TimeseriesDataset.load_csv(data)
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
+        CommonFields.ICU_BEDS: 10,
     }
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
 

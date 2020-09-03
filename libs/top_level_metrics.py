@@ -88,10 +88,10 @@ def calculate_metrics_for_timeseries(
     cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)
 
-    cumulative_positive_tests = series_utils.interpolate_stalled_values(
+    cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
         data[CommonFields.POSITIVE_TESTS]
     )
-    cumulative_negative_tests = series_utils.interpolate_stalled_values(
+    cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
         data[CommonFields.NEGATIVE_TESTS]
     )
     test_positivity = calculate_test_positivity(
@@ -130,12 +130,12 @@ def calculate_metrics_for_timeseries(
 
 def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
 
+    if cases.first_valid_index() is None:
+        return cases
+
     cases = cases.copy()
 
-    # filling gaps in the series to preserve the diff of the first
-    # value after the gap. For example, a cumulative series of [10, None, 30] would result
-    # in a diff of [10, None, None], dropping any signal from the last value.
-    filled_cases = series_utils.interpolate_stalled_values(cases)
+    filled_cases = series_utils.interpolate_stalled_and_missing_values(cases)
 
     # Front filling all cases with 0s.  We're assuming all regions are accurately
     # reporting the first day a new case occurs.  This will affect the first few cases
@@ -149,7 +149,7 @@ def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
     # Replacing interpolated values with nones to not take overly strong opinions on
     # what happened during the missing days, but allows the last value to be properly
     # smoothed over a 7 day period.
-    smoothed.loc[cases.isna()] = None
+    smoothed.loc[cases.isna()] = np.nan
 
     return smoothed
 
