@@ -81,9 +81,7 @@ def test_combined_county_has_some_timeseries_data(fips):
 @pytest.mark.parametrize(
     "data_source_cls",
     [
-        # Skipping JHU dataset for now, to be fixed by
-        # https://trello.com/c/86CCmWcR/415-jhu-dataset-failing-combined-dataset-tests
-        # JHUDataset,
+        JHUDataset,
         CDSDataset,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
@@ -107,9 +105,7 @@ def test_unique_timeseries(data_source_cls):
 @pytest.mark.parametrize(
     "data_source_cls",
     [
-        # Skipping JHU dataset for now, to be fixed by
-        # https://trello.com/c/86CCmWcR/415-jhu-dataset-failing-combined-dataset-tests
-        # JHUDataset,
+        JHUDataset,
         CDSDataset,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
