@@ -108,6 +108,13 @@ class RegionalInput:
     def get_timeseries(self) -> TimeseriesDataset:
         return self._combined_data.get_timeseries()
 
+    def get_state_timeseries(self) -> Optional[TimeseriesDataset]:
+        """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
+        if self.region.is_state():
+            return None
+        else:
+            return self._state_combined_data.get_timeseries()
+
 
 class WebUIDataAdaptorV1:
     """
@@ -190,8 +197,9 @@ class WebUIDataAdaptorV1:
         )
         # ICU PATCH
         icu_patch_ts = infer_icu.get_icu_timeseries(
-            fips=regional_input.fips,
+            region=regional_input.region,
             regional_combined_data=regional_input.get_timeseries(),
+            state_combined_data=regional_input.get_state_timeseries(),
             weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES,
         )
 

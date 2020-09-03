@@ -1,7 +1,8 @@
 import warnings
 import pathlib
-from collections import Sequence
 from typing import List, Optional, Union, TextIO
+from typing import Sequence
+
 import pandas as pd
 import structlog
 from covidactnow.datapublic import common_df

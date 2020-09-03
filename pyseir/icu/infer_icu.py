@@ -1,4 +1,7 @@
+import collections
 import json
+from functools import lru_cache
+from typing import Mapping
 from typing import Optional
 
 import structlog
@@ -8,6 +11,7 @@ from enum import Enum
 
 import pandas as pd
 
+from libs import pipeline
 from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import DATA_DIR
 import libs.datasets.combined_datasets as combined_datasets
@@ -35,42 +39,41 @@ class LinearRegressionCoefficients:
 
 
 def get_icu_timeseries(
-    fips: str,
+    region: pipeline.Region,
     regional_combined_data: TimeseriesDataset,
     state_combined_data: Optional[TimeseriesDataset],
     use_actuals: bool = True,
     weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
 ) -> pd.Series:
     """
-    Load data for region of interest and return ICU Utilization numerator.
+    Loads data for region of interest and returns ICU Utilization numerator.
 
-    Parameters
-    ----------
-    fips: str
-        Region of interest
-    use_actuals: bool
-        If True, return actuals when available. If False, always use predictions.
-    weight_by: ICUWeightsPath
-        The method by which to estimate county level utilization from state level utilization when
-        no county level inpatient/icu data is available.
+    Args:
+        region: Region of interest
+        use_actuals: If True, return actuals when available. If False, always use predictions.
+        weight_by: The method by which to estimate county level utilization from state level utilization when
+            no county level inpatient/icu data is available.
 
-    Returns
-    -------
-    output: pandas.Series
+    Returns:
         A date-indexed series of ICU estimate for heads-in-beds for a given region
-
     """
-    log = logger.new(fips=fips, event=f"ICU for Fips = {fips}")
+    log = logger.new(region=str(region), event=f"ICU for Region = {region}")
     data = _get_data_for_icu_calc(regional_combined_data, state_combined_data)
     return _calculate_icu_timeseries(
-        data=data, fips=fips, use_actuals=use_actuals, weight_by=weight_by, log=log
+        data=data,
+        region=region,
+        use_actuals=use_actuals,
+        block_current_icu_and_hospitilized=(region.fips == "36061"),
+        weight_by=weight_by,
+        log=log,
     )
 
 
 def _calculate_icu_timeseries(
     data: pd.DataFrame,
-    fips: str,
+    region: pipeline.Region,
     use_actuals: bool = True,
+    block_current_icu_and_hospitilized: bool = False,
     weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
     log=None,
 ) -> pd.Series:
@@ -82,7 +85,7 @@ def _calculate_icu_timeseries(
     data: pd.DataFrame
         DataFrame for the region of interest (which includes the data for the higher aggregation
         level of that region of interest.
-    fips: str
+    region: pipeline.Region
         Region of interest key used for calculating state-to-county disaggregation weights as needed
     use_actuals: bool
         If True, return actuals when available. If False, always use predictions.
@@ -99,7 +102,7 @@ def _calculate_icu_timeseries(
     """
     has = data.apply(lambda x: not x.dropna().empty).to_dict()
 
-    if fips == "36061":
+    if block_current_icu_and_hospitilized:
         has["current_icu"] = False
         has["current_hospitalized"] = False
 
@@ -120,7 +123,7 @@ def _calculate_icu_timeseries(
             superset_icu = _estimate_icu_from_hospitalized(data["current_hospitalized_superset"])
 
         # Get Disaggregation Weighting
-        weight = _get_weight_by_fips(fips, method=weight_by)
+        weight = _get_region_weight_map()[region][weight_by]
         log.info(disaggregation=True)
         return weight * superset_icu
 
@@ -137,8 +140,6 @@ def _get_data_for_icu_calc(
 
     Parameters
     ----------
-    fips: str
-        Region of interest
     lookback_date: bool
         The start date for the returned estimate. The linear regression estimate is
         fit on recent data, with no assumption that the process is stationary. So the further back
@@ -156,7 +157,7 @@ def _get_data_for_icu_calc(
         CommonFields.DEATHS,
         CommonFields.CURRENT_ICU,
         CommonFields.CURRENT_HOSPITALIZED,
-    ]
+    ] + TimeseriesDataset.INDEX_FIELDS
 
     this_level_df = regional_combined_data.get_subset(
         after=lookback_date, columns=COLUMNS
@@ -200,11 +201,13 @@ def _estimate_icu_from_hospitalized(
     return estimated_icu
 
 
-def _get_weight_by_fips(fips: str, method: ICUWeightsPath = ICUWeightsPath.POPULATION) -> float:
-    """
-    Load disaggregation mapping based on ICUWeightsPath and return state-to-county weight for a
-    given fips region of interest.
-    """
-    with open(method.value) as f:
-        weights = json.load(f)
-    return weights[fips]
+@lru_cache(None)
+def _get_region_weight_map() -> Mapping[pipeline.Region, Mapping[ICUWeightsPath, float]]:
+    """Returns a map of maps with region and icu weight paths as keys."""
+    region_map = collections.defaultdict(dict)
+    for method in [ICUWeightsPath.POPULATION, ICUWeightsPath.ONE_MONTH_TRAILING_CASES]:
+        with open(method.value) as f:
+            weights = json.load(f)
+            for fips, weight in weights.items():
+                region_map[pipeline.Region.from_fips(fips)][method] = weight
+    return region_map
