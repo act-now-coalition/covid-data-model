@@ -16,7 +16,6 @@ from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations

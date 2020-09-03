@@ -14,7 +14,6 @@ import pandas as pd
 from libs import pipeline
 from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import DATA_DIR
-import libs.datasets.combined_datasets as combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
 
 logger = structlog.get_logger()
