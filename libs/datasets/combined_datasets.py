@@ -171,29 +171,6 @@ def get_timeseries_for_fips(
     return state_ts
 
 
-def get_timeseries_for_state(
-    state: str, columns: List = None, min_range_with_some_value: bool = False
-) -> TimeseriesDataset:
-    """Gets timeseries for a specific state abbreviation.
-
-    Args:
-        state: 2-letter state code
-        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
-            timeseries. Only applicable when columns are specified.
-
-    Returns: Timeseries for state
-    """
-
-    state_ts = load_us_timeseries_dataset().get_subset(AggregationLevel.STATE, state=state)
-    if columns:
-        return state_ts.get_columns_and_date_subset(
-            columns, min_range_with_some_value=min_range_with_some_value
-        )
-
-    return state_ts
-
-
 def build_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
     loaded_data_sources: Mapping[str, DataSource],
