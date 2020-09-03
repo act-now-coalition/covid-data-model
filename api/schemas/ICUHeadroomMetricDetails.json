@@ -3,6 +3,11 @@
   "description": "Details about how the ICU Headroom Metric was calculated.",
   "type": "object",
   "properties": {
+    "currentIcuCovid": {
+      "title": "Currenticucovid",
+      "description": "Current number of covid patients in icu.",
+      "type": "integer"
+    },
     "currentIcuCovidMethod": {
       "title": "Currenticucovidmethod",
       "description": "Method used to determine number of current ICU patients with covid.",
@@ -10,6 +15,11 @@
         "actual",
         "estimated"
       ]
+    },
+    "currentIcuNonCovid": {
+      "title": "Currenticunoncovid",
+      "description": "Current number of covid patients in icu.",
+      "type": "integer"
     },
     "currentIcuNonCovidMethod": {
       "title": "Currenticunoncovidmethod",
@@ -22,7 +32,9 @@
     }
   },
   "required": [
+    "currentIcuCovid",
     "currentIcuCovidMethod",
+    "currentIcuNonCovid",
     "currentIcuNonCovidMethod"
   ]
 }
