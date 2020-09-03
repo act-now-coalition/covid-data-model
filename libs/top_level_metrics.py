@@ -216,8 +216,7 @@ def calculate_contact_tracers(
     Returns: Series aligned on the same index as cases.
     """
 
-    daily_cases = cases.diff()
-    smoothed_daily_cases = series_utils.smooth_with_rolling_average(daily_cases)
+    smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=7)
     return contact_tracers / (smoothed_daily_cases * contact_tracers_per_case)
 
 
