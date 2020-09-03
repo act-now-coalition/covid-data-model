@@ -19,8 +19,8 @@ import pytest
 def test_pyseir_end_to_end_idaho(tmp_path):
     # This covers a lot of edge cases.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
-        cli._build_all_for_states(states=["ID"], fips="16001")
-
+        pipelines = cli._build_all_for_states(states=["ID"], fips="16001")
+        cli._write_pipeline_output(pipelines, tmp_path)
         path = get_run_artifact_path("16001", RunArtifact.WEB_UI_RESULT).replace(
             "__INTERVENTION_IDX__", "2"
         )

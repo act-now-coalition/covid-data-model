@@ -109,6 +109,12 @@ class WebUIDataAdaptorV1:
         self.include_imputed = include_imputed
         self.output_dir = output_dir
 
+    def write_region_safely(self, regional_input: RegionalInput) -> None:
+        try:
+            self.write_region(regional_input)
+        except Exception:
+            log.exception("Failed to write WebUI output", fips=regional_input.fips)
+
     def write_region(self, regional_input: RegionalInput) -> None:
         """Generates the CAN UI output format for a given region.
 

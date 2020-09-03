@@ -1,11 +1,8 @@
+from typing import Mapping, Optional, List, Union
 import dataclasses
-import itertools
 import sys
 import os
 from dataclasses import dataclass
-from typing import Mapping
-from typing import Optional
-from typing import List
 import logging
 from multiprocessing import Pool
 
@@ -213,37 +210,13 @@ def _patch_substatepipeline_nola_infection_rate(
     return list(pipeline_map.values())
 
 
-def _build_all_for_states(
-    states: List[str],
-    output_interval_days=4,
-    output_dir=None,
-    states_only=False,
-    fips: Optional[str] = None,
+def _write_pipeline_output(
+    pipelines: List[Union[SubStatePipeline, StatePipeline]],
+    output_dir,
+    output_interval_days: int = 4,
 ):
-    # prepare data
-    _cache_global_datasets()
 
-    # do everything for just states in parallel
-    with Pool(maxtasksperchild=1) as pool:
-        states_regions = [pipeline.Region.from_state(s) for s in states]
-        state_pipelines: List[StatePipeline] = pool.map(StatePipeline.run, states_regions)
-        state_fitter_map = {p.region: p.fitter for p in state_pipelines}
-
-    if states_only:
-        root.info("Only executing for states. returning.")
-        return
-
-    substate_inputs = SubStateRegionPipelineInput.build_all(state_fitter_map, fips=fips)
-
-    with Pool(maxtasksperchild=1) as p:
-        root.info(f"executing pipeline for {len(substate_inputs)} counties")
-        substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
-
-    substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
-
-    infection_rate_metric_df = pd.concat(
-        [p.infer_df for p in itertools.chain(state_pipelines, substate_pipelines)]
-    )
+    infection_rate_metric_df = pd.concat(p.infer_df for p in pipelines)
 
     infection_rate_metric_df.to_csv(
         path_or_buf=pyseir.utils.get_summary_artifact_path(
@@ -252,11 +225,7 @@ def _build_all_for_states(
         index=False,
     )
 
-    # output it all
-    output_interval_days = int(output_interval_days)
-    _cache_global_datasets()
-
-    root.info(f"outputting web results for states and {len(substate_pipelines)} counties")
+    root.info(f"outputting web results for states and counties")
 
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
@@ -267,11 +236,37 @@ def _build_all_for_states(
 
     webui_inputs = [
         webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
-        for p in itertools.chain(state_pipelines, substate_pipelines)
+        for p in pipelines
         if p.fitter
     ]
     with Pool(maxtasksperchild=1) as p:
-        p.map(web_ui_mapper.write_region, webui_inputs)
+        p.map(web_ui_mapper.write_region_safely, webui_inputs)
+
+
+def _build_all_for_states(
+    states: List[str], states_only=False, fips: Optional[str] = None,
+) -> List[Union[StatePipeline, SubStatePipeline]]:
+    # prepare data
+    _cache_global_datasets()
+
+    # do everything for just states in parallel
+    with Pool(maxtasksperchild=1) as pool:
+        states_regions = [pipeline.Region.from_state(s) for s in states]
+        state_pipelines: List[StatePipeline] = pool.map(StatePipeline.run, states_regions)
+        state_fitter_map = {p.region: p.fitter for p in state_pipelines}
+
+    if states_only:
+        return state_pipelines
+
+    substate_inputs = SubStateRegionPipelineInput.build_all(state_fitter_map, fips=fips)
+
+    with Pool(maxtasksperchild=1) as p:
+        root.info(f"executing pipeline for {len(substate_inputs)} counties")
+        substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
+
+    substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
+
+    return state_pipelines + substate_pipelines
 
 
 @entry_point.command()
@@ -332,13 +327,8 @@ def build_all(
     if not len(states):
         states = ALL_STATES
 
-    _build_all_for_states(
-        states,
-        output_interval_days=output_interval_days,
-        output_dir=output_dir,
-        states_only=states_only,
-        fips=fips,
-    )
+    pipelines = _build_all_for_states(states, states_only=states_only, fips=fips,)
+    _write_pipeline_output(pipelines, output_dir, output_interval_days=output_interval_days)
 
 
 if __name__ == "__main__":
