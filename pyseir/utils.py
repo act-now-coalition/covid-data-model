@@ -28,29 +28,40 @@ class TimeseriesType(Enum):
     NEW_TESTS = "new_tests"
 
 
-class RunMode(Enum):
-    DEFAULT = "default"
-
-    # Inference based + future suppression policy.
-    CAN_INFERENCE_DERIVED = "can-inference-derived"
-
-
 class RunArtifact(Enum):
-    RT_INFERENCE_RESULT = "rt_inference_result"
     RT_INFERENCE_REPORT = "rt_inference_report"
     RT_SMOOTHING_REPORT = "rt_smoothing_report"
 
-    MLE_FIT_RESULT = "mle_fit_result"
-    MLE_FIT_MODEL = "mle_fit_model"
     MLE_FIT_REPORT = "mle_fit_report"
-
-    WHITELIST_RESULT = "whitelist_result"
-
-    ENSEMBLE_RESULT = "ensemble_result"
 
     WEB_UI_RESULT = "web_ui_result"
 
     BACKTEST_RESULT = "backtest_result"
+
+
+class SummaryArtifact(Enum):
+    RT_METRIC_COMBINED = "rt_combined_metric.csv"
+    ICU_METRIC_COMBINED = "icu_combined_metric.csv"
+
+
+def get_summary_artifact_path(artifact: SummaryArtifact, output_dir=None) -> str:
+    """
+    Get an artifact path for a summary object
+
+    Parameters
+    ----------
+    artifact: SummaryArtifact
+        The artifact type to retrieve the pointer for.
+    output_dir: str or NoneType
+        Output directory to obtain the path for.
+
+    Returns
+    -------
+    path: str
+        Location of the artifact.
+    """
+    output_dir = output_dir or OUTPUT_DIR
+    return os.path.join(output_dir, "pyseir", artifact.value)
 
 
 def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
@@ -119,19 +130,6 @@ def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
                 f"Rt_smoothing__{state_obj.name}__{fips}.pdf",
             )
 
-    elif artifact is RunArtifact.RT_INFERENCE_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                DATA_FOLDER(output_dir, state_obj.name),
-                f"Rt_results__{state_obj.name}__{county}__{fips}.json",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"Rt_results__{state_obj.name}__{fips}.json",
-            )
-
     elif artifact is RunArtifact.MLE_FIT_REPORT:
         if agg_level is AggregationLevel.COUNTY:
             path = os.path.join(
@@ -145,51 +143,8 @@ def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
                 f"mle_fit_results__{state_obj.name}__{fips}.pdf",
             )
 
-    elif artifact is RunArtifact.MLE_FIT_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_results__{state_obj.name}_counties.json",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_results__{state_obj.name}_state_only.json",
-            )
-
-    elif artifact is RunArtifact.MLE_FIT_MODEL:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                DATA_FOLDER(output_dir, state_obj.name),
-                f"mle_fit_model__{state_obj.name}__{county}__{fips}.pkl",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_model__{state_obj.name}_state_only.pkl",
-            )
-
-    elif artifact is RunArtifact.ENSEMBLE_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                DATA_FOLDER(output_dir, state_obj.name),
-                f"ensemble_projections__{state_obj.name}__{county}__{fips}.json",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"ensemble_projections__{state_obj.name}__{fips}.json",
-            )
-
     elif artifact is RunArtifact.WEB_UI_RESULT:
         path = os.path.join(WEB_UI_FOLDER(output_dir), f"{fips}.__INTERVENTION_IDX__.json")
-
-    elif artifact is RunArtifact.WHITELIST_RESULT:
-        path = os.path.join(output_dir, "api_whitelist.json")
 
     elif artifact is RunArtifact.BACKTEST_RESULT:
         if agg_level is AggregationLevel.COUNTY:

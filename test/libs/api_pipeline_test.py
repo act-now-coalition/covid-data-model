@@ -67,3 +67,33 @@ def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_
         str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
     ]
     assert sorted(output_paths) == sorted(expected_outputs)
+
+
+def test_latest_values_no_unknown_fips(tmp_path):
+    unknown_fips = "69999"
+    us_latest = combined_datasets.load_us_latest_dataset()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    latest = us_latest.get_subset(fips=unknown_fips)
+    timeseries = us_timeseries.get_subset(fips=unknown_fips)
+    all_timeseries_api = api_pipeline.run_on_all_fips_for_intervention(
+        latest, timeseries, Intervention.OBSERVED_INTERVENTION, tmp_path
+    )
+    assert not all_timeseries_api
+
+
+def test_output_no_timeseries_rows(nyc_fips, tmp_path):
+    us_latest = combined_datasets.load_us_latest_dataset()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    latest = us_latest.get_subset(fips=nyc_fips)
+    timeseries = us_timeseries.get_subset(fips=nyc_fips)
+
+    # Clearing out all rows, testing that a region with no rows still has an API output.
+    timeseries.data = timeseries.data.loc[timeseries.data.fips.isna()]
+
+    assert timeseries.empty
+
+    all_timeseries_api = api_pipeline.run_on_all_fips_for_intervention(
+        latest, timeseries, Intervention.OBSERVED_INTERVENTION, tmp_path
+    )
+
+    assert all_timeseries_api

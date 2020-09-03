@@ -94,4 +94,4 @@ def create_synthetic_df(data_generator) -> pd.DataFrame:
 #                 self.hospital_times,
 #                 self.hospitalizations,
 #                 self.hospitalization_data_type,
-#             ) = load_hospitalization_data(self.fips, t0=self.ref_date)
+#             ) = hospitalization_data(self.fips, t0=self.ref_date)

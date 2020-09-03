@@ -2,14 +2,14 @@
   "dataset_type": "timeseries",
   "path": "data/timeseries.csv",
   "data_git_info": {
-    "sha": "48c11d778ddef6cd131adca4cf2a4df2154906fd",
+    "sha": "142d58fe18bc93c643034e3c7d69f68fa2cd8b2b",
     "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "0a76df2dd1a4b9dc78cd5265892f9a0a42d317d8",
+    "sha": "f81adfb047d6294bf762e148b953742da00de245",
     "branch": "master",
     "is_dirty": true
   },
-  "updated_at": "2020-08-27T11:56:31.472656"
+  "updated_at": "2020-09-03T11:56:45.313860"
 }

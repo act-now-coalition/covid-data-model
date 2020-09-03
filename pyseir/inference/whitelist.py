@@ -13,7 +13,6 @@ from pyseir import load_data
 from datetime import datetime
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import AggregationLevel
-from pyseir.utils import get_run_artifact_path, RunArtifact
 from pandarallel import pandarallel
 
 VISIBIBLE_PROGRESS_BAR = os.environ.get("PYSEIR_VERBOSITY") == "True"
@@ -60,11 +59,7 @@ class WhitelistGenerator:
             & (df_candidates.total_cases >= self.total_cases)
             & (df_candidates.total_deaths >= self.total_deaths)
         )
-        output_path = get_run_artifact_path(
-            fips="06", artifact=RunArtifact.WHITELIST_RESULT  # Dummy fips since not used here...
-        )
         whitelist_df = df_candidates[["fips", "state", "county", "inference_ok"]]
-        whitelist_df.to_json(output_path)
 
         return whitelist_df
 

@@ -17,8 +17,8 @@ from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
-from libs.datasets import JHUDataset
 from libs.datasets import NYTimesDataset
+from libs.datasets import JHUDataset
 from libs.datasets import CDSDataset
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import NevadaHospitalAssociationData

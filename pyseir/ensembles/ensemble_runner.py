@@ -1,13 +1,10 @@
 import datetime
-import os
 from dataclasses import dataclass
-from typing import Mapping, Any, Optional, Iterable
+from typing import Mapping, Any, Optional
 
 import numpy as np
 
 import structlog
-import pickle
-import json
 import copy
 from collections import defaultdict
 
@@ -17,8 +14,6 @@ from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
-from pyseir.utils import RunArtifact, RunMode
-from libs.datasets import combined_datasets
 
 
 _log = structlog.get_logger()
@@ -36,26 +31,31 @@ class RegionalInput:
     region: pipeline.Region
 
     _combined_data: pipeline.RegionalCombinedData
-    _mle_fit_model: Optional[seir_model.SEIRModel] = None
-    _mle_fit_result: Optional[Mapping[str, Any]] = None
+    _mle_fit_model: seir_model.SEIRModel
+    _mle_fit_result: Mapping[str, Any]
+    _state_mle_fit_model: Optional[seir_model.SEIRModel] = None
+    _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
-    def from_region(region: pipeline.Region) -> "RegionalInput":
-        return RegionalInput(
-            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
-        )
-
-    @staticmethod
-    def from_fips(fips: str) -> "RegionalInput":
-        return RegionalInput.from_region(pipeline.Region.from_fips(fips))
-
-    @staticmethod
-    def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+    def for_state(fitter: model_fitter.ModelFitter) -> "RegionalInput":
         return RegionalInput(
             region=fitter.region,
             _combined_data=fitter.regional_input._combined_data,
             _mle_fit_model=fitter.mle_model,
             _mle_fit_result=fitter.fit_results,
+        )
+
+    @staticmethod
+    def for_substate(
+        fitter: model_fitter.ModelFitter, state_fitter: model_fitter.ModelFitter
+    ) -> "RegionalInput":
+        return RegionalInput(
+            region=fitter.region,
+            _combined_data=fitter.regional_input._combined_data,
+            _mle_fit_model=fitter.mle_model,
+            _mle_fit_result=fitter.fit_results,
+            _state_mle_fit_model=state_fitter.mle_model,
+            _state_mle_fit_result=state_fitter.fit_results,
         )
 
     @property
@@ -65,42 +65,20 @@ class RegionalInput:
     def state_name(self):
         return self.region.state_obj().name
 
-    def get_counties_regional_input(self) -> Iterable["RegionalInput"]:
-        assert self.region.is_state()
-        county_latest = combined_datasets.load_us_latest_dataset().county
-        all_fips = county_latest.get_subset(state=self.region.state_obj().abbr).all_fips
-        return [RegionalInput.from_fips(fips) for fips in all_fips]
-
     def get_us_latest(self) -> Mapping[str, Any]:
         return self._combined_data.get_us_latest()
 
     def load_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
-        if self._mle_fit_model is not None:
-            return self._mle_fit_model
-        artifact_path = self.region.run_artifact_path_to_read(RunArtifact.MLE_FIT_MODEL)
-        if os.path.exists(artifact_path):
-            with open(artifact_path, "rb") as f:
-                return pickle.load(f)
-        else:
-            return None
+        return self._mle_fit_model
 
     def load_inference_result(self):
-        if self._mle_fit_result is not None:
-            return self._mle_fit_result
-        return pipeline.load_inference_result(self.region)
+        return self._mle_fit_result
 
     def load_state_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
-        artifact_path = self.region.get_state_region().run_artifact_path_to_read(
-            RunArtifact.MLE_FIT_MODEL
-        )
-        if os.path.exists(artifact_path):
-            with open(artifact_path, "rb") as f:
-                return pickle.load(f)
-        else:
-            return None
+        return self._state_mle_fit_model
 
     def load_state_inference_result(self):
-        return pipeline.load_inference_result(self.region.get_state_region())
+        return self._state_mle_fit_result
 
 
 class EnsembleRunner:
@@ -121,8 +99,6 @@ class EnsembleRunner:
     output_percentiles: list
         List of output percentiles desired. These will be computed for each
         compartment.
-    run_mode: str
-        Individual parameters can be overridden here.
     min_hospitalization_threshold: int
         Require this number of hospitalizations before initializing based on
         observations. Fallback to cases otherwise.
@@ -139,7 +115,6 @@ class EnsembleRunner:
         suppression_policy=(0.35, 0.5, 0.75, 1),
         skip_plots=False,
         output_percentiles=(5, 25, 32, 50, 75, 68, 95),
-        run_mode=RunMode.DEFAULT,
         min_hospitalization_threshold=5,
         hospitalization_to_confirmed_case_ratio=1 / 4,
     ):
@@ -148,17 +123,11 @@ class EnsembleRunner:
 
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.skip_plots = skip_plots
-        self.run_mode = RunMode(run_mode)
         self.hospitalizations_for_state = None
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
         self.state_name = regional_input.state_name()
-        self.output_file_data = self.regional_input.region.run_artifact_path_to_write(
-            RunArtifact.ENSEMBLE_RESULT
-        )
-
-        os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
         self.output_percentiles = output_percentiles
         self.n_samples = n_samples
         self.n_years = n_years
@@ -169,11 +138,11 @@ class EnsembleRunner:
 
         self.suppression_policies = None
         self.override_params = dict()
-        self.init_run_mode()
+        self.initialize_suppression_policies()
 
         self.all_outputs = {}
 
-    def init_run_mode(self):
+    def initialize_suppression_policies(self):
         """
         Based on the run mode, generate suppression policies and ensemble
         parameters.  This enables different model combinations and project
@@ -181,31 +150,14 @@ class EnsembleRunner:
         """
         self.suppression_policies = dict()
 
-        if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
-            self.n_samples = 1
-            for scenario in [
-                "no_intervention",
-                "flatten_the_curve",
-                "inferred",
-                "social_distancing",
-            ]:
-                self.suppression_policies[f"suppression_policy__{scenario}"] = scenario
-
-        elif self.run_mode is RunMode.DEFAULT:
-            for suppression_policy in self.suppression_policy:
-                raise NotImplementedError(
-                    "Oh, this code is used? Ask Tom to add MSA support and a test."
-                )
-                self.suppression_policies[
-                    f"suppression_policy__{suppression_policy}"
-                ] = sp.generate_empirical_distancing_policy(
-                    t_list=self.t_list,
-                    fips=self.regional_input.fips,
-                    future_suppression=suppression_policy,
-                )
-            self.override_params = dict()
-        else:
-            raise ValueError("Invalid run mode.")
+        self.n_samples = 1
+        for scenario in [
+            "no_intervention",
+            "flatten_the_curve",
+            "inferred",
+            "social_distancing",
+        ]:
+            self.suppression_policies[f"suppression_policy__{scenario}"] = scenario
 
     @staticmethod
     def _run_single_simulation(parameter_set):
@@ -297,18 +249,11 @@ class EnsembleRunner:
                 region=self.regional_input.region,
             )
 
-            if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
-                model_ensemble = [self._load_model_for_region(scenario=suppression_policy)]
-
-            else:
-                raise ValueError(f"Run mode {self.run_mode.value} not supported.")
+            model_ensemble = [self._load_model_for_region(scenario=suppression_policy)]
 
             self.all_outputs[
                 f"{suppression_policy_name}"
             ] = self._generate_output_for_suppression_policy(model_ensemble)
-
-        with open(self.output_file_data, "w") as f:
-            json.dump(self.all_outputs, f)
 
     @staticmethod
     def _generate_compartment_arrays(model_ensemble):
@@ -463,17 +408,8 @@ class EnsembleRunner:
         return outputs
 
 
-def run_region(regional_input: RegionalInput, ensemble_kwargs):
-    """
-    Run the EnsembleRunner for each county in a state.
-
-    Parameters
-    ----------
-    regional_input: RegionalInput
-        Region to run against.
-    ensemble_kwargs: dict
-        Kwargs passed to the EnsembleRunner object.
-    """
-    # Run the state level
-    runner = EnsembleRunner(regional_input=regional_input, **ensemble_kwargs)
+def make_and_run(regional_input: RegionalInput) -> EnsembleRunner:
+    """Make and run an EnsembleRunner for a county or state."""
+    runner = EnsembleRunner(regional_input=regional_input)
     runner.run_ensemble()
+    return runner

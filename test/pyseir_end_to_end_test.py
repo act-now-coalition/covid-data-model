@@ -10,9 +10,11 @@ from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOu
 import pytest
 
 # turns all warnings into errors for this module
-pytestmark = pytest.mark.filterwarnings("error")
 
 
+# Suppressing Matplotlib RuntimeWarning for Figure Gen Count right now. The regex for message isn't
+# (https://stackoverflow.com/questions/27476642/matplotlib-get-rid-of-max-open-warning-output)
+@pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
 @pytest.mark.slow
 def test_pyseir_end_to_end_idaho(tmp_path):
     # This covers a lot of edge cases.
@@ -32,6 +34,7 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         assert (with_values < 6).all()
 
 
+@pytest.mark.filterwarnings("error")
 @pytest.mark.slow
 @pytest.mark.parametrize("fips,expected_results", [(None, True), ("16013", True), ("26013", False)])
 def test_filters_counties_properly(fips, expected_results):
