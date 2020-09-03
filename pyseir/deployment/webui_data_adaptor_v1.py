@@ -37,10 +37,6 @@ class RegionalInput:
     _ensemble_results: Mapping[str, Any]
     _infection_rate: Optional[pd.DataFrame]
 
-    @property
-    def fips(self) -> str:
-        return self.region.fips
-
     @staticmethod
     def from_results(
         fitter: model_fitter.ModelFitter,
