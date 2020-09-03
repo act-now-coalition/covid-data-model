@@ -37,6 +37,10 @@ class RegionalInput:
     _ensemble_results: Mapping[str, Any]
     _infection_rate: Optional[pd.DataFrame]
 
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
     @staticmethod
     def from_results(
         fitter: model_fitter.ModelFitter,
@@ -113,7 +117,7 @@ class WebUIDataAdaptorV1:
         try:
             self.write_region(regional_input)
         except Exception:
-            log.exception("Failed to write WebUI output")
+            log.exception("Failed to write WebUI output", fips=regional_input.fips)
 
     def write_region(self, regional_input: RegionalInput) -> None:
         """Generates the CAN UI output format for a given region.
