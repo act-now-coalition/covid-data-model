@@ -128,6 +128,32 @@ def calculate_metrics_for_timeseries(
     return metrics, metric_summary
 
 
+def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
+
+    cases = cases.copy()
+
+    # filling gaps in the series to preserve the diff of the first
+    # value after the gap. For example, a cumulative series of [10, None, 30] would result
+    # in a diff of [10, None, None], dropping any signal from the last value.
+    filled_cases = series_utils.interpolate_stalled_values(cases)
+
+    # Front filling all cases with 0s.  We're assuming all regions are accurately
+    # reporting the first day a new case occurs.  This will affect the first few cases
+    # in a timeseries, because it's smoothing over a full period, rather than just the first
+    # couple days of reported data.
+    filled_cases[: filled_cases.first_valid_index() - timedelta(days=1)] = 0
+
+    cases_daily = filled_cases.diff()
+    smoothed = series_utils.smooth_with_rolling_average(cases_daily)
+
+    # Replacing interpolated values with nones to not take overly strong opinions on
+    # what happened during the missing days, but allows the last value to be properly
+    # smoothed over a 7 day period.
+    smoothed.loc[cases.isna()] = None
+
+    return smoothed
+
+
 def calculate_case_density(
     cases: pd.Series, population: int, smooth: int = 7, normalize_by: int = 100_000
 ) -> pd.Series:
@@ -142,11 +168,8 @@ def calculate_case_density(
     Returns:
         Population cases density.
     """
-    cases = cases.copy()
-    cases[: cases.first_valid_index() - timedelta(days=1)] = 0
-    cases_daily = cases.diff()
-    smoothed = series_utils.smooth_with_rolling_average(cases_daily)
-    return smoothed / (population / normalize_by)
+    smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=smooth)
+    return smoothed_daily_cases / (population / normalize_by)
 
 
 def calculate_test_positivity(
