@@ -238,10 +238,12 @@ Utilization of hospital resources.
 ### ICUHeadroomMetricDetails
 Details about how the ICU Headroom Metric was calculated.
 
-| name                     | type   | description                                                            |
-|--------------------------|--------|------------------------------------------------------------------------|
-| currentIcuCovidMethod    |        | Method used to determine number of current ICU patients with covid.    |
-| currentIcuNonCovidMethod |        | Method used to determine number of current ICU patients without covid. |
+| name                     | type    | description                                                            |
+|--------------------------|---------|------------------------------------------------------------------------|
+| currentIcuCovid          | integer | Current number of covid patients in icu.                               |
+| currentIcuCovidMethod    |         | Method used to determine number of current ICU patients with covid.    |
+| currentIcuNonCovid       | integer | Current number of covid patients in icu.                               |
+| currentIcuNonCovidMethod |         | Method used to determine number of current ICU patients without covid. |
 
 ### Metrics
 Calculated metrics data based on known actuals.

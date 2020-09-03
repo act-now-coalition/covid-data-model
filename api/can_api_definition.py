@@ -86,8 +86,14 @@ class NonCovidPatientsMethod(enum.Enum):
 class ICUHeadroomMetricDetails(base_model.APIBaseModel):
     """Details about how the ICU Headroom Metric was calculated."""
 
+    currentIcuCovid: int = pydantic.Field(
+        ..., description="Current number of covid patients in icu."
+    )
     currentIcuCovidMethod: CovidPatientsMethod = pydantic.Field(
         ..., description="Method used to determine number of current ICU patients with covid."
+    )
+    currentIcuNonCovid: int = pydantic.Field(
+        ..., description="Current number of covid patients in icu."
     )
     currentIcuNonCovidMethod: NonCovidPatientsMethod = pydantic.Field(
         ..., description="Method used to determine number of current ICU patients without covid."

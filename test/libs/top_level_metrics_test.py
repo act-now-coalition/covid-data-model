@@ -28,7 +28,7 @@ def test_calculate_case_density():
     """
     It should use population, smoothing and a normalizing factor to calculate case density.
     """
-    cases = pd.Series([0, 0, 20, 60, 120])
+    cases = _series_with_date_index([0, 0, 20, 60, 120])
     pop = 100
     every_ten = 10
     smooth = 2
@@ -36,7 +36,10 @@ def test_calculate_case_density():
     density = top_level_metrics.calculate_case_density(
         cases, pop, smooth=smooth, normalize_by=every_ten
     )
-    assert density.equals(pd.Series([np.nan, 0, 1, 2, 3], dtype="float"))
+
+    pd.testing.assert_series_equal(
+        density, _series_with_date_index([np.nan, 1, 1, 2, 3], dtype="float"),
+    )
 
 
 def test_calculate_test_positivity():
@@ -100,7 +103,7 @@ def test_top_level_metrics_basic():
     expected = _build_metrics_df(
         "2020-08-17,36,,,,,,0.5\n"
         "2020-08-18,36,10,0.1,0.04,,,0.5\n"
-        "2020-08-19,36,10,0.1,0.06,,,0.5\n"
+        "2020-08-19,36,,0.1,,,,0.5\n"
         "2020-08-20,36,10,0.1,0.08,,,0.5\n"
     )
     pd.testing.assert_frame_equal(expected, results)
@@ -108,17 +111,18 @@ def test_top_level_metrics_basic():
 
 def test_top_level_metrics_no_test_positivity():
     data = io.StringIO(
-        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu\n"
-        "2020-08-17,36,10,,,1,\n"
-        "2020-08-18,36,20,,,2,\n"
-        "2020-08-19,36,30,,,3,\n"
-        "2020-08-20,36,40,,,4,\n"
+        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
+        "2020-08-17,36,10,,,1,,\n"
+        "2020-08-18,36,20,,,2,,\n"
+        "2020-08-19,36,30,,,3,,\n"
+        "2020-08-20,36,40,,,4,,\n"
     )
     timeseries = TimeseriesDataset.load_csv(data)
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
+        CommonFields.ICU_BEDS: 10,
     }
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
 
@@ -166,7 +170,7 @@ def test_top_level_metrics_with_rt():
     expected = _build_metrics_df(
         "2020-08-17,36,,,,1.1,.1\n"
         "2020-08-18,36,10,0.1,0.04,1.2,.1\n"
-        "2020-08-19,36,10,0.1,0.06,1.1,.2\n"
+        "2020-08-19,36,,0.1,,1.1,.2\n"
         "2020-08-20,36,10,0.1,0.08,1.1,.1\n"
     )
     pd.testing.assert_frame_equal(expected, results)
