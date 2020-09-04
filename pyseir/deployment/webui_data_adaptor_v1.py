@@ -294,7 +294,16 @@ class WebUIDataAdaptorV1:
 
             # Fill in results for the Rt indicator.
             rt_results = regional_input.inferred_infection_rate()
-            if rt_results is not None:
+
+            if rt_results is None or rt_results.empty:
+                log.warning(
+                    "No Rt Results found, clearing Rt in output.",
+                    fips=regional_input.fips,
+                    suppression_policy=suppression_policy,
+                )
+                output_model[schema.RT_INDICATOR] = "NaN"
+                output_model[schema.RT_INDICATOR_CI90] = "NaN"
+            else:
                 rt_results.index = rt_results["date"].dt.strftime("%Y-%m-%d")
                 merged = output_model.merge(
                     rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
@@ -309,14 +318,6 @@ class WebUIDataAdaptorV1:
                 output_model[schema.RT_INDICATOR_CI90] = (
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
-            else:
-                log.warning(
-                    "No Rt Results found, clearing Rt in output.",
-                    fips=regional_input.fips,
-                    suppression_policy=suppression_policy,
-                )
-                output_model[schema.RT_INDICATOR] = "NaN"
-                output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
             output_model[[schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]] = output_model[
                 [schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
