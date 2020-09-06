@@ -5,6 +5,15 @@ from datetime import datetime, timedelta
 
 from pyseir.rt.constants import InferRtConstants
 
+# Manually label bad data that is impacting tests so can be removed
+DATA_CORRECTIONS = {
+    "TX": {"nD": [(208, 180.0)]},
+    "NJ": {"nD": [(176, 30.0), (189, 15.0)]},
+    "NY": {"nD": [(181, 25.0), (218, 10.0)]},
+}
+# TODO there are lots more problems with nD (daily) showing as <0.
+# - t=218 is big such case for NY
+
 
 class HistoricalData:
     raw = pd.read_csv("test/data/historical/merged_results_2020_08_19.csv", parse_dates=["date"])
@@ -39,8 +48,16 @@ class HistoricalData:
     def get_state_data_for_dates(
         state, t_list, compartments_as_functions=False, no_functions=False
     ):
+        """
+        Get summary state data from prepared file
+        """
         start_date = HistoricalData.ref_date + timedelta(days=t_list[0])
         end_date = HistoricalData.ref_date + timedelta(days=t_list[-1])
+
+        # also use early start date (30 days earlier) when collecting data for functions that might
+        # be evaluated delayed (at earlier times)
+        early_start = start_date + timedelta(days=-30)
+
         rows = HistoricalData.data[
             (HistoricalData.data["state"] == state)
             & (HistoricalData.data["aggregate_level"] == "state")
@@ -50,26 +67,37 @@ class HistoricalData:
 
         rows["rt"] = 1.0 * rows["Rt_MAP_composite"]
         rows["nC"] = rows["positive_tests"] - rows["positive_tests"].shift(fill_value=0.0)
-        rows["nC"] = HistoricalData.smooth(rows["nC"])
+
         cum_tests = rows["positive_tests"] + rows["negative_tests"]
         rows["tests"] = cum_tests - cum_tests.shift(fill_value=0.0)
-        rows["tests"] = HistoricalData.smooth(rows["tests"])
 
         rows["H"] = rows["current_hospitalized"]
-        rows["H"] = HistoricalData.smooth(rows["H"])
         rows["nD"] = rows["deaths"] - rows["deaths"].shift(fill_value=0.0)
+
+        # Apply fixes before smoothing
+        if state in DATA_CORRECTIONS:
+            state_corrections = DATA_CORRECTIONS[state]
+            for col in state_corrections:
+                for (day, value) in state_corrections[col]:
+                    rows[col][day] = value
+
+        # Then smooth the data
+        rows["nC"] = HistoricalData.smooth(rows["nC"])
+        rows["tests"] = HistoricalData.smooth(rows["tests"])
+        rows["H"] = HistoricalData.smooth(rows["H"])
         rows["nD"] = HistoricalData.smooth(rows["nD"])
 
         # Apply date filter last
-        rows = rows[(rows["date"] >= start_date) & (rows["date"] <= end_date)]
+        early_rows = rows[(rows["date"] >= early_start) & (rows["date"] <= end_date)]
+        rows = early_rows[(early_rows["date"] >= start_date)]
 
         if compartments_as_functions:
             return (
-                lambda t: rows["rt"][t],
-                lambda t: rows["nC"][t],
-                lambda t: rows["tests"][t],
-                lambda t: rows["H"][t],
-                lambda t: rows["nD"][t],
+                lambda t: early_rows["rt"][t],
+                lambda t: early_rows["nC"][t],
+                lambda t: early_rows["tests"][t],
+                lambda t: early_rows["H"][t],
+                lambda t: early_rows["nD"][t],
             )
         elif no_functions:
             return (
@@ -81,9 +109,9 @@ class HistoricalData:
             )
         else:
             return (
-                lambda t: rows["rt"][t],
+                lambda t: early_rows["rt"][t],
                 rows["nC"],
-                lambda t: rows["tests"][t],
+                lambda t: early_rows["tests"][t],
                 rows["H"],
                 rows["nD"],
             )

@@ -26,6 +26,36 @@ from test.mocks.inference.load_data import RateChange
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
 
+# Most states outbreaks start around calendard day 90. Some are significantly earlier or later
+EARLY_OUTBREAK_START_DAY_BY_STATE = {
+    "NY": 75,
+    "NJ": 80,
+    "CT": 80,
+    "WY": 100,
+    "AK": 115,
+    "AZ": 100,
+    "DC": 100,
+    "CA": 115,
+    "GA": 120,
+    "IL": 95,
+    "IN": 110,
+    "KY": 95,
+    "MD": 106,
+    "ME": 98,
+    "MI": 95,
+    "MS": 105,
+    "MT": 95,
+    "NH": 100,
+    "NV": 95,
+    "OH": 120,
+    "PA": 95,
+    "SD": 110,
+    "UT": 123,
+    "VA": 95,
+    "WI": 97,
+    "WV": 95,
+}
+
 
 def test_run_new_model_incrementally():
     """
@@ -138,56 +168,42 @@ def test_ratio_evolution():
         fig.savefig(TEST_OUTPUT_DIR / (f"test_ratio_evolution_%s_states.pdf" % name))
 
 
-def test_random_periods_interesting_states():
-    states = HistoricalData.get_states()
-    starts = {"early": 90, "recent": 155}
-    early_start = {
-        "NY": 75,
-        "NJ": 80,
-        "CT": 80,
-        "WY": 100,
-        "AK": 115,
-        "AZ": 100,
-        "DC": 100,
-        "CA": 115,
-        "GA": 120,
-        "IL": 95,
-        "IN": 110,
-        "KY": 95,
-        "MD": 106,
-        "ME": 98,
-        "MI": 95,
-        "MS": 105,
-        "MT": 95,
-        "NH": 100,
-        "NV": 95,
-        "OH": 120,
-        "PA": 95,
-        "SD": 110,
-        "UT": 123,
-        "VA": 95,
-        "WI": 97,
-        "WV": 95,
-    }
+def test_historical_period_state_deaths_and_hospitalizations():
+    """
+    Validate model by recreating historical death and hospitalization timeseries starting
+    for specific periods in time from initial conditions and given correct R(t) as input.
+    TODO refactor so can have several separate tests with same structure
+    TODO add many tests for one state at different times
+    TODO get most recent data from Brett and retest recent
+    """
 
+    # For recent tests with states we should have this level of accuracy
+    # Note smape in [0.,2.] - best values for recent avg is about .335
+    TARGET_SMAPE = 0.35
+
+    states = HistoricalData.get_states()
+    starts = {"early": 90, "recent": 155}  # calendar day in 2020 when each test starts
+    num_days = 75  # duration of each test
+
+    # Various state outbreaks started at different points in time, overrides starts.early
+    early_start = EARLY_OUTBREAK_START_DAY_BY_STATE
+
+    # Keep track of the model calibrations for each state and period
     calibrations = []
 
+    # Store charts in directories per "starts" period (early, recent)
     test_dir = {}
     for when in starts.keys():
         test_dir[when] = pathlib.Path(TEST_OUTPUT_DIR / when)
         test_dir[when].mkdir(exist_ok=True)
 
-    for state in states:  # ["TX"]:  #
-        # Do a test early and late in the pandemic for each state
+    for state in states:
+        # Do a test for each period (when) for each state
         for (when, std_start) in starts.items():
-            num_days = 75  # duration of test
             earliest = (
                 early_start[state] if (when == "early" and state in early_start) else std_start
             )
             start = earliest
-            # randrange(
-            #     earliest, min(218 - num_days, 30 + earliest), 1
-            # )  # Pick a random start time within a range
             t_list = np.linspace(start, start + num_days, num_days + 1)
             t0 = t_list[0]
 
@@ -201,29 +217,27 @@ def test_random_periods_interesting_states():
                 rt, lambda t: nc[t], t_list
             )
 
-            # Run the model with history for initial constraints and to add actuals to charts
+            # Confiigure and run the model with history for initial constraints and to add actuals to charts
             run = ModelRun(
                 NowcastingSEIRModel(),  # delay_ci_h=h_delay, death_delay=0),
                 20e6,  # N
                 t_list,
                 tests,
                 adj_r_f,
-                case_median_age_f=Demographics.median_age_f(state),
+                case_median_age_f=Demographics.infer_median_age_function(
+                    t_list, rt
+                ),  # Demographics.median_age_f(state),
                 historical_compartments={"nC": nc, "H": h, "nD": nd},
                 auto_initialize_other_compartments=True,
                 auto_calibrate=True,  # True
             )
             (results, ratios, fig) = run.execute_dataframe_ratios_fig()
             calibrations.append(
-                (
-                    state,
-                    when,
-                    run.model.lr_fh[0] * run.model.lr_fd[0],
-                    run.model.lr_fh[0],
-                    ratios["SMAPE"],
-                )
+                (state, when, run.model.lr_fh[0], run.model.lr_fd[0], ratios["SMAPE"],)
             )
 
+            # Save figure for each state in each period
+            # TODO store test result metrics in file rather than only in chart title string
             fig.savefig(
                 test_dir[when]
                 / (
@@ -241,29 +255,35 @@ def test_random_periods_interesting_states():
                 bbox_inches="tight",
             )
             plt.close(fig)
+
+    # Create summary chart for each "period" showing calibration and SMAPE of all states
     df = pd.DataFrame(calibrations, columns=["state", "when", "fh0", "fd0", "smape"])
     df["markersize"] = (10.0 * df["smape"] + 1.0).astype(int)
+
     for when in ["early", "recent"]:
         sub = df[df["when"] == when]
         fig, ax = plt.subplots()
         rect = plt.Rectangle([0.5, 0.5], 1.5, 1.5, facecolor="g", alpha=0.2)
         ax.add_patch(rect)
-        # ax.scatter(sub.fh0, sub.fd0, markersize=sub.markersize)
+
         for i in sub.index:
             plt.plot([sub.fh0[i],], [sub.fd0[i],], "o", markersize=sub.markersize[i], color="b")
             ax.annotate(sub["state"][i], (sub["fh0"][i], sub["fd0"][i]))
 
-        plt.xlabel("fd0*fh0 (gmean =%.2f)" % stats.gmean(sub.fh0 * sub.fd0))
-        plt.ylabel("fd0/fh0 (gmean =%.2f)" % stats.gmean(sub.fd0 / sub.fh0))
+        plt.xlabel("fh0 (gmean =%.2f)" % stats.gmean(sub.fh0))
+        plt.ylabel("fd0 (gmean =%.2f)" % stats.gmean(sub.fd0))
         plt.xscale("log")
         plt.yscale("log")
+        plt.title(f"%s with avg SMAPE=%.3f" % (when, sub["smape"].mean()))
         fig.savefig(
             test_dir[when] / (f"test_random_state_calibrations_%s.pdf" % when), bbox_inches="tight"
         )
 
-    avg_mape = df["mape"].mean()
-    print("average mape = %.3f" % avg_mape)
-    assert avg_mape < 0.5
+        # Validate that accuracy of recent period state values is still beating the threshold
+        if when == "recent":
+            assert sub["smape"].mean() < TARGET_SMAPE
+
+        # TODO add more assertions on a per state level
 
 
 def test_reproduce_TX_late_peak():
@@ -271,19 +291,22 @@ def test_reproduce_TX_late_peak():
     Reproduce behaviour of late peaks for Texas starting from t0 = 170
     - peak H=1050 at t=200
     - peak nD=200 at t=220
-    - using median age of FL for now as substitute
-    - and TODO linear ramp on (at least) fh0 to get slope right at the start
-    - using times from 170 to 180 to manually constraint fh0 = a + b(t-t0)
-    - and where fh0 = 2.58, fd0 = .73 had been selected to match at t0=170
+
+    TODO move over assertions from the Florida case that no longer runs
+    TODO filter the data to remove the high value for texas on about t=210
     """
     # Time period for the run (again relative to Jan 1, 2020)
     t_list = np.linspace(
-        170, 230, 230 - 170 + 1
+        150, 230, 230 - 150 + 1
     )  # Here starts from when FL started to ramp up cases
 
     # Need assumptions for R(t) and testing_rate(t) for the future as inputs
-    (rt, nC, tests, H, nD) = HistoricalData.get_state_data_for_dates("TX", t_list)
+    (rt, nC, tests, H, nD) = HistoricalData.get_state_data_for_dates("VA", t_list)
     # Here taken from historical data but typically will use R(t) projections
+
+    # Infer median age function for Texas
+    median_age_f = Demographics.infer_median_age_function(t_list, rt)
+    # Does slightly better with Demographics.median_age_f("FL")
 
     # Create a ModelRun (with specific assumptions) based on a Model (potentially with some trained inputs)
     run = ModelRun(
@@ -294,10 +317,10 @@ def test_reproduce_TX_late_peak():
         t_list,
         tests,
         rt,
-        case_median_age_f=Demographics.median_age_f("TX"),
+        case_median_age_f=median_age_f,
         historical_compartments={"nC": nC, "H": H, "nD": nD},
         auto_initialize_other_compartments=True,  # By running to steady state at initial R(t=t0)
-        auto_calibrate=False,  # Override some model constants to ensure continuity with initial compartments
+        auto_calibrate=True,  # Override some model constants to ensure continuity with initial compartments
     )
 
     # Execute the run, results are a DataFrame, fig is Matplotlib Figure, ratios are key metrics
@@ -307,7 +330,8 @@ def test_reproduce_TX_late_peak():
 
 def test_reproduce_FL_late_peak():
     """
-    TODO use all of these asserts somewhere else
+    This test is obsolete.
+    TODO move its assertions over to the Texas case just above
     """
     # new cases per day
     nC_initial = 800.0

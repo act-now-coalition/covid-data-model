@@ -12,11 +12,23 @@ class ContactsType(Enum):
     RESTRICTED = 3
 
 
+def extend_tlist_at_beginning(tlist, days):
+    """
+    Extend a time list at the beginning
+    """
+    start = int(tlist[0]) - days
+    end = int(tlist[-1])
+    return np.linspace(start, end, end - start + 1)
+
+
 class Demographics:
     """
     Helper class for demographics information and how to map it onto age groups
     used in adjusting hospitalization and deaths fractions.
     """
+
+    MEDIAN_RATE_CONSTANT = 1.5  # slightly better than 1.25 and 1.4
+    DEFAULT_DRIVER_AGE = 25.0
 
     # Note these contact matrices are only used in testing so far
     HOUSEHOLD = np.array([[0.2, 0.2, 0.0], [0.2, 0.2, 0.0], [0.0, 0.0, 0.0]])
@@ -32,13 +44,42 @@ class Demographics:
         ContactsType.RESTRICTED: (HOUSEHOLD + SCHOOLS + ESSENTIAL + SOCIAL_1),
     }
 
-    def __init__(self, young, old, count, dwell_time):
-        assert young >= 0.0 and old >= 0.0 and young + old <= 1.0
-        self.young = young
-        self.old = old
-        self.medium = 1.0 - young - old
+    def __init__(
+        self, young=None, old=None, median_age=None, count=1000.0, dwell_time=None, model=None
+    ):
+
+        if median_age is not None:  # can be initialized with just a median age
+            self.median_age = median_age
+        elif young is not None and old is not None:  # or with young and old
+            assert young >= 0.0 and old >= 0.0 and young + old <= 1.0
+            self.young = young
+            self.old = old
+            self.medium = 1.0 - young - old
+        else:
+            assert False
+
+        if model is None:
+            model = NowcastingSEIRModel()
+        if dwell_time is None:
+            self.dwell_time = model.serial_period
+        else:
+            self.dwell_time = dwell_time
+
         self.count = count
-        self.dwell_time = dwell_time
+        self.driver_age = Demographics.DEFAULT_DRIVER_AGE
+
+    def get_median_age(self):
+        rtn = None
+        if self.median_age is not None:
+            rtn = self.median_age
+        else:
+            if self.young > 0.5:
+                rtn = 35.0 * (self.young - 0.5)
+            elif self.old > 0.5:
+                rtn = 65.0 + 35.0 * (self.old - 0.5)
+            else:
+                rtn = 30.0 / self.medium * (0.5 - self.young) + 35.0
+        return min(65.0, max(35.0, rtn))
 
     def as_array(self):
         """
@@ -51,8 +92,25 @@ class Demographics:
         Update three classes from numpy array
         """
         (self.young, self.medium, self.old) = list(arr)
+        self.median_age = None
 
-    def update(self, contacts_type, adding, from_demo, dt=1.0):
+    def evolve_median(self, rt, default_age):
+        """
+        Evolve median age based on assumption that growing cases drives median towards driver_age
+        while it naturally decays back to default_age (which can vary with each call) if no growth.
+        """
+        assert self.median_age is not None and self.driver_age is not None
+
+        # strength of case growth (R(t)>1) drives median agae towards driver_age
+        rate = Demographics.MEDIAN_RATE_CONSTANT * (rt - 1.0) / self.dwell_time if rt > 1.0 else 0.0
+
+        new_median = (self.median_age + rate * self.driver_age + default_age / self.dwell_time) / (
+            1.0 + rate + 1.0 / self.dwell_time
+        )
+
+        self.median_age = new_median
+
+    def update_by_contacting_another(self, contacts_type, adding, from_demo, dt=1.0):
         """
         Update demographics based on new set of individuals being added from a source based on contacts
         """
@@ -64,6 +122,30 @@ class Demographics:
         self.from_array(new_fractions)
 
     @staticmethod
+    def infer_median_age_function(t_list, rt_f):
+        t_list = extend_tlist_at_beginning(t_list, 30)
+        default_usa_f = Demographics.median_age_f()
+        demo = Demographics(median_age=default_usa_f(t_list[0]))
+
+        values = {t_list[0]: demo.get_median_age()}
+        for t in t_list:
+            if t < 135.0:  # don't use this early in the pandemic
+                demo = Demographics(median_age=default_usa_f(t))
+            else:
+                demo.evolve_median(rt_f(t), default_usa_f(t))
+            values[t] = demo.get_median_age()
+
+        def ftn(t):
+            if t <= t_list[0]:
+                return values[t_list[0]]
+            elif t >= t_list[-1]:
+                return values[t_list[-1]]
+            else:
+                return values[t]
+
+        return ftn
+
+    @staticmethod
     def default():
         r_lo_mid = 1.1
         r_hi_mid = 0.4
@@ -73,7 +155,8 @@ class Demographics:
     @staticmethod
     def age_fractions_from_median(median_age):
         center_pref = 4.0
-        assert median_age >= 35 and median_age <= 65
+        if median_age < 35.0 or median_age > 65.0:
+            assert False
         k = (median_age - 35.0) / 30.0
 
         # Coefficients of quadratic equation for m - fraction of medium age
@@ -97,26 +180,7 @@ class Demographics:
         """
         Median age of covid cases for all of US and specific individual states
         """
-        if state in ["FL", "TX"]:
-            # From reports in http://ww11.doh.state.fl.us/comm/_partners/covid19_report_archive/
-            data = {
-                133: 52,
-                140: 49,
-                147: 43,
-                154: 41,
-                161: 39,
-                168: 36,
-                175: 35,
-                182: 36,
-                189: 39,
-                196: 40,
-                203: 41,
-                210: 41.5,
-                217: 42,
-                224: 43,
-                231: 43,
-            }
-        else:
+        if state not in ["FL"]:  # median age for country as a whole
             # From https://www.cdc.gov/coronavirus/2019-ncov/covid-data/covidview/index.html
             data = {
                 68: 56.3,
@@ -144,6 +208,26 @@ class Demographics:
                 222: 40.7,
                 229: 40.6,
             }
+        else:
+            # From reports in http://ww11.doh.state.fl.us/comm/_partners/covid19_report_archive/
+            data = {
+                133: 52,
+                140: 49,
+                147: 43,
+                154: 41,
+                161: 39,
+                168: 36,
+                175: 35,
+                182: 36,
+                189: 39,
+                196: 40,
+                203: 41,
+                210: 41.5,
+                217: 42,
+                224: 43,
+                231: 43,
+            }
+
         days = list(data.keys())
         values = list(data.values())
 
@@ -225,9 +309,9 @@ class NowcastingSEIRModel:
     TODO Next steps:
     * Turn on delay and see if that helps match peak behaviour
     * Validate test positivity contribution to peaks against that observed
-
-    See test/seir_model_training_test.py for tests
     """
+
+    FRACTION_HOSP_DWELL_AS_DELAY = 1.0
 
     def __init__(
         self,
@@ -264,7 +348,9 @@ class NowcastingSEIRModel:
         self.t_h = th_f
 
         if self.age_eval_delay is None:
-            self.age_eval_delay = self.t_i + self.t_h()
+            self.age_eval_delay = (
+                self.t_i + NowcastingSEIRModel.FRACTION_HOSP_DWELL_AS_DELAY * self.t_h()
+            )
         self.fw0 = 0.5
         self.pos0 = 0.5  # max positivity for testing -> 0
         self.pos_c = 1.75

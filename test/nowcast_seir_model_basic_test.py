@@ -96,7 +96,7 @@ def test_evolve_median_age():
     results = [inf.as_array()]
     for i in range(1, 100):
         c = ContactsType.RESTRICTED if i < 50 else ContactsType.LOCKDOWN
-        inf.update(c, 140, pop)
+        inf.update_by_contacting_another(c, 140, pop)
         results.append(inf.as_array())
     bins = ["young", "medium", "old"]
     df = pd.DataFrame(results, columns=bins)
@@ -247,3 +247,27 @@ def test_historical_peaks_positivity_to_real_cfr():
     fig.savefig(TEST_OUTPUT_DIR / "test_historical_peaks_positivity_to_real_cfr.pdf")
 
     assert True
+
+
+def test_reproduce_FL_demographic_shift():
+    t_list = np.linspace(120, 230, 230 - 120 + 1)
+
+    expected_f = Demographics.median_age_f("FL")
+    default_usa_f = Demographics.median_age_f()
+    demo = Demographics(median_age=expected_f(t_list[0]))
+
+    (rt_f, ignore1, ignore2, ignore3, ignore4) = HistoricalData.get_state_data_for_dates(
+        "FL", t_list
+    )
+
+    values = [demo.get_median_age()]
+    for t in t_list[:-1]:
+        demo.evolve_median(rt_f(t), default_usa_f(t))
+        values.append(demo.get_median_age())
+
+    fig = plt.figure(facecolor="w", figsize=(10, 6))
+    plt.plot(t_list, values, label="results")
+    plt.plot(t_list, [expected_f(t) for t in t_list], label="expected")
+    plt.legend()
+    fig.savefig(TEST_OUTPUT_DIR / "test_reproduce_FL_demographic_shift.pdf")
+
