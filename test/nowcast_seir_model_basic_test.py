@@ -9,10 +9,10 @@ import structlog
 from matplotlib import pyplot as plt
 from datetime import datetime, timedelta
 
+from pyseir.models.demographics import Demographics, ContactsType
 from pyseir.models.nowcast_seir_model import (
-    ContactsType,
-    Demographics,
     ramp_function,
+    extend_rt_function_with_new_cases_forecast,
     NowcastingSEIRModel,
     ModelRun,
 )
@@ -84,27 +84,6 @@ def test_median_age_history():
     fig, ax = plt.subplots()
     plt.plot(t_list, m)
     fig.savefig(TEST_OUTPUT_DIR / "test_median_age_history.pdf", bbox_inches="tight")
-
-
-def test_evolve_median_age():
-    """
-    Considering having model equations to evolve the median age of new cases forward
-    in time rather than requiring it to be an input
-    """
-    pop = Demographics(0.4, 0.4, 0, 0.0)  # general population
-    inf = Demographics(0.2, 0.5, 1000, 6.0)  # infected
-    results = [inf.as_array()]
-    for i in range(1, 100):
-        c = ContactsType.RESTRICTED if i < 50 else ContactsType.LOCKDOWN
-        inf.update_by_contacting_another(c, 140, pop)
-        results.append(inf.as_array())
-    bins = ["young", "medium", "old"]
-    df = pd.DataFrame(results, columns=bins)
-    fig, ax = plt.subplots()
-    for bin in bins:
-        plt.plot(df.index, df[bin], label=bin)
-    fig.legend()
-    fig.savefig(TEST_OUTPUT_DIR / "test_evolve_median_age.pdf", bbox_inches="tight")
 
 
 def test_validate_rt_over_time():
@@ -250,6 +229,11 @@ def test_historical_peaks_positivity_to_real_cfr():
 
 
 def test_reproduce_FL_demographic_shift():
+    """
+    Florida is the one state where we have median age data. Test that this median age time history
+    can be recreated using only R(t) and median age history for US as a whole - a process we can
+    use with any state
+    """
     t_list = np.linspace(120, 230, 230 - 120 + 1)
 
     expected_f = Demographics.median_age_f("FL")
@@ -271,3 +255,76 @@ def test_reproduce_FL_demographic_shift():
     plt.legend()
     fig.savefig(TEST_OUTPUT_DIR / "test_reproduce_FL_demographic_shift.pdf")
 
+
+def test_using_outputs_of_case_forecast_to_extend_rt():
+    """
+    Demonstrates how to use the output of a new case forecast in the future, along with historical
+    R(t) function to generate an extended R(t) function out into the future
+    """
+
+    # Using Illinois data to use as forecast cases below and to roughly check extended R(t)
+    # function looks reasonable
+    t_list = np.linspace(120, 230, 230 - 120 + 1)
+    (rt_f, nC_f, ignore2, ignore3, ignore4) = HistoricalData.get_state_data_for_dates(
+        "IL", t_list, compartments_as_functions=True
+    )
+
+    # As test take forecasted cases (past 140) from historical data for new cases in Illinois
+    forecasted_cases = []
+    for day in [140, 155, 170, 185, 220]:
+        forecasted_cases.append((day, nC_f(day)))
+    start = forecasted_cases[0][0]
+    end = forecasted_cases[-1][0]
+
+    # Now generate an extended rt_f function from
+    # - the forecasted new cases at various times in the future
+    # - the rt_f from Bettencourt for the same source data (Illinois)
+    serial_period = NowcastingSEIRModel().serial_period
+    forecast_rt_f = extend_rt_function_with_new_cases_forecast(
+        rt_f, serial_period, forecasted_cases
+    )
+
+    # Check result for the final new cases at end of extended R(t)
+    check_nC = nC_f(start)
+    for t in range(start + 1, end):
+        check_nC = check_nC * math.exp((forecast_rt_f(t) - 1) / serial_period)
+    nC_ratio = check_nC / nC_f(end)
+    assert nC_ratio > 0.95 and nC_ratio < 1.05
+
+    # Plot resulting R(t) and compare with Bettencourt
+    fig = plt.figure(facecolor="w", figsize=(10, 6))
+    plt.plot(t_list, [forecast_rt_f(t) for t in t_list], label="piecewise linear R(t)")
+    plt.plot(t_list, [rt_f(t) for t in t_list], label="Bettencourt R(t)")
+    for (day, nc) in forecasted_cases:
+        plt.plot([day, day], [0.4, 1.4], linestyle="--", color="black")
+    plt.legend()
+    fig.savefig(TEST_OUTPUT_DIR / "test_using_rt_forecast.pdf")
+
+    # Doesn't agree perfectly as rt from Bettencourt is a little off and piecewise linear is more jagged
+    rt_ratio = forecast_rt_f(end) / rt_f(end)
+    assert rt_ratio > 0.8 and rt_ratio < 1.2
+
+
+################################ Obsolete test cases ############################
+
+
+def obsolete_test_evolve_median_age():
+    """
+    Considering having model equations to evolve the median age of new cases forward
+    in time rather than requiring it to be an input. Did something simpler but may come
+    back to this code later
+    """
+    pop = Demographics(0.4, 0.4, 0, 0.0)  # general population
+    inf = Demographics(0.2, 0.5, 1000, 6.0)  # infected
+    results = [inf.as_array()]
+    for i in range(1, 100):
+        c = ContactsType.RESTRICTED if i < 50 else ContactsType.LOCKDOWN
+        inf.update_by_contacting_another(c, 140, pop)
+        results.append(inf.as_array())
+    bins = ["young", "medium", "old"]
+    df = pd.DataFrame(results, columns=bins)
+    fig, ax = plt.subplots()
+    for bin in bins:
+        plt.plot(df.index, df[bin], label=bin)
+    fig.legend()
+    fig.savefig(TEST_OUTPUT_DIR / "test_evolve_median_age.pdf", bbox_inches="tight")

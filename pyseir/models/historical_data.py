@@ -14,6 +14,36 @@ DATA_CORRECTIONS = {
 # TODO there are lots more problems with nD (daily) showing as <0.
 # - t=218 is big such case for NY
 
+# Most states outbreaks start around calendard day 90. Some are significantly earlier or later
+EARLY_OUTBREAK_START_DAY_BY_STATE = {
+    "NY": 75,
+    "NJ": 80,
+    "CT": 80,
+    "WY": 100,
+    "AK": 115,
+    "AZ": 100,
+    "DC": 100,
+    "CA": 115,
+    "GA": 120,
+    "IL": 95,
+    "IN": 110,
+    "KY": 95,
+    "MD": 106,
+    "ME": 98,
+    "MI": 95,
+    "MS": 105,
+    "MT": 95,
+    "NH": 100,
+    "NV": 95,
+    "OH": 120,
+    "PA": 95,
+    "SD": 110,
+    "UT": 123,
+    "VA": 95,
+    "WI": 97,
+    "WV": 95,
+}
+
 
 class HistoricalData:
     raw = pd.read_csv("test/data/historical/merged_results_2020_08_19.csv", parse_dates=["date"])
