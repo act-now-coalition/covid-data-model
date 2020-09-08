@@ -59,12 +59,7 @@ def get_icu_timeseries(
     log = logger.new(region=str(region), event=f"ICU for Region = {region}")
     data = _get_data_for_icu_calc(regional_combined_data, state_combined_data)
     return _calculate_icu_timeseries(
-        data=data,
-        region=region,
-        use_actuals=use_actuals,
-        block_current_icu_and_hospitilized=(region.fips == "36061"),
-        weight_by=weight_by,
-        log=log,
+        data=data, region=region, use_actuals=use_actuals, weight_by=weight_by, log=log,
     )
 
 
@@ -72,38 +67,24 @@ def _calculate_icu_timeseries(
     data: pd.DataFrame,
     region: pipeline.Region,
     use_actuals: bool = True,
-    block_current_icu_and_hospitilized: bool = False,
     weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
     log=None,
 ) -> pd.Series:
-    """
-        Load data for region of interest and return ICU Utilization numerator.
+    """Loads data for region of interest and return ICU Utilization numerator.
 
-    Parameters
-    ----------
-    data: pd.DataFrame
-        DataFrame for the region of interest (which includes the data for the higher aggregation
-        level of that region of interest.
-    region: pipeline.Region
-        Region of interest key used for calculating state-to-county disaggregation weights as needed
-    use_actuals: bool
-        If True, return actuals when available. If False, always use predictions.
-    weight_by: ICUWeightsPath
-        The method by which to estimate county level utilization from state level utilization when
-        no county level inpatient/icu data is available.
-    log:
-        Logging object
+    Args:
+        data: DataFrame for the region of interest (which includes the data for the higher
+          aggregation level of that region of interest.
+        region: Region of interest key used for calculating state-to-county disaggregation weights
+          as needed
+        use_actuals: If True, return actuals when available. If False, always use predictions.
+        weight_by: The method by which to estimate county level utilization from state level
+          utilization when no county level inpatient/icu data is available.
+        log: Logging object
 
-    Returns
-    -------
-    output: pandas.Series
-        A date-indexed series of ICU estimate for heads-in-beds for a given region
+    Returns: A date-indexed series of ICU estimate for heads-in-beds for a given region
     """
     has = data.apply(lambda x: not x.dropna().empty).to_dict()
-
-    if block_current_icu_and_hospitilized:
-        has["current_icu"] = False
-        has["current_hospitalized"] = False
 
     if use_actuals and has["current_icu"]:
         log.info(current_icu=True)
