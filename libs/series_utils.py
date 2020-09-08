@@ -28,7 +28,6 @@ def smooth_with_rolling_average(
     Returns:
         Smoothed series.
     """
-
     # Drop trailing NAs so that we don't smooth for day we don't yet have data.
     series = series.loc[: series.last_valid_index()]
 
@@ -49,8 +48,8 @@ def smooth_with_rolling_average(
         return series
 
 
-def interpolate_stalled_values(series: pd.Series) -> pd.Series:
-    """Interpolates periods where values have stopped increasing,
+def interpolate_stalled_and_missing_values(series: pd.Series) -> pd.Series:
+    """Interpolates periods where values have stopped increasing or have gaps.
 
     Args:
         series: Series with a datetime index

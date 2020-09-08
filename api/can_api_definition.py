@@ -86,8 +86,14 @@ class NonCovidPatientsMethod(enum.Enum):
 class ICUHeadroomMetricDetails(base_model.APIBaseModel):
     """Details about how the ICU Headroom Metric was calculated."""
 
+    currentIcuCovid: int = pydantic.Field(
+        ..., description="Current number of covid patients in icu."
+    )
     currentIcuCovidMethod: CovidPatientsMethod = pydantic.Field(
         ..., description="Method used to determine number of current ICU patients with covid."
+    )
+    currentIcuNonCovid: int = pydantic.Field(
+        ..., description="Current number of covid patients in icu."
     )
     currentIcuNonCovidMethod: NonCovidPatientsMethod = pydantic.Field(
         ..., description="Method used to determine number of current ICU patients without covid."
@@ -227,7 +233,7 @@ class PredictionTimeseriesRow(base_model.APIBaseModel):
         ...,
         description="Number of hospital beds projected to be in-use or actually in use (if in the past)",
     )
-    ICUBedsInUse: int = pydantic.Field(
+    ICUBedsInUse: Optional[int] = pydantic.Field(
         ...,
         description="Number of ICU beds projected to be in-use or that were actually in use (if in the past)",
     )
@@ -239,8 +245,8 @@ class PredictionTimeseriesRow(base_model.APIBaseModel):
         ..., description="Number of ventilators projected to be in-use."
     )
     ventilatorCapacity: int = pydantic.Field(..., description="Total ventilator capacity.")
-    RtIndicator: float = pydantic.Field(..., description="Historical or Inferred Rt")
-    RtIndicatorCI90: float = pydantic.Field(..., description="Rt standard deviation")
+    RtIndicator: Optional[float] = pydantic.Field(..., description="Historical or Inferred Rt")
+    RtIndicatorCI90: Optional[float] = pydantic.Field(..., description="Rt standard deviation")
     cumulativeDeaths: int = pydantic.Field(..., description="Number of cumulative deaths")
     cumulativeInfected: Optional[int] = pydantic.Field(
         ..., description="Number of cumulative infections"
