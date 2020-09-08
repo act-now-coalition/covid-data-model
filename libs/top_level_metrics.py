@@ -171,6 +171,9 @@ def calculate_case_density(
     Returns:
         Population cases density.
     """
+    cases = cases.copy()
+    cases[: cases.first_valid_index()] = 0.0
+
     smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=smooth)
     return smoothed_daily_cases / (population / normalize_by)
 
