@@ -290,7 +290,6 @@ class WebUIDataAdaptorV1:
                 (output_dates >= datetime(month=3, day=3, year=2020))
                 & (output_dates < datetime.today() + timedelta(days=90))
             ]
-            output_model = output_model.fillna(0)
 
             # Fill in results for the Rt indicator.
             rt_results = regional_input.inferred_infection_rate()
@@ -335,14 +334,16 @@ class WebUIDataAdaptorV1:
                     schema.FIPS,
                 )
             ]
+            # Casing floats to ints and then replacing filled in zeros with NaN values instead of
+            # propagating zeros.
+            na_int_columns = output_model.loc[:, int_columns].isna()
             output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int)
+            output_model[na_int_columns] = np.nan
             output_model.loc[
                 :, [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
             ] = output_model[
                 [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
-            ].fillna(
-                0
-            )
+            ]
 
             output_model[schema.FIPS] = regional_input.fips
             intervention = Intervention.from_webui_data_adaptor(suppression_policy)

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Iterable
 import pathlib
 import datetime
 
@@ -87,3 +87,9 @@ class CANPyseirLocationOutput(object):
             return None
 
         return self.data.loc[last_idx][schema.RT_INDICATOR_CI90]
+
+    def yield_records(self) -> Iterable[dict]:
+        # It'd be faster to use self.data.itertuples or find a way to avoid yield_records, but that
+        # needs larger changes in code calling this.
+        for idx, row in self.data.iterrows():
+            yield row.where(pd.notnull(row), None).to_dict()

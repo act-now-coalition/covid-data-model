@@ -83,7 +83,6 @@ def _generate_actuals(actual_data: dict, intervention: Intervention) -> Actuals:
 
 
 def _generate_prediction_timeseries_row(json_data_row) -> PredictionTimeseriesRow:
-
     return PredictionTimeseriesRow(
         date=json_data_row[can_schema.DATE].to_pydatetime(),
         hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
@@ -156,8 +155,7 @@ def generate_region_timeseries(
     model_timeseries = []
     if model_output:
         model_timeseries = [
-            _generate_prediction_timeseries_row(row)
-            for row in model_output.data.to_dict(orient="records")
+            _generate_prediction_timeseries_row(row) for row in model_output.yield_records()
         ]
 
     region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}

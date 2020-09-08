@@ -147,6 +147,7 @@ class ICUMetricData:
             return self.actual_current_icu_covid, source
 
         source = CovidPatientsMethod.ESTIMATED
+
         return self.estimated_current_icu_covid, source
 
 
@@ -196,6 +197,7 @@ def calculate_icu_utilization_metric(
         return np.nan, None
 
     current_covid_patients, covid_source = icu_data.current_icu_covid_with_source
+
     if current_covid_patients is None:
         return np.nan, None
 
