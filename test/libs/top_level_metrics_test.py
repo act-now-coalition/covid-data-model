@@ -38,7 +38,7 @@ def test_calculate_case_density():
     )
 
     pd.testing.assert_series_equal(
-        density, _series_with_date_index([np.nan, 1, 1, 2, 3], dtype="float"),
+        density, _series_with_date_index([np.nan, 0.0, 1.0, 3.0, 5.0], dtype="float"),
     )
 
 
