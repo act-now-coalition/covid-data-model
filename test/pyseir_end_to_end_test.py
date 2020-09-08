@@ -2,11 +2,13 @@ import pathlib
 import unittest
 
 from libs import pipeline
+from libs.datasets import combined_datasets
 from pyseir import cli
 from pyseir.inference import whitelist
 from pyseir.utils import get_run_artifact_path, RunArtifact
 import libs.datasets.can_model_output_schema as schema
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs.functions import generate_api
 import pytest
 
 # turns all warnings into errors for this module
@@ -19,14 +21,22 @@ import pytest
 def test_pyseir_end_to_end_idaho(tmp_path):
     # This covers a lot of edge cases.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
-        pipelines = cli._build_all_for_states(states=["ID"], fips="16001")
+        fips = "16001"
+        pipelines = cli._build_all_for_states(states=["ID"], fips=fips)
         cli._write_pipeline_output(pipelines, tmp_path)
-        path = get_run_artifact_path("16001", RunArtifact.WEB_UI_RESULT).replace(
+        path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT).replace(
             "__INTERVENTION_IDX__", "2"
         )
         path = pathlib.Path(path)
         assert path.exists()
         output = CANPyseirLocationOutput.load_from_path(path)
+
+        latest = combined_datasets.get_us_latest_for_fips(fips)
+        timeseries = combined_datasets.get_timeseries_for_fips(fips)
+        summary = generate_api.generate_region_summary(latest, None, output)
+        timeseries_output = generate_api.generate_region_timeseries(summary, timeseries, [], output)
+        assert timeseries_output
+
         data = output.data
         with_values = data[schema.RT_INDICATOR].dropna()
         assert len(with_values) > 10
