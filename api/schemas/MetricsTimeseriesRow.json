@@ -83,13 +83,19 @@
             "estimated_from_typical_utilization",
             "estimated_from_total_icu_actual"
           ]
+        },
+        "latestIcuTotalCapacity": {
+          "title": "Latesticutotalcapacity",
+          "description": "Latest ICU bed total capacity.",
+          "type": "integer"
         }
       },
       "required": [
         "currentIcuCovid",
         "currentIcuCovidMethod",
         "currentIcuNonCovid",
-        "currentIcuNonCovidMethod"
+        "currentIcuNonCovidMethod",
+        "latestIcuTotalCapacity"
       ]
     }
   }

@@ -244,6 +244,7 @@ Details about how the ICU Headroom Metric was calculated.
 | currentIcuCovidMethod    |         | Method used to determine number of current ICU patients with covid.    |
 | currentIcuNonCovid       | integer | Current number of covid patients in icu.                               |
 | currentIcuNonCovidMethod |         | Method used to determine number of current ICU patients without covid. |
+| latestIcuTotalCapacity   | integer | Latest ICU bed total capacity.                                         |
 
 ### Metrics
 Calculated metrics data based on known actuals.

@@ -82,7 +82,7 @@ class ICUMetricData:
         return estimated
 
     @property
-    def _latest_icu_beds(self):
+    def latest_icu_beds(self) -> int:
         timeseries = self._data[CommonFields.ICU_BEDS]
         has_recent_data = series_utils.has_recent_data(
             timeseries, days_back=7, required_non_null_datapoints=1
@@ -100,7 +100,7 @@ class ICUMetricData:
     @property
     def total_icu_beds(self) -> Union[pd.Series, float]:
         timeseries = self._data[CommonFields.ICU_BEDS]
-        latest_icu_beds = self._latest_icu_beds
+        latest_icu_beds = self.latest_icu_beds
 
         if timeseries.any():
             return timeseries.fillna(latest_icu_beds)
@@ -214,5 +214,6 @@ def calculate_icu_utilization_metric(
         currentIcuCovid=current_covid_patients[latest_metric_date],
         currentIcuNonCovidMethod=non_covid_source,
         currentIcuNonCovid=current_non_covid_patients[latest_metric_date],
+        latestIcuTotalCapacity=icu_data.latest_icu_beds,
     )
     return metric, details

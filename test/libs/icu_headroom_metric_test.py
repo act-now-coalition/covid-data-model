@@ -122,6 +122,7 @@ def test_icu_utilization_metric():
         currentIcuCovid=15,
         currentIcuNonCovidMethod=icu_headroom_metric.NonCovidPatientsMethod.ACTUAL,
         currentIcuNonCovid=15,
+        latestIcuTotalCapacity=40,
     )
 
     pd.testing.assert_series_equal(metrics, expected_metric)

@@ -98,6 +98,7 @@ class ICUHeadroomMetricDetails(base_model.APIBaseModel):
     currentIcuNonCovidMethod: NonCovidPatientsMethod = pydantic.Field(
         ..., description="Method used to determine number of current ICU patients without covid."
     )
+    latestIcuTotalCapacity: int = pydantic.Field(..., description="Latest ICU bed total capacity.")
 
 
 class Metrics(base_model.APIBaseModel):
