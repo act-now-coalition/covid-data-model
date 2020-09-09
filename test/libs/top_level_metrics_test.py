@@ -212,13 +212,15 @@ def test_lookback_days():
     prev_rt = 1.0
     prev_rt_ci90 = 0.2
     data = _build_metrics_df(
-        f"2020-08-13,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n" "2020-08-20,,,,,1.2,0.3\n"
+        f"2020-08-12,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
+        f"2020-08-13,36,10,0.1,0.06,,\n"
+        "2020-08-20,,,,,,\n"
     )
     metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert not metrics.caseDensity
     assert not metrics.testPositivityRatio
-    assert metrics.infectionRate == prev_rt
-    assert metrics.infectionRateCI90 == prev_rt_ci90
+    assert not metrics.infectionRate
+    assert not metrics.infectionRateCI90
 
 
 def test_calculate_latest_rt_no_previous_row():
