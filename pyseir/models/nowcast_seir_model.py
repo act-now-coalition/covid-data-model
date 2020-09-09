@@ -162,6 +162,13 @@ class NowcastingSEIRModel:
         self.pos_b = (3.0 * self.pos_x0 - self.pos_c) / (4.0 * self.pos_x0 ** 1.5)
         self.pos_d = self.pos_x0 ** 0.5 / 4.0 * (3.0 * self.pos_c - self.pos_x0)
 
+    def get_calibration(self):
+        """
+        Get the current calibration which is only using one proportionality factor for each of
+        fh, fd
+        """
+        return (self.lr_fh[0], self.lr_fd[0])
+
     def run_stationary(self, rt, median_age, t_over_x, x_is_new_cases=True):
         """
         Given R(t) and T/I or T/C run to steady state and return ratios of all compartments
@@ -485,11 +492,14 @@ class ModelRun:
             S=S, I=I_initial, nC=nC_initial, H=H_initial, nD=nD_initial
         )
 
-    def execute_dataframe_ratios_fig(self):
+    def execute_dataframe_ratios_fig(self, plot=True):
         (history, ratios) = self.execute_lists_ratios()
         df = ModelRun.array_to_df(history)
         self.results = df
-        fig = self.plot_results()
+        if plot:
+            fig = self.plot_results()
+        else:
+            fig = None
         return (df, ratios, fig)
 
     def execute_lists_ratios(self):
@@ -601,7 +611,12 @@ class ModelRun:
 
             if calculating_smape:
                 for c in ["H", "nD"]:
-                    if hc[c] is not None and hc[c][t] is not None and not math.isnan(hc[c][t]):
+                    if (
+                        hc[c] is not None  # have data
+                        and hc[c][t] is not None  # for this time
+                        and not math.isnan(hc[c][t])  # that is a number
+                        and hc[c][t] > 0.3  # and we're not totally in "shot noise"
+                    ):
                         val = H if c == "H" else nD
                         smape_sum += abs(val - hc[c][t]) / ((abs(val) + abs(hc[c][t])) / 2.0)
                         smape_count += 1
@@ -783,6 +798,7 @@ class ModelRun:
 
         # Plot the data on three separate curves for S(t), I(t) and R(t)
         fig = plt.figure(facecolor="w", figsize=(20, 6))
+        fig.suptitle("Calibration: fh0=%.2f, fd0=%.2f" % (self.model.lr_fh[0], self.model.lr_fd[0]))
 
         # ---------------------------- Left plot -------------------------
         plt.subplot(131)

@@ -10,6 +10,7 @@ DATA_CORRECTIONS = {
     "TX": {"nD": [(208, 180.0)]},
     "NJ": {"nD": [(176, 30.0), (189, 15.0)]},
     "NY": {"nD": [(181, 25.0), (218, 10.0)]},
+    "MI": {"nD": [(156, 20.0)]},
 }
 # TODO there are lots more problems with nD (daily) showing as <0.
 # - t=218 is big such case for NY

@@ -16,6 +16,7 @@ from pyseir.models.nowcast_seir_model import (
     ramp_function,
     NowcastingSEIRModel,
     ModelRun,
+    extend_rt_function_with_new_cases_forecast,
 )
 from pyseir.rt.constants import InferRtConstants
 from pyseir.models.historical_data import (
@@ -39,28 +40,39 @@ def test_run_new_model_incrementally():
     """
 
     # Time period for the run (again relative to Jan 1, 2020)
+    # Today in this case is day 200
+    today = 170
+    duration = 60
     t_list = np.linspace(
-        147, 230, 230 - 147 + 1
+        today, today + duration, duration + 1
     )  # Here starts from when FL started to ramp up cases
 
     # Need assumptions for R(t) and testing_rate(t) for the future as inputs
-    (rt, ignore_0, tests, ignore_1, ignore_2) = HistoricalData.get_state_data_for_dates(
-        "FL", t_list
+    (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates("GA", t_list)
+
+    # Create extended R(t) function using projected cases sometime in the future
+    forecast_rt_f = extend_rt_function_with_new_cases_forecast(
+        rt,
+        NowcastingSEIRModel().serial_period,
+        # For now just use known new cases up to t=230 (pretend future)
+        [(today, nc[today]), (today + duration, nc[today + duration])],
     )
-    # Here taken from historical data but typically will use R(t) projections
 
     start = datetime.now()
+    with_history = True  # try True or False
+
     # Create a ModelRun (with specific assumptions) based on a Model (potentially with some trained inputs)
     run = ModelRun(
-        NowcastingSEIRModel(
-            delay_ci_h=5
-        ),  # creating a default model here with no trained parameters
+        NowcastingSEIRModel(),  # creating a default model here with no trained parameters
         20e6,  # N, population of jurisdiction
         t_list,
         None,  # tests (these are currently ignored so positivity not used)
-        rt,
-        case_median_age_f=Demographics.median_age_f("FL"),  # note normally will use
-        initial_compartments={"nC": 800.0, "H": 750.0, "nD": 30.0},
+        forecast_rt_f,
+        case_median_age_f=Demographics.infer_median_age_function(t_list, forecast_rt_f),
+        historical_compartments={"nC": nc, "H": h, "nD": nd} if with_history else None,
+        initial_compartments=None
+        if with_history
+        else {"nC": nc[today], "H": h[today], "nD": nd[today]},
         auto_initialize_other_compartments=True,  # By running to steady state at initial R(t=t0)
         auto_calibrate=True,  # Override some model constants to ensure continuity with initial compartments
     )
@@ -71,7 +83,7 @@ def test_run_new_model_incrementally():
     # Should have finished in less that 1 second
     elapsed = (datetime.now() - start).seconds
 
-    fig.savefig(TEST_OUTPUT_DIR / "test_run_new_model_incrementally.pdf", bbox_inches="tight")
+    fig.savefig(TEST_OUTPUT_DIR / "test_run_new_model_incrementally.pdf")
 
     assert elapsed < 1
 
@@ -266,6 +278,78 @@ def test_historical_period_state_deaths_and_hospitalizations():
             assert sub["smape"].mean() < TARGET_SMAPE
 
         # TODO add more assertions on a per state level
+
+
+def test_one_state_multiple_periods():
+    """
+    Show how fit evolves over time for one staste
+    """
+    for state in [
+        "AZ",
+        "CT",
+        "FL",
+        "GA",
+        "IA",
+        "LA",
+        "MA",
+        "ME",
+        "NE",
+        "MO",
+        "MT",
+        "NY",
+        "OR",
+        "TX",
+        "VA",
+    ]:
+
+        # Get actuals to compare to
+        t_all = np.linspace(100, 230, 230 - 100 + 1)
+        (rt, nc_all, ignore3, h_all, nd_all) = HistoricalData.get_state_data_for_dates(state, t_all)
+
+        # Create chart
+        fig = plt.figure(facecolor="w", figsize=(12, 7))
+        plt.title(f"State = %s" % state)
+        plt.plot(t_all, nd_all, label="actual nD")
+        plt.plot(t_all, h_all / 10.0, label="actual H/10")
+
+        for today in [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220]:
+            duration = min(30, 230 - today)
+            t_list = np.linspace(today, today + duration, duration + 1)
+
+            # Need assumptions for R(t) and testing_rate(t) for the future as inputs
+            (ignore, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates(state, t_list)
+
+            # Create a ModelRun (with specific assumptions) based on a Model (potentially with some trained inputs)
+            model = NowcastingSEIRModel()
+            run = ModelRun(
+                model,  # creating a default model here with no trained parameters
+                20e6,  # N, population of jurisdiction
+                t_list,
+                None,  # tests (these are currently ignored so positivity not used)
+                rt,
+                case_median_age_f=Demographics.infer_median_age_function(t_list, rt),
+                initial_compartments={"nC": nc[today], "H": h[today], "nD": nd[today]},
+                auto_initialize_other_compartments=True,  # By running to steady state at initial R(t=t0)
+                auto_calibrate=True,  # Override some model constants to ensure continuity with initial compartments
+            )
+
+            # Execute the run, results are a DataFrame, fig is Matplotlib Figure, ratios are key metrics
+            (results, ignore, ignore) = run.execute_dataframe_ratios_fig(plot=False)
+
+            (fh0, fd0) = model.get_calibration()
+            plt.plot(
+                t_list,
+                results["nD"].values,
+                label=(f"t=%d: (%.2f, %.2f)" % (today, fh0, fd0)),
+                linestyle="--",
+                color="grey",
+            )
+            plt.plot(t_list, results["H"].values / 10.0, linestyle="--", color="grey")
+
+        plt.legend()
+        plt.xlim(70, 230)
+        plt.yscale("log")
+        fig.savefig(TEST_OUTPUT_DIR / (f"test_one_state_multiple_periods_%s.pdf" % state))
 
 
 def test_reproduce_TX_late_peak():
