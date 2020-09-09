@@ -613,7 +613,7 @@ class ModelRun:
                 for c in ["H", "nD"]:
                     if (
                         hc[c] is not None  # have data
-                        and hc[c][t] is not None  # for this time
+                        and t in hc[c].index  # for this time
                         and not math.isnan(hc[c][t])  # that is a number
                         and hc[c][t] > 0.3  # and we're not totally in "shot noise"
                     ):

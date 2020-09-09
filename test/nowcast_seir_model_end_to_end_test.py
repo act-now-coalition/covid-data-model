@@ -39,23 +39,23 @@ def test_run_new_model_incrementally():
     r(t), test_rate and median_age) into the future.
     """
 
-    # Time period for the run (again relative to Jan 1, 2020)
-    # Today in this case is day 200
-    today = 170
-    duration = 60
-    t_list = np.linspace(
-        today, today + duration, duration + 1
-    )  # Here starts from when FL started to ramp up cases
+    # Run into the future using R(t) ramp starting sometime in the past
+    (start, today, ramp_end, future) = (200, 230, 250, 280)
+    t_list = np.linspace(start, future, future - start + 1)
+
+    # Try changing these to get different possible futures
+    nC_ramp_to = 8000.0
+    nC_future = 7000.0
 
     # Need assumptions for R(t) and testing_rate(t) for the future as inputs
-    (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates("GA", t_list)
+    data_tlist = np.linspace(start, today, today - start + 1)
+    (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates("FL", data_tlist)
 
     # Create extended R(t) function using projected cases sometime in the future
     forecast_rt_f = extend_rt_function_with_new_cases_forecast(
         rt,
         NowcastingSEIRModel().serial_period,
-        # For now just use known new cases up to t=230 (pretend future)
-        [(today, nc[today]), (today + duration, nc[today + duration])],
+        [(start, nc[start]), (today, nc[today]), (ramp_end, nC_ramp_to), (future, nC_future)],
     )
 
     start = datetime.now()
@@ -72,7 +72,7 @@ def test_run_new_model_incrementally():
         historical_compartments={"nC": nc, "H": h, "nD": nd} if with_history else None,
         initial_compartments=None
         if with_history
-        else {"nC": nc[today], "H": h[today], "nD": nd[today]},
+        else {"nC": nc[start], "H": h[start], "nD": nd[start]},
         auto_initialize_other_compartments=True,  # By running to steady state at initial R(t=t0)
         auto_calibrate=True,  # Override some model constants to ensure continuity with initial compartments
     )
