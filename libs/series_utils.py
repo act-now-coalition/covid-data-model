@@ -64,7 +64,7 @@ def interpolate_stalled_and_missing_values(
         series_with_values[(series_with_values.diff() == 0)] = None
     # Use the index to determine breaks between data (so
     # missing data is not improperly interpolated)
-    series.loc[start:end] = series_with_values.interpolate(method="time").round()
+    series.loc[start:end] = series_with_values.interpolate(method="time").apply(np.floor)
 
     return series
 
