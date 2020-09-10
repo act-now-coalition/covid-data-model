@@ -59,8 +59,9 @@ class RegionalInput:
     def fips(self) -> str:
         return self.region.fips
 
-    def get_us_latest(self):
-        return self._combined_data.get_us_latest()
+    @property
+    def latest(self):
+        return self._combined_data.latest
 
     def inference_result(self) -> Mapping[str, Any]:
         """
@@ -122,7 +123,7 @@ class WebUIDataAdaptorV1:
             regional_input: the region and its data
         """
         # Get the latest observed values to use in calculating shims
-        observed_latest_dict = regional_input.get_us_latest()
+        observed_latest_dict = regional_input.latest
 
         state = observed_latest_dict[CommonFields.STATE]
         log.info("Mapping output to WebUI.", state=state, fips=regional_input.fips)

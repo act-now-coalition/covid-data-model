@@ -80,28 +80,34 @@ class RegionalCombinedData:
 
     region: Region
 
+    latest: dict
+
+    timeseries: timeseries.TimeseriesDataset
+
     @staticmethod
     def from_region(region: Region) -> "RegionalCombinedData":
-        return RegionalCombinedData(region=region)
 
-    def get_us_latest(self):
-        """Gets latest values for a given state or county fips code."""
         us_latest = combined_datasets.load_us_latest_dataset()
-        return us_latest.get_record_for_fips(self.region.fips)
+        region_latest = us_latest.get_record_for_fips(region.fips)
+
+        us_timeseries = combined_datasets.load_us_timeseries_dataset()
+        region_timeseries = us_timeseries.get_subset(fips=region.fips)
+
+        return RegionalCombinedData(
+            region=region, latest=region_latest, timeseries=region_timeseries
+        )
 
     def get_timeseries(self) -> timeseries.TimeseriesDataset:
-        """Gets latest values for a given state or county fips code."""
-        us_latest = combined_datasets.load_us_timeseries_dataset()
-        return us_latest.get_subset(fips=self.region.fips)
+        return self.timeseries
 
     @property
     def population(self) -> int:
         """Gets the population for this region."""
-        return self.get_us_latest()[CommonFields.POPULATION]
+        return self.latest[CommonFields.POPULATION]
 
     @property  # TODO(tom): Change to cached_property when we're using Python 3.8
     def display_name(self) -> str:
-        record = self.get_us_latest()
+        record = self.latest
         county = record[CommonFields.COUNTY]
         state = record[CommonFields.STATE]
         if county:

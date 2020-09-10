@@ -96,8 +96,9 @@ class RegionalInput:
             self._hospitalization_df, t0, category=category
         )
 
-    def get_us_latest(self) -> Mapping[str, Any]:
-        return self._combined_data.get_us_latest()
+    @property
+    def latest(self) -> Mapping[str, Any]:
+        return self._combined_data.latest
 
     def inference_result_of_state(self) -> Mapping[str, Any]:
         if self._state_mle_fit_result is None:
@@ -336,7 +337,7 @@ class ModelFitter:
         SEIR_kwargs = ParameterEnsembleGenerator(
             N_samples=5000,
             t_list=self.t_list,
-            combined_datasets_latest=self.regional_input.get_us_latest(),
+            combined_datasets_latest=self.regional_input.latest,
             suppression_policy=None,
         ).get_average_seir_parameters()
 
