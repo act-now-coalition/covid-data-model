@@ -87,7 +87,7 @@ class RegionalInput:
             return {}
 
     def new_case_data(self, t0) -> Tuple[pd.Series, np.array, np.array]:
-        return load_data.calculate_new_case_data_by_region(self._combined_data.get_timeseries(), t0)
+        return load_data.calculate_new_case_data_by_region(self._combined_data.timeseries, t0)
 
     def hospitalization_data(
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED

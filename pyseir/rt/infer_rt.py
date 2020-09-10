@@ -29,6 +29,10 @@ class RegionalInput:
     def display_name(self) -> str:
         return str(self.region)
 
+    @property
+    def timeseries(self) -> timeseries.TimeseriesDataset:
+        return self._combined_data.timeseries
+
     @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
@@ -38,9 +42,6 @@ class RegionalInput:
     @staticmethod
     def from_fips(fips: str) -> "RegionalInput":
         return RegionalInput.from_region(pipeline.Region.from_fips(fips))
-
-    def get_timeseries(self) -> timeseries.TimeseriesDataset:
-        return self._combined_data.get_timeseries()
 
 
 def run_rt(
@@ -102,7 +103,7 @@ def _generate_input_data(
             observed_new_cases,
             observed_new_deaths,
         ) = load_data.calculate_new_case_data_by_region(
-            regional_input.get_timeseries(),
+            regional_input.timeseries,
             t0=InferRtConstants.REF_DATE,
             include_testing_correction=include_testing_correction,
         )

@@ -2,7 +2,7 @@
 Code that is used to help move information around in the pipeline, starting with `Region` which
 represents a geographical area (state, county, metro area, etc).
 """
-
+from typing import Dict, Any
 from dataclasses import dataclass
 
 import structlog
@@ -80,7 +80,7 @@ class RegionalCombinedData:
 
     region: Region
 
-    latest: dict
+    latest: Dict[str, Any]
 
     timeseries: timeseries.TimeseriesDataset
 
@@ -97,9 +97,6 @@ class RegionalCombinedData:
             region=region, latest=region_latest, timeseries=region_timeseries
         )
 
-    def get_timeseries(self) -> timeseries.TimeseriesDataset:
-        return self.timeseries
-
     @property
     def population(self) -> int:
         """Gets the population for this region."""
@@ -107,9 +104,8 @@ class RegionalCombinedData:
 
     @property  # TODO(tom): Change to cached_property when we're using Python 3.8
     def display_name(self) -> str:
-        record = self.latest
-        county = record[CommonFields.COUNTY]
-        state = record[CommonFields.STATE]
+        county = self.latest[CommonFields.COUNTY]
+        state = self.latest[CommonFields.STATE]
         if county:
             return f"{county}, {state}"
         return state
