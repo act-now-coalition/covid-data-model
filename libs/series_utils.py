@@ -35,7 +35,14 @@ def smooth_with_rolling_average(
         series = series.copy()
         series.loc[series < 0] = None
 
-    rolling_average = series.rolling(window, min_periods=1).mean()
+    def mean_with_no_trailing_nan(x):
+        """Return mean of series unless last value is nan."""
+        if np.isnan(x.iloc[-1]):
+            return np.nan
+
+        return x.mean()
+
+    rolling_average = series.rolling(window, min_periods=1).apply(mean_with_no_trailing_nan)
     if include_trailing_zeros:
         return rolling_average
 
