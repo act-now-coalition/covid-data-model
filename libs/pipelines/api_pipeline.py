@@ -44,6 +44,10 @@ class RegionalInput:
         return self.region.fips
 
     @property
+    def state(self) -> str:
+        return self.latest[CommonFields.STATE]
+
+    @property
     def latest(self):
         return self._combined_data.latest
 
@@ -82,7 +86,7 @@ def run_on_all_regional_inputs_for_intervention(
     # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
     pool = pool or multiprocessing.Pool(maxtasksperchild=1)
     results = pool.map(build_timeseries_for_region, regional_inputs)
-    all_timeseries = [region_timeseries for region_timeseries in results if region_timeseris]
+    all_timeseries = [region_timeseries for region_timeseries in results if region_timeseries]
 
     if sort_func:
         all_timeseries.sort(key=sort_func)
@@ -116,13 +120,11 @@ def generate_metrics_and_latest_for_fips(
 def build_timeseries_for_region(
     regional_input: RegionalInput,
 ) -> Optional[RegionSummaryWithTimeseries]:
-    fips_latest = regional_input.latest
     intervention = regional_input.intervention
     model_output = regional_input.model_output
 
     if intervention is Intervention.SELECTED_INTERVENTION:
-        state = fips_latest[CommonFields.STATE]
-        intervention = get_can_projection.get_intervention_for_state(state)
+        intervention = get_can_projection.get_intervention_for_state(regional_input.state)
 
     if not model_output and intervention is not Intervention.OBSERVED_INTERVENTION:
         # All model output is currently tied to a specific intervention. However,
@@ -131,17 +133,14 @@ def build_timeseries_for_region(
         return None
 
     try:
-        fips_timeseries = regional_input.timeseries
-        if fips_timeseries.empty:
-            logger.warning("Missing data for fips, skipping region summary generation.", fips=fips)
-            return None
-
         metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
-            fips_timeseries, fips_latest, model_output
+            regional_input.timeseries, regional_input.latest, model_output
         )
-        region_summary = api.generate_region_summary(fips_latest, metrics_latest, model_output)
+        region_summary = api.generate_region_summary(
+            regional_input.latest, metrics_latest, model_output
+        )
         region_timeseries = api.generate_region_timeseries(
-            region_summary, fips_timeseries, metrics_timeseries, model_output
+            region_summary, regional_input.timeseries, metrics_timeseries, model_output
         )
     except Exception:
         logger.exception(f"Failed to build timeseries for fips.")
