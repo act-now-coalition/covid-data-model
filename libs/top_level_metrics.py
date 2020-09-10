@@ -138,23 +138,14 @@ def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
 
     cases = cases.copy()
 
-    filled_cases = series_utils.interpolate_stalled_and_missing_values(
-        cases, interpolate_stalled=False
-    )
     # Front filling all cases with 0s.  We're assuming all regions are accurately
     # reporting the first day a new case occurs.  This will affect the first few cases
     # in a timeseries, because it's smoothing over a full period, rather than just the first
     # couple days of reported data.
-    filled_cases[: filled_cases.first_valid_index() - timedelta(days=1)] = 0
-    cases_daily = filled_cases.diff()
+    cases[: cases.first_valid_index() - timedelta(days=1)] = 0
+    cases_daily = cases.diff()
     smoothed = series_utils.smooth_with_rolling_average(cases_daily, window=smooth)
 
-    # Replacing interpolated values with nones to not take overly strong opinions on
-    # what happened during the missing days, but allows the last value to be properly
-    # smoothed over a 7 day period.
-    cases[: cases.first_valid_index()] = 0.0
-
-    smoothed.loc[cases.isna()] = np.nan
     return smoothed
 
 
@@ -194,7 +185,6 @@ def calculate_test_positivity(
     negative_smoothed = series_utils.smooth_with_rolling_average(
         daily_negative_tests, include_trailing_zeros=False
     )
-
     last_n_positive = positive_smoothed[-lag_lookback:]
     last_n_negative = negative_smoothed[-lag_lookback:]
 
