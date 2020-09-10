@@ -172,7 +172,7 @@ class SubStatePipeline:
         return self.region.fips
 
     def population(self) -> float:
-        return self._combined_data.get_us_latest()[CommonFields.POPULATION]
+        return self._combined_data.latest[CommonFields.POPULATION]
 
 
 def _patch_substatepipeline_nola_infection_rate(
