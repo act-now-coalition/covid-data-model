@@ -19,8 +19,8 @@ def test_get_icu(fips):
     state_combined_data = pipeline.RegionalCombinedData.from_region(region.get_state_region())
     result_series = infer_icu.get_icu_timeseries(
         region,
-        regional_combined_data=regional_combined_data.get_timeseries(),
-        state_combined_data=state_combined_data.get_timeseries(),
+        regional_combined_data=regional_combined_data.timeseries,
+        state_combined_data=state_combined_data.timeseries,
     )
     assert not result_series.dropna().empty
     assert result_series.index.names == [CommonFields.DATE]
