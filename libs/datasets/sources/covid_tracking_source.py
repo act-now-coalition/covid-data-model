@@ -125,10 +125,6 @@ class CovidTrackingDataSource(data_source.DataSource):
 
         data = data.astype(dtypes)
 
-        # Dropping PR because of bad data
-        # TODO(chris): Handle this in a more sane way.
-        data = data.loc[data.state != "PR", :]
-
         # Removing bad data from Delaware.
         # Once that is resolved we can remove this while keeping the assert below.
         icu_mask = data[cls.Fields.IN_ICU_CURRENTLY] > data[cls.Fields.CURRENT_HOSPITALIZED]
@@ -148,18 +144,6 @@ class CovidTrackingDataSource(data_source.DataSource):
             data[cls.Fields.IN_ICU_CURRENTLY] > data[cls.Fields.CURRENT_HOSPITALIZED]
         ).any(), "IN_ICU_CURRENTLY field is greater than CURRENT_HOSPITALIZED"
 
-        # must stay true: positive + negative  ==  total
-        assert (
-            data[cls.Fields.POSITIVE_TESTS] + data[cls.Fields.NEGATIVE_TESTS]
-            == data[cls.Fields.TOTAL_TEST_RESULTS]
-        ).all()
-
-        # must stay true: positive change + negative change ==  total change
-        assert (
-            data[cls.Fields.POSITIVE_INCREASE] + data[cls.Fields.NEGATIVE_INCREASE]
-            == data[cls.Fields.TOTAL_TEST_RESULTS_INCREASE]
-        ).all()
-
         # TODO implement assertion to check for shift, as sliced by geo
         # df['totalTestResults'] - df['totalTestResultsIncrease']  ==  df['totalTestResults'].shift(-1)
-        return data
+        return cls._rename_to_common_fields(data)

@@ -1,5 +1,3 @@
-import csv
-import requests
 from datetime import datetime, timedelta
 from sentry_sdk import capture_event
 
@@ -74,10 +72,10 @@ class Comparitor(object):
                     "actualTimeseries": {'population': None, 'intervention': 'STRONG_INTERVENTION', 'cumulativeConfirmedCases': 2, 'cumulativePositiveTests': None, 'cumulativeNegativeTests': None, 'cumulativeDeaths': None, 'hospitalBeds': {'capacity': None, 'totalCapacity': None, 'currentUsageCovid': None, 'currentUsageTotal': None, 'typicalUsageRate': None
                     }, 'ICUBeds': {'capacity': None, 'totalCapacity': None, 'currentUsageCovid': None, 'currentUsageTotal': None, 'typicalUsageRate': None
                     }, 'date': '2020-01-26'
-                    }, 
+                    },
                     ...
                     "timeseries": {...}
-                }, 
+                },
                 286: {},
             }}
         """

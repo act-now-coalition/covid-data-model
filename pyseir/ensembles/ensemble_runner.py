@@ -1,25 +1,22 @@
 import datetime
-import logging
-import os
+from dataclasses import dataclass
+from typing import Mapping, Any, Optional
+
 import numpy as np
-from multiprocessing import Pool
-from functools import partial
-import us
-import pickle
-import json
+
+import structlog
 import copy
 from collections import defaultdict
+
+from libs import pipeline
+from pyseir.inference import model_fitter
+from pyseir.models import seir_model
 from pyseir.models.seir_model import SEIRModel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
 import pyseir.models.suppression_policies as sp
-from pyseir import load_data
-from pyseir.reports.county_report import CountyReport
-from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
-from pyseir.inference import fit_results
-from libs.datasets.dataset_utils import AggregationLevel
 
 
-_logger = logging.getLogger(__name__)
+_log = structlog.get_logger()
 
 
 compartment_to_capacity_attr_map = {
@@ -29,6 +26,62 @@ compartment_to_capacity_attr_map = {
 }
 
 
+@dataclass(frozen=True)
+class RegionalInput:
+    region: pipeline.Region
+
+    _combined_data: pipeline.RegionalCombinedData
+    _mle_fit_model: seir_model.SEIRModel
+    _mle_fit_result: Mapping[str, Any]
+    _state_mle_fit_model: Optional[seir_model.SEIRModel] = None
+    _state_mle_fit_result: Optional[Mapping[str, Any]] = None
+
+    @staticmethod
+    def for_state(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+        return RegionalInput(
+            region=fitter.region,
+            _combined_data=fitter.regional_input._combined_data,
+            _mle_fit_model=fitter.mle_model,
+            _mle_fit_result=fitter.fit_results,
+        )
+
+    @staticmethod
+    def for_substate(
+        fitter: model_fitter.ModelFitter, state_fitter: model_fitter.ModelFitter
+    ) -> "RegionalInput":
+        return RegionalInput(
+            region=fitter.region,
+            _combined_data=fitter.regional_input._combined_data,
+            _mle_fit_model=fitter.mle_model,
+            _mle_fit_result=fitter.fit_results,
+            _state_mle_fit_model=state_fitter.mle_model,
+            _state_mle_fit_result=state_fitter.fit_results,
+        )
+
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
+    def state_name(self):
+        return self.region.state_obj().name
+
+    @property
+    def latest(self) -> Mapping[str, Any]:
+        return self._combined_data.latest
+
+    def load_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
+        return self._mle_fit_model
+
+    def load_inference_result(self):
+        return self._mle_fit_result
+
+    def load_state_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
+        return self._state_mle_fit_model
+
+    def load_state_inference_result(self):
+        return self._state_mle_fit_result
+
+
 class EnsembleRunner:
     """
     The EnsembleRunner executes a collection of N_samples simulations based on
@@ -36,8 +89,8 @@ class EnsembleRunner:
 
     Parameters
     ----------
-    fips: str
-        County or state fips code
+    regional_input: RegionalInput
+        County or state data
     n_years: int
         Number of years to simulate
     n_samples: int
@@ -47,8 +100,6 @@ class EnsembleRunner:
     output_percentiles: list
         List of output percentiles desired. These will be computed for each
         compartment.
-    run_mode: str
-        Individual parameters can be overridden here.
     min_hospitalization_threshold: int
         Require this number of hospitalizations before initializing based on
         observations. Fallback to cases otherwise.
@@ -59,63 +110,40 @@ class EnsembleRunner:
 
     def __init__(
         self,
-        fips,
+        regional_input: RegionalInput,
         n_years=0.5,
         n_samples=250,
         suppression_policy=(0.35, 0.5, 0.75, 1),
         skip_plots=False,
         output_percentiles=(5, 25, 32, 50, 75, 68, 95),
-        generate_report=True,
-        run_mode=RunMode.DEFAULT,
         min_hospitalization_threshold=5,
         hospitalization_to_confirmed_case_ratio=1 / 4,
     ):
 
-        self.fips = fips
-        self.agg_level = AggregationLevel.COUNTY if len(fips) == 5 else AggregationLevel.STATE
+        self.regional_input = regional_input
 
         self.t_list = np.linspace(0, int(365 * n_years), int(365 * n_years) + 1)
         self.skip_plots = skip_plots
-        self.run_mode = RunMode(run_mode)
         self.hospitalizations_for_state = None
         self.min_hospitalization_threshold = min_hospitalization_threshold
         self.hospitalization_to_confirmed_case_ratio = hospitalization_to_confirmed_case_ratio
 
-        if self.agg_level is AggregationLevel.COUNTY:
-            self.county_metadata = load_data.load_county_metadata_by_fips(fips)
-            self.state_name = us.states.lookup(self.county_metadata["state"]).name
-
-            self.output_file_report = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_REPORT)
-            self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
-
-        else:
-            self.state_name = us.states.lookup(self.fips).name
-
-            self.output_file_report = None
-            self.output_file_data = get_run_artifact_path(self.fips, RunArtifact.ENSEMBLE_RESULT)
-
-        os.makedirs(os.path.dirname(self.output_file_data), exist_ok=True)
-        if self.output_file_report:
-            os.makedirs(os.path.dirname(self.output_file_report), exist_ok=True)
-
+        self.state_name = regional_input.state_name()
         self.output_percentiles = output_percentiles
         self.n_samples = n_samples
         self.n_years = n_years
-        # TODO: Will be soon replaced with loaders for all the inferred params.
-        # self.t0 = fit_results.load_t0(fips)
         self.date_generated = datetime.datetime.utcnow().isoformat()
         self.suppression_policy = suppression_policy
         self.summary = copy.deepcopy(self.__dict__)
         self.summary.pop("t_list")
-        self.generate_report = generate_report
 
         self.suppression_policies = None
         self.override_params = dict()
-        self.init_run_mode()
+        self.initialize_suppression_policies()
 
         self.all_outputs = {}
 
-    def init_run_mode(self):
+    def initialize_suppression_policies(self):
         """
         Based on the run mode, generate suppression policies and ensemble
         parameters.  This enables different model combinations and project
@@ -123,26 +151,14 @@ class EnsembleRunner:
         """
         self.suppression_policies = dict()
 
-        if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
-            self.n_samples = 1
-            for scenario in [
-                "no_intervention",
-                "flatten_the_curve",
-                "inferred",
-                "social_distancing",
-            ]:
-                self.suppression_policies[f"suppression_policy__{scenario}"] = scenario
-
-        elif self.run_mode is RunMode.DEFAULT:
-            for suppression_policy in self.suppression_policy:
-                self.suppression_policies[
-                    f"suppression_policy__{suppression_policy}"
-                ] = sp.generate_empirical_distancing_policy(
-                    t_list=self.t_list, fips=self.fips, future_suppression=suppression_policy
-                )
-            self.override_params = dict()
-        else:
-            raise ValueError("Invalid run mode.")
+        self.n_samples = 1
+        for scenario in [
+            "no_intervention",
+            "flatten_the_curve",
+            "inferred",
+            "social_distancing",
+        ]:
+            self.suppression_policies[f"suppression_policy__{scenario}"] = scenario
 
     @staticmethod
     def _run_single_simulation(parameter_set):
@@ -163,26 +179,21 @@ class EnsembleRunner:
         model.run()
         return model
 
-    def _load_model_for_fips(self, scenario="inferred"):
+    def _load_model_for_region(self, scenario="inferred"):
         """
-        Try to load a model for the locale, else load the state level model
-        and update parameters for the county.
+        Try to load a model for the region, else load the state level model and update parameters
+        for the region.
         """
-        artifact_path = get_run_artifact_path(self.fips, RunArtifact.MLE_FIT_MODEL)
-        if os.path.exists(artifact_path):
-            with open(artifact_path, "rb") as f:
-                model = pickle.load(f)
-            inferred_params = fit_results.load_inference_result(self.fips)
-
+        model = self.regional_input.load_mle_fit_model()
+        if model:
+            inferred_params = self.regional_input.load_inference_result()
         else:
-            _logger.info(
-                f"No MLE model found for {self.state_name}: {self.fips}. Reverting to state level."
+            _log.info(
+                f"No MLE model found. Reverting to state level.", region=self.regional_input.region
             )
-            artifact_path = get_run_artifact_path(self.fips[:2], RunArtifact.MLE_FIT_MODEL)
-            if os.path.exists(artifact_path):
-                with open(artifact_path, "rb") as f:
-                    model = pickle.load(f)
-                inferred_params = fit_results.load_inference_result(self.fips[:2])
+            model = self.regional_input.load_state_mle_fit_model()
+            if model:
+                inferred_params = self.regional_input.load_state_inference_result()
             else:
                 raise FileNotFoundError(f"Could not locate state result for {self.state_name}")
 
@@ -192,8 +203,8 @@ class EnsembleRunner:
             # right now it runs an average over the ensemble (with N_samples not consistently set
             # across the code base).
             default_params = ParameterEnsembleGenerator(
-                self.fips,
                 N_samples=500,
+                combined_datasets_latest=self.regional_input.latest,
                 t_list=model.t_list,
                 suppression_policy=model.suppression_policy,
             ).get_average_seir_parameters()
@@ -233,41 +244,17 @@ class EnsembleRunner:
         """
         for suppression_policy_name, suppression_policy in self.suppression_policies.items():
 
-            _logger.info(
-                f"Running simulation ensemble for {self.state_name} {self.fips} {suppression_policy_name}"
+            _log.info(
+                "Running simulation ensemble",
+                suppression_policy=suppression_policy_name,
+                region=self.regional_input.region,
             )
 
-            if self.run_mode is RunMode.CAN_INFERENCE_DERIVED:
-                model_ensemble = [self._load_model_for_fips(scenario=suppression_policy)]
-
-            else:
-                raise ValueError(f"Run mode {self.run_mode.value} not supported.")
-
-            if self.agg_level is AggregationLevel.COUNTY:
-                self.all_outputs["county_metadata"] = self.county_metadata
-                self.all_outputs["county_metadata"]["age_distribution"] = list(
-                    self.all_outputs["county_metadata"]["age_distribution"]
-                )
-                self.all_outputs["county_metadata"]["age_bins"] = list(
-                    self.all_outputs["county_metadata"]["age_distribution"]
-                )
+            model_ensemble = [self._load_model_for_region(scenario=suppression_policy)]
 
             self.all_outputs[
                 f"{suppression_policy_name}"
             ] = self._generate_output_for_suppression_policy(model_ensemble)
-
-        if self.generate_report and self.output_file_report:
-            report = CountyReport(
-                self.fips,
-                model_ensemble=model_ensemble,
-                county_outputs=self.all_outputs,
-                filename=self.output_file_report,
-                summary=self.summary,
-            )
-            report.generate_and_save()
-
-        with open(self.output_file_data, "w") as f:
-            json.dump(self.all_outputs, f)
 
     @staticmethod
     def _generate_compartment_arrays(model_ensemble):
@@ -286,9 +273,7 @@ class EnsembleRunner:
             Array with the stacked model output results.
         """
         compartments = {
-            key: []
-            for key in model_ensemble[0].results.keys()
-            if key not in ("t_list", "county_metadata")
+            key: [] for key in model_ensemble[0].results.keys() if key not in ("t_list")
         }
         for model in model_ensemble:
             for key in compartments:
@@ -424,41 +409,8 @@ class EnsembleRunner:
         return outputs
 
 
-def _run_county(fips, ensemble_kwargs):
-    """
-    Execute the ensemble runner for a specific county.
-
-    Parameters
-    ----------
-    fips: str
-        County fips.
-    ensemble_kwargs: dict
-        Kwargs passed to the EnsembleRunner object.
-    """
-    runner = EnsembleRunner(fips=fips, **ensemble_kwargs)
+def make_and_run(regional_input: RegionalInput) -> EnsembleRunner:
+    """Make and run an EnsembleRunner for a county or state."""
+    runner = EnsembleRunner(regional_input=regional_input)
     runner.run_ensemble()
-
-
-def run_state(state, ensemble_kwargs, states_only=False):
-    """
-    Run the EnsembleRunner for each county in a state.
-
-    Parameters
-    ----------
-    state: str
-        State to run against.
-    ensemble_kwargs: dict
-        Kwargs passed to the EnsembleRunner object.
-    states_only: bool
-        If True only run the state level.
-    """
-    # Run the state level
-    runner = EnsembleRunner(fips=us.states.lookup(state).fips, **ensemble_kwargs)
-    runner.run_ensemble()
-
-    if not states_only:
-        # Run county level
-        all_fips = load_data.get_all_fips_codes_for_a_state(state)
-        with Pool(maxtasksperchild=1) as p:
-            f = partial(_run_county, ensemble_kwargs=ensemble_kwargs)
-            p.map(f, all_fips)
+    return runner

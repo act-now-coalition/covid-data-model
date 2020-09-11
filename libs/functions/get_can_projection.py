@@ -1,11 +1,5 @@
-import os
-import json
 import requests
-import pandas as pd
 from libs.enums import Intervention
-from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets import CovidCareMapBeds
-from libs.datasets.can_model_output_schema import CAN_MODEL_OUTPUT_SCHEMA
 import functools
 
 

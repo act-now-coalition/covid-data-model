@@ -1,18 +1,23 @@
-import ujson as json
+from dataclasses import dataclass
+from typing import Any
+from typing import Mapping
+from typing import Optional
+
 import structlog
-import us
-from typing import Tuple
 from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
-from multiprocessing import Pool
-from pyseir import load_data
+
+from libs.datasets.timeseries import TimeseriesDataset
+from libs.pipeline import Region
+from libs.pipeline import RegionalCombinedData
 from pyseir.deployment import model_to_observed_shim as shim
-from pyseir.inference.fit_results import load_inference_result, load_Rt_result
-from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
+from pyseir.ensembles import ensemble_runner
+from pyseir.icu import infer_icu
+from pyseir.inference import model_fitter
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from libs.enums import Intervention
 from libs.datasets import CommonFields
-from libs.datasets import FIPSPopulation, combined_datasets, dataset_cache
 import libs.datasets.can_model_output_schema as schema
 
 
@@ -22,88 +27,135 @@ log = structlog.get_logger()
 OUTPUT_JSON_ORIENT = "split"
 
 
+@dataclass(frozen=True)
+class RegionalInput:
+    """Identifies a geographical area and wraps access to any related data read by the WebUIDataAdaptorV1."""
+
+    region: Region
+
+    _combined_data: RegionalCombinedData
+    _state_combined_data: Optional[RegionalCombinedData]
+    _mle_fit_result: Mapping[str, Any]
+    _ensemble_results: Mapping[str, Any]
+    _infection_rate: Optional[pd.DataFrame]
+
+    @staticmethod
+    def from_results(
+        fitter: model_fitter.ModelFitter,
+        ensemble: ensemble_runner.EnsembleRunner,
+        infection_rate: Optional[pd.DataFrame],
+    ) -> "RegionalInput":
+        region = fitter.region
+        state_combined_data = (
+            RegionalCombinedData.from_region(region.get_state_region())
+            if region.is_county()
+            else None
+        )
+        return RegionalInput(
+            region=region,
+            _combined_data=fitter.regional_input._combined_data,
+            _state_combined_data=state_combined_data,
+            _mle_fit_result=fitter.fit_results,
+            _ensemble_results=ensemble.all_outputs,
+            _infection_rate=infection_rate,
+        )
+
+    @property
+    def population(self):
+        return self._combined_data.population
+
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
+    @property
+    def latest(self):
+        return self._combined_data.latest
+
+    def inference_result(self) -> Mapping[str, Any]:
+        """
+        Load fit results by state or county fips code.
+
+        Returns
+        -------
+        : dict
+            Dictionary of fit result information.
+        """
+        return self._mle_fit_result
+
+    def ensemble_results(self) -> Optional[dict]:
+        """Retrieves ensemble results for this region."""
+        return self._ensemble_results
+
+    def inferred_infection_rate(self) -> Optional[pd.DataFrame]:
+        """Loads the Rt inference result.
+
+        Returns
+        -------
+        results: pd.DataFrame
+            DataFrame containing the R_t inferences.
+        """
+        return self._infection_rate
+
+    def is_county(self):
+        return self.region.is_county()
+
+    def get_timeseries(self) -> TimeseriesDataset:
+        return self._combined_data.get_timeseries()
+
+    def get_state_timeseries(self) -> Optional[TimeseriesDataset]:
+        """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
+        if self.region.is_state():
+            return None
+        else:
+            return self._state_combined_data.get_timeseries()
+
+
 class WebUIDataAdaptorV1:
     """
     Map pyseir output data model to the format required by CovidActNow's webUI.
 
     Parameters
     ----------
-    state: str
-        State to map outputs for.
     include_imputed:
         If True, map the outputs for imputed counties as well as those with
         no data.
     """
 
     def __init__(
-        self,
-        state,
-        output_interval_days=4,
-        run_mode="can-before",
-        output_dir=None,
-        include_imputed=False,
+        self, output_interval_days=4, output_dir=None, include_imputed=False,
     ):
-
         self.output_interval_days = output_interval_days
-        self.state = state
-        self.run_mode = RunMode(run_mode)
         self.include_imputed = include_imputed
-        self.state_abbreviation = us.states.lookup(state).abbr
-        self.population_data = FIPSPopulation.local().population()
         self.output_dir = output_dir
 
-    @staticmethod
-    def _get_county_hospitalization(fips: str, t0_simulation: datetime) -> Tuple[float, float]:
+    def write_region_safely(self, regional_input: RegionalInput) -> None:
+        try:
+            self.write_region(regional_input)
+        except Exception:
+            log.exception("Failed to write WebUI output", fips=regional_input.fips)
+
+    def write_region(self, regional_input: RegionalInput) -> None:
+        """Generates the CAN UI output format for a given region.
+
+        Args:
+            regional_input: the region and its data
         """
-        Fetches the latest county hospitalization and icu utilization.
+        # Get the latest observed values to use in calculating shims
+        observed_latest_dict = regional_input.latest
 
-        If current data is available, we return that.
-        If not, current values are estimated from cumulative.
-        """
-        _, county_hosp = load_data.get_current_hospitalized(
-            fips, t0_simulation, category=load_data.HospitalizationCategory.HOSPITALIZED,
-        )
-        _, county_icu = load_data.get_current_hospitalized(
-            fips, t0_simulation, category=load_data.HospitalizationCategory.ICU
-        )
-
-        return county_hosp, county_icu
-
-    @staticmethod
-    def _is_valid_count_metric(metric: float) -> bool:
-        return metric is not None and metric > 0
-
-    def _get_population(self, fips: str) -> int:
-        """
-        Get the population for a region.
-
-        Parameters
-        ----------
-        fips: str
-            2 digits for a state or 5 digits for a county.
-        """
-        return self.population_data.get_record_for_fips(fips)[CommonFields.POPULATION]
-
-    def map_fips(self, fips: str) -> None:
-        """
-        For a given fips code, for either a county or state, generate the CAN UI output format.
-
-        Parameters
-        ----------
-        fips: str
-            FIPS code to map.
-        """
-        log.info("Mapping output to WebUI.", state=self.state, fips=fips)
-        shim_log = structlog.getLogger(fips=fips)
-        pyseir_outputs = load_data.load_ensemble_results(fips)
+        state = observed_latest_dict[CommonFields.STATE]
+        log.info("Mapping output to WebUI.", state=state, fips=regional_input.fips)
+        shim_log = structlog.getLogger(fips=regional_input.fips)
+        pyseir_outputs = regional_input.ensemble_results()
 
         try:
-            fit_results = load_inference_result(fips)
+            fit_results = regional_input.inference_result()
             t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
         except (KeyError, ValueError):
-            log.error("Fit result not found for fips. Skipping...", fips=fips)
+            log.error("Fit result not found for fips. Skipping...", fips=regional_input.fips)
             return
-        population = self._get_population(fips)
+        population = regional_input.population
 
         # We will shim all suppression policies by the same amount (since historical tracking error
         # for all policies is the same).
@@ -111,9 +163,6 @@ class WebUIDataAdaptorV1:
 
         # We need the index in the model's temporal frame.
         idx_offset = int(fit_results["t_today"] - fit_results["t0"])
-
-        # Get the latest observed values to use in calculating shims
-        observed_latest_dict = combined_datasets.get_us_latest_for_fips(fips)
 
         observed_death_latest = observed_latest_dict[CommonFields.DEATHS]
         observed_total_hosps_latest = observed_latest_dict[CommonFields.CURRENT_HOSPITALIZED]
@@ -146,6 +195,13 @@ class WebUIDataAdaptorV1:
             observed_icu=observed_icu_latest,
             observed_total_hosps=observed_total_hosps_latest,
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
+        )
+        # ICU PATCH
+        icu_patch_ts = infer_icu.get_icu_timeseries(
+            region=regional_input.region,
+            regional_combined_data=regional_input.get_timeseries(),
+            state_combined_data=regional_input.get_state_timeseries(),
+            weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES,
         )
 
         # Iterate through each suppression policy.
@@ -187,7 +243,20 @@ class WebUIDataAdaptorV1:
             interpolated_model_icu_values = np.interp(
                 t_list_downsampled, t_list, raw_model_icu_values
             )
-            output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
+
+            # 21 August 2020: The line assigning schema.INFECTED_C in the output_model is
+            # commented out while the Linear Regression estimator is patched through this pipeline
+            # to be consumed downstream by the ICU utilization calculations. It is left here as a
+            # marker for the future if the ICU utilization calculations is dis-entangled from the
+            # PySEIR model outputs.
+
+            # output_model[schema.INFECTED_C] = (icu_shim+interpolated_model_icu_values).clip(min=0)
+
+            # Applying Patch for ICU Linear Regression
+            infer_icu_patch = icu_patch_ts.reindex(
+                [pd.Timestamp(x) for x in output_model[schema.DATE]]
+            )
+            output_model[schema.INFECTED_C] = infer_icu_patch.to_numpy()
 
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = (
@@ -244,12 +313,20 @@ class WebUIDataAdaptorV1:
                 (output_dates >= datetime(month=3, day=3, year=2020))
                 & (output_dates < datetime.today() + timedelta(days=90))
             ]
-            output_model = output_model.fillna(0)
 
             # Fill in results for the Rt indicator.
-            rt_results = load_Rt_result(fips)
-            if rt_results is not None:
-                rt_results.index = rt_results["Rt_MAP_composite"].index.strftime("%Y-%m-%d")
+            rt_results = regional_input.inferred_infection_rate()
+
+            if rt_results is None or rt_results.empty:
+                log.warning(
+                    "No Rt Results found, clearing Rt in output.",
+                    fips=regional_input.fips,
+                    suppression_policy=suppression_policy,
+                )
+                output_model[schema.RT_INDICATOR] = "NaN"
+                output_model[schema.RT_INDICATOR_CI90] = "NaN"
+            else:
+                rt_results.index = rt_results["date"].dt.strftime("%Y-%m-%d")
                 merged = output_model.merge(
                     rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
                     right_index=True,
@@ -263,14 +340,6 @@ class WebUIDataAdaptorV1:
                 output_model[schema.RT_INDICATOR_CI90] = (
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
-            else:
-                log.warning(
-                    "No Rt Results found, clearing Rt in output.",
-                    fips=fips,
-                    suppression_policy=suppression_policy,
-                )
-                output_model[schema.RT_INDICATOR] = "NaN"
-                output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
             output_model[[schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]] = output_model[
                 [schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
@@ -289,53 +358,22 @@ class WebUIDataAdaptorV1:
                     schema.FIPS,
                 )
             ]
+            # Casing floats to ints and then replacing filled in zeros with NaN values instead of
+            # propagating zeros.
+            na_int_columns = output_model.loc[:, int_columns].isna()
             output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int)
+            output_model[na_int_columns] = np.nan
             output_model.loc[
                 :, [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
             ] = output_model[
                 [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
-            ].fillna(
-                0
-            )
+            ]
 
-            output_model[schema.FIPS] = fips
+            output_model[schema.FIPS] = regional_input.fips
             intervention = Intervention.from_webui_data_adaptor(suppression_policy)
             output_model[schema.INTERVENTION] = intervention.value
             output_path = get_run_artifact_path(
-                fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
+                regional_input.fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)
-
-    def generate_state(self, whitelisted_county_fips: list, states_only=False):
-        """
-        Generate the output for the webUI for the given state, and counties in that state if
-        states_only=False.
-
-        Parameters
-        ----------
-        whitelisted_county_fips
-        states_only: bool
-            If True only run the state level.
-        """
-
-        state_fips = us.states.lookup(self.state).fips
-        self.map_fips(state_fips)
-
-        if states_only:
-            return
-        else:
-            with Pool(maxtasksperchild=1) as p:
-                p.map(self.map_fips, whitelisted_county_fips)
-
-            return
-
-
-if __name__ == "__main__":
-    dataset_cache.set_pickle_cache_dir()
-    # Need to have a whitelist pre-generated
-    # Need to have state output already built
-    mapper = WebUIDataAdaptorV1(
-        state="Texas", output_interval_days=1, run_mode="can-inference-derived"
-    )
-    mapper.generate_state(whitelisted_county_fips=["48201"], states_only=False)

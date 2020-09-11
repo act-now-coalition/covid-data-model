@@ -59,7 +59,7 @@ prepare () {
     echo "made dir"
   fi
 
-  TIMESERIES_SUMMARY_PATH="./data/timeseries_summary.csv"
+  SOURCE_DATA_DIR="./data"
 }
 
 execute_raw_data_qa() {
@@ -89,6 +89,8 @@ execute_model() {
   echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
   pushd output
   zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
+  echo ">>> Moving Rt Combined Metric to Artifact Directory"
+  mv pyseir/rt_combined_metric.csv "${API_OUTPUT_DIR}/rt_combined_metric.csv"
   popd
 }
 
@@ -113,8 +115,8 @@ execute_api() {
   # echo ">>> Generate an QA doc for states to ${API_OUTPUT_DIR}/qa"
   # ./run.py compare-snapshots -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_DIR}/qa"
 
-  echo ">>> Copying timeseries summary to ${API_OUTPUT_QA}"
-  cp "${TIMESERIES_SUMMARY_PATH}" "${API_OUTPUT_QA}"
+  echo ">>> Copying source data (and summary, provenance, etc. reports) to ${API_OUTPUT_QA}"
+  cp -r "${SOURCE_DATA_DIR}"/* "${API_OUTPUT_QA}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
@@ -144,16 +146,14 @@ execute() {
 function generate_version_json() {
   local model_repo_json=$(get_repo_status_json)
 
-  pushd "${DATA_SOURCES_DIR}" > /dev/null
-  local data_repo_json=$(get_repo_status_json)
-  popd > /dev/null
+  data_repo_sha=$(jq .data_git_info.sha data/timeseries.json || echo '"<unknown: jq not installed>"')
 
   local timestamp=$(iso_timestamp)
 
   cat > "${API_OUTPUT_DIR}/version.json" << END
 {
   "timestamp": "${timestamp}",
-  "covid-data-public": ${data_repo_json},
+  "covid-data-public": ${data_repo_sha},
   "covid-data-model": ${model_repo_json}
 }
 END

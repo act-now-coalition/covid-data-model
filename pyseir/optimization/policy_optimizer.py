@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize, dual_annealing, basinhopping, differential_evolution
+from scipy.optimize import minimize
 
 
 class PolicyOptimizer:

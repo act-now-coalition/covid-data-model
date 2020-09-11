@@ -1,46 +1,43 @@
 from enum import Enum
 from itertools import chain
-from typing import Dict, Type, List, NewType, Mapping, Optional, MutableMapping, Tuple
+from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
-import os
-import logging
 import pandas as pd
 import structlog
-from pandas import MultiIndex
 from structlog.threadlocal import tmp_bind
 
 from covidactnow.datapublic.common_fields import CommonFields
-from libs import git_lfs_object_helpers
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
+from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
-from libs.datasets.sources.cmdc import CmdcDataSource
+from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
-from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets import dataset_filter
-from libs.datasets import dataset_cache
 from libs import us_state_abbrev
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 
-_logger = logging.getLogger(__name__)
+# structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
+_log = structlog.get_logger()
+
+
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
@@ -58,88 +55,63 @@ FeatureDataSourceMap = NewType(
 # immediately obvious as to the transformations that are or are not applied.
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
-ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [NYTimesDataset],
-    CommonFields.DEATHS: [NYTimesDataset],
-    CommonFields.RECOVERED: [JHUDataset],
-    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
-    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
-    CommonFields.CURRENT_HOSPITALIZED: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-        TexasHospitalizations,
-    ],
-    CommonFields.CURRENT_VENTILATED: [
-        CmdcDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
-    CommonFields.POPULATION: [FIPSPopulation],
-    CommonFields.STAFFED_BEDS: [CmdcDataSource, CovidCareMapBeds],
-    CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CmdcDataSource, CovidCareMapBeds],
-    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
-}
-
-
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.RECOVERED: [JHUDataset],
-    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
+    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU: [CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CURRENT_ICU_TOTAL: [CmdcDataSource],
+    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
-        CmdcDataSource,
+        CovidCountyDataDataSource,
         CovidTrackingDataSource,
         TexasHospitalizations,
     ],
     CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
+    CommonFields.CURRENT_ICU: [
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        TexasHospitalizations,
+    ],
+    CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource],
     CommonFields.CURRENT_VENTILATED: [
-        CmdcDataSource,
+        CovidCountyDataDataSource,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
     ],
-    CommonFields.STAFFED_BEDS: [CmdcDataSource],
+    CommonFields.DEATHS: [NYTimesDataset],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
+    CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
+    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.LICENSED_BEDS: [],
     CommonFields.MAX_BED_COUNT: [],
-    CommonFields.ICU_BEDS: [CmdcDataSource],
-    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
-    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CmdcDataSource, CovidTrackingDataSource],
-    CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CmdcDataSource],
-    CommonFields.CASES: [NYTimesDataset],
-    CommonFields.DEATHS: [NYTimesDataset],
+    CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
+    CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
+    CommonFields.RECOVERED: [],
+    CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
 }
+
+ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
+    **ALL_TIMESERIES_FEATURE_DEFINITION,
+    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
+    CommonFields.CURRENT_HOSPITALIZED: [
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        NevadaHospitalAssociationData,
+        TexasHospitalizations,
+    ],
+    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
+    CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
+    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
+    CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
+    CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
+    CommonFields.POPULATION: [FIPSPopulation],
+    CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
+}
+
 
 US_STATES_FILTER = dataset_filter.DatasetFilter(
     country="USA", states=list(us_state_abbrev.ABBREV_US_STATE.keys())
 )
-
-
-@dataset_cache.cache_dataset_on_disk(TimeseriesDataset)
-def build_us_timeseries_with_all_fields(skip_cache=False) -> TimeseriesDataset:
-    return _build_combined_dataset_from_sources(
-        TimeseriesDataset, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER,
-    )
-
-
-@dataset_cache.cache_dataset_on_disk(LatestValuesDataset)
-def build_us_latest_with_all_fields(skip_cache=False) -> LatestValuesDataset:
-    return _build_combined_dataset_from_sources(
-        LatestValuesDataset, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
-    )
 
 
 @functools.lru_cache(None)
@@ -175,16 +147,6 @@ def get_us_latest_for_fips(fips) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
-def _remove_padded_nans(df, columns):
-    if df[columns].isna().all().all():
-        return df.loc[[False] * len(df), :].reset_index(drop=True)
-
-    first_valid_index = min(df[column].first_valid_index() for column in columns)
-    last_valid_index = max(df[column].last_valid_index() for column in columns)
-    df = df.iloc[first_valid_index : last_valid_index + 1]
-    return df.reset_index(drop=True)
-
-
 def get_timeseries_for_fips(
     fips: str, columns: List = None, min_range_with_some_value: bool = False
 ) -> TimeseriesDataset:
@@ -201,82 +163,29 @@ def get_timeseries_for_fips(
 
     state_ts = load_us_timeseries_dataset().get_subset(None, fips=fips)
     if columns:
-        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
-            drop=True
+        return state_ts.get_columns_and_date_subset(
+            columns, min_range_with_some_value=min_range_with_some_value
         )
-
-        if min_range_with_some_value:
-            subset = _remove_padded_nans(subset, columns)
-
-        state_ts = TimeseriesDataset(subset)
 
     return state_ts
 
 
-def get_timeseries_for_state(
-    state: str, columns: List = None, min_range_with_some_value: bool = False
-) -> TimeseriesDataset:
-    """Gets timeseries for a specific state abbreviation.
-
-    Args:
-        state: 2-letter state code
-        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
-            timeseries. Only applicable when columns are specified.
-
-    Returns: Timeseries for state
-    """
-
-    state_ts = load_us_timeseries_dataset().get_subset(AggregationLevel.STATE, state=state)
-    if columns:
-        subset = state_ts.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(
-            drop=True
-        )
-
-        if min_range_with_some_value:
-            subset = _remove_padded_nans(subset, columns)
-
-        state_ts = TimeseriesDataset(subset)
-
-    return state_ts
-
-
-def _build_combined_dataset_from_sources(
+def build_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
+    loaded_data_sources: Mapping[str, DataSource],
     feature_definition_config: FeatureDataSourceMap,
     filter: dataset_filter.DatasetFilter,
 ):
     """Builds a combined dataset from a feature definition.
 
     Args:
-        target_dataset_cls: Target dataset class.
+        target_dataset_cls: Type of the returned combined dataset.
+        loaded_data_sources: Dictionary mapping source name to a DataSource object
         feature_definition_config: Dictionary mapping an output field to the
-            data sources that will be used to pull values from.
-        filters: A list of dataset filters applied to the datasets before
+            data source classes that will be used to pull values from.
+        filter: A dataset filters applied to the datasets before
             assembling features.
     """
-    loaded_data_sources = {
-        data_source_cls: data_source_cls.local()
-        for data_source_cls in set(chain.from_iterable(feature_definition_config.values()))
-    }
-
-    # Convert data sources to instances of `target_data_cls` and apply filter
-    intermediate_datasets = {
-        data_source_cls.SOURCE_NAME: filter.apply(target_dataset_cls.build_from_data_source(source))
-        for data_source_cls, source in loaded_data_sources.items()
-    }
-
-    datasets: MutableMapping[str, pd.DataFrame] = {}
-    for name, dataset_obj in intermediate_datasets.items():
-        data_with_index = dataset_obj.data.set_index(target_dataset_cls.COMMON_INDEX_FIELDS)
-        if data_with_index.index.duplicated(keep=False).any():
-            raise ValueError(f"Duplicate in {name}")
-        datasets[name] = data_with_index
-        # If any duplicates slip in the following code may help you debug them:
-        # https://stackoverflow.com/a/34297689
-        # datasets[name] = data_with_index.loc[~data_with_index.duplicated(keep="first"), :]
-        # datasets[key] = dataset_obj.data.groupby(target_dataset_cls.COMMON_INDEX_FIELDS).first() fails
-        # due to <NA>s: cannot convert to 'float64'-dtype NumPy array with missing values. Specify an appropriate 'na_value' for this dtype.
 
     feature_definition = {
         field_name: [cls.SOURCE_NAME for cls in classes]
@@ -284,8 +193,19 @@ def _build_combined_dataset_from_sources(
         if classes
     }
 
+    datasets: MutableMapping[str, pd.DataFrame] = {}
+    for source_name in chain.from_iterable(feature_definition.values()):
+        source = loaded_data_sources[source_name]
+        if target_dataset_cls == TimeseriesDataset:
+            datasets[source_name] = filter.apply(source.timeseries()).indexed_data()
+        else:
+            assert target_dataset_cls == LatestValuesDataset
+            datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
+
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    return target_dataset_cls(data.reset_index(), provenance=provenance)
+    return target_dataset_cls(
+        data.reset_index(), provenance=provenance_wide_metrics_to_series(provenance, _log)
+    )
 
 
 class Override(Enum):
@@ -308,26 +228,7 @@ def _build_data_and_provenance(
     datasource_dataframes: Mapping[str, pd.DataFrame],
     override=Override.BY_TIMESERIES,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
-    log = structlog.get_logger()
-
-    # These are columns that are expected to have a single value for each FIPS. Get the columns
-    # from every row of each data source and then keep one of each unique row.
-    preserve_columns = [
-        CommonFields.AGGREGATE_LEVEL,
-        CommonFields.STATE,
-        CommonFields.COUNTRY,
-        CommonFields.COUNTY,
-    ]
-    all_identifiers = pd.concat(
-        df.reset_index().loc[
-            :, [CommonFields.FIPS] + list(df.columns.intersection(preserve_columns))
-        ]
-        for df in datasource_dataframes.values()
-    ).drop_duplicates()
-    # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
-    # are rows in the input data sources that have different values for county name, state etc.
-    fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
+    fips_indexed = dataset_utils.fips_index_geo_data(pd.concat(datasource_dataframes.values()))
 
     # Inspired by pd.Series.combine_first(). Create a new index which is a union of all the input dataframe
     # index.
@@ -349,7 +250,7 @@ def _build_data_and_provenance(
     #     raise ValueError("bad new_index.names")
 
     data, provenance = _merge_data(
-        datasource_dataframes, feature_definitions, log, new_index, override
+        datasource_dataframes, feature_definitions, _log, new_index, override
     )
 
     if not fips_indexed.empty:
@@ -385,12 +286,13 @@ def _merge_data(datasource_dataframes, feature_definitions, log, new_index, over
                     field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
                     field_out = datasource_field_in
                 else:
-                    keep_higher_priority = field_out.groupby(level=[CommonFields.FIPS]).transform(
-                        lambda x: x.notna().any()
-                    )
+                    field_out_has_ts = field_out.groupby(
+                        level=[CommonFields.FIPS], sort=False
+                    ).transform(lambda x: x.notna().any())
+                    copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
                     # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-                    field_provenance.loc[~keep_higher_priority] = datasource_name
-                    field_out = field_out.where(keep_higher_priority, datasource_field_in)
+                    field_provenance.loc[copy_field_in] = datasource_name
+                    field_out = field_out.where(~copy_field_in, datasource_field_in)
                 dups = field_out.index.duplicated(keep=False)
                 if dups.any():
                     log.error("Found duplicates in index")
@@ -440,3 +342,32 @@ def _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_inde
         data.loc[:, field_name] = field_out
         provenance.loc[:, field_name] = pd.concat(field_provenance)
     return data, provenance
+
+
+def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
+    """Transforms a DataFrame of provenances with a variable columns to Series with one row per variable.
+
+    Args:
+        wide: DataFrame with a row for each fips-date and a column containing the data source for each variable.
+            FIPS must be a named index. DATE, if present, must be a named index.
+
+    Returns: A Series of string data source values with fips and variable in the index. In the case
+        of multiple sources for a timeseries a warning is logged and the values are joined by ';'.
+    """
+    assert CommonFields.FIPS in wide.index.names
+    assert CommonFields.FIPS not in wide.columns
+    assert CommonFields.DATE not in wide.columns
+    columns_without_timeseries_point_keys = set(wide.columns) - set(COMMON_FIELDS_TIMESERIES_KEYS)
+    long_unindexed = (
+        wide.reset_index()
+        .melt(id_vars=[CommonFields.FIPS], value_vars=columns_without_timeseries_point_keys)
+        .drop_duplicates()
+        .dropna(subset=["value"])
+    )
+    fips_var_grouped = long_unindexed.groupby([CommonFields.FIPS, "variable"], sort=False)["value"]
+    dups = fips_var_grouped.transform("size") > 1
+    if dups.any():
+        log.warning("Multiple rows for a timeseries", bad_data=long_unindexed[dups])
+    # https://stackoverflow.com/a/17841321/341400
+    joined = fips_var_grouped.agg(lambda col: ";".join(col))
+    return joined

@@ -1,34 +1,109 @@
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import List, Any, Mapping, Tuple
 import os
-import us
 import json
+from typing import Optional
+
 import structlog
-from pprint import pformat
 import datetime as dt
 from datetime import datetime, timedelta
-from multiprocessing import Pool
 
-import pandas as pd
-import dill as pickle
 import numpy as np
+import pandas as pd
 import iminuit
+from libs import pipeline
 
 from pyseir.inference import model_plotting
 from pyseir.models import suppression_policies
 from pyseir import load_data
 from pyseir.models.seir_model import SEIRModel
-from pyseir.models.seir_model_age import SEIRModelAge
-from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.parameters.parameter_ensemble_generator import ParameterEnsembleGenerator
-from pyseir.parameters.parameter_ensemble_generator_age import ParameterEnsembleGeneratorAge
 from pyseir.load_data import HospitalizationDataType, HospitalizationCategory
-from pyseir.utils import get_run_artifact_path, RunArtifact
-from pyseir.inference.fit_results import load_inference_result
+
 
 log = structlog.getLogger()
 
 
 def calc_chi_sq(obs, predicted, stddev):
     return np.sum((obs - predicted) ** 2 / stddev ** 2)
+
+
+@lru_cache(maxsize=None)
+def load_pyseir_fitter_initial_conditions_df():
+    return pd.read_csv(
+        "./pyseir_data/pyseir_fitter_initial_conditions.csv", dtype={"fips": str}
+    ).set_index("fips")
+
+
+@dataclass(frozen=True)
+class RegionalInput:
+    region: pipeline.Region
+
+    _combined_data: pipeline.RegionalCombinedData
+    _hospitalization_df: pd.DataFrame
+    _state_mle_fit_result: Optional[Mapping[str, Any]] = None
+
+    @staticmethod
+    def from_state_region(region: pipeline.Region) -> "RegionalInput":
+        """Creates a RegionalInput for given state region."""
+        hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
+        assert region.is_state()
+        return RegionalInput(
+            region=region,
+            _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            _hospitalization_df=hospitalization_df,
+        )
+
+    @staticmethod
+    def from_substate_region(
+        region: pipeline.Region, state_fitter: "ModelFitter"
+    ) -> "RegionalInput":
+        """Creates a RegionalInput for given substate/county region.
+
+        Args:
+            region: a sub-state region such as a county
+            state_fitter: ModelFitter for the state containing region
+        """
+        hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
+        assert region.is_county()
+        assert state_fitter
+        return RegionalInput(
+            region=region,
+            _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            _state_mle_fit_result=state_fitter.fit_results,
+            _hospitalization_df=hospitalization_df,
+        )
+
+    @property
+    def display_name(self) -> str:
+        return self._combined_data.display_name
+
+    def get_pyseir_fitter_initial_conditions(self, params: List[str]) -> Mapping[str, Any]:
+        overwrite_params_df = load_pyseir_fitter_initial_conditions_df()
+        if self.region.fips in overwrite_params_df.index:
+            return overwrite_params_df.loc[self.region.fips, params].to_dict()
+        else:
+            return {}
+
+    def new_case_data(self, t0) -> Tuple[pd.Series, np.array, np.array]:
+        return load_data.calculate_new_case_data_by_region(self._combined_data.timeseries, t0)
+
+    def hospitalization_data(
+        self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
+    ) -> Tuple[np.array, np.array, HospitalizationDataType]:
+        return load_data.calculate_hospitalization_data(
+            self._hospitalization_df, t0, category=category
+        )
+
+    @property
+    def latest(self) -> Mapping[str, Any]:
+        return self._combined_data.latest
+
+    def inference_result_of_state(self) -> Mapping[str, Any]:
+        if self._state_mle_fit_result is None:
+            raise AssertionError(f"No state data of {self}")
+        return self._state_mle_fit_result
 
 
 class ModelFitter:
@@ -42,8 +117,7 @@ class ModelFitter:
 
     Parameters
     ----------
-    fips: str
-        State or county fips code.
+    regional_input: RegionalInput
     ref_date: datetime
         Date to reference against. This should be before the first case.
     min_deaths: int
@@ -64,8 +138,6 @@ class ModelFitter:
         relative to the max. The overall scale here doesn't influence the max
         likelihood fit, but it does influence the prior blending and error
         estimates.  0.5 = 50% error. Best to be conservatively high.
-    with_age_structure: bool
-        Whether run model with age structure.
     """
 
     DEFAULT_FIT_PARAMS = dict(
@@ -106,21 +178,21 @@ class ModelFitter:
 
     def __init__(
         self,
-        fips,
+        regional_input,
         ref_date=datetime(year=2020, month=1, day=1),
         min_deaths=2,
         n_years=1,
         cases_to_deaths_err_factor=0.5,
         hospital_to_deaths_err_factor=0.5,
         percent_error_on_max_observation=0.5,
-        with_age_structure=False,
     ):
 
         # Seed the random state. It is unclear whether this propagates to the
         # Minuit optimizer.
         np.random.seed(seed=42)
 
-        self.fips = fips
+        self.regional_input = regional_input
+
         self.ref_date = ref_date
         self.days_since_ref_date = (dt.date.today() - ref_date.date() - timedelta(days=7)).days
         # ndays end of 2nd ramp may extend past days_since_ref_date w/o  penalty on chi2 score
@@ -131,58 +203,22 @@ class ModelFitter:
         self.hospital_to_deaths_err_factor = hospital_to_deaths_err_factor
         self.percent_error_on_max_observation = percent_error_on_max_observation
         self.t0_guess = 60
-        self.with_age_structure = with_age_structure
 
-        if len(fips) == 2:  # State FIPS are 2 digits
-            self.agg_level = AggregationLevel.STATE
-            self.state_obj = us.states.lookup(self.fips)
-            self.state = self.state_obj.name
+        (
+            self.times,
+            self.observed_new_cases,
+            self.observed_new_deaths,
+        ) = regional_input.new_case_data(self.ref_date)
 
-            (
-                self.times,
-                self.observed_new_cases,
-                self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_state(self.state, self.ref_date)
+        (
+            self.hospital_times,
+            self.hospitalizations,
+            self.hospitalization_data_type,
+        ) = regional_input.hospitalization_data(self.ref_date)
 
-            (
-                self.hospital_times,
-                self.hospitalizations,
-                self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data_by_state(self.state_obj.abbr, t0=self.ref_date)
-
-            (
-                self.icu_times,
-                self.icu,
-                self.icu_data_type,
-            ) = load_data.load_hospitalization_data_by_state(
-                self.state_obj.abbr, t0=self.ref_date, category=HospitalizationCategory.ICU
-            )
-
-            self.display_name = self.state
-        else:
-            self.agg_level = AggregationLevel.COUNTY
-            geo_metadata = load_data.load_county_metadata().set_index("fips").loc[fips].to_dict()
-            state = geo_metadata["state"]
-            self.state_obj = us.states.lookup(state)
-            county = geo_metadata["county"]
-            if county:
-                self.display_name = county + ", " + state
-            else:
-                self.display_name = state
-            # TODO Swap for new data source.
-            (
-                self.times,
-                self.observed_new_cases,
-                self.observed_new_deaths,
-            ) = load_data.load_new_case_data_by_fips(self.fips, t0=self.ref_date)
-            (
-                self.hospital_times,
-                self.hospitalizations,
-                self.hospitalization_data_type,
-            ) = load_data.load_hospitalization_data(self.fips, t0=self.ref_date)
-            (self.icu_times, self.icu, self.icu_data_type,) = load_data.load_hospitalization_data(
-                self.fips, t0=self.ref_date, category=HospitalizationCategory.ICU
-            )
+        self.icu_times, self.icu, self.icu_data_type = regional_input.hospitalization_data(
+            self.ref_date, category=HospitalizationCategory.ICU
+        )
 
         self.cases_stdev, self.hosp_stdev, self.deaths_stdev = self.calculate_observation_errors()
         self.set_inference_parameters()
@@ -207,6 +243,14 @@ class ModelFitter:
         self.dof_cases = None
         self.dof_hosp = None
 
+    @property
+    def display_name(self) -> str:
+        return self.regional_input.display_name
+
+    @property
+    def region(self) -> pipeline.Region:
+        return self.regional_input.region
+
     def set_inference_parameters(self):
         """
         Setup inference parameters based on data availability and manual
@@ -215,9 +259,6 @@ class ModelFitter:
         """
         self.fit_params = self.DEFAULT_FIT_PARAMS
         # Update State specific SEIR initial guesses
-        overwrite_params_df = pd.read_csv(
-            "./pyseir_data/pyseir_fitter_initial_conditions_2020_06_10.csv", dtype={"fips": object}
-        )
 
         INITIAL_PARAM_SETS = [
             "R0",
@@ -230,46 +271,56 @@ class ModelFitter:
             "hosp_fraction",
             "log10_I_initial",
         ]
-        if self.fips in overwrite_params_df["fips"].values:
-            this_fips_df = overwrite_params_df.loc[overwrite_params_df["fips"] == self.fips]
-            for param in INITIAL_PARAM_SETS:
-                self.fit_params[param] = this_fips_df[param]
+        self.fit_params.update(
+            self.regional_input.get_pyseir_fitter_initial_conditions(INITIAL_PARAM_SETS)
+        )
 
         self.fit_params["fix_hosp_fraction"] = self.hospitalizations is None
         if self.fit_params["fix_hosp_fraction"]:
             self.fit_params["hosp_fraction"] = 1
 
-        if len(self.fips) == 5:
-            OBSERVED_NEW_CASES_GUESS_THRESHOLD = 2
-            idx_enough_cases = np.argwhere(
-                np.cumsum(self.observed_new_cases) >= OBSERVED_NEW_CASES_GUESS_THRESHOLD
-            )[0][0]
-            initial_cases_guess = np.cumsum(self.observed_new_cases)[idx_enough_cases]
-            t0_guess = list(self.times)[idx_enough_cases]
+        if self.regional_input.region.is_county():
+            state_fit_result = self.regional_input.inference_result_of_state()
+            T0_LEFT_PAD = 5
+            T0_RIGHT_PAD = 30
 
-            state_fit_result = load_inference_result(fips=self.state_obj.fips)
-            self.fit_params["t0"] = t0_guess
+            # See if we can do better based on the actual data
 
-            total_cases = np.sum(self.observed_new_cases)
-            self.fit_params["log10_I_initial"] = np.log10(
-                initial_cases_guess / self.fit_params["test_fraction"]
-            )
-            self.fit_params["limit_t0"] = t0_guess - 5, state_fit_result["t0"] + 30
-            self.fit_params["t_break"] = state_fit_result["t_break"] - (
-                t0_guess - state_fit_result["t0"]
-            )
+            # Let's look at the time when we've got a second reported case in a region
+            OBSERVED_CUMULATIVE_MINIMUM = 2
+            cumulative_cases = np.cumsum(self.observed_new_cases)
+
+            idxs_above_threshold = np.flatnonzero(cumulative_cases >= OBSERVED_CUMULATIVE_MINIMUM)
+            if len(idxs_above_threshold) == 0:
+                # Cumulative didn't reach cutoff, use state values
+                self.fit_params["t0"] = state_fit_result["t0"]
+                self.fit_params["limit_t0"] = [
+                    state_fit_result["t0"] - T0_LEFT_PAD,
+                    state_fit_result["t0"] + T0_RIGHT_PAD,
+                ]
+            else:
+                idx_start = idxs_above_threshold[0]
+                self.fit_params["log10_I_initial"] = np.log10(
+                    cumulative_cases[idx_start] / self.fit_params["test_fraction"]
+                )
+
+                t0_guess = list(self.times)[idx_start]
+
+                self.fit_params["t0"] = t0_guess
+                self.fit_params["limit_t0"] = [t0_guess - T0_LEFT_PAD, t0_guess + T0_RIGHT_PAD]
+
+                self.fit_params["t_break"] = state_fit_result["t_break"] - (
+                    t0_guess - state_fit_result["t0"]
+                )
+
             self.fit_params["R0"] = state_fit_result["R0"]
             self.fit_params["test_fraction"] = state_fit_result["test_fraction"]
             self.fit_params["eps"] = state_fit_result["eps"]
-            if total_cases < 100:
+            if cumulative_cases[-1] < 100:
                 self.fit_params["t_break"] = 10
                 self.fit_params["fix_test_fraction"] = True
                 self.fit_params["fix_R0"] = True
-                self.fit_params["limit_t0"] = (
-                    state_fit_result["t0"] - 5,
-                    state_fit_result["t0"] + 30,
-                )
-            if total_cases < 50:
+            if cumulative_cases[-1] < 50:
                 self.fit_params["fix_eps"] = True
                 self.fit_params["fix_t_break"] = True
 
@@ -283,13 +334,11 @@ class ModelFitter:
         SEIR_kwargs: dict
             The average ensemble params.
         """
-        if self.with_age_structure:
-            parameter_generator = ParameterEnsembleGeneratorAge
-        else:
-            parameter_generator = ParameterEnsembleGenerator
-
-        SEIR_kwargs = parameter_generator(
-            fips=self.fips, N_samples=5000, t_list=self.t_list, suppression_policy=None
+        SEIR_kwargs = ParameterEnsembleGenerator(
+            N_samples=5000,
+            t_list=self.t_list,
+            combined_datasets_latest=self.regional_input.latest,
+            suppression_policy=None,
         ).get_average_seir_parameters()
 
         SEIR_kwargs = {k: v for k, v in SEIR_kwargs.items() if k not in self.fit_params}
@@ -416,12 +465,8 @@ class ModelFitter:
             eps, t_break, eps2, t_delta_phases
         )
 
-        if self.with_age_structure:
-            age_distribution = self.SEIR_kwargs["N"] / self.SEIR_kwargs["N"].sum()
-            seir_model = SEIRModelAge
-        else:
-            age_distribution = 1
-            seir_model = SEIRModel
+        age_distribution = 1
+        seir_model = SEIRModel
 
         # Load up some number of initial exposed so the initial flow into
         # infected is stable.
@@ -574,7 +619,9 @@ class ModelFitter:
         # run MIGRAD algorithm for optimization.
         # for details refer: https://root.cern/root/html528/TMinuit.html
         minuit.migrad(precision=1e-6)
-        self.fit_results = dict(fips=self.fips, **dict(minuit.values))
+        self.fit_results = dict(minuit.values)
+        # Needed to get fips into DataFrame read in cli._build_all_for_states
+        self.fit_results["fips"] = self.regional_input.region.fips
         self.fit_results.update({k + "_error": v for k, v in dict(minuit.errors).items()})
 
         # This just updates chi2 values
@@ -582,7 +629,7 @@ class ModelFitter:
 
         if self.fit_results["eps"] < 0.1:
             raise RuntimeError(
-                f"Fit failed for {self.state, self.fips}: "
+                f"Fit failed for {self.display_name}: "
                 f"Epsilon == 0 which implies lack of convergence."
             )
 
@@ -625,30 +672,25 @@ class ModelFitter:
         self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     @classmethod
-    def run_for_fips(cls, fips, n_retries=3, with_age_structure=False):
+    def run_for_region(cls, regional_input: RegionalInput, n_retries=3):
         """
-        Run the model fitter for a state or county fips code.
+        Run the model fitter for a regional_input.
 
         Parameters
         ----------
-        fips: str
-            2-digit state or 5-digit county fips code.
+        region: pipeline.Region
         n_retries: int
             The model fitter is stochastic in nature and a seed cannot be set.
             This is a bandaid until more sophisticated retries can be
             implemented.
-        with_age_structure: bool
-            If True run model with age structure.
 
         Returns
         -------
         : ModelFitter
         """
         # Assert that there are some cases for counties
-        if len(fips) == 5:
-            _, observed_new_cases, _ = load_data.load_new_case_data_by_fips(
-                fips, t0=datetime.today()
-            )
+        if regional_input.region.is_county():
+            _, observed_new_cases, _ = regional_input.new_case_data(t0=datetime.today())
             if observed_new_cases.sum() < 1:
                 return None
 
@@ -656,7 +698,7 @@ class ModelFitter:
             retries_left = n_retries
             model_is_empty = True
             while retries_left > 0 and model_is_empty:
-                model_fitter = cls(fips=fips, with_age_structure=with_age_structure)
+                model_fitter = cls(regional_input)
                 try:
                     model_fitter.fit()
                     if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
@@ -667,97 +709,8 @@ class ModelFitter:
                 if model_fitter.mle_model:
                     model_is_empty = False
             if retries_left <= 0 and model_is_empty:
-                raise RuntimeError(f"Could not converge after {n_retries} for fips {fips}")
+                raise RuntimeError(f"Could not converge after {n_retries} for {regional_input}")
             return model_fitter
         except Exception:
-            log.exception(f"Failed to run {fips}")
+            log.exception(f"Failed to run {regional_input}")
             return None
-
-
-def execute_model_for_fips(fips):
-    if fips:
-        model_fitter = ModelFitter.run_for_fips(fips)
-        return model_fitter
-    log.warning(f"Not running model run for ${fips}")
-    return None
-
-
-def _persist_results_per_state(state_df):
-    county_output_file = get_run_artifact_path(state_df.fips[0], RunArtifact.MLE_FIT_RESULT)
-    data = state_df.drop(["state", "mle_model"], axis=1)
-    data.to_json(county_output_file)
-
-    for fips, county_series in state_df.iterrows():
-        with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
-            pickle.dump(county_series.mle_model, f)
-
-
-def build_county_list(state):
-    """
-    Build the and return the fips list
-    """
-    state_obj = us.states.lookup(state)
-    log.info(f"Get fips list for state {state_obj.name}")
-
-    df_whitelist = load_data.load_whitelist()
-    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-    all_fips = df_whitelist[
-        df_whitelist["state"].str.lower() == state_obj.name.lower()
-    ].fips.tolist()
-
-    return all_fips
-
-
-def run_state(state, states_only=False, with_age_structure=False):
-    """
-    Run the fitter for each county in a state.
-
-    Parameters
-    ----------
-    state: str
-        State to run against.
-    states_only: bool
-        If True only run the state level.
-    with_age_structure: bool
-        If True run model with age structure.
-    """
-    state_obj = us.states.lookup(state)
-    log.info(f"Running MLE fitter for state {state_obj.name}")
-
-    model_fitter = ModelFitter.run_for_fips(
-        fips=state_obj.fips, with_age_structure=with_age_structure
-    )
-
-    df_whitelist = load_data.load_whitelist()
-    df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-
-    output_path = get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_RESULT)
-    data = pd.DataFrame(model_fitter.fit_results, index=[state_obj.fips])
-    data.to_json(output_path)
-
-    with open(get_run_artifact_path(state_obj.fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
-        pickle.dump(model_fitter.mle_model, f)
-
-    # Run the counties.
-    if not states_only:
-        # TODO: Replace with build_county_list
-        df_whitelist = load_data.load_whitelist()
-        df_whitelist = df_whitelist[df_whitelist["inference_ok"] == True]
-
-        all_fips = df_whitelist[
-            df_whitelist["state"].str.lower() == state_obj.name.lower()
-        ].fips.values
-
-        if len(all_fips) > 0:
-            with Pool(maxtasksperchild=1) as p:
-                fitters = p.map(ModelFitter.run_for_fips, all_fips)
-
-            county_output_file = get_run_artifact_path(all_fips[0], RunArtifact.MLE_FIT_RESULT)
-            data = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-            data.to_json(county_output_file)
-
-            # Serialize the model results.
-            for fips, fitter in zip(all_fips, fitters):
-                if fitter:
-                    with open(get_run_artifact_path(fips, RunArtifact.MLE_FIT_MODEL), "wb") as f:
-                        pickle.dump(fitter.mle_model, f)

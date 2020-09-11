@@ -3,3 +3,15 @@
 # it fails to find BaseModel, unclear what the issue
 # is as it pydantic.BaseModel definitely exists.
 ignored-modules=pydantic
+ignore=src
+
+
+[MESSAGES CONTROL]
+
+# The following options disable all errors and only enable ones we want to track.
+disable=all
+
+# To enable linting for more warnings, add to this list here.
+enable=E,
+       F,
+       unused-import

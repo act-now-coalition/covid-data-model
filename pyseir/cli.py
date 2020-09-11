@@ -1,32 +1,36 @@
-from typing import Dict, List
+from typing import Mapping, Optional, List, Union
+import dataclasses
 import sys
 import os
-import click
-import us
+from dataclasses import dataclass
 import logging
-import pandas as pd
-from covidactnow.datapublic import common_init
-
 from multiprocessing import Pool
-from functools import partial
-from libs.datasets import dataset_cache
-from pyseir.inference.initial_conditions_fitter import generate_start_times_for_state
+
+import us
+import pandas as pd
+import click
+from covidactnow.datapublic.common_fields import CommonFields
+
+from covidactnow.datapublic import common_init
+from libs import pipeline
+from pyseir.deployment import webui_data_adaptor_v1
+from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
+import pyseir.rt.patches
 from pyseir.ensembles import ensemble_runner
-from pyseir.reports.state_report import StateReport
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
 from libs.datasets import combined_datasets
-from libs.us_state_abbrev import ABBREV_US_STATE
-from pyseir.inference.whitelist_generator import WhitelistGenerator
-
+import pyseir.utils
+from pyseir.inference.whitelist import WhitelistGenerator
+from pyseir.rt.utils import NEW_ORLEANS_FIPS
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
 root = logging.getLogger()
 
 DEFAULT_RUN_MODE = "can-inference-derived"
-ALL_STATES = [getattr(state_obj, "name") for state_obj in us.STATES]
+ALL_STATES: List[str] = [state_obj.abbr for state_obj in us.STATES] + ["PR"]
 
 
 def _cache_global_datasets():
@@ -40,208 +44,229 @@ def _cache_global_datasets():
 @click.group()
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
-    dataset_cache.set_pickle_cache_dir()
     common_init.configure_logging()
 
 
-def _generate_whitelist():
+def _generate_whitelist() -> pd.DataFrame:
     gen = WhitelistGenerator()
-    gen.generate_whitelist()
+    all_us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    return gen.generate_whitelist(all_us_timeseries)
 
 
-def _impute_start_dates(states, states_only=False):
-    if states_only:
-        raise NotImplementedError(
-            "Impute start dates does not yet implement support for states_only."
+def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
+    """Create a list of Region objects containing just state or default."""
+    if state:
+        return [pipeline.Region.from_state(state)]
+    else:
+        return [pipeline.Region.from_state(s) for s in default]
+
+
+@dataclass
+class StatePipeline:
+    """Runs the pipeline for one state and stores the output."""
+
+    region: pipeline.Region
+    # infer_df provides support for the infection rate result.
+    # TODO(tom): Rename when not refactoring it.
+    infer_df: pd.DataFrame
+    fitter: model_fitter.ModelFitter
+    ensemble: ensemble_runner.EnsembleRunner
+
+    @staticmethod
+    def run(region: pipeline.Region) -> "StatePipeline":
+        assert region.is_state()
+        infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
+        fitter_input = model_fitter.RegionalInput.from_state_region(region)
+        fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
+        ensembles_input = ensemble_runner.RegionalInput.for_state(fitter)
+        ensemble = ensemble_runner.make_and_run(ensembles_input)
+        return StatePipeline(region=region, infer_df=infer_df, fitter=fitter, ensemble=ensemble)
+
+
+@dataclass
+class SubStateRegionPipelineInput:
+    region: pipeline.Region
+    run_fitter: bool
+    state_fitter: model_fitter.ModelFitter
+    regional_combined_dataset: pipeline.RegionalCombinedData
+
+    @staticmethod
+    def build_all(
+        state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
+        fips: Optional[str] = None,
+    ) -> List["SubStateRegionPipelineInput"]:
+        """For each region smaller than a state, build the input object used to run the pipeline."""
+        # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
+        # Calculate the whitelist for the infection rate metric which makes no promises
+        # about it's relationship to the SEIR subset
+        if fips:  # A single Fips string was passed as a flag. Just run for that fips.
+            infer_rt_regions = {pipeline.Region.from_fips(fips)}
+        else:  # Default to the full infection rate whitelist
+            infer_rt_regions = {
+                pipeline.Region.from_fips(x)
+                for x in combined_datasets.load_us_latest_dataset().all_fips
+                if len(x) == 5
+                and "25" != x[:2]  # Counties only  # Masking MA Counties (2020-08-27) due to NaNs
+                and "999" != x[-3:]  # Remove placeholder fips that have no data
+            }
+        # Now calculate the pyseir dependent whitelist
+        whitelist_df = _generate_whitelist()
+        # Make Region objects for all sub-state regions (counties, MSAs etc) that pass the whitelist
+        # and parameters used to select subsets of regions.
+        whitelist_regions = set(
+            whitelist.regions_in_states(
+                list(state_fitter_map.keys()), fips=fips, whitelist_df=whitelist_df
+            )
+        )
+        pipeline_inputs = [
+            SubStateRegionPipelineInput(
+                region=region,
+                run_fitter=(region in whitelist_regions),
+                state_fitter=state_fitter_map.get(region.get_state_region()),
+                regional_combined_dataset=pipeline.RegionalCombinedData.from_region(region),
+            )
+            for region in (infer_rt_regions | whitelist_regions)
+        ]
+        return pipeline_inputs
+
+
+@dataclass
+class SubStatePipeline:
+    """Runs the pipeline for one region smaller than a state and stores the output."""
+
+    region: pipeline.Region
+    infer_df: pd.DataFrame
+    _combined_data: pipeline.RegionalCombinedData
+    fitter: Optional[model_fitter.ModelFitter] = None
+    ensemble: Optional[ensemble_runner.EnsembleRunner] = None
+
+    @staticmethod
+    def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
+        assert not input.region.is_state()
+        # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
+        # infection_rate.
+        infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
+        infer_df = infer_rt.run_rt(infer_rt_input)
+        if input.run_fitter:
+            fitter_input = model_fitter.RegionalInput.from_substate_region(
+                input.region, input.state_fitter
+            )
+            fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
+            ensembles_input = ensemble_runner.RegionalInput.for_substate(
+                fitter, state_fitter=input.state_fitter
+            )
+            ensemble = ensemble_runner.make_and_run(ensembles_input)
+        else:
+            fitter = None
+            ensemble = None
+        return SubStatePipeline(
+            region=input.region,
+            infer_df=infer_df,
+            fitter=fitter,
+            ensemble=ensemble,
+            _combined_data=input.regional_combined_dataset,
         )
 
-    for state in states:
-        generate_start_times_for_state(state=state)
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
+    def population(self) -> float:
+        return self._combined_data.latest[CommonFields.POPULATION]
 
 
-def _run_infer_rt(states: List[str], states_only=False):
-    for state_name in states:
-        fips = us.states.lookup(state_name).fips
-        infer_rt.run_rt_for_fips(fips=fips)
+def _patch_substatepipeline_nola_infection_rate(
+    pipelines: List[SubStatePipeline],
+) -> List[SubStatePipeline]:
+    """Returns a new list of pipeline objects with New Orleans infection rate patched."""
+    pipeline_map = {p.fips: p for p in pipelines}
 
+    input_fips = set(pipeline_map.keys())
+    fips_to_patch = input_fips & set(NEW_ORLEANS_FIPS)
+    if fips_to_patch:
+        root.info("Applying New Orleans Patch")
+        if len(fips_to_patch) != len(NEW_ORLEANS_FIPS):
+            root.warning(
+                f"Missing New Orleans counties break patch: {set(NEW_ORLEANS_FIPS) - input_fips}"
+            )
 
-def _run_mle_fits(states: List[str], states_only=False):
-    for state in states:
-        model_fitter.run_state(state, states_only=states_only)
+        nola_input_pipelines = [pipeline_map[fips] for fips in fips_to_patch]
+        infection_rate_map = {p.region: p.infer_df for p in nola_input_pipelines}
+        population_map = {p.region: p.population() for p in nola_input_pipelines}
 
-
-def _run_ensembles(states, ensemble_kwargs=dict(), states_only=False):
-    for state_name in states:
-        ensemble_runner.run_state(
-            state_name, ensemble_kwargs=ensemble_kwargs, states_only=states_only
+        # Aggregate the results created so far into one timeseries of metrics in a DataFrame
+        nola_infection_rate = pyseir.rt.patches.patch_aggregate_rt_results(
+            infection_rate_map, population_map
         )
 
+        for fips in fips_to_patch:
+            this_fips_infection_rate = nola_infection_rate.copy()
+            this_fips_infection_rate.insert(0, CommonFields.FIPS, fips)
+            # Make a new SubStatePipeline object with the new infer_df
+            pipeline_map[fips] = dataclasses.replace(
+                pipeline_map[fips], infer_df=this_fips_infection_rate,
+            )
 
-def _generate_state_reports(states):
-    for state in states:
-        report = StateReport(state)
-        report.generate_report()
+    return list(pipeline_map.values())
 
 
-def _map_outputs(
-    states, output_interval_days=1, states_only=False, output_dir=None, run_mode="default"
+def _write_pipeline_output(
+    pipelines: List[Union[SubStatePipeline, StatePipeline]],
+    output_dir,
+    output_interval_days: int = 4,
 ):
-    for state in states:
-        web_ui_mapper = WebUIDataAdaptorV1(
-            state,
-            output_interval_days=output_interval_days,
-            run_mode=run_mode,
-            output_dir=output_dir,
-        )
-        web_ui_mapper.generate_state(whitelisted_county_fips=[], states_only=states_only)
 
+    infection_rate_metric_df = pd.concat(p.infer_df for p in pipelines)
 
-def _state_only_pipeline(
-    state,
-    run_mode=DEFAULT_RUN_MODE,
-    generate_reports=False,
-    output_interval_days=1,
-    output_dir=None,
-):
-    states_only = True
-
-    states = [state]
-    _run_infer_rt(states, states_only=states_only)
-    _run_mle_fits(states, states_only=states_only)
-    _run_ensembles(
-        states,
-        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-        states_only=states_only,
+    infection_rate_metric_df.to_csv(
+        path_or_buf=pyseir.utils.get_summary_artifact_path(
+            pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED
+        ),
+        index=False,
     )
-    if generate_reports:
-        _generate_state_reports(states)
-    # remove outputs atm. just output at the end
-    _map_outputs(
-        states,
-        output_interval_days,
-        states_only=states_only,
-        output_dir=output_dir,
-        run_mode=run_mode,
-    )
 
+    root.info(f"outputting web results for states and counties")
 
-def build_counties_to_run_per_state(states: List[str], fips: str = None) -> Dict[str, str]:
-    """Builds mapping from fips to state of counties to run.
-
-    Restricts counties to those in the county whitelist.
-
-    Args:
-        states: List of states to run on.
-        fips: Optional county fips code to restrict results to.
-
-    Returns: Map of counties to run with associated state.
-    """
-    # Build List of Counties
-    all_county_fips = {}
-    for state in states:
-        state_county_fips = model_fitter.build_county_list(state)
-        county_fips_per_state = {fips: state for fips in state_county_fips}
-
-        if not fips:
-            all_county_fips.update(county_fips_per_state)
-            continue
-
-        if fips in county_fips_per_state:
-            root.info(f"Found {fips}, restricting run to found fips")
-            all_county_fips.update({fips: state})
-
-    return all_county_fips
-
-
-def _build_all_for_states(
-    states: List[str],
-    run_mode=DEFAULT_RUN_MODE,
-    generate_reports=False,
-    output_interval_days=4,
-    output_dir=None,
-    skip_whitelist=False,
-    states_only=False,
-    fips=None,
-):
-    # prepare data
-    _cache_global_datasets()
-
-    if not skip_whitelist:
-        _generate_whitelist()
-
-    # do everything for just states in parallel
-    with Pool(maxtasksperchild=1) as p:
-        states_only_func = partial(
-            _state_only_pipeline,
-            run_mode=run_mode,
-            generate_reports=generate_reports,
-            output_interval_days=output_interval_days,
-            output_dir=output_dir,
-        )
-        p.map(states_only_func, states)
-
-    if states_only:
-        root.info("Only executing for states. returning.")
-        return
-
-    all_county_fips = build_counties_to_run_per_state(states, fips=fips)
-
-    with Pool(maxtasksperchild=1) as p:
-        # calculate calculate county inference
-        p.map(infer_rt.run_rt_for_fips, all_county_fips.keys())
-        # calculate model fit
-        root.info(f"executing model for {len(all_county_fips)} counties")
-        fitters = p.map(model_fitter.execute_model_for_fips, all_county_fips.keys())
-
-        df = pd.DataFrame([fit.fit_results for fit in fitters if fit])
-        df["state"] = df.fips.replace(all_county_fips)
-        df["mle_model"] = [fit.mle_model for fit in fitters if fit]
-        df.index = df.fips
-
-        state_dfs = [state_df for name, state_df in df.groupby("state")]
-        p.map(model_fitter._persist_results_per_state, state_dfs)
-
-        # calculate ensemble
-        root.info(f"running ensemble for {len(all_county_fips)} counties")
-        ensemble_func = partial(
-            ensemble_runner._run_county,
-            ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-        )
-        p.map(ensemble_func, all_county_fips.keys())
-
-    # output it all
-    output_interval_days = int(output_interval_days)
-    _cache_global_datasets()
-
-    root.info(f"outputting web results for states and {len(all_county_fips)} counties")
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
     # Approximately 40% of the processing time is taken on this step
-    for state in states:
-        web_ui_mapper = WebUIDataAdaptorV1(
-            state,
-            output_interval_days=output_interval_days,
-            run_mode=run_mode,
-            output_dir=output_dir,
-        )
-        web_ui_mapper.generate_state(
-            whitelisted_county_fips=[k for k, v in all_county_fips.items() if v == state],
-            states_only=False,
-        )
+    web_ui_mapper = WebUIDataAdaptorV1(
+        output_interval_days=output_interval_days, output_dir=output_dir,
+    )
 
-    return
+    webui_inputs = [
+        webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
+        for p in pipelines
+        if p.fitter
+    ]
+    with Pool(maxtasksperchild=1) as p:
+        p.map(web_ui_mapper.write_region_safely, webui_inputs)
 
 
-@entry_point.command()
-@click.option(
-    "--state",
-    default="",
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def impute_start_dates(state, states_only):
-    states = [state] if state else ALL_STATES
-    _impute_start_dates(states, states_only=states_only)
+def _build_all_for_states(
+    states: List[str], states_only=False, fips: Optional[str] = None,
+) -> List[Union[StatePipeline, SubStatePipeline]]:
+    # prepare data
+    _cache_global_datasets()
+
+    # do everything for just states in parallel
+    with Pool(maxtasksperchild=1) as pool:
+        states_regions = [pipeline.Region.from_state(s) for s in states]
+        state_pipelines: List[StatePipeline] = pool.map(StatePipeline.run, states_regions)
+        state_fitter_map = {p.region: p.fitter for p in state_pipelines}
+
+    if states_only:
+        return state_pipelines
+
+    substate_inputs = SubStateRegionPipelineInput.build_all(state_fitter_map, fips=fips)
+
+    with Pool(maxtasksperchild=1) as p:
+        root.info(f"executing pipeline for {len(substate_inputs)} counties")
+        substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
+
+    substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
+
+    return state_pipelines + substate_pipelines
 
 
 @entry_point.command()
@@ -253,83 +278,17 @@ def generate_whitelist():
 @click.option(
     "--state", help="State to generate files for. If no state is given, all states are computed."
 )
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def run_infer_rt(state, states_only):
-    states = [state] if state else ALL_STATES
-    _run_infer_rt(states, states_only=states_only)
-
-
-@entry_point.command()
 @click.option(
-    "--state", help="State to generate files for. If no state is given, all states are computed."
-)
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def run_mle_fits(state, states_only):
-    states = [state] if state else ALL_STATES
-    _run_mle_fits(states, states_only=states_only)
-
-
-@entry_point.command()
-@click.option(
-    "--state", help="State to generate files for. If no state is given, all states are computed."
-)
-@click.option(
-    "--generate-reports",
+    "--states-only",
     default=False,
     is_flag=True,
     type=bool,
-    help="If False, skip pdf report generation.",
+    help="Warning: This flag is unused and the function always defaults to only state "
+    "level regions",
 )
-@click.option(
-    "--run-mode",
-    default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def run_ensembles(state, run_mode, generate_reports, states_only):
-    states = [state] if state else ALL_STATES
-    _run_ensembles(
-        states,
-        ensemble_kwargs=dict(run_mode=run_mode, generate_report=generate_reports),
-        states_only=states_only,
-    )
-
-
-@entry_point.command()
-@click.option(
-    "--state", help="State to generate files for. If no state is given, all states are computed."
-)
-def generate_state_report(state):
-    states = [state] if state else ALL_STATES
-    _generate_state_reports(states)
-
-
-@entry_point.command()
-@click.option(
-    "--state", help="State to generate files for. If no state is given, all states are computed."
-)
-@click.option(
-    "--output-interval-days",
-    default=1,
-    type=int,
-    help="Number of days between outputs for the WebUI payload.",
-)
-@click.option(
-    "--run-mode",
-    default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option("--states-only", default=False, is_flag=True, type=bool, help="Only model states")
-def map_outputs(state, output_interval_days, run_mode, states_only):
-    states = [state] if state else ALL_STATES
-    _map_outputs(
-        states,
-        output_interval_days=int(output_interval_days),
-        run_mode=run_mode,
-        states_only=states_only,
-    )
+def run_infer_rt(state, states_only):
+    for state in _states_region_list(state=state, default=ALL_STATES):
+        infer_rt.run_rt(infer_rt.RegionalInput.from_region(state))
 
 
 @entry_point.command()
@@ -338,19 +297,6 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
     "-s",
     multiple=True,
     help="a list of states to generate files for. If no state is given, all states are computed.",
-)
-@click.option(
-    "--run-mode",
-    default=DEFAULT_RUN_MODE,
-    type=click.Choice([run_mode.value for run_mode in ensemble_runner.RunMode]),
-    help="State to generate files for. If no state is given, all states are computed.",
-)
-@click.option(
-    "--generate-reports",
-    default=False,
-    type=bool,
-    is_flag=True,
-    help="If False, skip pdf report generation.",
 )
 @click.option(
     "--output-interval-days",
@@ -372,34 +318,17 @@ def map_outputs(state, output_interval_days, run_mode, states_only):
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
-    states,
-    run_mode,
-    generate_reports,
-    output_interval_days,
-    output_dir,
-    skip_whitelist,
-    states_only,
-    fips,
+    states, output_interval_days, output_dir, skip_whitelist, states_only, fips,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
-    # Convert abbreviated states to the full state name, allowing states passed in
-    # to be the full name or the abbreviated name.
-    states = [ABBREV_US_STATE.get(state, state) for state in states]
+    states = [us.states.lookup(state).abbr for state in states]
     states = [state for state in states if state in ALL_STATES]
     if not len(states):
         states = ALL_STATES
 
-    _build_all_for_states(
-        states,
-        run_mode=DEFAULT_RUN_MODE,
-        generate_reports=generate_reports,
-        output_interval_days=output_interval_days,
-        output_dir=output_dir,
-        skip_whitelist=skip_whitelist,
-        states_only=states_only,
-        fips=fips,
-    )
+    pipelines = _build_all_for_states(states, states_only=states_only, fips=fips,)
+    _write_pipeline_output(pipelines, output_dir, output_interval_days=output_interval_days)
 
 
 if __name__ == "__main__":

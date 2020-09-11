@@ -5,7 +5,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS, ABBREV_US_UNKNOWN_COUNTY_FIPS
-from libs import enums
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonIndexFields
 
@@ -17,9 +16,12 @@ class FIPSPopulation(data_source.DataSource):
 
     https://www.census.gov/data/datasets/time-series/demo/popest/2010s-counties-total.html
     https://www.census.gov/geographies/reference-files/2018/demo/popest/2018-fips.html
+
+    Puerto Rico-specific county data:
+    https://www.census.gov/data/datasets/time-series/demo/popest/2010s-total-puerto-rico-municipios.html
     """
 
-    FILE_PATH = CURRENT_FOLDER / "fips_population.csv"
+    FILE_PATH = "data/misc/fips_population.csv"
 
     SOURCE_NAME = "FIPS"
 
@@ -42,6 +44,7 @@ class FIPSPopulation(data_source.DataSource):
 
     COMMON_FIELD_MAP = {
         CommonFields.POPULATION: Fields.POPULATION,
+        CommonFields.COUNTY: CommonFields.COUNTY,  # COUNTY isn't in the LatestValueDataset.INDEX_FIELDS
     }
 
     def __init__(self, path):
@@ -52,7 +55,8 @@ class FIPSPopulation(data_source.DataSource):
 
     @classmethod
     def local(cls):
-        return cls(cls.FILE_PATH)
+        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        return cls(data_root / cls.FILE_PATH)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
@@ -82,7 +86,8 @@ class FIPSPopulation(data_source.DataSource):
         states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(ABBREV_US_FIPS)
         states_aggregated[cls.Fields.COUNTY] = None
 
-        return pd.concat([data, states_aggregated])
+        common_fields_data = cls._rename_to_common_fields(pd.concat([data, states_aggregated]))
+        return common_fields_data
 
 
 def build_fips_data_frame(census_csv, counties_csv):

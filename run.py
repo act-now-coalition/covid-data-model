@@ -12,7 +12,6 @@ from cli import api
 from cli import data
 from cli import compare_snapshots
 from cli import utils
-from libs.datasets import dataset_cache
 
 
 @click.group()
@@ -22,7 +21,6 @@ def entry_point(ctx):  # pylint: disable=no-value-for-parameter
     """Entry point for covid-data-model CLI."""
     common_init.configure_logging(command=ctx.invoked_subcommand)
 
-    dataset_cache.set_pickle_cache_dir()
     pandarallel.initialize(progress_bar=False)
 
 

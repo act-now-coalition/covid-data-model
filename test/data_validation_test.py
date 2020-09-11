@@ -16,8 +16,8 @@ def default_timeseries_row(**updates):
         "cases": 10.0,
         "deaths": 1.0,
         "recovered": 0.0,
+        "current_icu": None,
         "source": "JHU",
-        "generated": False,
         "county": "Richland Parish",
     }
     data.update(updates)
@@ -46,7 +46,7 @@ def test_nyc_aggregation(are_boroughs_zero):
     df = pd.DataFrame(rows)
 
     # Todo: figure out a better way to define these groups.
-    group = ["date", "source", "country", "aggregate_level", "state", "generated"]
+    group = ["date", "source", "country", "aggregate_level", "state"]
     result = custom_aggregations.update_with_combined_new_york_counties(
         df, group, are_boroughs_zero=are_boroughs_zero
     )
@@ -59,3 +59,4 @@ def test_nyc_aggregation(are_boroughs_zero):
         assert nyc_result["cases"] == nyc_cases
     else:
         assert nyc_result["cases"] == nyc_cases + borough_cases
+        assert pd.isna(nyc_result["current_icu"])

@@ -1,0 +1,89 @@
+{
+  "title": "Metrics",
+  "description": "Calculated metrics data based on known actuals.",
+  "type": "object",
+  "properties": {
+    "testPositivityRatio": {
+      "title": "Testpositivityratio",
+      "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
+      "type": "number"
+    },
+    "caseDensity": {
+      "title": "Casedensity",
+      "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+      "type": "number"
+    },
+    "contactTracerCapacityRatio": {
+      "title": "Contacttracercapacityratio",
+      "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
+      "type": "number"
+    },
+    "infectionRate": {
+      "title": "Infectionrate",
+      "description": "R_t, or the estimated number of infections arising from a typical case.",
+      "type": "number"
+    },
+    "infectionRateCI90": {
+      "title": "Infectionrateci90",
+      "description": "90th percentile confidence interval upper endpoint of the infection rate.",
+      "type": "number"
+    },
+    "icuHeadroomRatio": {
+      "title": "Icuheadroomratio",
+      "type": "number"
+    },
+    "icuHeadroomDetails": {
+      "$ref": "#/definitions/ICUHeadroomMetricDetails"
+    }
+  },
+  "required": [
+    "testPositivityRatio",
+    "caseDensity",
+    "contactTracerCapacityRatio",
+    "infectionRate",
+    "infectionRateCI90",
+    "icuHeadroomRatio"
+  ],
+  "definitions": {
+    "ICUHeadroomMetricDetails": {
+      "title": "ICUHeadroomMetricDetails",
+      "description": "Details about how the ICU Headroom Metric was calculated.",
+      "type": "object",
+      "properties": {
+        "currentIcuCovid": {
+          "title": "Currenticucovid",
+          "description": "Current number of covid patients in icu.",
+          "type": "integer"
+        },
+        "currentIcuCovidMethod": {
+          "title": "Currenticucovidmethod",
+          "description": "Method used to determine number of current ICU patients with covid.",
+          "enum": [
+            "actual",
+            "estimated"
+          ]
+        },
+        "currentIcuNonCovid": {
+          "title": "Currenticunoncovid",
+          "description": "Current number of covid patients in icu.",
+          "type": "integer"
+        },
+        "currentIcuNonCovidMethod": {
+          "title": "Currenticunoncovidmethod",
+          "description": "Method used to determine number of current ICU patients without covid.",
+          "enum": [
+            "actual",
+            "estimated_from_typical_utilization",
+            "estimated_from_total_icu_actual"
+          ]
+        }
+      },
+      "required": [
+        "currentIcuCovid",
+        "currentIcuCovidMethod",
+        "currentIcuNonCovid",
+        "currentIcuNonCovidMethod"
+      ]
+    }
+  }
+}

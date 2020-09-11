@@ -1,6 +1,6 @@
 {
   "title": "ActualsTimeseriesRow",
-  "description": "Base model for API output.",
+  "description": "Actual data for a specific day.",
   "type": "object",
   "properties": {
     "population": {
@@ -66,7 +66,7 @@
   "definitions": {
     "ResourceUtilization": {
       "title": "ResourceUtilization",
-      "description": "Base model for API output.",
+      "description": "Utilization of hospital resources.",
       "type": "object",
       "properties": {
         "capacity": {

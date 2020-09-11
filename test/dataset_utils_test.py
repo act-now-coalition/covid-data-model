@@ -4,7 +4,6 @@ from typing import Mapping, List
 
 import pandas as pd
 import numpy as np
-from structlog import testing, get_logger
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
 from libs.datasets import dataset_utils
@@ -14,7 +13,6 @@ import pytest
 
 
 # turns all warnings into errors for this module
-
 pytestmark = pytest.mark.filterwarnings("error")
 
 
@@ -54,7 +52,7 @@ def to_dict(keys: List[str], df: pd.DataFrame):
         return df.to_dict(orient="index", into=NoNanDict)
     except Exception:
         # Print df to provide more context when the above code raises.
-        print(f"Problem with {df}")
+        print(f"Exception in to_dict with\n{df}")
         raise
 
 

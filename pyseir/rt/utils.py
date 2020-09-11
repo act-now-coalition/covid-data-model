@@ -1,11 +1,20 @@
 import logging
-
 import numpy as np
 from scipy import signal
 
 from pyseir.rt.constants import InferRtConstants
 
 utils_log = logging.getLogger(__name__)
+
+
+# PR598 Request by Greater New Orlean Public Health to have a consistent Rt across the following:
+NEW_ORLEANS_FIPS = (
+    "22051",  # Jefferson
+    "22071",  # Orleans
+    "22075",  # Plaquemines
+    "22087",  # St Bernard
+    "22103",  # St Tammany
+)
 
 
 class LagMonitor:

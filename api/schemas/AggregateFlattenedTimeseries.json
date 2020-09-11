@@ -1,6 +1,6 @@
 {
   "title": "AggregateFlattenedTimeseries",
-  "description": "Base model for API output.",
+  "description": "Flattened prediction timeseries data for multiple regions.",
   "type": "array",
   "items": {
     "$ref": "#/definitions/PredictionTimeseriesRowWithHeader"
@@ -8,7 +8,7 @@
   "definitions": {
     "PredictionTimeseriesRowWithHeader": {
       "title": "PredictionTimeseriesRowWithHeader",
-      "description": "Base model for API output.",
+      "description": "Prediction timeseries row with location information.",
       "type": "object",
       "properties": {
         "date": {

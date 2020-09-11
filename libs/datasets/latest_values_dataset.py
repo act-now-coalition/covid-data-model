@@ -1,13 +1,10 @@
-from typing import Type, List, Optional, Iterable, Union, TextIO
+from typing import List, Optional, Union, TextIO
 import pathlib
 
-import structlog
 from more_itertools import first
 
-from covidactnow.datapublic import common_df
 from libs import us_state_abbrev
 import pandas as pd
-import numpy as np
 from libs.datasets.dataset_utils import AggregationLevel, make_binary_array
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
@@ -47,10 +44,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             raise ValueError("Source must have metadata field map.")
 
         data = source.data
-        fields = source.all_fields_map().items()
-        to_common_fields = {value: key for key, value in fields}
-        final_columns = to_common_fields.values()
-        data = data.rename(columns=to_common_fields)[final_columns]
 
         data = cls._aggregate_new_york_data(data)
         if fill_missing_state:
@@ -68,25 +61,41 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
         data.loc[is_state, CommonFields.FIPS] = state_fips
 
+        data = cls._calculate_puerto_rico_bed_occupancy_rate(data)
+
         return cls(data)
 
     @classmethod
-    def build_from_data_source(cls, source):
-        from libs.datasets.timeseries import TimeseriesDataset
+    def _calculate_puerto_rico_bed_occupancy_rate(cls, data):
+        is_pr_county = data[CommonFields.FIPS].str.match("72[0-9][0-9][0-9]")
+        pr_data = data.loc[is_pr_county.fillna(False)]
+        weighted_icu_occupancy = None
+        weighted_all_bed_occupancy = None
 
-        if set(source.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
-            timeseries = TimeseriesDataset.build_from_data_source(source)
-            return timeseries.to_latest_values_dataset()
+        if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+            licensed_beds = pr_data[CommonFields.LICENSED_BEDS]
+            occupancy_rates = pr_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+            weighted_all_bed_occupancy = (
+                licensed_beds * occupancy_rates
+            ).sum() / licensed_beds.sum()
 
-        if set(source.INDEX_FIELD_MAP.keys()) != set(cls.INDEX_FIELDS):
-            raise ValueError("Index fields must match")
+        if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+            icu_beds = pr_data[CommonFields.ICU_BEDS]
+            occupancy_rates = pr_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+            weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
 
-        return cls.from_source(source, fill_missing_state=source.FILL_MISSING_STATE_LEVEL_DATA)
+        data.loc[
+            data[CommonFields.FIPS] == "72", CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
+        ] = weighted_all_bed_occupancy
+        data.loc[
+            data[CommonFields.FIPS] == "72", CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
+        ] = weighted_icu_occupancy
+
+        return data
 
     @classmethod
     def _aggregate_new_york_data(cls, data):
-        # When grouping nyc data, we don't want to count the generated field
-        # as a value to sum.
+        # When grouping nyc data, we don't want to the sum to include invalid FIPS.
         nyc_data = data[data[CommonFields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
         if not len(nyc_data):
             return data
@@ -121,6 +130,10 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             ] = weighted_icu_occupancy
 
         return data
+
+    @property
+    def county(self):
+        return self.get_subset(aggregation_level=AggregationLevel.COUNTY)
 
     @property
     def state_data(self) -> pd.DataFrame:
@@ -176,18 +189,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         Returns: Dictionary with all data for a given fips code.
         """
         return first(self.get_subset(fips=fips).yield_records(), default={})
-
-    def to_csv(self, path: pathlib.Path):
-        """Save data to CSV.
-
-        Args:
-            path: Path to save data to.
-        """
-        # Cannot use common_df.write_csv as it doesn't support data without a date index field.
-        data = self.data.set_index(CommonFields.FIPS).replace({pd.NA: np.nan}).convert_dtypes()
-        data = common_df.only_common_columns(data, structlog.get_logger())  # Drops `index`
-        data = common_df.sort_common_field_columns(data).sort_index()
-        data.to_csv(path, date_format="%Y-%m-%d", index=True, float_format="%.12g")
 
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):

@@ -1,26 +1,15 @@
-from typing import Type, Tuple
-import os
-import tempfile
+from typing import Tuple
 import pathlib
-import functools
 import datetime
-import enum
-from urllib.parse import urlparse
 
 import structlog
-import numpy as np
-import pandas as pd
-import pydantic
-from covidactnow.datapublic import common_df
 
 from libs.datasets import dataset_base
-from libs.datasets import combined_datasets
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_pointer import DatasetPointer
-from libs.datasets import dataset_pointer
 from libs.github_utils import GitSummary
 
 _logger = structlog.getLogger(__name__)
@@ -63,26 +52,20 @@ def persist_dataset(
 
 def update_data_public_head(
     data_directory: pathlib.Path,
-    latest_dataset: latest_values_dataset.LatestValuesDataset = None,
-    timeseries_dataset: timeseries.TimeseriesDataset = None,
+    latest_dataset: latest_values_dataset.LatestValuesDataset,
+    timeseries_dataset: timeseries.TimeseriesDataset,
 ) -> Tuple[DatasetPointer, DatasetPointer]:
     """Persists US latest and timeseries dataset and saves dataset pointers for Latest tag.
 
     Args:
         data_directory: Directory to save dataset and pointer.
         pointer_path_dir: Directory to save DatasetPointer files.
-        latest_dataset: Optionally specify a LatestValuesDataset to persist instead of building
-            from head.  Generally used in testing to sidestep building entire dataset.
-        timeseries_dataset: Optionally specify a TimeseriesDataset to persist instead of building
-            from head.  Generally used in testing to sidestep building entire dataset.
+        latest_dataset: The LatestValuesDataset to persist.
+        timeseries_dataset: The TimeseriesDataset to persist.
 
     Returns: Tuple of DatasetPointers to latest and timeseries datasets.
     """
-    if not latest_dataset:
-        latest_dataset = combined_datasets.build_us_latest_with_all_fields(skip_cache=True)
     latest_pointer = persist_dataset(latest_dataset, data_directory)
 
-    if not timeseries_dataset:
-        timeseries_dataset = combined_datasets.build_us_timeseries_with_all_fields(skip_cache=True)
     timeseries_pointer = persist_dataset(timeseries_dataset, data_directory)
     return latest_pointer, timeseries_pointer

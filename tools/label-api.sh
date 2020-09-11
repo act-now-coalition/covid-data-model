@@ -1,5 +1,5 @@
 #!/bin/bash
-# label-api.sh - Assigns a label (e.g. 'v0') to a published API snapshot (e.g '15')
+# label-api.sh - Assigns the label 'latest' to a published API snapshot (e.g '15')
 
 set -o nounset
 set -o errexit
@@ -9,21 +9,15 @@ CMD=$0
 # Checks command-line arguments, sets variables, etc.
 prepare () {
   # Parse args if specified.
-  if [ $# -ne 2 ]; then
+  if [ $# -ne 1 ]; then
     exit_with_usage
   else
-    LABEL=$1
-    SNAPSHOT_ID=$2
+    SNAPSHOT_ID=$1
+    LABEL="latest"
   fi
 
   if ! [[ $SNAPSHOT_ID =~ ^[0-9]+$ ]] ; then
     echo "Error: Specified Snapshot ID ($SNAPSHOT_ID) should be a plain number."
-    echo
-    exit_with_usage
-  fi
-
-  if [[ $LABEL =~ ^/ ]] ; then
-    echo "Error: Specified Label ($LABEL) should not start with a '/'."
     echo
     exit_with_usage
   fi
@@ -36,10 +30,10 @@ prepare () {
 }
 
 exit_with_usage () {
-  echo "Usage: $CMD <label> <snapshot-id>"
+  echo "Usage: $CMD <snapshot-id>"
   echo
   echo "Examples:"
-  echo "$CMD latest 370   # Points /latest at /snapshot/370"
+  echo "$CMD 370   # Points /latest at /snapshot/370"
   exit 1
 }
 

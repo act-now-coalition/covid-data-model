@@ -1,12 +1,18 @@
 from typing import Optional, Tuple
 
+import io
+import pathlib
 import pydantic
 import pandas as pd
 import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import dataset_utils
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import combined_datasets
+from libs import git_lfs_object_helpers
+from libs.qa.dataset_summary_gen import generate_field_summary
+
 
 IGNORE_COLUMNS = [
     CommonFields.STATE,
@@ -16,6 +22,8 @@ IGNORE_COLUMNS = [
 ]
 
 VARIABLE_FIELD = "variable"
+
+SUMMARY_PATH = dataset_utils.DATA_DIRECTORY / "timeseries_summary.csv"
 
 
 class TimeseriesSummary(pydantic.BaseModel):
@@ -31,49 +39,11 @@ class TimeseriesSummary(pydantic.BaseModel):
         arbitrary_types_allowed = True
 
 
-def generate_field_summary(series: pd.Series) -> pd.Series:
-
-    has_value = not series.isnull().all()
-    min_date = None
-    max_date = None
-    max_value = None
-    min_value = None
-    latest_value = None
-    num_observations = 0
-    largest_delta = None
-    largest_delta_date = None
-
-    if has_value:
-        min_date = series.first_valid_index()[1]
-        max_date = series.last_valid_index()[1]
-        latest_value = series[series.notnull()].iloc[-1]
-        max_value = series.max()
-        min_value = series.min()
-        num_observations = len(series[series.notnull()])
-        largest_delta = series.diff().abs().max()
-        # If a
-        if len(series.diff().abs().dropna()):
-            largest_delta_date = series.diff().abs().idxmax()[1]
-
-    results = {
-        "has_value": has_value,
-        "min_date": min_date,
-        "max_date": max_date,
-        "max_value": max_value,
-        "min_value": min_value,
-        "latest_value": latest_value,
-        "num_observations": num_observations,
-        "largest_delta": largest_delta,
-        "largest_delta_date": largest_delta_date,
-    }
-    return pd.Series(results)
-
-
 def summarize_timeseries_fields(data: pd.DataFrame) -> pd.DataFrame:
     data = data[[column for column in data.columns if column not in IGNORE_COLUMNS]]
 
     melted = pd.melt(data, id_vars=[CommonFields.FIPS, CommonFields.DATE]).set_index(
-        [CommonFields.FIPS, CommonFields.DATE, VARIABLE_FIELD]
+        CommonFields.DATE
     )
     fips_variable_grouped = melted.groupby([CommonFields.FIPS, VARIABLE_FIELD])
     return fips_variable_grouped["value"].apply(generate_field_summary).unstack()
@@ -140,3 +110,16 @@ def get_changes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     changed_from = df1.values[difference_locations]
     changed_to = df2.values[difference_locations]
     return pd.DataFrame({"from": changed_from, "to": changed_to}, index=changed.index)
+
+
+def load_summary(path: pathlib.Path = SUMMARY_PATH, commit: Optional[str] = None) -> pd.DataFrame:
+
+    if commit:
+        data = git_lfs_object_helpers.get_data_for_path(path, commit=commit)
+    else:
+        data = path.read_bytes()
+
+    buf = io.BytesIO(data)
+    return pd.read_csv(buf, dtype={CommonFields.FIPS: str}).set_index(
+        [CommonFields.FIPS, VARIABLE_FIELD]
+    )

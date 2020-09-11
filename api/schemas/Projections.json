@@ -1,6 +1,6 @@
 {
   "title": "Projections",
-  "description": "Base model for API output.",
+  "description": "Summary of projection data.",
   "type": "object",
   "properties": {
     "totalHospitalBeds": {
@@ -41,7 +41,7 @@
   "definitions": {
     "ResourceUsageProjection": {
       "title": "ResourceUsageProjection",
-      "description": "Base model for API output.",
+      "description": "Resource usage projection data.",
       "type": "object",
       "properties": {
         "peakShortfall": {

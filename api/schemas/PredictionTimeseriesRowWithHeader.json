@@ -1,6 +1,6 @@
 {
   "title": "PredictionTimeseriesRowWithHeader",
-  "description": "Base model for API output.",
+  "description": "Prediction timeseries row with location information.",
   "type": "object",
   "properties": {
     "date": {

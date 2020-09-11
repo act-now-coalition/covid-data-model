@@ -1,11 +1,8 @@
-from typing import Union, List
+from typing import List
 
 from pydantic.dataclasses import dataclass
 
 from libs.datasets.dataset_base import DatasetBase
-from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 
 
 @dataclass

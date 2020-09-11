@@ -1,20 +1,34 @@
-from typing import List, Optional, Type
+from typing import Optional, Type
 import os
 import enum
 import logging
 import pathlib
 import pandas as pd
-import structlog
-from structlog.stdlib import BoundLogger
-
+import structlog.stdlib
+from covidactnow.datapublic.common_fields import CommonFields
 from libs.us_state_abbrev import US_STATE_ABBREV
 
-if os.getenv("COVID_DATA_PUBLIC"):
-    LOCAL_PUBLIC_DATA_PATH = pathlib.Path(os.getenv("COVID_DATA_PUBLIC"))
-else:
-    LOCAL_PUBLIC_DATA_PATH = (
-        pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
-    )
+
+# Slowly changing attributes of a geographical region
+GEO_DATA_COLUMNS = [
+    CommonFields.FIPS,
+    CommonFields.STATE,
+    CommonFields.AGGREGATE_LEVEL,
+    CommonFields.COUNTRY,
+    CommonFields.COUNTY,
+]
+
+
+def _get_public_data_path():
+    """Sets global path to covid-data-public directory."""
+    if os.getenv("COVID_DATA_PUBLIC"):
+        return pathlib.Path(os.getenv("COVID_DATA_PUBLIC"))
+
+    return pathlib.Path(__file__).parent.parent / ".." / ".." / "covid-data-public"
+
+
+LOCAL_PUBLIC_DATA_PATH = _get_public_data_path()
+
 
 _logger = logging.getLogger(__name__)
 
@@ -55,6 +69,13 @@ class DuplicateValuesForIndex(Exception):
         self.index = index
         self.data = duplicate_data
         super().__init__()
+
+
+def set_global_public_data_path():
+    """Sets global public data path; useful if environment variable is updated after import."""
+    global LOCAL_PUBLIC_DATA_PATH
+
+    LOCAL_PUBLIC_DATA_PATH = _get_public_data_path()
 
 
 def strip_whitespace(data: pd.DataFrame) -> pd.DataFrame:
@@ -119,38 +140,7 @@ def check_index_values_are_unique(data, index=None, duplicates_as_error=True):
     return None
 
 
-def compare_datasets(base, other, group, first_name="first", other_name="second", values="cases"):
-    other = other.groupby(group).sum().reset_index().set_index(group)
-    base = base.groupby(group).sum().reset_index().set_index(group)
-    # Filling missing values
-    base.loc[:, values] = base[values].fillna(0)
-    other.loc[:, values] = other[values].fillna(0)
-
-    base["info"] = first_name
-    other["info"] = other_name
-    common = pd.concat([base, other])
-    all_combined = common.pivot_table(index=group, columns="info", values=values).rename_axis(
-        None, axis=1
-    )
-    first_notnull = all_combined[first_name].notnull()
-    other_notnull = all_combined[other_name].notnull()
-
-    has_both = first_notnull & other_notnull
-    contains_both = all_combined[first_notnull & other_notnull]
-    contains_both = contains_both.reset_index()
-    values_matching = contains_both[first_name] == contains_both[other_name]
-    not_matching = contains_both[~values_matching]
-    not_matching["delta_" + values] = contains_both[first_name] - contains_both[other_name]
-    not_matching["delta_ratio_" + values] = (
-        contains_both[first_name] - contains_both[other_name]
-    ) / contains_both[first_name]
-    matching = contains_both.loc[values_matching, :]
-    missing = all_combined[~has_both & (first_notnull | other_notnull)]
-    return all_combined, matching, not_matching.dropna(), missing
-
-
 def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_aggregation):
-
     from_data = data[data.aggregate_level == from_aggregation.value]
     new_data = from_data.groupby(groupby_fields).sum().reset_index()
     new_data["aggregate_level"] = to_aggregation.value
@@ -161,27 +151,6 @@ def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_agg
 
     non_matching = new_data[~new_data.index.isin(existing_data.index)]
     return non_matching
-
-
-def get_state_level_data(data, country, state):
-    country_filter = data.country == country
-    state_filter = data.state == state
-    aggregation_filter = data.aggregate_level == AggregationLevel.STATE.value
-
-    return data[country_filter & state_filter & aggregation_filter]
-
-
-def get_county_level_data(data, country, state, county=None, fips=None):
-    country_filter = data.country == country
-    state_filter = data.state == state
-    aggregation_filter = data.aggregate_level == AggregationLevel.COUNTY.value
-
-    if county:
-        county_filter = data.county == county
-        return data[country_filter & state_filter & aggregation_filter & county_filter]
-    else:
-        fips_filter = data.fips == fips
-        return data[country_filter & state_filter & aggregation_filter & fips_filter]
 
 
 def build_fips_data_frame():
@@ -229,38 +198,6 @@ def assert_counties_have_fips(data, county_key="county", fips_key="fips"):
         print(data[is_fips_null])
 
 
-def add_fips_using_county(data, fips_data) -> pd.Series:
-    """Gets FIPS code from a data frame with a county."""
-    data = data.set_index(["county", "state"])
-    original_rows = len(data)
-    fips_data = fips_data.set_index(["county", "state"])
-    data = data.join(
-        fips_data[["fips"]], how="left", on=["county", "state"], rsuffix="_r"
-    ).reset_index()
-
-    if len(data) != original_rows:
-        raise Exception("Non-unique join, check for duplicate fips data.")
-
-    non_matching = data.loc[data.county.notnull() & data.fips.isnull(), :]
-
-    # Not all datasources have country.  If the dataset doesn't have country,
-    # assuming that data is from the us.
-    if "country" in non_matching.columns:
-        non_matching = non_matching.loc[data.country == "USA", :]
-
-    if len(non_matching):
-        unique_counties = sorted(non_matching.county.unique())
-        _logger.warning(f"Did not match {len(unique_counties)} counties to fips data.")
-        # _logger.warning(f"{non_matching}")  # This is debugging info and crowding out the stdout
-        # TODO: Make this an error?
-
-    # Handles if a fips column already in the dataframe.
-    if "fips_r" in data.columns:
-        return data.drop("fips").rename({"fips_r": "fips"}, axis=1)
-
-    return data
-
-
 def summarize(data, aggregate_level, groupby):
     # Standardizes the length metrics line up
     key_fmt = "{:20} {}"
@@ -276,7 +213,9 @@ def summarize(data, aggregate_level, groupby):
     print(index_size[index_size > 1])
 
 
-def _clear_common_values(log: BoundLogger, existing_df, data_source, index_fields, column_to_fill):
+def _clear_common_values(
+    log: structlog.stdlib.BoundLogger, existing_df, data_source, index_fields, column_to_fill
+):
     """For index labels shared between existing_df and data_source, clear column_to_fill in existing_df.
 
     existing_df is modified inplace. Index labels (the values in the index for one row) do not need to be unique in a
@@ -331,3 +270,27 @@ def make_binary_array(
     if before:
         query_parts.append("date < @before")
     return data.eval(" and ".join(query_parts))
+
+
+def fips_index_geo_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Return a DataFrame containing slowly changing attributes of each FIPS. If an attribute varies for a single
+    FIPS there is a problem in the data and the set_index verify_integrity will fail.
+
+    Args:
+        df: a DataFrame that may contain data in named index and multiple rows per FIPS.
+
+    Returns: a DataFrame with a FIPS index and one row per FIPS
+    """
+    if df.index.names:
+        df = df.reset_index()
+    # Make a list of the GEO_DATA_COLUMNS in df, in GEO_DATA_COLUMNS order. The intersection method returns
+    # values in a different order, which makes comparing the wide dates CSV harder.
+    present_columns = [column for column in GEO_DATA_COLUMNS if column in df.columns]
+    # The GEO_DATA_COLUMNS are expected to have a single value for each FIPS. Get the columns
+    # from every row of each data source and then keep one of each unique row.
+    all_identifiers = df.loc[:, present_columns].drop_duplicates()
+    # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
+    # are rows in the input data sources that have different values for county name, state etc.
+    fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
+    return fips_indexed

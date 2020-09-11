@@ -1,5 +1,4 @@
 import click
-import dataclasses
 from contextlib import contextmanager
 from datetime import datetime
 import git

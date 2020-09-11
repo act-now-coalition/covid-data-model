@@ -1,6 +1,6 @@
 {
   "title": "RegionSummaryWithTimeseries",
-  "description": "Base model for API output.",
+  "description": "Summary data for a region with prediction timeseries data and actual timeseries data.",
   "type": "object",
   "properties": {
     "countryName": {
@@ -45,6 +45,15 @@
     "actuals": {
       "$ref": "#/definitions/Actuals"
     },
+    "metrics": {
+      "title": "Metrics",
+      "description": "Region level metrics",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Metrics"
+        }
+      ]
+    },
     "population": {
       "title": "Population",
       "description": "Total Population in geographic region.",
@@ -64,6 +73,13 @@
       "items": {
         "$ref": "#/definitions/ActualsTimeseriesRow"
       }
+    },
+    "metricsTimeseries": {
+      "title": "Metricstimeseries",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MetricsTimeseriesRow"
+      }
     }
   },
   "required": [
@@ -76,12 +92,13 @@
     "actuals",
     "population",
     "timeseries",
-    "actualsTimeseries"
+    "actualsTimeseries",
+    "metricsTimeseries"
   ],
   "definitions": {
     "ResourceUsageProjection": {
       "title": "ResourceUsageProjection",
-      "description": "Base model for API output.",
+      "description": "Resource usage projection data.",
       "type": "object",
       "properties": {
         "peakShortfall": {
@@ -110,7 +127,7 @@
     },
     "Projections": {
       "title": "Projections",
-      "description": "Base model for API output.",
+      "description": "Summary of projection data.",
       "type": "object",
       "properties": {
         "totalHospitalBeds": {
@@ -151,7 +168,7 @@
     },
     "ResourceUtilization": {
       "title": "ResourceUtilization",
-      "description": "Base model for API output.",
+      "description": "Utilization of hospital resources.",
       "type": "object",
       "properties": {
         "capacity": {
@@ -190,7 +207,7 @@
     },
     "Actuals": {
       "title": "Actuals",
-      "description": "Base model for API output.",
+      "description": "Known actuals data.",
       "type": "object",
       "properties": {
         "population": {
@@ -247,9 +264,96 @@
         "ICUBeds"
       ]
     },
+    "ICUHeadroomMetricDetails": {
+      "title": "ICUHeadroomMetricDetails",
+      "description": "Details about how the ICU Headroom Metric was calculated.",
+      "type": "object",
+      "properties": {
+        "currentIcuCovid": {
+          "title": "Currenticucovid",
+          "description": "Current number of covid patients in icu.",
+          "type": "integer"
+        },
+        "currentIcuCovidMethod": {
+          "title": "Currenticucovidmethod",
+          "description": "Method used to determine number of current ICU patients with covid.",
+          "enum": [
+            "actual",
+            "estimated"
+          ]
+        },
+        "currentIcuNonCovid": {
+          "title": "Currenticunoncovid",
+          "description": "Current number of covid patients in icu.",
+          "type": "integer"
+        },
+        "currentIcuNonCovidMethod": {
+          "title": "Currenticunoncovidmethod",
+          "description": "Method used to determine number of current ICU patients without covid.",
+          "enum": [
+            "actual",
+            "estimated_from_typical_utilization",
+            "estimated_from_total_icu_actual"
+          ]
+        }
+      },
+      "required": [
+        "currentIcuCovid",
+        "currentIcuCovidMethod",
+        "currentIcuNonCovid",
+        "currentIcuNonCovidMethod"
+      ]
+    },
+    "Metrics": {
+      "title": "Metrics",
+      "description": "Calculated metrics data based on known actuals.",
+      "type": "object",
+      "properties": {
+        "testPositivityRatio": {
+          "title": "Testpositivityratio",
+          "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
+          "type": "number"
+        },
+        "caseDensity": {
+          "title": "Casedensity",
+          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+          "type": "number"
+        },
+        "contactTracerCapacityRatio": {
+          "title": "Contacttracercapacityratio",
+          "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
+          "type": "number"
+        },
+        "infectionRate": {
+          "title": "Infectionrate",
+          "description": "R_t, or the estimated number of infections arising from a typical case.",
+          "type": "number"
+        },
+        "infectionRateCI90": {
+          "title": "Infectionrateci90",
+          "description": "90th percentile confidence interval upper endpoint of the infection rate.",
+          "type": "number"
+        },
+        "icuHeadroomRatio": {
+          "title": "Icuheadroomratio",
+          "type": "number"
+        },
+        "icuHeadroomDetails": {
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+        }
+      },
+      "required": [
+        "testPositivityRatio",
+        "caseDensity",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio"
+      ]
+    },
     "PredictionTimeseriesRow": {
       "title": "PredictionTimeseriesRow",
-      "description": "Base model for API output.",
+      "description": "Prediction data for a single day.",
       "type": "object",
       "properties": {
         "date": {
@@ -343,7 +447,7 @@
     },
     "ActualsTimeseriesRow": {
       "title": "ActualsTimeseriesRow",
-      "description": "Base model for API output.",
+      "description": "Actual data for a specific day.",
       "type": "object",
       "properties": {
         "population": {
@@ -404,6 +508,60 @@
         "cumulativeDeaths",
         "hospitalBeds",
         "ICUBeds",
+        "date"
+      ]
+    },
+    "MetricsTimeseriesRow": {
+      "title": "MetricsTimeseriesRow",
+      "description": "Metrics data for a single day.",
+      "type": "object",
+      "properties": {
+        "testPositivityRatio": {
+          "title": "Testpositivityratio",
+          "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
+          "type": "number"
+        },
+        "caseDensity": {
+          "title": "Casedensity",
+          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+          "type": "number"
+        },
+        "contactTracerCapacityRatio": {
+          "title": "Contacttracercapacityratio",
+          "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
+          "type": "number"
+        },
+        "infectionRate": {
+          "title": "Infectionrate",
+          "description": "R_t, or the estimated number of infections arising from a typical case.",
+          "type": "number"
+        },
+        "infectionRateCI90": {
+          "title": "Infectionrateci90",
+          "description": "90th percentile confidence interval upper endpoint of the infection rate.",
+          "type": "number"
+        },
+        "icuHeadroomRatio": {
+          "title": "Icuheadroomratio",
+          "type": "number"
+        },
+        "icuHeadroomDetails": {
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+        },
+        "date": {
+          "title": "Date",
+          "descrition": "Date of timeseries data point",
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "testPositivityRatio",
+        "caseDensity",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio",
         "date"
       ]
     }

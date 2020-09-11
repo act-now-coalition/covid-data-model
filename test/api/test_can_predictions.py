@@ -1,4 +1,3 @@
-from datetime import date
 from api.can_api_definition import AggregateRegionSummaryWithTimeseries
 
 from libs import dataset_deployer

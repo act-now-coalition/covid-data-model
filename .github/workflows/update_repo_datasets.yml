@@ -1,6 +1,9 @@
 name: Update combined datasets
 
 on:
+  # This hook is automatically triggered by
+  # https://github.com/covid-projections/covid-data-public/blob/master/.github/workflows/update_data.yml
+  # after covid-data-public datasets have been updated.
   repository_dispatch:
     types: update-dataset-snapshot
 
@@ -14,8 +17,14 @@ env:
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
+  SENTRY_ENVIRONMENT: 'production'
+
   # use a webhook to write to slack channel dev-alerts for QA
   SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
+
+  DATA_AVAILABILITY_SHEET_NAME: "Data Availability"
+
+  GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA }}
 
 jobs:
   update-and-promote-datasets:
@@ -64,6 +73,10 @@ jobs:
     - name: Create Update Commit
       working-directory: ./covid-data-model
       run: ./tools/push-data-update.sh
+    - name: Update Data Availability Sheet
+      working-directory: ./covid-data-model
+      run: |
+        ./run.py data update-availability-report
     - name: Slack notification
       if: failure()
       env:
@@ -72,3 +85,12 @@ jobs:
       uses: Ilshidur/action-slack@fb92a78
       with:
         args: 'update-dataset-snapshot failed'
+    - name: Slack notification
+      if: success()
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+        STATUS: ${{job.status}}
+        DATA_AVAILABILITY_URL: http://tiny.cc/can-data
+      uses: Ilshidur/action-slack@fb92a78
+      with:
+        args: 'update-dataset-snapshot succeeded. View Data Availability Report at {{DATA_AVAILABILITY_URL}}'

@@ -9,8 +9,6 @@
 # Roger Allen has waived all copyright and related or neighboring
 # rights to this code.
 
-import us
-
 US_STATE_ABBREV = {
     "Alabama": "AL",
     "Alaska": "AK",
@@ -186,9 +184,22 @@ US_FIPS = {
 
 ABBREV_US_FIPS = {US_STATE_ABBREV[state]: fips for state, fips in US_FIPS.items()}
 
+FIPS_TO_STATE = {fips: state for state, fips in ABBREV_US_FIPS.items()}
+
 # Map from 2 letter state abbreviation to 5 digit FIPS code of the unknown county of that state.
 # This is not an official FIPS code but lets us aggregate values within a state using FIPS codes.
 ABBREV_US_UNKNOWN_COUNTY_FIPS = {abbrev: f"{fips}999" for abbrev, fips in ABBREV_US_FIPS.items()}
 
 # thank you to @kinghelix and @trevormarburger for this idea
 ABBREV_US_STATE = dict(map(reversed, US_STATE_ABBREV.items()))
+
+
+def is_unknown_county(fips: str) -> bool:
+    """Checks if fips is an unknown county.
+
+    Args:
+        fips: fips code to check.
+
+    Returns: True if unkown, false otherwise.
+    """
+    return len(fips) == 5 and fips.endswith("999")

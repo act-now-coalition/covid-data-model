@@ -5,7 +5,6 @@ from enum import Enum
 
 import pandas as pd
 
-from pyseir.load_data import HospitalizationDataType
 from pyseir.rt.constants import InferRtConstants
 
 """
@@ -80,24 +79,12 @@ def create_synthetic_df(data_generator) -> pd.DataFrame:
     return df
 
 
-# def load_hospitalization_data_by_state(state, t0=None):
-#     data_generator = DataGenerator(specs[state])
-#     times = list(range(0, 100))
-#     observed_new_cases = _get_cases_for_times(data_generator, times)
-#
-#     if data_generator.disable_deaths:
-#         hospitalizations = np.zeros(len(times))
-#     else:
-#         hospitalizations = 0.12 * observed_new_cases
-#     return (times, hospitalizations, HospitalizationDataType.CURRENT_HOSPITALIZATIONS)
-
-
 # _________________Other methods to mock__________________
 # (
 #                 self.times,
 #                 self.observed_new_cases,
 #                 self.observed_new_deaths,
-#             ) = self.load_data.load_new_case_data_by_fips(
+#             ) = self.load_data.calc_new_case_data_by_region(
 #                 self.fips,
 #                 t0=self.ref_date,
 #                 include_testing_correction=self.include_testing_correction,
@@ -107,4 +94,4 @@ def create_synthetic_df(data_generator) -> pd.DataFrame:
 #                 self.hospital_times,
 #                 self.hospitalizations,
 #                 self.hospitalization_data_type,
-#             ) = load_hospitalization_data(self.fips, t0=self.ref_date)
+#             ) = hospitalization_data(self.fips, t0=self.ref_date)
