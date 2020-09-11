@@ -40,12 +40,12 @@ def test_run_new_model_incrementally():
     """
 
     # Run into the future using R(t) ramp starting sometime in the past
-    (start, today, ramp_end, future) = (200, 230, 250, 280)
+    (start, today, ramp_end, future) = (200, 230, 280, 320)
     t_list = np.linspace(start, future, future - start + 1)
 
     # Try changing these to get different possible futures
     nC_ramp_to = 8000.0
-    nC_future = 7000.0
+    nC_future = 15000.0
 
     # Need assumptions for R(t) and testing_rate(t) for the future as inputs
     data_tlist = np.linspace(start, today, today - start + 1)
