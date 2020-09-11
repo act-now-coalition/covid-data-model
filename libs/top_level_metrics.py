@@ -85,13 +85,13 @@ def calculate_metrics_for_timeseries(
         infection_rate_ci90 = model_data[schema.RT_INDICATOR_CI90]
         estimated_current_icu = model_data[schema.CURRENT_ICU]
 
-    cumulative_cases = series_utils.interpolate_stalled_values(data[CommonFields.CASES])
+    cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)
 
-    cumulative_positive_tests = series_utils.interpolate_stalled_values(
+    cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
         data[CommonFields.POSITIVE_TESTS]
     )
-    cumulative_negative_tests = series_utils.interpolate_stalled_values(
+    cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
         data[CommonFields.NEGATIVE_TESTS]
     )
     test_positivity = calculate_test_positivity(
@@ -128,6 +128,32 @@ def calculate_metrics_for_timeseries(
     return metrics, metric_summary
 
 
+def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
+
+    if cases.first_valid_index() is None:
+        return cases
+
+    cases = cases.copy()
+
+    filled_cases = series_utils.interpolate_stalled_and_missing_values(cases)
+
+    # Front filling all cases with 0s.  We're assuming all regions are accurately
+    # reporting the first day a new case occurs.  This will affect the first few cases
+    # in a timeseries, because it's smoothing over a full period, rather than just the first
+    # couple days of reported data.
+    filled_cases[: filled_cases.first_valid_index() - timedelta(days=1)] = 0
+
+    cases_daily = filled_cases.diff()
+    smoothed = series_utils.smooth_with_rolling_average(cases_daily)
+
+    # Replacing interpolated values with nones to not take overly strong opinions on
+    # what happened during the missing days, but allows the last value to be properly
+    # smoothed over a 7 day period.
+    smoothed.loc[cases.isna()] = np.nan
+
+    return smoothed
+
+
 def calculate_case_density(
     cases: pd.Series, population: int, smooth: int = 7, normalize_by: int = 100_000
 ) -> pd.Series:
@@ -142,9 +168,8 @@ def calculate_case_density(
     Returns:
         Population cases density.
     """
-    cases_daily = cases.diff()
-    smoothed = series_utils.smooth_with_rolling_average(cases_daily)
-    return smoothed / (population / normalize_by)
+    smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=smooth)
+    return smoothed_daily_cases / (population / normalize_by)
 
 
 def calculate_test_positivity(
@@ -191,8 +216,7 @@ def calculate_contact_tracers(
     Returns: Series aligned on the same index as cases.
     """
 
-    daily_cases = cases.diff()
-    smoothed_daily_cases = series_utils.smooth_with_rolling_average(daily_cases)
+    smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=7)
     return contact_tracers / (smoothed_daily_cases * contact_tracers_per_case)
 
 
