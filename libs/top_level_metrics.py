@@ -57,7 +57,7 @@ def calculate_metrics_for_timeseries(
     require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
-    assert len(timeseries.all_fips) == 1
+    assert timeseries.has_one_region()
     fips = latest[CommonFields.FIPS]
     population = latest[CommonFields.POPULATION]
 

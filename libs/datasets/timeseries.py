@@ -57,33 +57,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def states(self) -> List:
         return self.data[CommonFields.STATE].dropna().unique().tolist()
 
-    @property
-    def state_data(self) -> pd.DataFrame:
-        return self.get_subset(AggregationLevel.STATE).data
-
-    @property
-    def county_data(self) -> pd.DataFrame:
-        return self.get_subset(AggregationLevel.COUNTY).data
-
     def has_one_region(self) -> bool:
         return self.data[CommonFields.FIPS].nunique() == 1
-
-    def county_keys(self) -> List:
-        """Returns a list of all (country, state, county) combinations."""
-        # Check to make sure all values are county values
-        warnings.warn(
-            "Tell Tom you are using this, I'm going to delete it soon.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        county_values = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        county_data = self.data[county_values]
-
-        data = county_data.set_index(
-            [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.COUNTY, CommonFields.FIPS,]
-        )
-        values = set(data.index.to_list())
-        return sorted(values)
 
     def latest_values(self) -> pd.DataFrame:
         """Gets the most recent values.
@@ -197,16 +172,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             subset = _remove_padded_nans(subset, columns)
 
         return self.__class__(subset)
-
-    def get_records_for_fips(self, fips) -> List[dict]:
-        """Get data for FIPS code.
-
-        Args:
-            fips: 2 digits for a state or 5 digits for a county
-
-        Returns: List of dictionary records with NA values replaced to be None
-        """
-        return list(self.get_subset(fips=fips).yield_records())
 
     def get_data(
         self,
