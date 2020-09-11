@@ -24,6 +24,9 @@ CONTACT_TRACERS_PER_CASE = 5
 RT_TRUNCATION_DAYS = 7
 
 
+MAX_METRIC_LOOKBACK_DAYS = 7
+
+
 class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     # Note that the values of these fields must match the field names of the `Metrics`
     # class in `can_api_definition`
@@ -135,21 +138,13 @@ def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
 
     cases = cases.copy()
 
-    filled_cases = series_utils.interpolate_stalled_and_missing_values(cases)
-
     # Front filling all cases with 0s.  We're assuming all regions are accurately
     # reporting the first day a new case occurs.  This will affect the first few cases
     # in a timeseries, because it's smoothing over a full period, rather than just the first
     # couple days of reported data.
-    filled_cases[: filled_cases.first_valid_index() - timedelta(days=1)] = 0
-
-    cases_daily = filled_cases.diff()
-    smoothed = series_utils.smooth_with_rolling_average(cases_daily)
-
-    # Replacing interpolated values with nones to not take overly strong opinions on
-    # what happened during the missing days, but allows the last value to be properly
-    # smoothed over a 7 day period.
-    smoothed.loc[cases.isna()] = np.nan
+    cases[: cases.first_valid_index() - timedelta(days=1)] = 0
+    cases_daily = cases.diff()
+    smoothed = series_utils.smooth_with_rolling_average(cases_daily, window=smooth)
 
     return smoothed
 
@@ -190,7 +185,6 @@ def calculate_test_positivity(
     negative_smoothed = series_utils.smooth_with_rolling_average(
         daily_negative_tests, include_trailing_zeros=False
     )
-
     last_n_positive = positive_smoothed[-lag_lookback:]
     last_n_negative = negative_smoothed[-lag_lookback:]
 
@@ -230,37 +224,45 @@ def calculate_metrics_for_counties_in_state(state: str):
 
 
 def calculate_latest_metrics(
-    data: pd.DataFrame, icu_metric_details: Optional[ICUHeadroomMetricDetails]
+    data: pd.DataFrame,
+    icu_metric_details: Optional[ICUHeadroomMetricDetails],
+    max_lookback_days: int = MAX_METRIC_LOOKBACK_DAYS,
 ) -> Metrics:
     """Calculate latest metrics from top level metrics data.
 
     Args:
         data: Top level metrics timeseries data.
+        icu_metric_details: Optional details about the icu headroom metric.
+        max_lookback_days: Number of days back from the latest day to consider metrics.
 
     Returns: Metrics
     """
+    data = data.set_index(CommonFields.DATE)
     metrics = {}
+    latest_date = data.index[-1]
 
     # Get latest value from data where available.
     for field in MetricsFields:
         last_available = data[field].last_valid_index()
         if last_available is None:
             metrics[field] = None
+        # Limiting metrics surfaced to be metrics updated in the last `max_lookback_days` of
+        # data.
+        elif last_available <= latest_date - timedelta(days=max_lookback_days):
+            metrics[field] = None
         else:
             metrics[field] = data[field][last_available]
 
-    latest_rt = metrics[MetricsFields.INFECTION_RATE]
-
-    if pd.isna(latest_rt):
+    if not data[MetricsFields.INFECTION_RATE].any():
         return Metrics(**metrics)
 
     # Infection rate is handled differently - the infection rate surfaced is actually the value
     # `RT_TRUNCATION_DAYS` in the past.
-    data = data.set_index(CommonFields.DATE)
     last_rt_index = data[MetricsFields.INFECTION_RATE].last_valid_index()
     rt_index = last_rt_index + timedelta(days=-RT_TRUNCATION_DAYS)
+    stale_rt = last_rt_index <= latest_date - timedelta(days=max_lookback_days)
 
-    if rt_index not in data.index:
+    if stale_rt or rt_index not in data.index:
         metrics[MetricsFields.INFECTION_RATE] = None
         metrics[MetricsFields.INFECTION_RATE_CI90] = None
         return Metrics(**metrics)

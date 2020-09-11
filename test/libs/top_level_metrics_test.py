@@ -38,7 +38,7 @@ def test_calculate_case_density():
     )
 
     pd.testing.assert_series_equal(
-        density, _series_with_date_index([np.nan, 1, 1, 2, 3], dtype="float"),
+        density, _series_with_date_index([np.nan, 0.0, 1.0, 3.0, 5.0], dtype="float"),
     )
 
 
@@ -104,7 +104,7 @@ def test_top_level_metrics_basic():
         "2020-08-17,36,,,,,,0.5\n"
         "2020-08-18,36,10,0.1,0.04,,,0.5\n"
         "2020-08-19,36,,0.1,,,,0.5\n"
-        "2020-08-20,36,10,0.1,0.08,,,0.5\n"
+        "2020-08-20,36,,0.1,,,,0.5\n"
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -171,7 +171,7 @@ def test_top_level_metrics_with_rt():
         "2020-08-17,36,,,,1.1,.1\n"
         "2020-08-18,36,10,0.1,0.04,1.2,.1\n"
         "2020-08-19,36,,0.1,,1.1,.2\n"
-        "2020-08-20,36,10,0.1,0.08,1.1,.1\n"
+        "2020-08-20,36,,0.1,,1.1,.1\n"
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -208,6 +208,21 @@ def test_calculate_latest_rt():
     assert metrics.infectionRateCI90 == prev_rt_ci90
 
 
+def test_lookback_days():
+    prev_rt = 1.0
+    prev_rt_ci90 = 0.2
+    data = _build_metrics_df(
+        f"2020-08-12,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
+        f"2020-08-13,36,10,0.1,0.06,,\n"
+        "2020-08-20,,,,,,\n"
+    )
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
+    assert not metrics.caseDensity
+    assert not metrics.testPositivityRatio
+    assert not metrics.infectionRate
+    assert not metrics.infectionRateCI90
+
+
 def test_calculate_latest_rt_no_previous_row():
     data = _build_metrics_df("2020-08-20,36,10,0.1,0.08,2.0,0.2\n")
     metrics = top_level_metrics.calculate_latest_metrics(data, None)
@@ -238,5 +253,5 @@ def test_calculate_latest_different_latest_days():
         icuHeadroomRatio=None,
         icuHeadroomDetails=None,
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None, max_lookback_days=8)
     assert metrics == expected_metrics
