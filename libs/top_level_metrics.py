@@ -57,7 +57,7 @@ def calculate_metrics_for_timeseries(
     require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
-    assert len(timeseries.all_fips) == 1
+    assert timeseries.has_one_region()
     fips = latest[CommonFields.FIPS]
     population = latest[CommonFields.POPULATION]
 
@@ -212,15 +212,6 @@ def calculate_contact_tracers(
 
     smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=7)
     return contact_tracers / (smoothed_daily_cases * contact_tracers_per_case)
-
-
-# Example of running calculation for all counties in a state, using the latest dataset
-# to get all fips codes for that state
-def calculate_metrics_for_counties_in_state(state: str):
-    latest = combined_datasets.load_us_latest_dataset()
-    state_latest_values = latest.county.get_subset(state=state)
-    for fips in state_latest_values.all_fips:
-        yield calculate_top_level_metrics_for_fips(fips)
 
 
 def calculate_latest_metrics(
