@@ -1,4 +1,3 @@
-import warnings
 import pathlib
 from typing import List, Optional, Union, TextIO
 from typing import Sequence
@@ -53,37 +52,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def all_fips(self):
         return self.data.reset_index().fips.unique()
 
-    @property
-    def states(self) -> List:
-        return self.data[CommonFields.STATE].dropna().unique().tolist()
-
-    @property
-    def state_data(self) -> pd.DataFrame:
-        return self.get_subset(AggregationLevel.STATE).data
-
-    @property
-    def county_data(self) -> pd.DataFrame:
-        return self.get_subset(AggregationLevel.COUNTY).data
-
     def has_one_region(self) -> bool:
         return self.data[CommonFields.FIPS].nunique() == 1
-
-    def county_keys(self) -> List:
-        """Returns a list of all (country, state, county) combinations."""
-        # Check to make sure all values are county values
-        warnings.warn(
-            "Tell Tom you are using this, I'm going to delete it soon.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        county_values = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        county_data = self.data[county_values]
-
-        data = county_data.set_index(
-            [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.COUNTY, CommonFields.FIPS,]
-        )
-        values = set(data.index.to_list())
-        return sorted(values)
 
     def latest_values(self) -> pd.DataFrame:
         """Gets the most recent values.
@@ -172,7 +142,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         """Fetch a new TimeseriesDataset with a subset of the data in `self`.
 
         Some parameters are only used in ipython notebooks."""
-        row_binary_array = dataset_utils.make_binary_array(
+        rows_key = dataset_utils.make_rows_key(
             self.data,
             aggregation_level=aggregation_level,
             country=country,
@@ -183,57 +153,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             after=after,
             before=before,
         )
-        if columns:
-            return self.__class__(self.data.loc[row_binary_array, columns])
-        else:
-            return self.__class__(self.data.loc[row_binary_array, :])
+        columns_key = list(columns) if columns else slice(None, None, None)
+        return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
 
-    def get_columns_and_date_subset(
-        self, columns: List[str], min_range_with_some_value: bool
-    ) -> "TimeseriesDataset":
-        subset = self.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(drop=True)
-
-        if min_range_with_some_value:
-            subset = _remove_padded_nans(subset, columns)
-
-        return self.__class__(subset)
-
-    def get_records_for_fips(self, fips) -> List[dict]:
-        """Get data for FIPS code.
-
-        Args:
-            fips: 2 digits for a state or 5 digits for a county
-
-        Returns: List of dictionary records with NA values replaced to be None
-        """
-        return list(self.get_subset(fips=fips).yield_records())
-
-    def get_data(
-        self,
-        aggregation_level=None,
-        country=None,
-        fips: Optional[str] = None,
-        state: Optional[str] = None,
-        states: Optional[List[str]] = None,
-        on: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-        columns_slice: Optional[List[str]] = None,
-    ) -> pd.DataFrame:
-        rows_binary_array = dataset_utils.make_binary_array(
-            self.data,
-            aggregation_level=aggregation_level,
-            country=country,
-            fips=fips,
-            state=state,
-            states=states,
-            on=on,
-            after=after,
-            before=before,
-        )
-        if columns_slice is None:
-            columns_slice = slice(None, None, None)
-        return self.data.loc[rows_binary_array, columns_slice]
+    def remove_padded_nans(self, columns: List[str]):
+        return self.__class__(_remove_padded_nans(self.data, columns))
 
     @classmethod
     def from_source(

@@ -61,10 +61,10 @@ def update(summary_filename, wide_dates_filename):
         data_source_cls.SOURCE_NAME: data_source_cls.local()
         for data_source_cls in data_source_classes
     }
-    timeseries_dataset = combined_datasets.build_from_sources(
+    timeseries_dataset: TimeseriesDataset = combined_datasets.build_from_sources(
         TimeseriesDataset, data_sources, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER
     )
-    latest_dataset = combined_datasets.build_from_sources(
+    latest_dataset: LatestValuesDataset = combined_datasets.build_from_sources(
         LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(

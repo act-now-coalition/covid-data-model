@@ -163,11 +163,12 @@ def calculate_new_case_data_by_region(
     observed_new_deaths: array(int)
         Array of new deaths observed each day.
     """
-    assert not region_timeseries.data.empty
+    assert not region_timeseries.empty
     assert region_timeseries.has_one_region()
-    county_case_timeseries = region_timeseries.get_columns_and_date_subset(
-        columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
-    )
+    columns = [CommonFields.CASES, CommonFields.DEATHS]
+    county_case_timeseries = region_timeseries.get_subset(
+        columns=(TimeseriesDataset.INDEX_FIELDS + columns)
+    ).remove_padded_nans(columns)
     county_case_data = county_case_timeseries.data
 
     times_new = (county_case_data["date"] - t0).dt.days.iloc[1:]
