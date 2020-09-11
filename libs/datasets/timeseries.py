@@ -142,7 +142,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         """Fetch a new TimeseriesDataset with a subset of the data in `self`.
 
         Some parameters are only used in ipython notebooks."""
-        rows_key = dataset_utils.make_binary_array(
+        rows_key = dataset_utils.make_rows_key(
             self.data,
             aggregation_level=aggregation_level,
             country=country,
@@ -171,7 +171,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         before: Optional[str] = None,
         columns_slice: Optional[List[str]] = None,
     ) -> pd.DataFrame:
-        rows_binary_array = dataset_utils.make_binary_array(
+        rows_key = dataset_utils.make_rows_key(
             self.data,
             aggregation_level=aggregation_level,
             country=country,
@@ -184,7 +184,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         )
         if columns_slice is None:
             columns_slice = slice(None, None, None)
-        return self.data.loc[rows_binary_array, columns_slice]
+        return self.data.loc[rows_key, columns_slice]
 
     @classmethod
     def from_source(

@@ -267,9 +267,9 @@ def column_as_set(
 ):
     """Return values in selected rows and column of df.
 
-    Exists to call `make_binary_array` without listing all the parameters.
+    Exists to call `make_rows_key` without listing all the parameters.
     """
-    rows_binary_array = dataset_utils.make_binary_array(
+    rows_key = dataset_utils.make_rows_key(
         df,
         aggregation_level,
         country=None,
@@ -280,7 +280,7 @@ def column_as_set(
         after=after,
         before=before,
     )
-    return set(df.loc[rows_binary_array][column])
+    return set(df.loc[rows_key][column])
 
 
 def test_make_binary_array():
