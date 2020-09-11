@@ -1,14 +1,11 @@
 from dataclasses import dataclass
-from typing import Any
-from typing import Mapping
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import structlog
 from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
@@ -70,7 +67,7 @@ class RegionalInput:
         return self.region.fips
 
     @property
-    def latest(self) -> LatestValuesDataset:
+    def latest(self) -> Mapping[str, Any]:
         return self._combined_data.latest
 
     def inference_result(self) -> Mapping[str, Any]:
@@ -84,7 +81,7 @@ class RegionalInput:
         """
         return self._mle_fit_result
 
-    def ensemble_results(self) -> Optional[dict]:
+    def ensemble_results(self) -> Mapping[str, Any]:
         """Retrieves ensemble results for this region."""
         return self._ensemble_results
 
