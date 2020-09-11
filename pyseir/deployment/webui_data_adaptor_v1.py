@@ -8,6 +8,7 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
@@ -69,7 +70,7 @@ class RegionalInput:
         return self.region.fips
 
     @property
-    def latest(self):
+    def latest(self) -> LatestValuesDataset:
         return self._combined_data.latest
 
     def inference_result(self) -> Mapping[str, Any]:
@@ -100,15 +101,17 @@ class RegionalInput:
     def is_county(self):
         return self.region.is_county()
 
-    def get_timeseries(self) -> TimeseriesDataset:
-        return self._combined_data.get_timeseries()
+    @property
+    def timeseries(self) -> TimeseriesDataset:
+        return self._combined_data.timeseries
 
-    def get_state_timeseries(self) -> Optional[TimeseriesDataset]:
+    @property
+    def state_timeseries(self) -> Optional[TimeseriesDataset]:
         """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
         if self.region.is_state():
             return None
         else:
-            return self._state_combined_data.get_timeseries()
+            return self._state_combined_data.timeseries
 
 
 class WebUIDataAdaptorV1:
@@ -199,8 +202,8 @@ class WebUIDataAdaptorV1:
         # ICU PATCH
         icu_patch_ts = infer_icu.get_icu_timeseries(
             region=regional_input.region,
-            regional_combined_data=regional_input.get_timeseries(),
-            state_combined_data=regional_input.get_state_timeseries(),
+            regional_combined_data=regional_input.timeseries,
+            state_combined_data=regional_input.state_timeseries,
             weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES,
         )
 
