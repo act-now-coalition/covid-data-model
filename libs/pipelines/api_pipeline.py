@@ -92,7 +92,11 @@ def generate_metrics_and_latest_for_fips(
 
 
 def build_timeseries_for_fips(
-    intervention, us_latest, us_timeseries, model_output_dir, fips
+    intervention: Intervention,
+    us_latest: LatestValuesDataset,
+    us_timeseries: TimeseriesDataset,
+    model_output_dir: pathlib.Path,
+    fips,
 ) -> Optional[RegionSummaryWithTimeseries]:
     fips_latest = us_latest.get_record_for_fips(fips)
 

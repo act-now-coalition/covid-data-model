@@ -159,33 +159,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def remove_padded_nans(self, columns: List[str]):
         return self.__class__(_remove_padded_nans(self.data, columns))
 
-    def get_data(
-        self,
-        aggregation_level=None,
-        country=None,
-        fips: Optional[str] = None,
-        state: Optional[str] = None,
-        states: Optional[List[str]] = None,
-        on: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-        columns_slice: Optional[List[str]] = None,
-    ) -> pd.DataFrame:
-        rows_key = dataset_utils.make_rows_key(
-            self.data,
-            aggregation_level=aggregation_level,
-            country=country,
-            fips=fips,
-            state=state,
-            states=states,
-            on=on,
-            after=after,
-            before=before,
-        )
-        if columns_slice is None:
-            columns_slice = slice(None, None, None)
-        return self.data.loc[rows_key, columns_slice]
-
     @classmethod
     def from_source(
         cls, source: "DataSource", fill_missing_state: bool = True

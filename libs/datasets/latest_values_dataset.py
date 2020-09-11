@@ -136,23 +136,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return self.get_subset(aggregation_level=AggregationLevel.COUNTY)
 
     @property
-    def state_data(self) -> pd.DataFrame:
-        """Returns a new BedsDataset containing only state data."""
-
-        is_state = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        return self.data[is_state]
-
-    @property
-    def county_data(self) -> pd.DataFrame:
-        """Returns a new BedsDataset containing only county data."""
-        is_county = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        return self.data[is_county]
-
-    @property
-    def states(self):
-        return self.data.state.unique()
-
-    @property
     def all_fips(self) -> List[str]:
         return list(self.data.fips.unique())
 
