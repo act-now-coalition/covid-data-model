@@ -53,10 +53,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def all_fips(self):
         return self.data.reset_index().fips.unique()
 
-    @property
-    def states(self) -> List:
-        return self.data[CommonFields.STATE].dropna().unique().tolist()
-
     def has_one_region(self) -> bool:
         return self.data[CommonFields.FIPS].nunique() == 1
 
