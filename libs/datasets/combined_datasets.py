@@ -147,27 +147,17 @@ def get_us_latest_for_fips(fips) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
-def get_timeseries_for_fips(
-    fips: str, columns: List = None, min_range_with_some_value: bool = False
-) -> TimeseriesDataset:
+def get_timeseries_for_fips(fips: str, columns: List = None) -> TimeseriesDataset:
     """Gets timeseries for a specific FIPS code.
 
     Args:
         fips: FIPS code.  Can be county (5 character) or state (2 character) code.
         columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
-            timeseries. Only applicable when columns are specified.
 
     Returns: Timeseries for fips
     """
-
-    state_ts = load_us_timeseries_dataset().get_subset(None, fips=fips)
-    if columns:
-        return state_ts.get_columns_and_date_subset(
-            columns, min_range_with_some_value=min_range_with_some_value
-        )
-
-    return state_ts
+    fips_ts = load_us_timeseries_dataset().get_subset(None, fips=fips, columns=columns)
+    return fips_ts
 
 
 def build_from_sources(

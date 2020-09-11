@@ -269,7 +269,11 @@ def make_binary_array(
         query_parts.append("date > @after")
     if before:
         query_parts.append("date < @before")
-    return data.eval(" and ".join(query_parts))
+
+    if query_parts:
+        return data.eval(" and ".join(query_parts))
+    else:
+        return slice(None, None, None)
 
 
 def fips_index_geo_data(df: pd.DataFrame) -> pd.DataFrame:

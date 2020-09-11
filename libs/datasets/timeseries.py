@@ -1,4 +1,3 @@
-import warnings
 import pathlib
 from typing import List, Optional, Union, TextIO
 from typing import Sequence
@@ -143,7 +142,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         """Fetch a new TimeseriesDataset with a subset of the data in `self`.
 
         Some parameters are only used in ipython notebooks."""
-        row_binary_array = dataset_utils.make_binary_array(
+        rows_key = dataset_utils.make_binary_array(
             self.data,
             aggregation_level=aggregation_level,
             country=country,
@@ -154,20 +153,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             after=after,
             before=before,
         )
-        if columns:
-            return self.__class__(self.data.loc[row_binary_array, columns])
-        else:
-            return self.__class__(self.data.loc[row_binary_array, :])
+        columns_key = list(columns) if columns else slice(None, None, None)
+        return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
 
-    def get_columns_and_date_subset(
-        self, columns: List[str], min_range_with_some_value: bool
-    ) -> "TimeseriesDataset":
-        subset = self.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(drop=True)
-
-        if min_range_with_some_value:
-            subset = _remove_padded_nans(subset, columns)
-
-        return self.__class__(subset)
+    def remove_padded_nans(self, columns: List[str]):
+        return self.__class__(_remove_padded_nans(self.data, columns))
 
     def get_data(
         self,
