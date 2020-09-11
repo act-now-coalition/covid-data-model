@@ -1,6 +1,8 @@
 import warnings
 import pathlib
 from typing import List, Optional, Union, TextIO
+from typing import Sequence
+
 import pandas as pd
 import structlog
 from covidactnow.datapublic import common_df
@@ -165,6 +167,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         on: Optional[str] = None,
         after: Optional[str] = None,
         before: Optional[str] = None,
+        columns: Sequence[str] = tuple(),
     ) -> "TimeseriesDataset":
         """Fetch a new TimeseriesDataset with a subset of the data in `self`.
 
@@ -180,7 +183,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             after=after,
             before=before,
         )
-        return self.__class__(self.data.loc[row_binary_array, :])
+        if columns:
+            return self.__class__(self.data.loc[row_binary_array, columns])
+        else:
+            return self.__class__(self.data.loc[row_binary_array, :])
 
     def get_columns_and_date_subset(
         self, columns: List[str], min_range_with_some_value: bool

@@ -16,7 +16,6 @@ from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -163,29 +162,6 @@ def get_timeseries_for_fips(
     """
 
     state_ts = load_us_timeseries_dataset().get_subset(None, fips=fips)
-    if columns:
-        return state_ts.get_columns_and_date_subset(
-            columns, min_range_with_some_value=min_range_with_some_value
-        )
-
-    return state_ts
-
-
-def get_timeseries_for_state(
-    state: str, columns: List = None, min_range_with_some_value: bool = False
-) -> TimeseriesDataset:
-    """Gets timeseries for a specific state abbreviation.
-
-    Args:
-        state: 2-letter state code
-        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
-            timeseries. Only applicable when columns are specified.
-
-    Returns: Timeseries for state
-    """
-
-    state_ts = load_us_timeseries_dataset().get_subset(AggregationLevel.STATE, state=state)
     if columns:
         return state_ts.get_columns_and_date_subset(
             columns, min_range_with_some_value=min_range_with_some_value
