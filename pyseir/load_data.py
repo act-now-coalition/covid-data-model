@@ -1,6 +1,7 @@
 import os
 import logging
 import urllib.request
+from typing import Optional
 from typing import Tuple
 
 import requests
@@ -190,15 +191,12 @@ def calculate_new_case_data_by_region(
 
 
 @lru_cache(maxsize=None)
-def get_hospitalization_data():
+def get_hospitalization_data() -> TimeseriesDataset:
     """
     Since we're using this data for hospitalized data only, only returning
     values with hospitalization data.  I think as the use cases of this data source
     expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
     hospitalization data.
-    Returns
-    -------
-    TimeseriesDataset
     """
     # TODO(tom): Change this function to accept the combined TimeseriesDataset as a parameter
     # and call it once so the cache can be removed.
@@ -209,34 +207,29 @@ def get_hospitalization_data():
 
 
 def calculate_hospitalization_data(
-    hospitalization_df: pd.DataFrame,
+    hospitalization_dataset: RegionalTimeseriesDataset,
     t0: datetime,
     category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
-):
+) -> Tuple[Optional[np.array], Optional[np.array], Optional[HospitalizationDataType]]:
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
     tiny so we just make downstream easier to work with by clipping.
 
-    Parameters
-    ----------
-    hospitalization_df: pd.DataFrame
-        A DataFrame containing only one region of data returned by `get_hospitalization_data`
-    t0: datetime
-        Datetime to offset by.
+    Args:
+    hospitalization_df: one region of data returned by `get_hospitalization_data`
+    t0: Datetime to offset by.
     category: HospitalizationCategory
 
-    Returns
-    -------
-    relative_days: array(float)
-        List of float days since t0 for the hospitalization data.
-    observed_hospitalizations: array(int)
-        Array of new cases observed each day.
-    type: HospitalizationDataType
-        Specifies cumulative or current hospitalizations.
+    Returns:
+        relative_days: Array of float days since t0 for the hospitalization data.
+        observed_hospitalizations: Array of int new cases observed each day.
+        type: Specifies cumulative or current hospitalizations.
     """
-    if len(hospitalization_df) == 0:
+    if hospitalization_dataset.empty:
         return None, None, None
+
+    hospitalization_df = hospitalization_dataset.data
 
     if (hospitalization_df[f"current_{category}"] > 0).any():
         hospitalization_df = hospitalization_df[hospitalization_df[f"current_{category}"].notnull()]
