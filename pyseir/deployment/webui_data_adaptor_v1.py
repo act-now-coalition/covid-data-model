@@ -6,7 +6,7 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
-from libs.datasets.timeseries import RegionalTimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
 from pyseir.deployment import model_to_observed_shim as shim
@@ -99,11 +99,11 @@ class RegionalInput:
         return self.region.is_county()
 
     @property
-    def timeseries(self) -> RegionalTimeseriesDataset:
+    def timeseries(self) -> OneRegionTimeseriesDataset:
         return self._combined_data.timeseries
 
     @property
-    def state_timeseries(self) -> Optional[RegionalTimeseriesDataset]:
+    def state_timeseries(self) -> Optional[OneRegionTimeseriesDataset]:
         """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
         if self.region.is_state():
             return None

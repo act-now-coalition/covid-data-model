@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import iminuit
 from libs import pipeline
-from libs.datasets.timeseries import RegionalTimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 from pyseir.inference import model_plotting
 from pyseir.models import suppression_policies
@@ -42,13 +42,13 @@ class RegionalInput:
     region: pipeline.Region
 
     _combined_data: pipeline.RegionalCombinedData
-    _hospitalization_dataset: RegionalTimeseriesDataset
+    _hospitalization_dataset: OneRegionTimeseriesDataset
     _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_state_region(region: pipeline.Region) -> "RegionalInput":
         """Creates a RegionalInput for given state region."""
-        hospitalization_dataset = load_data.get_hospitalization_data().get_regional_subset(
+        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(
             fips=region.fips
         )
         assert region.is_state()
@@ -68,7 +68,7 @@ class RegionalInput:
             region: a sub-state region such as a county
             state_fitter: ModelFitter for the state containing region
         """
-        hospitalization_dataset = load_data.get_hospitalization_data().get_regional_subset(
+        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(
             fips=region.fips
         )
         assert region.is_county()

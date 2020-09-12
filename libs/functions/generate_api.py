@@ -18,7 +18,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import us_state_abbrev
 from libs.datasets import can_model_output_schema as can_schema
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
-from libs.datasets.timeseries import RegionalTimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import get_can_projection
 
@@ -133,7 +133,7 @@ def generate_region_summary(
 
 def generate_region_timeseries(
     region_summary: RegionSummary,
-    timeseries: RegionalTimeseriesDataset,
+    timeseries: OneRegionTimeseriesDataset,
     metrics_timeseries,
     model_output: Optional[CANPyseirLocationOutput],
 ) -> RegionSummaryWithTimeseries:

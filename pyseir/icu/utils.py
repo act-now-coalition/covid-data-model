@@ -23,7 +23,9 @@ def calculate_case_based_weights() -> dict:
         after=cutoff_date, aggregation_level=AggregationLevel.COUNTY
     )
 
-    last_month_cum_cases = ts.data.groupby("fips")[CommonFields.CASES].apply(_quantile_range)
+    last_month_cum_cases = ts.data.groupby("fips")[CommonFields.CASES].apply(
+        _quantile_range
+    )  # groupby region
     last_month_cum_cases.name = "summed_cases"
 
     df = last_month_cum_cases.reset_index().dropna()

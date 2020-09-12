@@ -18,6 +18,9 @@ from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
 
 
+_log = structlog.get_logger()
+
+
 class DuplicateDataException(Exception):
     def __init__(self, message, duplicates):
         self.message = message
@@ -28,9 +31,24 @@ class DuplicateDataException(Exception):
         return f"DuplicateDataException({self.message})"
 
 
-@dataclass
-class RegionalTimeseriesDataset:
+@dataclass(frozen=True)
+class OneRegionTimeseriesDataset:
+    """A set of timeseries with values from one region."""
+
+    # Do not make an assumptions about a FIPS or locationID column in the DataFrame.
     data: pd.DataFrame
+    # The region is not an attribute at this time because it simplifies making instances and
+    # code that needs the region of an instance already has it.
+
+    def __post_init__(self):
+        region_count = self.data[CommonFields.FIPS].nunique()
+        if region_count == 0:
+            _log.warning(f"Creating {self.__class__} with zero regions")
+        elif region_count != 1:
+            raise ValueError(
+                f"Does not have exactly one region: "
+                f"{self.data[CommonFields.FIPS].value_counts()}"
+            )
 
     @property
     def empty(self):
@@ -49,12 +67,12 @@ class RegionalTimeseriesDataset:
     def get_subset(self, after=None, columns=tuple()):
         rows_key = dataset_utils.make_rows_key(self.data, after=after,)
         columns_key = list(columns) if columns else slice(None, None, None)
-        return RegionalTimeseriesDataset(
+        return OneRegionTimeseriesDataset(
             self.data.loc[rows_key, columns_key].reset_index(drop=True)
         )
 
     def remove_padded_nans(self, columns: List[str]):
-        return RegionalTimeseriesDataset(_remove_padded_nans(self.data, columns))
+        return OneRegionTimeseriesDataset(_remove_padded_nans(self.data, columns))
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -187,11 +205,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         columns_key = list(columns) if columns else slice(None, None, None)
         return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
 
-    def get_regional_subset(
+    def get_one_region(
         self, fips: str, columns: Sequence[str] = tuple()
-    ) -> RegionalTimeseriesDataset:
+    ) -> OneRegionTimeseriesDataset:
         assert fips  # Must be set to a non-empty value
-        return RegionalTimeseriesDataset(data=self.get_subset(fips=fips, columns=columns).data)
+        return OneRegionTimeseriesDataset(data=self.get_subset(fips=fips, columns=columns).data)
 
     @classmethod
     def from_source(
@@ -236,7 +254,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         no_fips = data[CommonFields.FIPS].isnull()
         if no_fips.any():
-            structlog.get_logger().warning(
+            _log.warning(
                 "Dropping rows without FIPS", source=str(source), rows=repr(data.loc[no_fips])
             )
             data = data.loc[~no_fips]

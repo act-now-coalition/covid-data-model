@@ -19,7 +19,7 @@ import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import RegionalTimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 import pyseir.utils
 
@@ -137,7 +137,7 @@ def cache_public_implementations_data():
 
 
 def calculate_new_case_data_by_region(
-    region_timeseries: RegionalTimeseriesDataset,
+    region_timeseries: OneRegionTimeseriesDataset,
     t0: datetime,
     include_testing_correction: bool = False,
     testing_correction_smoothing_tau: float = 5,
@@ -200,14 +200,14 @@ def get_hospitalization_data() -> TimeseriesDataset:
     """
     # TODO(tom): Change this function to accept the combined TimeseriesDataset as a parameter
     # and call it once so the cache can be removed.
-    data = combined_datasets.load_us_timeseries_dataset().data
+    data = combined_datasets.load_us_timeseries_dataset().data  # processing rows, ignoring indexes
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
     return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
 
 
 def calculate_hospitalization_data(
-    hospitalization_dataset: RegionalTimeseriesDataset,
+    hospitalization_dataset: OneRegionTimeseriesDataset,
     t0: datetime,
     category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
 ) -> Tuple[Optional[np.array], Optional[np.array], Optional[HospitalizationDataType]]:
@@ -255,7 +255,7 @@ def calculate_hospitalization_data(
 
 
 def calculate_new_test_data_by_region(
-    timeseries_dataset: RegionalTimeseriesDataset,
+    timeseries_dataset: OneRegionTimeseriesDataset,
     t0: datetime,
     smoothing_tau=5,
     correction_threshold=5,
