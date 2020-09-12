@@ -1,8 +1,12 @@
 import pytest
 import pandas as pd
+import structlog
 
 from libs.datasets import timeseries
 from test.dataset_utils_test import read_csv_and_index_fips_date
+
+# turns all warnings into errors for this module
+pytestmark = pytest.mark.filterwarnings("error")
 
 
 @pytest.mark.parametrize("include_na_at_end", [False, True])
@@ -42,3 +46,28 @@ def test_has_one_region():
         ).reset_index()
     )
     assert ts.has_one_region() == True
+
+
+def test_one_region_dataset():
+    ts = timeseries.OneRegionTimeseriesDataset(
+        read_csv_and_index_fips_date(
+            "fips,county,aggregate_level,date,m1,m2\n" "97111,Bar County,county,2020-04-02,2,\n"
+        ).reset_index()
+    )
+    assert ts.has_one_region() == True
+
+    with pytest.raises(ValueError):
+        timeseries.OneRegionTimeseriesDataset(
+            read_csv_and_index_fips_date(
+                "fips,county,aggregate_level,date,m1,m2\n"
+                "97111,Bar County,county,2020-04-02,2,\n"
+                "97222,Foo County,county,2020-04-01,,10\n"
+            ).reset_index()
+        )
+
+    with structlog.testing.capture_logs() as logs:
+        ts = timeseries.OneRegionTimeseriesDataset(
+            read_csv_and_index_fips_date("fips,county,aggregate_level,date,m1,m2\n").reset_index()
+        )
+    assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
+    assert ts.empty

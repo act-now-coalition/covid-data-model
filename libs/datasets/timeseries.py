@@ -43,7 +43,7 @@ class OneRegionTimeseriesDataset:
     def __post_init__(self):
         region_count = self.data[CommonFields.FIPS].nunique()
         if region_count == 0:
-            _log.warning(f"Creating {self.__class__} with zero regions")
+            _log.warning(f"Creating {self.__class__.__name__} with zero regions")
         elif region_count != 1:
             raise ValueError(
                 f"Does not have exactly one region: "
