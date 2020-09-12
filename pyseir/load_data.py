@@ -1,6 +1,8 @@
 import os
 import logging
 import urllib.request
+from typing import Tuple
+
 import requests
 import re
 import io
@@ -16,6 +18,7 @@ import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import RegionalTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 import pyseir.utils
 
@@ -133,35 +136,26 @@ def cache_public_implementations_data():
 
 
 def calculate_new_case_data_by_region(
-    region_timeseries: TimeseriesDataset,
+    region_timeseries: RegionalTimeseriesDataset,
     t0: datetime,
-    include_testing_correction=False,
-    testing_correction_smoothing_tau=5,
-):
+    include_testing_correction: bool = False,
+    testing_correction_smoothing_tau: float = 5,
+) -> Tuple[np.array, np.array, np.array]:
     """
     Calculate new cases from combined data.
 
-    Parameters
-    ----------
-    region_timeseries: TimeseriesDataset
-        Combined data for a region
-    t0: datetime
-        Datetime to offset by.
-    include_testing_correction: bool
-        If True, include a correction for new expanded or decreaseed test
-        coverage.
-    testing_correction_smoothing_tau: float
-        expected_positives_from_test_increase is smoothed based on an
-        exponentially weighted moving average of decay factor specified here.
+    Args:
+        region_timeseries: Combined data for a region
+        t0: Datetime to offset by.
+        include_testing_correction: If True, include a correction for new expanded or decreaseed
+          test coverage.
+        testing_correction_smoothing_tau: expected_positives_from_test_increase is smoothed based
+          on an exponentially weighted moving average of decay factor specified here.
 
-    Returns
-    -------
-    times: array(float)
-        List of float days since t0 for the case and death counts below
-    observed_new_cases: array(int)
-        Array of new cases observed each day.
-    observed_new_deaths: array(int)
-        Array of new deaths observed each day.
+    Returns:
+        times: List of float days since t0 for the case and death counts below
+        observed_new_cases: Array of integer new cases observed each day.
+        observed_new_deaths: Array of integer new deaths observed each day.
     """
     assert not region_timeseries.empty
     assert region_timeseries.has_one_region()
@@ -268,20 +262,21 @@ def calculate_hospitalization_data(
 
 
 def calculate_new_test_data_by_region(
-    timeseries_dataset: TimeseriesDataset, t0: datetime, smoothing_tau=5, correction_threshold=5
+    timeseries_dataset: RegionalTimeseriesDataset,
+    t0: datetime,
+    smoothing_tau=5,
+    correction_threshold=5,
 ):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
     back as far as case data.
-    Parameters
-    ----------
-    timeseries_dataset
-        Data for the region
-    t0: datetime
-        Reference datetime to use.
-    Returns
-    -------
+
+    Args:
+        timeseries_dataset: Data for the region
+        t0: Reference datetime to use.
+
+    Returns:
     df: pd.DataFrame
         DataFrame containing columns:
         - 'date',

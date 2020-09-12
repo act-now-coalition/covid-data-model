@@ -82,7 +82,7 @@ class RegionalCombinedData:
 
     latest: Dict[str, Any]
 
-    timeseries: timeseries.TimeseriesDataset
+    timeseries: timeseries.RegionalTimeseriesDataset
 
     @staticmethod
     def from_region(region: Region) -> "RegionalCombinedData":
@@ -91,7 +91,7 @@ class RegionalCombinedData:
         region_latest = us_latest.get_record_for_fips(region.fips)
 
         us_timeseries = combined_datasets.load_us_timeseries_dataset()
-        region_timeseries = us_timeseries.get_subset(fips=region.fips)
+        region_timeseries = us_timeseries.get_regional_subset(fips=region.fips)
 
         return RegionalCombinedData(
             region=region, latest=region_latest, timeseries=region_timeseries

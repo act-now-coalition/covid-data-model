@@ -10,7 +10,7 @@ from api import can_api_definition
 from libs import series_utils
 from libs.datasets import combined_datasets
 from libs.datasets import can_model_output_schema as schema
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.timeseries import RegionalTimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs import icu_headroom_metric
 
@@ -42,7 +42,7 @@ def calculate_top_level_metrics_for_fips(fips: str):
     timeseries = combined_datasets.load_us_timeseries_dataset()
     latest = combined_datasets.load_us_latest_dataset()
 
-    fips_timeseries = timeseries.get_subset(fips=fips)
+    fips_timeseries = timeseries.get_regional_subset(fips=fips)
     fips_record = latest.get_record_for_fips(fips)
 
     # not sure of return type for now, could be a dictionary, or maybe it would be more effective
@@ -51,7 +51,7 @@ def calculate_top_level_metrics_for_fips(fips: str):
 
 
 def calculate_metrics_for_timeseries(
-    timeseries: TimeseriesDataset,
+    timeseries: RegionalTimeseriesDataset,
     latest: dict,
     model_output: Optional[CANPyseirLocationOutput],
     require_recent_icu_data: bool = True,

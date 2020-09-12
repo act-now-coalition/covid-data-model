@@ -1,4 +1,6 @@
 import pathlib
+from dataclasses import dataclass
+from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Sequence
 
@@ -24,6 +26,35 @@ class DuplicateDataException(Exception):
 
     def __str__(self):
         return f"DuplicateDataException({self.message})"
+
+
+@dataclass
+class RegionalTimeseriesDataset:
+    data: pd.DataFrame
+
+    @property
+    def empty(self):
+        return self.data.empty
+
+    def has_one_region(self) -> bool:
+        return True
+
+    def yield_records(self) -> Iterable[dict]:
+        # Copied from dataset_base.py
+        # It'd be faster to use self.data.itertuples or find a way to avoid yield_records, but that
+        # needs larger changes in code calling this.
+        for idx, row in self.data.iterrows():
+            yield row.where(pd.notnull(row), None).to_dict()
+
+    def get_subset(self, after=None, columns=tuple()):
+        rows_key = dataset_utils.make_rows_key(self.data, after=after,)
+        columns_key = list(columns) if columns else slice(None, None, None)
+        return RegionalTimeseriesDataset(
+            self.data.loc[rows_key, columns_key].reset_index(drop=True)
+        )
+
+    def remove_padded_nans(self, columns: List[str]):
+        return RegionalTimeseriesDataset(_remove_padded_nans(self.data, columns))
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -156,8 +187,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         columns_key = list(columns) if columns else slice(None, None, None)
         return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
 
-    def remove_padded_nans(self, columns: List[str]):
-        return self.__class__(_remove_padded_nans(self.data, columns))
+    def get_regional_subset(
+        self, fips: str, columns: Sequence[str] = tuple()
+    ) -> RegionalTimeseriesDataset:
+        assert fips  # Must be set to a non-empty value
+        return RegionalTimeseriesDataset(data=self.get_subset(fips=fips, columns=columns).data)
 
     @classmethod
     def from_source(

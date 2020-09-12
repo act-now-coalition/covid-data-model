@@ -20,6 +20,7 @@ from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
+from libs.datasets.timeseries import RegionalTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
@@ -147,7 +148,7 @@ def get_us_latest_for_fips(fips) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
-def get_timeseries_for_fips(fips: str, columns: List = None) -> TimeseriesDataset:
+def get_timeseries_for_fips(fips: str, columns: List = None) -> RegionalTimeseriesDataset:
     """Gets timeseries for a specific FIPS code.
 
     Args:
@@ -156,7 +157,7 @@ def get_timeseries_for_fips(fips: str, columns: List = None) -> TimeseriesDatase
 
     Returns: Timeseries for fips
     """
-    fips_ts = load_us_timeseries_dataset().get_subset(None, fips=fips, columns=columns)
+    fips_ts = load_us_timeseries_dataset().get_regional_subset(fips=fips, columns=columns)
     return fips_ts
 
 

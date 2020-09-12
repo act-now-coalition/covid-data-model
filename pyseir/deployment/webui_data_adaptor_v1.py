@@ -6,6 +6,7 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
+from libs.datasets.timeseries import RegionalTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from libs.pipeline import RegionalCombinedData
@@ -99,11 +100,11 @@ class RegionalInput:
         return self.region.is_county()
 
     @property
-    def timeseries(self) -> TimeseriesDataset:
+    def timeseries(self) -> RegionalTimeseriesDataset:
         return self._combined_data.timeseries
 
     @property
-    def state_timeseries(self) -> Optional[TimeseriesDataset]:
+    def state_timeseries(self) -> Optional[RegionalTimeseriesDataset]:
         """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
         if self.region.is_state():
             return None
