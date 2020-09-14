@@ -674,21 +674,15 @@ class ModelFitter:
         self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     @classmethod
-    def run_for_region(cls, regional_input: RegionalInput, n_retries=3):
+    def run_for_region(cls, regional_input: RegionalInput, n_retries=3) -> Optional["ModelFitter"]:
         """
         Run the model fitter for a regional_input.
 
-        Parameters
-        ----------
-        region: pipeline.Region
-        n_retries: int
-            The model fitter is stochastic in nature and a seed cannot be set.
-            This is a bandaid until more sophisticated retries can be
-            implemented.
-
-        Returns
-        -------
-        : ModelFitter
+        Args:
+            regional_input
+            n_retries: The model fitter is stochastic in nature and a seed cannot be set.
+                This is a bandaid until more sophisticated retries can be
+                implemented.
         """
         # Assert that there are some cases for counties
         if regional_input.region.is_county():

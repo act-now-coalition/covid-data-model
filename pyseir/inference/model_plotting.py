@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 
 from pyseir.load_data import HospitalizationDataType  # Do we still need this?
 from pyseir.utils import RunArtifact
+import pyseir.utils
 
 
 def plot_fitting_results(result: "pyseir.inference.ModelFitter") -> None:
     """
     Entry point from model_fitter. Generate and save all PySEIR related Figures.
     """
-    output_file = result.region.run_artifact_path_to_write(RunArtifact.MLE_FIT_REPORT)
+    output_file = pyseir.utils.get_run_artifact_path(result.region, RunArtifact.MLE_FIT_REPORT)
 
     # Save the mle fitter
     mle_fig = result.mle_model.plot_results()
