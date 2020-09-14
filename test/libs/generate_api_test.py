@@ -11,8 +11,10 @@ from api.can_api_definition import (
 from libs.datasets import can_model_output_schema as schema
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api
+from libs.pipeline import Region
 from libs.pipelines import api_pipeline
 
 
@@ -20,6 +22,7 @@ from libs.pipelines import api_pipeline
     "include_projections,rt_null", [(True, True), (True, False), (False, False)]
 )
 def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_path, nyc_fips):
+    nyc_region = Region.from_fips(nyc_fips)
 
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
@@ -46,7 +49,7 @@ def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_p
         )
         intervention = Intervention.STRONG_INTERVENTION
 
-    fips_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
+    fips_timeseries = us_timeseries.get_one_region(nyc_region)
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest_for_fips(
         fips_timeseries, nyc_latest, model_output
     )
@@ -96,12 +99,13 @@ def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_p
 
 @pytest.mark.parametrize("include_projections", [True])
 def test_generate_timeseries_for_fips(include_projections, nyc_model_output_path, nyc_fips):
+    nyc_region = Region.from_fips(nyc_fips)
 
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
-    nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
+    nyc_timeseries = us_timeseries.get_one_region(nyc_region)
     intervention = Intervention.OBSERVED_INTERVENTION
     model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest_for_fips(

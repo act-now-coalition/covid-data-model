@@ -1,7 +1,9 @@
 import pytest
 
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
+from libs.pipeline import Region
 from libs.pipelines import api_pipeline
 
 NYC_FIPS = "36061"
@@ -41,12 +43,13 @@ def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, i
 
 
 def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_path):
+    nyc_region = Region.from_fips(nyc_fips)
     county_output = tmp_path / "county"
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     nyc_latest = us_latest.get_subset(None, fips=nyc_fips)
-    nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
+    nyc_timeseries = TimeseriesDataset(us_timeseries.get_one_region(nyc_region).data)
     all_timeseries_api = api_pipeline.run_on_all_fips_for_intervention(
         nyc_latest, nyc_timeseries, Intervention.STRONG_INTERVENTION, nyc_model_output_path.parent
     )
@@ -71,10 +74,11 @@ def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_
 
 def test_latest_values_no_unknown_fips(tmp_path):
     unknown_fips = "69999"
+    region = Region.from_fips(unknown_fips)
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
     latest = us_latest.get_subset(fips=unknown_fips)
-    timeseries = us_timeseries.get_subset(fips=unknown_fips)
+    timeseries = TimeseriesDataset(us_timeseries.get_one_region(region).data)
     all_timeseries_api = api_pipeline.run_on_all_fips_for_intervention(
         latest, timeseries, Intervention.OBSERVED_INTERVENTION, tmp_path
     )
@@ -82,10 +86,11 @@ def test_latest_values_no_unknown_fips(tmp_path):
 
 
 def test_output_no_timeseries_rows(nyc_fips, tmp_path):
+    nyc_region = Region.from_fips(nyc_fips)
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
     latest = us_latest.get_subset(fips=nyc_fips)
-    timeseries = us_timeseries.get_subset(fips=nyc_fips)
+    timeseries = TimeseriesDataset(us_timeseries.get_one_region(nyc_region).data)
 
     # Clearing out all rows, testing that a region with no rows still has an API output.
     timeseries.data = timeseries.data.loc[timeseries.data.fips.isna()]

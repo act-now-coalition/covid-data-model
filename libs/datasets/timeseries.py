@@ -18,6 +18,7 @@ from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
 from libs.pipeline import Region
+import pandas.core.groupby.generic
 
 _log = structlog.get_logger()
 
@@ -317,6 +318,13 @@ class MultiRegionTimeseriesDataset:
         rows_key = self.data[CommonFields.FIPS] == region.fips
         columns_key = list(columns) if columns else slice(None, None, None)
         return OneRegionTimeseriesDataset(data=self.data.loc[rows_key, columns_key])
+
+    def get_counties(self) -> "MultiRegionTimeseriesDataset":
+        rows_key = dataset_utils.make_rows_key(self.data, aggregation_level=AggregationLevel.COUNTY)
+        return MultiRegionTimeseriesDataset(self.data.loc[rows_key, :].reset_index(drop=True))
+
+    def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
+        return self.data.groupby(CommonFields.FIPS)
 
 
 def _remove_padded_nans(df, columns):

@@ -32,7 +32,7 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         output = CANPyseirLocationOutput.load_from_path(path)
 
         latest = combined_datasets.get_us_latest_for_fips(fips)
-        timeseries = combined_datasets.get_timeseries_for_fips(fips)
+        timeseries = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
         summary = generate_api.generate_region_summary(latest, None, output)
         timeseries_output = generate_api.generate_region_timeseries(summary, timeseries, [], output)
         assert timeseries_output

@@ -19,11 +19,13 @@ from libs import top_level_metrics
 from libs.datasets import CommonFields
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
 from libs.functions import get_can_projection
+from libs.pipeline import Region
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
@@ -97,11 +99,12 @@ def generate_metrics_and_latest_for_fips(
 def build_timeseries_for_fips(
     intervention: Intervention,
     us_latest: LatestValuesDataset,
-    us_timeseries: TimeseriesDataset,
+    fips_timeseries: OneRegionTimeseriesDataset,
     model_output_dir: pathlib.Path,
     fips,
 ) -> Optional[RegionSummaryWithTimeseries]:
     fips_latest = us_latest.get_record_for_fips(fips)
+    region = Region.from_fips(fips)
 
     if intervention is Intervention.SELECTED_INTERVENTION:
         state = fips_latest[CommonFields.STATE]
@@ -117,7 +120,6 @@ def build_timeseries_for_fips(
         return None
 
     try:
-        fips_timeseries = us_timeseries.get_one_region(fips=fips)
         metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
             fips_timeseries, fips_latest, model_output
         )

@@ -153,19 +153,6 @@ def get_us_latest_for_fips(fips) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
-def get_timeseries_for_fips(fips: str, columns: List = None) -> OneRegionTimeseriesDataset:
-    """Gets timeseries for a specific FIPS code.
-
-    Args:
-        fips: FIPS code.  Can be county (5 character) or state (2 character) code.
-        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-
-    Returns: Timeseries for fips
-    """
-    fips_ts = load_us_timeseries_dataset().get_one_region(Region.from_fips(fips), columns=columns)
-    return fips_ts
-
-
 def build_from_sources(
     target_dataset_cls: Type[dataset_base.DatasetBase],
     loaded_data_sources: Mapping[str, DataSource],
@@ -386,7 +373,7 @@ class RegionalData:
         region_latest = us_latest.get_record_for_fips(region.fips)
 
         us_timeseries = load_us_timeseries_dataset()
-        region_timeseries = us_timeseries.get_one_region(fips=region.fips)
+        region_timeseries = us_timeseries.get_one_region(region)
 
         return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
 

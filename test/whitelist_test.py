@@ -2,6 +2,7 @@ import pytest
 from covidactnow.datapublic.common_test_helpers import to_dict
 from libs import pipeline
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from pyseir.inference.whitelist import WhitelistGenerator
@@ -15,8 +16,8 @@ pytestmark = pytest.mark.filterwarnings("error")
 
 @pytest.mark.slow
 def test_all_data_smoke_test():
-    input_timeseries = combined_datasets.load_us_timeseries_dataset().get_subset(state="AL")
-    df = WhitelistGenerator().generate_whitelist(input_timeseries)
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    df = WhitelistGenerator().generate_whitelist(us_timeseries)
     assert not df.empty
 
 
@@ -27,9 +28,10 @@ def test_skip_gaps_in_cases_and_deaths_metrics():
         "97111,US,ZZ,Bar County,county,2020-04-02,,2\n"
         "97111,US,ZZ,Bar County,county,2020-04-03,30,\n"
         "97111,US,ZZ,Bar County,county,2020-04-04,40,4\n"
-    )
+    ).reset_index()
+    input_dataset = MultiRegionTimeseriesDataset(input_df)
 
-    df = WhitelistGenerator().generate_whitelist(TimeseriesDataset(input_df.reset_index()))
+    df = WhitelistGenerator().generate_whitelist(input_dataset)
 
     assert to_dict(["fips"], df) == {
         "97111": {"state": "ZZ", "county": "Bar County", "inference_ok": False},
@@ -52,9 +54,10 @@ def test_inference_ok_with_5_days_cases_changed():
         "97222,US,ZZ,Foo County,county,2020-04-04,400,4\n"
         "97222,US,ZZ,Foo County,county,2020-04-05,500,5\n"
         "97222,US,ZZ,Foo County,county,2020-04-06,600,6\n"
-    )
+    ).reset_index()
+    input_dataset = MultiRegionTimeseriesDataset(input_df)
 
-    df = WhitelistGenerator().generate_whitelist(TimeseriesDataset(input_df.reset_index()))
+    df = WhitelistGenerator().generate_whitelist(input_dataset)
 
     assert to_dict(["fips"], df) == {
         "97111": {"state": "ZZ", "county": "Bar County", "inference_ok": False},
