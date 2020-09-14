@@ -278,7 +278,7 @@ def test_patch_substatepipeline_nola_infection_rate():
             cli.SubStatePipeline(
                 region=region,
                 infer_df=infection_rate_df,
-                _combined_data=combined_datasets.RegionalCombinedData.from_region(region),
+                _combined_data=combined_datasets.RegionalData.from_region(region),
             )
         )
 

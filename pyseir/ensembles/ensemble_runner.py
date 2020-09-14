@@ -31,7 +31,7 @@ compartment_to_capacity_attr_map = {
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: combined_datasets.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalData
     _mle_fit_model: seir_model.SEIRModel
     _mle_fit_result: Mapping[str, Any]
     _state_mle_fit_model: Optional[seir_model.SEIRModel] = None

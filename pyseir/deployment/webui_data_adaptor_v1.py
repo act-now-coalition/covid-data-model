@@ -31,8 +31,8 @@ class RegionalInput:
 
     region: Region
 
-    _combined_data: combined_datasets.RegionalCombinedData
-    _state_combined_data: Optional[combined_datasets.RegionalCombinedData]
+    _combined_data: combined_datasets.RegionalData
+    _state_combined_data: Optional[combined_datasets.RegionalData]
     _mle_fit_result: Mapping[str, Any]
     _ensemble_results: Mapping[str, Any]
     _infection_rate: Optional[pd.DataFrame]
@@ -45,7 +45,7 @@ class RegionalInput:
     ) -> "RegionalInput":
         region = fitter.region
         state_combined_data = (
-            combined_datasets.RegionalCombinedData.from_region(region.get_state_region())
+            combined_datasets.RegionalData.from_region(region.get_state_region())
             if region.is_county()
             else None
         )

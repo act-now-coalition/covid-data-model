@@ -366,7 +366,7 @@ def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
 
 
 @dataclass(frozen=True)
-class RegionalCombinedData:
+class RegionalData:
     """Identifies a geographical area and wraps access to `combined_datasets` of it."""
 
     region: Region
@@ -376,17 +376,15 @@ class RegionalCombinedData:
     timeseries: TimeseriesDataset
 
     @staticmethod
-    def from_region(region: Region) -> "RegionalCombinedData":
+    def from_region(region: Region) -> "RegionalData":
 
-        us_latest = combined_datasets.load_us_latest_dataset()
+        us_latest = load_us_latest_dataset()
         region_latest = us_latest.get_record_for_fips(region.fips)
 
-        us_timeseries = combined_datasets.load_us_timeseries_dataset()
+        us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_subset(fips=region.fips)
 
-        return RegionalCombinedData(
-            region=region, latest=region_latest, timeseries=region_timeseries
-        )
+        return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
 
     @property
     def population(self) -> int:

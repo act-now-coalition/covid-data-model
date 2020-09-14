@@ -25,7 +25,7 @@ rt_log = structlog.get_logger(__name__)
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: combined_datasets.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalData
 
     @property
     def display_name(self) -> str:
@@ -38,8 +38,7 @@ class RegionalInput:
     @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
-            region=region,
-            _combined_data=combined_datasets.RegionalCombinedData.from_region(region),
+            region=region, _combined_data=combined_datasets.RegionalData.from_region(region),
         )
 
     @staticmethod
