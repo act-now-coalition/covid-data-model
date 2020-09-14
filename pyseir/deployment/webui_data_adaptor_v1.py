@@ -8,7 +8,7 @@ import pandas as pd
 
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
-from libs.pipeline import RegionalCombinedData
+from libs.datasets import combined_datasets
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.ensembles import ensemble_runner
 from pyseir.icu import infer_icu
@@ -31,8 +31,8 @@ class RegionalInput:
 
     region: Region
 
-    _combined_data: RegionalCombinedData
-    _state_combined_data: Optional[RegionalCombinedData]
+    _combined_data: combined_datasets.RegionalData
+    _state_combined_data: Optional[combined_datasets.RegionalData]
     _mle_fit_result: Mapping[str, Any]
     _ensemble_results: Mapping[str, Any]
     _infection_rate: Optional[pd.DataFrame]
@@ -45,7 +45,7 @@ class RegionalInput:
     ) -> "RegionalInput":
         region = fitter.region
         state_combined_data = (
-            RegionalCombinedData.from_region(region.get_state_region())
+            combined_datasets.RegionalData.from_region(region.get_state_region())
             if region.is_county()
             else None
         )
@@ -373,7 +373,7 @@ class WebUIDataAdaptorV1:
             intervention = Intervention.from_webui_data_adaptor(suppression_policy)
             output_model[schema.INTERVENTION] = intervention.value
             output_path = get_run_artifact_path(
-                regional_input.fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
+                regional_input, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)

@@ -1,4 +1,6 @@
 import pytest
+
+from libs.datasets import combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
@@ -15,8 +17,8 @@ from pyseir.icu import infer_icu
 )
 def test_get_icu(fips):
     region = pipeline.Region.from_fips(fips)
-    regional_combined_data = pipeline.RegionalCombinedData.from_region(region)
-    state_combined_data = pipeline.RegionalCombinedData.from_region(region.get_state_region())
+    regional_combined_data = combined_datasets.RegionalData.from_region(region)
+    state_combined_data = combined_datasets.RegionalData.from_region(region.get_state_region())
     result_series = infer_icu.get_icu_timeseries(
         region,
         regional_combined_data=regional_combined_data.timeseries,
