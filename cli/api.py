@@ -1,5 +1,7 @@
 import logging
 import pathlib
+from typing import Optional
+
 import click
 import us
 
@@ -132,7 +134,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 )
 @click.option("--state")
 @click.option("--fips")
-def generate_top_counties(disable_validation, input_dir, output, state, fips):
+def generate_top_counties(disable_validation, input_dir, output, state, fips: Optional[str]):
     """The entry function for invocation"""
     intervention = Intervention.SELECTED_INTERVENTION
     active_states = [state.abbr for state in us.STATES] + ["PR"]

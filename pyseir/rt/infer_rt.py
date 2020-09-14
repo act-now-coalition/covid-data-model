@@ -32,7 +32,7 @@ class RegionalInput:
         return str(self.region)
 
     @property
-    def timeseries(self) -> timeseries.TimeseriesDataset:
+    def timeseries(self) -> timeseries.OneRegionTimeseriesDataset:
         return self._combined_data.timeseries
 
     @staticmethod

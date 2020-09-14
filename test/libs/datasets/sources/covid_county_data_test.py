@@ -5,10 +5,10 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_test_helpers import to_dict
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 
-
-# turns all warnings into errors for this module
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
+
+# turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error")
 
 

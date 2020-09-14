@@ -12,6 +12,7 @@ from enum import Enum
 import pandas as pd
 
 from libs import pipeline
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import DATA_DIR
 from covidactnow.datapublic.common_fields import CommonFields
@@ -39,8 +40,8 @@ class LinearRegressionCoefficients:
 
 def get_icu_timeseries(
     region: pipeline.Region,
-    regional_combined_data: TimeseriesDataset,
-    state_combined_data: Optional[TimeseriesDataset],
+    regional_combined_data: OneRegionTimeseriesDataset,
+    state_combined_data: Optional[OneRegionTimeseriesDataset],
     use_actuals: bool = True,
     weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
 ) -> pd.Series:
@@ -109,8 +110,8 @@ def _calculate_icu_timeseries(
 
 
 def _get_data_for_icu_calc(
-    regional_combined_data: TimeseriesDataset,
-    state_combined_data: Optional[TimeseriesDataset],
+    regional_combined_data: OneRegionTimeseriesDataset,
+    state_combined_data: Optional[OneRegionTimeseriesDataset],
     lookback_date=ICUConfig.LOOKBACK_DATE,
 ) -> pd.DataFrame:
     """

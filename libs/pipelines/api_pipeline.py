@@ -20,6 +20,7 @@ from libs import pipeline
 from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
@@ -98,7 +99,9 @@ def run_on_all_regional_inputs_for_intervention(
 
 
 def generate_metrics_and_latest_for_fips(
-    timeseries: TimeseriesDataset, latest: dict, model_output: Optional[CANPyseirLocationOutput],
+    timeseries: OneRegionTimeseriesDataset,
+    latest: dict,
+    model_output: Optional[CANPyseirLocationOutput],
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
     For a FIPS, generate a MetricsTimeseriesRow per day and return the latest.

@@ -21,6 +21,7 @@ from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
@@ -149,7 +150,7 @@ def get_us_latest_for_fips(fips) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
-def get_timeseries_for_fips(fips: str, columns: List = None) -> TimeseriesDataset:
+def get_timeseries_for_fips(fips: str, columns: List = None) -> OneRegionTimeseriesDataset:
     """Gets timeseries for a specific FIPS code.
 
     Args:
@@ -158,7 +159,7 @@ def get_timeseries_for_fips(fips: str, columns: List = None) -> TimeseriesDatase
 
     Returns: Timeseries for fips
     """
-    fips_ts = load_us_timeseries_dataset().get_subset(None, fips=fips, columns=columns)
+    fips_ts = load_us_timeseries_dataset().get_one_region(fips=fips, columns=columns)
     return fips_ts
 
 
@@ -373,7 +374,7 @@ class RegionalData:
 
     latest: Dict[str, Any]
 
-    timeseries: TimeseriesDataset
+    timeseries: OneRegionTimeseriesDataset
 
     @staticmethod
     def from_region(region: Region) -> "RegionalData":
@@ -382,7 +383,7 @@ class RegionalData:
         region_latest = us_latest.get_record_for_fips(region.fips)
 
         us_timeseries = load_us_timeseries_dataset()
-        region_timeseries = us_timeseries.get_subset(fips=region.fips)
+        region_timeseries = us_timeseries.get_one_region(fips=region.fips)
 
         return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
 
