@@ -13,8 +13,6 @@ from libs.functions import generate_api
 import pytest
 
 # turns all warnings into errors for this module
-
-
 # Suppressing Matplotlib RuntimeWarning for Figure Gen Count right now. The regex for message isn't
 # (https://stackoverflow.com/questions/27476642/matplotlib-get-rid-of-max-open-warning-output)
 @pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
