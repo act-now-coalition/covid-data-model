@@ -19,7 +19,6 @@ from libs import top_level_metrics
 from libs import pipeline
 from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention

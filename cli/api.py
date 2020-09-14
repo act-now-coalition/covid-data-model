@@ -139,20 +139,19 @@ def generate_top_counties(disable_validation, input_dir, output, state, fips):
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
     )
-    us_timeseries = combined_datasets.load_us_timeseries_dataset().get_subset(
-        AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
-    )
+    regions = [
+        pipeline.Region.from_fips(fips) for fips in us_latest.all_fips if not fips.endswith("999")
+    ]
+    regional_inputs = [
+        api_pipeline.RegionalInput.from_region_and_intervention(region, intervention, input_dir)
+        for region in regions
+    ]
 
     def sort_func(output: RegionSummaryWithTimeseries):
         return -output.projections.totalHospitalBeds.peakShortfall
 
-    all_timeseries = api_pipeline.run_on_all_fips_for_intervention(
-        us_latest,
-        us_timeseries,
-        Intervention.SELECTED_INTERVENTION,
-        input_dir,
-        sort_func=sort_func,
-        limit=100,
+    all_timeseries = api_pipeline.run_on_all_regional_inputs_for_intervention(
+        regional_inputs, sort_func=sort_func, limit=100,
     )
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
 

@@ -1,9 +1,7 @@
 import pytest
 
-from libs.datasets import combined_datasets
 from libs.enums import Intervention
 from libs.pipelines import api_pipeline
-from libs import pipeline
 
 
 @pytest.mark.slow
