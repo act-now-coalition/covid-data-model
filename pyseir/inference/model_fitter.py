@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 import iminuit
+
+from libs.datasets import combined_datasets
 from libs import pipeline
 
 from pyseir.inference import model_plotting
@@ -40,18 +42,18 @@ def load_pyseir_fitter_initial_conditions_df():
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: pipeline.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalData
     _hospitalization_df: pd.DataFrame
     _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_state_region(region: pipeline.Region) -> "RegionalInput":
         """Creates a RegionalInput for given state region."""
-        hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
+        hospitalization_df = load_data.get_hospitalization_data().get_subset(fips=region.fips).data
         assert region.is_state()
         return RegionalInput(
             region=region,
-            _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            _combined_data=combined_datasets.RegionalData.from_region(region),
             _hospitalization_df=hospitalization_df,
         )
 
@@ -65,12 +67,12 @@ class RegionalInput:
             region: a sub-state region such as a county
             state_fitter: ModelFitter for the state containing region
         """
-        hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
+        hospitalization_df = load_data.get_hospitalization_data().get_subset(fips=region.fips).data
         assert region.is_county()
         assert state_fitter
         return RegionalInput(
             region=region,
-            _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            _combined_data=combined_datasets.RegionalData.from_region(region),
             _state_mle_fit_result=state_fitter.fit_results,
             _hospitalization_df=hospitalization_df,
         )

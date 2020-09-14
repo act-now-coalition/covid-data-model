@@ -5,7 +5,7 @@ from more_itertools import first
 
 from libs import us_state_abbrev
 import pandas as pd
-from libs.datasets.dataset_utils import AggregationLevel, make_binary_array
+from libs.datasets.dataset_utils import AggregationLevel, make_rows_key
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
 from libs.datasets import dataset_base
@@ -136,23 +136,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         return self.get_subset(aggregation_level=AggregationLevel.COUNTY)
 
     @property
-    def state_data(self) -> pd.DataFrame:
-        """Returns a new BedsDataset containing only state data."""
-
-        is_state = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        return self.data[is_state]
-
-    @property
-    def county_data(self) -> pd.DataFrame:
-        """Returns a new BedsDataset containing only county data."""
-        is_county = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        return self.data[is_county]
-
-    @property
-    def states(self):
-        return self.data.state.unique()
-
-    @property
     def all_fips(self) -> List[str]:
         return list(self.data.fips.unique())
 
@@ -167,7 +150,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         after: Optional[str] = None,
         before: Optional[str] = None,
     ) -> "LatestValuesDataset":
-        rows_binary_array = make_binary_array(
+        rows_key = make_rows_key(
             self.data,
             aggregation_level=aggregation_level,
             country=country,
@@ -178,7 +161,7 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             after=after,
             before=before,
         )
-        return self.__class__(self.data.loc[rows_binary_array, :])
+        return self.__class__(self.data.loc[rows_key, :])
 
     def get_record_for_fips(self, fips) -> dict:
         """Gets all data for a given fips code.

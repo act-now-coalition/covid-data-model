@@ -45,7 +45,7 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        counties = timeseries.get_data(aggregation_level=AggregationLevel.COUNTY)
+        counties = timeseries.get_subset(aggregation_level=AggregationLevel.COUNTY).data
         df_candidates = (
             counties.groupby(CommonFields.FIPS)
             # Use pandarallel. It doesn't support the `name` attribute so leave FIPS as a regular

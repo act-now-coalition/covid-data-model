@@ -1,5 +1,7 @@
+from dataclasses import dataclass
 from enum import Enum
 from itertools import chain
+from typing import Any
 from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
@@ -14,9 +16,7 @@ from libs.datasets import data_source
 from libs.datasets import dataset_pointer
 from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
-from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -31,6 +31,7 @@ from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets import dataset_filter
 from libs import us_state_abbrev
+from libs.pipeline import Region
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
@@ -121,7 +122,7 @@ def load_us_timeseries_dataset(
     before=None,
     previous_commit=False,
     commit: str = None,
-) -> timeseries.TimeseriesDataset:
+) -> TimeseriesDataset:
     filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
@@ -148,50 +149,17 @@ def get_us_latest_for_fips(fips) -> dict:
     return us_latest.get_record_for_fips(fips)
 
 
-def get_timeseries_for_fips(
-    fips: str, columns: List = None, min_range_with_some_value: bool = False
-) -> TimeseriesDataset:
+def get_timeseries_for_fips(fips: str, columns: List = None) -> TimeseriesDataset:
     """Gets timeseries for a specific FIPS code.
 
     Args:
         fips: FIPS code.  Can be county (5 character) or state (2 character) code.
         columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
-            timeseries. Only applicable when columns are specified.
 
     Returns: Timeseries for fips
     """
-
-    state_ts = load_us_timeseries_dataset().get_subset(None, fips=fips)
-    if columns:
-        return state_ts.get_columns_and_date_subset(
-            columns, min_range_with_some_value=min_range_with_some_value
-        )
-
-    return state_ts
-
-
-def get_timeseries_for_state(
-    state: str, columns: List = None, min_range_with_some_value: bool = False
-) -> TimeseriesDataset:
-    """Gets timeseries for a specific state abbreviation.
-
-    Args:
-        state: 2-letter state code
-        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
-            timeseries. Only applicable when columns are specified.
-
-    Returns: Timeseries for state
-    """
-
-    state_ts = load_us_timeseries_dataset().get_subset(AggregationLevel.STATE, state=state)
-    if columns:
-        return state_ts.get_columns_and_date_subset(
-            columns, min_range_with_some_value=min_range_with_some_value
-        )
-
-    return state_ts
+    fips_ts = load_us_timeseries_dataset().get_subset(None, fips=fips, columns=columns)
+    return fips_ts
 
 
 def build_from_sources(
@@ -395,3 +363,38 @@ def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
     # https://stackoverflow.com/a/17841321/341400
     joined = fips_var_grouped.agg(lambda col: ";".join(col))
     return joined
+
+
+@dataclass(frozen=True)
+class RegionalData:
+    """Identifies a geographical area and wraps access to `combined_datasets` of it."""
+
+    region: Region
+
+    latest: Dict[str, Any]
+
+    timeseries: TimeseriesDataset
+
+    @staticmethod
+    def from_region(region: Region) -> "RegionalData":
+
+        us_latest = load_us_latest_dataset()
+        region_latest = us_latest.get_record_for_fips(region.fips)
+
+        us_timeseries = load_us_timeseries_dataset()
+        region_timeseries = us_timeseries.get_subset(fips=region.fips)
+
+        return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
+
+    @property
+    def population(self) -> int:
+        """Gets the population for this region."""
+        return self.latest[CommonFields.POPULATION]
+
+    @property  # TODO(tom): Change to cached_property when we're using Python 3.8
+    def display_name(self) -> str:
+        county = self.latest[CommonFields.COUNTY]
+        state = self.latest[CommonFields.STATE]
+        if county:
+            return f"{county}, {state}"
+        return state

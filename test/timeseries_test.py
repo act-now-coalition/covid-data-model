@@ -14,7 +14,7 @@ import pytest
 pytestmark = pytest.mark.filterwarnings("error")
 
 
-def test_get_subset_and_get_data():
+def test_get_subset():
     # CSV with a unique FIPS value for every region, even countries. In production countries are removed before
     # TimeseriesDataset is created. A future change may replace FIPS with a more general identifier.
     input_df = pd.read_csv(
@@ -35,23 +35,23 @@ def test_get_subset_and_get_data():
     assert set(ts.get_subset(AggregationLevel.COUNTRY).data["metric"]) == {"you-kee", "you-ess-hey"}
     assert set(ts.get_subset(AggregationLevel.COUNTRY, country="UK").data["country"]) == {"UK"}
     assert set(ts.get_subset(AggregationLevel.STATE).data["metric"]) == {"mystate", "other-state"}
-    assert set(ts.get_data(None, state="ZZ", after="2020-03-23")["metric"]) == {"march24-nyc"}
-    assert set(ts.get_data(None, state="ZZ", after="2020-03-22")["metric"]) == {
+    assert set(ts.get_subset(state="ZZ", after="2020-03-23").data["metric"]) == {"march24-nyc"}
+    assert set(ts.get_subset(state="ZZ", after="2020-03-22").data["metric"]) == {
         "smithville-march23",
         "county-metric",
         "mystate",
         "march24-nyc",
     }
-    assert set(ts.get_data(AggregationLevel.STATE, states=["ZZ", "XY"])["metric"]) == {
+    assert set(ts.get_subset(AggregationLevel.STATE, states=["ZZ", "XY"]).data["metric"]) == {
         "mystate",
         "other-state",
     }
-    assert set(ts.get_data(None, states=["ZZ"], on="2020-03-23")["metric"]) == {
+    assert set(ts.get_subset(states=["ZZ"], on="2020-03-23").data["metric"]) == {
         "smithville-march23",
         "county-metric",
         "mystate",
     }
-    assert set(ts.get_data(None, states=["ZZ"], before="2020-03-23")["metric"]) == {"march22-nyc"}
+    assert set(ts.get_subset(states=["ZZ"], before="2020-03-23").data["metric"]) == {"march22-nyc"}
 
 
 def test_wide_dates():
