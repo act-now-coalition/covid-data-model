@@ -18,6 +18,7 @@ from libs import dataset_deployer
 from libs import top_level_metrics
 from libs import pipeline
 from libs.datasets import CommonFields
+from libs.datasets import combined_datasets
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
@@ -37,7 +38,7 @@ class RegionalInput:
 
     intervention: Intervention
 
-    _combined_data: pipeline.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalData
 
     @property
     def fips(self) -> str:
@@ -59,7 +60,7 @@ class RegionalInput:
     def from_region_and_intervention(
         region: pipeline.Region, intervention: Intervention, model_output_dir: pathlib.Path
     ) -> "RegionalInput":
-        combined_data = pipeline.RegionalCombinedData.from_region(region)
+        combined_data = combined_datasets.RegionalData.from_region(region)
 
         model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
             region.fips, intervention, model_output_dir
@@ -109,6 +110,9 @@ def generate_metrics_and_latest_for_fips(
     Returns:
         Tuple of MetricsTimeseriesRows for all days and the latest.
     """
+    if timeseries.empty:
+        return [], None
+
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
         timeseries, latest, model_output
     )
