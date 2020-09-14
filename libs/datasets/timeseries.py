@@ -326,6 +326,13 @@ class MultiRegionTimeseriesDataset:
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self.data.groupby(CommonFields.FIPS)
 
+    @property
+    def empty(self) -> bool:
+        return self.data.empty
+
+    def has_one_region(self) -> bool:
+        return False
+
 
 def _remove_padded_nans(df, columns):
     if df[columns].isna().all(axis=None):
