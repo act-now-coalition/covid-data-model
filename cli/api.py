@@ -14,7 +14,6 @@ from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.enums import Intervention
 
 PROD_BUCKET = "data.covidactnow.org"

@@ -2,7 +2,6 @@ import pandas as pd
 
 from libs.datasets import combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets.dataset_utils import AggregationLevel
 
 
 def _quantile_range(x: pd.Series) -> float:
@@ -19,13 +18,13 @@ def _quantile_range(x: pd.Series) -> float:
 def calculate_case_based_weights() -> dict:
     LOOKBACK_DAYS = 31
     cutoff_date = pd.Timestamp.now() - pd.Timedelta(days=LOOKBACK_DAYS)
-    ts = combined_datasets.load_us_timeseries_dataset().get_subset(
-        after=cutoff_date, aggregation_level=AggregationLevel.COUNTY
+    region_groupby = (
+        combined_datasets.load_us_timeseries_dataset()
+        .get_counties(after=cutoff_date)
+        .groupby_region()
     )
 
-    last_month_cum_cases = ts.data.groupby("fips")[CommonFields.CASES].apply(
-        _quantile_range
-    )  # groupby region
+    last_month_cum_cases = region_groupby[CommonFields.CASES].apply(_quantile_range)
     last_month_cum_cases.name = "summed_cases"
 
     df = last_month_cum_cases.reset_index().dropna()

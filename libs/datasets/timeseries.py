@@ -1,3 +1,4 @@
+import datetime
 import pathlib
 from dataclasses import dataclass
 from typing import Iterable
@@ -319,8 +320,12 @@ class MultiRegionTimeseriesDataset:
         columns_key = list(columns) if columns else slice(None, None, None)
         return OneRegionTimeseriesDataset(data=self.data.loc[rows_key, columns_key])
 
-    def get_counties(self) -> "MultiRegionTimeseriesDataset":
-        rows_key = dataset_utils.make_rows_key(self.data, aggregation_level=AggregationLevel.COUNTY)
+    def get_counties(
+        self, after: Optional[datetime.datetime] = None
+    ) -> "MultiRegionTimeseriesDataset":
+        rows_key = dataset_utils.make_rows_key(
+            self.data, aggregation_level=AggregationLevel.COUNTY, after=after
+        )
         return MultiRegionTimeseriesDataset(self.data.loc[rows_key, :].reset_index(drop=True))
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:

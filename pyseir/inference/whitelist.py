@@ -10,11 +10,9 @@ from libs import pipeline
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
-from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import load_data
 from datetime import datetime
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import AggregationLevel
 from pandarallel import pandarallel
 
 VISIBIBLE_PROGRESS_BAR = os.environ.get("PYSEIR_VERBOSITY") == "True"

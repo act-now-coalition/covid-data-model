@@ -11,7 +11,6 @@ from api.can_api_definition import (
 from libs.datasets import can_model_output_schema as schema
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api
 from libs.pipeline import Region

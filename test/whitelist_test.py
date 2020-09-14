@@ -3,7 +3,6 @@ from covidactnow.datapublic.common_test_helpers import to_dict
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from pyseir.inference.whitelist import WhitelistGenerator
 from pyseir.inference.whitelist import regions_in_states
