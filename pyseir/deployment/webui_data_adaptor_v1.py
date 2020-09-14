@@ -8,7 +8,7 @@ import pandas as pd
 
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
-from libs.pipeline import RegionalCombinedData
+from libs.datasets import combined_datasets
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.ensembles import ensemble_runner
 from pyseir.icu import infer_icu
@@ -31,8 +31,8 @@ class RegionalInput:
 
     region: Region
 
-    _combined_data: RegionalCombinedData
-    _state_combined_data: Optional[RegionalCombinedData]
+    _combined_data: combined_datasets.RegionalCombinedData
+    _state_combined_data: Optional[combined_datasets.RegionalCombinedData]
     _mle_fit_result: Mapping[str, Any]
     _ensemble_results: Mapping[str, Any]
     _infection_rate: Optional[pd.DataFrame]
@@ -45,7 +45,7 @@ class RegionalInput:
     ) -> "RegionalInput":
         region = fitter.region
         state_combined_data = (
-            RegionalCombinedData.from_region(region.get_state_region())
+            combined_datasets.RegionalCombinedData.from_region(region.get_state_region())
             if region.is_county()
             else None
         )

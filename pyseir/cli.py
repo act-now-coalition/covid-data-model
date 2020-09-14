@@ -9,6 +9,7 @@ from multiprocessing import Pool
 import us
 import pandas as pd
 import click
+
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
@@ -88,7 +89,7 @@ class SubStateRegionPipelineInput:
     region: pipeline.Region
     run_fitter: bool
     state_fitter: model_fitter.ModelFitter
-    regional_combined_dataset: pipeline.RegionalCombinedData
+    regional_combined_dataset: combined_datasets.RegionalCombinedData
 
     @staticmethod
     def build_all(
@@ -123,7 +124,9 @@ class SubStateRegionPipelineInput:
                 region=region,
                 run_fitter=(region in whitelist_regions),
                 state_fitter=state_fitter_map.get(region.get_state_region()),
-                regional_combined_dataset=pipeline.RegionalCombinedData.from_region(region),
+                regional_combined_dataset=combined_datasets.RegionalCombinedData.from_region(
+                    region
+                ),
             )
             for region in (infer_rt_regions | whitelist_regions)
         ]
@@ -136,7 +139,7 @@ class SubStatePipeline:
 
     region: pipeline.Region
     infer_df: pd.DataFrame
-    _combined_data: pipeline.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalCombinedData
     fitter: Optional[model_fitter.ModelFitter] = None
     ensemble: Optional[ensemble_runner.EnsembleRunner] = None
 

@@ -3,6 +3,8 @@ import pathlib
 import pytest
 import pandas as pd
 import structlog
+
+from libs.datasets import combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 from pyseir import cli
@@ -276,7 +278,7 @@ def test_patch_substatepipeline_nola_infection_rate():
             cli.SubStatePipeline(
                 region=region,
                 infer_df=infection_rate_df,
-                _combined_data=pipeline.RegionalCombinedData.from_region(region),
+                _combined_data=combined_datasets.RegionalCombinedData.from_region(region),
             )
         )
 

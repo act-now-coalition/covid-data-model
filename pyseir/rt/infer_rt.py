@@ -9,6 +9,7 @@ import pandas as pd
 from scipy import stats as sps
 from matplotlib import pyplot as plt
 
+from libs.datasets import combined_datasets
 from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import load_data
@@ -24,7 +25,7 @@ rt_log = structlog.get_logger(__name__)
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: pipeline.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalCombinedData
 
     @property
     def display_name(self) -> str:
@@ -37,7 +38,8 @@ class RegionalInput:
     @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
-            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            region=region,
+            _combined_data=combined_datasets.RegionalCombinedData.from_region(region),
         )
 
     @staticmethod
