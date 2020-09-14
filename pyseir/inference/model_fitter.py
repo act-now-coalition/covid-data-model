@@ -15,6 +15,7 @@ import iminuit
 
 from libs.datasets import combined_datasets
 from libs import pipeline
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 from pyseir.inference import model_plotting
 from pyseir.models import suppression_policies
@@ -43,18 +44,20 @@ class RegionalInput:
     region: pipeline.Region
 
     _combined_data: combined_datasets.RegionalData
-    _hospitalization_df: pd.DataFrame
+    _hospitalization_dataset: OneRegionTimeseriesDataset
     _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_state_region(region: pipeline.Region) -> "RegionalInput":
         """Creates a RegionalInput for given state region."""
-        hospitalization_df = load_data.get_hospitalization_data().get_subset(fips=region.fips).data
+        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(
+            fips=region.fips
+        )
         assert region.is_state()
         return RegionalInput(
             region=region,
             _combined_data=combined_datasets.RegionalData.from_region(region),
-            _hospitalization_df=hospitalization_df,
+            _hospitalization_dataset=hospitalization_dataset,
         )
 
     @staticmethod
@@ -67,14 +70,16 @@ class RegionalInput:
             region: a sub-state region such as a county
             state_fitter: ModelFitter for the state containing region
         """
-        hospitalization_df = load_data.get_hospitalization_data().get_subset(fips=region.fips).data
+        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(
+            fips=region.fips
+        )
         assert region.is_county()
         assert state_fitter
         return RegionalInput(
             region=region,
             _combined_data=combined_datasets.RegionalData.from_region(region),
             _state_mle_fit_result=state_fitter.fit_results,
-            _hospitalization_df=hospitalization_df,
+            _hospitalization_dataset=hospitalization_dataset,
         )
 
     @property
@@ -95,7 +100,7 @@ class RegionalInput:
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
     ) -> Tuple[np.array, np.array, HospitalizationDataType]:
         return load_data.calculate_hospitalization_data(
-            self._hospitalization_df, t0, category=category
+            self._hospitalization_dataset, t0, category=category
         )
 
     @property

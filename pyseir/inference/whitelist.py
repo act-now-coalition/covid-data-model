@@ -7,6 +7,7 @@ import numpy as np
 import logging
 
 from libs import pipeline
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import load_data
@@ -45,7 +46,9 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        counties = timeseries.get_subset(aggregation_level=AggregationLevel.COUNTY).data
+        counties = timeseries.get_subset(
+            aggregation_level=AggregationLevel.COUNTY
+        ).data  # groupby region
         df_candidates = (
             counties.groupby(CommonFields.FIPS)
             # Use pandarallel. It doesn't support the `name` attribute so leave FIPS as a regular
@@ -66,8 +69,10 @@ class WhitelistGenerator:
 
 def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
     assert not combined_data.empty
+    assert combined_data[CommonFields.FIPS].nunique() == 1
     (times, observed_new_cases, observed_new_deaths,) = load_data.calculate_new_case_data_by_region(
-        TimeseriesDataset(combined_data.reset_index()), t0=datetime(day=1, month=1, year=2020),
+        OneRegionTimeseriesDataset(combined_data.reset_index()),
+        t0=datetime(day=1, month=1, year=2020),
     )
     record = dict(
         # Get the fips, state and county values from the first row of the dataframe.
