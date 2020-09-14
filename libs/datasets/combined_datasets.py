@@ -21,6 +21,7 @@ from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
@@ -123,11 +124,13 @@ def load_us_timeseries_dataset(
     before=None,
     previous_commit=False,
     commit: str = None,
-) -> TimeseriesDataset:
+) -> MultiRegionTimeseriesDataset:
     filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
+    return MultiRegionTimeseriesDataset.from_timeseries(
+        pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
+    )
 
 
 @functools.lru_cache(None)
@@ -159,7 +162,7 @@ def get_timeseries_for_fips(fips: str, columns: List = None) -> OneRegionTimeser
 
     Returns: Timeseries for fips
     """
-    fips_ts = load_us_timeseries_dataset().get_one_region(fips=fips, columns=columns)
+    fips_ts = load_us_timeseries_dataset().get_one_region(Region.from_fips(fips), columns=columns)
     return fips_ts
 
 

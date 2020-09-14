@@ -17,7 +17,7 @@ from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
-
+from libs.pipeline import Region
 
 _log = structlog.get_logger()
 
@@ -290,6 +290,33 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         # In the future, it would be good to standardize around index fields.
         df = df.reset_index()
         return cls(df)
+
+
+@final
+@dataclass(frozen=True)
+class MultiRegionTimeseriesDataset:
+    """A set of timeseries with values from any number of regions."""
+
+    # Do not make an assumptions about a FIPS or locationID column in the DataFrame.
+    data: pd.DataFrame
+
+    provenance: Optional[pd.Series] = None
+
+    @staticmethod
+    def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
+        df = common_df.read_csv(path_or_buf, set_index=False)
+        return MultiRegionTimeseriesDataset(df)
+
+    @staticmethod
+    def from_timeseries(ts: TimeseriesDataset) -> "MultiRegionTimeseriesDataset":
+        return MultiRegionTimeseriesDataset(ts.data, provenance=ts.provenance)
+
+    def get_one_region(
+        self, region: Region, columns: Sequence[str] = tuple()
+    ) -> OneRegionTimeseriesDataset:
+        rows_key = self.data[CommonFields.FIPS] == region.fips
+        columns_key = list(columns) if columns else slice(None, None, None)
+        return OneRegionTimeseriesDataset(data=self.data.loc[rows_key, columns_key])
 
 
 def _remove_padded_nans(df, columns):
