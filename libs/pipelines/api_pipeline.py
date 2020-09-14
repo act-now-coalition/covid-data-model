@@ -21,7 +21,6 @@ from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
 from libs.functions import get_can_projection

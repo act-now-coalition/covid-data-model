@@ -1,5 +1,4 @@
 import pytest
-import pandas as pd
 from libs.enums import Intervention
 from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
