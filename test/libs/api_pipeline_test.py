@@ -1,7 +1,9 @@
 import pytest
-
+import pandas as pd
 from libs.enums import Intervention
 from libs.pipelines import api_pipeline
+from libs.datasets import combined_datasets
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 
 @pytest.mark.slow
@@ -61,13 +63,24 @@ def test_build_api_output_for_intervention(nyc_region, nyc_model_output_path, tm
 
 
 def test_output_no_timeseries_rows(nyc_region, tmp_path):
-
     regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
         nyc_region, Intervention.OBSERVED_INTERVENTION, tmp_path
     )
-    # Clearing out all rows, testing that a region with no rows still has an API output.
+
+    # Creating a new regional input with an empty timeseries dataset
     timeseries = regional_input.timeseries
-    timeseries.data = timeseries.data.loc[timeseries.data.fips.isna()]
+    timeseries_data = timeseries.data.loc[timeseries.data.fips.isna()]
+    regional_data = combined_datasets.RegionalData(
+        regional_input._combined_data.region,
+        regional_input.latest,
+        OneRegionTimeseriesDataset(timeseries_data),
+    )
+    regional_input = api_pipeline.RegionalInput(
+        regional_input.region,
+        regional_input.model_output,
+        regional_input.intervention,
+        regional_data,
+    )
     assert regional_input.timeseries.empty
 
     all_timeseries_api = api_pipeline.run_on_all_regional_inputs_for_intervention([regional_input])
