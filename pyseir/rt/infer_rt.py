@@ -13,6 +13,7 @@ from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import load_data
 from pyseir.utils import TimeseriesType, RunArtifact
+import pyseir.utils
 from pyseir.rt.constants import InferRtConstants
 from pyseir.rt import plotting, utils
 
@@ -188,7 +189,9 @@ def filter_and_smooth_input_data(
                 plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
 
                 if not figure_collector:
-                    plot_path = region.run_artifact_path_to_write(RunArtifact.RT_SMOOTHING_REPORT)
+                    plot_path = pyseir.utils.get_run_artifact_path(
+                        region, RunArtifact.RT_SMOOTHING_REPORT
+                    )
                     plt.savefig(plot_path, bbox_inches="tight")
                     plt.close(fig)
                 else:
@@ -720,8 +723,8 @@ class RtInferenceEngine:
                 display_name=self.display_name,
             )
             if self.figure_collector is None:
-                output_path = self.regional_input.region.run_artifact_path_to_write(
-                    RunArtifact.RT_INFERENCE_REPORT
+                output_path = pyseir.utils.get_run_artifact_path(
+                    self.regional_input.region, RunArtifact.RT_INFERENCE_REPORT
                 )
                 fig.savefig(output_path, bbox_inches="tight")
             else:

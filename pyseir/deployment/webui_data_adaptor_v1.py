@@ -373,7 +373,7 @@ class WebUIDataAdaptorV1:
             intervention = Intervention.from_webui_data_adaptor(suppression_policy)
             output_model[schema.INTERVENTION] = intervention.value
             output_path = get_run_artifact_path(
-                regional_input.fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
+                regional_input, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)

@@ -8,7 +8,6 @@ from dataclasses import dataclass
 import structlog
 import us
 
-import pyseir.utils
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets import timeseries
@@ -54,24 +53,6 @@ class Region:
         if len(self.fips) != 5:
             raise ValueError(f"No state for {self}")
         return Region(fips=self.fips[:2])
-
-    def run_artifact_path_to_read(self, run_artifact: pyseir.utils.RunArtifact) -> str:
-        """Returns the path of given artifact, to be used for reading.
-
-        Call this function instead of directly passing a fips to get_run_artifact_path to reduce
-        the amount of code that handles a fips. `run_artifact_path_to_write` has identical
-        behavior but using the appropriate function helps track down inputs and outputs.
-        """
-        return pyseir.utils.get_run_artifact_path(self.fips, run_artifact)
-
-    def run_artifact_path_to_write(self, run_artifact: pyseir.utils.RunArtifact) -> str:
-        """Returns the path of given artifact, to be used for reading.
-
-        Call this function instead of directly passing a fips to get_run_artifact_path to reduce
-        the amount of code that handles a fips. `run_artifact_path_to_read` has identical
-        behavior but using the appropriate function helps track down inputs and outputs.
-        """
-        return pyseir.utils.get_run_artifact_path(self.fips, run_artifact)
 
 
 @dataclass(frozen=True)
