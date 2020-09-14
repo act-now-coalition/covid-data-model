@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Sequence
+from typing_extensions import final
 
 import pandas as pd
 import structlog
@@ -31,6 +32,7 @@ class DuplicateDataException(Exception):
         return f"DuplicateDataException({self.message})"
 
 
+@final
 @dataclass(frozen=True)
 class OneRegionTimeseriesDataset:
     """A set of timeseries with values from one region."""
