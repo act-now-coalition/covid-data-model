@@ -1,4 +1,4 @@
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional, Dict, Any
 import functools
 import multiprocessing
 import pathlib
@@ -48,11 +48,11 @@ class RegionalInput:
         return self.latest[CommonFields.STATE]
 
     @property
-    def latest(self):
+    def latest(self) -> Dict[str, Any]:
         return self._combined_data.latest
 
     @property
-    def timeseries(self):
+    def timeseries(self) -> OneRegionTimeseriesDataset:
         return self._combined_data.timeseries
 
     @staticmethod
