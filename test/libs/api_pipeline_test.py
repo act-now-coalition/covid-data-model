@@ -5,8 +5,6 @@ from libs.enums import Intervention
 from libs.pipelines import api_pipeline
 from libs import pipeline
 
-NYC_FIPS = "36061"
-
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
@@ -17,14 +15,12 @@ NYC_FIPS = "36061"
         Intervention.NO_INTERVENTION,
     ],
 )
-def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, intervention):
+def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_region, intervention):
 
-    us_latest = combined_datasets.load_us_latest_dataset()
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
-
-    timeseries = api_pipeline.build_timeseries_for_fips(
-        intervention, us_latest, us_timeseries, nyc_model_output_path.parent, nyc_fips
+    regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
+        nyc_region, intervention, nyc_model_output_path.parent
     )
+    timeseries = api_pipeline.build_timeseries_for_region(regional_input)
 
     if intervention is Intervention.NO_INTERVENTION:
         # Test data does not contain no intervention model, should not output any results.
