@@ -2,12 +2,12 @@
 Code that is used to help move information around in the pipeline, starting with `Region` which
 represents a geographical area (state, county, metro area, etc).
 """
+
+# Many other modules import this module. Importing pyseir or dataset code here is likely to create
+# in import cycle.
+
 from dataclasses import dataclass
-
-import structlog
 import us
-
-_log = structlog.get_logger()
 
 
 @dataclass(frozen=True)
