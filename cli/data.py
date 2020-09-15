@@ -4,6 +4,7 @@ import logging
 import pathlib
 import os
 import json
+import shutil
 
 import click
 
@@ -21,6 +22,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.sources import forecast_hub
 from pyseir import DATA_DIR
 import pyseir.icu.utils
 from pyseir.icu import infer_icu
@@ -42,6 +44,17 @@ def _save_field_summary(timeseries_dataset: TimeseriesDataset, output_path: path
     summary = dataset_summary.summarize_timeseries_fields(timeseries_dataset.data)
     summary.to_csv(output_path)
     _logger.info(f"Saved dataset summary to {output_path}")
+
+
+@main.command()
+@click.option("--filename", default="external_forecasts.csv")
+def update_forecasts(filename):
+    """Updates external forecasts to the current checked out covid data public commit"""
+    path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
+    data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+    data_path = forecast_hub.ForecastHubDataset.DATA_PATH
+    shutil.copy(data_root / data_path, path_prefix / filename)
+    _logger.info(f"Updating External Forecasts at {path_prefix / filename}")
 
 
 @main.command()
