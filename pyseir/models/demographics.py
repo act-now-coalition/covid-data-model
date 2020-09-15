@@ -25,6 +25,7 @@ class Demographics:
     used in adjusting hospitalization and deaths fractions.
     """
 
+    # TODO check high values seem to break some states
     MEDIAN_RATE_CONSTANT = 1.5  # slightly better than 1.25 and 1.4
     DEFAULT_DRIVER_AGE = 25.0
 

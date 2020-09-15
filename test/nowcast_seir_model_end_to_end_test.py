@@ -50,6 +50,8 @@ def test_run_new_model_incrementally():
 
     # Need assumptions for R(t) and testing_rate(t) for the future as inputs
     data_tlist = np.linspace(start, today, today - start + 1)
+
+    # This would really be smoothed current values
     (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates("FL", data_tlist)
 
     # Create extended R(t) function using projected cases sometime in the future

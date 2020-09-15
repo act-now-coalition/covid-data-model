@@ -58,70 +58,10 @@ def extend_rt_function_with_new_cases_forecast(rt_f, serial_period, forecast_new
     return rt_ext
 
 
-def obsolete_extend_rt_function_with_new_cases_forecast(rt_f, serial_period, forecast_new_cases):
-    """
-    Takes an rt_f function and extends it to match up with one or more
-    ordered new_case forecasts in the future (after today). Note the first forecast
-    must be a specification of the new_cases today (the start of the forecast period)
-    """
-    using = copy.deepcopy(forecast_new_cases)
-    (today, current_nC) = using[0]
-    r_ftn = rt_f
-
-    def make_switching_ftn(f, today, m, a=0.0):
-        def ftn(t):
-            if t <= today:
-                return f(t)
-            else:
-                return max(0.0, f(today) + m * (t - today) + a * (t - today) ** 2)
-
-        return ftn
-
-    for i in range(1, len(using)):
-        (future, target_nC) = using[i]
-        next_nC = using[i + 1][1] if i < len(using) - 1 else None  # to peek ahead
-
-        # is target_nC a minimum or maximum (which needs special handling)
-        is_extremum = (
-            True
-            if (next_nC is not None and (target_nC - current_nC) * (target_nC - next_nC) > 0.0)
-            else False
-        )
-
-        assert future > today
-
-        nC_ratio = target_nC / current_nC
-        r0 = r_ftn(today)
-        delta_t = 1.0 * (future - today)
-
-        if not is_extremum:
-            # Assuming rt is of form rt(t) = rt(today) + m * (t-today)
-            # where also Integral of (rt(t) - 1)/serial_period from t=today->future is ln(nC_ratio)
-            # so the predicted nC value will match up at t=future
-            const_integral = 1.0 / serial_period * (r0 - 1) * delta_t
-            variable_integral = math.log(nC_ratio) - const_integral
-            m = variable_integral / (0.5 * delta_t ** 2) * serial_period
-            a = 0.0  # linear
-        else:
-            # Want rt to be exactly 1 at future as it is an extremum in cases
-            m = (
-                6.0
-                * (serial_period * math.log(nC_ratio) - 2.0 / 3.0 * (r0 - 1.0) * delta_t)
-                / delta_t ** 2
-            )
-            a = (1.0 - r0 - m * delta_t) / delta_t ** 2
-
-        r_ftn = make_switching_ftn(r_ftn, today, m, a)
-
-        # Get ready to iterate to the next forecast if needed
-        (today, current_nC) = (future, target_nC)
-
-    return r_ftn
-
+# TODO:smell move inside its own class or in NowcastingSEIRModel
 
 # Transition fractions to Hospitalizations and Deaths by decade
 # to age groups: 0-35, 35-65 and 65-100
-# TODO need to normalize contributions per decade by local demographics
 
 # First started with BC data
 FH_BY_DECADE_BC = [0.04, 0.01, 0.04, 0.07, 0.11, 0.12, 0.25, 0.5, 0.33, 0.25]
@@ -170,7 +110,7 @@ class NowcastingSEIRModel:
     The concept of running the Model has been split off into another class (ModelRun).
 
     TODO Next steps:
-    * Turn on delay and see if that helps match peak behaviour
+    * Make sure all trainable parameters are exposed from here
     * Validate test positivity contribution to peaks against that observed
     """
 
@@ -180,16 +120,21 @@ class NowcastingSEIRModel:
         self,
         # ____________These are (to be) trained factors that are passed in___________
         median_age=None,
-        lr_fh=(1.0, 0.0),
-        lr_fd=(1.0, 0.0),
+        # TODO simplify - not using linear ramp for either of these anywhere
+        lr_fh=(0.74, 0.0),  # geometric mean of all states
+        lr_fd=(0.85, 0.0),  # geometric mean of all states
         delay_ci_h=0,  # added days of delay between infection and hospitalization
-        age_eval_delay=None,  # 14,
+        age_eval_delay=None,  # else auto determined from t_i and t_h
+        th_elongation_fraction=0.4,  # what fraction longer t_h is for older people
+        # smape values: 0 - > .333, .3 -> .319, .5 -> .319, .8 -> .321
     ):
         # Retain passed in parameters
         self.lr_fh = lr_fh
         self.lr_fd = lr_fd
         self.delay_ci_h = delay_ci_h  # not using this yet
-        self.age_eval_delay = age_eval_delay
+        self.age_eval_delay = (
+            age_eval_delay  # Delay for median age from cases being applied to death transition
+        )
 
         # __________Fixed parameters not trained_________
         self.t_e = 2.0  # 2.0  sigma was 1/3. days^-1 below
@@ -202,11 +147,14 @@ class NowcastingSEIRModel:
         # https://www.medrxiv.org/content/medrxiv/early/2020/05/05/2020.04.30.20084780.full.pdf
         self.th0 = 6.0
 
+        # Hospitalization dwell time is longer for old people
         def th_f(med_age=None):
-            if med_age is None:
+            if med_age is None:  # not used much as median age data in future is now generated
                 return self.th0
             else:
-                return self.th0 * (1.0 + 0.5 * max(1.0, (med_age - 30.0) / 30.0))
+                return self.th0 * (
+                    1.0 + th_elongation_fraction * max(0.0, min(1.0, (med_age - 30.0) / 30.0))
+                )
 
         self.t_h = th_f
 
@@ -231,6 +179,7 @@ class NowcastingSEIRModel:
 
     def run_stationary(self, rt, median_age, t_over_x, x_is_new_cases=True):
         """
+        TODO is it I,C that are fixed or T over i,C
         Given R(t) and T/I or T/C run to steady state and return ratios of all compartments
         """
 
@@ -494,7 +443,8 @@ class ModelRun:
         S_initial=None,
         nD_initial=None,
         H_initial=None,
-        initial_compartments=None,
+        initial_compartments=None,  # use this OR the next one
+        historical_compartments=None,  # use this OR the previous one - TODO explain why this is here
         compartment_ratios_initial=None,
         # hospitalizations_threshold=None,  # At which point mortality starts to increase due to constrained resources
         # Observable compartments to be eventually used in further constraining the model
@@ -503,7 +453,6 @@ class ModelRun:
         force_stationary=False,  # if True susceptible will be pinned to N
         auto_initialize_other_compartments=False,
         auto_calibrate=False,
-        historical_compartments=None,
         today=None,
     ):
         self.model = model
