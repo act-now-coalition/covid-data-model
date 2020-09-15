@@ -339,6 +339,17 @@ class MultiRegionTimeseriesDataset:
     def has_one_region(self) -> bool:
         return False
 
+    def to_timeseries(self) -> TimeseriesDataset:
+        return TimeseriesDataset(self.data, provenance=self.provenance)
+
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        self.to_timeseries().to_csv(path)
+
 
 def _remove_padded_nans(df, columns):
     if df[columns].isna().all(axis=None):
