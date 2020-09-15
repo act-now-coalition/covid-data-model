@@ -9,6 +9,7 @@ import pydantic
 import api
 from api.can_api_definition import RegionSummaryWithTimeseries
 from api.can_api_definition import AggregateRegionSummaryWithTimeseries
+from libs import pipeline
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
@@ -95,15 +96,18 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
     )
-    us_timeseries = combined_datasets.load_us_timeseries_dataset().get_subset(
-        aggregation_level, state=state, fips=fips, states=active_states
-    )
+    regions = [
+        pipeline.Region.from_fips(fips) for fips in us_latest.all_fips if not fips.endswith("999")
+    ]
 
     for intervention in list(Intervention):
         _logger.info(f"Running intervention {intervention.name}")
-        all_timeseries = api_pipeline.run_on_all_fips_for_intervention(
-            us_latest, us_timeseries, intervention, input_dir
-        )
+        regional_inputs = [
+            api_pipeline.RegionalInput.from_region_and_intervention(region, intervention, input_dir)
+            for region in regions
+        ]
+        _logger.info(f"Loaded {len(regional_inputs)} regions.")
+        all_timeseries = api_pipeline.run_on_all_regional_inputs_for_intervention(regional_inputs)
         county_timeseries = [
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.COUNTY
         ]
@@ -137,20 +141,19 @@ def generate_top_counties(disable_validation, input_dir, output, state, fips: Op
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
     )
-    us_timeseries = combined_datasets.load_us_timeseries_dataset().get_subset(
-        AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
-    )
+    regions = [
+        pipeline.Region.from_fips(fips) for fips in us_latest.all_fips if not fips.endswith("999")
+    ]
+    regional_inputs = [
+        api_pipeline.RegionalInput.from_region_and_intervention(region, intervention, input_dir)
+        for region in regions
+    ]
 
     def sort_func(output: RegionSummaryWithTimeseries):
         return -output.projections.totalHospitalBeds.peakShortfall
 
-    all_timeseries = api_pipeline.run_on_all_fips_for_intervention(
-        us_latest,
-        us_timeseries,
-        Intervention.SELECTED_INTERVENTION,
-        input_dir,
-        sort_func=sort_func,
-        limit=100,
+    all_timeseries = api_pipeline.run_on_all_regional_inputs_for_intervention(
+        regional_inputs, sort_func=sort_func, limit=100,
     )
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
 
