@@ -21,8 +21,6 @@ import libs.qa.dataset_summary_gen
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 
-_log = structlog.get_logger()
-
 
 _log = structlog.get_logger()
 
