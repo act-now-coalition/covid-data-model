@@ -174,5 +174,5 @@ class AggregateFlattenedTimeseries(base_model.APIBaseModel):
     __root__: List[MetricsTimeseriesRowWithHeader] = pydantic.Field(...)
 
     @property
-    def aggregate_level(self) -> AggregationLevel:
+    def level(self) -> AggregationLevel:
         return self.__root__[0].aggregate_level
