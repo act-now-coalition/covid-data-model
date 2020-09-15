@@ -24,6 +24,9 @@ import pandas.core.groupby.generic
 _log = structlog.get_logger()
 
 
+_log = structlog.get_logger()
+
+
 class DuplicateDataException(Exception):
     def __init__(self, message, duplicates):
         self.message = message

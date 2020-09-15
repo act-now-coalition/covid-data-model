@@ -99,7 +99,7 @@ def update(summary_filename, wide_dates_filename):
 def save_summary(output_dir: pathlib.Path, filename: str, level: Optional[AggregationLevel]):
     """Saves summary of timeseries dataset indexed by fips and variable name."""
 
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    us_timeseries = TimeseriesDataset(combined_datasets.load_us_timeseries_dataset().data)
     if level:
         us_timeseries = us_timeseries.get_subset(aggregation_level=level)
 
