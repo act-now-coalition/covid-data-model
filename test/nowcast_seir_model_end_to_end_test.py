@@ -21,6 +21,7 @@ from pyseir.models.nowcast_seir_model import (
 from pyseir.rt.constants import InferRtConstants
 from pyseir.models.historical_data import (
     HistoricalData,
+    ForecastData,
     adjust_rt_to_match_cases,
     EARLY_OUTBREAK_START_DAY_BY_STATE,
 )
@@ -177,7 +178,7 @@ def test_historical_period_state_deaths_and_hospitalizations():
 
     states = HistoricalData.get_states()
     starts = {"early": 90, "recent": 155}  # calendar day in 2020 when each test starts
-    num_days = 75  # duration of each test
+    num_days = 95  # duration of each test
 
     # Various state outbreaks started at different points in time, overrides starts.early
     early_start = EARLY_OUTBREAK_START_DAY_BY_STATE
@@ -207,6 +208,8 @@ def test_historical_period_state_deaths_and_hospitalizations():
 
             # Get historical data for that state and adjust R(t) for long term bias
             (rt, nc, tests, h, nd) = HistoricalData.get_state_data_for_dates(state, t_list)
+            if len(nc) != len(t_list):  # no data returned
+                continue
             (average_R, growth_ratio, adj_r_f) = adjust_rt_to_match_cases(
                 rt, lambda t: nc[t], t_list
             )
@@ -280,7 +283,7 @@ def test_historical_period_state_deaths_and_hospitalizations():
         # TODO add more assertions on a per state level
 
 
-def test_one_state_multiple_periods():
+def test_multiple_periods_for_select_states():
     """
     Show how fit evolves over time for one staste
     """
@@ -302,8 +305,9 @@ def test_one_state_multiple_periods():
         "VA",
     ]:
 
+        latest = 250
         # Get actuals to compare to
-        t_all = np.linspace(100, 230, 230 - 100 + 1)
+        t_all = np.linspace(100, latest, latest - 100 + 1)
         (rt, nc_all, ignore3, h_all, nd_all) = HistoricalData.get_state_data_for_dates(state, t_all)
 
         # Create chart
@@ -312,8 +316,8 @@ def test_one_state_multiple_periods():
         plt.plot(t_all, nd_all, label="actual nD")
         plt.plot(t_all, h_all / 10.0, label="actual H/10")
 
-        for today in [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220]:
-            duration = min(30, 230 - today)
+        for today in [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240]:
+            duration = min(30, latest - today)
             t_list = np.linspace(today, today + duration, duration + 1)
 
             # Need assumptions for R(t) and testing_rate(t) for the future as inputs
@@ -347,9 +351,9 @@ def test_one_state_multiple_periods():
             plt.plot(t_list, results["H"].values / 10.0, linestyle="--", color="grey")
 
         plt.legend()
-        plt.xlim(70, 230)
+        plt.xlim(70, latest)
         plt.yscale("log")
-        fig.savefig(TEST_OUTPUT_DIR / (f"test_one_state_multiple_periods_%s.pdf" % state))
+        fig.savefig(TEST_OUTPUT_DIR / (f"test_multiple_periods_for_select_states_%s.pdf" % state))
 
 
 def test_reproduce_TX_late_peak():
@@ -492,6 +496,75 @@ def test_simulate_iowa_late_august():
 
     results.to_csv(TEST_OUTPUT_DIR / "test_simulate_iowa_results.csv")
     fig.savefig(TEST_OUTPUT_DIR / "test_simulate_iowa.pdf", bbox_inches="tight")
+
+
+def test_reproducing_forecast_deaths_from_cases():
+    """
+    Use forecast cases from Reich Labs and evolve forward in time from present
+    using that data determining new deaths. Compare those with values contained in
+    forecast
+    """
+    for state in ["FL", "GA", "TX", "DE", "WI"]:
+
+        today = 250  # TODO compute for today
+
+        # Get actuals to compare to
+        t_history = np.linspace(today - 30, today, 30 + 1)
+        (rt, nc, ignore_tests, h, nd) = HistoricalData.get_state_data_for_dates(state, t_history)
+
+        # Get latest forecast data
+        (forecast_nC, forecast_nD) = ForecastData.get_state_nC_nD_forecast(state)
+        now_and_forecast = [(today, nc[today])] + forecast_nC
+
+        latest = now_and_forecast[-1][0]  # Latest day in the forecast
+        t_list = np.linspace(today, latest, latest - today + 1)
+
+        # Create extended R(t) function using forecasted_cases
+        forecast_rt_f = extend_rt_function_with_new_cases_forecast(
+            rt, NowcastingSEIRModel().serial_period, now_and_forecast,
+        )
+
+        # Create a ModelRun (with specific assumptions) based on a Model (potentially with some trained inputs)
+        model = NowcastingSEIRModel()
+        run = ModelRun(
+            model,  # creating a default model here with no trained parameters
+            20e6,  # N, population of jurisdiction
+            t_list,
+            None,  # tests (these are currently ignored so positivity not used)
+            forecast_rt_f,
+            case_median_age_f=Demographics.infer_median_age_function(t_list, forecast_rt_f),
+            initial_compartments={"nC": nc[today], "H": h[today], "nD": nd[today]},
+            auto_initialize_other_compartments=True,  # By running to steady state at initial R(t=t0)
+            auto_calibrate=True,  # Override some model constants to ensure continuity with initial compartments
+        )
+
+        # Execute the run, results are a DataFrame, fig is Matplotlib Figure, ratios are key metrics
+        (results, ignore, fig) = run.execute_dataframe_ratios_fig()
+        fig.savefig(
+            TEST_OUTPUT_DIR / (f"test_reproducing_forecast_deaths_from_cases_%s_run.pdf" % state),
+            bbox_inches="tight",
+        )
+
+        # Now compare results against forecasts and for continuity with actuals
+        run_nd = results.nD
+
+        fig = plt.figure(facecolor="w", figsize=(10, 7))
+        plt.title(f"Compare deaths with forecast for state = %s" % state)
+        plt.scatter(t_history, nd, label="actual data", marker="o")
+        plt.scatter(
+            [forecast_nD[i][0] for i in range(0, len(forecast_nD))],
+            [forecast_nD[i][1] for i in range(0, len(forecast_nD))],
+            marker="o",
+            label="Reich Lab forecast",
+        )
+        plt.plot(t_list, run_nd.values, label="run results")
+        plt.legend()
+
+        fig.savefig(
+            TEST_OUTPUT_DIR
+            / (f"test_reproducing_forecast_deaths_from_cases_%s_compare.pdf" % state),
+            bbox_inches="tight",
+        )
 
 
 ############################### Obsolete tests below here ##############################

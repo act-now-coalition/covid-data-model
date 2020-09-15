@@ -3,9 +3,17 @@ import numpy as np
 import math
 from datetime import datetime, timedelta
 
+import us
 from pyseir.rt.constants import InferRtConstants
 
-# Manually label bad data that is impacting tests so can be removed
+# Historical data file, prepared in each API snapshot, including key metrics and inferred Rt values
+# TODO update process to save this periodically in this locaiton
+HISTORICAL_DATA_FILE = "test/data/historical/merged_results.csv"
+
+# Forecast data
+FORECAST_DATA_FILE = "test/data/forecasts/timeseries-common.csv"
+
+# Manually label bad data corrections so they can be automatically applied
 DATA_CORRECTIONS = {
     "TX": {"nD": [(208, 180.0)]},
     "NJ": {"nD": [(176, 30.0), (189, 15.0)]},
@@ -47,7 +55,12 @@ EARLY_OUTBREAK_START_DAY_BY_STATE = {
 
 
 class HistoricalData:
-    raw = pd.read_csv("test/data/historical/merged_results_2020_08_19.csv", parse_dates=["date"])
+    """
+    Look up historical data to use for testing purposes. Includes both raw data and some
+    of our inferred or derived data (e.g. R(t) Bettencourt)
+    """
+
+    raw = pd.read_csv(HISTORICAL_DATA_FILE, parse_dates=["date"])
     data = raw[
         [
             "date",
@@ -162,7 +175,46 @@ def adjust_rt_to_match_cases(rt_f, new_cases, t_list):
     case_growth = new_cases(t_list[-1]) / new_cases(t_list[0])
     r_1_growth = math.exp((average_R - 1) * (len(t_list) - 1) / InferRtConstants.SERIAL_PERIOD)
     growth_ratio = case_growth / r_1_growth
-    dr = math.log(growth_ratio) * InferRtConstants.SERIAL_PERIOD / (len(t_list) - 1)
+    if growth_ratio > 0:
+        dr = math.log(growth_ratio) * InferRtConstants.SERIAL_PERIOD / (len(t_list) - 1)
+    else:  # something funny so skip
+        dr = 0.0
     adj_r_f = lambda t: rt_f(t) + dr
 
     return (average_R, growth_ratio, adj_r_f)
+
+
+class ForecastData:
+    """
+    Look up forecast data to use for testing purposes.
+    """
+
+    raw = pd.read_csv(FORECAST_DATA_FILE, parse_dates=["date"])
+    data = raw[["fips", "date", "weekly_new_cases_0.5", "weekly_new_deaths_0.5",]]
+
+    data = data[data["fips"] < 100]
+    ref_date = datetime(2020, 1, 1)
+
+    @staticmethod
+    def get_state_nC_nD_forecast(state):
+        state_obj = us.states.lookup(state)
+        fips = int(state_obj.fips)
+
+        # Get the right rows
+        rows = ForecastData.data[(ForecastData.data["fips"] == fips)]
+        rows = rows.drop(columns="fips")
+        rows["date"] = pd.to_datetime(rows["date"])
+        rows = rows.set_index("date")
+        rows.columns = ["nC", "nD"]
+
+        # Format the data as tuples
+        nC_forecast = [
+            ((index - ForecastData.ref_date).days, value / 7.0)
+            for (index, value) in rows.nC.items()
+        ]
+        nD_forecast = [
+            ((index - ForecastData.ref_date).days, value / 7.0)
+            for (index, value) in rows.nD.items()
+        ]
+
+        return (nC_forecast, nD_forecast)

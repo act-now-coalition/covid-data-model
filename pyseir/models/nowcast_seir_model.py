@@ -20,38 +20,98 @@ def ramp_function(t_list, start_value, end_value):
 
 
 def extend_rt_function_with_new_cases_forecast(rt_f, serial_period, forecast_new_cases):
+    from scipy.interpolate import interp1d, InterpolatedUnivariateSpline
+
+    (today, current_nC) = forecast_new_cases[0]
+    (future, future_nC) = forecast_new_cases[-1]
+
+    historical = today - (forecast_new_cases[1][0] - today)
+    integral_historical_rt = sum(
+        [(rt_f(i) - 1.0) / serial_period for i in range(historical, today - 1)]
+    )
+    historical_nC = current_nC / math.exp(integral_historical_rt)
+
+    padded = [(historical, historical_nC)] + forecast_new_cases
+
+    x = [padded[i][0] for i in range(0, len(padded))]
+    y = [math.log(padded[i][1]) for i in range(0, len(padded))]
+    nc_ext_array = InterpolatedUnivariateSpline(x, y)
+    # interp1d(x, y, kind="cubic")  # expects an array
+    nc_ext = lambda t: float(nc_ext_array(t))
+
+    def make_rt_switcher(rt, nc_ext, today, last):
+        def ftn(t):
+            if t <= today:
+                return rt(t)
+            elif t >= last:
+                return (
+                    math.log(math.exp(nc_ext(last)) / math.exp(nc_ext(last - 1))) * serial_period
+                    + 1.0
+                )
+            else:
+                return math.log(math.exp(nc_ext(t)) / math.exp(nc_ext(t - 1))) * serial_period + 1.0
+
+        return ftn
+
+    rt_ext = make_rt_switcher(rt_f, nc_ext, today, future)
+
+    return rt_ext
+
+
+def obsolete_extend_rt_function_with_new_cases_forecast(rt_f, serial_period, forecast_new_cases):
     """
     Takes an rt_f function and extends it to match up with one or more
     ordered new_case forecasts in the future (after today). Note the first forecast
     must be a specification of the new_cases today (the start of the forecast period)
     """
     using = copy.deepcopy(forecast_new_cases)
-    (today, current_nC) = using.pop(0)
+    (today, current_nC) = using[0]
     r_ftn = rt_f
 
-    def make_switching_ftn(f, m, today):
+    def make_switching_ftn(f, today, m, a=0.0):
         def ftn(t):
             if t <= today:
                 return f(t)
             else:
-                return f(today) + m * (t - today)
+                return max(0.0, f(today) + m * (t - today) + a * (t - today) ** 2)
 
         return ftn
 
-    while len(using) > 0:
-        (future, target_nC) = using.pop(0)
+    for i in range(1, len(using)):
+        (future, target_nC) = using[i]
+        next_nC = using[i + 1][1] if i < len(using) - 1 else None  # to peek ahead
+
+        # is target_nC a minimum or maximum (which needs special handling)
+        is_extremum = (
+            True
+            if (next_nC is not None and (target_nC - current_nC) * (target_nC - next_nC) > 0.0)
+            else False
+        )
+
         assert future > today
+
         nC_ratio = target_nC / current_nC
-
-        # Assuming rt is of form rt(t) = rt(today) + m * (t-today)
-        # where also Integral of (rt(t) - 1)/serial_period from t=today->future is ln(nC_ratio)
-        # so the predicted nC value will match up at t=future
         r0 = r_ftn(today)
-        const_integral = 1.0 / serial_period * (r0 - 1) * (future - today)
-        variable_integral = math.log(nC_ratio) - const_integral
-        m = variable_integral / (0.5 * (future - today) ** 2) * serial_period
+        delta_t = 1.0 * (future - today)
 
-        r_ftn = make_switching_ftn(r_ftn, m, today)
+        if not is_extremum:
+            # Assuming rt is of form rt(t) = rt(today) + m * (t-today)
+            # where also Integral of (rt(t) - 1)/serial_period from t=today->future is ln(nC_ratio)
+            # so the predicted nC value will match up at t=future
+            const_integral = 1.0 / serial_period * (r0 - 1) * delta_t
+            variable_integral = math.log(nC_ratio) - const_integral
+            m = variable_integral / (0.5 * delta_t ** 2) * serial_period
+            a = 0.0  # linear
+        else:
+            # Want rt to be exactly 1 at future as it is an extremum in cases
+            m = (
+                6.0
+                * (serial_period * math.log(nC_ratio) - 2.0 / 3.0 * (r0 - 1.0) * delta_t)
+                / delta_t ** 2
+            )
+            a = (1.0 - r0 - m * delta_t) / delta_t ** 2
+
+        r_ftn = make_switching_ftn(r_ftn, today, m, a)
 
         # Get ready to iterate to the next forecast if needed
         (today, current_nC) = (future, target_nC)
@@ -521,14 +581,15 @@ class ModelRun:
             y[9] = 0.0
 
         if self.auto_calibrate:
+            max_cal = 3.0
             current = ModelRun.array_to_dict(y)
             adj_H = 1.0
             adj_nD = 1.0
             if y0["H"] > 0.0 and current["H"] > 0.0:
-                adj_H = max(min(y0["H"] / current["H"], 10.0), 0.1)
+                adj_H = max(min(y0["H"] / current["H"], max_cal), 1.0 / max_cal)
                 current["H"] = y0["H"]
             if y0["nD"] > 0.0 and current["nD"] > 0.0:
-                adj_nD = max(min(y0["nD"] / current["nD"] / adj_H, 10.0), 0.1)
+                adj_nD = max(min(y0["nD"] / current["nD"] / adj_H, max_cal), 1.0 / max_cal)
                 current["nD"] = y0["nD"]
             y = ModelRun.dict_to_array(current)
             self.model.adjustFractions(adj_H, adj_nD)
@@ -930,4 +991,3 @@ class ModelRun:
         plt.xlabel("Time [days]", fontsize=12)
         plt.grid(True, which="both")
         return fig
-

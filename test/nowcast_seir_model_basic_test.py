@@ -262,47 +262,80 @@ def test_using_outputs_of_case_forecast_to_extend_rt():
     R(t) function to generate an extended R(t) function out into the future
     """
 
-    # Using Illinois data to use as forecast cases below and to roughly check extended R(t)
-    # function looks reasonable
-    t_list = np.linspace(120, 230, 230 - 120 + 1)
-    (rt_f, nC_f, ignore2, ignore3, ignore4) = HistoricalData.get_state_data_for_dates(
-        "IL", t_list, compartments_as_functions=True
-    )
+    future = 250
+    t_list = np.linspace(120, future, future - 120 + 1)
 
-    # As test take forecasted cases (past 140) from historical data for new cases in Illinois
-    forecasted_cases = []
-    for day in [140, 155, 170, 185, 220]:
-        forecasted_cases.append((day, nC_f(day)))
-    start = forecasted_cases[0][0]
-    end = forecasted_cases[-1][0]
+    for state in ["AK", "AZ", "FL", "HI", "IL", "NY", "WI"]:
 
-    # Now generate an extended rt_f function from
-    # - the forecasted new cases at various times in the future
-    # - the rt_f from Bettencourt for the same source data (Illinois)
-    serial_period = NowcastingSEIRModel().serial_period
-    forecast_rt_f = extend_rt_function_with_new_cases_forecast(
-        rt_f, serial_period, forecasted_cases
-    )
+        # Using each state's data to use as forecast cases below and to roughly check extended R(t)
+        # function looks reasonable
+        (rt_f, nC_f, ignore2, ignore3, ignore4) = HistoricalData.get_state_data_for_dates(
+            state, t_list, compartments_as_functions=True
+        )
 
-    # Check result for the final new cases at end of extended R(t)
-    check_nC = nC_f(start)
-    for t in range(start + 1, end):
-        check_nC = check_nC * math.exp((forecast_rt_f(t) - 1) / serial_period)
-    nC_ratio = check_nC / nC_f(end)
-    assert nC_ratio > 0.95 and nC_ratio < 1.05
+        # As test take forecasted cases (past 140) from historical data for new cases in Illinois
+        forecasted_cases = []
+        for day in [140, 160, 180, 200, 220]:
+            forecasted_cases.append((day, nC_f(day)))
+        start = forecasted_cases[0][0]
+        end = forecasted_cases[-1][0]
 
-    # Plot resulting R(t) and compare with Bettencourt
-    fig = plt.figure(facecolor="w", figsize=(10, 6))
-    plt.plot(t_list, [forecast_rt_f(t) for t in t_list], label="piecewise linear R(t)")
-    plt.plot(t_list, [rt_f(t) for t in t_list], label="Bettencourt R(t)")
-    for (day, nc) in forecasted_cases:
-        plt.plot([day, day], [0.4, 1.4], linestyle="--", color="black")
-    plt.legend()
-    fig.savefig(TEST_OUTPUT_DIR / "test_using_rt_forecast.pdf")
+        # Now generate an extended rt_f function from
+        # - the forecasted new cases at various times in the future
+        # - the rt_f from Bettencourt for the same source data (Illinois)
+        serial_period = NowcastingSEIRModel().serial_period
+        forecast_rt_f = extend_rt_function_with_new_cases_forecast(
+            rt_f, serial_period, forecasted_cases
+        )
 
-    # Doesn't agree perfectly as rt from Bettencourt is a little off and piecewise linear is more jagged
-    rt_ratio = forecast_rt_f(end) / rt_f(end)
-    assert rt_ratio > 0.8 and rt_ratio < 1.2
+        # Check result for the final new cases at end of extended R(t)
+        check_nC = [nC_f(start)]
+        check_t = list(range(start, future))
+        for t in check_t[1:]:
+            check_nC.append(check_nC[-1] * math.exp((forecast_rt_f(t) - 1) / serial_period))
+
+        # Plot resulting R(t), cases and compare with Bettencourt R(t), actual cases
+        fig = plt.figure(facecolor="w", figsize=(8, 8))
+        fig.suptitle((f"Does R(t) extrapolation fit cases for %s?" % state))
+
+        plt.subplot(211)
+        plt.ylabel("R(t)")
+        plt.plot(t_list, [forecast_rt_f(t) for t in t_list], label="piecewise linear R(t)")
+        plt.plot(t_list, [rt_f(t) for t in t_list], label="Bettencourt R(t)", linestyle="--")
+        for (day, nc) in forecasted_cases:
+            plt.plot([day, day], [0.5, 1.5], linestyle="--", color="black")
+        plt.legend()
+
+        plt.subplot(212)
+        plt.ylabel("New cases")
+        plt.plot(check_t, check_nC, label="from piecewise linear R(t)")
+        plt.plot(t_list, [nC_f(i) for i in t_list], linestyle="--", label="actual cases")
+        plt.yscale("log")
+        plt.legend()
+
+        fig.savefig(
+            TEST_OUTPUT_DIR / (f"test_using_outputs_of_case_forecast_to_extend_rt_%s.pdf" % state)
+        )
+
+        # Check that cases match
+        nC_ratio = check_nC[-(future - end)] / nC_f(end)
+        assert nC_ratio > 0.95 and nC_ratio < 1.05
+
+
+def test_scipy_interpolate():
+    from scipy.interpolate import interp1d
+
+    x = np.linspace(0, 10, num=11, endpoint=True)
+    y = np.cos(-(x ** 2) / 9.0)
+    f = interp1d(x, y)
+    f2 = interp1d(x, y, kind="cubic")
+
+    xnew = np.linspace(0, 10, num=41, endpoint=True)
+
+    fig = plt.figure(facecolor="w", figsize=(8, 8))
+    plt.plot(x, y, "o", xnew, f(xnew), "-", xnew, f2(xnew), "--")
+    plt.legend(["data", "linear", "cubic"], loc="best")
+    fig.savefig(TEST_OUTPUT_DIR / "test_scipy_interpolate.pdf", bbox_inches="tight")
 
 
 ################################ Obsolete test cases ############################
