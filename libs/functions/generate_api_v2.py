@@ -11,11 +11,7 @@ from api.can_api_v2_definition import (
     RegionSummaryWithTimeseries,
 )
 from covidactnow.datapublic.common_fields import CommonFields
-from libs import us_state_abbrev
-from libs.datasets import can_model_output_schema as can_schema
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import TimeseriesDataset
-from libs.enums import Intervention
 
 
 def _generate_actuals(actual_data: dict) -> Actuals:

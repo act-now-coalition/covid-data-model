@@ -1,8 +1,6 @@
-from typing import List, Optional
-from libs.enums import Intervention
+from typing import List
 from libs.datasets.dataset_utils import AggregationLevel
 from api import can_api_definition
-from libs import us_state_abbrev
 from libs import base_model
 import pydantic
 import datetime

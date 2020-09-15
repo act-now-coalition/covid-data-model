@@ -1,4 +1,4 @@
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional, Dict, Any
 from dataclasses import dataclass
 import functools
 import multiprocessing
@@ -17,13 +17,10 @@ from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from libs import dataset_deployer
 from libs import top_level_metrics
 from libs import pipeline
-from libs.datasets import CommonFields
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api_v2
-from libs.functions import get_can_projection
 from libs.datasets import combined_datasets
 
 logger = structlog.getLogger()
@@ -45,11 +42,11 @@ class RegionalInput:
         return self.region.fips
 
     @property
-    def latest(self):
+    def latest(self) -> Dict[str, Any]:
         return self._combined_data.latest
 
     @property
-    def timeseries(self):
+    def timeseries(self) -> OneRegionTimeseriesDataset:
         return self._combined_data.timeseries
 
     @staticmethod
@@ -93,7 +90,9 @@ def run_on_regions(
 
 
 def generate_metrics_and_latest(
-    timeseries: TimeseriesDataset, latest: dict, model_output: Optional[CANPyseirLocationOutput],
+    timeseries: OneRegionTimeseriesDataset,
+    latest: dict,
+    model_output: Optional[CANPyseirLocationOutput],
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
     For a FIPS, generate a MetricsTimeseriesRow per day and return the latest.
