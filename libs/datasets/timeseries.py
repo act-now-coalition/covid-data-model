@@ -1,3 +1,4 @@
+import datetime
 import pathlib
 from dataclasses import dataclass
 from typing import Iterable
@@ -17,6 +18,8 @@ from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
+from libs.pipeline import Region
+import pandas.core.groupby.generic
 
 
 _log = structlog.get_logger()
@@ -98,13 +101,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     @property
     def empty(self):
         return self.data.empty
-
-    @property
-    def all_fips(self):
-        return self.data.reset_index().fips.unique()
-
-    def has_one_region(self) -> bool:
-        return self.data[CommonFields.FIPS].nunique() == 1
 
     def latest_values(self) -> pd.DataFrame:
         """Gets the most recent values.
@@ -207,12 +203,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         columns_key = list(columns) if columns else slice(None, None, None)
         return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
 
-    def get_one_region(
-        self, fips: str, columns: Sequence[str] = tuple()
-    ) -> OneRegionTimeseriesDataset:
-        assert fips  # Must be set to a non-empty value
-        return OneRegionTimeseriesDataset(data=self.get_subset(fips=fips, columns=columns).data)
-
     @classmethod
     def from_source(
         cls, source: "DataSource", fill_missing_state: bool = True
@@ -290,6 +280,62 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         # In the future, it would be good to standardize around index fields.
         df = df.reset_index()
         return cls(df)
+
+
+@final
+@dataclass(frozen=True)
+class MultiRegionTimeseriesDataset:
+    """A set of timeseries with values from any number of regions."""
+
+    # `data` may be used to process every row without considering the date or region. Keep logic about
+    # FIPS/locationID/region containing in this class by using methods such as `get_one_region`. Do *not*
+    # read date or region related columns directly from `data`.
+    data: pd.DataFrame
+
+    provenance: Optional[pd.Series] = None
+
+    @staticmethod
+    def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
+        df = common_df.read_csv(path_or_buf, set_index=False)
+        return MultiRegionTimeseriesDataset(df)
+
+    @staticmethod
+    def from_timeseries(ts: TimeseriesDataset) -> "MultiRegionTimeseriesDataset":
+        return MultiRegionTimeseriesDataset(ts.data, provenance=ts.provenance)
+
+    def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
+        rows_key = self.data[CommonFields.FIPS] == region.fips
+        return OneRegionTimeseriesDataset(data=self.data.loc[rows_key, :])
+
+    def get_counties(
+        self, after: Optional[datetime.datetime] = None
+    ) -> "MultiRegionTimeseriesDataset":
+        rows_key = dataset_utils.make_rows_key(
+            self.data, aggregation_level=AggregationLevel.COUNTY, after=after
+        )
+        return MultiRegionTimeseriesDataset(self.data.loc[rows_key, :].reset_index(drop=True))
+
+    def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
+        return self.data.groupby(CommonFields.FIPS)
+
+    @property
+    def empty(self) -> bool:
+        return self.data.empty
+
+    def to_timeseries(self) -> TimeseriesDataset:
+        """Returns a `TimeseriesDataset` of this data.
+
+        This method exists for interim use when calling code that doesn't use MultiRegionTimeseriesDataset.
+        """
+        return TimeseriesDataset(self.data, provenance=self.provenance)
+
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        self.to_timeseries().to_csv(path)
 
 
 def _remove_padded_nans(df, columns):

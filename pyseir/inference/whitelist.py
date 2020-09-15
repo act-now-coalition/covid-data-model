@@ -7,13 +7,12 @@ import numpy as np
 import logging
 
 from libs import pipeline
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
-from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import load_data
 from datetime import datetime
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import AggregationLevel
 from pandarallel import pandarallel
 
 VISIBIBLE_PROGRESS_BAR = os.environ.get("PYSEIR_VERBOSITY") == "True"
@@ -36,7 +35,7 @@ class WhitelistGenerator:
     # Minimum number of nonzero death datapoints in the time series to allow display.
     nonzero_death_datapoints: int = 0
 
-    def generate_whitelist(self, timeseries: TimeseriesDataset) -> pd.DataFrame:
+    def generate_whitelist(self, timeseries: MultiRegionTimeseriesDataset) -> pd.DataFrame:
         """
         Generate a county whitelist based on the cuts above.
 
@@ -46,14 +45,13 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        counties = timeseries.get_subset(
-            aggregation_level=AggregationLevel.COUNTY
-        ).data  # groupby region
         df_candidates = (
-            counties.groupby(CommonFields.FIPS)
+            timeseries.get_counties()
+            .groupby_region()
             # Use pandarallel. It doesn't support the `name` attribute so leave FIPS as a regular
             # column so it can be read in the applied function.
-            .parallel_apply(_whitelist_candidates_per_fips).reset_index(drop=True)
+            .parallel_apply(_whitelist_candidates_per_fips)
+            .reset_index(drop=True)
         )
 
         df_candidates["inference_ok"] = (

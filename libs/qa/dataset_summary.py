@@ -72,8 +72,8 @@ def get_summaries(
 
     Returns: Tuple of summaries for each sha.
     """
-    timeseries1 = combined_datasets.load_us_timeseries_dataset(commit=sha1)
-    timeseries2 = combined_datasets.load_us_timeseries_dataset(commit=sha2)
+    timeseries1 = combined_datasets.load_us_timeseries_dataset(commit=sha1).to_timeseries()
+    timeseries2 = combined_datasets.load_us_timeseries_dataset(commit=sha2).to_timeseries()
 
     if level:
         timeseries1 = timeseries1.get_subset(aggregation_level=level)

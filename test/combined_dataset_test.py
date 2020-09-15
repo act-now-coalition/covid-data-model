@@ -25,6 +25,7 @@ from libs.datasets import NevadaHospitalAssociationData
 
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.timeseries import TimeseriesDataset
+from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date, to_dict
 import numpy as np
 import pytest
@@ -37,7 +38,7 @@ import pytest
 @pytest.mark.slow
 def test_unique_index_values_us_timeseries():
     timeseries = combined_datasets.load_us_timeseries_dataset()
-    timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS)
+    timeseries_data = timeseries.data.set_index(TimeseriesDataset.INDEX_FIELDS)
     duplicates = timeseries_data.index.duplicated()
     assert not sum(duplicates)
 
@@ -63,9 +64,8 @@ def test_combined_county_has_some_data(fips):
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_timeseries_data(fips):
-    latest = combined_datasets.load_us_timeseries_dataset().get_subset(
-        AggregationLevel.COUNTY, fips=fips
-    )
+    region = Region.from_fips(fips)
+    latest = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
     df = latest.data.set_index(CommonFields.DATE)
     assert df.loc["2020-05-01", CommonFields.CASES] > 0
     assert df.loc["2020-05-01", CommonFields.DEATHS] > 0

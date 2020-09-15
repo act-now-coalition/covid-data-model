@@ -19,6 +19,7 @@ import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 import pyseir.utils
@@ -191,7 +192,7 @@ def calculate_new_case_data_by_region(
 
 
 @lru_cache(maxsize=None)
-def get_hospitalization_data() -> TimeseriesDataset:
+def get_hospitalization_data() -> MultiRegionTimeseriesDataset:
     """
     Since we're using this data for hospitalized data only, only returning
     values with hospitalization data.  I think as the use cases of this data source
@@ -203,7 +204,7 @@ def get_hospitalization_data() -> TimeseriesDataset:
     data = combined_datasets.load_us_timeseries_dataset().data  # processing rows, ignoring indexes
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
-    return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
+    return MultiRegionTimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
 
 
 def calculate_hospitalization_data(

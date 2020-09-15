@@ -6,8 +6,9 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from api import can_api_definition
 from libs import top_level_metrics
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs.pipeline import Region
 
 
 def _build_metrics_df(content: str) -> pd.DataFrame:
@@ -88,7 +89,7 @@ def test_top_level_metrics_basic():
         "2020-08-19,36,,,,3,10,20,\n"
         "2020-08-20,36,40,40,360,4,10,20,\n"
     )
-    timeseries = TimeseriesDataset.load_csv(data)
+    timeseries = MultiRegionTimeseriesDataset.from_csv(data).get_one_region(Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
@@ -117,7 +118,7 @@ def test_top_level_metrics_no_test_positivity():
         "2020-08-19,36,30,,,3,,\n"
         "2020-08-20,36,40,,,4,,\n"
     )
-    timeseries = TimeseriesDataset.load_csv(data)
+    timeseries = MultiRegionTimeseriesDataset.from_csv(data).get_one_region(Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
@@ -144,7 +145,7 @@ def test_top_level_metrics_with_rt():
         "2020-08-19,36,,,,3,,,\n"
         "2020-08-20,36,40,40,360,4,,,\n"
     )
-    timeseries = TimeseriesDataset.load_csv(data)
+    timeseries = MultiRegionTimeseriesDataset.from_csv(data).get_one_region(Region.from_fips("36"))
 
     data = io.StringIO(
         "date,fips,Rt_indicator,Rt_indicator_ci90,intervention,all_hospitalized,beds,infected_c\n"
