@@ -1,6 +1,9 @@
 import pathlib
+from dataclasses import dataclass
+from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Sequence
+from typing_extensions import final
 
 import pandas as pd
 import structlog
@@ -16,6 +19,9 @@ from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
 
 
+_log = structlog.get_logger()
+
+
 class DuplicateDataException(Exception):
     def __init__(self, message, duplicates):
         self.message = message
@@ -24,6 +30,51 @@ class DuplicateDataException(Exception):
 
     def __str__(self):
         return f"DuplicateDataException({self.message})"
+
+
+@final
+@dataclass(frozen=True)
+class OneRegionTimeseriesDataset:
+    """A set of timeseries with values from one region."""
+
+    # Do not make an assumptions about a FIPS or locationID column in the DataFrame.
+    data: pd.DataFrame
+    # The region is not an attribute at this time because it simplifies making instances and
+    # code that needs the region of an instance already has it.
+
+    def __post_init__(self):
+        region_count = self.data[CommonFields.FIPS].nunique()
+        if region_count == 0:
+            _log.warning(f"Creating {self.__class__.__name__} with zero regions")
+        elif region_count != 1:
+            raise ValueError(
+                f"Does not have exactly one region: "
+                f"{self.data[CommonFields.FIPS].value_counts()}"
+            )
+
+    @property
+    def empty(self):
+        return self.data.empty
+
+    def has_one_region(self) -> bool:
+        return True
+
+    def yield_records(self) -> Iterable[dict]:
+        # Copied from dataset_base.py
+        # It'd be faster to use self.data.itertuples or find a way to avoid yield_records, but that
+        # needs larger changes in code calling this.
+        for idx, row in self.data.iterrows():
+            yield row.where(pd.notnull(row), None).to_dict()
+
+    def get_subset(self, after=None, columns=tuple()):
+        rows_key = dataset_utils.make_rows_key(self.data, after=after,)
+        columns_key = list(columns) if columns else slice(None, None, None)
+        return OneRegionTimeseriesDataset(
+            self.data.loc[rows_key, columns_key].reset_index(drop=True)
+        )
+
+    def remove_padded_nans(self, columns: List[str]):
+        return OneRegionTimeseriesDataset(_remove_padded_nans(self.data, columns))
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -156,8 +207,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         columns_key = list(columns) if columns else slice(None, None, None)
         return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
 
-    def remove_padded_nans(self, columns: List[str]):
-        return self.__class__(_remove_padded_nans(self.data, columns))
+    def get_one_region(
+        self, fips: str, columns: Sequence[str] = tuple()
+    ) -> OneRegionTimeseriesDataset:
+        assert fips  # Must be set to a non-empty value
+        return OneRegionTimeseriesDataset(data=self.get_subset(fips=fips, columns=columns).data)
 
     @classmethod
     def from_source(
@@ -202,7 +256,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         no_fips = data[CommonFields.FIPS].isnull()
         if no_fips.any():
-            structlog.get_logger().warning(
+            _log.warning(
                 "Dropping rows without FIPS", source=str(source), rows=repr(data.loc[no_fips])
             )
             data = data.loc[~no_fips]

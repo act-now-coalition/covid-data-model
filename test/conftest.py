@@ -1,10 +1,16 @@
 import pathlib
 import pytest
+from libs import pipeline
 
 
 @pytest.fixture
 def nyc_fips():
     return "36061"
+
+
+@pytest.fixture
+def nyc_region(nyc_fips):
+    return pipeline.Region(nyc_fips)
 
 
 @pytest.fixture
