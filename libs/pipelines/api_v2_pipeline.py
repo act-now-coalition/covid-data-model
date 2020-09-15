@@ -16,6 +16,7 @@ from api.can_api_v2_definition import MetricsTimeseriesRow
 from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from libs import dataset_deployer
 from libs import top_level_metrics
+from libs import pipeline
 from libs.datasets import CommonFields
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
@@ -24,7 +25,6 @@ from libs.enums import Intervention
 from libs.functions import generate_api_v2
 from libs.functions import get_can_projection
 from libs.datasets import combined_datasets
-from libs import pipeline
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"

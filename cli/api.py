@@ -141,6 +141,8 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
 
     active_states = [state.abbr for state in us.STATES]
     active_states = active_states + ["PR", "MP"]
+
+    # Load all API Regions
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
     )
@@ -154,9 +156,11 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     ]
     _logger.info(f"Finished loading all regional inputs.")
 
+    # Build all region timeseries API Output objects.
     _logger.info("Generating all API Timeseries")
     all_timeseries = api_v2_pipeline.run_on_regions(regional_inputs)
 
+    # Deploy timeseries to API output locations
     path_builder = api_v2_paths.APIOutputPathBuilder(output)
     path_builder.make_directories()
     _logger.info("Persisting county outputs")
