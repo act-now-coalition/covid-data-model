@@ -102,13 +102,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     def empty(self):
         return self.data.empty
 
-    @property
-    def all_fips(self):
-        return self.data.reset_index().fips.unique()
-
-    def has_one_region(self) -> bool:
-        return self.data[CommonFields.FIPS].nunique() == 1
-
     def latest_values(self) -> pd.DataFrame:
         """Gets the most recent values.
 
@@ -210,12 +203,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         columns_key = list(columns) if columns else slice(None, None, None)
         return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
 
-    def get_one_region(
-        self, fips: str, columns: Sequence[str] = tuple()
-    ) -> OneRegionTimeseriesDataset:
-        assert fips  # Must be set to a non-empty value
-        return OneRegionTimeseriesDataset(data=self.get_subset(fips=fips, columns=columns).data)
-
     @classmethod
     def from_source(
         cls, source: "DataSource", fill_missing_state: bool = True
@@ -300,7 +287,9 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 class MultiRegionTimeseriesDataset:
     """A set of timeseries with values from any number of regions."""
 
-    # Do not make an assumptions about a FIPS or locationID column in the DataFrame.
+    # `data` may be used to process every row without considering the date or region. Keep logic about
+    # FIPS/locationID/region containing in this class by using methods such as `get_one_region`. Do *not*
+    # read date or region related columns directly from `data`.
     data: pd.DataFrame
 
     provenance: Optional[pd.Series] = None
@@ -314,12 +303,9 @@ class MultiRegionTimeseriesDataset:
     def from_timeseries(ts: TimeseriesDataset) -> "MultiRegionTimeseriesDataset":
         return MultiRegionTimeseriesDataset(ts.data, provenance=ts.provenance)
 
-    def get_one_region(
-        self, region: Region, columns: Sequence[str] = tuple()
-    ) -> OneRegionTimeseriesDataset:
+    def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         rows_key = self.data[CommonFields.FIPS] == region.fips
-        columns_key = list(columns) if columns else slice(None, None, None)
-        return OneRegionTimeseriesDataset(data=self.data.loc[rows_key, columns_key])
+        return OneRegionTimeseriesDataset(data=self.data.loc[rows_key, :])
 
     def get_counties(
         self, after: Optional[datetime.datetime] = None
@@ -336,10 +322,11 @@ class MultiRegionTimeseriesDataset:
     def empty(self) -> bool:
         return self.data.empty
 
-    def has_one_region(self) -> bool:
-        return False
-
     def to_timeseries(self) -> TimeseriesDataset:
+        """Returns a `TimeseriesDataset` of this data.
+
+        This method exists for interim use when calling code that doesn't use MultiRegionTimeseriesDataset.
+        """
         return TimeseriesDataset(self.data, provenance=self.provenance)
 
     def to_csv(self, path: pathlib.Path):

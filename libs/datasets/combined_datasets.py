@@ -186,7 +186,7 @@ def build_from_sources(
             datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    # TODO(tom): When LatestValuesDataset is retired return only it.
+    # TODO(tom): When LatestValuesDataset is retired return only a MultiRegionTimeseriesDataset
     return target_dataset_cls(
         data.reset_index(), provenance=provenance_wide_metrics_to_series(provenance, _log)
     )
