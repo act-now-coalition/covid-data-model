@@ -1,4 +1,6 @@
-from typing import Iterator, List, Optional, Dict, Any
+from typing import Any
+from typing import Dict
+from typing import Iterator, List, Optional
 import functools
 import multiprocessing
 import pathlib
@@ -15,8 +17,8 @@ from api.can_api_definition import (
     RegionSummaryWithTimeseries,
 )
 from libs import dataset_deployer
-from libs import top_level_metrics
 from libs import pipeline
+from libs import top_level_metrics
 from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
@@ -167,7 +169,6 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
 
     logger.info(f"Deploying {intervention.name}")
 
-    all_summaries = []
     deploy_timeseries_partial = functools.partial(_deploy_timeseries, intervention, region_folder)
     all_summaries = [
         deploy_timeseries_partial(region_timeseries) for region_timeseries in all_timeseries

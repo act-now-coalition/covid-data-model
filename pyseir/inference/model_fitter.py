@@ -50,10 +50,8 @@ class RegionalInput:
     @staticmethod
     def from_state_region(region: pipeline.Region) -> "RegionalInput":
         """Creates a RegionalInput for given state region."""
-        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(
-            fips=region.fips
-        )
         assert region.is_state()
+        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(region)
         return RegionalInput(
             region=region,
             _combined_data=combined_datasets.RegionalData.from_region(region),
@@ -70,11 +68,9 @@ class RegionalInput:
             region: a sub-state region such as a county
             state_fitter: ModelFitter for the state containing region
         """
-        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(
-            fips=region.fips
-        )
         assert region.is_county()
         assert state_fitter
+        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(region)
         return RegionalInput(
             region=region,
             _combined_data=combined_datasets.RegionalData.from_region(region),

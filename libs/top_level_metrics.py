@@ -8,7 +8,6 @@ from covidactnow.datapublic import common_fields
 
 from api import can_api_definition
 from libs import series_utils
-from libs.datasets import combined_datasets
 from libs.datasets import can_model_output_schema as schema
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
@@ -36,18 +35,6 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     INFECTION_RATE = "infectionRate"
     INFECTION_RATE_CI90 = "infectionRateCI90"
     ICU_HEADROOM_RATIO = "icuHeadroomRatio"
-
-
-def calculate_top_level_metrics_for_fips(fips: str):
-    timeseries = combined_datasets.load_us_timeseries_dataset()
-    latest = combined_datasets.load_us_latest_dataset()
-
-    fips_timeseries = timeseries.get_one_region(fips=fips)
-    fips_record = latest.get_record_for_fips(fips)
-
-    # not sure of return type for now, could be a dictionary, or maybe it would be more effective
-    # as a pandas dataframe with a column for each metric.
-    return calculate_metrics_for_timeseries(fips_timeseries, fips_record, None)
 
 
 def calculate_metrics_for_timeseries(
