@@ -12,6 +12,8 @@ from api.can_api_definition import AggregateRegionSummaryWithTimeseries
 from libs import pipeline
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
+from libs.pipelines import api_v2_paths
+from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
@@ -115,6 +117,59 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.STATE
         ]
         api_pipeline.deploy_single_level(intervention, state_timeseries, summary_output, output)
+
+
+@main.command()
+@click.option(
+    "--model-output-dir",
+    default="results",
+    help="Output directory of pyseir webui output.",
+    type=pathlib.Path,
+)
+@click.option(
+    "--output",
+    "-o",
+    default="results/output/states",
+    help="Output directory for artifacts",
+    type=pathlib.Path,
+)
+@click.option("--aggregation-level", "-l", type=AggregationLevel)
+@click.option("--state")
+@click.option("--fips")
+def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
+    """The entry function for invocation"""
+
+    active_states = [state.abbr for state in us.STATES]
+    active_states = active_states + ["PR", "MP"]
+    us_latest = combined_datasets.load_us_latest_dataset().get_subset(
+        aggregation_level, state=state, fips=fips, states=active_states
+    )
+    regions = [
+        pipeline.Region.from_fips(fips) for fips in us_latest.all_fips if not fips.endswith("999")
+    ]
+    _logger.info(f"Loading all regional inputs.")
+    regional_inputs = [
+        api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
+        for region in regions
+    ]
+    _logger.info(f"Finished loading all regional inputs.")
+
+    _logger.info("Generating all API Timeseries")
+    all_timeseries = api_v2_pipeline.run_on_regions(regional_inputs)
+
+    path_builder = api_v2_paths.APIOutputPathBuilder(output)
+    path_builder.make_directories()
+    _logger.info("Persisting county outputs")
+    county_timeseries = [
+        output for output in all_timeseries if output.level is AggregationLevel.COUNTY
+    ]
+    api_v2_pipeline.deploy_single_level(county_timeseries, path_builder)
+
+    _logger.info("Persisting state outputs")
+    state_timeseries = [
+        output for output in all_timeseries if output.level is AggregationLevel.STATE
+    ]
+    api_v2_pipeline.deploy_single_level(state_timeseries, path_builder)
 
 
 @main.command("generate-top-counties")
