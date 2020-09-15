@@ -10,6 +10,13 @@ from dataclasses import dataclass
 import us
 
 
+def fips_to_location_id(fips: str) -> str:
+    """Converts a FIPS code to a locationID"""
+    if len(fips) == 2:
+        iso1: us  # iso2:us-ca#fips:06087
+    assert len(fips) == 2 or len(fips) == 5
+
+
 @dataclass(frozen=True)
 class Region:
     """Identifies a geographical area."""
