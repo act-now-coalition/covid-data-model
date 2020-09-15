@@ -13,16 +13,15 @@ from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.enums import Intervention
 from libs.functions import generate_api
-from libs.pipeline import Region
 from libs.pipelines import api_pipeline
 
 
 @pytest.mark.parametrize(
     "include_projections,rt_null", [(True, True), (True, False), (False, False)]
 )
-def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_path, nyc_fips):
-    nyc_region = Region.from_fips(nyc_fips)
-
+def test_build_summary_for_fips(
+    include_projections, rt_null, nyc_model_output_path, nyc_fips, nyc_region
+):
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
@@ -97,9 +96,9 @@ def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_p
 
 
 @pytest.mark.parametrize("include_projections", [True])
-def test_generate_timeseries_for_fips(include_projections, nyc_model_output_path, nyc_fips):
-    nyc_region = Region.from_fips(nyc_fips)
-
+def test_generate_timeseries_for_fips(
+    include_projections, nyc_model_output_path, nyc_fips, nyc_region
+):
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
