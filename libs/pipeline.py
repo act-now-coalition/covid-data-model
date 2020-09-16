@@ -5,7 +5,7 @@ represents a geographical area (state, county, metro area, etc).
 
 # Many other modules import this module. Importing pyseir or dataset code here is likely to create
 # in import cycle.
-
+import warnings
 from dataclasses import dataclass
 from typing import Optional
 
@@ -15,14 +15,15 @@ from typing_extensions import final
 
 def fips_to_location_id(fips: str) -> str:
     """Converts a FIPS code to a locationID"""
-    if len(fips) == 2:
-        state_obj = us.states.lookup(fips, field="fips")
-        return f"iso1:us#iso2:us-{state_obj.abbr.lower()}"
-    elif len(fips) == 5:
-        state_obj = us.states.lookup(fips[0:2], field="fips")
-        return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
-    else:
-        raise ValueError("Bad fips")
+    state_obj = us.states.lookup(fips[0:2], field="fips")
+    if state_obj:
+        if len(fips) == 2:
+            return f"iso1:us#iso2:us-{state_obj.abbr.lower()}"
+        elif len(fips) == 5:
+            return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
+
+    warnings.warn(f"Fallback locationID for fips {fips}", stacklevel=2)
+    return f"iso1:us#fips:{fips}"
 
 
 def cbsa_to_location_id(cbsa_code: str) -> str:

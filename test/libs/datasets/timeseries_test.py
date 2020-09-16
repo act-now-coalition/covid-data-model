@@ -3,6 +3,8 @@ import io
 import pytest
 import pandas as pd
 import structlog
+from covidactnow.datapublic.common_fields import CommonFields
+
 from covidactnow.datapublic import common_df
 
 from covidactnow.datapublic.common_test_helpers import to_dict
@@ -12,7 +14,7 @@ from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
 # turns all warnings into errors for this module
-pytestmark = pytest.mark.filterwarnings("error")
+pytestmark = pytest.mark.filterwarnings("error", "ignore::UserWarning")
 
 
 @pytest.mark.parametrize("include_na_at_end", [False, True])
@@ -45,10 +47,12 @@ def test_multi_region_to_from_timeseries():
         ).reset_index()
     )
     multiregion = timeseries.MultiRegionTimeseriesDataset.from_timeseries(ts)
-    pd.testing.assert_frame_equal(ts.data, multiregion.data)
+    pd.testing.assert_frame_equal(
+        ts.data, multiregion.data.drop(columns=[CommonFields.LOCATION_ID])
+    )
 
     ts_again = multiregion.to_timeseries()
-    pd.testing.assert_frame_equal(ts.data, ts_again.data)
+    pd.testing.assert_frame_equal(ts.data, ts_again.data.drop(columns=[CommonFields.LOCATION_ID]))
 
 
 def test_multi_region_get_one_region():
@@ -70,6 +74,7 @@ def test_multi_region_get_one_region():
             "m2": 10,
             "county": "Foo County",
             "fips": "97222",
+            "locationID": "iso1:us#fips:97222",
             "aggregate_level": "county",
         }
     }
