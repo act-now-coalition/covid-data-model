@@ -20,6 +20,8 @@ prepare () {
   else
     DATA_SOURCES_DIR="$(abs_path $1)"
     API_OUTPUT_DIR="$(abs_path $2)"
+    API_OUTPUT_V2="${API_OUTPUT_DIR}/v2"
+
     echo $DATA_SOURCES_DIR
     echo $API_OUTPUT_DIR
   fi
@@ -41,6 +43,12 @@ prepare () {
     echo "made dir"
   fi
 
+  if [ ! -d "${API_OUTPUT_V2}" ] ; then
+    echo "Directory ${API_OUTPUT_V2} does not exist. Creating."
+    mkdir -p "${API_OUTPUT_V2}"
+    echo "made dir"
+  fi
+
 
   # run_model.py uses the COVID_DATA_PUBLIC environment variable to find inputs.
   export COVID_DATA_PUBLIC="${DATA_SOURCES_DIR}"
@@ -51,7 +59,6 @@ prepare () {
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
   API_OUTPUT_US="${API_OUTPUT_DIR}/us"
   API_OUTPUT_QA="${API_OUTPUT_DIR}/qa"
-  API_OUTPUT_V2="${API_OUTPUT_DIR}/v2"
   # Create QA dir
   if [ ! -d "${API_OUTPUT_QA}" ] ; then
     echo "Directory ${API_OUTPUT_QA} does not exist. Creating."
@@ -232,6 +239,10 @@ case $EXECUTE_FUNC in
   execute_api)
     echo "Executing Api"
     execute_api
+    ;;
+  execute_api_v2)
+    echo "Executing Api V2"
+    execute_api_v2
     ;;
   execute_raw_data_qa)
     echo "Executing Raw Data QA"
