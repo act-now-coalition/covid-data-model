@@ -145,9 +145,7 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     us_latest = combined_datasets.load_us_latest_dataset().get_subset(
         aggregation_level, state=state, fips=fips, states=active_states
     )
-    regions = [
-        pipeline.Region.from_fips(fips) for fips in us_latest.all_fips if not fips.endswith("999")
-    ]
+    regions = [region for region in us_latest.regions if not region.fips.endswith("999")]
     _logger.info(f"Loading all regional inputs.")
     regional_inputs = [
         api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
