@@ -20,7 +20,7 @@ from libs import pipeline
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
-from libs.functions import generate_api_v2
+from libs.functions import build_api_v2
 from libs.datasets import combined_datasets
 from libs.datasets import AggregationLevel
 
@@ -89,13 +89,15 @@ def generate_metrics_and_latest(
     model_output: Optional[CANPyseirLocationOutput],
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
-    For a FIPS, generate a MetricsTimeseriesRow per day and return the latest.
+    Build metrics with timeseries.
 
     Args:
-        fips: FIPS to run on.
+        timeseries: Timeseries for one region
+        latest: Dictionary of latest values for region
+        model_output: Optional model output for region.
 
     Returns:
-        Tuple of MetricsTimeseriesRows for all days and the latest.
+        Tuple of MetricsTimeseriesRows for all days and the metrics overview.
     """
     if timeseries.empty:
         return [], None
@@ -127,8 +129,8 @@ def build_timeseries_for_region(
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
             fips_timeseries, fips_latest, model_output
         )
-        region_summary = generate_api_v2.generate_region_summary(fips_latest, metrics_latest)
-        region_timeseries = generate_api_v2.generate_region_timeseries(
+        region_summary = build_api_v2.build_region_summary(fips_latest, metrics_latest)
+        region_timeseries = build_api_v2.build_region_timeseries(
             region_summary, fips_timeseries, metrics_timeseries
         )
     except Exception:
@@ -173,7 +175,7 @@ def deploy_single_level(
         deploy_json_api_output(timeseries, output_path)
 
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
-    flattened_timeseries = generate_api_v2.generate_bulk_flattened_timeseries(bulk_timeseries)
+    flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
 
     output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON)
     deploy_json_api_output(bulk_timeseries, output_path)

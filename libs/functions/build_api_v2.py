@@ -14,7 +14,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import TimeseriesDataset
 
 
-def _generate_actuals(actual_data: dict) -> Actuals:
+def _build_actuals(actual_data: dict) -> Actuals:
     """Generate actuals entry.
 
     Args:
@@ -43,10 +43,8 @@ def _generate_actuals(actual_data: dict) -> Actuals:
     )
 
 
-def generate_region_summary(
-    latest_values: dict, latest_metrics: Optional[Metrics],
-) -> RegionSummary:
-    actuals = _generate_actuals(latest_values)
+def build_region_summary(latest_values: dict, latest_metrics: Optional[Metrics],) -> RegionSummary:
+    actuals = _build_actuals(latest_values)
 
     return RegionSummary(
         fips=latest_values[CommonFields.FIPS],
@@ -63,7 +61,7 @@ def generate_region_summary(
     )
 
 
-def generate_region_timeseries(
+def build_region_timeseries(
     region_summary: RegionSummary, timeseries: TimeseriesDataset, metrics_timeseries,
 ) -> RegionSummaryWithTimeseries:
     actuals_timeseries = []
@@ -71,7 +69,7 @@ def generate_region_timeseries(
     for row in timeseries.yield_records():
         # Timeseries records don't have population
         row[CommonFields.POPULATION] = region_summary.population
-        actual = _generate_actuals(row)
+        actual = _build_actuals(row)
         timeseries_row = ActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
@@ -83,7 +81,7 @@ def generate_region_timeseries(
     )
 
 
-def generate_bulk_flattened_timeseries(
+def build_bulk_flattened_timeseries(
     bulk_timeseries: AggregateRegionSummary,
 ) -> AggregateFlattenedTimeseries:
     rows = []
