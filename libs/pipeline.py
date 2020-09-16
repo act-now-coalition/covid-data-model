@@ -13,6 +13,10 @@ import us
 from typing_extensions import final
 
 
+class BadFipsWarning(UserWarning):
+    pass
+
+
 def fips_to_location_id(fips: str) -> str:
     """Converts a FIPS code to a locationID"""
     state_obj = us.states.lookup(fips[0:2], field="fips")
@@ -22,7 +26,7 @@ def fips_to_location_id(fips: str) -> str:
         elif len(fips) == 5:
             return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
 
-    warnings.warn(f"Fallback locationID for fips {fips}", stacklevel=2)
+    warnings.warn(BadFipsWarning(f"Fallback locationID for fips {fips}"), stacklevel=2)
     return f"iso1:us#fips:{fips}"
 
 
