@@ -160,20 +160,10 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     _logger.info("Generating all API Timeseries")
     all_timeseries = api_v2_pipeline.run_on_regions(regional_inputs)
 
-    # Deploy timeseries to API output locations
-    path_builder = api_v2_paths.APIOutputPathBuilder(output)
-    path_builder.make_directories()
-    _logger.info("Persisting county outputs")
-    county_timeseries = [
-        output for output in all_timeseries if output.level is AggregationLevel.COUNTY
-    ]
-    api_v2_pipeline.deploy_single_level(county_timeseries, path_builder)
+    api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.COUNTY, output)
+    api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
 
-    _logger.info("Persisting state outputs")
-    state_timeseries = [
-        output for output in all_timeseries if output.level is AggregationLevel.STATE
-    ]
-    api_v2_pipeline.deploy_single_level(state_timeseries, path_builder)
+    _logger.info("Finished API generation.")
 
 
 @main.command("generate-top-counties")

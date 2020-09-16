@@ -1,4 +1,4 @@
-from typing import Iterator, List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 import functools
 import multiprocessing
@@ -22,6 +22,7 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api_v2
 from libs.datasets import combined_datasets
+from libs.datasets import AggregationLevel
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
@@ -66,19 +67,12 @@ def run_on_regions(
     pool: multiprocessing.Pool = None,
     sort_func=None,
     limit=None,
-) -> Iterator[RegionSummaryWithTimeseries]:
+) -> List[RegionSummaryWithTimeseries]:
     # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
     # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
-
     pool = pool or multiprocessing.Pool(maxtasksperchild=1)
     results = map(build_timeseries_for_region, regional_inputs)
-    all_timeseries = []
-
-    for region_timeseries in results:
-        if not region_timeseries:
-            continue
-
-        all_timeseries.append(region_timeseries)
+    all_timeseries = [result for result in results if result]
 
     if sort_func:
         all_timeseries.sort(key=sort_func)
@@ -103,6 +97,9 @@ def generate_metrics_and_latest(
     Returns:
         Tuple of MetricsTimeseriesRows for all days and the latest.
     """
+    if timeseries.empty:
+        return [], None
+
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
         timeseries, latest, model_output
     )
@@ -115,6 +112,13 @@ def generate_metrics_and_latest(
 def build_timeseries_for_region(
     regional_input: RegionalInput,
 ) -> Optional[RegionSummaryWithTimeseries]:
+    """Build Timeseries for a single region.
+
+    Args:
+        regional_input: Data for region.
+
+    Returns: Summary with timeseries for region.
+    """
     fips_latest = regional_input.latest
     model_output = regional_input.model_output
 
@@ -134,35 +138,47 @@ def build_timeseries_for_region(
     return region_timeseries
 
 
-def _deploy_timeseries(path_builder, timeseries):
-    region_summary = timeseries.region_summary
-    output_path = path_builder.single_summary(region_summary, FileType.JSON)
-    deploy_json_api_output(region_summary, output_path)
+def deploy_single_level(
+    all_timeseries: List[RegionSummaryWithTimeseries],
+    level: AggregationLevel,
+    output_root: pathlib.Path,
+) -> None:
+    """Deploys all files for a single aggregate level.
 
-    output_path = path_builder.single_timeseries(timeseries, FileType.JSON)
-    deploy_json_api_output(timeseries, output_path)
-    return region_summary
+    Deploys individual and bulk aggregations of timeseries and summaries.
 
+    Args:
+        all_timeseries: List of timeseries to deploy.
+        output_root: Root of API output.
+    """
 
-def deploy_single_level(all_timeseries, path_builder: APIOutputPathBuilder):
+    path_builder = APIOutputPathBuilder(output_root, level)
+    path_builder.make_directories()
+    # Filter all timeseries to just aggregate level.
+    all_timeseries = [output for output in all_timeseries if output.level is level]
+    all_summaries = [output.region_summary for output in all_timeseries]
+
     if not all_timeseries:
+        logger.warning(f"No regions detected - skipping.", aggregate_level=level.value)
         return
 
-    all_summaries = []
-    deploy_timeseries_partial = functools.partial(_deploy_timeseries, path_builder)
-    all_summaries = [
-        deploy_timeseries_partial(region_timeseries) for region_timeseries in all_timeseries
-    ]
+    logger.info(f"Deploying {level.value} output to {output_root}")
+
+    for summary in all_summaries:
+        output_path = path_builder.single_summary(summary, FileType.JSON)
+        deploy_json_api_output(summary, output_path)
+
+    for timeseries in all_timeseries:
+        output_path = path_builder.single_timeseries(timeseries, FileType.JSON)
+        deploy_json_api_output(timeseries, output_path)
+
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
-    bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
     flattened_timeseries = generate_api_v2.generate_bulk_flattened_timeseries(bulk_timeseries)
 
     output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON)
     deploy_json_api_output(bulk_timeseries, output_path)
 
-    # output_path = path_builder.bulk_prediction_data(flattened_timeseries, FileType.CSV)
-    # deploy_csv_api_output(flattened_timeseries, summary_folder)
-
+    bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
     output_path = path_builder.bulk_summary(bulk_summaries, FileType.JSON)
     deploy_json_api_output(bulk_summaries, output_path)
 
@@ -170,16 +186,11 @@ def deploy_single_level(all_timeseries, path_builder: APIOutputPathBuilder):
     deploy_csv_api_output(bulk_summaries, output_path)
 
 
-def deploy_json_api_output(
-    region_result: pydantic.BaseModel, output_path: pathlib.Path,
-):
+def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path,) -> None:
     output_path.write_text(region_result.json())
-    return region_result
 
 
-def deploy_csv_api_output(
-    api_output: pydantic.BaseModel, output_path: pathlib.Path, filename_override=None,
-):
+def deploy_csv_api_output(api_output: pydantic.BaseModel, output_path: pathlib.Path) -> None:
     if not hasattr(api_output, "__root__"):
         raise AssertionError("Missing root data")
 

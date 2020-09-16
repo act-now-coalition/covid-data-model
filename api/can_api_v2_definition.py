@@ -32,11 +32,19 @@ class Actuals(base_model.APIBaseModel):
             "confirmed to have been caused by COVID-19"
         ),
     )
-    positiveTests: int = pydantic.Field(None)
-    negativeTests: int = pydantic.Field(None)
-    contactTracers: int = pydantic.Field(None, description="# of Contact Tracers")
-    hospitalBeds: HospitalResourceUtilization = pydantic.Field(None)
-    icuBeds: HospitalResourceUtilization = pydantic.Field(None)
+    positiveTests: int = pydantic.Field(
+        None, description="Cumulative positive test results to date"
+    )
+    negativeTests: int = pydantic.Field(
+        None, description="Cumulative negative test results to date"
+    )
+    contactTracers: int = pydantic.Field(None, description="Number of Contact Tracers")
+    hospitalBeds: HospitalResourceUtilization = pydantic.Field(
+        None, description="Information about hospital bed utilization"
+    )
+    icuBeds: HospitalResourceUtilization = pydantic.Field(
+        None, description="Information about ICU bed utilization"
+    )
 
 
 class ActualsTimeseriesRow(Actuals):
@@ -133,19 +141,11 @@ class AggregateRegionSummary(base_model.APIBaseModel):
 
     __root__: List[RegionSummary] = pydantic.Field(...)
 
-    @property
-    def level(self) -> AggregationLevel:
-        return self.__root__[0].level
-
 
 class AggregateRegionSummaryWithTimeseries(base_model.APIBaseModel):
     """Timeseries and summary data for multiple regions."""
 
     __root__: List[RegionSummaryWithTimeseries] = pydantic.Field(...)
-
-    @property
-    def level(self) -> AggregationLevel:
-        return self.__root__[0].level
 
 
 class MetricsTimeseriesRowWithHeader(MetricsTimeseriesRow):
@@ -159,20 +159,8 @@ class MetricsTimeseriesRowWithHeader(MetricsTimeseriesRow):
     long: float = pydantic.Field(None, description="Longitude of point within the state or county")
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 
-    @property
-    def aggregate_level(self) -> AggregationLevel:
-        if len(self.fips) == 2:
-            return AggregationLevel.STATE
-
-        if len(self.fips) == 5:
-            return AggregationLevel.COUNTY
-
 
 class AggregateFlattenedTimeseries(base_model.APIBaseModel):
     """Flattened prediction timeseries data for multiple regions."""
 
     __root__: List[MetricsTimeseriesRowWithHeader] = pydantic.Field(...)
-
-    @property
-    def level(self) -> AggregationLevel:
-        return self.__root__[0].aggregate_level
