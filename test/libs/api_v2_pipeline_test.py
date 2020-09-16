@@ -1,5 +1,3 @@
-import pytest
-from libs.enums import Intervention
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets import AggregationLevel
