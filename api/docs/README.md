@@ -1,3 +1,11 @@
+---
+**NOTE**
+
+Docs site is a work in progress.  For Current API Documentation, refer to
+[API V1 Docs](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md)
+
+---
+
 # Website
 
 This website is built using [Docusaurus 2](https://v2.docusaurus.io/), a modern static website generator.
