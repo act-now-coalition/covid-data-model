@@ -35,7 +35,7 @@ def test_build_api_output_for_intervention(nyc_region, nyc_model_output_path, tm
     output_paths = [
         str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
     ]
-    assert sorted(output_paths) == sorted(expected_outputs)
+    assert set(output_paths) == set(expected_outputs)
 
 
 def test_output_no_timeseries_rows(nyc_region, tmp_path):
