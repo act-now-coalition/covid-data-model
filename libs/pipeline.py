@@ -7,6 +7,8 @@ represents a geographical area (state, county, metro area, etc).
 # in import cycle.
 
 from dataclasses import dataclass
+from typing import Optional
+
 import us
 from typing_extensions import final
 
@@ -15,10 +17,10 @@ def fips_to_location_id(fips: str) -> str:
     """Converts a FIPS code to a locationID"""
     if len(fips) == 2:
         state_obj = us.states.lookup(fips, field="fips")
-        return f"iso1:us#iso2:us-{state_obj.abbr}"
+        return f"iso1:us#iso2:us-{state_obj.abbr.lower()}"
     elif len(fips) == 5:
         state_obj = us.states.lookup(fips[0:2], field="fips")
-        return f"iso1:us#iso2:us-{state_obj.abbr}#fips:{fips}"
+        return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
     else:
         raise ValueError("Bad fips")
 
@@ -32,14 +34,16 @@ def cbsa_to_location_id(cbsa_code: str) -> str:
 class Region:
     """Identifies a geographical area."""
 
-    # The FIPS identifier for the region, either 2 digits for a state or 5 digits for a county.
-    # TODO(tom): Add support for regions other than states and counties.
-    fips: str
+    # locationID in the style of CovidAtlas/Project Li. See
+    # https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes
     location_id: str
+
+    # The FIPS identifier for the region, either 2 digits for a state or 5 digits for a county.
+    fips: Optional[str]
 
     @staticmethod
     def from_fips(fips: str) -> "Region":
-        return Region(fips=fips, location_id=fips_to_location_id(fips))
+        return Region(location_id=fips_to_location_id(fips), fips=fips)
 
     @staticmethod
     def from_state(state: str) -> "Region":
@@ -50,7 +54,7 @@ class Region:
 
     @staticmethod
     def from_cbsa_code(cbsa_code: str) -> "Region":
-        return Region(fips="", location_id=cbsa_to_location_id(cbsa_code))
+        return Region(location_id=cbsa_to_location_id(cbsa_code), fips=None)
 
     def is_county(self):
         return len(self.fips) == 5

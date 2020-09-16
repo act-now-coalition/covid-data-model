@@ -289,7 +289,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return cls(df)
 
 
-def add_location_id(df: pd.DataFrame):
+def _add_location_id(df: pd.DataFrame):
+    """Adds the locationID column derived from FIPS, inplace."""
     if CommonFields.LOCATION_ID in df.columns:
         raise ValueError("locationID already in DataFrame")
     df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
@@ -310,13 +311,13 @@ class MultiRegionTimeseriesDataset:
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
         df = common_df.read_csv(path_or_buf, set_index=False)
-        add_location_id(df)
+        _add_location_id(df)
         return MultiRegionTimeseriesDataset(df)
 
     @staticmethod
     def from_timeseries(ts: TimeseriesDataset) -> "MultiRegionTimeseriesDataset":
         df = ts.data.copy()
-        add_location_id(df)
+        _add_location_id(df)
         return MultiRegionTimeseriesDataset(df, provenance=ts.provenance)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:

@@ -3,6 +3,8 @@ import io
 import pytest
 import pandas as pd
 import structlog
+from covidactnow.datapublic import common_df
+
 from covidactnow.datapublic.common_test_helpers import to_dict
 
 from libs.datasets import timeseries
@@ -101,6 +103,27 @@ def test_multi_region_groupby():
     )
 
     assert ts.groupby_region()["m2"].last().to_dict() == {"97": 2, "97222": 20}
+
+
+def test_multi_region_add_location_id():
+    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "fips,county,aggregate_level,date,m1,m2\n"
+            "01222,Foo County,county,2020-04-02,,20\n"
+            "01,,state,2020-04-01,1,2\n"
+        )
+    )
+
+    expected = common_df.read_csv(
+        io.StringIO(
+            "locationID,fips,county,aggregate_level,date,m1,m2\n"
+            "iso1:us#iso2:us-al#fips:01222,01222,Foo County,county,2020-04-02,,20\n"
+            "iso1:us#iso2:us-al,01,,state,2020-04-01,1,2\n"
+        ),
+        set_index=False,
+    )
+
+    pd.testing.assert_frame_equal(ts.data, expected, check_like=True)  # Ignore column order
 
 
 def test_one_region_dataset():
