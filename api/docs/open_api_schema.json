@@ -11,9 +11,9 @@
   ],
   "paths": {
     "/county/{fips}.timeseries.json": {
-      "summary": "All County Timeseries Data",
-      "description": "Region Summary with Timeseries objects for all counties.",
       "get": {
+        "summary": "All County Timeseries Data",
+        "description": "Region Summary with Timeseries objects for all counties.",
         "responses": {
           "200": {
             "description": "Timeseries data from all counties.",
