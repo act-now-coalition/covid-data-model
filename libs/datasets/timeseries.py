@@ -55,6 +55,12 @@ class OneRegionTimeseriesDataset:
                 f"Does not have exactly one region: "
                 f"{self.data[CommonFields.FIPS].value_counts()}"
             )
+        if CommonFields.DATE not in self.data.columns:
+            raise ValueError("A timeseries must have a date column")
+
+    @property
+    def date_indexed(self) -> pd.DataFrame:
+        return self.data.set_index(CommonFields.DATE)
 
     @property
     def empty(self):

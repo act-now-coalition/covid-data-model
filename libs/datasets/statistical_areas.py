@@ -24,13 +24,17 @@ class CountyAggregator:
     cbsa_title_map: Mapping[str, str]
 
     def aggregate(self, dataset_in: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
-        df = dataset_in.data
+        # Make a copy to avoid modifying the input. DataFrame.assign is an alternative but the API
+        # doesn't work well here.
+        df = dataset_in.data.copy()
         df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
 
-        # TODO(tom): groupby date too. rm CBSA_COLUMN when not needed. Put the title in the data.
-        df_cbsa = df.groupby(CBSA_COLUMN, as_index=False).sum()
+        # TODO(tom): Put the title in the data.
+        df_cbsa = df.groupby([CBSA_COLUMN, CommonFields.DATE], as_index=False).sum()
         df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
-        return MultiRegionTimeseriesDataset(pd.concat([df, df_cbsa]))
+
+        merged = pd.concat([df, df_cbsa]).drop(columns=CBSA_COLUMN)
+        return MultiRegionTimeseriesDataset(merged)
 
     @staticmethod
     def from_local_public_data() -> "CountyAggregator":
