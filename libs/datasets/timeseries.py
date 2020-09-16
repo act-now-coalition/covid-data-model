@@ -10,6 +10,7 @@ import pandas as pd
 import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
+from libs import pipeline
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
@@ -282,6 +283,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return cls(df)
 
 
+def add_location_id(df: pd.DataFrame):
+    if CommonFields.LOCATION_ID in df.columns:
+        raise ValueError("locationID already in DataFrame")
+    df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
+
+
 @final
 @dataclass(frozen=True)
 class MultiRegionTimeseriesDataset:
@@ -297,14 +304,17 @@ class MultiRegionTimeseriesDataset:
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
         df = common_df.read_csv(path_or_buf, set_index=False)
+        add_location_id(df)
         return MultiRegionTimeseriesDataset(df)
 
     @staticmethod
     def from_timeseries(ts: TimeseriesDataset) -> "MultiRegionTimeseriesDataset":
-        return MultiRegionTimeseriesDataset(ts.data, provenance=ts.provenance)
+        df = ts.data.copy()
+        add_location_id(df)
+        return MultiRegionTimeseriesDataset(df, provenance=ts.provenance)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
-        rows_key = self.data[CommonFields.FIPS] == region.fips
+        rows_key = self.data[CommonFields.LOCATION_ID] == region.location_id
         return OneRegionTimeseriesDataset(data=self.data.loc[rows_key, :])
 
     def get_counties(

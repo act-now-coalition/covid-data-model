@@ -1,12 +1,18 @@
 from dataclasses import dataclass
 from typing import Mapping
 import pandas as pd
+
+from libs import pipeline
+from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 
 
 CBSA_LIST_PATH = "data/census-msa/list1_2020.xls"
+
+
+CBSA_COLUMN = "CBSA"
 
 
 @dataclass
@@ -18,7 +24,12 @@ class CountyAggregator:
     cbsa_title_map: Mapping[str, str]
 
     def aggregate(self, dataset_in: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
-        return dataset_in
+        df = dataset_in.data
+        df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
+
+        df_cbsa = df.groupby(CBSA_COLUMN, as_index=False).sum()
+        df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
+        return MultiRegionTimeseriesDataset(pd.concat([df, df_cbsa]))
 
     @staticmethod
     def from_local_public_data() -> "CountyAggregator":

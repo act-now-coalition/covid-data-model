@@ -8,15 +8,26 @@ represents a geographical area (state, county, metro area, etc).
 
 from dataclasses import dataclass
 import us
+from typing_extensions import final
 
 
 def fips_to_location_id(fips: str) -> str:
     """Converts a FIPS code to a locationID"""
     if len(fips) == 2:
-        iso1: us  # iso2:us-ca#fips:06087
-    assert len(fips) == 2 or len(fips) == 5
+        state_obj = us.states.lookup(fips, field="fips")
+        return f"iso1:us#iso2:us-{state_obj.abbr}"
+    elif len(fips) == 5:
+        state_obj = us.states.lookup(fips[0:2], field="fips")
+        return f"iso1:us#iso2:us-{state_obj.abbr}#fips:{fips}"
+    else:
+        raise ValueError("Bad fips")
 
 
+def cbsa_to_location_id(cbsa_code: str) -> str:
+    return f"iso1:us#cbsa:{cbsa_code}"
+
+
+@final
 @dataclass(frozen=True)
 class Region:
     """Identifies a geographical area."""
@@ -24,17 +35,22 @@ class Region:
     # The FIPS identifier for the region, either 2 digits for a state or 5 digits for a county.
     # TODO(tom): Add support for regions other than states and counties.
     fips: str
+    location_id: str
 
     @staticmethod
     def from_fips(fips: str) -> "Region":
-        return Region(fips=fips)
+        return Region(fips=fips, location_id=fips_to_location_id(fips))
 
     @staticmethod
     def from_state(state: str) -> "Region":
         """Creates a Region object from a state abbreviation, name or 2 digit FIPS code."""
         state_obj = us.states.lookup(state)
         fips = state_obj.fips
-        return Region(fips=fips)
+        return Region.from_fips(fips)
+
+    @staticmethod
+    def from_cbsa_code(cbsa_code: str) -> "Region":
+        return Region(fips="", location_id=cbsa_to_location_id(cbsa_code))
 
     def is_county(self):
         return len(self.fips) == 5
@@ -54,4 +70,4 @@ class Region:
         """Returns a Region object for the state of a county, otherwise raises a ValueError."""
         if len(self.fips) != 5:
             raise ValueError(f"No state for {self}")
-        return Region(fips=self.fips[:2])
+        return Region.from_fips(self.fips[:2])

@@ -2,6 +2,9 @@ import io
 
 from libs.datasets import statistical_areas
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+import pandas as pd
+
+from libs.pipeline import Region
 
 
 def test_load_from_local_public_data():
@@ -12,7 +15,7 @@ def test_load_from_local_public_data():
 
 
 def test_convert():
-    data_in = MultiRegionTimeseriesDataset.from_csv(
+    ts_in = MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "fips,state,aggregate_level,county,m1,date,foo\n"
             "55005,ZZ,county,North County,1,2020-05-01,ab\n"
@@ -26,5 +29,11 @@ def test_convert():
     agg = statistical_areas.CountyAggregator(
         county_map={"55005": "10001", "55006": "10001"}, cbsa_title_map={"10001": "Stat Area 1"}
     )
-    data_out = agg.aggregate(data_in)
-    # assert data_out.locationID_data["m1"]
+    ts_out = agg.aggregate(ts_in)
+
+    pd.testing.assert_frame_equal(
+        ts_out.data.loc[~ts_out.data["fips"].isna(), ts_in.data.columns], ts_in.data
+    )
+
+    ts_cbsa = ts_out.get_one_region(Region.from_cbsa_code("10001"))
+    assert ts_cbsa.data["m1"].to_list() == [7]
