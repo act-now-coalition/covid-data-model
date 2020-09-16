@@ -27,6 +27,7 @@ class CountyAggregator:
         df = dataset_in.data
         df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
 
+        # TODO(tom): groupby date too. rm CBSA_COLUMN when not needed. Put the title in the data.
         df_cbsa = df.groupby(CBSA_COLUMN, as_index=False).sum()
         df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
         return MultiRegionTimeseriesDataset(pd.concat([df, df_cbsa]))
