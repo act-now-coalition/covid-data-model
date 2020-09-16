@@ -12,7 +12,6 @@ from api.can_api_definition import AggregateRegionSummaryWithTimeseries
 from libs import pipeline
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
-from libs.pipelines import api_v2_paths
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import REPO_ROOT

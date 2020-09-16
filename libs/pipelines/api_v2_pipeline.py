@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
-import functools
 import multiprocessing
 import pathlib
 

@@ -32,8 +32,17 @@ class APIOutputPathBuilder:
         raise ValueError("Unsupported aggregation level")
 
     @property
+    def region_subdir(self):
+        if self.level is AggregationLevel.COUNTY:
+            return "county"
+        if self.level is AggregationLevel.STATE:
+            return "state"
+
+        raise ValueError("Unsupported aggregation level")
+
+    @property
     def region_path(self) -> pathlib.Path:
-        return self.root / self.region_key
+        return self.root / self.region_subdir
 
     def make_directories(self):
         self.root.mkdir(parents=True, exist_ok=True)
@@ -59,11 +68,9 @@ class APIOutputPathBuilder:
         return self.root / f"{self.region_key}.{file_type.suffix}"
 
     def single_summary(self, region_summary: can_api_v2_definition.RegionSummary, file_type):
-        return self.root / self.region_key / f"{region_summary.fips}.{file_type.suffix}"
+        return self.region_path / f"{region_summary.fips}.{file_type.suffix}"
 
     def single_timeseries(
         self, region_timeseries: can_api_v2_definition.RegionSummaryWithTimeseries, file_type
     ):
-        return (
-            self.root / self.region_key / f"{region_timeseries.fips}.timeseries.{file_type.suffix}"
-        )
+        return self.region_path / f"{region_timeseries.fips}.timeseries.{file_type.suffix}"
