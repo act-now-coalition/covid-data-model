@@ -86,7 +86,7 @@
         }
       ]
     },
-    "/state/{fips}.json": {
+    "/state/{state}.json": {
       "get": {
         "tags": [
           "State Data"
@@ -109,9 +109,9 @@
       },
       "parameters": [
         {
-          "name": "fips",
+          "name": "state",
           "in": "path",
-          "description": "5 Letter County FIPS code",
+          "description": "2 Letter State Cocde",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -817,6 +817,10 @@
     }
   },
   "tags": [
+    {
+      "name": "County Data",
+      "description": "County level data for all US counties."
+    },
     {
       "name": "State Data",
       "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands."

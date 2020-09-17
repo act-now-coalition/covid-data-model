@@ -167,12 +167,12 @@ authentication, an API key will be required soon.
                 "version": "v2.0.0-beta.1",
                 "description": api_description,
             },
-            "tags": [{"name": COUNTY_TAG, "description": "County level data for all US counties."}],
             "tags": [
+                {"name": COUNTY_TAG, "description": "County level data for all US counties."},
                 {
                     "name": STATE_TAG,
                     "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands.",
-                }
+                },
             ],
             "servers": [
                 {
