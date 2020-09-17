@@ -15,6 +15,7 @@ from libs.datasets.combined_datasets import (
     ALL_FIELDS_FEATURE_DEFINITION,
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.qa import dataset_summary
 from libs.qa import data_availability
 from libs.datasets.timeseries import TimeseriesDataset
@@ -77,11 +78,12 @@ def update(summary_filename, wide_dates_filename):
     timeseries_dataset: TimeseriesDataset = combined_datasets.build_from_sources(
         TimeseriesDataset, data_sources, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER
     )
+    multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries(timeseries_dataset)
     latest_dataset: LatestValuesDataset = combined_datasets.build_from_sources(
         LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
-        path_prefix, latest_dataset, timeseries_dataset
+        path_prefix, latest_dataset, multiregion_dataset,
     )
 
     # Write DataSource objects that have provenance information, which is only set when significant
@@ -101,8 +103,7 @@ def update(summary_filename, wide_dates_filename):
         )
 
     if summary_filename:
-        dataset = timeseries_pointer.load_dataset()
-        _save_field_summary(dataset, path_prefix / summary_filename)
+        _save_field_summary(timeseries_dataset, path_prefix / summary_filename)
 
 
 @main.command()

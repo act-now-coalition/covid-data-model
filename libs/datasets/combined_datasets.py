@@ -125,12 +125,10 @@ def load_us_timeseries_dataset(
     previous_commit=False,
     commit: str = None,
 ) -> MultiRegionTimeseriesDataset:
-    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
+    filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return MultiRegionTimeseriesDataset.from_timeseries(
-        pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
-    )
+    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
 
 
 @functools.lru_cache(None)

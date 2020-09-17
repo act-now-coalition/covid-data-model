@@ -17,8 +17,10 @@ from libs.datasets import dataset_base
 from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
+from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
+from libs.datasets.dataset_utils import DatasetType
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 
@@ -104,6 +106,10 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     ]
 
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
+
+    @property
+    def dataset_type(self) -> DatasetType:
+        return DatasetType.TIMESERIES
 
     @property
     def empty(self):
@@ -298,7 +304,7 @@ def _add_location_id(df: pd.DataFrame):
 
 @final
 @dataclass(frozen=True)
-class MultiRegionTimeseriesDataset:
+class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     """A set of timeseries with values from any number of regions."""
 
     # `data` may be used to process every row without considering the date or region. Keep logic about
@@ -308,10 +314,15 @@ class MultiRegionTimeseriesDataset:
 
     provenance: Optional[pd.Series] = None
 
+    @property
+    def dataset_type(self) -> DatasetType:
+        return DatasetType.MULTI_REGION
+
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
         df = common_df.read_csv(path_or_buf, set_index=False)
-        _add_location_id(df)
+        if CommonFields.LOCATION_ID not in df.columns:
+            raise ValueError("MultiRegionTimeseriesDataset.from_csv requires locationID column")
         return MultiRegionTimeseriesDataset(df)
 
     @staticmethod

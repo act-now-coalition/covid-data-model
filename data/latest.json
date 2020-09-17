@@ -4,12 +4,12 @@
   "data_git_info": {
     "sha": "8f7192c21ed4026298ee8d6fbffea600e6f6aa2c",
     "branch": "master",
-    "is_dirty": false
+    "is_dirty": true
   },
   "model_git_info": {
-    "sha": "879722f5f4f21b6b4d75bba3110b215971c24f56",
-    "branch": "master",
-    "is_dirty": false
+    "sha": "3eaf148d11c08b9de04741f3a8a5ce2f988107f1",
+    "branch": "tgb-stat-areas",
+    "is_dirty": true
   },
-  "updated_at": "2020-09-17T01:16:29.112065"
+  "updated_at": "2020-09-17T18:59:57.490580"
 }

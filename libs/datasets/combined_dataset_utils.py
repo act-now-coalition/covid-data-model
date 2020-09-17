@@ -8,7 +8,6 @@ from libs.datasets import dataset_base
 from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
 from libs.datasets import dataset_utils
-from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.github_utils import GitSummary
 
@@ -16,7 +15,7 @@ _logger = structlog.getLogger(__name__)
 
 
 def persist_dataset(
-    dataset: dataset_base.DatasetBase,
+    dataset: dataset_base.SaveableDatasetInterface,
     data_directory: pathlib.Path,
     data_public_path: pathlib.Path = dataset_utils.LOCAL_PUBLIC_DATA_PATH,
 ) -> DatasetPointer:
@@ -32,10 +31,7 @@ def persist_dataset(
     model_git_info = GitSummary.from_repo_path(dataset_utils.REPO_ROOT)
     data_git_info = GitSummary.from_repo_path(data_public_path)
 
-    if isinstance(dataset, timeseries.TimeseriesDataset):
-        dataset_type = DatasetType.TIMESERIES
-    elif isinstance(dataset, latest_values_dataset.LatestValuesDataset):
-        dataset_type = DatasetType.LATEST
+    dataset_type = dataset.dataset_type
 
     dataset_path = data_directory / f"{dataset_type.value}.csv"
     dataset_pointer = DatasetPointer(
@@ -53,7 +49,7 @@ def persist_dataset(
 def update_data_public_head(
     data_directory: pathlib.Path,
     latest_dataset: latest_values_dataset.LatestValuesDataset,
-    timeseries_dataset: timeseries.TimeseriesDataset,
+    timeseries_dataset: timeseries.MultiRegionTimeseriesDataset,
 ) -> Tuple[DatasetPointer, DatasetPointer]:
     """Persists US latest and timeseries dataset and saves dataset pointers for Latest tag.
 
