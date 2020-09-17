@@ -4,7 +4,10 @@ import pydantic
 from api import can_api_v2_definition
 
 
-from openapi_schema_pydantic import OpenAPI, PathItem, Operation
+from openapi_schema_pydantic import OpenAPI
+from openapi_schema_pydantic import PathItem
+from openapi_schema_pydantic import Operation
+
 from openapi_schema_pydantic.util import PydanticSchema, construct_open_api_with_schema_class
 
 COUNTY_TAG = "County Data"
@@ -68,7 +71,7 @@ Region Summary object for a single county.
 
 Lots happening with region summaries.
     """,
-    summary="County Summary",
+    summary="Single County Summary",
     schema_cls=can_api_v2_definition.RegionSummary,
 )
 COUNTY_TIMESERIES = APIEndpoint(
@@ -76,7 +79,7 @@ COUNTY_TIMESERIES = APIEndpoint(
     parameters=[fips_parameter],
     tags=[COUNTY_TAG],
     description="Region Summary with Timeseries for a single county.",
-    summary="County Timeseries Data",
+    summary="Single County Timeseries",
     schema_cls=can_api_v2_definition.RegionSummaryWithTimeseries,
 )
 STATE_SUMMARY = APIEndpoint(
@@ -84,7 +87,7 @@ STATE_SUMMARY = APIEndpoint(
     parameters=[fips_parameter],
     tags=[STATE_TAG],
     description="Region Summary object for a single state.",
-    summary="State Summary",
+    summary="Single State Summary",
     schema_cls=can_api_v2_definition.RegionSummary,
 )
 STATE_TIMESERIES = APIEndpoint(
@@ -92,7 +95,7 @@ STATE_TIMESERIES = APIEndpoint(
     parameters=[state_parameter],
     tags=[STATE_TAG],
     description="Region Summary with Timeseries for a single state.",
-    summary="State Timeseries Data",
+    summary="Single State Timeseries",
     schema_cls=can_api_v2_definition.RegionSummaryWithTimeseries,
 )
 
@@ -102,7 +105,7 @@ ALL_STATE_SUMMARY = APIEndpoint(
     parameters=[],
     tags=[STATE_TAG],
     description="Region Summaries for all states",
-    summary="Summary of all states",
+    summary="All states summary",
     schema_cls=can_api_v2_definition.AggregateRegionSummary,
 )
 ALL_STATE_TIMESERIES = APIEndpoint(
@@ -110,7 +113,7 @@ ALL_STATE_TIMESERIES = APIEndpoint(
     parameters=[],
     tags=[STATE_TAG],
     description="Region summaries with timeseries for all states",
-    summary="Timeseries data of all states",
+    summary="All states timeseries",
     schema_cls=can_api_v2_definition.AggregateRegionSummaryWithTimeseries,
 )
 
@@ -119,7 +122,7 @@ ALL_COUNTY_SUMMARY = APIEndpoint(
     parameters=[],
     tags=[COUNTY_TAG],
     description="Region Summaries for all counties",
-    summary="Summary of all counties (json)",
+    summary="All counties summary (json)",
     schema_cls=can_api_v2_definition.AggregateRegionSummary,
 )
 ALL_COUNTY_SUMMARY_CSV = APIEndpoint(
@@ -127,7 +130,7 @@ ALL_COUNTY_SUMMARY_CSV = APIEndpoint(
     parameters=[],
     tags=[COUNTY_TAG],
     description="Region Summaries for all counties",
-    summary="Summary of all counties (csv)",
+    summary="All counties summary (csv)",
     schema_cls=can_api_v2_definition.AggregateFlattenedTimeseries,
 )
 ALL_COUNTY_TIMESERIES = APIEndpoint(
@@ -135,7 +138,7 @@ ALL_COUNTY_TIMESERIES = APIEndpoint(
     parameters=[],
     tags=[COUNTY_TAG],
     description="Region summaries with timeseries for all counties",
-    summary="Timeseries data of all counties",
+    summary="All counties timeseries",
     schema_cls=can_api_v2_definition.AggregateRegionSummaryWithTimeseries,
 )
 
@@ -153,11 +156,25 @@ ALL_ENDPOINTS = [
 ]
 
 
-def construct_base_open_api() -> OpenAPI:
-    return OpenAPI.parse_obj(
+def construct_open_api_spec() -> OpenAPI:
+    api_description = """
+API v2 is currently in beta.  While it does not currently require
+authentication, an API key will be required soon.
+"""
+    spec = OpenAPI.parse_obj(
         {
-            "info": {"title": "Covid Act Now API", "version": "v0.0.1"},
-            "tags": [{"name": COUNTY_TAG, "description": "County level data"}],
+            "info": {
+                "title": "Covid Act Now API",
+                "version": "v2.0.0-beta.1",
+                "description": api_description,
+            },
+            "tags": [{"name": COUNTY_TAG, "description": "County level data for all US counties."}],
+            "tags": [
+                {
+                    "name": STATE_TAG,
+                    "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands.",
+                }
+            ],
             "servers": [
                 {
                     "url": "https://data.covidactnow.org/v2/latest",
@@ -167,3 +184,4 @@ def construct_base_open_api() -> OpenAPI:
             "paths": {endpoint.endpoint: endpoint.open_api_data for endpoint in ALL_ENDPOINTS},
         }
     )
+    return construct_open_api_with_schema_class(spec)

@@ -3,4 +3,4 @@ id: contact
 title: Contact Us
 ---
 
-## Email Support
+If you have any questions about the API, please contact us at <info@covidactnow.org>.
