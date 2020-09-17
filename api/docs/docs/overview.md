@@ -10,8 +10,6 @@ Welcome to the documentation for the Covid Act Now API.
 The API provides the same data that powers [Covid Act Now](https://covidactnow.org)
 but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools.
 
-## H2 Hi
-
 ### Update frequency
 
 Data is updated daily, typically around noon US Pacific Time.
