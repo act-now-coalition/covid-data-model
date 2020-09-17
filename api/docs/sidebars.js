@@ -1,6 +1,9 @@
 module.exports = {
-  someSidebar: {
-    Docusaurus: ['doc1', 'doc2', 'doc3'],
-    Features: ['mdx'],
-  },
+  mainSidebar: [
+    'overview', 
+    'getting-started', 
+    {"type": "link", "label": "API Reference", "href": "/api"},
+    'contact',
+    
+  ],
 };

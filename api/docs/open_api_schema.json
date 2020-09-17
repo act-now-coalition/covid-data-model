@@ -6,13 +6,17 @@
   },
   "servers": [
     {
-      "url": "/"
+      "url": "https://data.covidactnow.org/v2/latest",
+      "description": "Latest available data"
     }
   ],
   "paths": {
     "/county/{fips}.timeseries.json": {
       "get": {
-        "summary": "Single County Timeseries Data",
+        "tags": [
+          "County Data"
+        ],
+        "summary": "County Timeseries",
         "description": "Region Summary with Timeseries objects for a single county.",
         "responses": {
           "200": {
@@ -46,11 +50,14 @@
     },
     "/county/{fips}.json": {
       "get": {
-        "summary": "Single State Summary Data",
-        "description": "Region Summary object for a single state.",
+        "tags": [
+          "County Data"
+        ],
+        "summary": "County Summary",
+        "description": "Region Summary object for a single county.",
         "responses": {
           "200": {
-            "description": "Summary data for a single state.",
+            "description": "Summary data for a single county.",
             "content": {
               "application/json": {
                 "schema": {
@@ -80,7 +87,10 @@
     },
     "/state/{state}.timeseries.json": {
       "get": {
-        "summary": "Single State Timeseries Data",
+        "tags": [
+          "State Data"
+        ],
+        "summary": "State Timeseries",
         "description": "Region Summary with Timeseries objects for a single state.",
         "responses": {
           "200": {
@@ -114,7 +124,10 @@
     },
     "/state/{state}.json": {
       "get": {
-        "summary": "Single State Summary Data",
+        "tags": [
+          "State Data"
+        ],
+        "summary": "State Summary",
         "description": "Region Summary object for a single state.",
         "responses": {
           "200": {
@@ -591,5 +604,11 @@
         "description": "Timeseries and summary data for multiple regions."
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "County Data",
+      "description": "County level data"
+    }
+  ]
 }
