@@ -119,12 +119,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 
 
 @main.command()
-@click.option(
-    "--model-output-dir",
-    default="results",
-    help="Output directory of pyseir webui output.",
-    type=pathlib.Path,
-)
+@click.argument("model-output-dir", type=pathlib.Path)
 @click.option(
     "--output",
     "-o",
