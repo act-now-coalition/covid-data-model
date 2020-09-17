@@ -15,7 +15,12 @@ module.exports = {
         src: "img/can_logo.png",
       },
       items: [
-       
+        {
+          to: "/",
+          activeBasePath: "/",
+          label: "Guide",
+          position: "left",
+        },
         {
           to: "api",
           activeBasePath: "api",
