@@ -5,10 +5,9 @@ from api import can_api_v2_definition
 
 
 from openapi_schema_pydantic import OpenAPI
-from openapi_schema_pydantic import PathItem
-from openapi_schema_pydantic import Operation
 
-from openapi_schema_pydantic.util import PydanticSchema, construct_open_api_with_schema_class
+from openapi_schema_pydantic.util import PydanticSchema
+from openapi_schema_pydantic.util import construct_open_api_with_schema_class
 
 COUNTY_TAG = "County Data"
 STATE_TAG = "State Data"
