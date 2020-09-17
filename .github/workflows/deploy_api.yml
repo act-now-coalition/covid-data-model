@@ -9,13 +9,11 @@ name: Build & Publish API snapshot to data.covidactnow.org
 #######################################################################################
 
 on:
-  push:
-  # repository_dispatch:
-  #   types: publish-api
-
+  repository_dispatch:
+    types: publish-api
 
 env:
-  COVID_DATA_MODEL_REF: 'add-api-v2-generation-to-deploy'  # ${{ github.event.client_payload.branch }}
+  COVID_DATA_MODEL_REF: ${{ github.event.client_payload.branch }}
 
   # TODO: This may no longer be used for anything anymore. Remove?
   COVID_DATA_PUBLIC_REF: 'master'
@@ -38,7 +36,7 @@ env:
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
   # Sets the sentry environment, controlling how alerts are reported.
-  SENTRY_ENVIRONMENT: 'staging'  # ${{ github.event.client_payload.sentry_environment }}
+  SENTRY_ENVIRONMENT: ${{ github.event.client_payload.sentry_environment }}
 
   # use a webhook to write to slack channel dev-alerts for QA
   SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
@@ -105,8 +103,8 @@ jobs:
 
     - name: Build API (run.sh .. .. execute_api)
       run: |
+        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
         ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
-        # ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
 
     - name: make and copy to local tmp directory
       run: |
