@@ -44,7 +44,7 @@ module.exports = {
           items: [
             {
               label: "API Reference",
-              to: "docs/",
+              to: "/",
             },
           ],
         },

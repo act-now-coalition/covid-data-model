@@ -5,12 +5,16 @@ import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import useBaseUrl from "@docusaurus/useBaseUrl";
 import styles from "./styles.module.css";
-import { RedocStandalone } from "redoc";
+import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
 import open_api_schema from '../../open_api_schema.json';
 
-
+let RedocStandalone = () => <div></div>;
+if (ExecutionEnvironment.canUseDOM) {
+  RedocStandalone = require('redoc').RedocStandalone;
+}
 
 function APIReference() {
+    
   const context = useDocusaurusContext();
   const { siteConfig = {} } = context;
   return (
