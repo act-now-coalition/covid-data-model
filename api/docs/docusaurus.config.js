@@ -15,6 +15,7 @@ module.exports = {
         src: "img/can_logo.png",
       },
       items: [
+        
         {
           to: "/",
           activeBasePath: "/",
