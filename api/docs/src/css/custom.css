@@ -27,7 +27,7 @@
   padding: 0 var(--ifm-pre-padding);
 }
 
-td[kind="field"] {
+/* td[kind="field"] {
   border: none;
 }
 
@@ -41,8 +41,4 @@ span.token.punctuation {
 
 .ellipsis {
   color: white;
-}
-
-.redoc-json > code {
-  background-color: rgba(0, 0, 0, 0);
-}
+} */

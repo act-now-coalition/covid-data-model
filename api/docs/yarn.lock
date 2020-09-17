@@ -2199,7 +2199,7 @@ are-passive-events-supported@^1.1.0:
   resolved "https://registry.yarnpkg.com/are-passive-events-supported/-/are-passive-events-supported-1.1.1.tgz#3db180a1753a2186a2de50a32cded3ac0979f5dc"
   integrity sha512-5wnvlvB/dTbfrCvJ027Y4L4gW/6Mwoy1uFSavney0YO++GU+0e/flnjiBBwH+1kh7xNCgCOGvmJC3s32joYbww==
 
-argparse@^1.0.10, argparse@^1.0.7:
+argparse@^1.0.7:
   version "1.0.10"
   resolved "https://registry.yarnpkg.com/argparse/-/argparse-1.0.10.tgz#bcd6791ea5ae09725e17e5ad988134cd40b3d911"
   integrity sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg==
@@ -7173,14 +7173,6 @@ open@^7.0.2:
   dependencies:
     is-docker "^2.0.0"
     is-wsl "^2.1.1"
-
-openapi-markdown@^1.2.3:
-  version "1.2.3"
-  resolved "https://registry.yarnpkg.com/openapi-markdown/-/openapi-markdown-1.2.3.tgz#dcf6e4bffb451d37f62b69144a7e6dfef4b66d3c"
-  integrity sha512-WxlKjCaVlUBNP/70AoVYueokrdJUYGq1wiMV8w8EhHpQElt53dVQT5EOO35lAfFcYus0a/CUaSgNYQeyp2Iwyg==
-  dependencies:
-    argparse "^1.0.10"
-    js-yaml "^3.13.1"
 
 openapi-sampler@^1.0.0-beta.16:
   version "1.0.0-beta.17"

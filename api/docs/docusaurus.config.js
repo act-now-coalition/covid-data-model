@@ -15,10 +15,9 @@ module.exports = {
         src: "img/can_logo.png",
       },
       items: [
-        
         {
           to: "/",
-          activeBasePath: "/",
+          activeBaseRegex: "/(?!(api))",
           label: "Guide",
           position: "left",
         },
@@ -89,11 +88,7 @@ module.exports = {
         docs: {
           sidebarPath: require.resolve("./sidebars.js"),
           routeBasePath: "/",
-
-          // Please change this to your repo.
-          
         },
-
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },

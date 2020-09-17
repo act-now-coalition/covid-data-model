@@ -1,15 +1,18 @@
 ---
-id: overview
-title: Overview
-sidebar_label: Overview
+id: home
+title: Covid Act Now API
+sidebar_label: Home
 slug: /
 ---
 
-The Covid Act Now API provides the same data that powers [CovidActNow.org](https://covidactnow.org) but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools. 
+Welcome to the documentation for the Covid Act Now API. 
+
+The API provides the same data that powers [CovidActNow.org](https://covidactnow.org) 
+but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools. 
 
 ### Update frequency
 
-Data is updated every day, typically around noon US Pacific Time.
+Data is updated daily, typically around noon US Pacific Time.
 
 ### Rate Limits
 

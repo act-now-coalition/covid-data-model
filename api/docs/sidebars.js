@@ -1,9 +1,8 @@
 module.exports = {
   mainSidebar: [
-    'overview', 
+    'home', 
     'getting-started', 
-    // {"type": "link", "label": "API Reference", "href": "/api"},
     'contact',
-    
+    {"type": "link", "label": "API Reference", "href": "/api"},
   ],
 };

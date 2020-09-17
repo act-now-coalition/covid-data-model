@@ -5,13 +5,10 @@ import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import useBaseUrl from "@docusaurus/useBaseUrl";
 import styles from "./styles.module.css";
-import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
-import open_api_schema from '../../open_api_schema.json';
 
-let RedocStandalone = () => <div></div>;
-if (ExecutionEnvironment.canUseDOM) {
-  RedocStandalone = require('redoc').RedocStandalone;
-}
+import open_api_schema from '../../open_api_schema.json';
+import Redocusaurus from '../components/Redocusaurus';
+
 
 function APIReference() {
     
@@ -19,7 +16,7 @@ function APIReference() {
   const { siteConfig = {} } = context;
   return (
     <Layout title={siteConfig.title} description="API Reference Documentation">
-      <RedocStandalone 
+      <Redocusaurus
           spec={open_api_schema}
           options={{
             disableSearch: false,
@@ -27,9 +24,9 @@ function APIReference() {
             hideHostname: false,
             hideSingleRequestSampleTab: true,
             expandSingleSchemaField: false,
-            /* expandResponses: "all", */
+            expandResponses: "all",
             pathInMiddlePanel: true,
-            scrollYOffset: 60,
+            /* scrollYOffset: 60, */
             menuToggle: true
           }}
         />
