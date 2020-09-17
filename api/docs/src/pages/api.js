@@ -19,7 +19,7 @@ function APIReference() {
       <Redocusaurus
           spec={open_api_schema}
           options={{
-            disableSearch: false,
+            disableSearch: true,
             hideDownloadButton: true,
             hideHostname: false,
             hideSingleRequestSampleTab: true,
