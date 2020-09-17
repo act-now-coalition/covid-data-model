@@ -50,7 +50,7 @@ class Actuals(base_model.APIBaseModel):
 class ActualsTimeseriesRow(Actuals):
     """Actual data for a specific day."""
 
-    date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
+    date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
 
 
 class Metrics(base_model.APIBaseModel):
@@ -89,7 +89,7 @@ class Metrics(base_model.APIBaseModel):
 class MetricsTimeseriesRow(Metrics):
     """Metrics data for a specific day."""
 
-    date: datetime.date = pydantic.Field(..., descrition="Date of timeseries data point")
+    date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
 
 
 class RegionSummary(base_model.APIBaseModel):

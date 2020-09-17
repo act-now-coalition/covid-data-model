@@ -15,8 +15,12 @@
     "@docusaurus/preset-classic": "2.0.0-alpha.64",
     "@mdx-js/react": "^1.5.8",
     "clsx": "^1.1.1",
+    "core-js": "^3.6.5",
+    "mobx": "^4.2.0",
     "react": "^16.8.4",
-    "react-dom": "^16.8.4"
+    "react-dom": "^16.13.1",
+    "redoc": "^2.0.0-rc.40",
+    "styled-components": "^5.2.0"
   },
   "browserslist": {
     "production": [
