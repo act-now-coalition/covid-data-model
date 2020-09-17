@@ -157,9 +157,17 @@ ALL_ENDPOINTS = [
 
 
 def construct_open_api_spec() -> OpenAPI:
+    api_description = """
+API v2 is currently in beta.  While it does not currently require
+authentication, an API key will be required soon.
+"""
     spec = OpenAPI.parse_obj(
         {
-            "info": {"title": "Covid Act Now API", "version": "v2.0.0"},
+            "info": {
+                "title": "Covid Act Now API",
+                "version": "v2.0.0-beta.1",
+                "description": api_description,
+            },
             "tags": [{"name": COUNTY_TAG, "description": "County level data for all US counties."}],
             "tags": [
                 {
