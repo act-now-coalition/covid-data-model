@@ -14,6 +14,7 @@ def test_summary_save(tmp_path):
     runner.invoke(
         data.save_summary,
         ["--output-dir", str(tmp_path), "--level", "state", "--filename", filename],
+        catch_exceptions=False,
     )
 
     output_path = tmp_path / filename

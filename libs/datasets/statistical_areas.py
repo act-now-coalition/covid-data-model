@@ -29,7 +29,7 @@ class CountyAggregator:
         df = dataset_in.data.copy()
         df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
 
-        # TODO(tom): Put the title in the data.
+        # TODO(tom): Put the title in the data. Handle dates with a subset of counties reporting.
         df_cbsa = df.groupby([CBSA_COLUMN, CommonFields.DATE], as_index=False).sum()
         df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
 

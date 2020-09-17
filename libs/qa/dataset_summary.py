@@ -19,6 +19,7 @@ IGNORE_COLUMNS = [
     CommonFields.COUNTRY,
     CommonFields.COUNTY,
     CommonFields.AGGREGATE_LEVEL,
+    CommonFields.LOCATION_ID,
 ]
 
 VARIABLE_FIELD = "variable"

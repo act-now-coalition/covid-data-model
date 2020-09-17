@@ -14,7 +14,7 @@ from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
 # turns all warnings into errors for this module
-pytestmark = pytest.mark.filterwarnings("error", "ignore::BadFipsWarning")
+pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
 @pytest.mark.parametrize("include_na_at_end", [False, True])
