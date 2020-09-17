@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Covid Act Now API",
-    "version": "v0.0.1"
+    "version": "v2.0.0"
   },
   "servers": [
     {
@@ -16,7 +16,7 @@
         "tags": [
           "County Data"
         ],
-        "summary": "County Summary",
+        "summary": "Single County Summary",
         "description": "\nRegion Summary object for a single county.\n\nLots happening with region summaries.\n    ",
         "responses": {
           "200": {
@@ -53,7 +53,7 @@
         "tags": [
           "County Data"
         ],
-        "summary": "County Timeseries Data",
+        "summary": "Single County Timeseries",
         "description": "Region Summary with Timeseries for a single county.",
         "responses": {
           "200": {
@@ -90,7 +90,7 @@
         "tags": [
           "State Data"
         ],
-        "summary": "State Summary",
+        "summary": "Single State Summary",
         "description": "Region Summary object for a single state.",
         "responses": {
           "200": {
@@ -127,7 +127,7 @@
         "tags": [
           "State Data"
         ],
-        "summary": "State Timeseries Data",
+        "summary": "Single State Timeseries",
         "description": "Region Summary with Timeseries for a single state.",
         "responses": {
           "200": {
@@ -164,7 +164,7 @@
         "tags": [
           "State Data"
         ],
-        "summary": "Summary of all states",
+        "summary": "All states summary",
         "description": "Region Summaries for all states",
         "responses": {
           "200": {
@@ -187,7 +187,7 @@
         "tags": [
           "State Data"
         ],
-        "summary": "Timeseries data of all states",
+        "summary": "All states timeseries",
         "description": "Region summaries with timeseries for all states",
         "responses": {
           "200": {
@@ -210,7 +210,7 @@
         "tags": [
           "County Data"
         ],
-        "summary": "Summary of all counties (json)",
+        "summary": "All counties summary (json)",
         "description": "Region Summaries for all counties",
         "responses": {
           "200": {
@@ -233,7 +233,7 @@
         "tags": [
           "County Data"
         ],
-        "summary": "Summary of all counties (csv)",
+        "summary": "All counties summary (csv)",
         "description": "Region Summaries for all counties",
         "responses": {
           "200": {
@@ -256,7 +256,7 @@
         "tags": [
           "County Data"
         ],
-        "summary": "Timeseries data of all counties",
+        "summary": "All counties timeseries",
         "description": "Region summaries with timeseries for all counties",
         "responses": {
           "200": {
@@ -817,8 +817,8 @@
   },
   "tags": [
     {
-      "name": "County Data",
-      "description": "County level data"
+      "name": "State Data",
+      "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands."
     }
   ]
 }
