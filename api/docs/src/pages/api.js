@@ -20,11 +20,11 @@ function APIReference() {
           options={{
             disableSearch: false,
             hideDownloadButton: true,
-            hideHostname: true,
+            hideHostname: false,
             hideSingleRequestSampleTab: true,
-            expandSingleSchemaField: true,
-            expandResponses: "all",
-            pathInMiddlePanel: false,
+            expandSingleSchemaField: false,
+            /* expandResponses: "all", */
+            pathInMiddlePanel: true,
             scrollYOffset: 60,
             menuToggle: true
           }}
