@@ -27,6 +27,7 @@
   padding: 0 var(--ifm-pre-padding);
 }
 
+/* Remove the borders on the parameter table */
 td[kind="field"] {
   border: none;
 }
@@ -35,10 +36,15 @@ td[kind="field"] + td {
   border: none;
 }
 
-span.token.punctuation {
+/* Resets the background and text color on Redoc codeblocks */
+.redoc-json > code {
+  background-color: rgba(0, 0, 0, 0);
+}
+
+.redoc-json > code > token.punctuation {
   color: white;
 }
 
-.ellipsis {
+.redoc-json > code > .ellipsis {
   color: white;
 }
