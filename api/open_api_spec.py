@@ -23,6 +23,12 @@ def construct_base_open_api() -> OpenAPI:
     return OpenAPI.parse_obj(
         {
             "info": {"title": "Covid Act Now API", "version": "v0.0.1"},
+            "servers": [
+                {
+                    "url": "https://data.covidactnow.org/v2/latest",
+                    "description": "Latest available data",
+                }
+            ],
             "paths": {
                 "/county/{fips}.timeseries.json": {
                     "parameters": [fips_parameter],
