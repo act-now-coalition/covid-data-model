@@ -83,8 +83,8 @@ COUNTY_TIMESERIES = APIEndpoint(
     schema_cls=can_api_v2_definition.RegionSummaryWithTimeseries,
 )
 STATE_SUMMARY = APIEndpoint(
-    endpoint="/state/{fips}.json",
-    parameters=[fips_parameter],
+    endpoint="/state/{state}.json",
+    parameters=[state_parameter],
     tags=[STATE_TAG],
     description="Region Summary object for a single state.",
     summary="Single State Summary",
