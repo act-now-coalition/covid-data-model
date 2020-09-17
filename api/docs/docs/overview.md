@@ -7,6 +7,9 @@ slug: /
 
 Welcome to the documentation for the Covid Act Now API.
 
+These docs describe version 2 of the API.
+Documentation for the previous version of the API is available [here](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md).
+
 The API provides the same data that powers [Covid Act Now](https://covidactnow.org)
 but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools.
 
@@ -20,9 +23,11 @@ make sure to keep you informed on forthcoming changes.
 
 :::
 
-### Update frequency
-
-Data is updated daily, typically around noon US Pacific Time.
+### Highlights
+ * A comprehensive resource for the latest state and county data aggregated from respected data sources.
+ * A single source for case, death, hospitalization, and testing data.
+ * Access all metrics used to power our COVID risk levels.
+ * Data is updated daily.
 
 ### License
 
