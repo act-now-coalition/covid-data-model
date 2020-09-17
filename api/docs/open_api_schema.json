@@ -12,11 +12,11 @@
   "paths": {
     "/county/{fips}.timeseries.json": {
       "get": {
-        "summary": "All County Timeseries Data",
-        "description": "Region Summary with Timeseries objects for all counties.",
+        "summary": "Single County Timeseries Data",
+        "description": "Region Summary with Timeseries objects for a single county.",
         "responses": {
           "200": {
-            "description": "Timeseries data from all counties.",
+            "description": "Timeseries data for a single county.",
             "content": {
               "application/json": {
                 "schema": {
@@ -33,6 +33,108 @@
           "name": "fips",
           "in": "path",
           "description": "5 Letter County FIPS code",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/county/{fips}.json": {
+      "get": {
+        "summary": "Single State Summary Data",
+        "description": "Region Summary object for a single state.",
+        "responses": {
+          "200": {
+            "description": "Summary data for a single state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "fips",
+          "in": "path",
+          "description": "5 Letter County FIPS code",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/state/{state}.timeseries.json": {
+      "get": {
+        "summary": "Single State Timeseries Data",
+        "description": "Region Summary with Timeseries objects for a single state.",
+        "responses": {
+          "200": {
+            "description": "Timeseries data for a single state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/state/{state}.json": {
+      "get": {
+        "summary": "Single State Summary Data",
+        "description": "Region Summary object for a single state.",
+        "responses": {
+          "200": {
+            "description": "Summary data for a single state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -217,6 +319,80 @@
           }
         },
         "description": "Known actuals data."
+      },
+      "RegionSummary": {
+        "title": "RegionSummary",
+        "required": [
+          "fips",
+          "country",
+          "state",
+          "level",
+          "population",
+          "lastUpdatedDate"
+        ],
+        "type": "object",
+        "properties": {
+          "fips": {
+            "title": "Fips",
+            "type": "string",
+            "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters."
+          },
+          "country": {
+            "title": "Country",
+            "type": "string",
+            "description": "2-letter ISO-3166 Country code."
+          },
+          "state": {
+            "title": "State",
+            "type": "string",
+            "description": "2-letter ANSI state code."
+          },
+          "county": {
+            "title": "County",
+            "type": "string",
+            "description": "County name"
+          },
+          "level": {
+            "$ref": "#/components/schemas/AggregationLevel"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number",
+            "description": "Latitude of point within the state or county"
+          },
+          "long": {
+            "title": "Long",
+            "type": "number",
+            "description": "Longitude of point within the state or county"
+          },
+          "population": {
+            "title": "Population",
+            "exclusiveMinimum": false,
+            "type": "integer",
+            "description": "Total Population in geographic region."
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/Metrics"
+          },
+          "actuals": {
+            "$ref": "#/components/schemas/Actuals"
+          },
+          "lastUpdatedDate": {
+            "title": "Lastupdateddate",
+            "type": "string",
+            "description": "Date of latest data",
+            "format": "date"
+          }
+        },
+        "description": "Summary of actual and prediction data for a single region."
+      },
+      "AggregateRegionSummary": {
+        "title": "AggregateRegionSummary",
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RegionSummary"
+        },
+        "description": "Summary data for multiple regions."
       },
       "MetricsTimeseriesRow": {
         "title": "MetricsTimeseriesRow",

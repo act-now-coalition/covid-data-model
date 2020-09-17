@@ -5,6 +5,8 @@ import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import useBaseUrl from "@docusaurus/useBaseUrl";
 import styles from "./styles.module.css";
+import { RedocStandalone } from "redoc";
+import open_api_schema from '../../open_api_schema.json';
 
 const features = [
   {
@@ -59,10 +61,24 @@ function Home() {
   const { siteConfig = {} } = context;
   return (
     <Layout title={siteConfig.title} description="API Documentation">
+      
+        <RedocStandalone 
+          spec={open_api_schema}
+          options={{
+            disableSearch: false,
+            hideDownloadButton: true,
+            hideHostname: true,
+            hideSingleRequestSampleTab: true,
+            expandSingleSchemaField: true,
+            expandResponses: "all"
+          }}
+        />
+
       <header className={clsx("hero hero--primary", styles.heroBanner)}>
         <div className="container">
           <h1 className="hero__title">{siteConfig.title}</h1>
           <p className="hero__subtitle">{siteConfig.tagline}</p>
+
           <div className={styles.buttons}>
             <Link
               className={clsx(
