@@ -7,6 +7,7 @@ import us
 
 import pydantic
 import api
+from api import update_open_api_spec
 from api.can_api_definition import RegionSummaryWithTimeseries
 from api.can_api_definition import AggregateRegionSummaryWithTimeseries
 from libs import pipeline
@@ -62,6 +63,21 @@ def update_schemas(output_dir, update_readme):
         update_readme_schemas.generate_api_readme_from_template(
             API_README_TEMPLATE_PATH, API_README_PATH, schemas
         )
+
+
+@main.command()
+@click.option(
+    "--api-output-path",
+    "-o",
+    type=pathlib.Path,
+    help="Path to open api schema path to save to.",
+    default="api/docs/open_api_schema.json",
+)
+def update_v2_schemas(api_output_path):
+    """Updates all public facing API schemas."""
+    spec = update_open_api_spec.construct_open_api_spec()
+    schema_out = spec.json(by_alias=True, exclude_none=True, indent=2)
+    api_output_path.write_text(schema_out)
 
 
 @main.command()
