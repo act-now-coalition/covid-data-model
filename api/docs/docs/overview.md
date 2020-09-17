@@ -5,18 +5,24 @@ sidebar_label: Home
 slug: /
 ---
 
-Welcome to the documentation for the Covid Act Now API. 
+Welcome to the documentation for the Covid Act Now API.
 
-The API provides the same data that powers [Covid Act Now](https://covidactnow.org) 
-but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools. 
+The API provides the same data that powers [Covid Act Now](https://covidactnow.org)
+but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools.
+
+:::note
+
+If you are interested in using the Covid Act Now API, please
+complete [this form](https://docs.google.com/forms/d/1h47ABVgT2ldQJP6OWsn-mdJIpr6g0efVbCjCX1bv2FY/prefill). 
+
+The API will soon require an API key to access. By completing the above form, we will
+make sure to keep you informed on forthcoming changes.
+
+:::
 
 ### Update frequency
 
 Data is updated daily, typically around noon US Pacific Time.
-
-### Rate Limits
-
-There are no rate limits, but please be aware of your usage as we're a non-profit and would like to stay available to everyone.
 
 ### License
 
