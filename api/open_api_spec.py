@@ -33,7 +33,7 @@ def construct_base_open_api() -> OpenAPI:
                 "/county/{fips}.timeseries.json": {
                     "parameters": [fips_parameter],
                     "get": {
-                        "summary": "Single County Timeseries Data",
+                        "summary": "Single County Timeseries",
                         "description": "Region Summary with Timeseries objects for a single county.",
                         "responses": {
                             "200": {
@@ -52,11 +52,11 @@ def construct_base_open_api() -> OpenAPI:
                 "/county/{fips}.json": {
                     "parameters": [fips_parameter],
                     "get": {
-                        "summary": "Single State Summary Data",
-                        "description": "Region Summary object for a single state.",
+                        "summary": "Single County Summary",
+                        "description": "Region Summary object for a single county.",
                         "responses": {
                             "200": {
-                                "description": "Summary data for a single state.",
+                                "description": "Summary data for a single county.",
                                 "content": {
                                     "application/json": {
                                         "schema": PydanticSchema(
@@ -71,7 +71,7 @@ def construct_base_open_api() -> OpenAPI:
                 "/state/{state}.timeseries.json": {
                     "parameters": [state_parameter],
                     "get": {
-                        "summary": "Single State Timeseries Data",
+                        "summary": "Single State Timeseries",
                         "description": "Region Summary with Timeseries objects for a single state.",
                         "responses": {
                             "200": {
@@ -90,7 +90,7 @@ def construct_base_open_api() -> OpenAPI:
                 "/state/{state}.json": {
                     "parameters": [state_parameter],
                     "get": {
-                        "summary": "Single State Summary Data",
+                        "summary": "Single State Summary",
                         "description": "Region Summary object for a single state.",
                         "responses": {
                             "200": {
