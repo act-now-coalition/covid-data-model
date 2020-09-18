@@ -16,7 +16,7 @@ but in an easily digestible, machine readable format, intended for consumption b
 :::note
 
 If you are interested in using the Covid Act Now API, please
-complete [the registration form](https://docs.google.com/forms/d/1h47ABVgT2ldQJP6OWsn-mdJIpr6g0efVbCjCX1bv2FY/prefill).
+complete [the registration form](https://docs.google.com/forms/d/e/1FAIpQLSf15Qx2EdYUHUmNI2JBts4LbVqIxsLN1SEzZLJlwuWdfJ4dVg/viewform?usp=sf_link).
 
 The API will soon require an API key to access. By completing the above form, we will
 make sure to keep you informed on forthcoming changes.
@@ -31,4 +31,10 @@ make sure to keep you informed on forthcoming changes.
 
 ### License
 
-Data is licensed under [Creative Commons 4.0 By Attribution](https://creativecommons.org/licenses/by/4.0/). You are welcome to share, copy, and redistribute it, as well as adapt it for your own works, we just ask that you provide attribution to the source (as we have done with [our data sources](https://github.com/covid-projections/covid-data-public#date-sources-for-current--future-use)).
+Data is licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+
+Under this new licensing arrangement, all commercial entities wishing to access and download Covid Act Now's
+data must contact <info@covidactnow.org> to acquire a license. We define commercial users as any individual
+or entity that sells goods or services for the purposes of making a profit.
+
+Under this license, our non-commercial users can still freely download, use, share, modify, or build upon our source code.
