@@ -9,7 +9,7 @@ from libs.pipeline import Region
 
 
 def test_load_from_local_public_data():
-    agg = statistical_areas.CountyAggregator.from_local_public_data()
+    agg = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
 
     assert agg.cbsa_title_map["43580"] == "Sioux City, IA-NE-SD"
     assert agg.county_map["48187"] == "41700"
@@ -30,17 +30,14 @@ def test_aggregate():
             )
         )
     )
-    agg = statistical_areas.CountyAggregator(
+    agg = statistical_areas.CountyToCBSAAggregator(
         county_map={"55005": "10001", "55006": "10001"}, cbsa_title_map={"10001": "Stat Area 1"}
     )
     ts_out = agg.aggregate(ts_in)
-    assert set(ts_out.data.columns) == set(ts_in.data.columns)
 
-    fips_data_from_ts_out = ts_out.data.loc[~ts_out.data["fips"].isna(), ts_in.data.columns]
-    pd.testing.assert_frame_equal(fips_data_from_ts_out, ts_in.data)
+    assert ts_out.groupby_region().ngroups == 1
 
     ts_cbsa = ts_out.get_one_region(Region.from_cbsa_code("10001"))
-    assert set(ts_cbsa.data.columns) == set(ts_in.data.columns)
     assert ts_cbsa.date_indexed["m1"].to_dict() == {
         pd.to_datetime("2020-05-01"): 1,
         pd.to_datetime("2020-05-02"): 2,

@@ -15,7 +15,7 @@ CBSA_COLUMN = "CBSA"
 
 
 @dataclass
-class CountyAggregator:
+class CountyToCBSAAggregator:
     # Map from 5 digit county FIPS to 5 digit CBSA Code
     county_map: Mapping[str, str]
 
@@ -23,20 +23,22 @@ class CountyAggregator:
     cbsa_title_map: Mapping[str, str]
 
     def aggregate(self, dataset_in: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
+        """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
         # Make a copy to avoid modifying the input. DataFrame.assign is an alternative but the API
         # doesn't work well here.
         df = dataset_in.data.copy()
         df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
 
-        # TODO(tom): Put the title in the data. Handle dates with a subset of counties reporting.
+        # TODO(tom): Put the title in the data when it is clear where it goes in the returned value
+        # TODO(tom): Handle dates with a subset of counties reporting.
+        # TODO(tom): Handle data columns that don't make sense aggregated with sum.
         df_cbsa = df.groupby([CBSA_COLUMN, CommonFields.DATE], as_index=False).sum()
         df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
 
-        merged = pd.concat([df, df_cbsa]).drop(columns=CBSA_COLUMN)
-        return MultiRegionTimeseriesDataset(merged)
+        return MultiRegionTimeseriesDataset(df_cbsa)
 
     @staticmethod
-    def from_local_public_data() -> "CountyAggregator":
+    def from_local_public_data() -> "CountyToCBSAAggregator":
         """Creates a new object using data in the covid-data-public repo."""
         df = pd.read_excel(
             dataset_utils.LOCAL_PUBLIC_DATA_PATH / CBSA_LIST_PATH,
@@ -55,4 +57,4 @@ class CountyAggregator:
             .to_dict()
         )
 
-        return CountyAggregator(county_map=county_map, cbsa_title_map=cbsa_title_map)
+        return CountyToCBSAAggregator(county_map=county_map, cbsa_title_map=cbsa_title_map)
