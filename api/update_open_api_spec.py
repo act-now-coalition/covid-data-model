@@ -176,7 +176,7 @@ authentication, an API key will be required soon.
             ],
             "servers": [
                 {
-                    "url": "https://data.covidactnow.org/v2/latest",
+                    "url": "https://data.covidactnow.org/latest/v2",
                     "description": "Latest available data",
                 }
             ],
