@@ -2,14 +2,14 @@
   "dataset_type": "latest",
   "path": "data/latest.csv",
   "data_git_info": {
-    "sha": "8f7192c21ed4026298ee8d6fbffea600e6f6aa2c",
-    "branch": "master",
-    "is_dirty": true
+    "sha": "47a0ef810647d3dc3230135438c44161256b4f3b",
+    "branch": "tgb-location-id-field",
+    "is_dirty": false
   },
   "model_git_info": {
-    "sha": "f43add72a7070723b8cbc078a45ebcb315d82a6e",
+    "sha": "38c47a4aed42a517755a4d0a580627b09e09836d",
     "branch": "tgb-stat-areas",
     "is_dirty": true
   },
-  "updated_at": "2020-09-17T19:14:30.065856"
+  "updated_at": "2020-09-18T05:42:18.818522"
 }

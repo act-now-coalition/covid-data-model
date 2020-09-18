@@ -43,7 +43,7 @@ class DuplicateDataException(Exception):
 class OneRegionTimeseriesDataset:
     """A set of timeseries with values from one region."""
 
-    # Do not make an assumptions about a FIPS or locationID column in the DataFrame.
+    # Do not make an assumptions about a FIPS or location_id column in the DataFrame.
     data: pd.DataFrame
     # The region is not an attribute at this time because it simplifies making instances and
     # code that needs the region of an instance already has it.
@@ -297,14 +297,14 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
 
 def _add_location_id(df: pd.DataFrame):
-    """Adds the locationID column derived from FIPS, inplace."""
+    """Adds the location_id column derived from FIPS, inplace."""
     if CommonFields.LOCATION_ID in df.columns:
-        raise ValueError("locationID already in DataFrame")
+        raise ValueError("location_id already in DataFrame")
     df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
 
 
 def _add_fips_if_missing(df: pd.DataFrame):
-    """Adds the FIPS column derived from locationID, inplace."""
+    """Adds the FIPS column derived from location_id, inplace."""
     if CommonFields.FIPS not in df.columns:
         df[CommonFields.FIPS] = df[CommonFields.LOCATION_ID].apply(pipeline.location_id_to_fips)
 
@@ -315,8 +315,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     """A set of timeseries with values from any number of regions."""
 
     # `data` may be used to process every row without considering the date or region. Keep logic about
-    # FIPS/locationID/region containing in this class by using methods such as `get_one_region`. Do *not*
-    # read date or region related columns directly from `data`.
+    # FIPS/location_id/region containing in this class by using methods such as `get_one_region`. Do
+    # *not* read date or region related columns directly from `data`.
     data: pd.DataFrame
 
     provenance: Optional[pd.Series] = None
@@ -333,7 +333,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
         df = common_df.read_csv(path_or_buf, set_index=False)
         if CommonFields.LOCATION_ID not in df.columns:
-            raise ValueError("MultiRegionTimeseriesDataset.from_csv requires locationID column")
+            raise ValueError("MultiRegionTimeseriesDataset.from_csv requires location_id column")
         _add_fips_if_missing(df)
         return MultiRegionTimeseriesDataset(df)
 

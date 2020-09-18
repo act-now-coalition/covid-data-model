@@ -59,7 +59,7 @@ def test_multi_region_to_from_timeseries():
 def test_multi_region_get_one_region():
     ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
-            "locationID,county,aggregate_level,date,m1,m2\n"
+            "location_id,county,aggregate_level,date,m1,m2\n"
             "iso1:us#fips:97111,Bar County,county,2020-04-02,2,\n"
             "iso1:us#fips:97222,Foo County,county,2020-04-01,,10\n"
         )
@@ -75,7 +75,7 @@ def test_multi_region_get_one_region():
             "m2": 10,
             "county": "Foo County",
             "fips": "97222",
-            "locationID": "iso1:us#fips:97222",
+            "location_id": "iso1:us#fips:97222",
             "aggregate_level": "county",
         }
     }
@@ -84,7 +84,7 @@ def test_multi_region_get_one_region():
 def test_multi_region_get_counties():
     ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
-            "locationID,county,aggregate_level,date,m1,m2\n"
+            "location_id,county,aggregate_level,date,m1,m2\n"
             "iso1:us#fips:97111,Bar County,county,2020-04-02,2,\n"
             "iso1:us#fips:97111,Bar County,county,2020-04-03,3,\n"
             "iso1:us#fips:97222,Foo County,county,2020-04-01,,10\n"
@@ -101,7 +101,7 @@ def test_multi_region_get_counties():
 def test_multi_region_groupby():
     ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
-            "locationID,county,aggregate_level,date,m1,m2\n"
+            "location_id,county,aggregate_level,date,m1,m2\n"
             "iso1:us#fips:97222,Foo County,county,2020-04-01,,10\n"
             "iso1:us#fips:97222,Foo County,county,2020-04-02,,20\n"
             "iso1:us#fips:97,Great State,state,2020-04-01,1,2\n"

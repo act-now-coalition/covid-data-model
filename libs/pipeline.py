@@ -19,7 +19,7 @@ class BadFipsWarning(UserWarning):
 
 
 def fips_to_location_id(fips: str) -> str:
-    """Converts a FIPS code to a locationID"""
+    """Converts a FIPS code to a location_id"""
     state_obj = us.states.lookup(fips[0:2], field="fips")
     if state_obj:
         if len(fips) == 2:
@@ -27,12 +27,12 @@ def fips_to_location_id(fips: str) -> str:
         elif len(fips) == 5:
             return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
 
-    warnings.warn(BadFipsWarning(f"Fallback locationID for fips {fips}"), stacklevel=2)
+    warnings.warn(BadFipsWarning(f"Fallback location_id for fips {fips}"), stacklevel=2)
     return f"iso1:us#fips:{fips}"
 
 
 def location_id_to_fips(location_id: str) -> Optional[str]:
-    """Converts a locationID to a FIPS code"""
+    """Converts a location_id to a FIPS code"""
     match = re.fullmatch(r"iso1:us#.*fips:(\d+)", location_id)
     if match:
         return match.group(1)
@@ -53,7 +53,7 @@ def cbsa_to_location_id(cbsa_code: str) -> str:
 class Region:
     """Identifies a geographical area."""
 
-    # locationID in the style of CovidAtlas/Project Li. See
+    # In the style of CovidAtlas/Project Li `locationID`. See
     # https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes
     location_id: str
 

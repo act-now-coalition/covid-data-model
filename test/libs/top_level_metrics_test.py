@@ -28,9 +28,9 @@ def _series_with_date_index(data, date: str = "2020-08-25", **series_kwargs):
 
 
 def _fips_csv_to_one_region(csv_str: str, region: Region) -> OneRegionTimeseriesDataset:
-    # Make a Timeseries first because it can have a FIPS column without locationID
+    # Make a Timeseries first because it can have a FIPS column without location_id
     ts = TimeseriesDataset.load_csv(io.StringIO(csv_str))
-    # from_timeseries adds the locationID column needed by get_one_region
+    # from_timeseries adds the location_id column needed by get_one_region
     return MultiRegionTimeseriesDataset.from_timeseries(ts).get_one_region(region)
 
 

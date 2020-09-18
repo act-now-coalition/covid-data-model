@@ -25,7 +25,7 @@ def test_all_data_smoke_test():
 
 def test_skip_gaps_in_cases_and_deaths_metrics():
     csv_string_io = io.StringIO(
-        "locationID,country,state,county,aggregate_level,date,cases,deaths\n"
+        "location_id,country,state,county,aggregate_level,date,cases,deaths\n"
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-01,10,1\n"
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-02,,2\n"
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-03,30,\n"
@@ -44,7 +44,7 @@ def test_inference_ok_with_5_days_cases_changed():
     # 5 days with cases data isn't enough to make inference_ok, 6 days are
     # needed so that there are 5 days with an *delta* relative to a previous day.
     csv_string_io = io.StringIO(
-        "locationID,country,state,county,aggregate_level,date,cases,deaths\n"
+        "location_id,country,state,county,aggregate_level,date,cases,deaths\n"
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-01,100,1\n"
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-02,200,2\n"
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-03,300,3\n"
