@@ -35,6 +35,6 @@ Data is licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives
 
 Under this new licensing arrangement, all commercial entities wishing to access and download Covid Act Now's
 data must contact <info@covidactnow.org> to acquire a license. We define commercial users as any individual
-or entity that sells goods or services for the purposes of making a profit.
+or entity that sells goods or services for the purposes of making a profit. 
 
 Under this license, our non-commercial users can still freely download, use, share, modify, or build upon our source code.

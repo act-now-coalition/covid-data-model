@@ -1,13 +1,17 @@
 module.exports = {
   title: "Covid Act Now",
   tagline: "API Documentation",
-  url: "https://api.covidactnow.org",
+  url: "https://apidocs.covidactnow.org",
   baseUrl: "/",
+  plugins: ['@docusaurus/plugin-google-analytics'],
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
-  organizationName: "facebook", // Usually your GitHub org/user name.
-  projectName: "docusaurus", // Usually your repo name.
+  organizationName: "covid-projections", // Usually your GitHub org/user name.
+  projectName: "covid-data-model", // Usually your repo name.
   themeConfig: {
+    googleAnalytics: {
+      trackingID: 'UA-160622988-1',
+    },
     navbar: {
       title: "",
       logo: {
