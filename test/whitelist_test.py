@@ -1,8 +1,11 @@
+import io
+
 import pytest
 from covidactnow.datapublic.common_test_helpers import to_dict
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from pyseir.inference.whitelist import WhitelistGenerator
 from pyseir.inference.whitelist import regions_in_states
@@ -21,14 +24,14 @@ def test_all_data_smoke_test():
 
 
 def test_skip_gaps_in_cases_and_deaths_metrics():
-    input_df = read_csv_and_index_fips_date(
-        "fips,country,state,county,aggregate_level,date,cases,deaths\n"
-        "97111,US,ZZ,Bar County,county,2020-04-01,10,1\n"
-        "97111,US,ZZ,Bar County,county,2020-04-02,,2\n"
-        "97111,US,ZZ,Bar County,county,2020-04-03,30,\n"
-        "97111,US,ZZ,Bar County,county,2020-04-04,40,4\n"
-    ).reset_index()
-    input_dataset = MultiRegionTimeseriesDataset(input_df)
+    csv_string_io = io.StringIO(
+        "locationID,country,state,county,aggregate_level,date,cases,deaths\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-01,10,1\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-02,,2\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-03,30,\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-04,40,4\n"
+    )
+    input_dataset = MultiRegionTimeseriesDataset.from_csv(csv_string_io)
 
     df = WhitelistGenerator().generate_whitelist(input_dataset)
 
@@ -40,21 +43,21 @@ def test_skip_gaps_in_cases_and_deaths_metrics():
 def test_inference_ok_with_5_days_cases_changed():
     # 5 days with cases data isn't enough to make inference_ok, 6 days are
     # needed so that there are 5 days with an *delta* relative to a previous day.
-    input_df = read_csv_and_index_fips_date(
-        "fips,country,state,county,aggregate_level,date,cases,deaths\n"
-        "97111,US,ZZ,Bar County,county,2020-04-01,100,1\n"
-        "97111,US,ZZ,Bar County,county,2020-04-02,200,2\n"
-        "97111,US,ZZ,Bar County,county,2020-04-03,300,3\n"
-        "97111,US,ZZ,Bar County,county,2020-04-04,400,4\n"
-        "97111,US,ZZ,Bar County,county,2020-04-05,500,5\n"
-        "97222,US,ZZ,Foo County,county,2020-04-01,100,1\n"
-        "97222,US,ZZ,Foo County,county,2020-04-02,200,2\n"
-        "97222,US,ZZ,Foo County,county,2020-04-03,300,3\n"
-        "97222,US,ZZ,Foo County,county,2020-04-04,400,4\n"
-        "97222,US,ZZ,Foo County,county,2020-04-05,500,5\n"
-        "97222,US,ZZ,Foo County,county,2020-04-06,600,6\n"
-    ).reset_index()
-    input_dataset = MultiRegionTimeseriesDataset(input_df)
+    csv_string_io = io.StringIO(
+        "locationID,country,state,county,aggregate_level,date,cases,deaths\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-01,100,1\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-02,200,2\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-03,300,3\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-04,400,4\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-05,500,5\n"
+        "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-01,100,1\n"
+        "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-02,200,2\n"
+        "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-03,300,3\n"
+        "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-04,400,4\n"
+        "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-05,500,5\n"
+        "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-06,600,6\n"
+    )
+    input_dataset = MultiRegionTimeseriesDataset.from_csv(csv_string_io)
 
     df = WhitelistGenerator().generate_whitelist(input_dataset)
 

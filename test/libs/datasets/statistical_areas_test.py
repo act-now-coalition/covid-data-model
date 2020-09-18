@@ -4,6 +4,7 @@ from libs.datasets import statistical_areas
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 import pandas as pd
 
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 
 
@@ -15,16 +16,18 @@ def test_load_from_local_public_data():
 
 
 def test_aggregate():
-    ts_in = MultiRegionTimeseriesDataset.from_csv(
-        io.StringIO(
-            "fips,state,aggregate_level,county,m1,date,foo\n"
-            "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-            "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-            "55005,ZZ,county,North County,3,2020-05-03,ef\n"
-            "55006,ZZ,county,South County,3,2020-05-03,ef\n"
-            "55006,ZZ,county,South County,4,2020-05-04,gh\n"
-            "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
-            "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
+    ts_in = MultiRegionTimeseriesDataset.from_timeseries(
+        TimeseriesDataset.load_csv(
+            io.StringIO(
+                "fips,state,aggregate_level,county,m1,date,foo\n"
+                "55005,ZZ,county,North County,1,2020-05-01,ab\n"
+                "55005,ZZ,county,North County,2,2020-05-02,cd\n"
+                "55005,ZZ,county,North County,3,2020-05-03,ef\n"
+                "55006,ZZ,county,South County,3,2020-05-03,ef\n"
+                "55006,ZZ,county,South County,4,2020-05-04,gh\n"
+                "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
+                "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
+            )
         )
     )
     agg = statistical_areas.CountyAggregator(

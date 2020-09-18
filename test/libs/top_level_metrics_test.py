@@ -8,6 +8,8 @@ from api import can_api_definition
 from libs import top_level_metrics
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 
 
@@ -23,6 +25,13 @@ def _build_metrics_df(content: str) -> pd.DataFrame:
 def _series_with_date_index(data, date: str = "2020-08-25", **series_kwargs):
     date_series = pd.date_range(date, periods=len(data), freq="D")
     return pd.Series(data, index=date_series, **series_kwargs)
+
+
+def _fips_csv_to_one_region(csv_str: str, region: Region) -> OneRegionTimeseriesDataset:
+    # Make a Timeseries first because it can have a FIPS column without locationID
+    ts = TimeseriesDataset.load_csv(io.StringIO(csv_str))
+    # from_timeseries adds the locationID column needed by get_one_region
+    return MultiRegionTimeseriesDataset.from_timeseries(ts).get_one_region(region)
 
 
 def test_calculate_case_density():
@@ -81,7 +90,7 @@ def test_calculate_test_positivity_extra_day():
 
 
 def test_top_level_metrics_basic():
-    data = io.StringIO(
+    data = (
         "date,fips,cases,positive_tests,negative_tests,contact_tracers_count"
         ",current_icu,current_icu_total,icu_beds\n"
         "2020-08-17,36,10,10,90,1,10,20,\n"
@@ -89,7 +98,7 @@ def test_top_level_metrics_basic():
         "2020-08-19,36,,,,3,10,20,\n"
         "2020-08-20,36,40,40,360,4,10,20,\n"
     )
-    timeseries = MultiRegionTimeseriesDataset.from_csv(data).get_one_region(Region.from_fips("36"))
+    timeseries = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
@@ -111,14 +120,14 @@ def test_top_level_metrics_basic():
 
 
 def test_top_level_metrics_no_test_positivity():
-    data = io.StringIO(
+    data = (
         "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
         "2020-08-17,36,10,,,1,,\n"
         "2020-08-18,36,20,,,2,,\n"
         "2020-08-19,36,30,,,3,,\n"
         "2020-08-20,36,40,,,4,,\n"
     )
-    timeseries = MultiRegionTimeseriesDataset.from_csv(data).get_one_region(Region.from_fips("36"))
+    timeseries = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
@@ -137,7 +146,7 @@ def test_top_level_metrics_no_test_positivity():
 
 
 def test_top_level_metrics_with_rt():
-    data = io.StringIO(
+    data = (
         "date,fips,cases,positive_tests,negative_tests,contact_tracers_count"
         ",current_icu,current_icu_total,icu_beds\n"
         "2020-08-17,36,10,10,90,1,,,\n"
@@ -145,7 +154,7 @@ def test_top_level_metrics_with_rt():
         "2020-08-19,36,,,,3,,,\n"
         "2020-08-20,36,40,40,360,4,,,\n"
     )
-    timeseries = MultiRegionTimeseriesDataset.from_csv(data).get_one_region(Region.from_fips("36"))
+    timeseries = _fips_csv_to_one_region(data, Region.from_fips("36"))
 
     data = io.StringIO(
         "date,fips,Rt_indicator,Rt_indicator_ci90,intervention,all_hospitalized,beds,infected_c\n"

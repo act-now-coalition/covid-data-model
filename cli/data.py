@@ -99,7 +99,7 @@ def update(summary_filename, wide_dates_filename):
     if wide_dates_filename:
         wide_dates_df.write_csv(
             timeseries_dataset.get_date_columns(),
-            str(timeseries_pointer.path).replace("timeseries.csv", wide_dates_filename),
+            timeseries_pointer.path.with_name(wide_dates_filename),
         )
 
     if summary_filename:

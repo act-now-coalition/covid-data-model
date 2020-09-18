@@ -2,6 +2,7 @@ import pathlib
 
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from libs.qa.common_df_diff import DatasetDiff
@@ -28,7 +29,7 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips):
 
     # restricting the datasets being persisted to one county to speed up tests a bit.
     latest_nyc = latest.get_subset(None, fips=nyc_fips)
-    timeseries_nyc = TimeseriesDataset(
+    timeseries_nyc = MultiRegionTimeseriesDataset(
         timeseries_dataset.get_one_region(Region.from_fips(nyc_fips)).data
     )
 
