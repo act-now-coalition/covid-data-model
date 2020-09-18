@@ -1,0 +1,15 @@
+{
+  "dataset_type": "multiregion",
+  "path": "data/multiregion.csv",
+  "data_git_info": {
+    "sha": "8f7192c21ed4026298ee8d6fbffea600e6f6aa2c",
+    "branch": "master",
+    "is_dirty": true
+  },
+  "model_git_info": {
+    "sha": "f43add72a7070723b8cbc078a45ebcb315d82a6e",
+    "branch": "tgb-stat-areas",
+    "is_dirty": true
+  },
+  "updated_at": "2020-09-17T19:14:31.324260"
+}
