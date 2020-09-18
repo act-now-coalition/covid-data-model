@@ -3,7 +3,7 @@ module.exports = {
   tagline: "API Documentation",
   url: "https://apidocs.covidactnow.org",
   baseUrl: "/",
-  plugins: ['@docusaurus/plugin-google-analytics'],
+  
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
   organizationName: "covid-projections", // Usually your GitHub org/user name.
