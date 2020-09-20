@@ -101,8 +101,7 @@ def update(summary_filename, wide_dates_filename):
         )
 
     if summary_filename:
-        dataset = timeseries_pointer.load_dataset()
-        _save_field_summary(dataset, path_prefix / summary_filename)
+        _save_field_summary(timeseries_dataset, path_prefix / summary_filename)
 
 
 @main.command()
