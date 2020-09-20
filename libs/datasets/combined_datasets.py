@@ -258,32 +258,41 @@ def _merge_data(datasource_dataframes, feature_definitions, log, new_index, over
     data = pd.DataFrame(index=new_index)
     provenance = pd.DataFrame(index=new_index)
     for field_name, data_source_names in feature_definitions.items():
-        log.info("Working field", field=field_name)
-        field_out = None
-        field_provenance = pd.Series(index=new_index, dtype="object")
-        # Go through the data sources, starting with the highest priority.
-        for datasource_name in reversed(data_source_names):
-            with tmp_bind(log, dataset_name=datasource_name, field=field_name) as log:
-                datasource_field_in = datasource_dataframes[datasource_name][field_name]
-                if field_out is None:
-                    # Copy all values from the highest priority input to the output
-                    field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
-                    field_out = datasource_field_in
-                else:
-                    field_out_has_ts = field_out.groupby(
-                        level=[CommonFields.FIPS], sort=False
-                    ).transform(lambda x: x.notna().any())
-                    copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
-                    # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-                    field_provenance.loc[copy_field_in] = datasource_name
-                    field_out = field_out.where(~copy_field_in, datasource_field_in)
-                dups = field_out.index.duplicated(keep=False)
-                if dups.any():
-                    log.error("Found duplicates in index")
-                    raise ValueError()  # This is bad, somehow the input /still/ has duplicates
+        datasource_series = [
+            (name, datasource_dataframes[name][field_name]) for name in data_source_names
+        ]
+        field_out, field_provenance = _merge_field(
+            log.bind(field=field_name), datasource_series, new_index
+        )
         data.loc[:, field_name] = field_out
         provenance.loc[:, field_name] = field_provenance
     return data, provenance
+
+
+def _merge_field(log, datasource_series: List[Tuple[str, pd.Series]], new_index):
+    log.info("Working field")
+    field_out = None
+    field_provenance = pd.Series(index=new_index, dtype="object")
+    # Go through the data sources, starting with the highest priority.
+    for datasource_name, datasource_field_in in reversed(datasource_series):
+        log_datasource = log.bind(dataset_name=datasource_name)
+        if field_out is None:
+            # Copy all values from the highest priority input to the output
+            field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
+            field_out = datasource_field_in
+        else:
+            field_out_has_ts = field_out.groupby(level=[CommonFields.FIPS], sort=False).transform(
+                lambda x: x.notna().any()
+            )
+            copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
+            # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
+            field_provenance.loc[copy_field_in] = datasource_name
+            field_out = field_out.where(~copy_field_in, datasource_field_in)
+        dups = field_out.index.duplicated(keep=False)
+        if dups.any():
+            log_datasource.error("Found duplicates in index")
+            raise ValueError()  # This is bad, somehow the input /still/ has duplicates
+    return field_out, field_provenance
 
 
 def _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_index):
