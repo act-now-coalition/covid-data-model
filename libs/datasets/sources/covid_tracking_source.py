@@ -116,15 +116,6 @@ class CovidTrackingDataSource(data_source.DataSource):
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
 
-        dtypes = {
-            cls.Fields.POSITIVE_TESTS: "Int64",
-            cls.Fields.NEGATIVE_TESTS: "Int64",
-            cls.Fields.POSITIVE_INCREASE: "Int64",
-            cls.Fields.NEGATIVE_INCREASE: "Int64",
-        }
-
-        data = data.astype(dtypes)
-
         # Removing bad data from Delaware.
         # Once that is resolved we can remove this while keeping the assert below.
         icu_mask = data[cls.Fields.IN_ICU_CURRENTLY] > data[cls.Fields.CURRENT_HOSPITALIZED]

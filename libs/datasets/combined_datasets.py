@@ -256,29 +256,37 @@ def _merge_data(datasource_dataframes, feature_definitions, log, new_index, over
     data = pd.DataFrame(index=new_index)
     provenance = pd.DataFrame(index=new_index)
     for field_name, data_source_names in feature_definitions.items():
-        log.info("Working field", field=field_name)
+        log_field = log.bind(field=field_name)
+        log_field.info("Working field")
         field_out = None
         field_provenance = pd.Series(index=new_index, dtype="object")
         # Go through the data sources, starting with the highest priority.
         for datasource_name in reversed(data_source_names):
-            with tmp_bind(log, dataset_name=datasource_name, field=field_name) as log:
-                datasource_field_in = datasource_dataframes[datasource_name][field_name]
-                if field_out is None:
-                    # Copy all values from the highest priority input to the output
-                    field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
-                    field_out = datasource_field_in
-                else:
-                    field_out_has_ts = field_out.groupby(
-                        level=[CommonFields.FIPS], sort=False
-                    ).transform(lambda x: x.notna().any())
-                    copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
-                    # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-                    field_provenance.loc[copy_field_in] = datasource_name
-                    field_out = field_out.where(~copy_field_in, datasource_field_in)
-                dups = field_out.index.duplicated(keep=False)
-                if dups.any():
-                    log.error("Found duplicates in index")
-                    raise ValueError()  # This is bad, somehow the input /still/ has duplicates
+            datasource_field_in = datasource_dataframes[datasource_name][field_name]
+            log_datasource = log_field.bind(
+                datasource_name=datasource_name,
+                datasource_dtype=datasource_field_in.dtype,
+                field_out=field_out,
+            )
+            log_datasource.info("Starting")
+
+            if field_out is None:
+                # Copy all values from the highest priority input to the output
+                field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
+                field_out = datasource_field_in
+            else:
+                field_out_has_ts = field_out.groupby(
+                    level=[CommonFields.FIPS], sort=False
+                ).transform(lambda x: x.notna().any())
+                copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
+                # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
+                field_provenance.loc[copy_field_in] = datasource_name
+                field_out = field_out.where(~copy_field_in, datasource_field_in)
+            dups = field_out.index.duplicated(keep=False)
+            if dups.any():
+                log_datasource.error("Found duplicates in index")
+                raise ValueError()  # This is bad, somehow the input /still/ has duplicates
+            log_datasource.info("Ending")
         data.loc[:, field_name] = field_out
         provenance.loc[:, field_name] = field_provenance
     return data, provenance

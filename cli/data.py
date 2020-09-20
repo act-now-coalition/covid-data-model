@@ -39,7 +39,9 @@ def main():
     pass
 
 
-def _save_field_summary(timeseries_dataset: TimeseriesDataset, output_path: pathlib.Path):
+def _save_field_summary(
+    timeseries_dataset: MultiRegionTimeseriesDataset, output_path: pathlib.Path
+):
 
     _logger.info("Starting dataset summary generation")
     summary = dataset_summary.summarize_timeseries_fields(timeseries_dataset.data)
@@ -103,7 +105,7 @@ def update(summary_filename, wide_dates_filename):
         )
 
     if summary_filename:
-        _save_field_summary(timeseries_dataset, path_prefix / summary_filename)
+        _save_field_summary(multiregion_dataset, path_prefix / summary_filename)
 
 
 @main.command()
@@ -113,9 +115,11 @@ def update(summary_filename, wide_dates_filename):
 def save_summary(output_dir: pathlib.Path, filename: str, level: Optional[AggregationLevel]):
     """Saves summary of timeseries dataset indexed by fips and variable name."""
 
-    us_timeseries = combined_datasets.load_us_timeseries_dataset().to_timeseries()
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
     if level:
-        us_timeseries = us_timeseries.get_subset(aggregation_level=level)
+        us_timeseries = MultiRegionTimeseriesDataset.from_timeseries(
+            us_timeseries.to_timeseries().get_subset(aggregation_level=level)
+        )
 
     _save_field_summary(us_timeseries, output_dir / filename)
 

@@ -60,43 +60,6 @@ def find_missing_values_in_summary(
     return summary_l.loc[newly_missing_r.index]
 
 
-def get_summaries(
-    sha1: str, sha2: str, level: Optional[AggregationLevel] = None, fips: Optional[str] = None
-) -> Tuple[TimeseriesSummary, TimeseriesSummary]:
-    """Builds summaries comparing timeseries between two commit shas.
-
-    Args:
-        sha1: First commit to compare.
-        sha2: Second commit to compare.
-        level: Optional AggregationLevel, if set will restrict comparisons to that level.
-        fips: Optional fips to restrict summaries to.
-
-    Returns: Tuple of summaries for each sha.
-    """
-    timeseries1 = combined_datasets.load_us_timeseries_dataset(commit=sha1).to_timeseries()
-    timeseries2 = combined_datasets.load_us_timeseries_dataset(commit=sha2).to_timeseries()
-
-    if level:
-        timeseries1 = timeseries1.get_subset(aggregation_level=level)
-        timeseries2 = timeseries2.get_subset(aggregation_level=level)
-
-    if fips:
-        timeseries1 = timeseries1.get_subset(fips=fips)
-        timeseries2 = timeseries2.get_subset(fips=fips)
-
-    summary1 = summarize_timeseries_fields(timeseries1.data)
-    summary2 = summarize_timeseries_fields(timeseries2.data)
-
-    sum1 = TimeseriesSummary(
-        sha=sha1, timeseries=timeseries1, summary=summary1, fips=fips, level=level
-    )
-    sum2 = TimeseriesSummary(
-        sha=sha2, timeseries=timeseries2, summary=summary2, fips=fips, level=level
-    )
-
-    return sum1, sum2
-
-
 def get_changes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     """Returns differences of each column in input DataFrames for matching indices.
 
