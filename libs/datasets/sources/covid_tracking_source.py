@@ -79,22 +79,6 @@ class CovidTrackingDataSource(data_source.DataSource):
         CommonFields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS,
     }
 
-    TESTS_ONLY_FIELDS = [
-        Fields.DATE,
-        Fields.POSITIVE_TESTS,
-        Fields.NEGATIVE_TESTS,
-    ]
-
-    TEST_FIELDS = [
-        Fields.DATE,
-        Fields.STATE,
-        Fields.POSITIVE_TESTS,
-        Fields.NEGATIVE_TESTS,
-        Fields.POSITIVE_INCREASE,
-        Fields.NEGATIVE_INCREASE,
-        Fields.AGGREGATE_LEVEL,
-    ]
-
     def __init__(self, input_path):
         data = pd.read_csv(
             input_path,
@@ -115,15 +99,6 @@ class CovidTrackingDataSource(data_source.DataSource):
         data[cls.Fields.COUNTY] = None
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
-
-        dtypes = {
-            cls.Fields.POSITIVE_TESTS: "Int64",
-            cls.Fields.NEGATIVE_TESTS: "Int64",
-            cls.Fields.POSITIVE_INCREASE: "Int64",
-            cls.Fields.NEGATIVE_INCREASE: "Int64",
-        }
-
-        data = data.astype(dtypes)
 
         # Removing bad data from Delaware.
         # Once that is resolved we can remove this while keeping the assert below.
