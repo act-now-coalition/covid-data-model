@@ -111,16 +111,9 @@ def update(summary_filename, wide_dates_filename):
 @main.command()
 @click.option("--output-dir", type=pathlib.Path, required=True)
 @click.option("--filename", type=pathlib.Path, default="timeseries_field_summary.csv")
-@click.option("--level", type=AggregationLevel)
-def save_summary(output_dir: pathlib.Path, filename: str, level: Optional[AggregationLevel]):
+def save_summary(output_dir: pathlib.Path, filename: str):
     """Saves summary of timeseries dataset indexed by fips and variable name."""
-
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    if level:
-        us_timeseries = MultiRegionTimeseriesDataset.from_timeseries(
-            us_timeseries.to_timeseries().get_subset(aggregation_level=level)
-        )
-
     _save_field_summary(us_timeseries, output_dir / filename)
 
 

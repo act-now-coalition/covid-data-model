@@ -13,7 +13,7 @@ def test_summary_save(tmp_path):
     filename = "summary.csv"
     runner.invoke(
         data.save_summary,
-        ["--output-dir", str(tmp_path), "--level", "state", "--filename", filename],
+        ["--output-dir", str(tmp_path), "--filename", filename],
         catch_exceptions=False,
     )
 
