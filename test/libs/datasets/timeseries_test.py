@@ -159,5 +159,5 @@ def test_multiregion_provenance():
     ts = timeseries.TimeseriesDataset(input_df.reset_index(), provenance=provenance)
     out = timeseries.MultiRegionTimeseriesDataset.from_timeseries(ts)
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
-    assert out.provenance.loc["97111"].at["m1"] == "src11"
-    assert out.provenance.loc["97222"].at["m2"] == "src22"
+    assert out.provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
+    assert out.provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"

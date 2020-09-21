@@ -341,7 +341,17 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def from_timeseries(ts: TimeseriesDataset) -> "MultiRegionTimeseriesDataset":
         df = ts.data.copy()
         _add_location_id(df)
-        return MultiRegionTimeseriesDataset(df, provenance=ts.provenance)
+
+        if ts.provenance is not None:
+            assert ts.provenance.index.names == [CommonFields.FIPS, "variable"]
+            provenance = ts.provenance.copy()
+            provenance.index = provenance.index.map(
+                lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
+            )
+        else:
+            provenance = None
+
+        return MultiRegionTimeseriesDataset(df, provenance=provenance)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         rows_key = self.data[CommonFields.LOCATION_ID] == region.location_id
