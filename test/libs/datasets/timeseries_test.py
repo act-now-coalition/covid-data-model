@@ -6,6 +6,7 @@ import structlog
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
+from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
 from libs.pipeline import Region
@@ -135,3 +136,28 @@ def test_one_region_dataset():
         )
     assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
     assert ts.empty
+
+
+def test_multiregion_provenance():
+    input_df = read_csv_and_index_fips_date(
+        "fips,county,aggregate_level,date,m1,m2\n"
+        "97111,Bar County,county,2020-04-01,1,\n"
+        "97111,Bar County,county,2020-04-02,2,\n"
+        "97222,Foo County,county,2020-04-01,,10\n"
+        "97222,Foo County,county,2020-04-03,3,30\n"
+    )
+    provenance = combined_datasets.provenance_wide_metrics_to_series(
+        read_csv_and_index_fips_date(
+            "fips,date,m1,m2\n"
+            "97111,2020-04-01,src11,\n"
+            "97111,2020-04-02,src11,\n"
+            "97222,2020-04-01,,src22\n"
+            "97222,2020-04-03,src21,src22\n"
+        ),
+        structlog.get_logger(),
+    )
+    ts = timeseries.TimeseriesDataset(input_df.reset_index(), provenance=provenance)
+    out = timeseries.MultiRegionTimeseriesDataset.from_timeseries(ts)
+    # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
+    assert out.provenance.loc["97111"].at["m1"] == "src11"
+    assert out.provenance.loc["97222"].at["m2"] == "src22"
