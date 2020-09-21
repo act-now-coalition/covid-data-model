@@ -15,13 +15,13 @@ from libs.datasets.combined_datasets import (
     ALL_FIELDS_FEATURE_DEFINITION,
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.qa import dataset_summary
 from libs.qa import data_availability
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources import forecast_hub
 from pyseir import DATA_DIR
 import pyseir.icu.utils
@@ -38,7 +38,9 @@ def main():
     pass
 
 
-def _save_field_summary(timeseries_dataset: TimeseriesDataset, output_path: pathlib.Path):
+def _save_field_summary(
+    timeseries_dataset: MultiRegionTimeseriesDataset, output_path: pathlib.Path
+):
 
     _logger.info("Starting dataset summary generation")
     summary = dataset_summary.summarize_timeseries_fields(timeseries_dataset.data)
@@ -77,11 +79,12 @@ def update(summary_filename, wide_dates_filename):
     timeseries_dataset: TimeseriesDataset = combined_datasets.build_from_sources(
         TimeseriesDataset, data_sources, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER
     )
+    multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries(timeseries_dataset)
     latest_dataset: LatestValuesDataset = combined_datasets.build_from_sources(
         LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
-        path_prefix, latest_dataset, timeseries_dataset
+        path_prefix, latest_dataset, multiregion_dataset,
     )
 
     # Write DataSource objects that have provenance information, which is only set when significant
@@ -97,24 +100,19 @@ def update(summary_filename, wide_dates_filename):
     if wide_dates_filename:
         wide_dates_df.write_csv(
             timeseries_dataset.get_date_columns(),
-            str(timeseries_pointer.path).replace("timeseries.csv", wide_dates_filename),
+            timeseries_pointer.path.with_name(wide_dates_filename),
         )
 
     if summary_filename:
-        _save_field_summary(timeseries_dataset, path_prefix / summary_filename)
+        _save_field_summary(multiregion_dataset, path_prefix / summary_filename)
 
 
 @main.command()
 @click.option("--output-dir", type=pathlib.Path, required=True)
 @click.option("--filename", type=pathlib.Path, default="timeseries_field_summary.csv")
-@click.option("--level", type=AggregationLevel)
-def save_summary(output_dir: pathlib.Path, filename: str, level: Optional[AggregationLevel]):
+def save_summary(output_dir: pathlib.Path, filename: str):
     """Saves summary of timeseries dataset indexed by fips and variable name."""
-
-    us_timeseries = combined_datasets.load_us_timeseries_dataset().to_timeseries()
-    if level:
-        us_timeseries = us_timeseries.get_subset(aggregation_level=level)
-
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
     _save_field_summary(us_timeseries, output_dir / filename)
 
 

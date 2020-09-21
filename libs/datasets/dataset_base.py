@@ -6,10 +6,24 @@ import structlog
 from covidactnow.datapublic import common_df
 import pandas as pd
 
-from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets.dataset_utils import AggregationLevel, DatasetType
 
 
-class DatasetBase(object):
+class SaveableDatasetInterface:
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        raise NotImplementedError("Subsclass must implement")
+
+    @property
+    def dataset_type(self) -> DatasetType:
+        raise NotImplementedError("Subsclass must implement")
+
+
+class DatasetBase(SaveableDatasetInterface):
 
     INDEX_FIELDS: List[str] = []
 
