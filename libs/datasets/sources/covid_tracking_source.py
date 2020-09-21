@@ -79,22 +79,6 @@ class CovidTrackingDataSource(data_source.DataSource):
         CommonFields.NEGATIVE_TESTS: Fields.NEGATIVE_TESTS,
     }
 
-    TESTS_ONLY_FIELDS = [
-        Fields.DATE,
-        Fields.POSITIVE_TESTS,
-        Fields.NEGATIVE_TESTS,
-    ]
-
-    TEST_FIELDS = [
-        Fields.DATE,
-        Fields.STATE,
-        Fields.POSITIVE_TESTS,
-        Fields.NEGATIVE_TESTS,
-        Fields.POSITIVE_INCREASE,
-        Fields.NEGATIVE_INCREASE,
-        Fields.AGGREGATE_LEVEL,
-    ]
-
     def __init__(self, input_path):
         data = pd.read_csv(
             input_path,
