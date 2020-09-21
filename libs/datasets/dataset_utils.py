@@ -48,6 +48,7 @@ class DatasetType(enum.Enum):
 
     TIMESERIES = "timeseries"
     LATEST = "latest"
+    MULTI_REGION = "multiregion"
 
     @property
     def dataset_class(self) -> Type:
@@ -59,9 +60,10 @@ class DatasetType(enum.Enum):
 
         if self is DatasetType.TIMESERIES:
             return timeseries.TimeseriesDataset
-
-        if self is DatasetType.LATEST:
+        elif self is DatasetType.LATEST:
             return latest_values_dataset.LatestValuesDataset
+        elif self is DatasetType.MULTI_REGION:
+            return timeseries.MultiRegionTimeseriesDataset
 
 
 class DuplicateValuesForIndex(Exception):

@@ -10,7 +10,7 @@ def nyc_fips():
 
 @pytest.fixture
 def nyc_region(nyc_fips):
-    return pipeline.Region(nyc_fips)
+    return pipeline.Region.from_fips(nyc_fips)
 
 
 @pytest.fixture

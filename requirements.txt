@@ -42,6 +42,7 @@ structlog==20.1.0
 structlog-sentry==1.2.2
 more_itertools==8.3.0
 typing-extensions==3.7.4.3
+xlrd==1.2.0  # For panda's read_excel method
 -e ../covid-data-public
 # By default, installs from local directory, but when copying this
 # to binder/requirements.txt, uncomment the following line.

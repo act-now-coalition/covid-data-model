@@ -1,5 +1,10 @@
+import pytest
+
 from libs import pipeline
 from pyseir.inference import model_fitter
+
+# turns all warnings into errors for this module
+pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
 def test_get_pyseir_fitter_initial_conditions():
