@@ -22,7 +22,6 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.sources import forecast_hub
 from pyseir import DATA_DIR
 import pyseir.icu.utils
