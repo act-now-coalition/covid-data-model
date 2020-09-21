@@ -20,6 +20,8 @@ prepare () {
   else
     DATA_SOURCES_DIR="$(abs_path $1)"
     API_OUTPUT_DIR="$(abs_path $2)"
+    API_OUTPUT_V2="${API_OUTPUT_DIR}/v2"
+
     echo $DATA_SOURCES_DIR
     echo $API_OUTPUT_DIR
   fi
@@ -41,6 +43,12 @@ prepare () {
     echo "made dir"
   fi
 
+  if [ ! -d "${API_OUTPUT_V2}" ] ; then
+    echo "Directory ${API_OUTPUT_V2} does not exist. Creating."
+    mkdir -p "${API_OUTPUT_V2}"
+    echo "made dir"
+  fi
+
 
   # run_model.py uses the COVID_DATA_PUBLIC environment variable to find inputs.
   export COVID_DATA_PUBLIC="${DATA_SOURCES_DIR}"
@@ -51,7 +59,6 @@ prepare () {
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
   API_OUTPUT_US="${API_OUTPUT_DIR}/us"
   API_OUTPUT_QA="${API_OUTPUT_DIR}/qa"
-
   # Create QA dir
   if [ ! -d "${API_OUTPUT_QA}" ] ; then
     echo "Directory ${API_OUTPUT_QA} does not exist. Creating."
@@ -99,7 +106,7 @@ execute_api() {
   cd "$(dirname "$0")"
 
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
-  generate_version_json
+  generate_version_json "${API_OUTPUT_DIR}"
 
   echo ">>> Generating Top 100 Counties json to ${API_OUTPUT_COUNTIES}/counties_top_100.json"
   mkdir -p "${API_OUTPUT_COUNTIES}"
@@ -121,6 +128,21 @@ execute_api() {
   echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
 
+
+execute_api_v2() {
+  # Go to repo root (where run.sh lives).
+  cd "$(dirname "$0")"
+
+  echo ">>> Generating ${API_OUTPUT_V2}/version.json"
+  generate_version_json "${API_OUTPUT_V2}"
+
+  echo ">>> Generating API Output"
+  ./run.py api generate-api-v2 "${API_OUTPUT_DIR}" -o "${API_OUTPUT_V2}"
+
+  echo ">>> All API Artifacts written to ${API_OUTPUT_V2}"
+}
+
+
 execute_zip_folder() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
@@ -135,6 +157,7 @@ execute_zip_folder() {
 
 execute() {
   execute_model
+  execute_api_v2
   execute_api
   execute_zip_folder
 }
@@ -144,13 +167,14 @@ execute() {
 # Generates a version.json file in the API_OUTPUT_DIR capturing the time
 # and state of all repos.
 function generate_version_json() {
+  local api_output_dir="$1"
   local model_repo_json=$(get_repo_status_json)
 
   data_repo_sha=$(jq .data_git_info.sha data/timeseries.json || echo '"<unknown: jq not installed>"')
 
   local timestamp=$(iso_timestamp)
 
-  cat > "${API_OUTPUT_DIR}/version.json" << END
+  cat > "${api_output_dir}/version.json" << END
 {
   "timestamp": "${timestamp}",
   "covid-data-public": ${data_repo_sha},
@@ -215,6 +239,10 @@ case $EXECUTE_FUNC in
   execute_api)
     echo "Executing Api"
     execute_api
+    ;;
+  execute_api_v2)
+    echo "Executing Api V2"
+    execute_api_v2
     ;;
   execute_raw_data_qa)
     echo "Executing Raw Data QA"
