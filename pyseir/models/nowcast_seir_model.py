@@ -114,6 +114,7 @@ class NowcastingSEIRModel:
     * Validate test positivity contribution to peaks against that observed
     """
 
+    # What fraction of hospital dwell time contributes delay evaluating median age
     FRACTION_HOSP_DWELL_AS_DELAY = 1.0
 
     def __init__(
@@ -529,6 +530,7 @@ class ModelRun:
             y[8] = 0.0
             y[9] = 0.0
 
+        # Adjust initial conditions and transition fractions for H and nD to align with inital compartments
         if self.auto_calibrate:
             max_cal = 3.0
             current = ModelRun.array_to_dict(y)
@@ -549,6 +551,7 @@ class ModelRun:
         implicit = False if self.force_stationary else True
 
         # If today is set and is in the future than we are calibrating on more than one day
+        # Note this is not currently supported - just started to "frame this in"
         if self.today is not None and self.today > self.t_list[0] + 7:  # days
 
             # Run without adjustments up until today, then compute adjustments needed to match today
@@ -584,6 +587,8 @@ class ModelRun:
         for t in remaining[:-1]:  # self.t_list[:-1]:
             y = list(y)
             dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
+
+            # TODO add incident hospitalizations
             (dS, dE, dI, dW, nC, dC, dH, dD, dR, b) = dy
             y_new = [max(0.1, a + b) for a, b in zip(y, dy)]
             # do not accumulate daily new cases, deaths or beta
@@ -694,6 +699,7 @@ class ModelRun:
             k_expected = math.exp(k) - 1.0
 
         # transition fractions and linear ramp corrections
+        # Note for now lr_f*[1] is always 0. (no time variance of the calibration)
         if self.case_median_age_f is not None:
             fh0 = model.fh0_f(median_age=med_age_h)
             fd0 = model.fd0_f(median_age=med_age_d)
@@ -710,6 +716,7 @@ class ModelRun:
         e_max_growth = 2.0
 
         # Use delayed Cases and Infected to drive hospitalizations
+        # Currently model.delay_ci_h is usually 0. so this adds no extra delay
         avg_R = self.rt_f(t)  # do better by averaging in the future
         growth_over_delay = math.exp((avg_R - 1.0) / model.serial_period * model.delay_ci_h)
         delayed_C = C / growth_over_delay
@@ -743,7 +750,7 @@ class ModelRun:
             dEdt = (E_new - E) / dt
             number_exposed = dEdt + E / t_e
 
-            # Which determines W
+            # Which determines W (this is just A = asymptomatic)
             dWdt = fw * E / t_e - delayed_W / t_i
             W_new = W + dWdt * dt
 
@@ -767,8 +774,10 @@ class ModelRun:
 
         dSdt = -number_exposed
 
+        # Regular fully explicit evaluation
         dHdt = fh * (delayed_I + delayed_C) / t_i - H / t_h
         dDdt = fd * H / t_h
+
         if implicit_infections:
             dRdt = -(dSdt + dEdt + dIdt + dWdt + dCdt + dHdt + dDdt)
         else:

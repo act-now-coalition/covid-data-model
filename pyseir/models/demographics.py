@@ -3,13 +3,14 @@ import pandas as pd
 import math
 from enum import Enum
 
-
+# Not using currently
 class ContactsType(Enum):
     DEFAULT = 1
     LOCKDOWN = 2
     RESTRICTED = 3
 
 
+# Helper function
 def extend_tlist_at_beginning(tlist, days):
     """
     Extend a time list at the beginning
