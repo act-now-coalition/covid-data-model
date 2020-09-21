@@ -24,7 +24,6 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
-from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
@@ -58,7 +57,6 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.CASES: [NYTimesDataset],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -68,40 +66,24 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         TexasHospitalizations,
     ],
-    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
     CommonFields.CURRENT_ICU: [
         CovidCountyDataDataSource,
         CovidTrackingDataSource,
         TexasHospitalizations,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource],
-    CommonFields.CURRENT_VENTILATED: [
-        CovidCountyDataDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
+    CommonFields.CURRENT_VENTILATED: [CovidCountyDataDataSource, CovidTrackingDataSource,],
     CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
-    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
-    CommonFields.LICENSED_BEDS: [],
-    CommonFields.MAX_BED_COUNT: [],
     CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
     CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
-    CommonFields.RECOVERED: [],
     CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     **ALL_TIMESERIES_FEATURE_DEFINITION,
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.CURRENT_HOSPITALIZED: [
-        CovidCountyDataDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-        TexasHospitalizations,
-    ],
-    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
