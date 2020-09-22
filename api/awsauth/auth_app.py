@@ -1,72 +1,11 @@
-from typing import Dict, Any
-import os
-import re
 import uuid
 import json
 import logging
-import boto3
-from boto3.dynamodb.conditions import Key
+
+from api_key_repo import APIKeyRepo
+
 
 _logger = logging.getLogger(__name__)
-
-API_KEY_TABLE_NAME = os.environ["API_KEYS_TABLE"]
-API_KEY_INDEX_NAME = "apiKeys"
-
-
-class DynamoDBClient:
-    def __init__(self, client=None):
-        self._client = client or boto3.resource("dynamodb")
-
-    def get_item(self, table, key):
-        table = self._client.Table(table)
-        result = table.get_item(Key=key)
-
-        if "Item" not in result:
-            return None
-
-        return result["Item"]
-
-    def query_index(self, table, index, key, value):
-        table = self._client.Table(table)
-
-        result = table.query(IndexName=index, KeyConditionExpression=Key(key).eq(value))
-        return result["Items"]
-
-    def put_item(self, table: str, item: Dict[str, Any]):
-        table = self._client.Table(table)
-        return table.put_item(Item=item)
-
-
-class APIKeyRepo:
-    @staticmethod
-    def add_api_key(email, api_key):
-        client = DynamoDBClient()
-        obj = {"email": email, "api_key": api_key}
-        client.put_item(API_KEY_TABLE_NAME, obj)
-
-    @staticmethod
-    def get_api_key(email):
-        client = DynamoDBClient()
-
-        key = {"email": email}
-        api_key_item = client.get_item(API_KEY_TABLE_NAME, key)
-
-        if not api_key_item:
-            return None
-
-        return api_key_item["api_key"]
-
-    @staticmethod
-    def get_record_for_api_key(api_key):
-        client = DynamoDBClient()
-        items = client.query_index(API_KEY_TABLE_NAME, API_KEY_INDEX_NAME, "api_key", api_key)
-        if not items:
-            return None
-
-        if len(items) > 1:
-            raise Exception("Multiple emails found for API key")
-
-        return items[0]
 
 
 class InvalidAPIKey(Exception):
@@ -110,18 +49,11 @@ def register(event, context):
 
     return response
 
-    # Use this code if you don't use the http event with the LAMBDA-PROXY
-    # integration
-    """
-    return {
-        "message": "Go Serverless v1.0! Your function executed successfully!",
-        "event": event
-    }
-    """
-
 
 def _generate_accept_policy(user_record: dict, method_arn):
-    *first, last = method_arn.split("/")
+    # The last part of the method arn does not give permission to the underlying resource.
+    # Replacing with a wildcard to give access to paths below.
+    *first, _ = method_arn.split("/")
     method_arn = "/".join([*first, "*"])
     return {
         "principalId": user_record["email"],
@@ -136,8 +68,9 @@ def _generate_accept_policy(user_record: dict, method_arn):
 
 
 def check_api_key(event, context):
+    """Checks API Key included in request for registered value."""
     if not event["queryStringParameters"]["apiKey"]:
-        raise Exception("Must have api key")
+        raise InvalidAPIKey("Must have api key")
 
     api_key = event["queryStringParameters"]["apiKey"]
 
@@ -145,6 +78,4 @@ def check_api_key(event, context):
     if not record:
         raise InvalidAPIKey(api_key)
 
-    policy = _generate_accept_policy(record, event["methodArn"])
-
-    return policy
+    return _generate_accept_policy(record, event["methodArn"])
