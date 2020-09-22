@@ -4,6 +4,9 @@ from typing import Any
 from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
+from typing import Iterable
+from typing import Optional
+
 import pandas as pd
 import structlog
 
@@ -114,21 +117,15 @@ def load_us_timeseries_dataset(
 @functools.lru_cache(None)
 def load_us_latest_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
-    before: str = None,
-    previous_commit: bool = False,
-    commit: str = None,
 ) -> latest_values_dataset.LatestValuesDataset:
-
     filename = dataset_pointer.form_filename(DatasetType.LATEST)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
+    return pointer.load_dataset()
 
 
-def get_us_latest_for_fips(fips) -> dict:
-    """Gets latest values for a given state or county fips code."""
-    us_latest = load_us_latest_dataset()
-    return us_latest.get_record_for_fips(fips)
+def get_county_name(region: Region) -> Optional[str]:
+    return load_us_timeseries_dataset().get_one_region(region).latest[CommonFields.COUNTY]
 
 
 def build_from_sources(
@@ -289,20 +286,18 @@ class RegionalData:
 
     region: Region
 
-    latest: Dict[str, Any]
-
     timeseries: OneRegionTimeseriesDataset
 
     @staticmethod
     def from_region(region: Region) -> "RegionalData":
-
-        us_latest = load_us_latest_dataset()
-        region_latest = us_latest.get_record_for_fips(region.fips)
-
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)
 
-        return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
+        return RegionalData(region=region, timeseries=region_timeseries)
+
+    @property
+    def latest(self) -> Dict[str, Any]:
+        return self.timeseries.latest
 
     @property
     def population(self) -> int:
@@ -316,3 +311,8 @@ class RegionalData:
         if county:
             return f"{county}, {state}"
         return state
+
+
+def get_fips_subset(aggregation_level, **kwargs) -> Iterable[str]:
+    us_latest = load_us_latest_dataset()
+    return us_latest.get_subset(aggregation_level, **kwargs).all_fips

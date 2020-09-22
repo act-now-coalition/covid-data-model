@@ -204,7 +204,9 @@ def get_hospitalization_data() -> MultiRegionTimeseriesDataset:
     data = combined_datasets.load_us_timeseries_dataset().data  # processing rows, ignoring indexes
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
-    return MultiRegionTimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
+    return MultiRegionTimeseriesDataset.from_dataframe(
+        data[has_current_hospital | has_cumulative_hospital], empty_latest=True
+    )
 
 
 def calculate_hospitalization_data(

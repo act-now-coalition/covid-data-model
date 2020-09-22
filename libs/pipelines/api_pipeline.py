@@ -100,9 +100,7 @@ def run_on_all_regional_inputs_for_intervention(
 
 
 def generate_metrics_and_latest_for_fips(
-    timeseries: OneRegionTimeseriesDataset,
-    latest: dict,
-    model_output: Optional[CANPyseirLocationOutput],
+    timeseries: OneRegionTimeseriesDataset, model_output: Optional[CANPyseirLocationOutput],
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
     For a FIPS, generate a MetricsTimeseriesRow per day and return the latest.
@@ -117,7 +115,7 @@ def generate_metrics_and_latest_for_fips(
         return [], None
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, latest, model_output
+        timeseries, model_output
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
@@ -141,7 +139,7 @@ def build_timeseries_for_region(
 
     try:
         metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
-            regional_input.timeseries, regional_input.latest, model_output
+            regional_input.timeseries, model_output
         )
         region_summary = api.generate_region_summary(
             regional_input.latest, metrics_latest, model_output

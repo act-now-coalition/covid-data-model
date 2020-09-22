@@ -38,7 +38,6 @@ def _cache_global_datasets():
     # Populate cache for combined latest and timeseries.  Caching pre-fork
     # will make sure cache is populated for subprocesses.  Return value
     # is not needed as the only goal is to populate the cache.
-    combined_datasets.load_us_latest_dataset()
     combined_datasets.load_us_timeseries_dataset()
 
 
@@ -105,7 +104,7 @@ class SubStateRegionPipelineInput:
         else:  # Default to the full infection rate whitelist
             infer_rt_regions = {
                 pipeline.Region.from_fips(x)
-                for x in combined_datasets.load_us_latest_dataset().all_fips
+                for x in combined_datasets.get_fips_subset(None)
                 if len(x) == 5
                 and "25" != x[:2]  # Counties only  # Masking MA Counties (2020-08-27) due to NaNs
                 and "999" != x[-3:]  # Remove placeholder fips that have no data

@@ -1,3 +1,4 @@
+import dataclasses
 import io
 
 import numpy as np
@@ -31,7 +32,9 @@ def _fips_csv_to_one_region(csv_str: str, region: Region) -> OneRegionTimeseries
     # Make a Timeseries first because it can have a FIPS column without location_id
     ts = TimeseriesDataset.load_csv(io.StringIO(csv_str))
     # from_timeseries adds the location_id column needed by get_one_region
-    return MultiRegionTimeseriesDataset.from_timeseries(ts).get_one_region(region)
+    return MultiRegionTimeseriesDataset.from_timeseries(
+        ts, ts.latest_values_object()
+    ).get_one_region(region)
 
 
 def test_calculate_case_density():
@@ -98,7 +101,7 @@ def test_top_level_metrics_basic():
         "2020-08-19,36,,,,3,10,20,\n"
         "2020-08-20,36,40,40,360,4,10,20,\n"
     )
-    timeseries = _fips_csv_to_one_region(data, Region.from_fips("36"))
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
@@ -106,8 +109,9 @@ def test_top_level_metrics_basic():
         CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 30,
     }
+    one_region = dataclasses.replace(one_region, latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, latest, None, require_recent_icu_data=False
+        one_region, None, require_recent_icu_data=False
     )
 
     expected = _build_metrics_df(
@@ -127,14 +131,15 @@ def test_top_level_metrics_no_test_positivity():
         "2020-08-19,36,30,,,3,,\n"
         "2020-08-20,36,40,,,4,,\n"
     )
-    timeseries = _fips_csv_to_one_region(data, Region.from_fips("36"))
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
         CommonFields.ICU_BEDS: 10,
     }
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(timeseries, latest, None)
+    one_region = dataclasses.replace(one_region, latest=latest)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None)
 
     expected = _build_metrics_df(
         "2020-08-17,36,,,,,\n"
@@ -154,7 +159,7 @@ def test_top_level_metrics_with_rt():
         "2020-08-19,36,,,,3,,,\n"
         "2020-08-20,36,40,40,360,4,,,\n"
     )
-    timeseries = _fips_csv_to_one_region(data, Region.from_fips("36"))
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
 
     data = io.StringIO(
         "date,fips,Rt_indicator,Rt_indicator_ci90,intervention,all_hospitalized,beds,infected_c\n"
@@ -174,9 +179,8 @@ def test_top_level_metrics_with_rt():
         CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 25,
     }
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, latest, model_output
-    )
+    one_region = dataclasses.replace(one_region, latest=latest)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, model_output)
     expected = _build_metrics_df(
         "2020-08-17,36,,,,1.1,.1\n"
         "2020-08-18,36,10,0.1,0.04,1.2,.1\n"

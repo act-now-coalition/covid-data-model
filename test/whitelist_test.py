@@ -28,6 +28,7 @@ def test_skip_gaps_in_cases_and_deaths_metrics():
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-02,,2\n"
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-03,30,\n"
         "iso1:us#fips:97111,US,ZZ,Bar County,county,2020-04-04,40,4\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,,40,4\n"
     )
     input_dataset = MultiRegionTimeseriesDataset.from_csv(csv_string_io)
 
@@ -54,6 +55,8 @@ def test_inference_ok_with_5_days_cases_changed():
         "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-04,400,4\n"
         "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-05,500,5\n"
         "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-06,600,6\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,,500,5\n"
+        "iso1:us#fips:97222,US,ZZ,Foo County,county,,100,1\n"
     )
     input_dataset = MultiRegionTimeseriesDataset.from_csv(csv_string_io)
 
