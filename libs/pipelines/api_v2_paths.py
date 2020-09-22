@@ -64,9 +64,20 @@ class APIOutputPathBuilder:
         return self.root / f"{self.region_key}.{file_type.suffix}"
 
     def single_summary(self, region_summary: can_api_v2_definition.RegionSummary, file_type):
-        return self.region_subdir / f"{region_summary.fips}.{file_type.suffix}"
+        if self.level is AggregationLevel.STATE:
+            return self.region_subdir / f"{region_summary.state}.{file_type.suffix}"
+        if self.level is AggregationLevel.COUNTY:
+            return self.region_subdir / f"{region_summary.fips}.{file_type.suffix}"
+
+        raise NotImplementedError("Level not supported")
 
     def single_timeseries(
         self, region_timeseries: can_api_v2_definition.RegionSummaryWithTimeseries, file_type
     ):
-        return self.region_subdir / f"{region_timeseries.fips}.timeseries.{file_type.suffix}"
+
+        if self.level is AggregationLevel.STATE:
+            return self.region_subdir / f"{region_summary.state}.timeseries.{file_type.suffix}"
+        if self.level is AggregationLevel.COUNTY:
+            return self.region_subdir / f"{region_summary.fips}.timeseries.{file_type.suffix}"
+
+        raise NotImplementedError("Level not supported")
