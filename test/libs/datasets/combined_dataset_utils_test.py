@@ -2,12 +2,16 @@ import pathlib
 
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import TimeseriesDataset
+from libs.pipeline import Region
 from libs.qa.common_df_diff import DatasetDiff
 
 
 def test_persist_and_load_dataset(tmp_path, nyc_fips):
+    region = Region.from_fips(nyc_fips)
     dataset = combined_datasets.load_us_timeseries_dataset()
-    timeseries_nyc = dataset.get_subset(None, fips=nyc_fips)
+    timeseries_nyc = TimeseriesDataset(dataset.get_one_region(region).data)
 
     pointer = combined_dataset_utils.persist_dataset(timeseries_nyc, tmp_path)
 
@@ -25,7 +29,9 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips):
 
     # restricting the datasets being persisted to one county to speed up tests a bit.
     latest_nyc = latest.get_subset(None, fips=nyc_fips)
-    timeseries_nyc = timeseries_dataset.get_subset(None, fips=nyc_fips)
+    timeseries_nyc = MultiRegionTimeseriesDataset(
+        timeseries_dataset.get_one_region(Region.from_fips(nyc_fips)).data
+    )
 
     combined_dataset_utils.update_data_public_head(
         tmp_path, latest_dataset=latest_nyc, timeseries_dataset=timeseries_nyc,

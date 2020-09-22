@@ -1,16 +1,14 @@
 from dataclasses import dataclass
-from typing import Any
-from typing import Mapping
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import structlog
 from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
-from libs.pipeline import RegionalCombinedData
+from libs.datasets import combined_datasets
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.ensembles import ensemble_runner
 from pyseir.icu import infer_icu
@@ -33,8 +31,8 @@ class RegionalInput:
 
     region: Region
 
-    _combined_data: RegionalCombinedData
-    _state_combined_data: Optional[RegionalCombinedData]
+    _combined_data: combined_datasets.RegionalData
+    _state_combined_data: Optional[combined_datasets.RegionalData]
     _mle_fit_result: Mapping[str, Any]
     _ensemble_results: Mapping[str, Any]
     _infection_rate: Optional[pd.DataFrame]
@@ -47,7 +45,7 @@ class RegionalInput:
     ) -> "RegionalInput":
         region = fitter.region
         state_combined_data = (
-            RegionalCombinedData.from_region(region.get_state_region())
+            combined_datasets.RegionalData.from_region(region.get_state_region())
             if region.is_county()
             else None
         )
@@ -69,7 +67,7 @@ class RegionalInput:
         return self.region.fips
 
     @property
-    def latest(self):
+    def latest(self) -> Mapping[str, Any]:
         return self._combined_data.latest
 
     def inference_result(self) -> Mapping[str, Any]:
@@ -83,7 +81,7 @@ class RegionalInput:
         """
         return self._mle_fit_result
 
-    def ensemble_results(self) -> Optional[dict]:
+    def ensemble_results(self) -> Mapping[str, Any]:
         """Retrieves ensemble results for this region."""
         return self._ensemble_results
 
@@ -100,15 +98,17 @@ class RegionalInput:
     def is_county(self):
         return self.region.is_county()
 
-    def get_timeseries(self) -> TimeseriesDataset:
-        return self._combined_data.get_timeseries()
+    @property
+    def timeseries(self) -> OneRegionTimeseriesDataset:
+        return self._combined_data.timeseries
 
-    def get_state_timeseries(self) -> Optional[TimeseriesDataset]:
+    @property
+    def state_timeseries(self) -> Optional[OneRegionTimeseriesDataset]:
         """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
         if self.region.is_state():
             return None
         else:
-            return self._state_combined_data.get_timeseries()
+            return self._state_combined_data.timeseries
 
 
 class WebUIDataAdaptorV1:
@@ -199,8 +199,8 @@ class WebUIDataAdaptorV1:
         # ICU PATCH
         icu_patch_ts = infer_icu.get_icu_timeseries(
             region=regional_input.region,
-            regional_combined_data=regional_input.get_timeseries(),
-            state_combined_data=regional_input.get_state_timeseries(),
+            regional_combined_data=regional_input.timeseries,
+            state_combined_data=regional_input.state_timeseries,
             weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES,
         )
 
@@ -373,7 +373,7 @@ class WebUIDataAdaptorV1:
             intervention = Intervention.from_webui_data_adaptor(suppression_policy)
             output_model[schema.INTERVENTION] = intervention.value
             output_path = get_run_artifact_path(
-                regional_input.fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
+                regional_input.region, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)

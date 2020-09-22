@@ -7,7 +7,6 @@ import structlog
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.combined_datasets import (
     _build_data_and_provenance,
-    Override,
     build_from_sources,
     US_STATES_FILTER,
     FeatureDataSourceMap,
@@ -25,6 +24,7 @@ from libs.datasets import NevadaHospitalAssociationData
 
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.timeseries import TimeseriesDataset
+from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date, to_dict
 import numpy as np
 import pytest
@@ -37,7 +37,7 @@ import pytest
 @pytest.mark.slow
 def test_unique_index_values_us_timeseries():
     timeseries = combined_datasets.load_us_timeseries_dataset()
-    timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS)
+    timeseries_data = timeseries.data.set_index(TimeseriesDataset.INDEX_FIELDS)
     duplicates = timeseries_data.index.duplicated()
     assert not sum(duplicates)
 
@@ -63,9 +63,8 @@ def test_combined_county_has_some_data(fips):
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_timeseries_data(fips):
-    latest = combined_datasets.load_us_timeseries_dataset().get_subset(
-        AggregationLevel.COUNTY, fips=fips
-    )
+    region = Region.from_fips(fips)
+    latest = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
     df = latest.data.set_index(CommonFields.DATE)
     assert df.loc["2020-05-01", CommonFields.CASES] > 0
     assert df.loc["2020-05-01", CommonFields.DEATHS] > 0
@@ -114,12 +113,11 @@ def test_unique_timeseries(data_source_cls):
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()
-    ts = data_source.timeseries()
-    usa_data = ts.get_data(country="USA")
+    ts = data_source.timeseries().get_subset(country="USA")
 
-    assert not usa_data.empty
+    assert not ts.empty
 
-    states = set(usa_data["state"])
+    states = set(ts.data["state"])
 
     if data_source.SOURCE_NAME == "NHA":
         assert states == {"NV"}
@@ -188,9 +186,7 @@ def test_build_timeseries_override():
     datasets = {"source_a": data_a, "source_b": data_b}
 
     # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
-    combined, provenance = _build_data_and_provenance(
-        {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_TIMESERIES
-    )
+    combined, provenance = _build_data_and_provenance({"m1": ["source_a", "source_b"]}, datasets,)
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, None]
     assert provenance.loc["97123", "m1"].replace({np.nan: None}).tolist() == [
         None,
@@ -200,26 +196,13 @@ def test_build_timeseries_override():
 
     # The combined m1 timeseries is the highest priority value for each date; source_b is higher priority for
     # both 2020-04-01 and 2020-04-02.
-    combined, provenance = _build_data_and_provenance(
-        {"m1": ["source_a", "source_b"]}, datasets, override=Override.BY_ROW
-    )
-    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, 3]
-    assert provenance.loc["97123", "m1"].tolist() == ["source_b", "source_b", "source_a"]
-
-    combined, provenance = _build_data_and_provenance(
-        {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_TIMESERIES
-    )
+    combined, provenance = _build_data_and_provenance({"m1": ["source_b", "source_a"]}, datasets)
     assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
     assert provenance.loc["97123", "m1"].replace({np.nan: None}).tolist() == [
         "source_a",
         None,
         "source_a",
     ]
-
-    combined, _ = _build_data_and_provenance(
-        {"m1": ["source_b", "source_a"]}, datasets, override=Override.BY_ROW
-    )
-    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
 
 
 def test_build_and_and_provenance_missing_fips():
@@ -233,9 +216,7 @@ def test_build_and_and_provenance_missing_fips():
 
     # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
     combined, provenance = _build_data_and_provenance(
-        {"m1": ["source_a", "source_b"], "m2": ["source_a", "source_b"]},
-        datasets,
-        override=Override.BY_TIMESERIES,
+        {"m1": ["source_a", "source_b"], "m2": ["source_a", "source_b"]}, datasets
     )
     assert combined.loc["97444", "m1"].dropna().tolist() == [4]
     assert provenance.loc["97444", "m1"].dropna().tolist() == ["source_b"]

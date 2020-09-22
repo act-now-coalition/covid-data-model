@@ -1,11 +1,11 @@
-from enum import Enum
+from dataclasses import dataclass
 from itertools import chain
+from typing import Any
 from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
 import pandas as pd
 import structlog
-from structlog.threadlocal import tmp_bind
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
@@ -14,22 +14,23 @@ from libs.datasets import data_source
 from libs.datasets import dataset_pointer
 from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
-from libs.datasets import timeseries
 from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
-from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets import dataset_filter
 from libs import us_state_abbrev
+from libs.pipeline import Region
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
@@ -56,7 +57,6 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [],
     CommonFields.CASES: [NYTimesDataset],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
@@ -66,40 +66,24 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         TexasHospitalizations,
     ],
-    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [],
     CommonFields.CURRENT_ICU: [
         CovidCountyDataDataSource,
         CovidTrackingDataSource,
         TexasHospitalizations,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource],
-    CommonFields.CURRENT_VENTILATED: [
-        CovidCountyDataDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-    ],
+    CommonFields.CURRENT_VENTILATED: [CovidCountyDataDataSource, CovidTrackingDataSource,],
     CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
-    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [],
-    CommonFields.LICENSED_BEDS: [],
-    CommonFields.MAX_BED_COUNT: [],
     CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
     CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
-    CommonFields.RECOVERED: [],
     CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     **ALL_TIMESERIES_FEATURE_DEFINITION,
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.CURRENT_HOSPITALIZED: [
-        CovidCountyDataDataSource,
-        CovidTrackingDataSource,
-        NevadaHospitalAssociationData,
-        TexasHospitalizations,
-    ],
-    CommonFields.CURRENT_HOSPITALIZED_TOTAL: [NevadaHospitalAssociationData],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
@@ -120,8 +104,8 @@ def load_us_timeseries_dataset(
     before=None,
     previous_commit=False,
     commit: str = None,
-) -> timeseries.TimeseriesDataset:
-    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
+) -> MultiRegionTimeseriesDataset:
+    filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
@@ -145,29 +129,6 @@ def get_us_latest_for_fips(fips) -> dict:
     """Gets latest values for a given state or county fips code."""
     us_latest = load_us_latest_dataset()
     return us_latest.get_record_for_fips(fips)
-
-
-def get_timeseries_for_fips(
-    fips: str, columns: List = None, min_range_with_some_value: bool = False
-) -> TimeseriesDataset:
-    """Gets timeseries for a specific FIPS code.
-
-    Args:
-        fips: FIPS code.  Can be county (5 character) or state (2 character) code.
-        columns: List of columns, apart from `TimeseriesDataset.INDEX_FIELDS`, to include.
-        min_range_with_some_value: If True, removes NaNs that pad values at beginning and end of
-            timeseries. Only applicable when columns are specified.
-
-    Returns: Timeseries for fips
-    """
-
-    state_ts = load_us_timeseries_dataset().get_subset(None, fips=fips)
-    if columns:
-        return state_ts.get_columns_and_date_subset(
-            columns, min_range_with_some_value=min_range_with_some_value
-        )
-
-    return state_ts
 
 
 def build_from_sources(
@@ -203,30 +164,14 @@ def build_from_sources(
             datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
+    # TODO(tom): When LatestValuesDataset is retired return only a MultiRegionTimeseriesDataset
     return target_dataset_cls(
         data.reset_index(), provenance=provenance_wide_metrics_to_series(provenance, _log)
     )
 
 
-class Override(Enum):
-    """How data sources override each other when combined."""
-
-    # For each <fips, date>, if a row in a higher priority datasource exists it is used, even
-    # for columns with NaN. This is the unexpected behavior from before July 16th that blends
-    # timeseries from different sources into a single output timeseries.
-    BY_ROW = 1
-    # For each <fips, variable>, use the entire timeseries of the highest priority datasource
-    # with at least one real (not NaN) value.
-    BY_TIMESERIES = 2
-    # For each <fips, variable, date>, use the highest priority datasource that has a real
-    # (not NaN) value.
-    BY_TIMESERIES_POINT = 3  # Deprecated
-
-
 def _build_data_and_provenance(
-    feature_definitions: Mapping[str, List[str]],
-    datasource_dataframes: Mapping[str, pd.DataFrame],
-    override=Override.BY_TIMESERIES,
+    feature_definitions: Mapping[str, List[str]], datasource_dataframes: Mapping[str, pd.DataFrame]
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     fips_indexed = dataset_utils.fips_index_geo_data(pd.concat(datasource_dataframes.values()))
 
@@ -249,9 +194,7 @@ def _build_data_and_provenance(
     # else:
     #     raise ValueError("bad new_index.names")
 
-    data, provenance = _merge_data(
-        datasource_dataframes, feature_definitions, _log, new_index, override
-    )
+    data, provenance = _merge_data(datasource_dataframes, feature_definitions, _log, new_index)
 
     if not fips_indexed.empty:
         # See https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html#joining-with-two-multiindexes
@@ -260,13 +203,11 @@ def _build_data_and_provenance(
     return data, provenance
 
 
-def _merge_data(datasource_dataframes, feature_definitions, log, new_index, override):
-    if override is Override.BY_ROW:
-        return _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_index)
-    if override is not Override.BY_TIMESERIES:
-        raise ValueError("Invalid override")
+def _merge_data(datasource_dataframes, feature_definitions, log, new_index):
+    # For each <fips, variable>, use the entire timeseries of the highest priority datasource
+    # with at least one real (not NaN) value.
 
-    # Not going BY_ROW so reindex the inputs now to avoid reindexing for each field below.
+    # Reindex the inputs now to avoid reindexing for each field below.
     datasource_dataframes = {
         name: df.reindex(new_index, copy=False) for name, df in datasource_dataframes.items()
     }
@@ -274,74 +215,43 @@ def _merge_data(datasource_dataframes, feature_definitions, log, new_index, over
     data = pd.DataFrame(index=new_index)
     provenance = pd.DataFrame(index=new_index)
     for field_name, data_source_names in feature_definitions.items():
-        log.info("Working field", field=field_name)
-        field_out = None
-        field_provenance = pd.Series(index=new_index, dtype="object")
-        # Go through the data sources, starting with the highest priority.
-        for datasource_name in reversed(data_source_names):
-            with tmp_bind(log, dataset_name=datasource_name, field=field_name) as log:
-                datasource_field_in = datasource_dataframes[datasource_name][field_name]
-                if field_out is None:
-                    # Copy all values from the highest priority input to the output
-                    field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
-                    field_out = datasource_field_in
-                else:
-                    field_out_has_ts = field_out.groupby(
-                        level=[CommonFields.FIPS], sort=False
-                    ).transform(lambda x: x.notna().any())
-                    copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
-                    # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-                    field_provenance.loc[copy_field_in] = datasource_name
-                    field_out = field_out.where(~copy_field_in, datasource_field_in)
-                dups = field_out.index.duplicated(keep=False)
-                if dups.any():
-                    log.error("Found duplicates in index")
-                    raise ValueError()  # This is bad, somehow the input /still/ has duplicates
+        datasource_series = [
+            (name, datasource_dataframes[name][field_name]) for name in data_source_names
+        ]
+        field_out, field_provenance = _merge_field(
+            datasource_series, new_index, log.bind(field=field_name),
+        )
         data.loc[:, field_name] = field_out
         provenance.loc[:, field_name] = field_provenance
     return data, provenance
 
 
-def _merge_data_by_row(datasource_dataframes, feature_definitions, log, new_index):
-    # Override.BY_ROW needs to preserve the rows datasource_dataframes
-
-    # Build feature columns from feature_definitions.
-    data = pd.DataFrame(index=new_index)
-    provenance = pd.DataFrame(index=new_index)
-    for field_name, data_source_names in feature_definitions.items():
-        log.info("Working field", field=field_name)
-        field_out = None
-        # A list of Series, that when concatanted, will match 1-1 with the series in field_out
-        field_provenance = []
-        # Go through the data sources, starting with the highest priority.
-        for datasource_name in reversed(data_source_names):
-            with tmp_bind(log, dataset_name=datasource_name, field=field_name) as log:
-                datasource_field_in = datasource_dataframes[datasource_name][field_name]
-                if field_out is None:
-                    # Copy all values from the highest priority input to the output
-                    field_out = datasource_field_in
-                    field_provenance.append(
-                        pd.Series(index=datasource_field_in.index, dtype="object").fillna(
-                            datasource_name
-                        )
-                    )
-                else:
-                    # Copy from datasource_field_in rows that are not yet in field_out
-                    this_not_in_result = ~datasource_field_in.index.isin(field_out.index)
-                    values_to_append = datasource_field_in.loc[this_not_in_result]
-                    field_out = field_out.append(values_to_append)
-                    field_provenance.append(
-                        pd.Series(index=values_to_append.index, dtype="object").fillna(
-                            datasource_name
-                        )
-                    )
-                dups = field_out.index.duplicated(keep=False)
-                if dups.any():
-                    log.error("Found duplicates in index")
-                    raise ValueError()  # This is bad, somehow the input /still/ has duplicates
-        data.loc[:, field_name] = field_out
-        provenance.loc[:, field_name] = pd.concat(field_provenance)
-    return data, provenance
+def _merge_field(
+    datasource_series: List[Tuple[str, pd.Series]], new_index, log: structlog.BoundLoggerBase
+):
+    log.info("Working field")
+    field_out = None
+    field_provenance = pd.Series(index=new_index, dtype="object")
+    # Go through the data sources, starting with the highest priority.
+    for datasource_name, datasource_field_in in reversed(datasource_series):
+        log_datasource = log.bind(dataset_name=datasource_name)
+        if field_out is None:
+            # Copy all values from the highest priority input to the output
+            field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
+            field_out = datasource_field_in
+        else:
+            field_out_has_ts = field_out.groupby(level=[CommonFields.FIPS], sort=False).transform(
+                lambda x: x.notna().any()
+            )
+            copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
+            # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
+            field_provenance.loc[copy_field_in] = datasource_name
+            field_out = field_out.where(~copy_field_in, datasource_field_in)
+        dups = field_out.index.duplicated(keep=False)
+        if dups.any():
+            log_datasource.error("Found duplicates in index")
+            raise ValueError()  # This is bad, somehow the input /still/ has duplicates
+    return field_out, field_provenance
 
 
 def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
@@ -371,3 +281,38 @@ def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
     # https://stackoverflow.com/a/17841321/341400
     joined = fips_var_grouped.agg(lambda col: ";".join(col))
     return joined
+
+
+@dataclass(frozen=True)
+class RegionalData:
+    """Identifies a geographical area and wraps access to `combined_datasets` of it."""
+
+    region: Region
+
+    latest: Dict[str, Any]
+
+    timeseries: OneRegionTimeseriesDataset
+
+    @staticmethod
+    def from_region(region: Region) -> "RegionalData":
+
+        us_latest = load_us_latest_dataset()
+        region_latest = us_latest.get_record_for_fips(region.fips)
+
+        us_timeseries = load_us_timeseries_dataset()
+        region_timeseries = us_timeseries.get_one_region(region)
+
+        return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
+
+    @property
+    def population(self) -> int:
+        """Gets the population for this region."""
+        return self.latest[CommonFields.POPULATION]
+
+    @property  # TODO(tom): Change to cached_property when we're using Python 3.8
+    def display_name(self) -> str:
+        county = self.latest[CommonFields.COUNTY]
+        state = self.latest[CommonFields.STATE]
+        if county:
+            return f"{county}, {state}"
+        return state

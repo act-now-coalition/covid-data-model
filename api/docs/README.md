@@ -1,14 +1,41 @@
-# README
+---
+**NOTE**
 
-## Top-level Schemas
+Docs site is a work in progress.  For Current API Documentation, refer to
+[API V1 Docs](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md)
 
+---
 
+# Website
 
-## Other Schemas
+This website is built using [Docusaurus 2](https://v2.docusaurus.io/), a modern static website generator.
 
-### Objects
+### Installation
 
+```
+$ yarn
+```
 
+### Local Development
 
-### Arrays
+```
+$ yarn start
+```
 
+This command starts a local development server and open up a browser window. Most changes are reflected live without having to restart the server.
+
+### Build
+
+```
+$ yarn build
+```
+
+This command generates static content into the `build` directory and can be served using any static contents hosting service.
+
+### Deployment
+
+```
+$ GIT_USER=<Your GitHub username> USE_SSH=true yarn deploy
+```
+
+If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.

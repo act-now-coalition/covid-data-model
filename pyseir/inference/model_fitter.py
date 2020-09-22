@@ -12,7 +12,10 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 import iminuit
+
+from libs.datasets import combined_datasets
 from libs import pipeline
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 from pyseir.inference import model_plotting
 from pyseir.models import suppression_policies
@@ -40,19 +43,19 @@ def load_pyseir_fitter_initial_conditions_df():
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: pipeline.RegionalCombinedData
-    _hospitalization_df: pd.DataFrame
+    _combined_data: combined_datasets.RegionalData
+    _hospitalization_dataset: OneRegionTimeseriesDataset
     _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_state_region(region: pipeline.Region) -> "RegionalInput":
         """Creates a RegionalInput for given state region."""
-        hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
         assert region.is_state()
+        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(region)
         return RegionalInput(
             region=region,
-            _combined_data=pipeline.RegionalCombinedData.from_region(region),
-            _hospitalization_df=hospitalization_df,
+            _combined_data=combined_datasets.RegionalData.from_region(region),
+            _hospitalization_dataset=hospitalization_dataset,
         )
 
     @staticmethod
@@ -65,14 +68,14 @@ class RegionalInput:
             region: a sub-state region such as a county
             state_fitter: ModelFitter for the state containing region
         """
-        hospitalization_df = load_data.get_hospitalization_data().get_data(fips=region.fips)
         assert region.is_county()
         assert state_fitter
+        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(region)
         return RegionalInput(
             region=region,
-            _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            _combined_data=combined_datasets.RegionalData.from_region(region),
             _state_mle_fit_result=state_fitter.fit_results,
-            _hospitalization_df=hospitalization_df,
+            _hospitalization_dataset=hospitalization_dataset,
         )
 
     @property
@@ -93,7 +96,7 @@ class RegionalInput:
         self, t0: datetime, category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED
     ) -> Tuple[np.array, np.array, HospitalizationDataType]:
         return load_data.calculate_hospitalization_data(
-            self._hospitalization_df, t0, category=category
+            self._hospitalization_dataset, t0, category=category
         )
 
     @property
@@ -672,21 +675,15 @@ class ModelFitter:
         self.mle_model = self.run_model(**{k: self.fit_results[k] for k in self.model_fit_keys})
 
     @classmethod
-    def run_for_region(cls, regional_input: RegionalInput, n_retries=3):
+    def run_for_region(cls, regional_input: RegionalInput, n_retries=3) -> Optional["ModelFitter"]:
         """
         Run the model fitter for a regional_input.
 
-        Parameters
-        ----------
-        region: pipeline.Region
-        n_retries: int
-            The model fitter is stochastic in nature and a seed cannot be set.
-            This is a bandaid until more sophisticated retries can be
-            implemented.
-
-        Returns
-        -------
-        : ModelFitter
+        Args:
+            regional_input
+            n_retries: The model fitter is stochastic in nature and a seed cannot be set.
+                This is a bandaid until more sophisticated retries can be
+                implemented.
         """
         # Assert that there are some cases for counties
         if regional_input.region.is_county():

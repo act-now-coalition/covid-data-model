@@ -1,20 +1,31 @@
-import warnings
+import datetime
 import pathlib
+from dataclasses import dataclass
+from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Sequence
+from typing_extensions import final
 
 import pandas as pd
 import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
+from libs import pipeline
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
+from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
+from libs.datasets.dataset_utils import DatasetType
+from libs.pipeline import Region
+import pandas.core.groupby.generic
+
+
+_log = structlog.get_logger()
 
 
 class DuplicateDataException(Exception):
@@ -25,6 +36,58 @@ class DuplicateDataException(Exception):
 
     def __str__(self):
         return f"DuplicateDataException({self.message})"
+
+
+@final
+@dataclass(frozen=True)
+class OneRegionTimeseriesDataset:
+    """A set of timeseries with values from one region."""
+
+    # Do not make an assumptions about a FIPS or location_id column in the DataFrame.
+    data: pd.DataFrame
+    # The region is not an attribute at this time because it simplifies making instances and
+    # code that needs the region of an instance already has it.
+
+    def __post_init__(self):
+        if CommonFields.LOCATION_ID in self.data.columns:
+            region_count = self.data[CommonFields.LOCATION_ID].nunique()
+        else:
+            region_count = self.data[CommonFields.FIPS].nunique()
+        if region_count == 0:
+            _log.warning(f"Creating {self.__class__.__name__} with zero regions")
+        elif region_count != 1:
+            raise ValueError("Does not have exactly one region")
+
+        if CommonFields.DATE not in self.data.columns:
+            raise ValueError("A timeseries must have a date column")
+
+    @property
+    def date_indexed(self) -> pd.DataFrame:
+        return self.data.set_index(CommonFields.DATE)
+
+    @property
+    def empty(self):
+        return self.data.empty
+
+    def has_one_region(self) -> bool:
+        return True
+
+    def yield_records(self) -> Iterable[dict]:
+        # Copied from dataset_base.py
+        # It'd be faster to use self.data.itertuples or find a way to avoid yield_records, but that
+        # needs larger changes in code calling this.
+        for idx, row in self.data.iterrows():
+            yield row.where(pd.notnull(row), None).to_dict()
+
+    def get_subset(self, after=None, columns=tuple()):
+        rows_key = dataset_utils.make_rows_key(self.data, after=after,)
+        columns_key = list(columns) if columns else slice(None, None, None)
+        return OneRegionTimeseriesDataset(
+            self.data.loc[rows_key, columns_key].reset_index(drop=True)
+        )
+
+    def remove_padded_nans(self, columns: List[str]):
+        return OneRegionTimeseriesDataset(_remove_padded_nans(self.data, columns))
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -46,44 +109,12 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
     @property
+    def dataset_type(self) -> DatasetType:
+        return DatasetType.TIMESERIES
+
+    @property
     def empty(self):
         return self.data.empty
-
-    @property
-    def all_fips(self):
-        return self.data.reset_index().fips.unique()
-
-    @property
-    def states(self) -> List:
-        return self.data[CommonFields.STATE].dropna().unique().tolist()
-
-    @property
-    def state_data(self) -> pd.DataFrame:
-        return self.get_subset(AggregationLevel.STATE).data
-
-    @property
-    def county_data(self) -> pd.DataFrame:
-        return self.get_subset(AggregationLevel.COUNTY).data
-
-    def has_one_region(self) -> bool:
-        return self.data[CommonFields.FIPS].nunique() == 1
-
-    def county_keys(self) -> List:
-        """Returns a list of all (country, state, county) combinations."""
-        # Check to make sure all values are county values
-        warnings.warn(
-            "Tell Tom you are using this, I'm going to delete it soon.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        county_values = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        county_data = self.data[county_values]
-
-        data = county_data.set_index(
-            [CommonFields.COUNTRY, CommonFields.STATE, CommonFields.COUNTY, CommonFields.FIPS,]
-        )
-        values = set(data.index.to_list())
-        return sorted(values)
 
     def latest_values(self) -> pd.DataFrame:
         """Gets the most recent values.
@@ -172,7 +203,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         """Fetch a new TimeseriesDataset with a subset of the data in `self`.
 
         Some parameters are only used in ipython notebooks."""
-        row_binary_array = dataset_utils.make_binary_array(
+        rows_key = dataset_utils.make_rows_key(
             self.data,
             aggregation_level=aggregation_level,
             country=country,
@@ -183,57 +214,8 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             after=after,
             before=before,
         )
-        if columns:
-            return self.__class__(self.data.loc[row_binary_array, columns])
-        else:
-            return self.__class__(self.data.loc[row_binary_array, :])
-
-    def get_columns_and_date_subset(
-        self, columns: List[str], min_range_with_some_value: bool
-    ) -> "TimeseriesDataset":
-        subset = self.data.loc[:, TimeseriesDataset.INDEX_FIELDS + columns].reset_index(drop=True)
-
-        if min_range_with_some_value:
-            subset = _remove_padded_nans(subset, columns)
-
-        return self.__class__(subset)
-
-    def get_records_for_fips(self, fips) -> List[dict]:
-        """Get data for FIPS code.
-
-        Args:
-            fips: 2 digits for a state or 5 digits for a county
-
-        Returns: List of dictionary records with NA values replaced to be None
-        """
-        return list(self.get_subset(fips=fips).yield_records())
-
-    def get_data(
-        self,
-        aggregation_level=None,
-        country=None,
-        fips: Optional[str] = None,
-        state: Optional[str] = None,
-        states: Optional[List[str]] = None,
-        on: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-        columns_slice: Optional[List[str]] = None,
-    ) -> pd.DataFrame:
-        rows_binary_array = dataset_utils.make_binary_array(
-            self.data,
-            aggregation_level=aggregation_level,
-            country=country,
-            fips=fips,
-            state=state,
-            states=states,
-            on=on,
-            after=after,
-            before=before,
-        )
-        if columns_slice is None:
-            columns_slice = slice(None, None, None)
-        return self.data.loc[rows_binary_array, columns_slice]
+        columns_key = list(columns) if columns else slice(None, None, None)
+        return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
 
     @classmethod
     def from_source(
@@ -278,7 +260,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         no_fips = data[CommonFields.FIPS].isnull()
         if no_fips.any():
-            structlog.get_logger().warning(
+            _log.warning(
                 "Dropping rows without FIPS", source=str(source), rows=repr(data.loc[no_fips])
             )
             data = data.loc[~no_fips]
@@ -312,6 +294,98 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         # In the future, it would be good to standardize around index fields.
         df = df.reset_index()
         return cls(df)
+
+
+def _add_location_id(df: pd.DataFrame):
+    """Adds the location_id column derived from FIPS, inplace."""
+    if CommonFields.LOCATION_ID in df.columns:
+        raise ValueError("location_id already in DataFrame")
+    df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
+
+
+def _add_fips_if_missing(df: pd.DataFrame):
+    """Adds the FIPS column derived from location_id, inplace."""
+    if CommonFields.FIPS not in df.columns:
+        df[CommonFields.FIPS] = df[CommonFields.LOCATION_ID].apply(pipeline.location_id_to_fips)
+
+
+@final
+@dataclass(frozen=True)
+class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
+    """A set of timeseries with values from any number of regions."""
+
+    # `data` may be used to process every row without considering the date or region. Keep logic about
+    # FIPS/location_id/region containing in this class by using methods such as `get_one_region`. Do
+    # *not* read date or region related columns directly from `data`.
+    data: pd.DataFrame
+
+    provenance: Optional[pd.Series] = None
+
+    @property
+    def dataset_type(self) -> DatasetType:
+        return DatasetType.MULTI_REGION
+
+    @classmethod
+    def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
+        return MultiRegionTimeseriesDataset.from_csv(path_or_buf)
+
+    @staticmethod
+    def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
+        df = common_df.read_csv(path_or_buf, set_index=False)
+        if CommonFields.LOCATION_ID not in df.columns:
+            raise ValueError("MultiRegionTimeseriesDataset.from_csv requires location_id column")
+        _add_fips_if_missing(df)
+        return MultiRegionTimeseriesDataset(df)
+
+    @staticmethod
+    def from_timeseries(ts: TimeseriesDataset) -> "MultiRegionTimeseriesDataset":
+        df = ts.data.copy()
+        _add_location_id(df)
+
+        if ts.provenance is not None:
+            assert ts.provenance.index.names == [CommonFields.FIPS, "variable"]
+            provenance = ts.provenance.copy()
+            provenance.index = provenance.index.map(
+                lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
+            )
+        else:
+            provenance = None
+
+        return MultiRegionTimeseriesDataset(df, provenance=provenance)
+
+    def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
+        rows_key = self.data[CommonFields.LOCATION_ID] == region.location_id
+        return OneRegionTimeseriesDataset(data=self.data.loc[rows_key, :])
+
+    def get_counties(
+        self, after: Optional[datetime.datetime] = None
+    ) -> "MultiRegionTimeseriesDataset":
+        rows_key = dataset_utils.make_rows_key(
+            self.data, aggregation_level=AggregationLevel.COUNTY, after=after
+        )
+        return MultiRegionTimeseriesDataset(self.data.loc[rows_key, :].reset_index(drop=True))
+
+    def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
+        return self.data.groupby(CommonFields.LOCATION_ID)
+
+    @property
+    def empty(self) -> bool:
+        return self.data.empty
+
+    def to_timeseries(self) -> TimeseriesDataset:
+        """Returns a `TimeseriesDataset` of this data.
+
+        This method exists for interim use when calling code that doesn't use MultiRegionTimeseriesDataset.
+        """
+        return TimeseriesDataset(self.data, provenance=self.provenance)
+
+    def to_csv(self, path: pathlib.Path):
+        """Persists timeseries to CSV.
+
+        Args:
+            path: Path to write to.
+        """
+        self.to_timeseries().to_csv(path)
 
 
 def _remove_padded_nans(df, columns):

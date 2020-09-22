@@ -2,14 +2,14 @@
   "dataset_type": "latest",
   "path": "data/latest.csv",
   "data_git_info": {
-    "sha": "bb63c6c30f70bfa5bebf2aa06e57f6816d9f3a0c",
+    "sha": "beb9bd2a84aee1a9b0d512cb4499c8c02231cff3",
     "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "8f1e6de7076c328143e81fe3f9151c83156fd547",
+    "sha": "ecc1f121b92db0c11c172616781a4ae11d9e62ca",
     "branch": "master",
     "is_dirty": false
   },
-  "updated_at": "2020-09-11T11:56:05.890084"
+  "updated_at": "2020-09-22T15:30:41.658175"
 }

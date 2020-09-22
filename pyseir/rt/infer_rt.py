@@ -9,10 +9,12 @@ import pandas as pd
 from scipy import stats as sps
 from matplotlib import pyplot as plt
 
+from libs.datasets import combined_datasets
 from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import load_data
 from pyseir.utils import TimeseriesType, RunArtifact
+import pyseir.utils
 from pyseir.rt.constants import InferRtConstants
 from pyseir.rt import plotting, utils
 
@@ -23,20 +25,20 @@ rt_log = structlog.get_logger(__name__)
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: pipeline.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalData
 
     @property
     def display_name(self) -> str:
         return str(self.region)
 
     @property
-    def timeseries(self) -> timeseries.TimeseriesDataset:
+    def timeseries(self) -> timeseries.OneRegionTimeseriesDataset:
         return self._combined_data.timeseries
 
     @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
-            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            region=region, _combined_data=combined_datasets.RegionalData.from_region(region),
         )
 
     @staticmethod
@@ -188,7 +190,9 @@ def filter_and_smooth_input_data(
                 plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
 
                 if not figure_collector:
-                    plot_path = region.run_artifact_path_to_write(RunArtifact.RT_SMOOTHING_REPORT)
+                    plot_path = pyseir.utils.get_run_artifact_path(
+                        region, RunArtifact.RT_SMOOTHING_REPORT
+                    )
                     plt.savefig(plot_path, bbox_inches="tight")
                     plt.close(fig)
                 else:
@@ -720,8 +724,8 @@ class RtInferenceEngine:
                 display_name=self.display_name,
             )
             if self.figure_collector is None:
-                output_path = self.regional_input.region.run_artifact_path_to_write(
-                    RunArtifact.RT_INFERENCE_REPORT
+                output_path = pyseir.utils.get_run_artifact_path(
+                    self.regional_input.region, RunArtifact.RT_INFERENCE_REPORT
                 )
                 fig.savefig(output_path, bbox_inches="tight")
             else:

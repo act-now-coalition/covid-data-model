@@ -48,6 +48,7 @@ class DatasetType(enum.Enum):
 
     TIMESERIES = "timeseries"
     LATEST = "latest"
+    MULTI_REGION = "multiregion"
 
     @property
     def dataset_class(self) -> Type:
@@ -59,9 +60,10 @@ class DatasetType(enum.Enum):
 
         if self is DatasetType.TIMESERIES:
             return timeseries.TimeseriesDataset
-
-        if self is DatasetType.LATEST:
+        elif self is DatasetType.LATEST:
             return latest_values_dataset.LatestValuesDataset
+        elif self is DatasetType.MULTI_REGION:
+            return timeseries.MultiRegionTimeseriesDataset
 
 
 class DuplicateValuesForIndex(Exception):
@@ -238,7 +240,7 @@ def _clear_common_values(
     data_source.reset_index(inplace=True)
 
 
-def make_binary_array(
+def make_rows_key(
     data: pd.DataFrame,
     aggregation_level: Optional[AggregationLevel] = None,
     country=None,
@@ -249,7 +251,7 @@ def make_binary_array(
     after=None,
     before=None,
 ):
-    """Create a binary array selecting rows in `data` matching the given parameters."""
+    """Create a binary array or slice selecting rows in `data` matching the given parameters."""
     query_parts = []
     # aggregation_level is almost always set. The exception is `DatasetFilter` which is used to
     # get all data in the USA, at all aggregation levels.
@@ -269,7 +271,12 @@ def make_binary_array(
         query_parts.append("date > @after")
     if before:
         query_parts.append("date < @before")
-    return data.eval(" and ".join(query_parts))
+
+    if query_parts:
+        return data.eval(" and ".join(query_parts))
+    else:
+        # Select all rows
+        return slice(None, None, None)
 
 
 def fips_index_geo_data(df: pd.DataFrame) -> pd.DataFrame:
