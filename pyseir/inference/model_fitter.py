@@ -51,7 +51,7 @@ class RegionalInput:
     def from_state_region(region: pipeline.Region) -> "RegionalInput":
         """Creates a RegionalInput for given state region."""
         assert region.is_state()
-        hospitalization_dataset = load_data.get_hospitalization_data().loc[region.location_id, :]
+        hospitalization_dataset = load_data.get_hospitalization_data_for_region(region)
         return RegionalInput(
             region=region,
             _combined_data=combined_datasets.RegionalData.from_region(region),
@@ -70,7 +70,7 @@ class RegionalInput:
         """
         assert region.is_county()
         assert state_fitter
-        hospitalization_dataset = load_data.get_hospitalization_data().loc[region.location_id, :]
+        hospitalization_dataset = load_data.get_hospitalization_data_for_region(region)
         return RegionalInput(
             region=region,
             _combined_data=combined_datasets.RegionalData.from_region(region),
