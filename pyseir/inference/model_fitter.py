@@ -44,14 +44,14 @@ class RegionalInput:
     region: pipeline.Region
 
     _combined_data: combined_datasets.RegionalData
-    _hospitalization_dataset: OneRegionTimeseriesDataset
+    _hospitalization_dataset: pd.DataFrame
     _state_mle_fit_result: Optional[Mapping[str, Any]] = None
 
     @staticmethod
     def from_state_region(region: pipeline.Region) -> "RegionalInput":
         """Creates a RegionalInput for given state region."""
         assert region.is_state()
-        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(region)
+        hospitalization_dataset = load_data.get_hospitalization_data().loc[region.location_id, :]
         return RegionalInput(
             region=region,
             _combined_data=combined_datasets.RegionalData.from_region(region),
@@ -70,7 +70,7 @@ class RegionalInput:
         """
         assert region.is_county()
         assert state_fitter
-        hospitalization_dataset = load_data.get_hospitalization_data().get_one_region(region)
+        hospitalization_dataset = load_data.get_hospitalization_data().loc[region.location_id, :]
         return RegionalInput(
             region=region,
             _combined_data=combined_datasets.RegionalData.from_region(region),
