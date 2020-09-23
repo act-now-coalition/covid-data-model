@@ -251,7 +251,7 @@ def test_generate_infection_rate_new_orleans_patch():
 
 
 def test_generate_infection_rate_metric_fake_fips():
-    with pytest.raises(KeyError):
+    with pytest.raises(combined_datasets.RegionNotFound):
         # TX Misc Fips Holder is not found in combined data
         infer_rt.RegionalInput.from_fips("48999")
 

@@ -39,6 +39,12 @@ from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 _log = structlog.get_logger()
 
 
+class RegionNotFound(IndexError):
+    """Requested region not found in combined data"""
+
+    pass
+
+
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
@@ -303,7 +309,7 @@ class RegionalData:
         region_timeseries = us_timeseries.get_one_region(region)
 
         if region_timeseries.empty or not region_latest:
-            raise KeyError(f"No combined data found for {region}")
+            raise RegionNotFound(region)
 
         return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
 
