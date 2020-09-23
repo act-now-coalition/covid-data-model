@@ -1,4 +1,5 @@
 import uuid
+import re
 import json
 import logging
 
@@ -8,10 +9,19 @@ from api_key_repo import APIKeyRepo
 _logger = logging.getLogger(__name__)
 
 
+EMAIL_REGEX = "^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$"
+
+
 class InvalidAPIKey(Exception):
     def __init__(self, api_key):
         super().__init__(f"Invalid API Key: {api_key}")
         self.api_key = api_key
+
+
+class InvalidEmail(Exception):
+    def __init__(self, email):
+        super().__init__(f"Invalid email: {email}")
+        self.email = email
 
 
 def _create_api_key(email: str) -> str:
@@ -42,6 +52,10 @@ def register(event, context):
         raise ValueError("Missing email parameter")
 
     email = event["email"]
+
+    if not re.match(EMAIL_REGEX, email):
+        raise InvalidEmail(email)
+
     api_key = _get_or_create_api_key(email)
     body = {"api_key": api_key, "email": email}
 

@@ -93,5 +93,7 @@ resources:
          Projection:
            ProjectionType: ALL
          ProvisionedThroughput:
-           ReadCapacityUnits: '5'
-           WriteCapacityUnits: '5'
+           ReadCapacityUnits: '1'
+           WriteCapacityUnits: '1'
+
+  # TODO: Add API Gateway cloudformation
