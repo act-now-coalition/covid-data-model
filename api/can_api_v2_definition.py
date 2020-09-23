@@ -111,7 +111,7 @@ class RegionSummary(base_model.APIBaseModel):
     )
 
     metrics: Metrics = pydantic.Field(None)
-    actuals: Actuals = pydantic.Field(None)
+    actuals: Actuals = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 
