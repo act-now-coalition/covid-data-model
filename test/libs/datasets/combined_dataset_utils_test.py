@@ -1,5 +1,7 @@
 import pathlib
 
+from covidactnow.datapublic.common_fields import CommonFields
+
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
@@ -23,18 +25,19 @@ def test_persist_and_load_dataset(tmp_path, nyc_fips):
     assert not len(differ_l.my_ts)
 
 
-def test_update_and_load(tmp_path: pathlib.Path, nyc_fips):
-    latest = combined_datasets.load_us_latest_dataset()
-    timeseries_dataset = combined_datasets.load_us_timeseries_dataset()
+def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
+    us_combined_df = combined_datasets.load_us_timeseries_dataset().combined_df
 
     # restricting the datasets being persisted to one county to speed up tests a bit.
-    latest_nyc = latest.get_subset(None, fips=nyc_fips)
-    timeseries_nyc = MultiRegionTimeseriesDataset(
-        timeseries_dataset.get_one_region(Region.from_fips(nyc_fips)).data
+    nyc_combined_df = us_combined_df.loc[us_combined_df[CommonFields.FIPS] == nyc_fips, :]
+    multiregion_timeseries_nyc = MultiRegionTimeseriesDataset.from_combined_dataframe(
+        nyc_combined_df
     )
+    timeseries_nyc = multiregion_timeseries_nyc.to_timeseries()
+    latest_nyc = timeseries_nyc.latest_values_object()
 
     combined_dataset_utils.update_data_public_head(
-        tmp_path, latest_dataset=latest_nyc, timeseries_dataset=timeseries_nyc,
+        tmp_path, latest_dataset=latest_nyc, timeseries_dataset=multiregion_timeseries_nyc,
     )
 
     timeseries = combined_datasets.load_us_timeseries_dataset(pointer_directory=tmp_path)

@@ -24,7 +24,7 @@ class CountyToCBSAAggregator:
 
     def aggregate(self, dataset_in: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
-        return MultiRegionTimeseriesDataset.from_dataframe(
+        return MultiRegionTimeseriesDataset.from_combined_dataframe(
             pd.concat(
                 [
                     self._aggregate_fips_df(dataset_in.data_with_fips, groupby_date=True),
