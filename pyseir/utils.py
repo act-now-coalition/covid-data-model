@@ -85,11 +85,11 @@ def get_run_artifact_path(region: Region, artifact, output_dir=None) -> str:
 
     if region.is_county():
         agg_level = AggregationLevel.COUNTY
-        state_obj = region.state_obj()
+        state_obj = region.get_state_region().state_obj()
         county = combined_datasets.get_county_name(region)
     elif region.is_state():
         agg_level = AggregationLevel.STATE
-        state_obj = region.get_state_region().state_obj()
+        state_obj = region.state_obj()
         county = None
     else:
         raise AssertionError(f"No state_obj for {region}")
