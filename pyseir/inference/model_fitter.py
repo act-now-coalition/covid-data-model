@@ -15,7 +15,6 @@ import iminuit
 
 from libs.datasets import combined_datasets
 from libs import pipeline
-from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 from pyseir.inference import model_plotting
 from pyseir.models import suppression_policies
