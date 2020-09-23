@@ -431,10 +431,10 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
-        try:
-            latest_dict = self.latest_data.loc[region.location_id].to_dict()
-        except KeyError:
-            latest_dict = {}
+        latest_row = self.latest_data.loc[region.location_id, :]
+        # Some code far away from here depends on latest_dict containing None, not np.nan, for
+        # non-real values.
+        latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
         return OneRegionTimeseriesDataset(data=ts_df, latest=latest_dict)
 
     def get_counties(
