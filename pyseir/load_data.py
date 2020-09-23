@@ -18,6 +18,7 @@ import pandas as pd
 import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields
+from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -210,6 +211,12 @@ def get_hospitalization_data() -> pd.DataFrame:
         .set_index(CommonFields.LOCATION_ID)
         .sort_index()
     )
+
+
+def get_hospitalization_data_for_region(region: pipeline.Region) -> pd.DataFrame:
+    """Returns a DataFrame of data in region or an empty DataFrame"""
+    all_data = get_hospitalization_data()
+    return all_data.loc[all_data.index.intersection([region.location_id])]
 
 
 def calculate_hospitalization_data(
