@@ -192,7 +192,7 @@ def calculate_new_case_data_by_region(
 
 
 @lru_cache(maxsize=None)
-def get_hospitalization_data() -> MultiRegionTimeseriesDataset:
+def get_hospitalization_data() -> pd.DataFrame:
     """
     Since we're using this data for hospitalized data only, only returning
     values with hospitalization data.  I think as the use cases of this data source
@@ -204,11 +204,16 @@ def get_hospitalization_data() -> MultiRegionTimeseriesDataset:
     data = combined_datasets.load_us_timeseries_dataset().data  # processing rows, ignoring indexes
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
-    return MultiRegionTimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
+
+    return (
+        data[has_current_hospital | has_cumulative_hospital]
+        .set_index(CommonFields.LOCATION_ID)
+        .sort_index()
+    )
 
 
 def calculate_hospitalization_data(
-    hospitalization_dataset: OneRegionTimeseriesDataset,
+    hospitalization_df: pd.DataFrame,
     t0: datetime,
     category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
 ) -> Tuple[Optional[np.array], Optional[np.array], Optional[HospitalizationDataType]]:
@@ -227,10 +232,8 @@ def calculate_hospitalization_data(
         observed_hospitalizations: Array of int new cases observed each day.
         type: Specifies cumulative or current hospitalizations.
     """
-    if hospitalization_dataset.empty:
+    if hospitalization_df.empty:
         return None, None, None
-
-    hospitalization_df = hospitalization_dataset.data
 
     if (hospitalization_df[f"current_{category}"] > 0).any():
         hospitalization_df = hospitalization_df[hospitalization_df[f"current_{category}"].notnull()]
