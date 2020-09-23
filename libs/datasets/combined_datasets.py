@@ -39,8 +39,8 @@ from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 _log = structlog.get_logger()
 
 
-class RegionNotFound(IndexError):
-    """Requested region not found in combined data"""
+class RegionLatestNotFound(IndexError):
+    """Requested region's latest values not found in combined data"""
 
     pass
 
@@ -304,12 +304,11 @@ class RegionalData:
 
         us_latest = load_us_latest_dataset()
         region_latest = us_latest.get_record_for_fips(region.fips)
+        if not region_latest:
+            raise RegionLatestNotFound(region)
 
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)
-
-        if region_timeseries.empty or not region_latest:
-            raise RegionNotFound(region)
 
         return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
 
