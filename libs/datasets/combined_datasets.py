@@ -302,6 +302,9 @@ class RegionalData:
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)
 
+        if region_timeseries.empty or not region_latest:
+            raise KeyError(f"No combined data found for {region}")
+
         return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
 
     @property
