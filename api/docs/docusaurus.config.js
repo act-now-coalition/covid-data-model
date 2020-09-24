@@ -3,7 +3,9 @@ module.exports = {
   tagline: "API Documentation",
   url: "https://apidocs.covidactnow.org",
   baseUrl: "/",
-  
+  customFields: {
+    registerUrl: "https://api.covidactnow.org/v2/register"
+  },
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
   organizationName: "covid-projections", // Usually your GitHub org/user name.

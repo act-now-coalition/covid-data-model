@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+
 import {
   InputHolder,
   StyledNewsletter,
@@ -14,6 +16,7 @@ const SignupForm = () => {
   const [email, setEmail] = useState();
   const [apiKey, setApiKey] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const {siteConfig} = useDocusaurusContext();
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -22,7 +25,7 @@ const SignupForm = () => {
       setErrorMessage("Must supply a valid email address");
       return;
     }
-    fetch("https://api-dev.covidactnow.org/v2/register", {
+    fetch(siteConfig.customFields.registerUrl, {
       method: "POST",
       body: JSON.stringify({ email }),
       headers: { "Content-Type": "application/json" },
