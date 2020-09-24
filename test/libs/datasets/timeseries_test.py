@@ -19,11 +19,6 @@ from test.dataset_utils_test import read_csv_and_index_fips_date
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
-EMPTY_LATEST_VALUES_DATASET = timeseries.LatestValuesDataset(
-    pd.DataFrame(columns=[CommonFields.FIPS])
-)
-
-
 @pytest.mark.parametrize("include_na_at_end", [False, True])
 def test_remove_padded_nans(include_na_at_end):
     rows = [
