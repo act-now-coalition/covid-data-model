@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { InputHolder } from "@site/src/components/SignupForm.style";
+import {
+  InputHolder,
+  StyledNewsletter,
+} from "@site/src/components/SignupForm.style";
 
 const SignupForm = () => {
   const [email, setEmail] = useState();
@@ -30,26 +33,28 @@ const SignupForm = () => {
 
       <div>
         <h4>1. Request an API Key</h4>
-        <form>
-          <InputHolder>
-            <input
-              //ref={(i) => (this.emailInput = i)}
-              autoComplete="Email"
-              aria-label="Email"
-              placeholder="Enter your email address"
-              className="js-cm-email-input qa-input-email"
-              id="fieldEmail"
-              maxLength="200"
-              // name="cm-yddtsd-yddtsd"
-              required=""
-              type="email"
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button type="submit" onClick={(e) => onSubmit(e)}>
-              Sign up
-            </button>
-          </InputHolder>
-        </form>
+        <StyledNewsletter>
+          <form>
+            <InputHolder>
+              <input
+                //ref={(i) => (this.emailInput = i)}
+                autoComplete="Email"
+                aria-label="Email"
+                placeholder="Enter your email address"
+                className="js-cm-email-input qa-input-email"
+                id="fieldEmail"
+                maxLength="200"
+                // name="cm-yddtsd-yddtsd"
+                required=""
+                type="email"
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <button type="submit" onClick={(e) => onSubmit(e)}>
+                Sign up
+              </button>
+            </InputHolder>
+          </form>
+        </StyledNewsletter>
         {!apiKey && (
           <div>
             <span>
