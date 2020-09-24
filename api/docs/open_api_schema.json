@@ -214,6 +214,42 @@
           "State Data"
         ],
         "summary": "All states summary",
+        "description": "Region Summaries for all states (json)",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/states.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "State Data"
+        ],
+        "summary": "All states summary (csv)",
         "description": "Region Summaries for all states",
         "responses": {
           "200": {
