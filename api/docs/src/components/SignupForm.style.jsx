@@ -115,3 +115,9 @@ export const ApiKey = styled.span`
   text-align: left;
   color: rgb(255, 150, 0);
 `;
+
+export const InputError = styled.div`
+  font-size: 12px;
+  color: red;
+  padding-left: 0.5em;
+`;

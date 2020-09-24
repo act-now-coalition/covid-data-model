@@ -4,15 +4,24 @@ import {
   StyledNewsletter,
   GettingStartedBox,
   ApiKey,
+  InputError,
 } from "@site/src/components/SignupForm.style";
+
+// Taken from https://ui.dev/validate-email-address-javascript/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SignupForm = () => {
   const [email, setEmail] = useState();
   const [apiKey, setApiKey] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  console.log(apiKey);
   const onSubmit = async (e) => {
     e.preventDefault();
+    setApiKey("");
+    if (!EMAIL_REGEX.test(email)) {
+      setErrorMessage("Must supply a valid email address");
+      return;
+    }
     fetch("https://api-dev.covidactnow.org/v2/register", {
       method: "POST",
       body: JSON.stringify({ email }),
@@ -20,10 +29,10 @@ const SignupForm = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log(data.body);
+        setErrorMessage(undefined);
         setApiKey(JSON.parse(data.body).api_key);
       })
-      .catch((err) => console.log(`Error: ${err}`));
+      .catch((err) => setErrorMessage("Must supply a valid email address"));
   };
 
   return (
@@ -37,15 +46,11 @@ const SignupForm = () => {
           <form>
             <InputHolder>
               <input
-                //ref={(i) => (this.emailInput = i)}
                 autoComplete="Email"
                 aria-label="Email"
                 placeholder="Enter your email address"
-                className="js-cm-email-input qa-input-email"
                 id="fieldEmail"
                 maxLength="200"
-                // name="cm-yddtsd-yddtsd"
-                required=""
                 type="email"
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -53,6 +58,7 @@ const SignupForm = () => {
                 Get API key
               </button>
             </InputHolder>
+            {errorMessage && <InputError>{errorMessage}</InputError>}
           </form>
         </StyledNewsletter>
         {!apiKey && (
