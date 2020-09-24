@@ -26,7 +26,7 @@ class CountyToCBSAAggregator:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
         # Make a copy to avoid modifying the input. DataFrame.assign is an alternative but the API
         # doesn't work well here.
-        df = dataset_in.data.copy()
+        df = dataset_in.data_with_fips.copy()
         df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
 
         # TODO(tom): Put the title in the data when it is clear where it goes in the returned value
