@@ -142,7 +142,7 @@ ALL_COUNTY_SUMMARY_CSV = APIEndpoint(
     tags=[COUNTY_TAG],
     description="Region Summaries for all counties",
     summary="All counties summary (csv)",
-    schema_cls=can_api_v2_definition.AggregateFlattenedTimeseries,
+    schema_cls=can_api_v2_definition.AggregateRegionSummary,
 )
 ALL_COUNTY_TIMESERIES = APIEndpoint(
     endpoint="/counties.timeseries.json",

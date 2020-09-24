@@ -329,7 +329,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
               }
             }
@@ -391,6 +391,15 @@
   },
   "components": {
     "schemas": {
+      "AggregationLevel": {
+        "title": "AggregationLevel",
+        "enum": [
+          "country",
+          "state",
+          "county"
+        ],
+        "description": "An enumeration."
+      },
       "CovidPatientsMethod": {
         "title": "CovidPatientsMethod",
         "enum": [
@@ -436,110 +445,6 @@
           }
         },
         "description": "Details about how the ICU Headroom Metric was calculated."
-      },
-      "MetricsTimeseriesRowWithHeader": {
-        "title": "MetricsTimeseriesRowWithHeader",
-        "required": [
-          "date",
-          "state",
-          "fips",
-          "lastUpdatedDate"
-        ],
-        "type": "object",
-        "properties": {
-          "testPositivityRatio": {
-            "title": "Testpositivityratio",
-            "type": "number",
-            "description": "Ratio of people who test positive calculated using a 7-day rolling average."
-          },
-          "caseDensity": {
-            "title": "Casedensity",
-            "type": "number",
-            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
-          },
-          "contactTracerCapacityRatio": {
-            "title": "Contacttracercapacityratio",
-            "type": "number",
-            "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average."
-          },
-          "infectionRate": {
-            "title": "Infectionrate",
-            "type": "number",
-            "description": "R_t, or the estimated number of infections arising from a typical case."
-          },
-          "infectionRateCI90": {
-            "title": "Infectionrateci90",
-            "type": "number",
-            "description": "90th percentile confidence interval upper endpoint of the infection rate."
-          },
-          "icuHeadroomRatio": {
-            "title": "Icuheadroomratio",
-            "type": "number"
-          },
-          "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
-          },
-          "date": {
-            "title": "Date",
-            "type": "string",
-            "description": "Date of timeseries data point",
-            "format": "date"
-          },
-          "country": {
-            "title": "Country",
-            "type": "string",
-            "default": "US"
-          },
-          "state": {
-            "title": "State",
-            "type": "string",
-            "description": "The state name"
-          },
-          "county": {
-            "title": "County",
-            "type": "string",
-            "description": "The county name"
-          },
-          "fips": {
-            "title": "Fips",
-            "type": "string",
-            "description": "Fips for State + County. Five character code"
-          },
-          "lat": {
-            "title": "Lat",
-            "type": "number",
-            "description": "Latitude of point within the state or county"
-          },
-          "long": {
-            "title": "Long",
-            "type": "number",
-            "description": "Longitude of point within the state or county"
-          },
-          "lastUpdatedDate": {
-            "title": "Lastupdateddate",
-            "type": "string",
-            "description": "Date of latest data",
-            "format": "date"
-          }
-        },
-        "description": "Prediction timeseries row with location information."
-      },
-      "AggregateFlattenedTimeseries": {
-        "title": "AggregateFlattenedTimeseries",
-        "type": "array",
-        "items": {
-          "$ref": "#/components/schemas/MetricsTimeseriesRowWithHeader"
-        },
-        "description": "Flattened prediction timeseries data for multiple regions."
-      },
-      "AggregationLevel": {
-        "title": "AggregationLevel",
-        "enum": [
-          "country",
-          "state",
-          "county"
-        ],
-        "description": "An enumeration."
       },
       "Metrics": {
         "title": "Metrics",
