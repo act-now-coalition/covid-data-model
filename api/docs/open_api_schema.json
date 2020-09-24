@@ -2,17 +2,17 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Covid Act Now API",
-    "description": "\nAPI v2 is currently in beta.  While it does not currently require\nauthentication, an API key will be required soon.\n",
+    "description": "\nThe Covid Act Now API provides historical covid projections updated daily.\n",
     "version": "v2.0.0-beta.1"
   },
   "servers": [
     {
-      "url": "https://data.covidactnow.org/latest/v2",
+      "url": "https://api.covidactnow.org/v2",
       "description": "Latest available data"
     }
   ],
   "paths": {
-    "/county/{fips}.json": {
+    "/county/{fips}.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -46,10 +46,22 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
-    "/county/{fips}.timeseries.json": {
+    "/county/{fips}.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -83,10 +95,22 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
-    "/state/{state}.json": {
+    "/state/{state}.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "State Data"
@@ -120,10 +144,22 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
-    "/state/{state}.timeseries.json": {
+    "/state/{state}.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "State Data"
@@ -157,10 +193,22 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
-    "/states.json": {
+    "/states.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "State Data"
@@ -181,9 +229,22 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "/states.timeseries.json": {
+    "/states.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "State Data"
@@ -204,9 +265,22 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "/counties.json": {
+    "/counties.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -227,9 +301,22 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "/counties.csv": {
+    "/counties.csv?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -250,9 +337,22 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "/counties.timeseries.json": {
+    "/counties.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -273,7 +373,20 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     }
   },
   "components": {
@@ -815,6 +928,14 @@
           "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
         },
         "description": "Timeseries and summary data for multiple regions."
+      }
+    },
+    "securitySchemes": {
+      "API Key": {
+        "type": "apiKey",
+        "description": "\nAn API key is required.\n\nRegister for an API key [here](/getting-started/access).\n    ",
+        "name": "apiKey",
+        "in": "query"
       }
     }
   },
