@@ -15,6 +15,10 @@ from test.mocks.inference import load_data
 from test.mocks.inference.load_data import RateChange
 
 
+# turns all warnings into errors for this module
+pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
+
 def test_replace_outliers_on_last_day():
     x = pd.Series([10, 10, 10, 500], [0, 1, 2, 3])
 
@@ -247,11 +251,15 @@ def test_generate_infection_rate_new_orleans_patch():
 
 
 def test_generate_infection_rate_metric_fake_fips():
-    FIPS = ["48999"]  # TX Misc Fips Holder
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    with structlog.testing.capture_logs() as logs:
+        # TX Misc Fips Holder timeseries not found in combined data
+        infer_input = infer_rt.RegionalInput.from_fips("48999")
+    assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
+    assert infer_input.timeseries.empty
 
-    df = pd.concat(infer_rt.run_rt(input) for input in regions)
-    assert df.empty
+    with pytest.raises(combined_datasets.RegionLatestNotFound):
+        # Totally bogus FIPS not even in latest data raises an exception
+        infer_rt.RegionalInput.from_fips("48998")
 
 
 @pytest.mark.xfail(raises=ValueError)
