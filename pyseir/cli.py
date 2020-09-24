@@ -106,10 +106,7 @@ class SubStateRegionPipelineInput:
         else:  # Default to the full infection rate whitelist
             infer_rt_regions = {
                 combined_datasets.get_subset_regions(
-                    aggregation_level=AggregationLevel.COUNTY,
-                    exclude_county_999=True,
-                    # Masking MA Counties (2020-08-27) due to NaNs
-                    exclude_fips_prefix="25",
+                    aggregation_level=AggregationLevel.COUNTY, exclude_county_999=True,
                 )
             }
         # Now calculate the pyseir dependent whitelist
