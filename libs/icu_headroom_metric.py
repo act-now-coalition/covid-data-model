@@ -45,8 +45,6 @@ class ICUMetricData:
         decomp_factor: float,
         require_recent_data: bool = True,
     ):
-        print("ICUMetricData")
-        timeseries_data.info()
         self._data = timeseries_data
         self._estimated_current_icu = estimated_current_icu
         self._latest_values = latest_values
