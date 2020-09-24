@@ -385,8 +385,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     @property
     def latest_data_with_fips(self) -> pd.DataFrame:
-        """latest_data with FIPS column, use `latest_data` when FIPS is not need."""
-        return self.data
+        """latest_data with FIPS column and LOCATION_ID index, use `latest_data` when FIPS is not need."""
+        return self.latest_data
 
     @property
     def combined_df(self) -> pd.DataFrame:
