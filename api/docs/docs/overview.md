@@ -31,7 +31,7 @@ make sure to keep you informed on forthcoming changes.
 
 - A comprehensive compilation of the latest U.S. state and county COVID data, including cases, hospitalizations, hospital capacity, hospital utilization (by both COVID and non-COVID patients), deaths, testing, and tracer numbers.
 
-  This data is aggregated from the best-available official, public and private sources; it is secured and vetted by our dedicated team and advisory board of public health, epidemiology, public policy experts. When necessarily, the data is scraped directly from official state and county COVID dashboards, and verified against other sources for veracity.
+  This data is aggregated from the best-available official, public and private sources; it is secured and vetted by our dedicated team and advisory board of public health, epidemiology, public policy experts. When necessary, the data is scraped directly from official state and county COVID dashboards, and verified against other sources for veracity.
 
 - COVID data that is regularly verified, sanitized, and updated, generally on a daily-basis, by our team of engineers, modelers, and analysts.
 
