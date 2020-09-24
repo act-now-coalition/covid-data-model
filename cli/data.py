@@ -9,6 +9,7 @@ import shutil
 import click
 
 from libs import google_sheet_helpers, wide_dates_df
+from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
     US_STATES_FILTER,
@@ -62,7 +63,8 @@ def update_forecasts(filename):
 @main.command()
 @click.option("--summary-filename", default="timeseries_summary.csv")
 @click.option("--wide-dates-filename", default="timeseries-wide-dates.csv")
-def update(summary_filename, wide_dates_filename):
+@click.option("--aggregate-to-msas", is_flag=True, help="Aggregate counties to MSAs")
+def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -85,6 +87,9 @@ def update(summary_filename, wide_dates_filename):
     multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         timeseries_dataset, latest_dataset
     )
+    if aggregate_to_msas:
+        aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+        multiregion_dataset = aggregator.aggregate(multiregion_dataset)
 
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, multiregion_dataset,
