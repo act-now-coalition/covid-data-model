@@ -159,6 +159,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         on: Optional[str] = None,
         after: Optional[str] = None,
         before: Optional[str] = None,
+        exclude_county_999: bool = False,
+        exclude_fips_prefix: Optional[str] = None,
     ) -> "LatestValuesDataset":
         rows_key = make_rows_key(
             self.data,
@@ -170,6 +172,8 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             on=on,
             after=after,
             before=before,
+            exclude_county_999=exclude_county_999,
+            exclude_fips_prefix=exclude_fips_prefix,
         )
         return self.__class__(self.data.loc[rows_key, :])
 

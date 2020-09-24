@@ -10,7 +10,6 @@ import api
 from api import update_open_api_spec
 from api.can_api_definition import RegionSummaryWithTimeseries
 from api.can_api_definition import AggregateRegionSummaryWithTimeseries
-from libs import pipeline
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
 from libs.pipelines import api_v2_pipeline
@@ -111,7 +110,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
     active_states = active_states + ["PR", "MP"]
     regions = combined_datasets.get_subset_regions(
         aggregation_level=aggregation_level,
-        include_county_999=False,
+        exclude_county_999=True,
         state=state,
         fips=fips,
         states=active_states,
@@ -156,7 +155,7 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     # Load all API Regions
     regions = combined_datasets.get_subset_regions(
         aggregation_level=aggregation_level,
-        include_county_999=False,
+        exclude_county_999=True,
         state=state,
         fips=fips,
         states=active_states,
@@ -200,7 +199,7 @@ def generate_top_counties(disable_validation, input_dir, output, state, fips: Op
     active_states = [state.abbr for state in us.STATES] + ["PR"]
     regions = combined_datasets.get_subset_regions(
         aggregation_level=AggregationLevel.COUNTY,
-        include_county_999=False,
+        exclude_county_999=True,
         states=active_states,
         state=state,
         fips=fips,

@@ -1,9 +1,7 @@
 import os
-import us
 from datetime import datetime
 from enum import Enum
 from scipy import signal
-from covidactnow.datapublic.common_fields import CommonFields
 from libs.pipeline import Region
 
 from pyseir import OUTPUT_DIR

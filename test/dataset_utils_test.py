@@ -169,6 +169,8 @@ def column_as_set(
     on=None,
     after=None,
     before=None,
+    exclude_county_999=False,
+    exclude_fips_prefix=None,
 ):
     """Return values in selected rows and column of df.
 
@@ -184,22 +186,22 @@ def column_as_set(
         on=on,
         after=after,
         before=before,
+        exclude_county_999=exclude_county_999,
+        exclude_fips_prefix=exclude_fips_prefix,
     )
     return set(df.loc[rows_key][column])
 
 
 def test_make_binary_array():
-    df = pd.read_csv(
-        StringIO(
-            "city,county,state,fips,country,aggregate_level,date,metric\n"
-            "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
-            "New York City,,ZZ,97324,USA,city,2020-03-22,march22-nyc\n"
-            "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
-            ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
-            ",,ZZ,97001,USA,state,2020-03-23,mystate\n"
-            ",,,,UK,country,2020-03-23,foo\n"
-        )
-    )
+    df = read_csv_and_index_fips_date(
+        "city,county,state,fips,country,aggregate_level,date,metric\n"
+        "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
+        "New York City,,ZZ,97324,USA,city,2020-03-22,march22-nyc\n"
+        "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
+        ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
+        ",,ZZ,97,USA,state,2020-03-23,mystate\n"
+        ",,,,UK,country,2020-03-23,foo\n"
+    ).reset_index()
 
     assert column_as_set(df, "country", AggregationLevel.COUNTRY) == {"UK"}
     assert column_as_set(df, "metric", AggregationLevel.STATE) == {"mystate"}
@@ -212,3 +214,53 @@ def test_make_binary_array():
     assert column_as_set(
         df, "metric", None, states=["ZZ"], after="2020-03-22", before="2020-03-24"
     ) == {"smithville-march23", "county-metric", "mystate",}
+
+
+def test_make_binary_array_exclude_county_999():
+    df = read_csv_and_index_fips_date(
+        "city,county,state,fips,country,aggregate_level,date,metric\n"
+        "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
+        ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
+        ",Unknown County,ZZ,97999,USA,county,2020-03-23,unknown-county\n"
+        ",,ZZ,97,USA,state,2020-03-23,mystate\n"
+        ",,,,UK,country,2020-03-23,foo\n"
+    ).reset_index()
+
+    assert column_as_set(df, "metric", AggregationLevel.COUNTY) == {
+        "county-metric",
+        "unknown-county",
+    }
+    assert column_as_set(df, "metric", AggregationLevel.COUNTY, exclude_county_999=True) == {
+        "county-metric"
+    }
+    assert column_as_set(df, "metric", None, exclude_county_999=True) == {
+        "smithville-march23",
+        "county-metric",
+        "mystate",
+        "foo",
+    }
+
+
+def test_make_binary_array_exclude_fips_prefix():
+    df = read_csv_and_index_fips_date(
+        "city,county,state,fips,country,aggregate_level,date,metric\n"
+        "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
+        ",North County,ZZ,01001,USA,county,2020-03-23,county-in-01\n"
+        ",Unknown County,ZZ,97999,USA,county,2020-03-23,unknown-county\n"
+        ",,ZZ,97,USA,state,2020-03-23,state97\n"
+        ",,,,UK,country,2020-03-23,country-uk\n"
+    ).reset_index()
+
+    assert column_as_set(df, "metric", AggregationLevel.COUNTY) == {
+        "county-in-01",
+        "unknown-county",
+    }
+    assert column_as_set(df, "metric", AggregationLevel.COUNTY, exclude_fips_prefix="97") == {
+        "county-in-01"
+    }
+    assert column_as_set(df, "metric", None, exclude_fips_prefix="01") == {
+        "smithville-march23",
+        "unknown-county",
+        "state97",
+        "country-uk",
+    }

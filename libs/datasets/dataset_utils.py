@@ -250,6 +250,8 @@ def make_rows_key(
     on=None,
     after=None,
     before=None,
+    exclude_county_999: bool = False,
+    exclude_fips_prefix: Optional[str] = None,
 ):
     """Create a binary array or slice selecting rows in `data` matching the given parameters."""
     query_parts = []
@@ -271,6 +273,14 @@ def make_rows_key(
         query_parts.append("date > @after")
     if before:
         query_parts.append("date < @before")
+    if exclude_county_999:
+        # I don't think it is possible to use the default fast eval to match a substring. Instead
+        # create a binary Series here and refer to it from the query.
+        not_county_999 = data[CommonFields.FIPS].str[-3:] != "999"
+        query_parts.append("@not_county_999")
+    if exclude_fips_prefix:
+        not_fips_prefix = data[CommonFields.FIPS].str[0:2] != exclude_fips_prefix
+        query_parts.append("@not_fips_prefix")
 
     if query_parts:
         return data.eval(" and ".join(query_parts))

@@ -314,13 +314,7 @@ class RegionalData:
         return state
 
 
-def get_subset_regions(include_county_999=False, **kwargs) -> List[Region]:
+def get_subset_regions(exclude_county_999: bool, **kwargs) -> List[Region]:
     us_latest = load_us_latest_dataset()
-    us_subset = us_latest.get_subset(**kwargs)
-    regions = [Region.from_fips(fips) for fips in us_subset.all_fips]
-    if include_county_999:
-        return regions
-    else:
-        return [
-            region for region in regions if region.is_county() and not region.fips.endswith("999")
-        ]
+    us_subset = us_latest.get_subset(exclude_county_999=exclude_county_999, **kwargs)
+    return [Region.from_fips(fips) for fips in us_subset.all_fips]
