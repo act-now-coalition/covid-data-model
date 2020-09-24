@@ -14,6 +14,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
 from libs import pipeline
+from libs.datasets import AggregationLevel
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
@@ -104,11 +105,11 @@ class SubStateRegionPipelineInput:
             infer_rt_regions = {pipeline.Region.from_fips(fips)}
         else:  # Default to the full infection rate whitelist
             infer_rt_regions = {
-                pipeline.Region.from_fips(x)
-                for x in combined_datasets.get_fips_subset(None)
-                if len(x) == 5
-                and "25" != x[:2]  # Counties only  # Masking MA Counties (2020-08-27) due to NaNs
-                and "999" != x[-3:]  # Remove placeholder fips that have no data
+                r
+                for r in combined_datasets.get_subset_regions(
+                    aggregation_level=AggregationLevel.COUNTY, include_county_999=False
+                )
+                if "25" != r.fips[:2]  # Masking MA Counties (2020-08-27) due to NaNs
             }
         # Now calculate the pyseir dependent whitelist
         whitelist_df = _generate_whitelist()

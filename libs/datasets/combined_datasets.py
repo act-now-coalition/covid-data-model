@@ -4,6 +4,8 @@ from typing import Any
 from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
+from typing import Optional
+
 import pandas as pd
 import structlog
 
@@ -122,7 +124,7 @@ def load_us_latest_dataset(
 
 
 def get_county_name(region: Region) -> Optional[str]:
-    return load_us_timeseries_dataset().get_one_region(region).latest[CommonFields.COUNTY]
+    return load_us_latest_dataset().get_record_for_fips(region.fips)[CommonFields.COUNTY]
 
 
 def build_from_sources(
@@ -312,6 +314,13 @@ class RegionalData:
         return state
 
 
-def get_fips_subset(aggregation_level, **kwargs) -> Iterable[str]:
+def get_subset_regions(include_county_999=False, **kwargs) -> List[Region]:
     us_latest = load_us_latest_dataset()
-    return us_latest.get_subset(aggregation_level, **kwargs).all_fips
+    us_subset = us_latest.get_subset(**kwargs)
+    regions = [Region.from_fips(fips) for fips in us_subset.all_fips]
+    if include_county_999:
+        return regions
+    else:
+        return [
+            region for region in regions if region.is_county() and not region.fips.endswith("999")
+        ]

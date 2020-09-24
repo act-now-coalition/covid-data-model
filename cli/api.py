@@ -109,12 +109,13 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 
     active_states = [state.abbr for state in us.STATES]
     active_states = active_states + ["PR", "MP"]
-    us_latest_all_fips = combined_datasets.get_fips_subset(
-        aggregation_level, state=state, fips=fips, states=active_states
+    regions = combined_datasets.get_subset_regions(
+        aggregation_level=aggregation_level,
+        include_county_999=False,
+        state=state,
+        fips=fips,
+        states=active_states,
     )
-    regions = [
-        pipeline.Region.from_fips(fips) for fips in us_latest_all_fips if not fips.endswith("999")
-    ]
 
     for intervention in list(Intervention):
         _logger.info(f"Running intervention {intervention.name}")
@@ -153,10 +154,13 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     active_states = active_states + ["PR", "MP"]
 
     # Load all API Regions
-    fips = combined_datasets.get_fips_subset(
-        aggregation_level, state=state, fips=fips, states=active_states
+    regions = combined_datasets.get_subset_regions(
+        aggregation_level=aggregation_level,
+        include_county_999=False,
+        state=state,
+        fips=fips,
+        states=active_states,
     )
-    regions = [region for region in fips if not region.fips.endswith("999")]
     _logger.info(f"Loading all regional inputs.")
     regional_inputs = [
         api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
@@ -194,12 +198,13 @@ def generate_top_counties(disable_validation, input_dir, output, state, fips: Op
     """The entry function for invocation"""
     intervention = Intervention.SELECTED_INTERVENTION
     active_states = [state.abbr for state in us.STATES] + ["PR"]
-    us_latest_all_fips = combined_datasets.get_fips_subset(
-        AggregationLevel.COUNTY, states=active_states, state=state, fips=fips
+    regions = combined_datasets.get_subset_regions(
+        aggregation_level=AggregationLevel.COUNTY,
+        include_county_999=False,
+        states=active_states,
+        state=state,
+        fips=fips,
     )
-    regions = [
-        pipeline.Region.from_fips(fips) for fips in us_latest_all_fips if not fips.endswith("999")
-    ]
     regional_inputs = [
         api_pipeline.RegionalInput.from_region_and_intervention(region, intervention, input_dir)
         for region in regions
