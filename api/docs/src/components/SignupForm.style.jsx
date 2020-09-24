@@ -1,7 +1,6 @@
 import styled from "styled-components";
 
 export const InputHolder = styled.div`
-  align-items: baseline;
   display: flex;
   flex-direction: row;
   padding-top: 0.5rem;
