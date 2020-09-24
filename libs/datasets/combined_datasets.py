@@ -4,7 +4,6 @@ from typing import Any
 from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
-from typing import Iterable
 from typing import Optional
 
 import pandas as pd
@@ -296,10 +295,6 @@ class RegionalData:
 
     @staticmethod
     def from_region(region: Region) -> "RegionalData":
-
-        us_latest = load_us_latest_dataset()
-        region_latest = us_latest.get_record_for_fips(region.fips)
-
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)
         if not region_timeseries.latest:
@@ -324,6 +319,7 @@ class RegionalData:
         return state
 
 
-def get_fips_subset(aggregation_level, **kwargs) -> Iterable[str]:
+def get_subset_regions(exclude_county_999: bool, **kwargs) -> List[Region]:
     us_latest = load_us_latest_dataset()
-    return us_latest.get_subset(aggregation_level, **kwargs).all_fips
+    us_subset = us_latest.get_subset(exclude_county_999=exclude_county_999, **kwargs)
+    return [Region.from_fips(fips) for fips in us_subset.data[CommonFields.FIPS].unique()]

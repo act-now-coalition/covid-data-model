@@ -14,6 +14,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
 from libs import pipeline
+from libs.datasets import AggregationLevel
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
@@ -38,6 +39,7 @@ def _cache_global_datasets():
     # Populate cache for combined latest and timeseries.  Caching pre-fork
     # will make sure cache is populated for subprocesses.  Return value
     # is not needed as the only goal is to populate the cache.
+    combined_datasets.load_us_latest_dataset()
     combined_datasets.load_us_timeseries_dataset()
 
 
@@ -103,11 +105,12 @@ class SubStateRegionPipelineInput:
             infer_rt_regions = {pipeline.Region.from_fips(fips)}
         else:  # Default to the full infection rate whitelist
             infer_rt_regions = {
-                pipeline.Region.from_fips(x)
-                for x in combined_datasets.get_fips_subset(None)
-                if len(x) == 5
-                and "25" != x[:2]  # Counties only  # Masking MA Counties (2020-08-27) due to NaNs
-                and "999" != x[-3:]  # Remove placeholder fips that have no data
+                combined_datasets.get_subset_regions(
+                    aggregation_level=AggregationLevel.COUNTY,
+                    exclude_county_999=True,
+                    # Masking MA Counties (2020-08-27) due to NaNs
+                    exclude_fips_prefix="25",
+                )
             }
         # Now calculate the pyseir dependent whitelist
         whitelist_df = _generate_whitelist()

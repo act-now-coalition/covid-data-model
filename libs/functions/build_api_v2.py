@@ -12,7 +12,6 @@ from api.can_api_v2_definition import (
 )
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 
 
 def _build_actuals(actual_data: dict) -> Actuals:

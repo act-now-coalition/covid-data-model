@@ -346,7 +346,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     # `data` may be used to process every row without considering the date or region. Keep logic about
     # FIPS/location_id/region containing in this class by using methods such as `get_one_region`. Do
-    # *not* read date or region related columns directly from `data`.
+    # *not* read date or region related columns directly from `data`. `data_with_fips` exists so we can
+    # easily find code that reads the FIPS column.
     # `data` contains columns from CommonFields and simple integer index. DATE and LOCATION_ID must
     # be non-null in every row.
     data: pd.DataFrame
@@ -363,6 +364,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     @property
     def data_with_fips(self) -> pd.DataFrame:
+        """data with FIPS column, use `data` when FIPS is not need."""
         return self.data
 
     @property
