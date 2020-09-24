@@ -3,6 +3,7 @@ name: Build & Deploy API Docs
 on:
   repository_dispatch:
     types: deploy-docs
+  push:
 
 jobs:
   build-deploy:
