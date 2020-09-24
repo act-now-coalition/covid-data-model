@@ -5,7 +5,6 @@ from more_itertools import first
 
 from libs import us_state_abbrev
 import pandas as pd
-from libs import pipeline
 from libs.datasets.dataset_utils import AggregationLevel, make_rows_key
 from libs.datasets import dataset_utils
 from libs.datasets import custom_aggregations
@@ -136,18 +135,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
             ] = weighted_icu_occupancy
 
         return data
-
-    @property
-    def county(self):
-        return self.get_subset(aggregation_level=AggregationLevel.COUNTY)
-
-    @property
-    def all_fips(self) -> List[str]:
-        return list(self.data.fips.unique())
-
-    @property
-    def regions(self) -> List[pipeline.Region]:
-        return [pipeline.Region.from_fips(fips) for fips in self.all_fips]
 
     def get_subset(
         self,
