@@ -3,17 +3,15 @@
 <!--- Make changes in api/README.V1.tmpl.md and run `./run.py api update-schemas` --->
 # Covid Act Now API (V1)
 
-:::note
+## :warning: API V2 Deprecated
 
-API V1 is now deprecated and will stop updating on Monday, October 5th.
+API V1 is now deprecated and will stop daily updates on Monday, October 5th.
 
 Please refer to the [documentation](https://apidocs.covidactnow.org) for the latest version of the API.
 
 For assistance migrating to V2, check out the [migration guide](https://apidocs.covidactnow.org/migration).
 
 If you have any questions, do not hesitate to reach out to <api@covidactnow.org>. Thanks!
-
-:::
 
 ## Introduction
 
