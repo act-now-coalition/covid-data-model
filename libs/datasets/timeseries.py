@@ -1,5 +1,6 @@
 import datetime
 import pathlib
+import warnings
 from dataclasses import dataclass
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
@@ -48,13 +49,16 @@ class OneRegionTimeseriesDataset:
     # The region is not an attribute at this time because it simplifies making instances and
     # code that needs the region of an instance already has it.
 
+    class ZeroRegionWarning(UserWarning):
+        pass
+
     def __post_init__(self):
         if CommonFields.LOCATION_ID in self.data.columns:
             region_count = self.data[CommonFields.LOCATION_ID].nunique()
         else:
             region_count = self.data[CommonFields.FIPS].nunique()
         if region_count == 0:
-            _log.warning(f"Creating {self.__class__.__name__} with zero regions")
+            warnings.warn(OneRegionTimeseriesDataset.ZeroRegionWarning())
         elif region_count != 1:
             raise ValueError("Does not have exactly one region")
 
