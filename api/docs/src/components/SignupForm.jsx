@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import {
   InputHolder,
   StyledNewsletter,
+  GettingStartedBox,
+  ApiKey,
 } from "@site/src/components/SignupForm.style";
 
 const SignupForm = () => {
@@ -25,14 +27,12 @@ const SignupForm = () => {
   };
 
   return (
-    <div>
-      <h3>Getting Started</h3>
-      <span>
-        There are just two fast and simple steps before using our API.
-      </span>
+    <GettingStartedBox>
+      <h2>Getting Started</h2>
+      <p>There are just two fast and simple steps before using our API.</p>
 
       <div>
-        <h4>1. Request an API Key</h4>
+        <h3>1. Request an API key</h3>
         <StyledNewsletter>
           <form>
             <InputHolder>
@@ -50,38 +50,35 @@ const SignupForm = () => {
                 onChange={(e) => setEmail(e.target.value)}
               />
               <button type="submit" onClick={(e) => onSubmit(e)}>
-                Sign up
+                Get API key
               </button>
             </InputHolder>
           </form>
         </StyledNewsletter>
         {!apiKey && (
-          <div>
-            <span>
-              If you've previously registered for an API key, you can use the
-              form above to retrieve it.
-            </span>
-          </div>
+          <p>
+            If you've previously registered for an API key, you can use the form
+            above to retrieve it.
+          </p>
         )}
         {apiKey && (
-          <div>
-            <span>Congrats, your new API Key is {apiKey}</span>
-          </div>
+          <p>
+            Congrats, your new API key is <ApiKey>{apiKey}</ApiKey>
+          </p>
         )}
       </div>
-      <h4>
+      <h3>
         2. Complete the{" "}
         <a
           href="https://docs.google.com/forms/d/e/1FAIpQLSf15Qx2EdYUHUmNI2JBts4LbVqIxsLN1SEzZLJlwuWdfJ4dVg/viewform?usp=sf_link"
           target="_blank"
+          rel="noopener noreferrer"
         >
-          Registration Form
+          registration form
         </a>
-        <span>
-          This helps establish a relationship between us for better support.
-        </span>
-      </h4>
-    </div>
+      </h3>
+      <p>This helps establish a relationship between us for better support.</p>
+    </GettingStartedBox>
   );
 };
 
