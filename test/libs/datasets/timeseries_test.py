@@ -54,7 +54,7 @@ def test_multi_region_to_from_timeseries():
             "01,,state,2020-04-01,,20\n"
         ).reset_index()
     )
-    multiregion = timeseries.MultiRegionTimeseriesDataset.from_timeseries(
+    multiregion = timeseries.MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         ts, ts.latest_values_object()
     )
     pd.testing.assert_frame_equal(
@@ -82,7 +82,9 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
             "01,,state,,123.4\n"
         ).reset_index()
     )
-    multiregion = timeseries.MultiRegionTimeseriesDataset.from_timeseries(ts, latest_values)
+    multiregion = timeseries.MultiRegionTimeseriesDataset.from_timeseries_and_latest(
+        ts, latest_values
+    )
     region_97111 = multiregion.get_one_region(Region.from_fips("97111"))
     assert region_97111.date_indexed.at["2020-04-02", "m1"] == 2
     assert region_97111.latest["c1"] == 3
@@ -213,7 +215,9 @@ def test_multiregion_provenance():
         structlog.get_logger(),
     )
     ts = timeseries.TimeseriesDataset(input_df.reset_index(), provenance=provenance)
-    out = timeseries.MultiRegionTimeseriesDataset.from_timeseries(ts, ts.latest_values_object())
+    out = timeseries.MultiRegionTimeseriesDataset.from_timeseries_and_latest(
+        ts, ts.latest_values_object()
+    )
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     assert out.provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
     assert out.provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"

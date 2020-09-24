@@ -10,6 +10,7 @@ from typing import Sequence
 from typing_extensions import final
 
 import pandas as pd
+import numpy as np
 import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
@@ -324,7 +325,9 @@ def _add_fips_if_missing(df: pd.DataFrame):
         df[CommonFields.FIPS] = df[CommonFields.LOCATION_ID].apply(pipeline.location_id_to_fips)
 
 
-def _index_latest_df(latest_df: pd.DataFrame, ts_locations) -> pd.DataFrame:
+def _index_latest_df(
+    latest_df: pd.DataFrame, ts_locations: Union[pd.api.extensions.ExtensionArray, np.ndarray]
+) -> pd.DataFrame:
     """Adds index to latest_df using location_id in ts_df."""
     assert latest_df.index.names == [None]
 
@@ -342,7 +345,9 @@ def _index_latest_df(latest_df: pd.DataFrame, ts_locations) -> pd.DataFrame:
 @final
 @dataclass(frozen=True)
 class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
-    """A set of timeseries with values from any number of regions."""
+    """A set of timeseries and constant values from any number of regions."""
+
+    # TODO(tom): rename to MultiRegionDataset
 
     # `data` may be used to process every row without considering the date or region. Keep logic about
     # FIPS/location_id/region containing in this class by using methods such as `get_one_region`. Do
@@ -368,11 +373,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         return self.data
 
     @property
-    def latest_data_with_fips(self) -> pd.DataFrame:
-        return self.latest_data
-
-    @property
     def combined_df(self) -> pd.DataFrame:
+        """"A DataFrame with timeseries data and latest data (with DATE=NaT) together."""
         return pd.concat([self.data, self.latest_data.reset_index()], ignore_index=True)
 
     @classmethod
@@ -418,7 +420,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         )
 
     @staticmethod
-    def from_timeseries(
+    def from_timeseries_and_latest(
         ts: TimeseriesDataset, latest: LatestValuesDataset
     ) -> "MultiRegionTimeseriesDataset":
         ts_df = ts.data.copy()
@@ -497,11 +499,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         Args:
             path: Path to write to.
         """
-        print("latest data in to_csv")
-        self.latest_data.info()
         combined = self.combined_df
-        print("combined to_csv")
-        combined.info()
         common_df.write_csv(
             combined, path, structlog.get_logger(), TimeseriesDataset.COMMON_INDEX_FIELDS
         )

@@ -28,7 +28,7 @@ def test_aggregate():
             "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
         )
     )
-    ts_in = MultiRegionTimeseriesDataset.from_timeseries(ts, ts.latest_values_object())
+    ts_in = MultiRegionTimeseriesDataset.from_timeseries_and_latest(ts, ts.latest_values_object())
     agg = statistical_areas.CountyToCBSAAggregator(
         county_map={"55005": "10001", "55006": "10001"}, cbsa_title_map={"10001": "Stat Area 1"}
     )

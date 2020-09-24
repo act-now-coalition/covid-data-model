@@ -82,11 +82,9 @@ def update(summary_filename, wide_dates_filename):
     latest_dataset: LatestValuesDataset = combined_datasets.build_from_sources(
         LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
-    multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries(
+    multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         timeseries_dataset, latest_dataset
     )
-    print("latest data info")
-    multiregion_dataset.latest_data.info()
 
     _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, multiregion_dataset,

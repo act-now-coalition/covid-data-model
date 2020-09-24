@@ -31,8 +31,8 @@ def _series_with_date_index(data, date: str = "2020-08-25", **series_kwargs):
 def _fips_csv_to_one_region(csv_str: str, region: Region) -> OneRegionTimeseriesDataset:
     # Make a Timeseries first because it can have a FIPS column without location_id
     ts = TimeseriesDataset.load_csv(io.StringIO(csv_str))
-    # from_timeseries adds the location_id column needed by get_one_region
-    return MultiRegionTimeseriesDataset.from_timeseries(
+    # from_timeseries_and_latest adds the location_id column needed by get_one_region
+    return MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         ts, ts.latest_values_object()
     ).get_one_region(region)
 
