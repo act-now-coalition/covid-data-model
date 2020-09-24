@@ -552,6 +552,7 @@
           "state",
           "level",
           "population",
+          "actuals",
           "lastUpdatedDate"
         ],
         "type": "object",
@@ -733,6 +734,7 @@
           "state",
           "level",
           "population",
+          "actuals",
           "lastUpdatedDate",
           "actualsTimeseries"
         ],

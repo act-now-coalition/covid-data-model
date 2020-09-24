@@ -20,7 +20,6 @@ import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 import pyseir.utils
@@ -195,13 +194,15 @@ def calculate_new_case_data_by_region(
 @lru_cache(maxsize=None)
 def get_hospitalization_data() -> pd.DataFrame:
     """
+    Creates a DataFrame of hospitalization timeseries with non-unique LOCATION_ID index.
+
     Since we're using this data for hospitalized data only, only returning
     values with hospitalization data.  I think as the use cases of this data source
     expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
     hospitalization data.
     """
-    # TODO(tom): Change this function to accept the combined TimeseriesDataset as a parameter
-    # and call it once so the cache can be removed.
+    # TODO(tom): Change this function to accept the combined data as a parameter and call it once
+    # so the cache can be removed.
     data = combined_datasets.load_us_timeseries_dataset().data  # processing rows, ignoring indexes
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
@@ -230,7 +231,7 @@ def calculate_hospitalization_data(
     tiny so we just make downstream easier to work with by clipping.
 
     Args:
-    hospitalization_df: one region of data returned by `get_hospitalization_data`
+    hospitalization_df: one region of data returned by `get_hospitalization_data_for_region`
     t0: Datetime to offset by.
     category: HospitalizationCategory
 
