@@ -47,6 +47,12 @@ class BadMultiRegionWarning(UserWarning):
     pass
 
 
+class RegionLatestNotFound(IndexError):
+    """Requested region's latest values not found in combined data"""
+
+    pass
+
+
 @final
 @dataclass(frozen=True)
 class OneRegionTimeseriesDataset:
@@ -335,11 +341,10 @@ def _index_latest_df(
         warnings.warn(BadMultiRegionWarning("Unexpected empty latest DataFrame"))
         return pd.DataFrame(index=ts_locations).sort_index()
     else:
-        return (
-            latest_df.set_index(CommonFields.LOCATION_ID, verify_integrity=True)
-            .reindex(index=ts_locations)
-            .sort_index()
-        )
+        latest_df_with_index = latest_df.set_index(CommonFields.LOCATION_ID, verify_integrity=True)
+        # Use the union of the locations in the timeseries and latest_df to keep all rows of latest_df
+        all_locations = latest_df_with_index.index.union(ts_locations).sort_values()
+        return latest_df_with_index.reindex(index=all_locations)
 
 
 @final
@@ -358,6 +363,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     data: pd.DataFrame
 
     # `latest_data` contains columns from CommonFields and a LOCATION_ID index. DATE is not present.
+    # If you need FIPS read from `latest_data_with_fips` so we can easily find code that depends on
+    # the column.
     latest_data: pd.DataFrame
 
     # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and 'variable'.
@@ -370,6 +377,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     @property
     def data_with_fips(self) -> pd.DataFrame:
         """data with FIPS column, use `data` when FIPS is not need."""
+        return self.data
+
+    @property
+    def latest_data_with_fips(self) -> pd.DataFrame:
+        """latest_data with FIPS column, use `latest_data` when FIPS is not need."""
         return self.data
 
     @property
@@ -447,7 +459,10 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
-        latest_row = self.latest_data.loc[region.location_id, :]
+        try:
+            latest_row = self.latest_data.loc[region.location_id, :]
+        except KeyError:
+            raise RegionLatestNotFound(region)
         # Some code far away from here depends on latest_dict containing None, not np.nan, for
         # non-real values.
         latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
