@@ -213,8 +213,8 @@
         "tags": [
           "State Data"
         ],
-        "summary": "All states summary",
-        "description": "Region Summaries for all states (json)",
+        "summary": "All states summary (json)",
+        "description": "Region Summaries for all states",
         "responses": {
           "200": {
             "description": "",

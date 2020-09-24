@@ -115,8 +115,8 @@ ALL_STATE_SUMMARY = APIEndpoint(
     endpoint="/states.json",
     parameters=[],
     tags=[STATE_TAG],
-    description="Region Summaries for all states (json)",
-    summary="All states summary",
+    description="Region Summaries for all states",
+    summary="All states summary (json)",
     schema_cls=can_api_v2_definition.AggregateRegionSummary,
 )
 ALL_STATE_SUMMARY_CSV = APIEndpoint(
