@@ -119,6 +119,14 @@ ALL_STATE_SUMMARY = APIEndpoint(
     summary="All states summary",
     schema_cls=can_api_v2_definition.AggregateRegionSummary,
 )
+ALL_STATE_SUMMARY_CSV = APIEndpoint(
+    endpoint="/states.csv",
+    parameters=[],
+    tags=[STATE_TAG],
+    description="Region Summaries for all states",
+    summary="All states summary (csv)",
+    schema_cls=can_api_v2_definition.AggregateFlattenedTimeseries,
+)
 ALL_STATE_TIMESERIES = APIEndpoint(
     endpoint="/states.timeseries.json",
     parameters=[],
@@ -160,6 +168,7 @@ ALL_ENDPOINTS = [
     STATE_SUMMARY,
     STATE_TIMESERIES,
     ALL_STATE_SUMMARY,
+    ALL_STATE_SUMMARY_CSV,
     ALL_STATE_TIMESERIES,
     ALL_COUNTY_SUMMARY,
     ALL_COUNTY_SUMMARY_CSV,
