@@ -1,5 +1,15 @@
 # Covid Act Now API (V1)
 
+## :warning: API V1 Deprecated
+
+API V1 is now deprecated and will stop daily updates on *Monday, October 5th*.
+
+Please refer to the [documentation](https://apidocs.covidactnow.org) for the latest version of the API.
+
+For assistance migrating to V2, check out the [migration guide](https://apidocs.covidactnow.org/migration).
+
+If you have any questions, do not hesitate to reach out to <api@covidactnow.org>. Thanks!
+
 ## Introduction
 
 The Covid Act Now API provides the same data that powers [CovidActNow.org](https://covidactnow.org) but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools. Read our [blog post](https://blog.covidactnow.org/covid-act-now-api-intervention-model/) annoucing the API for more context and background.
