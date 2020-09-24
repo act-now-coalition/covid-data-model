@@ -22,19 +22,19 @@ We no longer surface projections by intervention.
 Here are examples of API endpoint changes:
 ```diff
 - https://data.covidactnow.org/latest/state/{state}.{intervention}.json
-+ https://data.covidactnow.org/v2/latest/state/{state}.json
++ https://api.covidactnow.org/v2/state/{state}.json
 ```
 ```diff
 - https://data.covidactnow.org/latest/county/{fips}.{intervention}.json
-+ https://data.covidactnow.org/v2/latest/county/{fips}.json
++ https://api.covidactnow.org/v2/county/{fips}.json
 ```
 ```diff
 - https://data.covidactnow.org/latest/counties.{intervention}.json
-+ https://data.covidactnow.org/v2/latest/counties.json
++ https://api.covidactnow.org/v2/counties.json
 ```
 ```diff
 - https://data.covidactnow.org/latest/states.{intervention}.json
-+ https://data.covidactnow.org/v2/latest/states.json
++ https://api.covidactnow.org/v2/states.json
 ```
 
 ### Projections deprecated
