@@ -7,7 +7,6 @@ import structlog
 from libs.datasets import combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
-from libs.datasets import timeseries
 from pyseir import cli
 
 from pyseir.rt import utils
@@ -252,9 +251,10 @@ def test_generate_infection_rate_new_orleans_patch():
 
 
 def test_generate_infection_rate_metric_fake_fips():
-    with pytest.warns(timeseries.OneRegionTimeseriesDataset.ZeroRegionWarning):
+    with structlog.testing.capture_logs() as logs:
         # TX Misc Fips Holder timeseries not found in combined data
         infer_input = infer_rt.RegionalInput.from_fips("48999")
+    assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
     assert infer_input.timeseries.empty
 
     with pytest.raises(combined_datasets.RegionLatestNotFound):
