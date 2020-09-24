@@ -41,12 +41,6 @@ from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 _log = structlog.get_logger()
 
 
-class RegionLatestNotFound(IndexError):
-    """Requested region's latest values not found in combined data"""
-
-    pass
-
-
 FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
 )
@@ -130,7 +124,7 @@ def load_us_latest_dataset(
 
 
 def get_county_name(region: Region) -> Optional[str]:
-    return load_us_latest_dataset().get_record_for_fips(region.fips)[CommonFields.COUNTY]
+    return load_us_timeseries_dataset().get_one_region(region).latest[CommonFields.COUNTY]
 
 
 def build_from_sources(
@@ -291,22 +285,17 @@ class RegionalData:
 
     region: Region
 
-    latest: Dict[str, Any]
-
     timeseries: OneRegionTimeseriesDataset
 
     @staticmethod
     def from_region(region: Region) -> "RegionalData":
-
-        us_latest = load_us_latest_dataset()
-        region_latest = us_latest.get_record_for_fips(region.fips)
-        if not region_latest:
-            raise RegionLatestNotFound(region)
-
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)
+        return RegionalData(region=region, timeseries=region_timeseries)
 
-        return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
+    @property
+    def latest(self) -> Dict[str, Any]:
+        return self.timeseries.latest
 
     @property
     def population(self) -> int:
