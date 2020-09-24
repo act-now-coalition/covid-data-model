@@ -343,7 +343,11 @@ def _index_latest_df(
     else:
         latest_df_with_index = latest_df.set_index(CommonFields.LOCATION_ID, verify_integrity=True)
         # Use the union of the locations in the timeseries and latest_df to keep all rows of latest_df
-        all_locations = latest_df_with_index.index.union(ts_locations).sort_values()
+        all_locations = (
+            latest_df_with_index.index.union(ts_locations).sort_values()
+            # Make sure the index has a name so that reset_index() restores the column name.
+            .rename(CommonFields.LOCATION_ID)
+        )
         return latest_df_with_index.reindex(index=all_locations)
 
 
@@ -395,18 +399,18 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     @staticmethod
     def from_dataframes(
-        ts_df: pd.DataFrame, latest_df: pd.DataFrame, provenance: Optional[pd.Series] = None
+        timeseries_df: pd.DataFrame, latest_df: pd.DataFrame, provenance: Optional[pd.Series] = None
     ) -> "MultiRegionTimeseriesDataset":
-        assert ts_df.index.names == [None]
+        assert timeseries_df.index.names == [None]
         assert latest_df.index.names == [None]
 
         # test_top_level_metrics_basic depends on some empty columns being preserved in the
         # MultiRegionTimeseriesDataset so don't call dropna in this method.
-        ts_locations = ts_df[CommonFields.LOCATION_ID].unique()
+        ts_locations = timeseries_df[CommonFields.LOCATION_ID].unique()
         ts_locations.sort()
         latest_df = _index_latest_df(latest_df, ts_locations)
 
-        return MultiRegionTimeseriesDataset(ts_df, latest_df, provenance=provenance)
+        return MultiRegionTimeseriesDataset(timeseries_df, latest_df, provenance=provenance)
 
     @staticmethod
     def from_combined_dataframe(
@@ -417,13 +421,15 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             raise ValueError("MultiRegionTimeseriesDataset.from_csv requires location_id column")
         _add_fips_if_missing(combined_df)
 
-        ts_rows = combined_df[CommonFields.DATE].notna()
-        ts_df = combined_df.loc[ts_rows, :].dropna("columns", "all")
+        rows_with_date = combined_df[CommonFields.DATE].notna()
+        timeseries_df = combined_df.loc[rows_with_date, :].dropna("columns", "all")
 
         # Extract rows of combined_df which don't have a date.
-        latest_df = combined_df.loc[~ts_rows, :].dropna("columns", "all")
+        latest_df = combined_df.loc[~rows_with_date, :].dropna("columns", "all")
 
-        return MultiRegionTimeseriesDataset.from_dataframes(ts_df, latest_df, provenance=provenance)
+        return MultiRegionTimeseriesDataset.from_dataframes(
+            timeseries_df, latest_df, provenance=provenance
+        )
 
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
@@ -435,8 +441,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def from_timeseries_and_latest(
         ts: TimeseriesDataset, latest: LatestValuesDataset
     ) -> "MultiRegionTimeseriesDataset":
-        ts_df = ts.data.copy()
-        _add_location_id(ts_df)
+        timeseries_df = ts.data.copy()
+        _add_location_id(timeseries_df)
 
         latest_df = latest.data.copy()
         _add_location_id(latest_df)
@@ -455,7 +461,15 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         # TODO(tom): Either copy latest.provenance to its own series, blend with the timeseries
         # provenance (though some variable names are the same), or retire latest as a separate thing upstream.
 
-        return MultiRegionTimeseriesDataset.from_dataframes(ts_df, latest_df, provenance=provenance)
+        return MultiRegionTimeseriesDataset.from_dataframes(
+            timeseries_df, latest_df, provenance=provenance
+        )
+
+    def __post_init__(self):
+        # Some integrity checks
+        assert CommonFields.LOCATION_ID in self.data.columns
+        assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
+        assert self.data[CommonFields.LOCATION_ID].notna().all()
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
@@ -515,6 +529,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             path: Path to write to.
         """
         combined = self.combined_df
+        assert combined[CommonFields.LOCATION_ID].notna().all()
         common_df.write_csv(
             combined, path, structlog.get_logger(), TimeseriesDataset.COMMON_INDEX_FIELDS
         )
