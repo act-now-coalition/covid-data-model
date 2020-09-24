@@ -12,7 +12,10 @@ hospitalizations and even fewer reporting test data.
 
 :::note
 
-The existing API will be maintained for some time, but we will stop updating at some point in the future.
+The existing API is now deprecated.  We will continue to update v1 endpoints
+until 10/5 and will remove access to v1 data on 10/26.
+
+If you have any questions, please don't hesitate to reach out at <api@covidactnow.org>.
 
 :::
 
