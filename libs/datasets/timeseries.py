@@ -342,9 +342,12 @@ def _index_latest_df(
         return pd.DataFrame(index=ts_locations).sort_index()
     else:
         latest_df_with_index = latest_df.set_index(CommonFields.LOCATION_ID, verify_integrity=True)
-        # Use the union of the locations in the timeseries and latest_df to keep all rows of latest_df
+        # Make an index with the union of the locations in the timeseries and latest_df to keep all rows of
+        # latest_df
         all_locations = (
-            latest_df_with_index.index.union(ts_locations).sort_values()
+            latest_df_with_index.index.union(ts_locations)
+            .unique()
+            .sort_values()
             # Make sure the index has a name so that reset_index() restores the column name.
             .rename(CommonFields.LOCATION_ID)
         )
@@ -368,7 +371,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     # be non-null in every row.
     data: pd.DataFrame
 
-    # `latest_data` contains columns from CommonFields and a LOCATION_ID index. DATE is not present.
+    # `latest_data` contains columns from CommonFields and a LOCATION_ID index.
     # If you need FIPS read from `latest_data_with_fips` so we can easily find code that depends on
     # the column.
     latest_data: pd.DataFrame
@@ -403,6 +406,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def from_dataframes(
         timeseries_df: pd.DataFrame, latest_df: pd.DataFrame, provenance: Optional[pd.Series] = None
     ) -> "MultiRegionTimeseriesDataset":
+        """Builds a new object from two DataFrames, the lowest level constructor."""
+        # DataFrames are expected to have all their data in columns and a nameless index.
         assert timeseries_df.index.names == [None]
         assert latest_df.index.names == [None]
 
@@ -418,6 +423,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def from_combined_dataframe(
         combined_df: pd.DataFrame, provenance: Optional[pd.Series] = None
     ) -> "MultiRegionTimeseriesDataset":
+        """Builds a new object from a DataFrame containing timeseries and latest data.
+
+        This method splits rows with DATE NaT into the latest values DataFrame, adds a FIPS column
+        derived from LOCATION_ID, drops columns without data and calls `from_dataframes` to finish
+        the construction.
+        """
         assert combined_df.index.names == [None]
         if CommonFields.LOCATION_ID not in combined_df.columns:
             raise ValueError("MultiRegionTimeseriesDataset.from_csv requires location_id column")
@@ -443,6 +454,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def from_timeseries_and_latest(
         ts: TimeseriesDataset, latest: LatestValuesDataset
     ) -> "MultiRegionTimeseriesDataset":
+        """Converts legacy FIPS to new LOCATION_ID and calls `from_dataframes` to finish construction."""
         timeseries_df = ts.data.copy()
         _add_location_id(timeseries_df)
 

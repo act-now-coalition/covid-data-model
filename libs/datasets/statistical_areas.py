@@ -56,7 +56,7 @@ class CountyToCBSAAggregator:
 
         return CountyToCBSAAggregator(county_map=county_map, cbsa_title_map=cbsa_title_map)
 
-    def _aggregate_fips_df(self, df: pd.DataFrame, groupby_date) -> pd.DataFrame:
+    def _aggregate_fips_df(self, df: pd.DataFrame, groupby_date: bool) -> pd.DataFrame:
         # Make a copy to avoid modifying the input. DataFrame.assign is an alternative but the API
         # doesn't work well here.
         df = df.copy()
