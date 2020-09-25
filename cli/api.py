@@ -14,9 +14,11 @@ from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.enums import Intervention
+from pyseir.utils import SummaryArtifact
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -116,10 +118,17 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
         states=active_states,
     )
 
+    icu_data_path = input_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
+    icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+    rt_data_path = input_dir / SummaryArtifact.RT_METRIC_COMBINED.value
+    rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
+
     for intervention in list(Intervention):
         _logger.info(f"Running intervention {intervention.name}")
         regional_inputs = [
-            api_pipeline.RegionalInput.from_region_and_intervention(region, intervention, input_dir)
+            api_pipeline.RegionalInput.from_region_and_intervention(
+                region, intervention, input_dir, rt_data, icu_data
+            )
             for region in regions
         ]
         _logger.info(f"Loaded {len(regional_inputs)} regions.")
@@ -161,8 +170,12 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
         states=active_states,
     )
     _logger.info(f"Loading all regional inputs.")
+    icu_data_path = model_output_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
+    icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+    rt_data_path = model_output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
+    rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
     regional_inputs = [
-        api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
+        api_v2_pipeline.RegionalInput.from_region_and_model_output(region, rt_data, icu_data)
         for region in regions
     ]
     _logger.info(f"Finished loading all regional inputs.")

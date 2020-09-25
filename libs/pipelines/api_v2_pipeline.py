@@ -18,6 +18,7 @@ from libs import top_level_metrics
 from libs import pipeline
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import build_api_v2
 from libs.datasets import combined_datasets
@@ -33,9 +34,11 @@ INTERVENTION = Intervention.OBSERVED_INTERVENTION
 class RegionalInput:
     region: pipeline.Region
 
-    model_output: Optional[CANPyseirLocationOutput]
-
     _combined_data: combined_datasets.RegionalData
+
+    rt_data: OneRegionTimeseriesDataset
+
+    icu_data: OneRegionTimeseriesDataset
 
     @property
     def fips(self) -> str:
@@ -51,14 +54,18 @@ class RegionalInput:
 
     @staticmethod
     def from_region_and_model_output(
-        region: pipeline.Region, model_output_dir: pathlib.Path
+        region: pipeline.Region,
+        rt_data: MultiRegionTimeseriesDataset,
+        icu_data: MultiRegionTimeseriesDataset,
     ) -> "RegionalInput":
         combined_data = combined_datasets.RegionalData.from_region(region)
 
-        model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
-            region.fips, INTERVENTION, model_output_dir
+        return RegionalInput(
+            region=region,
+            _combined_data=combined_data,
+            rt_data=rt_data.get_one_region(region),
+            icu_data=icu_data.get_one_region(region),
         )
-        return RegionalInput(region=region, model_output=model_output, _combined_data=combined_data)
 
 
 def run_on_regions(
@@ -85,7 +92,8 @@ def run_on_regions(
 def generate_metrics_and_latest(
     timeseries: OneRegionTimeseriesDataset,
     latest: dict,
-    model_output: Optional[CANPyseirLocationOutput],
+    rt_data: Optional[OneRegionTimeseriesDataset],
+    icu_data: Optional[OneRegionTimeseriesDataset],
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
     Build metrics with timeseries.
@@ -102,7 +110,7 @@ def generate_metrics_and_latest(
         return [], None
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, latest, model_output
+        timeseries, latest, rt_data, icu_data
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
@@ -121,12 +129,11 @@ def build_timeseries_for_region(
     Returns: Summary with timeseries for region.
     """
     fips_latest = regional_input.latest
-    model_output = regional_input.model_output
 
     try:
         fips_timeseries = regional_input.timeseries
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
-            fips_timeseries, fips_latest, model_output
+            fips_timeseries, fips_latest, regional_input.rt_data, regional_input.icu_data
         )
         region_summary = build_api_v2.build_region_summary(fips_latest, metrics_latest)
         region_timeseries = build_api_v2.build_region_timeseries(

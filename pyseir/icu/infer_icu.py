@@ -12,6 +12,7 @@ from enum import Enum
 import pandas as pd
 
 from libs import pipeline
+from libs.datasets import combined_datasets
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import DATA_DIR
@@ -38,6 +39,41 @@ class LinearRegressionCoefficients:
     b: float = -1.6083
 
 
+@dataclass
+class RegionalInput:
+
+    regional_data: combined_datasets.RegionalData
+
+    _state_combined_data: Optional[combined_datasets.RegionalData]
+
+    @property
+    def region(self) -> pipeline.Region:
+        return self.regional_data.region
+
+    @property
+    def timeseries(self) -> OneRegionTimeseriesDataset:
+        """Get the TimeseriesDataset"""
+        return self.regional_data.timeseries
+
+    @property
+    def state_timeseries(self) -> Optional[OneRegionTimeseriesDataset]:
+        """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
+        if self.region.is_state():
+            return None
+        else:
+            return self._state_combined_data.timeseries
+
+    @staticmethod
+    def from_regional_data(regional_data: combined_datasets.RegionalData):
+        region = regional_data.region
+        state_combined_data = (
+            combined_datasets.RegionalData.from_region(region.get_state_region())
+            if region.is_county()
+            else None
+        )
+        return RegionalInput(regional_data=regional_data, _state_combined_data=state_combined_data)
+
+
 def get_icu_timeseries(
     region: pipeline.Region,
     regional_combined_data: OneRegionTimeseriesDataset,
@@ -62,6 +98,36 @@ def get_icu_timeseries(
     return _calculate_icu_timeseries(
         data=data, region=region, use_actuals=use_actuals, weight_by=weight_by, log=log,
     )
+
+
+def get_icu_timeseries_from_regional_input(
+    regional_input: RegionalInput,
+    use_actuals: bool = True,
+    weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
+) -> OneRegionTimeseriesDataset:
+    """
+    Loads data for region of interest and returns ICU Utilization numerator.
+
+    Args:
+        region: Region of interest
+        use_actuals: If True, return actuals when available. If False, always use predictions.
+        weight_by: The method by which to estimate county level utilization from state level utilization when
+            no county level inpatient/icu data is available.
+
+    Returns:
+        A date-indexed series of ICU estimate for heads-in-beds for a given region
+    """
+    region = regional_input.region
+    log = logger.new(region=str(region), event=f"ICU for Region = {region}")
+    data = _get_data_for_icu_calc(regional_input.timeseries, regional_input.state_timeseries)
+    icu_timeseries = _calculate_icu_timeseries(
+        data=data, region=region, use_actuals=use_actuals, weight_by=weight_by, log=log,
+    )
+
+    icu_df = icu_timeseries.reset_index()
+    icu_df[CommonFields.FIPS] = region.fips
+    icu_df[CommonFields.LOCATION_ID] = region.location_id
+    return OneRegionTimeseriesDataset(icu_df)
 
 
 def _calculate_icu_timeseries(
