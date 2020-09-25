@@ -47,7 +47,8 @@ def test_pyseir_end_to_end_idaho(tmp_path):
 @pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
 @pytest.mark.slow
 def test_pyseir_end_to_end_dc(tmp_path):
-    # Runs over a single state which
+    # Runs over a single state which tests state filtering + running over more than
+    # a single fips.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
         region = Region.from_state("DC")
         pipelines = cli._build_all_for_states(states=["DC"])
