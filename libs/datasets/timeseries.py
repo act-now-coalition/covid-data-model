@@ -348,6 +348,8 @@ def _index_latest_df(
             # Make sure the index has a name so that reset_index() restores the column name.
             .rename(CommonFields.LOCATION_ID)
         )
+        # reindex takes the name from index `all_locations`, see
+        # https://github.com/pandas-dev/pandas/issues/9885
         return latest_df_with_index.reindex(index=all_locations)
 
 
