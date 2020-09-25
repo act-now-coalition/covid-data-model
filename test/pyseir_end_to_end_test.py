@@ -44,6 +44,18 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         assert (with_values < 6).all()
 
 
+@pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
+@pytest.mark.slow
+def test_pyseir_end_to_end_dc(tmp_path):
+    # Runs over a single state which
+    with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
+        region = Region.from_state("DC")
+        pipelines = cli._build_all_for_states(states=["DC"])
+        # Checking to make sure that build all for states properly filters and only
+        # returns DC data
+        assert len(pipelines) == 2
+
+
 @pytest.mark.filterwarnings("error")
 @pytest.mark.slow
 @pytest.mark.parametrize("fips,expected_results", [(None, True), ("16013", True), ("26013", False)])
