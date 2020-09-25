@@ -1,15 +1,18 @@
 import pathlib
 
-import pytest
+import pytest  # pylint: disable=unused-import
 import pandas as pd
 import numpy as np
 import math
-from numbers import Number
+
+# from numbers import Number
 from scipy import stats
-from random import choices, randrange
-import structlog
+
+# from random import choices, randrange
+# import structlog
 from matplotlib import pyplot as plt
-from datetime import datetime, timedelta, time
+
+from datetime import datetime  # , timedelta, time
 
 from pyseir.models.demographics import Demographics
 from pyseir.models.nowcast_seir_model import (
@@ -18,7 +21,8 @@ from pyseir.models.nowcast_seir_model import (
     ModelRun,
     extend_rt_function_with_new_cases_forecast,
 )
-from pyseir.rt.constants import InferRtConstants
+
+# from pyseir.rt.constants import InferRtConstants
 from pyseir.models.historical_data import (
     HistoricalData,
     ForecastData,
@@ -27,8 +31,8 @@ from pyseir.models.historical_data import (
 )
 
 # rom pyseir.utils import get_run_artifact_path, RunArtifact
-from test.mocks.inference import load_data
-from test.mocks.inference.load_data import RateChange
+# from test.mocks.inference import load_data
+# from test.mocks.inference.load_data import RateChange
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
 
@@ -616,7 +620,7 @@ def obsolete_test_reproduce_FL_late_peak():
     # Setup model and times
     model = NowcastingSEIRModel()
     t_list = np.linspace(-63, 0, 64)
-    rt = None  # FL_rt_divoc_times()
+    rt = lambda t: t  # FL_rt_divoc_times()
 
     # TODO double check this with exact R(t) we have for FL as seemed to have to adjust up
     up_R = [rt(t) for t in t_list[:-14]]

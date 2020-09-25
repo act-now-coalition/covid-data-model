@@ -1,27 +1,19 @@
 import pathlib
 
-import pytest
+import pytest  # pylint: disable=unused-import
 import pandas as pd
 import numpy as np
 import math
-from random import choices, randrange
-import structlog
+
 from matplotlib import pyplot as plt
-from datetime import datetime, timedelta
 
 from pyseir.models.demographics import Demographics, ContactsType
 from pyseir.models.nowcast_seir_model import (
-    ramp_function,
     extend_rt_function_with_new_cases_forecast,
     NowcastingSEIRModel,
     ModelRun,
 )
-from pyseir.rt.constants import InferRtConstants
 from pyseir.models.historical_data import HistoricalData, adjust_rt_to_match_cases
-
-# rom pyseir.utils import get_run_artifact_path, RunArtifact
-from test.mocks.inference import load_data
-from test.mocks.inference.load_data import RateChange
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
 

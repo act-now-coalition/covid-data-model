@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import math
 from enum import Enum
 
@@ -26,7 +25,7 @@ class Demographics:
     used in adjusting hospitalization and deaths fractions.
     """
 
-    # TODO check high values seem to break some states
+    # TODO check high values seem to break some states - was VI broken?
     MEDIAN_RATE_CONSTANT = 1.5  # slightly better than 1.25 and 1.4
     DEFAULT_DRIVER_AGE = 25.0
 
@@ -184,6 +183,8 @@ class Demographics:
         """
         if state not in ["FL"]:  # median age for country as a whole
             # From https://www.cdc.gov/coronavirus/2019-ncov/covid-data/covidview/index.html
+            # TODO experiment with removing effect of big outbreaks as this is automatically
+            # calculated already - avoid "double" counting and applying to states where not happening
             data = {
                 68: 56.3,
                 75: 53.5,
@@ -246,3 +247,92 @@ class Demographics:
                         return 1.0 / 7.0 * ((day - t) * last + (t - day + 7) * value)
 
         return med_func
+
+
+# These should all belong to the Transitions class but there are problems with creating
+# static variables that are calculated from other static variables
+
+# First started with BC data
+FH_BY_DECADE_BC = [0.04, 0.01, 0.04, 0.07, 0.11, 0.12, 0.25, 0.5, 0.33, 0.25]
+CFR_BY_DECADE_BC = [0.0, 0.0, 0.0, 0.0, 0.004, 0.009, 0.04, 0.125, 0.333, 0.333]
+
+DEATHS_PRCNT_BY_2DECADE_IA = [0.0022, 0.0178, 0.090, 0.411, 0.479]
+CASES_PRCNT_BY_2DECADE_IA = [0.10, 0.46, 0.28, 0.12, 0.04]
+CFR_BY_2DECADE_IA = [
+    1116.0 / 64888.0 * DEATHS_PRCNT_BY_2DECADE_IA[i] / CASES_PRCNT_BY_2DECADE_IA[i]
+    for i in range(0, 5)
+]
+
+# AB data from https://www.cbc.ca/news/canada/calgary/alberta-covid-19-hospital-icu-average-stay-1.5667884
+# Note AB hospitalization rate much lower for young people, higher for middle age
+FH_BY_DECADE_AB = [0.005, 0.009, 0.008, 0.021, 0.027, 0.062, 0.112, 0.294, 0.226, 0.226]
+
+# It possible to switch to using data from different jurisdictions. Change the reference to point to different
+# per jurisdiction values above to make that happen. BC data appears best (broad range of ages covered) so far
+# TODO FUTURE add a test that demonstrates this, or that optimizes these functions for agreement with historical data
+FH = FH_BY_DECADE_BC
+CFR = CFR_BY_DECADE_BC  # CFR_BY_2DECADE_IA
+
+FH_BY_AGE = [
+    (FH[0] + FH[1] + FH[2] + 0.5 * FH[3]) / 3.5,
+    (0.5 * FH[3] + FH[4] + FH[5] + 0.5 * FH[6]) / 3,
+    (0.5 * FH[6] + FH[7] + FH[8] + FH[9]) / 3.5,
+]
+CFR_BY_AGE = [  # by 2 decades
+    (CFR[0] + 0.75 * CFR[1]) / 1.75,
+    (0.25 * CFR[1] + CFR[2] + 0.25 * CFR[3]) / 1.5,
+    (0.75 * CFR[3] + CFR[4]) / 1.75,
+]
+if len(CFR) > 5:  # by decade
+    CFR_BY_AGE = [
+        (CFR[0] + CFR[1] + CFR[2] + 0.5 * CFR[3]) / 3.5,
+        (0.5 * CFR[3] + CFR[4] + CFR[5] + 0.5 * CFR[6]) / 3,
+        (0.5 * CFR[6] + CFR[7] + CFR[8] + CFR[9]) / 3.5,
+    ]
+
+FD_BY_AGE = [CFR_BY_AGE[i] / FH_BY_AGE[i] for i in range(0, 3)]
+
+
+class Transitions:
+    # Transition fractions to Hospitalizations and Deaths by decade
+    # to age groups: 0-35, 35-65 and 65-100
+
+    @staticmethod
+    def fh0_f(f_young=None, f_old=None, median_age=None):
+        """
+        Calculates the fraction of (C)ases and (I)nfections (not tested) that
+        will end up being (H)ospitalized.
+        """
+        rtn = Transitions._interpolate_fractions(FH_BY_AGE, f_young, f_old, median_age)
+        return rtn
+
+    @staticmethod
+    def fd0_f(f_young=None, f_old=None, median_age=None):
+        """
+        Calculates the fraction of (C)ases and (I)nfections (not tested) that
+        will end up being (H)ospitalized.
+        """
+        rtn = Transitions._interpolate_fractions(FD_BY_AGE, f_young, f_old, median_age)
+        return rtn
+
+    @staticmethod
+    def _interpolate_fractions(age_bins, f_young=None, f_old=None, median_age=None):
+        """
+        Interpolates fractions (fd, fh) over age distributions in 3 bins: young, old, and middle
+
+        Inputs
+        - f_young - observed fraction of cases below the age of 35
+        - f_old - observed faction of cases above the age of 65
+        Either f_young and f_old are specified, or mediang_age.
+
+        Returns fraction in range [0.,1.]
+        """
+        if f_young is not None and f_old is not None:
+            fractions = [f_young, (1.0 - f_young - f_old), f_old]
+        elif median_age is not None:
+            fractions = Demographics.age_fractions_from_median(median_age)
+        else:
+            fractions = Demographics.default()
+
+        rtn = sum([fractions[i] * age_bins[i] for i in range(0, 3)])
+        return rtn

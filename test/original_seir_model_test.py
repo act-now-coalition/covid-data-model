@@ -1,23 +1,12 @@
 import pathlib
 
-import pytest
-import pandas as pd
+import pytest  # pylint: disable=unused-import
 import numpy as np
-import math
-from random import choices, randrange
-import structlog
-from matplotlib import pyplot as plt
-from datetime import datetime, timedelta
 
 from pyseir.models.seir_model import (
     SEIRModel,
     steady_state_ratios,
 )
-from pyseir.rt.constants import InferRtConstants
-
-# rom pyseir.utils import get_run_artifact_path, RunArtifact
-from test.mocks.inference import load_data
-from test.mocks.inference.load_data import RateChange
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
 

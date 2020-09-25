@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 import math
-from enum import Enum
-import copy
+from typing import List, Tuple
 
+from scipy.interpolate import InterpolatedUnivariateSpline
 import matplotlib.pyplot as plt
 
-from pyseir.models.demographics import Demographics
+from pyseir.models.demographics import Demographics, Transitions
 
 
 def ramp_function(t_list, start_value, end_value):
@@ -19,8 +19,9 @@ def ramp_function(t_list, start_value, end_value):
     return ftn
 
 
-def extend_rt_function_with_new_cases_forecast(rt_f, serial_period, forecast_new_cases):
-    from scipy.interpolate import interp1d, InterpolatedUnivariateSpline
+def extend_rt_function_with_new_cases_forecast(
+    rt_f, serial_period: float, forecast_new_cases: List[Tuple[int, float]]
+):
 
     (today, current_nC) = forecast_new_cases[0]
     (future, future_nC) = forecast_new_cases[-1]
@@ -39,9 +40,9 @@ def extend_rt_function_with_new_cases_forecast(rt_f, serial_period, forecast_new
     # interp1d(x, y, kind="cubic")  # expects an array
     nc_ext = lambda t: float(nc_ext_array(t))
 
-    def make_rt_switcher(rt, nc_ext, today, last):
+    def make_rt_switcher(rt, nc_ext, switch_at, last):
         def ftn(t):
-            if t <= today:
+            if t <= switch_at:
                 return rt(t)
             elif t >= last:
                 return (
@@ -58,50 +59,6 @@ def extend_rt_function_with_new_cases_forecast(rt_f, serial_period, forecast_new
     return rt_ext
 
 
-# TODO:smell move inside its own class or in NowcastingSEIRModel
-
-# Transition fractions to Hospitalizations and Deaths by decade
-# to age groups: 0-35, 35-65 and 65-100
-
-# First started with BC data
-FH_BY_DECADE_BC = [0.04, 0.01, 0.04, 0.07, 0.11, 0.12, 0.25, 0.5, 0.33, 0.25]
-CFR_BY_DECADE_BC = [0.0, 0.0, 0.0, 0.0, 0.004, 0.009, 0.04, 0.125, 0.333, 0.333]
-
-DEATHS_PRCNT_BY_2DECADE_IA = [0.0022, 0.0178, 0.090, 0.411, 0.479]
-CASES_PRCNT_BY_2DECADE_IA = [0.10, 0.46, 0.28, 0.12, 0.04]
-CFR_BY_2DECADE_IA = [
-    1116.0 / 64888.0 * DEATHS_PRCNT_BY_2DECADE_IA[i] / CASES_PRCNT_BY_2DECADE_IA[i]
-    for i in range(0, 5)
-]
-
-# AB data from https://www.cbc.ca/news/canada/calgary/alberta-covid-19-hospital-icu-average-stay-1.5667884
-# Note AB hospitalization rate much lower for young people, higher for middle age
-FH_BY_DECADE_AB = [0.005, 0.009, 0.008, 0.021, 0.027, 0.062, 0.112, 0.294, 0.226, 0.226]
-
-# TODO still decide which is more appropriate for US
-FH = FH_BY_DECADE_BC
-CFR = CFR_BY_DECADE_BC  # CFR_BY_2DECADE_IA
-
-FH_BY_AGE = [
-    (FH[0] + FH[1] + FH[2] + 0.5 * FH[3]) / 3.5,
-    (0.5 * FH[3] + FH[4] + FH[5] + 0.5 * FH[6]) / 3,
-    (0.5 * FH[6] + FH[7] + FH[8] + FH[9]) / 3.5,
-]
-if len(CFR) > 5:  # by decade
-    CFR_BY_AGE = [
-        (CFR[0] + CFR[1] + CFR[2] + 0.5 * CFR[3]) / 3.5,
-        (0.5 * CFR[3] + CFR[4] + CFR[5] + 0.5 * CFR[6]) / 3,
-        (0.5 * CFR[6] + CFR[7] + CFR[8] + CFR[9]) / 3.5,
-    ]
-else:  # by 2 decades
-    CFR_BY_AGE = [
-        (CFR[0] + 0.75 * CFR[1]) / 1.75,
-        (0.25 * CFR[1] + CFR[2] + 0.25 * CFR[3]) / 1.5,
-        (0.75 * CFR[3] + CFR[4]) / 1.75,
-    ]
-FD_BY_AGE = [CFR_BY_AGE[i] / FH_BY_AGE[i] for i in range(0, 3)]
-
-
 class NowcastingSEIRModel:
     """
     Simplified SEIR Model sheds complexity where not needed to be accurate enough. See ModelRun and 
@@ -109,9 +66,9 @@ class NowcastingSEIRModel:
     
     The concept of running the Model has been split off into another class (ModelRun).
 
-    TODO Next steps:
-    * Make sure all trainable parameters are exposed from here
-    * Validate test positivity contribution to peaks against that observed
+    TODO FUTURE enhancements to consider:
+    * Validate we have the right set of trainable (across results from all state) parameters exposed
+    * Turn positivity back on and validate if it can contribute to improved accuracy
     """
 
     # What fraction of hospital dwell time contributes delay evaluating median age
@@ -139,7 +96,6 @@ class NowcastingSEIRModel:
 
         # __________Fixed parameters not trained_________
         self.t_e = 2.0  # 2.0  sigma was 1/3. days^-1 below
-        # TODO serial period as ~5 days in our old model runs. How is this not 6 = 3 + 1/2 * 6?
         self.t_i = 6.0  # delta was 1/6. days^-1 below
         self.serial_period = self.t_e + 0.5 * self.t_i  # this is 5 days agrees with delta below
 
@@ -164,10 +120,12 @@ class NowcastingSEIRModel:
                 self.t_i + NowcastingSEIRModel.FRACTION_HOSP_DWELL_AS_DELAY * self.t_h()
             )
         self.fw0 = 0.5
+
+        # Constants used for solving positivity (as function of T/I - test rate / infections) ensuring continuity
+        # of positivity and its derivative. See postivity() and its inverse positivity_to_t_over_i() below.
         self.pos0 = 0.5  # max positivity for testing -> 0
         self.pos_c = 1.75
         self.pos_x0 = 2.0
-        # Solution that ensures continuity of function below and its derivative
         self.pos_b = (3.0 * self.pos_x0 - self.pos_c) / (4.0 * self.pos_x0 ** 1.5)
         self.pos_d = self.pos_x0 ** 0.5 / 4.0 * (3.0 * self.pos_c - self.pos_x0)
 
@@ -180,7 +138,7 @@ class NowcastingSEIRModel:
 
     def run_stationary(self, rt, median_age, t_over_x, x_is_new_cases=True):
         """
-        TODO is it I,C that are fixed or T over i,C
+        TODO double check if it is I,C that are fixed or T over i,C and improve documentation here
         Given R(t) and T/I or T/C run to steady state and return ratios of all compartments
         """
 
@@ -220,12 +178,14 @@ class NowcastingSEIRModel:
 
     def positivity(self, t_over_i):
         """
-        Test positivity as a function of T = testing rate / I = number of infected
+        Test positivity as a function of x=T/I where T = testing rate / I = number of infected
         This function should match two constraints
-            p(x) = .5 for x->0
+            p(x) = .5 for x->0 (when very insufficient testing 50% of those tested will be positive)
             p(x) <~ 1/x for x-> infinity (almost all infections found as testing -> infinity)
-        To achieve this different functions are used (switching at x0) and the constants b and d
-        are solved for to ensure continuity of the function and its derivative across x0 
+        To achieve this different functions are used (switching at x=x0) and the constants b and d
+        are solved for to ensure continuity of the function and its derivative across x0
+
+        TODO more detail for Natasha
         """
         p = 0.5 / t_over_i
         if t_over_i < self.pos_x0:  # approaches .5 for x -> 0
@@ -236,8 +196,9 @@ class NowcastingSEIRModel:
 
     def positivity_to_t_over_i(self, pos):
         """
+        Given positivity determine T/I (inverting positivity function above).
         Rely on positivity to be a continuous, strictly decreasing function of t_over_i over [.001,1000]
-        to invert using binary search in log space
+        to invert using binary search in log space.
         """
         lo = -3.0
         if pos > self.positivity(10.0 ** lo):
@@ -263,95 +224,55 @@ class NowcastingSEIRModel:
         (b, m) = self.lr_fd
         self.lr_fd = (b * adj_nD, m)
 
-    def fh0_f(self, f_young=None, f_old=None, median_age=None):
-        """
-        Calculates the fraction of (C)ases and (I)nfections (not tested) that
-        will end up being (H)ospitalized.
-        """
-        rtn = self._interpolate_fractions(FH_BY_AGE, f_young, f_old, median_age)
-        return rtn
-
-    def fd0_f(self, f_young=None, f_old=None, median_age=None):
-        """
-        Calculates the fraction of (C)ases and (I)nfections (not tested) that
-        will end up being (H)ospitalized.
-        """
-        rtn = self._interpolate_fractions(FD_BY_AGE, f_young, f_old, median_age)
-        return rtn
-
-    def _interpolate_fractions(self, age_bins, f_young=None, f_old=None, median_age=None):
-        """
-        Interpolates fractions (fd, fh) over age distributions in 3 bins: young, old, and middle
-
-        Inputs
-        - f_young - observed fraction of cases below the age of 35
-        - f_old - observed faction of cases above the age of 65
-        Either f_young and f_old are specified, or mediang_age.
-
-        Returns fraction in range [0.,1.]
-        """
-        if f_young is not None and f_old is not None:
-            fractions = [f_young, (1.0 - f_young - f_old), f_old]
-        elif median_age is not None:
-            fractions = Demographics.age_fractions_from_median(median_age)
-        else:
-            fractions = Demographics.default()
-
-        rtn = sum([fractions[i] * age_bins[i] for i in range(0, 3)])
-        return rtn
-
 
 class ModelRun:
     """
     A run (in time) of a model with (previously fit) parameters maintained in model
-    Run will also have the ability to "linearly" adjust the observed ratios of hopitalizations to cases and deaths
-    to hopitalizations to align with observed compartment histories without external shimming.
 
     Model compartments (evolved in time):
         S - susceptible (its really S/N that is important)
         E - exposed -> will become I or A over time
         I - infected, syptomatic -> can become C over time
-        W - infected, weakly or asympomatic
+        A - infected, weakly or asympomatic (interchangably referred to as W)
         nC - new (confirmed) cases for tracking purposes
         C - observed (confirmed) cases -> can become H over time
         H - observed hosptializations (usually observable). 
-        D - observed deaths
+        nD - observed new deaths - total deaths not accumulated in this model
         R - recoveries (just to validate conservation of people)
-    Note R and HICU, HVent (generated from H - but outside of this model) are not included.
+        b - beta that drives new infections - when R(t) supplied this is the beta that would have been needed
+    Note R and HICU, HVent (which will be generated from H - but outside of this model) are not included.
 
-    Observables, recent history smoothed and/or future projections, EVENTUALLY to be used to either inject known
+    Each run also has the ability to calibrate itself to the current observed ratios of
+    hopitalizations to cases and deaths to hopitalizations. Each of these can support a constant
+    factor and linear change over time (but the latter is not yet used but is left in the code
+    in case needed in the future).
+
+    Observables, recent history smoothed and/or future projections, used to either inject known
     important sources of time variation into, or constrain, the running model:
-        rt - growth rate for C (TODO will we adjust this to apply to I+C?)
-        case_median_age - allows for coarse adjustments for differing responses of age groups.
-            Might generalize to case_fraction_young, case_fraction_old with case_fraction_young + case_fraction_old < 1
-        test_positivity - fraction of tests that are positive
-        C, H, D described above. Note its the ratios H/C and D/H that provide constraints
-        test_processing_delay - in days from time sample supplied to test result available
-        case_fraction_traceable - fraction of cases that have been traced to their source
-    
-    Linear (ramp in time) adjustments (to I/C -> H and H->D rates) determined during model training.
+        rt - growth rate for nC (observed in past, predicted in future)
+        case_median_age - function predicting median age of new cases into the future. Typically derived
+            using rt above (see Demographics.infer_median_age_function)
+        test_positivity - function predicting (in future) fraction of tests that are positive
+        initial values of nC, H, nD described above - its the ratios H/C and D/H that provide constraints
+        (FUTURE) test_processing_delay - in days from time sample supplied to test result available
+        (FUTURE) case_fraction_traceable - fraction of cases that have been traced to their source
 
+    TODO ensure the list of parameters is complete
     Parameters
     ----------
     model: NowcastingSEIRModel
         Run independent parts of the base Model - parts that will be trained generally ahead of time
     N: int
-        Total population TODO move this to the Model
+        Total population
     t_list: int[]
         Times relative to a reference date
     rt_f: lambda(t)
         instead of suppression_policy, R0
-        TODO option to provide smoothed cases directly
+        TODO FUTURE consider option to provide smoothed cases directly
     testing_rate_f: lambda(t)
         Testing rate
     case_median_age_f: lambda(t)
         Median age of people that test positive each day
-
-    TODO how to specify compartments for initialization (up to today) that covers all cases
-    * Starting from bare minimum of values: C or I
-    * Starting from just a few observables for today: C, D, nC, H, nD (last 3 as constraints)
-    * Starting from DataFrame outputs of a previous run
-
     today: int[]
         Day that represents "today". Days before this day are treated as burn in for the run while those
         after it are the "predictions" of the future. When this parameter is not supplied the whole
@@ -362,6 +283,8 @@ class ModelRun:
     auto_initialize_other_compartments: boolean
         Controls (primarily non observable) compartment initialization. If set this flag causes a run
         with force_stationary to be run to derive steady state compartment values for initialization
+
+    TODO FUTURE better address restarting from a model run from yesterday
     """
 
     @staticmethod
@@ -701,11 +624,11 @@ class ModelRun:
         # transition fractions and linear ramp corrections
         # Note for now lr_f*[1] is always 0. (no time variance of the calibration)
         if self.case_median_age_f is not None:
-            fh0 = model.fh0_f(median_age=med_age_h)
-            fd0 = model.fd0_f(median_age=med_age_d)
+            fh0 = Transitions.fh0_f(median_age=med_age_h)  # was model.
+            fd0 = Transitions.fd0_f(median_age=med_age_d)
         else:
-            fh0 = model.fh0_f()
-            fd0 = model.fd0_f()
+            fh0 = Transitions.fh0_f()
+            fd0 = Transitions.fd0_f()
         fh = fh0 * model.lr_fh[0] + model.lr_fh[1] * (t - self.t_list[0])
         fh = max(0.0, min(1.0, fh))
         fd = fd0 * model.lr_fd[0] + model.lr_fd[1] * (t - self.t_list[0])
@@ -873,7 +796,7 @@ class ModelRun:
             self.t_list,
             np.array(
                 [
-                    self.model.fh0_f(
+                    Transitions.fh0_f(
                         median_age=self.case_median_age_f(t - int(self.model.age_eval_delay / 2))
                     )
                     for t in self.t_list
@@ -887,7 +810,7 @@ class ModelRun:
             self.t_list,
             np.array(
                 [
-                    self.model.fd0_f(
+                    Transitions.fd0_f(
                         median_age=self.case_median_age_f(t - self.model.age_eval_delay)
                     )
                     for t in self.t_list

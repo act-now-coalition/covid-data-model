@@ -8,6 +8,7 @@ from pyseir.rt.constants import InferRtConstants
 
 # Historical data file, prepared in each API snapshot, including key metrics and inferred Rt values
 # TODO update process to save this periodically in this locaiton
+# TODO find out why VI data appears to be broken in latest file
 HISTORICAL_DATA_FILE = "test/data/historical/merged_results.csv"
 
 # Forecast data
@@ -20,7 +21,7 @@ DATA_CORRECTIONS = {
     "NY": {"nD": [(181, 25.0), (218, 10.0)]},
     "MI": {"nD": [(156, 20.0)]},
 }
-# TODO there are lots more problems with nD (daily) showing as <0.
+# TODO FUTURE there are lots more problems with nD (daily) showing as <0.
 # - t=218 is big such case for NY
 
 # Most states outbreaks start around calendard day 90. Some are significantly earlier or later
@@ -51,6 +52,7 @@ EARLY_OUTBREAK_START_DAY_BY_STATE = {
     "VA": 95,
     "WI": 97,
     "WV": 95,
+    # TODO address VI that seems to not work and make this globally usable data
 }
 
 
@@ -65,15 +67,15 @@ class HistoricalData:
         [
             "date",
             "state",
-            "aggregate_level",
+            "aggregate_level",  # state, country or metropolitan area
             "cases",
-            "deaths",
-            "positive_tests",
-            "negative_tests",
+            "deaths",  # totals need to delta for daily
+            "positive_tests",  # total, delta is new cases
+            "negative_tests",  # total, delta used for positivity
             "current_hospitalized",
             # "hospital_beds_in_use_any",
             # "contact_tracers_count",
-            "Rt_MAP_composite",
+            "Rt_MAP_composite",  # Bettencourt R(t)
         ]
     ]
     ref_date = datetime(2020, 1, 1)
@@ -190,7 +192,14 @@ class ForecastData:
     """
 
     raw = pd.read_csv(FORECAST_DATA_FILE, parse_dates=["date"])
-    data = raw[["fips", "date", "weekly_new_cases_0.5", "weekly_new_deaths_0.5",]]
+    data = raw[
+        [
+            "fips",
+            "date",
+            "weekly_new_cases_0.5",  # 50% confidence from many inputs
+            "weekly_new_deaths_0.5",  # 50% confidence from many inputs,
+        ]
+    ]
 
     data = data[data["fips"] < 100]
     ref_date = datetime(2020, 1, 1)
