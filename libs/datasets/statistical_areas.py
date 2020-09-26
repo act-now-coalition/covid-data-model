@@ -28,7 +28,7 @@ class CountyToCBSAAggregator:
             pd.concat(
                 [
                     self._aggregate_fips_df(dataset_in.data_with_fips, groupby_date=True),
-                    # No need to reset latest_data LOCATION_ID index because FIPS is used.
+                    # No need to reset latest_data_with_fips LOCATION_ID index because FIPS is used.
                     self._aggregate_fips_df(dataset_in.latest_data_with_fips, groupby_date=False),
                 ]
             )
@@ -44,6 +44,11 @@ class CountyToCBSAAggregator:
             dtype={"FIPS State Code": str, "FIPS County Code": str},
         )
         df[CommonFields.FIPS] = df["FIPS State Code"] + df["FIPS County Code"]
+        df = df.loc[df[CommonFields.FIPS].notna(), :]
+
+        dups = df.duplicated(CommonFields.FIPS, keep=False)
+        if dups.any():
+            raise ValueError(f"Duplicate FIPS:\n{df.loc[dups, CommonFields.FIPS]}")
 
         county_map = df.set_index(CommonFields.FIPS)["CBSA Code"].to_dict()
 

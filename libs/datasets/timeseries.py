@@ -410,6 +410,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         # DataFrames are expected to have all their data in columns and a nameless index.
         assert timeseries_df.index.names == [None]
         assert latest_df.index.names == [None]
+        assert CommonFields.LOCATION_ID in timeseries_df.columns
+        assert CommonFields.LOCATION_ID in latest_df.columns
 
         # test_top_level_metrics_basic depends on some empty columns being preserved in the
         # MultiRegionTimeseriesDataset so don't call dropna in this method.
@@ -482,8 +484,10 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def __post_init__(self):
         # Some integrity checks
         assert CommonFields.LOCATION_ID in self.data.columns
-        assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
         assert self.data[CommonFields.LOCATION_ID].notna().all()
+        assert self.data.index.is_unique
+        assert self.data.index.is_monotonic_increasing
+        assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
@@ -545,7 +549,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         combined = self.combined_df
         assert combined[CommonFields.LOCATION_ID].notna().all()
         common_df.write_csv(
-            combined, path, structlog.get_logger(), TimeseriesDataset.COMMON_INDEX_FIELDS
+            combined, path, structlog.get_logger(), [CommonFields.LOCATION_ID, CommonFields.DATE]
         )
         if self.provenance is not None:
             provenance_path = str(path).replace(".csv", "-provenance.csv")

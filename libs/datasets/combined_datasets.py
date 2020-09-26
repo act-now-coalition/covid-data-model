@@ -185,6 +185,9 @@ def _build_data_and_provenance(
     for df in dataframes[1:]:
         assert index_names == df.index.names
         new_index = new_index.union(df.index)
+    new_index = new_index.unique().sort_values()
+    assert new_index.is_unique
+    assert new_index.is_monotonic_increasing
     # The following is a failed attempt at a performance optimization. The merge operation spends most of its
     # time boxing datetime values, something that in theory doesn't need to happen for an DatetimeIndex but
     # I've been unable to make that happen when the datetimes are part of a MultiIndex.
