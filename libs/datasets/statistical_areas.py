@@ -30,7 +30,8 @@ class CountyToCBSAAggregator:
                     self._aggregate_fips_df(dataset_in.data_with_fips, groupby_date=True),
                     # No need to reset latest_data_with_fips LOCATION_ID index because FIPS is used.
                     self._aggregate_fips_df(dataset_in.latest_data_with_fips, groupby_date=False),
-                ]
+                ],
+                ignore_index=True,
             )
         )
 

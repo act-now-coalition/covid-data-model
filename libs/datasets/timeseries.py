@@ -489,6 +489,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         assert self.data.index.is_monotonic_increasing
         assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
 
+    def merge(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
+        return MultiRegionTimeseriesDataset.from_dataframes(
+            pd.concat([self.data, other.data], ignore_index=True),
+            pd.concat(
+                [self.latest_data.reset_index(), other.latest_data.reset_index()], ignore_index=True
+            ),
+        )
+
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
         try:
@@ -523,7 +531,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             provenance = None
 
         return MultiRegionTimeseriesDataset.from_combined_dataframe(
-            pd.concat([ts_df, latest_df]), provenance=provenance
+            pd.concat([ts_df, latest_df], ignore_index=True), provenance=provenance
         )
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
