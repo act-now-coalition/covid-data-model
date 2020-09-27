@@ -4,6 +4,8 @@ from typing import Any
 from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
 import functools
 import pathlib
+from typing import Optional
+
 import pandas as pd
 import structlog
 
@@ -37,6 +39,12 @@ from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
 _log = structlog.get_logger()
+
+
+class RegionLatestNotFound(IndexError):
+    """Requested region's latest values not found in combined data"""
+
+    pass
 
 
 FeatureDataSourceMap = NewType(
@@ -114,21 +122,15 @@ def load_us_timeseries_dataset(
 @functools.lru_cache(None)
 def load_us_latest_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
-    before: str = None,
-    previous_commit: bool = False,
-    commit: str = None,
 ) -> latest_values_dataset.LatestValuesDataset:
-
     filename = dataset_pointer.form_filename(DatasetType.LATEST)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
+    return pointer.load_dataset()
 
 
-def get_us_latest_for_fips(fips) -> dict:
-    """Gets latest values for a given state or county fips code."""
-    us_latest = load_us_latest_dataset()
-    return us_latest.get_record_for_fips(fips)
+def get_county_name(region: Region) -> Optional[str]:
+    return load_us_latest_dataset().get_record_for_fips(region.fips)[CommonFields.COUNTY]
 
 
 def build_from_sources(
@@ -298,6 +300,8 @@ class RegionalData:
 
         us_latest = load_us_latest_dataset()
         region_latest = us_latest.get_record_for_fips(region.fips)
+        if not region_latest:
+            raise RegionLatestNotFound(region)
 
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)
@@ -316,3 +320,9 @@ class RegionalData:
         if county:
             return f"{county}, {state}"
         return state
+
+
+def get_subset_regions(exclude_county_999: bool, **kwargs) -> List[Region]:
+    us_latest = load_us_latest_dataset()
+    us_subset = us_latest.get_subset(exclude_county_999=exclude_county_999, **kwargs)
+    return [Region.from_fips(fips) for fips in us_subset.data[CommonFields.FIPS].unique()]

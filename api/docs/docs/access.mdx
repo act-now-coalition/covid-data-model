@@ -1,0 +1,72 @@
+---
+id: access
+title: Accessing the API
+---
+import SignupForm from '@site/src/components/SignupForm';
+
+<SignupForm />
+
+
+## Examples
+
+### State summary data CSV
+
+A CSV file containing the latest data and metrics for all states.
+
+```
+https://api.covidactnow.org/v2/states.csv?apiKey={apiKey}
+```
+
+[More details](/api#tag/State-Data/paths/~1states.csv?apiKey={apiKey}/get)
+
+### County summary data CSV
+
+A CSV file containing the latest data and metrics for all counties.
+
+```
+https://api.covidactnow.org/v2/counties.csv?apiKey={apiKey}
+```
+
+[More details](/api#tag/County-Data/paths/~1counties.csv?apiKey={apiKey}/get)
+
+### Historical data for all states
+
+A json file containing timeseries data for all states.
+
+```bash
+https://api.covidactnow.org/v2/states.timeseries.json?apiKey={apiKey}
+```
+
+[More details](/api#tag/State-Data/paths/~1states.timeseries.json?apiKey={apiKey}/get)
+
+### Historical data for all counties
+
+A json file containing timeseries data for all counties.
+
+```bash
+https://api.covidactnow.org/v2/counties.timeseries.json?apiKey={apiKey}
+```
+
+[More details](/api#tag/County-Data/paths/~1counties.timeseries.json?apiKey={apiKey}/get)
+
+
+### Specific state or county summary and timeseries data
+
+You can also query data for a specific state or county.
+
+```bash
+# Historical county data
+https://api.covidactnow.org/v2/county/{fips}.timeseries.json?apiKey={apiKey}
+
+# Summary of latest county data
+https://api.covidactnow.org/v2/county/{fips}.json?apiKey={apiKey}
+
+# Historical state data
+https://api.covidactnow.org/v2/state/{state}.timeseries.json?apiKey={apiKey}
+
+# Summary of latest state data
+https://api.covidactnow.org/v2/state/{state}.json?apiKey={apiKey}
+```
+
+
+For full documentation of available endpoints, refer to the [API Reference](/api).

@@ -81,7 +81,7 @@ class DataSource(object):
     @lru_cache(None)
     def latest_values(self) -> LatestValuesDataset:
         if set(self.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
-            return LatestValuesDataset(self.timeseries().latest_values())
+            return self.timeseries().latest_values_object()
 
         if set(self.INDEX_FIELD_MAP.keys()) != set(LatestValuesDataset.INDEX_FIELDS):
             raise ValueError("Index fields must match")

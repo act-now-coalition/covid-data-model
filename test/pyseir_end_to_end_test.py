@@ -31,7 +31,7 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         assert path.exists()
         output = CANPyseirLocationOutput.load_from_path(path)
 
-        latest = combined_datasets.get_us_latest_for_fips(fips)
+        latest = combined_datasets.load_us_latest_dataset().get_record_for_fips(fips)
         timeseries = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
         summary = generate_api.generate_region_summary(latest, None, output)
         timeseries_output = generate_api.generate_region_timeseries(summary, timeseries, [], output)
@@ -42,6 +42,19 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         assert len(with_values) > 10
         assert (with_values > 0).all()
         assert (with_values < 6).all()
+
+
+@pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
+@pytest.mark.slow
+def test_pyseir_end_to_end_dc(tmp_path):
+    # Runs over a single state which tests state filtering + running over more than
+    # a single fips.
+    with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
+        region = Region.from_state("DC")
+        pipelines = cli._build_all_for_states(states=["DC"])
+        # Checking to make sure that build all for states properly filters and only
+        # returns DC data
+        assert len(pipelines) == 2
 
 
 @pytest.mark.filterwarnings("error")

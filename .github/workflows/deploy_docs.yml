@@ -13,16 +13,17 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: '12.x'
-      - run: cd api/docs
       - run: yarn install
+        working-directory: api/docs
       - run: yarn build
+        working-directory: api/docs
       - uses: jakejarvis/s3-sync-action@master
         with:
-# We don't pass --delete so outdated assets will continue to be served. This ensures browsers with
-# cached html files can still fetch the JS assets referred to.
+          # We don't pass --delete so outdated assets will continue to be served. This ensures browsers with
+          # cached html files can still fetch the JS assets referred to.
           args: --acl public-read --follow-symlinks
         env:
           AWS_S3_BUCKET: 'apidocs.covidactnow.org'
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          SOURCE_DIR: 'build/'      # optional: defaults to entire repository
+          SOURCE_DIR: 'api/docs/build/'      # optional: defaults to entire repository

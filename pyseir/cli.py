@@ -14,6 +14,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
 from libs import pipeline
+from libs.datasets import AggregationLevel
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
@@ -95,6 +96,7 @@ class SubStateRegionPipelineInput:
     def build_all(
         state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
         fips: Optional[str] = None,
+        states: Optional[List[str]] = None,
     ) -> List["SubStateRegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
@@ -104,11 +106,11 @@ class SubStateRegionPipelineInput:
             infer_rt_regions = {pipeline.Region.from_fips(fips)}
         else:  # Default to the full infection rate whitelist
             infer_rt_regions = {
-                pipeline.Region.from_fips(x)
-                for x in combined_datasets.load_us_latest_dataset().all_fips
-                if len(x) == 5
-                and "25" != x[:2]  # Counties only  # Masking MA Counties (2020-08-27) due to NaNs
-                and "999" != x[-3:]  # Remove placeholder fips that have no data
+                *combined_datasets.get_subset_regions(
+                    aggregation_level=AggregationLevel.COUNTY,
+                    exclude_county_999=True,
+                    states=states,
+                )
             }
         # Now calculate the pyseir dependent whitelist
         whitelist_df = _generate_whitelist()
@@ -259,7 +261,9 @@ def _build_all_for_states(
     if states_only:
         return state_pipelines
 
-    substate_inputs = SubStateRegionPipelineInput.build_all(state_fitter_map, fips=fips)
+    substate_inputs = SubStateRegionPipelineInput.build_all(
+        state_fitter_map, fips=fips, states=states
+    )
 
     with Pool(maxtasksperchild=1) as p:
         root.info(f"executing pipeline for {len(substate_inputs)} counties")

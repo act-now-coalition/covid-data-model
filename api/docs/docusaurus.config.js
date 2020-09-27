@@ -3,7 +3,9 @@ module.exports = {
   tagline: "API Documentation",
   url: "https://apidocs.covidactnow.org",
   baseUrl: "/",
-  
+  customFields: {
+    registerUrl: "https://api.covidactnow.org/v2/register"
+  },
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
   organizationName: "covid-projections", // Usually your GitHub org/user name.
@@ -22,7 +24,7 @@ module.exports = {
         {
           to: "/",
           activeBaseRegex: "/(?!(api))",
-          label: "Guide",
+          label: "General Info",
           position: "left",
         },
         {
@@ -72,12 +74,12 @@ module.exports = {
           title: "More",
           items: [
             {
-              label: "Blog",
-              href: "https://blog.covidactnow.org/",
+              label: "Covid Act Now Website",
+              href: "https://covidactnow.org",
             },
             {
-              label: "Covid Act Now",
-              href: "https://covidactnow.org",
+              label: "Covid Act Now Blog",
+              href: "https://blog.covidactnow.org/",
             },
           ],
         },

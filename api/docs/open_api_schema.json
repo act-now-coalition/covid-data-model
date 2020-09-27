@@ -2,17 +2,17 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Covid Act Now API",
-    "description": "\nAPI v2 is currently in beta.  While it does not currently require\nauthentication, an API key will be required soon.\n",
+    "description": "\nThe Covid Act Now API provides historical covid projections updated daily.\n",
     "version": "v2.0.0-beta.1"
   },
   "servers": [
     {
-      "url": "https://data.covidactnow.org/latest/v2",
+      "url": "https://api.covidactnow.org/v2",
       "description": "Latest available data"
     }
   ],
   "paths": {
-    "/county/{fips}.json": {
+    "/county/{fips}.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -46,10 +46,22 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
-    "/county/{fips}.timeseries.json": {
+    "/county/{fips}.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -83,10 +95,22 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
-    "/state/{state}.json": {
+    "/state/{state}.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "State Data"
@@ -120,10 +144,22 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
-    "/state/{state}.timeseries.json": {
+    "/state/{state}.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "State Data"
@@ -157,15 +193,27 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
-    "/states.json": {
+    "/states.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "State Data"
         ],
-        "summary": "All states summary",
+        "summary": "All states summary (json)",
         "description": "Region Summaries for all states",
         "responses": {
           "200": {
@@ -181,9 +229,58 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "/states.timeseries.json": {
+    "/states.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "State Data"
+        ],
+        "summary": "All states summary (csv)",
+        "description": "Region Summaries for all states",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/states.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "State Data"
@@ -204,9 +301,22 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "/counties.json": {
+    "/counties.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -227,9 +337,22 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "/counties.csv": {
+    "/counties.csv?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -242,7 +365,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
               }
             }
@@ -250,9 +373,22 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "/counties.timeseries.json": {
+    "/counties.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
           "County Data"
@@ -273,11 +409,33 @@
         },
         "deprecated": false
       },
-      "parameters": []
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     }
   },
   "components": {
     "schemas": {
+      "AggregationLevel": {
+        "title": "AggregationLevel",
+        "enum": [
+          "country",
+          "state",
+          "county"
+        ],
+        "description": "An enumeration."
+      },
       "CovidPatientsMethod": {
         "title": "CovidPatientsMethod",
         "enum": [
@@ -323,110 +481,6 @@
           }
         },
         "description": "Details about how the ICU Headroom Metric was calculated."
-      },
-      "MetricsTimeseriesRowWithHeader": {
-        "title": "MetricsTimeseriesRowWithHeader",
-        "required": [
-          "date",
-          "state",
-          "fips",
-          "lastUpdatedDate"
-        ],
-        "type": "object",
-        "properties": {
-          "testPositivityRatio": {
-            "title": "Testpositivityratio",
-            "type": "number",
-            "description": "Ratio of people who test positive calculated using a 7-day rolling average."
-          },
-          "caseDensity": {
-            "title": "Casedensity",
-            "type": "number",
-            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
-          },
-          "contactTracerCapacityRatio": {
-            "title": "Contacttracercapacityratio",
-            "type": "number",
-            "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average."
-          },
-          "infectionRate": {
-            "title": "Infectionrate",
-            "type": "number",
-            "description": "R_t, or the estimated number of infections arising from a typical case."
-          },
-          "infectionRateCI90": {
-            "title": "Infectionrateci90",
-            "type": "number",
-            "description": "90th percentile confidence interval upper endpoint of the infection rate."
-          },
-          "icuHeadroomRatio": {
-            "title": "Icuheadroomratio",
-            "type": "number"
-          },
-          "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
-          },
-          "date": {
-            "title": "Date",
-            "type": "string",
-            "description": "Date of timeseries data point",
-            "format": "date"
-          },
-          "country": {
-            "title": "Country",
-            "type": "string",
-            "default": "US"
-          },
-          "state": {
-            "title": "State",
-            "type": "string",
-            "description": "The state name"
-          },
-          "county": {
-            "title": "County",
-            "type": "string",
-            "description": "The county name"
-          },
-          "fips": {
-            "title": "Fips",
-            "type": "string",
-            "description": "Fips for State + County. Five character code"
-          },
-          "lat": {
-            "title": "Lat",
-            "type": "number",
-            "description": "Latitude of point within the state or county"
-          },
-          "long": {
-            "title": "Long",
-            "type": "number",
-            "description": "Longitude of point within the state or county"
-          },
-          "lastUpdatedDate": {
-            "title": "Lastupdateddate",
-            "type": "string",
-            "description": "Date of latest data",
-            "format": "date"
-          }
-        },
-        "description": "Prediction timeseries row with location information."
-      },
-      "AggregateFlattenedTimeseries": {
-        "title": "AggregateFlattenedTimeseries",
-        "type": "array",
-        "items": {
-          "$ref": "#/components/schemas/MetricsTimeseriesRowWithHeader"
-        },
-        "description": "Flattened prediction timeseries data for multiple regions."
-      },
-      "AggregationLevel": {
-        "title": "AggregationLevel",
-        "enum": [
-          "country",
-          "state",
-          "county"
-        ],
-        "description": "An enumeration."
       },
       "Metrics": {
         "title": "Metrics",
@@ -552,6 +606,7 @@
           "state",
           "level",
           "population",
+          "actuals",
           "lastUpdatedDate"
         ],
         "type": "object",
@@ -733,6 +788,7 @@
           "state",
           "level",
           "population",
+          "actuals",
           "lastUpdatedDate",
           "actualsTimeseries"
         ],
@@ -813,6 +869,14 @@
           "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
         },
         "description": "Timeseries and summary data for multiple regions."
+      }
+    },
+    "securitySchemes": {
+      "API Key": {
+        "type": "apiKey",
+        "description": "\nAn API key is required.\n\nRegister for an API key [here](/getting-started/access).\n    ",
+        "name": "apiKey",
+        "in": "query"
       }
     }
   },

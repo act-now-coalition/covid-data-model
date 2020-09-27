@@ -21,6 +21,7 @@ from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
 from libs.datasets.dataset_utils import DatasetType
+from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 
@@ -136,6 +137,9 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             .reset_index(CommonFields.FIPS)
             .reset_index(drop=True)
         )
+
+    def latest_values_object(self) -> LatestValuesDataset:
+        return LatestValuesDataset(self.latest_values())
 
     def get_date_columns(self) -> pd.DataFrame:
         """Create a DataFrame with a row for each FIPS-variable timeseries and hierarchical columns.
@@ -316,14 +320,23 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     # `data` may be used to process every row without considering the date or region. Keep logic about
     # FIPS/location_id/region containing in this class by using methods such as `get_one_region`. Do
-    # *not* read date or region related columns directly from `data`.
+    # *not* read date or region related columns directly from `data`. `data_with_fips` exists so we can
+    # easily find code that reads the FIPS column.
+    # `data` contains columns from CommonFields and simple integer index. DATE and LOCATION_ID must
+    # be non-null in every row.
     data: pd.DataFrame
 
+    # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and 'variable'.
     provenance: Optional[pd.Series] = None
 
     @property
     def dataset_type(self) -> DatasetType:
         return DatasetType.MULTI_REGION
+
+    @property
+    def data_with_fips(self) -> pd.DataFrame:
+        """data with FIPS column, use `data` when FIPS is not need."""
+        return self.data
 
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
@@ -343,11 +356,13 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         _add_location_id(df)
 
         if ts.provenance is not None:
+            # Check that current index is as expected. Names will be fixed after remapping, below.
             assert ts.provenance.index.names == [CommonFields.FIPS, "variable"]
             provenance = ts.provenance.copy()
             provenance.index = provenance.index.map(
                 lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
             )
+            provenance.index.rename([CommonFields.LOCATION_ID, "variable"], inplace=True)
         else:
             provenance = None
 

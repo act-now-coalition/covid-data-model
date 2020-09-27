@@ -33,6 +33,7 @@ state_parameter = {
 class APIEndpoint:
 
     endpoint: str
+
     parameters: List[dict]
     tags: List[str]
     description: str
@@ -40,9 +41,20 @@ class APIEndpoint:
     schema_cls: pydantic.BaseModel
 
     @property
+    def endpoint_with_auth(self):
+        return self.endpoint + "?apiKey={apiKey}"
+
+    @property
     def open_api_data(self):
+        security = {
+            "name": "apiKey",
+            "in": "query",
+            "required": True,
+            "schema": {"type": "string"},
+        }
+        parameters = self.parameters + [security]
         return {
-            "parameters": self.parameters,
+            "parameters": parameters,
             "get": {
                 "summary": self.summary,
                 "description": self.description,
@@ -104,7 +116,15 @@ ALL_STATE_SUMMARY = APIEndpoint(
     parameters=[],
     tags=[STATE_TAG],
     description="Region Summaries for all states",
-    summary="All states summary",
+    summary="All states summary (json)",
+    schema_cls=can_api_v2_definition.AggregateRegionSummary,
+)
+ALL_STATE_SUMMARY_CSV = APIEndpoint(
+    endpoint="/states.csv",
+    parameters=[],
+    tags=[STATE_TAG],
+    description="Region Summaries for all states",
+    summary="All states summary (csv)",
     schema_cls=can_api_v2_definition.AggregateRegionSummary,
 )
 ALL_STATE_TIMESERIES = APIEndpoint(
@@ -130,7 +150,7 @@ ALL_COUNTY_SUMMARY_CSV = APIEndpoint(
     tags=[COUNTY_TAG],
     description="Region Summaries for all counties",
     summary="All counties summary (csv)",
-    schema_cls=can_api_v2_definition.AggregateFlattenedTimeseries,
+    schema_cls=can_api_v2_definition.AggregateRegionSummary,
 )
 ALL_COUNTY_TIMESERIES = APIEndpoint(
     endpoint="/counties.timeseries.json",
@@ -148,6 +168,7 @@ ALL_ENDPOINTS = [
     STATE_SUMMARY,
     STATE_TIMESERIES,
     ALL_STATE_SUMMARY,
+    ALL_STATE_SUMMARY_CSV,
     ALL_STATE_TIMESERIES,
     ALL_COUNTY_SUMMARY,
     ALL_COUNTY_SUMMARY_CSV,
@@ -157,9 +178,14 @@ ALL_ENDPOINTS = [
 
 def construct_open_api_spec() -> OpenAPI:
     api_description = """
-API v2 is currently in beta.  While it does not currently require
-authentication, an API key will be required soon.
+The Covid Act Now API provides historical covid projections updated daily.
 """
+
+    api_key_description = """
+An API key is required.
+
+Register for an API key [here](/getting-started/access).
+    """
     spec = OpenAPI.parse_obj(
         {
             "info": {
@@ -175,12 +201,21 @@ authentication, an API key will be required soon.
                 },
             ],
             "servers": [
-                {
-                    "url": "https://data.covidactnow.org/latest/v2",
-                    "description": "Latest available data",
-                }
+                {"url": "https://api.covidactnow.org/v2", "description": "Latest available data",}
             ],
-            "paths": {endpoint.endpoint: endpoint.open_api_data for endpoint in ALL_ENDPOINTS},
+            "paths": {
+                endpoint.endpoint_with_auth: endpoint.open_api_data for endpoint in ALL_ENDPOINTS
+            },
+            "components": {
+                "securitySchemes": {
+                    "API Key": {
+                        "type": "apiKey",
+                        "in": "query",
+                        "name": "apiKey",
+                        "description": api_key_description,
+                    }
+                }
+            },
         }
     )
     return construct_open_api_with_schema_class(spec)
