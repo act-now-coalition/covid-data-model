@@ -17,7 +17,7 @@ from pyseir.models.historical_data import HistoricalData, adjust_rt_to_match_cas
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
 
-MAKE_PLOTS = False  # Change to true to generate plots
+MAKE_PLOTS = True  # Change to true to generate plots
 
 
 def make_tlist(num_days):
@@ -136,7 +136,7 @@ def run_stationary(rt, median_age, t_over_x, x_is_new_cases=True):
             testing_rate_f=lambda t: t_over_x * x_fixed,
             rt_f=lambda t: rt,
             case_median_age_f=lambda t: median_age,
-            nC_initial=x_fixed,
+            initial_compartments={"nC": x_fixed},
             force_stationary=True,
         )
     else:
@@ -148,7 +148,7 @@ def run_stationary(rt, median_age, t_over_x, x_is_new_cases=True):
             testing_rate_f=lambda t: t_over_x * x_fixed,
             rt_f=lambda t: rt,
             case_median_age_f=lambda t: median_age,
-            I_initial=x_fixed,
+            initial_compartments={"I": x_fixed},
             force_stationary=True,
         )
 

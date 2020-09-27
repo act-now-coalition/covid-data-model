@@ -6,7 +6,7 @@ from typing import List, Tuple
 from scipy.interpolate import InterpolatedUnivariateSpline
 import matplotlib.pyplot as plt
 
-from pyseir.models.demographics import Demographics, Transitions
+from pyseir.models.demographics import Transitions
 
 
 def ramp_function(t_list, start_value, end_value):
@@ -78,7 +78,7 @@ class NowcastingSEIRModel:
         self,
         # ____________These are (to be) trained factors that are passed in___________
         median_age=None,
-        # TODO simplify - not using linear ramp for either of these anywhere
+        # not using linear ramp currently but keeping to be future proof
         lr_fh=(0.74, 0.0),  # geometric mean of all states
         lr_fd=(0.85, 0.0),  # geometric mean of all states
         delay_ci_h=0,  # added days of delay between infection and hospitalization
@@ -154,7 +154,7 @@ class NowcastingSEIRModel:
                 testing_rate_f=lambda t: t_over_x * x_fixed,
                 rt_f=lambda t: rt,
                 case_median_age_f=lambda t: median_age,
-                nC_initial=x_fixed,
+                initial_compartments={"nC": x_fixed},
                 force_stationary=True,
             )
         else:
@@ -166,7 +166,7 @@ class NowcastingSEIRModel:
                 testing_rate_f=lambda t: t_over_x * x_fixed,
                 rt_f=lambda t: rt,
                 case_median_age_f=lambda t: median_age,
-                I_initial=x_fixed,
+                initial_compartments={"I": x_fixed},
                 force_stationary=True,
             )
 
@@ -353,32 +353,37 @@ class ModelRun:
         model,
         N,  # population of the jurisdiction
         t_list,  # array of days
-        #### Time varying inputs needed into the future
-        testing_rate_f,  # tests per day assumed for the future
-        rt_f,  # instead of suppression_policy, R0
-        # TODO option to provide smoothed cases directly
-        case_median_age_f=None,
-        # case_fraction_traceable_f=None,
-        # test_processing_delay_f=None,
-        test_positivity_f=None,
+        #### Time varying inputs needed into the future - all as functions of t
+        testing_rate_f,  # tests per day
+        rt_f,  # R(t) per day in future and also recent past in some cases
+        case_median_age_f=None,  # Median age of new cases
+        test_positivity_f=None,  # Test positivity fraction
         #### Initial conditions of major observables
-        I_initial=None,  # initial infected
-        nC_initial=None,
-        S_initial=None,
-        nD_initial=None,
-        H_initial=None,
         initial_compartments=None,  # use this OR the next one
-        historical_compartments=None,  # use this OR the previous one - TODO explain why this is here
+        historical_compartments=None,  # use this OR the previous one
         compartment_ratios_initial=None,
-        # hospitalizations_threshold=None,  # At which point mortality starts to increase due to constrained resources
-        # Observable compartments to be eventually used in further constraining the model
-        # observed_compartment_history=None,
         #### Optional controls for how the model run operates
         force_stationary=False,  # if True susceptible will be pinned to N
-        auto_initialize_other_compartments=False,
-        auto_calibrate=False,
-        today=None,
+        auto_initialize_other_compartments=False,  # not all supplied, use stationary run to derive others
+        auto_calibrate=False,  # adjust transition fractions so model H, nD exactly match at t_list[0]
+        today=None,  # Not used yet - assumed is t_list[0] but keep for future
     ):
+        """
+        Most common usage is to supply at N, t_list, rt_f, case_median_age_f (big impact on H,nD transitions),
+        initial_compartments with auto_initialize_other_compartments and auto_calibrate both True
+        
+        Initialization does not cause the ModelRun to start. One of the execute_* methods should be used for
+        that purpose.
+
+        Note that either historical_compartments (today and into the past) or initial_compartments (just today)
+        can be specified. When supplied historial compartments are used to initialize initial compartments (for 
+        t = first day in t_list). They are also included in charts if provided (useful for tests).
+
+        TODO FUTURE other features to consider in the future:
+        - case_fraction_traceable_f - fraction of cases that are traced
+        - test_processing_delay_f - delay in processing tests
+        - hospitalizations_threshold - At which point mortality starts to increase due to constrained resources
+        """
         self.model = model
         self.N = N
         self.t_list = t_list
@@ -407,6 +412,8 @@ class ModelRun:
             nC_initial = ic["nC"] if "nC" in ic else None
             H_initial = ic["H"] if "H" in ic else None
             nD_initial = ic["nD"] if "nD" in ic else None
+        else:
+            assert False, "Must supply one of inital_compartments or historical_compartments"
 
         if auto_initialize_other_compartments:
             x = nC_initial if nC_initial is not None else I_initial
@@ -442,7 +449,6 @@ class ModelRun:
 
         if self.compartment_ratios_initial is not None:
             y0 = ModelRun.array_to_dict(self.history[0])
-            # TODO do the same for compartments
             if y0["nC"] > 0.0:  # starting from all compartments scaled
                 factor = y0["nC"] / self.compartment_ratios_initial[4]  # cases
             else:
@@ -492,7 +498,8 @@ class ModelRun:
                 y_accum.append(y)
             start_main = today
 
-            # TODO calculate and apply adjustments
+            # TODO FUTURE calculate and apply adjustments, without this currently only works if
+            # today = t_list[0]. Leaving this in case needed in the future
         else:
             start_main = self.t_list[0]
 
@@ -511,7 +518,7 @@ class ModelRun:
             y = list(y)
             dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
 
-            # TODO add incident hospitalizations
+            # TODO add incident hospitalizations (nH) as needed downstream
             (dS, dE, dI, dW, nC, dC, dH, dD, dR, b) = dy
             y_new = [max(0.1, a + b) for a, b in zip(y, dy)]
             # do not accumulate daily new cases, deaths or beta
@@ -560,16 +567,15 @@ class ModelRun:
                         smape_count += 1
             y_accum.append(y)
 
+        # Run level summary ratios (summary or for last t value)
         smape = smape_sum / smape_count if calculating_smape else 0.0
-        r_T_I = (
-            self.testing_rate_f(t) / I if self.testing_rate_f is not None else 100.0
-        )  # Test rate divided by infected not yet found (new, left overs)
-        pos = self.model.positivity(r_T_I)  # Assumed (TODO fit) test positivity that will result
+        r_T_I = self.testing_rate_f(t) / I if self.testing_rate_f is not None else 100.0
+        pos = self.model.positivity(r_T_I)
         exp_growth_factor = math.exp(
             (self.rt_f(self.t_list[-1]) - 1.0) / self.model.serial_period
         )  # Expected growth factor (in steady state) given injected R(t)
 
-        # TODO pivot results to return
+        # Returns tuple of daily results and useful summary ratios
         return (
             y_accum,
             {
@@ -646,9 +652,11 @@ class ModelRun:
         delayed_W = W / growth_over_delay
         delayed_I = I / growth_over_delay
 
-        # TODO this probably needs to be implicit to avoid instability which we are seeing
         # as thresholds in stiff function inv_positivity are crossed
         if implicit_infections:  # E,I,W,C are determined directly from C(t-1), R(t) and positivity
+            # TODO FUTURE investigate further whether this should be implicit time differencing
+            # to avoid numerical instability and improve people conservation
+
             # C(t), nC determined directly from C(t-1) and R(t)
             positive_tests = k_expected * nC
             dCdt = positive_tests - delayed_C / t_i
@@ -688,7 +696,6 @@ class ModelRun:
             positive_tests = tests_performed * model.positivity(
                 self.testing_rate_f(t) / max(I, 1.0)
             )
-            # TODO unstable if positive_tests < nC with k>0
 
             dEdt = number_exposed - E / t_e
             dCdt = positive_tests - delayed_C / t_i
@@ -768,8 +775,6 @@ class ModelRun:
             plt.scatter(hc["nC"].index, hc["nC"].values / 10.0, c="orange", marker=".")
             plt.scatter(hc["H"].index, hc["H"].values / 10.0, c="green", marker=".")
             plt.scatter(hc["nD"].index, hc["nD"].values, c="red", marker=".")
-
-        # TODO set scale
 
         if xlim:
             plt.xlim(*xlim)

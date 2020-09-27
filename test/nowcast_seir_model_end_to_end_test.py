@@ -36,7 +36,7 @@ from pyseir.models.historical_data import (
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
 
-MAKE_PLOTS = False  # Change to true to generate plots
+MAKE_PLOTS = True  # Change to true to generate plots
 
 
 def test_run_new_model_incrementally():
