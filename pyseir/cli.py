@@ -96,6 +96,7 @@ class SubStateRegionPipelineInput:
     def build_all(
         state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
         fips: Optional[str] = None,
+        states: Optional[List[str]] = None,
     ) -> List["SubStateRegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
@@ -105,11 +106,10 @@ class SubStateRegionPipelineInput:
             infer_rt_regions = {pipeline.Region.from_fips(fips)}
         else:  # Default to the full infection rate whitelist
             infer_rt_regions = {
-                combined_datasets.get_subset_regions(
+                *combined_datasets.get_subset_regions(
                     aggregation_level=AggregationLevel.COUNTY,
                     exclude_county_999=True,
-                    # Masking MA Counties (2020-08-27) due to NaNs
-                    exclude_fips_prefix="25",
+                    states=states,
                 )
             }
         # Now calculate the pyseir dependent whitelist
@@ -261,7 +261,9 @@ def _build_all_for_states(
     if states_only:
         return state_pipelines
 
-    substate_inputs = SubStateRegionPipelineInput.build_all(state_fitter_map, fips=fips)
+    substate_inputs = SubStateRegionPipelineInput.build_all(
+        state_fitter_map, fips=fips, states=states
+    )
 
     with Pool(maxtasksperchild=1) as p:
         root.info(f"executing pipeline for {len(substate_inputs)} counties")
