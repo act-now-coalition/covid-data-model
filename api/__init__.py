@@ -29,7 +29,8 @@ def find_public_model_classes(include_api_v2: bool = False) -> List[Type[base_mo
     # This allows us to then enumerate base_model.APIBaseModel.__subclasses__
     # to find all our model classes.
     root = pathlib.Path(__file__).parent
-    for path in root.rglob("*.py"):
+
+    for path in root.glob("*.py"):
         relative = path.relative_to(root.parent)
         module_name = str(relative).replace("\\", "/").replace("/", ".")[:-3]
 
