@@ -221,3 +221,63 @@ def test_multiregion_provenance():
     counties = out.get_counties(after=pd.to_datetime("2020-04-01"))
     assert "iso1:us#fips:03" not in counties.provenance.index
     assert counties.provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
+
+
+def _combined_sorted_by_location_date(ts: timeseries.MultiRegionTimeseriesDataset) -> pd.DataFrame:
+    """Returns the combined data, sorted by LOCATION_ID and DATE."""
+    return ts.combined_df.sort_values(
+        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+    )
+
+
+def _assert_combined_like(
+    ts1: timeseries.MultiRegionTimeseriesDataset, ts2: timeseries.MultiRegionTimeseriesDataset
+):
+    """Asserts that two datasets contain similar date, ignoring order."""
+    sorted1 = _combined_sorted_by_location_date(ts1)
+    sorted2 = _combined_sorted_by_location_date(ts2)
+    pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
+
+
+def test_merge():
+    ts_fips = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-03,Bar County,county,3,\n"
+            "iso1:us#fips:97222,2020-04-04,Foo County,county,,11\n"
+            "iso1:us#fips:97111,,Bar County,county,3,\n"
+            "iso1:us#fips:97222,,Foo County,county,,11\n"
+        )
+    )
+    ts_cbsa = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,3\n"
+            "iso1:us#cbsa:20200,2020-04-03,4\n"
+            "iso1:us#cbsa:10100,,3\n"
+            "iso1:us#cbsa:20200,,4\n"
+        )
+    )
+    # Check that merge is symmetric
+    ts_merged_1 = ts_fips.merge(ts_cbsa)
+    ts_merged_2 = ts_cbsa.merge(ts_fips)
+    _assert_combined_like(ts_merged_1, ts_merged_2)
+
+    ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
+            "iso1:us#cbsa:20200,2020-04-03,,,,4\n"
+            "iso1:us#cbsa:10100,,,,,3\n"
+            "iso1:us#cbsa:20200,,,,,4\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-03,Bar County,county,3,\n"
+            "iso1:us#fips:97222,2020-04-04,Foo County,county,,11\n"
+            "iso1:us#fips:97111,,Bar County,county,3,\n"
+            "iso1:us#fips:97222,,Foo County,county,,11\n"
+        )
+    )
+    _assert_combined_like(ts_merged_1, ts_expected)
