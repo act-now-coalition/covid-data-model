@@ -231,6 +231,7 @@
         "state",
         "level",
         "population",
+        "actuals",
         "lastUpdatedDate"
       ]
     }

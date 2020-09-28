@@ -47,7 +47,7 @@ def find_public_model_classes(include_api_v2: bool = False) -> List[Type[base_mo
     # To find all classes that may inherit from subclasses of APIBaseModel, we need to
     # recursively get subclasses.
     for subclass in _get_subclasses_recursively(base_model.APIBaseModel):
-        if subclass.__module__ == "api.can_api_v2_definition" and not include_api_v2:
+        if subclass.__module__ != "api.can_api_v2_definition":  #  and not include_api_v2:
             continue
         model_classes.append(subclass)
 

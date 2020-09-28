@@ -81,6 +81,7 @@
     "state",
     "level",
     "population",
+    "actuals",
     "lastUpdatedDate",
     "actualsTimeseries"
   ],
