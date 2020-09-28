@@ -11,7 +11,7 @@ from api.can_api_v2_definition import (
     RegionSummaryWithTimeseries,
 )
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 
 def _build_actuals(actual_data: dict) -> Actuals:
@@ -62,7 +62,7 @@ def build_region_summary(latest_values: dict, latest_metrics: Optional[Metrics],
 
 
 def build_region_timeseries(
-    region_summary: RegionSummary, timeseries: TimeseriesDataset, metrics_timeseries,
+    region_summary: RegionSummary, timeseries: OneRegionTimeseriesDataset, metrics_timeseries,
 ) -> RegionSummaryWithTimeseries:
     actuals_timeseries = []
 

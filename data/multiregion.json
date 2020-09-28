@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "293e31f74ba743d64149da045bdcf450e924bb1c",
-    "branch": "master",
+    "sha": "540dbbd3b37de4c122b4c188615ff57a37795939",
+    "branch": "tgb-timeseries-latest",
     "is_dirty": true
   },
-  "updated_at": "2020-09-28T11:57:14.829863"
+  "updated_at": "2020-09-28T18:34:11.503414"
 }

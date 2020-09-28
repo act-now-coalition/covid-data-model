@@ -49,7 +49,7 @@ def test_build_summary_for_fips(
 
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest_for_fips(
-        fips_timeseries, nyc_latest, model_output
+        fips_timeseries, model_output
     )
     assert latest_metric
     summary = generate_api.generate_region_summary(nyc_latest, latest_metric, model_output)
@@ -107,7 +107,7 @@ def test_generate_timeseries_for_fips(
     intervention = Intervention.OBSERVED_INTERVENTION
     model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest_for_fips(
-        nyc_timeseries, nyc_latest, model_output
+        nyc_timeseries, model_output
     )
 
     region_summary = generate_api.generate_region_summary(nyc_latest, latest_metric, model_output)
