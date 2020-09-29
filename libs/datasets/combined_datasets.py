@@ -130,7 +130,7 @@ def load_us_latest_dataset(
 
 
 def get_county_name(region: Region) -> Optional[str]:
-    return load_us_latest_dataset().get_record_for_fips(region.fips)[CommonFields.COUNTY]
+    return load_us_timeseries_dataset().get_one_region(region).latest[CommonFields.COUNTY]
 
 
 def build_from_sources(
@@ -185,6 +185,9 @@ def _build_data_and_provenance(
     for df in dataframes[1:]:
         assert index_names == df.index.names
         new_index = new_index.union(df.index)
+    new_index = new_index.unique().sort_values()
+    assert new_index.is_unique
+    assert new_index.is_monotonic_increasing
     # The following is a failed attempt at a performance optimization. The merge operation spends most of its
     # time boxing datetime values, something that in theory doesn't need to happen for an DatetimeIndex but
     # I've been unable to make that happen when the datetimes are part of a MultiIndex.
@@ -291,22 +294,17 @@ class RegionalData:
 
     region: Region
 
-    latest: Dict[str, Any]
-
     timeseries: OneRegionTimeseriesDataset
 
     @staticmethod
     def from_region(region: Region) -> "RegionalData":
-
-        us_latest = load_us_latest_dataset()
-        region_latest = us_latest.get_record_for_fips(region.fips)
-        if not region_latest:
-            raise RegionLatestNotFound(region)
-
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)
+        return RegionalData(region=region, timeseries=region_timeseries)
 
-        return RegionalData(region=region, latest=region_latest, timeseries=region_timeseries)
+    @property
+    def latest(self) -> Dict[str, Any]:
+        return self.timeseries.latest
 
     @property
     def population(self) -> int:

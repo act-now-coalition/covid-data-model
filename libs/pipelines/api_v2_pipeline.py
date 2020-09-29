@@ -91,7 +91,6 @@ def run_on_regions(
 
 def generate_metrics_and_latest(
     timeseries: OneRegionTimeseriesDataset,
-    latest: dict,
     rt_data: Optional[OneRegionTimeseriesDataset],
     icu_data: Optional[OneRegionTimeseriesDataset],
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
@@ -110,7 +109,7 @@ def generate_metrics_and_latest(
         return [], None
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, latest, rt_data, icu_data
+        timeseries, rt_data, icu_data
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
@@ -133,7 +132,7 @@ def build_timeseries_for_region(
     try:
         fips_timeseries = regional_input.timeseries
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
-            fips_timeseries, fips_latest, regional_input.rt_data, regional_input.icu_data
+            fips_timeseries, regional_input.rt_data, regional_input.icu_data
         )
         region_summary = build_api_v2.build_region_summary(fips_latest, metrics_latest)
         region_timeseries = build_api_v2.build_region_timeseries(

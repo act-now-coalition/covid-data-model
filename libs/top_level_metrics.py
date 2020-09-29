@@ -39,13 +39,13 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
 
 def calculate_metrics_for_timeseries(
     timeseries: OneRegionTimeseriesDataset,
-    latest: dict,
     rt_data: OneRegionTimeseriesDataset,
     icu_data: OneRegionTimeseriesDataset,
     require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
     assert timeseries.has_one_region()
+    latest = timeseries.latest
     fips = latest[CommonFields.FIPS]
     population = latest[CommonFields.POPULATION]
 

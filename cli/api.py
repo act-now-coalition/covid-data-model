@@ -74,11 +74,24 @@ def update_schemas(output_dir, update_readme):
     help="Path to open api schema path to save to.",
     default="api/docs/open_api_schema.json",
 )
-def update_v2_schemas(api_output_path):
+@click.option(
+    "--schemas-output-dir",
+    "-s",
+    type=pathlib.Path,
+    help="Output directory json-schema outputs.",
+    default="api/schemas_v2/",
+)
+def update_v2_schemas(api_output_path, schemas_output_dir):
     """Updates all public facing API schemas."""
     spec = update_open_api_spec.construct_open_api_spec()
     schema_out = spec.json(by_alias=True, exclude_none=True, indent=2)
     api_output_path.write_text(schema_out)
+
+    schemas = api.find_public_model_classes(api_v2=True)
+    for schema in schemas:
+        path = schemas_output_dir / f"{schema.__name__}.json"
+        _logger.info(f"Updating schema {schema} to {path}")
+        path.write_text(schema.schema_json(indent=2))
 
 
 @main.command()

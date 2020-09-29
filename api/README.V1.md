@@ -412,3 +412,4 @@ List of [RegionSummaryWithTimeseries](#RegionSummaryWithTimeseries)
 Flattened prediction timeseries data for multiple regions.
 
 List of [PredictionTimeseriesRowWithHeader](#PredictionTimeseriesRowWithHeader)
+
