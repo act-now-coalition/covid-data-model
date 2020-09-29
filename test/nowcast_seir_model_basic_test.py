@@ -17,7 +17,7 @@ from pyseir.models.historical_data import HistoricalData, adjust_rt_to_match_cas
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
 
-MAKE_PLOTS = True  # Change to true to generate plots
+MAKE_PLOTS = False  # Change to true to generate plots
 
 
 def make_tlist(num_days):
@@ -205,8 +205,8 @@ def test_historical_peaks_positivity_to_real_cfr():
     if not MAKE_PLOTS:
         return
     peaks = pd.read_csv("test/data/historical/historical_peaks.csv")
-    early_peaks = peaks[peaks["when"] == "Apr-May"]
-    late_peaks = peaks[peaks["when"] == "Jun-Jul"]
+    early_peaks = peaks[peaks["when"] == "Apr-May"].copy()
+    late_peaks = peaks[peaks["when"] == "Jun-Jul"].copy()
 
     early_peaks["adjusted"] = early_peaks["ratio_cases_to_deaths"] / 0.36
 

@@ -1,6 +1,4 @@
 import numpy as np
-import pandas as pd
-import math
 
 # TODO setup JAX instead of numpy
 # initial trials showed no real improvement, but I remain optimstic

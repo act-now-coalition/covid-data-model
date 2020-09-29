@@ -36,7 +36,7 @@ from pyseir.models.historical_data import (
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
 
-MAKE_PLOTS = True  # Change to true to generate plots
+MAKE_PLOTS = False  # Change to true to generate plots
 
 
 def test_run_new_model_incrementally():
@@ -107,8 +107,8 @@ def test_historical_peaks_positivity_to_real_cfr():
         return
 
     peaks = pd.read_csv("test/data/historical/historical_peaks.csv")
-    early_peaks = peaks[peaks["when"] == "Apr-May"]
-    late_peaks = peaks[peaks["when"] == "Jun-Jul"]
+    early_peaks = peaks[peaks["when"] == "Apr-May"].copy()
+    late_peaks = peaks[peaks["when"] == "Jun-Jul"].copy()
 
     early_peaks["adjusted"] = early_peaks["ratio_cases_to_deaths"] / 0.36
 
@@ -290,6 +290,7 @@ def test_historical_period_state_deaths_and_hospitalizations():
         fig.savefig(
             test_dir[when] / (f"test_random_state_calibrations_%s.pdf" % when), bbox_inches="tight"
         )
+        plt.close(fig)
 
         # Validate that accuracy of recent period state values is still beating the threshold
         if when == "recent":
@@ -375,6 +376,7 @@ def test_multiple_periods_for_select_states():
             fig.savefig(
                 TEST_OUTPUT_DIR / (f"test_multiple_periods_for_select_states_%s.pdf" % state)
             )
+            plt.close(fig)
 
 
 def test_reproduce_TX_late_peak():
@@ -574,6 +576,7 @@ def test_reproducing_forecast_deaths_from_cases():
             TEST_OUTPUT_DIR / (f"test_reproducing_forecast_deaths_from_cases_%s_run.pdf" % state),
             bbox_inches="tight",
         )
+        plt.close(fig)
 
         # Now compare results against forecasts and for continuity with actuals
         run_nd = results.nD
@@ -595,6 +598,7 @@ def test_reproducing_forecast_deaths_from_cases():
             / (f"test_reproducing_forecast_deaths_from_cases_%s_compare.pdf" % state),
             bbox_inches="tight",
         )
+        plt.close(fig)
 
 
 ############################### Obsolete tests below here ##############################

@@ -66,7 +66,7 @@ class NowcastingSEIRModel:
     
     The concept of running the Model has been split off into another class (ModelRun).
 
-    TODO FUTURE enhancements to consider:
+    TODO-FUTURE enhancements to consider:
     * Validate we have the right set of trainable (across results from all state) parameters exposed
     * Turn positivity back on and validate if it can contribute to improved accuracy
     """
@@ -126,6 +126,8 @@ class NowcastingSEIRModel:
         self.pos0 = 0.5  # max positivity for testing -> 0
         self.pos_c = 1.75
         self.pos_x0 = 2.0
+
+        # This values of b and d are solutions of
         self.pos_b = (3.0 * self.pos_x0 - self.pos_c) / (4.0 * self.pos_x0 ** 1.5)
         self.pos_d = self.pos_x0 ** 0.5 / 4.0 * (3.0 * self.pos_c - self.pos_x0)
 
@@ -138,10 +140,13 @@ class NowcastingSEIRModel:
 
     def run_stationary(self, rt, median_age, t_over_x, x_is_new_cases=True):
         """
-        TODO double check if it is I,C that are fixed or T over i,C and improve documentation here
-        Given R(t) and T/I or T/C run to steady state and return ratios of all compartments
+        Execute a ModelRun holding x = either I (infections) or nC (new cases) fixed and adjusting the
+        testing rate so that t_over_x is also kept a constant. All other factors are kept constant (including R(t))
+        
+        This as the effect of letting all the compartments "burn in" to the relative values that would be
+        realized after running for some time under "similar conditions" and is used in subsequent ModelRuns where
+        auto_initialize_other_compartments is used.
         """
-
         x_fixed = 1000.0
         num_days = 100
         t_list = np.linspace(0, num_days, num_days + 1)
@@ -178,20 +183,30 @@ class NowcastingSEIRModel:
 
     def positivity(self, t_over_i):
         """
+        This function controls how quickly new cases are found in those that are infected. This has a
+        significant effect on undercounting cases and having a high apparent H and nD rate because both C
+        and I (which is undetected) contribute.
+
         Test positivity as a function of x=T/I where T = testing rate / I = number of infected
-        This function should match two constraints
+        This function should satisfy the two limits below in order to be physically reasonable
             p(x) = .5 for x->0 (when very insufficient testing 50% of those tested will be positive)
             p(x) <~ 1/x for x-> infinity (almost all infections found as testing -> infinity)
-        To achieve this different functions are used (switching at x=x0) and the constants b and d
-        are solved for to ensure continuity of the function and its derivative across x0
+        
+        To achieve this different functions are used (switching at x= x0=2) and the constants b and d
+        are solved (see __init__ above) for to ensure continuity of the function and its
+        derivative across x0. More detail is offered in the Model #5 Overview document.
 
-        TODO more detail for Natasha
+        There is a broad class of functions that can satisfy the constraints above. This solution is
+        just "one of them".
+        TODO-FUTURE validate this function against the data and tweak it as necessary to get better
+        agreement in those points in time where positivity has been high and many actual cases have
+        gone uncounted (e.g. early in the pandemic).
         """
-        p = 0.5 / t_over_i
+        x = 0.5 / t_over_i
         if t_over_i < self.pos_x0:  # approaches .5 for x -> 0
-            p = p * (t_over_i - self.pos_b * t_over_i ** 1.5)
+            p = x * (t_over_i - self.pos_b * t_over_i ** 1.5)  # p = x - b * x^1.5
         else:  # approaches .875/x for x -> infinity
-            p = p * (self.pos_c - self.pos_d / t_over_i ** 0.5)
+            p = x * (self.pos_c - self.pos_d / t_over_i ** 0.5)  # p = c - d/x^.5
         return p
 
     def positivity_to_t_over_i(self, pos):
@@ -257,36 +272,11 @@ class ModelRun:
         (FUTURE) test_processing_delay - in days from time sample supplied to test result available
         (FUTURE) case_fraction_traceable - fraction of cases that have been traced to their source
 
-    TODO ensure the list of parameters is complete
-    Parameters
-    ----------
-    model: NowcastingSEIRModel
-        Run independent parts of the base Model - parts that will be trained generally ahead of time
-    N: int
-        Total population
-    t_list: int[]
-        Times relative to a reference date
-    rt_f: lambda(t)
-        instead of suppression_policy, R0
-        TODO FUTURE consider option to provide smoothed cases directly
-    testing_rate_f: lambda(t)
-        Testing rate
-    case_median_age_f: lambda(t)
-        Median age of people that test positive each day
-    today: int[]
-        Day that represents "today". Days before this day are treated as burn in for the run while those
-        after it are the "predictions" of the future. When this parameter is not supplied the whole
-        run is treated as in the future (today is the 1st day in t_list)
-    force_stationary: boolean
-        This run used to determine steady state compartment distributions to initialize another run.
-        If True compartments are adjusted on each timestep to keep S and one of (I, nC) constant
-    auto_initialize_other_compartments: boolean
-        Controls (primarily non observable) compartment initialization. If set this flag causes a run
-        with force_stationary to be run to derive steady state compartment values for initialization
-
-    TODO FUTURE better address restarting from a model run from yesterday
+    TODO-FUTURE better address restarting from a model run today which is not t_list[0]
     """
 
+    # Set of helper functions for converting back and forth between arrays, dataframes and dictionaries.
+    # TODO-FUTURE simplify by removing at least one of these data structures (probably array)
     @staticmethod
     def array_to_df(arr):
         df = pd.DataFrame(arr, columns=["S", "E", "I", "A", "nC", "C", "H", "nD", "R", "b"])
@@ -369,6 +359,44 @@ class ModelRun:
         today=None,  # Not used yet - assumed is t_list[0] but keep for future
     ):
         """
+        Parameters
+        ----------
+        model: NowcastingSEIRModel
+            Run independent parts of the base Model - parts that will be trained generally ahead of time
+        N: int
+            Total population
+        t_list: int[]
+            Times relative to a reference date
+        rt_f: lambda(t)
+            instead of suppression_policy, R0
+            TODO-FUTURE consider option to provide smoothed cases directly
+        testing_rate_f: lambda(t)
+            Testing rate
+        case_median_age_f: lambda(t)
+            Median age of people that test positive each day
+        test_positivity_f: lambda(T/I)
+            Function that determines test positivity as a function of Testing Rate / Infections (not yet cases)
+        initial_compartments: dict[str->float] (provide this or next parameter)
+            Initial values of specified compartments
+        historical_compartments: dict[str->float[]] (provide this or previous parameter)
+            Historical values of all compartments. Today's value of each is set to initial_compartments
+        compartment_ratios_initial: dict[str->float]
+            Pass in results from a (stationary) run to generate initial values of compartments not specified
+        force_stationary: boolean
+            This run used to determine steady state compartment distributions to initialize another run.
+            If True compartments are adjusted on each timestep to keep S and one of (I, nC) and its ratio
+            with testing rate constant
+        auto_initialize_other_compartments: boolean
+            Controls (primarily non observable) compartment initialization. If set this flag causes a run
+            with force_stationary to be run to derive steady state compartment values for initialization
+        auto_calibrate: boolean
+            Adjust transition fractions f_h and f_dby constant factor so that model H, nD exactly match
+            initial conditions at t_list[0]
+        today: int[]
+            Day that represents "today". Days before this day are treated as burn in for the run while those
+            after it are the "predictions" of the future. When this parameter is not supplied the whole
+            run is treated as in the future (today is the 1st day in t_list)
+
         Most common usage is to supply at N, t_list, rt_f, case_median_age_f (big impact on H,nD transitions),
         initial_compartments with auto_initialize_other_compartments and auto_calibrate both True
         
@@ -379,7 +407,7 @@ class ModelRun:
         can be specified. When supplied historial compartments are used to initialize initial compartments (for 
         t = first day in t_list). They are also included in charts if provided (useful for tests).
 
-        TODO FUTURE other features to consider in the future:
+        TODO-FUTURE other features to consider in the future:
         - case_fraction_traceable_f - fraction of cases that are traced
         - test_processing_delay_f - delay in processing tests
         - hospitalizations_threshold - At which point mortality starts to increase due to constrained resources
@@ -443,8 +471,10 @@ class ModelRun:
         return (df, ratios, fig)
 
     def execute_lists_ratios(self):
+        today = self.today  # shorthand for below
         y = self.history[0]
         y0 = ModelRun.array_to_dict(y)  # convenient to use dict
+
         change_track_nC = True if y0["nC"] > 0.0 else False
 
         if self.compartment_ratios_initial is not None:
@@ -481,10 +511,10 @@ class ModelRun:
 
         # If today is set and is in the future than we are calibrating on more than one day
         # Note this is not currently supported - just started to "frame this in"
-        if self.today is not None and self.today > self.t_list[0] + 7:  # days
+        if today is not None and today > self.t_list[0] + 7:  # days
 
             # Run without adjustments up until today, then compute adjustments needed to match today
-            for t in np.linspace(self.t_list[0], today, int(today - self.t_list[0] + 1)):
+            for t in np.linspace(self.t_list[0], self.today, int(today - self.t_list[0] + 1)):
                 y = list(y)
                 dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
                 (dS, dE, dI, dW, nC, dC, dH, dD, dR, b) = dy
@@ -498,7 +528,7 @@ class ModelRun:
                 y_accum.append(y)
             start_main = today
 
-            # TODO FUTURE calculate and apply adjustments, without this currently only works if
+            # TODO-FUTURE calculate and apply adjustments, without this currently only works if
             # today = t_list[0]. Leaving this in case needed in the future
         else:
             start_main = self.t_list[0]
@@ -518,7 +548,7 @@ class ModelRun:
             y = list(y)
             dy = self._time_step(y, t, dt=1.0, implicit_infections=implicit)
 
-            # TODO add incident hospitalizations (nH) as needed downstream
+            # TODO-FUTURE add incident hospitalizations (nH) as needed downstream
             (dS, dE, dI, dW, nC, dC, dH, dD, dR, b) = dy
             y_new = [max(0.1, a + b) for a, b in zip(y, dy)]
             # do not accumulate daily new cases, deaths or beta
@@ -654,7 +684,7 @@ class ModelRun:
 
         # as thresholds in stiff function inv_positivity are crossed
         if implicit_infections:  # E,I,W,C are determined directly from C(t-1), R(t) and positivity
-            # TODO FUTURE investigate further whether this should be implicit time differencing
+            # TODO-FUTURE investigate further whether this should be implicit time differencing
             # to avoid numerical instability and improve people conservation
 
             # C(t), nC determined directly from C(t-1) and R(t)

@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import math
 from datetime import datetime, timedelta
 
@@ -97,6 +96,7 @@ class HistoricalData:
         """
         Get summary state data from prepared file
         """
+
         start_date = HistoricalData.ref_date + timedelta(days=t_list[0])
         end_date = HistoricalData.ref_date + timedelta(days=t_list[-1])
 
@@ -107,7 +107,7 @@ class HistoricalData:
         rows = HistoricalData.data[
             (HistoricalData.data["state"] == state)
             & (HistoricalData.data["aggregate_level"] == "state")
-        ]
+        ].copy()
         rows["t"] = [(d - HistoricalData.ref_date).days for d in rows["date"]]
         rows = rows.set_index("t")
 
@@ -125,7 +125,8 @@ class HistoricalData:
             state_corrections = DATA_CORRECTIONS[state]
             for col in state_corrections:
                 for (day, value) in state_corrections[col]:
-                    rows[col][day] = value
+                    # rows[col][day] = value - but generates SettingWithCopyWarning
+                    rows.loc[day, col] = value
 
         # Then smooth the data
         rows["nC"] = HistoricalData.smooth(rows["nC"])
