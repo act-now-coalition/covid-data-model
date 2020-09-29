@@ -17,6 +17,7 @@ from covidactnow.datapublic import common_init
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import LatestValuesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -243,15 +244,22 @@ def _write_pipeline_output(
     output_interval_days: int = 4,
 ):
 
-    infection_rate_metric_df = pd.concat(p.infer_df for p in pipelines)
+    infection_rate_metric_df = pd.concat(p.infer_df for p in pipelines).reset_index(drop=True)
     timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
-    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries(timeseries_dataset)
+    latest = timeseries_dataset.latest_values_object()
+    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
+        timeseries_dataset, latest
+    )
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"outputting web results for states and counties to {output_path}")
 
-    icu_df = pd.concat(p.icu_data.data for p in pipelines)
-    multiregion_rt = MultiRegionTimeseriesDataset(icu_df)
+    icu_df = pd.concat(p.icu_data.data for p in pipelines).reset_index(drop=True)
+    timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
+    latest = timeseries_dataset.latest_values_object()
+    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
+        timeseries_dataset, latest
+    )
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"outputting web results for states and counties to {output_path}")

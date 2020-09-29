@@ -127,7 +127,7 @@ def get_icu_timeseries_from_regional_input(
     icu_df = icu_timeseries.reset_index()
     icu_df[CommonFields.FIPS] = region.fips
     icu_df[CommonFields.LOCATION_ID] = region.location_id
-    return OneRegionTimeseriesDataset(icu_df)
+    return OneRegionTimeseriesDataset(icu_df, {})
 
 
 def _calculate_icu_timeseries(
