@@ -3,35 +3,30 @@
   "description": "Metrics data for a specific day.",
   "type": "object",
   "properties": {
-    "testPositivityRatio": {
-      "title": "Testpositivityratio",
-      "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
-      "type": "number"
-    },
-    "caseDensity": {
-      "title": "Casedensity",
-      "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
-      "type": "number"
-    },
-    "contactTracerCapacityRatio": {
-      "title": "Contacttracercapacityratio",
-      "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
-      "type": "number"
-    },
-    "infectionRate": {
-      "title": "Infectionrate",
-      "description": "R_t, or the estimated number of infections arising from a typical case.",
-      "type": "number"
-    },
-    "infectionRateCI90": {
-      "title": "Infectionrateci90",
-      "description": "90th percentile confidence interval upper endpoint of the infection rate.",
-      "type": "number"
-    },
-    "icuHeadroomRatio": {
-      "title": "Icuheadroomratio",
-      "type": "number"
-    },
+    "testPositivityRatio": [
+      "null",
+      "number"
+    ],
+    "caseDensity": [
+      "null",
+      "number"
+    ],
+    "contactTracerCapacityRatio": [
+      "null",
+      "number"
+    ],
+    "infectionRate": [
+      "null",
+      "number"
+    ],
+    "infectionRateCI90": [
+      "null",
+      "number"
+    ],
+    "icuHeadroomRatio": [
+      "null",
+      "number"
+    ],
     "icuHeadroomDetails": {
       "$ref": "#/definitions/ICUHeadroomMetricDetails"
     },

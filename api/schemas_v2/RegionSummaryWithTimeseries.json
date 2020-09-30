@@ -18,24 +18,21 @@
       "description": "2-letter ANSI state code.",
       "type": "string"
     },
-    "county": {
-      "title": "County",
-      "description": "County name",
-      "type": "string"
-    },
+    "county": [
+      "null",
+      "string"
+    ],
     "level": {
       "$ref": "#/definitions/AggregationLevel"
     },
-    "lat": {
-      "title": "Lat",
-      "description": "Latitude of point within the state or county",
-      "type": "number"
-    },
-    "long": {
-      "title": "Long",
-      "description": "Longitude of point within the state or county",
-      "type": "number"
-    },
+    "lat": [
+      "null",
+      "number"
+    ],
+    "long": [
+      "null",
+      "number"
+    ],
     "population": {
       "title": "Population",
       "description": "Total Population in geographic region.",
@@ -144,35 +141,30 @@
       "description": "Calculated metrics data based on known actuals.",
       "type": "object",
       "properties": {
-        "testPositivityRatio": {
-          "title": "Testpositivityratio",
-          "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
-          "type": "number"
-        },
-        "caseDensity": {
-          "title": "Casedensity",
-          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
-          "type": "number"
-        },
-        "contactTracerCapacityRatio": {
-          "title": "Contacttracercapacityratio",
-          "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
-          "type": "number"
-        },
-        "infectionRate": {
-          "title": "Infectionrate",
-          "description": "R_t, or the estimated number of infections arising from a typical case.",
-          "type": "number"
-        },
-        "infectionRateCI90": {
-          "title": "Infectionrateci90",
-          "description": "90th percentile confidence interval upper endpoint of the infection rate.",
-          "type": "number"
-        },
-        "icuHeadroomRatio": {
-          "title": "Icuheadroomratio",
-          "type": "number"
-        },
+        "testPositivityRatio": [
+          "null",
+          "number"
+        ],
+        "caseDensity": [
+          "null",
+          "number"
+        ],
+        "contactTracerCapacityRatio": [
+          "null",
+          "number"
+        ],
+        "infectionRate": [
+          "null",
+          "number"
+        ],
+        "infectionRateCI90": [
+          "null",
+          "number"
+        ],
+        "icuHeadroomRatio": [
+          "null",
+          "number"
+        ],
         "icuHeadroomDetails": {
           "$ref": "#/definitions/ICUHeadroomMetricDetails"
         }
@@ -192,26 +184,22 @@
       "description": "Base model for API output.",
       "type": "object",
       "properties": {
-        "capacity": {
-          "title": "Capacity",
-          "description": "Total capacity for resource.",
-          "type": "integer"
-        },
-        "currentUsageTotal": {
-          "title": "Currentusagetotal",
-          "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
-          "type": "integer"
-        },
-        "currentUsageCovid": {
-          "title": "Currentusagecovid",
-          "description": "Currently used capacity for resource by COVID ",
-          "type": "integer"
-        },
-        "typicalUsageRate": {
-          "title": "Typicalusagerate",
-          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
-          "type": "number"
-        }
+        "capacity": [
+          "null",
+          "integer"
+        ],
+        "currentUsageTotal": [
+          "null",
+          "integer"
+        ],
+        "currentUsageCovid": [
+          "null",
+          "integer"
+        ],
+        "typicalUsageRate": [
+          "null",
+          "number"
+        ]
       },
       "required": [
         "capacity",
@@ -225,31 +213,26 @@
       "description": "Known actuals data.",
       "type": "object",
       "properties": {
-        "cases": {
-          "title": "Cases",
-          "description": "Cumulative number of confirmed or suspected cases",
-          "type": "integer"
-        },
-        "deaths": {
-          "title": "Deaths",
-          "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19",
-          "type": "integer"
-        },
-        "positiveTests": {
-          "title": "Positivetests",
-          "description": "Cumulative positive test results to date",
-          "type": "integer"
-        },
-        "negativeTests": {
-          "title": "Negativetests",
-          "description": "Cumulative negative test results to date",
-          "type": "integer"
-        },
-        "contactTracers": {
-          "title": "Contacttracers",
-          "description": "Number of Contact Tracers",
-          "type": "integer"
-        },
+        "cases": [
+          "null",
+          "integer"
+        ],
+        "deaths": [
+          "null",
+          "integer"
+        ],
+        "positiveTests": [
+          "null",
+          "integer"
+        ],
+        "negativeTests": [
+          "null",
+          "integer"
+        ],
+        "contactTracers": [
+          "null",
+          "integer"
+        ],
         "hospitalBeds": {
           "title": "Hospitalbeds",
           "description": "Information about hospital bed utilization",
@@ -284,35 +267,30 @@
       "description": "Metrics data for a specific day.",
       "type": "object",
       "properties": {
-        "testPositivityRatio": {
-          "title": "Testpositivityratio",
-          "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
-          "type": "number"
-        },
-        "caseDensity": {
-          "title": "Casedensity",
-          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
-          "type": "number"
-        },
-        "contactTracerCapacityRatio": {
-          "title": "Contacttracercapacityratio",
-          "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
-          "type": "number"
-        },
-        "infectionRate": {
-          "title": "Infectionrate",
-          "description": "R_t, or the estimated number of infections arising from a typical case.",
-          "type": "number"
-        },
-        "infectionRateCI90": {
-          "title": "Infectionrateci90",
-          "description": "90th percentile confidence interval upper endpoint of the infection rate.",
-          "type": "number"
-        },
-        "icuHeadroomRatio": {
-          "title": "Icuheadroomratio",
-          "type": "number"
-        },
+        "testPositivityRatio": [
+          "null",
+          "number"
+        ],
+        "caseDensity": [
+          "null",
+          "number"
+        ],
+        "contactTracerCapacityRatio": [
+          "null",
+          "number"
+        ],
+        "infectionRate": [
+          "null",
+          "number"
+        ],
+        "infectionRateCI90": [
+          "null",
+          "number"
+        ],
+        "icuHeadroomRatio": [
+          "null",
+          "number"
+        ],
         "icuHeadroomDetails": {
           "$ref": "#/definitions/ICUHeadroomMetricDetails"
         },
@@ -339,31 +317,26 @@
       "description": "Actual data for a specific day.",
       "type": "object",
       "properties": {
-        "cases": {
-          "title": "Cases",
-          "description": "Cumulative number of confirmed or suspected cases",
-          "type": "integer"
-        },
-        "deaths": {
-          "title": "Deaths",
-          "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19",
-          "type": "integer"
-        },
-        "positiveTests": {
-          "title": "Positivetests",
-          "description": "Cumulative positive test results to date",
-          "type": "integer"
-        },
-        "negativeTests": {
-          "title": "Negativetests",
-          "description": "Cumulative negative test results to date",
-          "type": "integer"
-        },
-        "contactTracers": {
-          "title": "Contacttracers",
-          "description": "Number of Contact Tracers",
-          "type": "integer"
-        },
+        "cases": [
+          "null",
+          "integer"
+        ],
+        "deaths": [
+          "null",
+          "integer"
+        ],
+        "positiveTests": [
+          "null",
+          "integer"
+        ],
+        "negativeTests": [
+          "null",
+          "integer"
+        ],
+        "contactTracers": [
+          "null",
+          "integer"
+        ],
         "hospitalBeds": {
           "title": "Hospitalbeds",
           "description": "Information about hospital bed utilization",

@@ -3,31 +3,26 @@
   "description": "Known actuals data.",
   "type": "object",
   "properties": {
-    "cases": {
-      "title": "Cases",
-      "description": "Cumulative number of confirmed or suspected cases",
-      "type": "integer"
-    },
-    "deaths": {
-      "title": "Deaths",
-      "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19",
-      "type": "integer"
-    },
-    "positiveTests": {
-      "title": "Positivetests",
-      "description": "Cumulative positive test results to date",
-      "type": "integer"
-    },
-    "negativeTests": {
-      "title": "Negativetests",
-      "description": "Cumulative negative test results to date",
-      "type": "integer"
-    },
-    "contactTracers": {
-      "title": "Contacttracers",
-      "description": "Number of Contact Tracers",
-      "type": "integer"
-    },
+    "cases": [
+      "null",
+      "integer"
+    ],
+    "deaths": [
+      "null",
+      "integer"
+    ],
+    "positiveTests": [
+      "null",
+      "integer"
+    ],
+    "negativeTests": [
+      "null",
+      "integer"
+    ],
+    "contactTracers": [
+      "null",
+      "integer"
+    ],
     "hospitalBeds": {
       "title": "Hospitalbeds",
       "description": "Information about hospital bed utilization",
@@ -62,26 +57,22 @@
       "description": "Base model for API output.",
       "type": "object",
       "properties": {
-        "capacity": {
-          "title": "Capacity",
-          "description": "Total capacity for resource.",
-          "type": "integer"
-        },
-        "currentUsageTotal": {
-          "title": "Currentusagetotal",
-          "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
-          "type": "integer"
-        },
-        "currentUsageCovid": {
-          "title": "Currentusagecovid",
-          "description": "Currently used capacity for resource by COVID ",
-          "type": "integer"
-        },
-        "typicalUsageRate": {
-          "title": "Typicalusagerate",
-          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
-          "type": "number"
-        }
+        "capacity": [
+          "null",
+          "integer"
+        ],
+        "currentUsageTotal": [
+          "null",
+          "integer"
+        ],
+        "currentUsageCovid": [
+          "null",
+          "integer"
+        ],
+        "typicalUsageRate": [
+          "null",
+          "number"
+        ]
       },
       "required": [
         "capacity",
