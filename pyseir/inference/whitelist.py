@@ -7,12 +7,12 @@ import numpy as np
 import logging
 
 from libs import pipeline
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
-from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import load_data
 from datetime import datetime
 from covidactnow.datapublic.common_fields import CommonFields
-from libs.datasets import AggregationLevel
 from pandarallel import pandarallel
 
 VISIBIBLE_PROGRESS_BAR = os.environ.get("PYSEIR_VERBOSITY") == "True"
@@ -35,7 +35,7 @@ class WhitelistGenerator:
     # Minimum number of nonzero death datapoints in the time series to allow display.
     nonzero_death_datapoints: int = 0
 
-    def generate_whitelist(self, timeseries: TimeseriesDataset) -> pd.DataFrame:
+    def generate_whitelist(self, timeseries: MultiRegionTimeseriesDataset) -> pd.DataFrame:
         """
         Generate a county whitelist based on the cuts above.
 
@@ -45,12 +45,13 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        counties = timeseries.get_data(aggregation_level=AggregationLevel.COUNTY)
         df_candidates = (
-            counties.groupby(CommonFields.FIPS)
+            timeseries.get_counties()
+            .groupby_region()
             # Use pandarallel. It doesn't support the `name` attribute so leave FIPS as a regular
             # column so it can be read in the applied function.
-            .parallel_apply(_whitelist_candidates_per_fips).reset_index(drop=True)
+            .parallel_apply(_whitelist_candidates_per_fips)
+            .reset_index(drop=True)
         )
 
         df_candidates["inference_ok"] = (
@@ -66,8 +67,10 @@ class WhitelistGenerator:
 
 def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
     assert not combined_data.empty
+    assert combined_data[CommonFields.FIPS].nunique() == 1
     (times, observed_new_cases, observed_new_deaths,) = load_data.calculate_new_case_data_by_region(
-        TimeseriesDataset(combined_data.reset_index()), t0=datetime(day=1, month=1, year=2020),
+        OneRegionTimeseriesDataset(combined_data.reset_index(), {}),
+        t0=datetime(day=1, month=1, year=2020),
     )
     record = dict(
         # Get the fips, state and county values from the first row of the dataframe.

@@ -3,14 +3,21 @@ import pathlib
 import pytest
 import pandas as pd
 import structlog
+
+from libs.datasets import combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
+from libs.datasets import timeseries
 from pyseir import cli
 
 from pyseir.rt import utils
 from pyseir.rt import infer_rt
 from test.mocks.inference import load_data
 from test.mocks.inference.load_data import RateChange
+
+
+# turns all warnings into errors for this module
+pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
 def test_replace_outliers_on_last_day():
@@ -245,11 +252,15 @@ def test_generate_infection_rate_new_orleans_patch():
 
 
 def test_generate_infection_rate_metric_fake_fips():
-    FIPS = ["48999"]  # TX Misc Fips Holder
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    with structlog.testing.capture_logs() as logs:
+        # TX Misc Fips Holder timeseries not found in combined data
+        infer_input = infer_rt.RegionalInput.from_fips("48999")
+    assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
+    assert infer_input.timeseries.empty
 
-    df = pd.concat(infer_rt.run_rt(input) for input in regions)
-    assert df.empty
+    with pytest.raises(timeseries.RegionLatestNotFound):
+        # Totally bogus FIPS not even in latest data raises an exception
+        infer_rt.RegionalInput.from_fips("48998")
 
 
 @pytest.mark.xfail(raises=ValueError)
@@ -276,7 +287,7 @@ def test_patch_substatepipeline_nola_infection_rate():
             cli.SubStatePipeline(
                 region=region,
                 infer_df=infection_rate_df,
-                _combined_data=pipeline.RegionalCombinedData.from_region(region),
+                _combined_data=combined_datasets.RegionalData.from_region(region),
             )
         )
 

@@ -19,8 +19,9 @@ from libs.pipelines import api_pipeline
 @pytest.mark.parametrize(
     "include_projections,rt_null", [(True, True), (True, False), (False, False)]
 )
-def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_path, nyc_fips):
-
+def test_build_summary_for_fips(
+    include_projections, rt_null, nyc_model_output_path, nyc_fips, nyc_region
+):
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
@@ -46,9 +47,9 @@ def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_p
         )
         intervention = Intervention.STRONG_INTERVENTION
 
-    fips_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
+    fips_timeseries = us_timeseries.get_one_region(nyc_region)
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest_for_fips(
-        fips_timeseries, nyc_latest, model_output
+        fips_timeseries, model_output
     )
     assert latest_metric
     summary = generate_api.generate_region_summary(nyc_latest, latest_metric, model_output)
@@ -95,17 +96,18 @@ def test_build_summary_for_fips(include_projections, rt_null, nyc_model_output_p
 
 
 @pytest.mark.parametrize("include_projections", [True])
-def test_generate_timeseries_for_fips(include_projections, nyc_model_output_path, nyc_fips):
-
+def test_generate_timeseries_for_fips(
+    include_projections, nyc_model_output_path, nyc_fips, nyc_region
+):
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     nyc_latest = us_latest.get_record_for_fips(nyc_fips)
-    nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
+    nyc_timeseries = us_timeseries.get_one_region(nyc_region)
     intervention = Intervention.OBSERVED_INTERVENTION
     model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest_for_fips(
-        nyc_timeseries, nyc_latest, model_output
+        nyc_timeseries, model_output
     )
 
     region_summary = generate_api.generate_region_summary(nyc_latest, latest_metric, model_output)

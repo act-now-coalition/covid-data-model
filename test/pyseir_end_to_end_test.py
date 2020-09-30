@@ -3,6 +3,7 @@ import unittest
 
 from libs import pipeline
 from libs.datasets import combined_datasets
+from libs.pipeline import Region
 from pyseir import cli
 from pyseir.inference import whitelist
 from pyseir.utils import get_run_artifact_path, RunArtifact
@@ -12,8 +13,6 @@ from libs.functions import generate_api
 import pytest
 
 # turns all warnings into errors for this module
-
-
 # Suppressing Matplotlib RuntimeWarning for Figure Gen Count right now. The regex for message isn't
 # (https://stackoverflow.com/questions/27476642/matplotlib-get-rid-of-max-open-warning-output)
 @pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
@@ -22,18 +21,18 @@ def test_pyseir_end_to_end_idaho(tmp_path):
     # This covers a lot of edge cases.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
         fips = "16001"
+        region = Region.from_fips(fips)
         pipelines = cli._build_all_for_states(states=["ID"], fips=fips)
         cli._write_pipeline_output(pipelines, tmp_path)
-        path = get_run_artifact_path(fips, RunArtifact.WEB_UI_RESULT).replace(
+        path = get_run_artifact_path(region, RunArtifact.WEB_UI_RESULT).replace(
             "__INTERVENTION_IDX__", "2"
         )
         path = pathlib.Path(path)
         assert path.exists()
         output = CANPyseirLocationOutput.load_from_path(path)
 
-        latest = combined_datasets.get_us_latest_for_fips(fips)
-        timeseries = combined_datasets.get_timeseries_for_fips(fips)
-        summary = generate_api.generate_region_summary(latest, None, output)
+        timeseries = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
+        summary = generate_api.generate_region_summary(timeseries.latest, None, output)
         timeseries_output = generate_api.generate_region_timeseries(summary, timeseries, [], output)
         assert timeseries_output
 
@@ -42,6 +41,19 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         assert len(with_values) > 10
         assert (with_values > 0).all()
         assert (with_values < 6).all()
+
+
+@pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
+@pytest.mark.slow
+def test_pyseir_end_to_end_dc(tmp_path):
+    # Runs over a single state which tests state filtering + running over more than
+    # a single fips.
+    with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
+        region = Region.from_state("DC")
+        pipelines = cli._build_all_for_states(states=["DC"])
+        # Checking to make sure that build all for states properly filters and only
+        # returns DC data
+        assert len(pipelines) == 2
 
 
 @pytest.mark.filterwarnings("error")

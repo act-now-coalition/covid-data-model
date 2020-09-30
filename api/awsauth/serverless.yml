@@ -1,0 +1,99 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: awsauth
+# app and org for use with dashboard.serverless.com
+#app: your-app-name
+#org: your-org-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+frameworkVersion: '2'
+
+
+custom:
+  tableName: 'can-api-keys-${self:provider.stage}'
+
+provider:
+  name: aws
+  runtime: python3.7
+
+  stage: ${opt:stage, 'dev'}
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["APIKeysDynamoDBTable", "Arn" ] }
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.API_KEYS_TABLE}/index/*"
+
+  environment:
+    API_KEYS_TABLE: ${self:custom.tableName}
+
+
+# you can add packaging information here
+#package:
+#  include:
+#    - include-me.py
+#    - include-me-dir/**
+#  exclude:
+#    - exclude-me.py
+#    - exclude-me-dir/**
+
+functions:
+  apiRegisterAPIKey:
+    handler: auth_app.register
+  apiCheckApiKey:
+    handler: auth_app.check_api_key
+
+
+# you can add CloudFormation resource templates here
+resources:
+ Resources:
+  APIKeysDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${self:custom.tableName}
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+        - AttributeName: api_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+       - IndexName: apiKeys
+         KeySchema:
+         - AttributeName: api_key
+           KeyType: HASH
+         Projection:
+           ProjectionType: ALL
+         ProvisionedThroughput:
+           ReadCapacityUnits: '1'
+           WriteCapacityUnits: '1'
+
+  # TODO: Add API Gateway cloudformation

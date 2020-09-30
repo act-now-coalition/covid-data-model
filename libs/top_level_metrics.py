@@ -8,9 +8,8 @@ from covidactnow.datapublic import common_fields
 
 from api import can_api_definition
 from libs import series_utils
-from libs.datasets import combined_datasets
 from libs.datasets import can_model_output_schema as schema
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs import icu_headroom_metric
 
@@ -38,26 +37,14 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     ICU_HEADROOM_RATIO = "icuHeadroomRatio"
 
 
-def calculate_top_level_metrics_for_fips(fips: str):
-    timeseries = combined_datasets.load_us_timeseries_dataset()
-    latest = combined_datasets.load_us_latest_dataset()
-
-    fips_timeseries = timeseries.get_subset(fips=fips)
-    fips_record = latest.get_record_for_fips(fips)
-
-    # not sure of return type for now, could be a dictionary, or maybe it would be more effective
-    # as a pandas dataframe with a column for each metric.
-    return calculate_metrics_for_timeseries(fips_timeseries, fips_record, None)
-
-
 def calculate_metrics_for_timeseries(
-    timeseries: TimeseriesDataset,
-    latest: dict,
+    timeseries: OneRegionTimeseriesDataset,
     model_output: Optional[CANPyseirLocationOutput],
     require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
-    assert len(timeseries.all_fips) == 1
+    assert timeseries.has_one_region()
+    latest = timeseries.latest
     fips = latest[CommonFields.FIPS]
     population = latest[CommonFields.POPULATION]
 
@@ -138,23 +125,14 @@ def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
 
     cases = cases.copy()
 
-    filled_cases = series_utils.interpolate_stalled_and_missing_values(
-        cases, interpolate_stalled=False
-    )
     # Front filling all cases with 0s.  We're assuming all regions are accurately
     # reporting the first day a new case occurs.  This will affect the first few cases
     # in a timeseries, because it's smoothing over a full period, rather than just the first
     # couple days of reported data.
-    filled_cases[: filled_cases.first_valid_index() - timedelta(days=1)] = 0
-    cases_daily = filled_cases.diff()
+    cases[: cases.first_valid_index() - timedelta(days=1)] = 0
+    cases_daily = cases.diff()
     smoothed = series_utils.smooth_with_rolling_average(cases_daily, window=smooth)
 
-    # Replacing interpolated values with nones to not take overly strong opinions on
-    # what happened during the missing days, but allows the last value to be properly
-    # smoothed over a 7 day period.
-    cases[: cases.first_valid_index()] = 0.0
-
-    smoothed.loc[cases.isna()] = np.nan
     return smoothed
 
 
@@ -194,7 +172,6 @@ def calculate_test_positivity(
     negative_smoothed = series_utils.smooth_with_rolling_average(
         daily_negative_tests, include_trailing_zeros=False
     )
-
     last_n_positive = positive_smoothed[-lag_lookback:]
     last_n_negative = negative_smoothed[-lag_lookback:]
 
@@ -222,15 +199,6 @@ def calculate_contact_tracers(
 
     smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=7)
     return contact_tracers / (smoothed_daily_cases * contact_tracers_per_case)
-
-
-# Example of running calculation for all counties in a state, using the latest dataset
-# to get all fips codes for that state
-def calculate_metrics_for_counties_in_state(state: str):
-    latest = combined_datasets.load_us_latest_dataset()
-    state_latest_values = latest.county.get_subset(state=state)
-    for fips in state_latest_values.all_fips:
-        yield calculate_top_level_metrics_for_fips(fips)
 
 
 def calculate_latest_metrics(

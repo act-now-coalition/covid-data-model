@@ -8,6 +8,7 @@ import structlog
 import copy
 from collections import defaultdict
 
+from libs.datasets import combined_datasets
 from libs import pipeline
 from pyseir.inference import model_fitter
 from pyseir.models import seir_model
@@ -30,7 +31,7 @@ compartment_to_capacity_attr_map = {
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: pipeline.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalData
     _mle_fit_model: seir_model.SEIRModel
     _mle_fit_result: Mapping[str, Any]
     _state_mle_fit_model: Optional[seir_model.SEIRModel] = None
@@ -65,8 +66,9 @@ class RegionalInput:
     def state_name(self):
         return self.region.state_obj().name
 
-    def get_us_latest(self) -> Mapping[str, Any]:
-        return self._combined_data.get_us_latest()
+    @property
+    def latest(self) -> Mapping[str, Any]:
+        return self._combined_data.latest
 
     def load_mle_fit_model(self) -> Optional[seir_model.SEIRModel]:
         return self._mle_fit_model
@@ -203,7 +205,7 @@ class EnsembleRunner:
             # across the code base).
             default_params = ParameterEnsembleGenerator(
                 N_samples=500,
-                combined_datasets_latest=self.regional_input.get_us_latest(),
+                combined_datasets_latest=self.regional_input.latest,
                 t_list=model.t_list,
                 suppression_policy=model.suppression_policy,
             ).get_average_seir_parameters()
