@@ -6,31 +6,73 @@
     "testPositivityRatio": {
       "title": "Testpositivityratio",
       "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
-      "type": "number"
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "caseDensity": {
       "title": "Casedensity",
       "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
-      "type": "number"
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "contactTracerCapacityRatio": {
       "title": "Contacttracercapacityratio",
       "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
-      "type": "number"
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "infectionRate": {
       "title": "Infectionrate",
       "description": "R_t, or the estimated number of infections arising from a typical case.",
-      "type": "number"
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "infectionRateCI90": {
       "title": "Infectionrateci90",
       "description": "90th percentile confidence interval upper endpoint of the infection rate.",
-      "type": "number"
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "icuHeadroomRatio": {
       "title": "Icuheadroomratio",
-      "type": "number"
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "icuHeadroomDetails": {
       "$ref": "#/definitions/ICUHeadroomMetricDetails"
@@ -79,12 +121,35 @@
     }
   },
   "required": [
+    "testPositivityRatio",
+    "caseDensity",
+    "contactTracerCapacityRatio",
+    "infectionRate",
+    "infectionRateCI90",
+    "icuHeadroomRatio",
     "date",
     "state",
     "fips",
     "lastUpdatedDate"
   ],
   "definitions": {
+    "CovidPatientsMethod": {
+      "title": "CovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients with covid.",
+      "enum": [
+        "actual",
+        "estimated"
+      ]
+    },
+    "NonCovidPatientsMethod": {
+      "title": "NonCovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients without covid.",
+      "enum": [
+        "actual",
+        "estimated_from_typical_utilization",
+        "estimated_from_total_icu_actual"
+      ]
+    },
     "ICUHeadroomMetricDetails": {
       "title": "ICUHeadroomMetricDetails",
       "description": "Details about how the ICU Headroom Metric was calculated.",
@@ -96,12 +161,7 @@
           "type": "integer"
         },
         "currentIcuCovidMethod": {
-          "title": "Currenticucovidmethod",
-          "description": "Method used to determine number of current ICU patients with covid.",
-          "enum": [
-            "actual",
-            "estimated"
-          ]
+          "$ref": "#/definitions/CovidPatientsMethod"
         },
         "currentIcuNonCovid": {
           "title": "Currenticunoncovid",
@@ -109,13 +169,7 @@
           "type": "integer"
         },
         "currentIcuNonCovidMethod": {
-          "title": "Currenticunoncovidmethod",
-          "description": "Method used to determine number of current ICU patients without covid.",
-          "enum": [
-            "actual",
-            "estimated_from_typical_utilization",
-            "estimated_from_total_icu_actual"
-          ]
+          "$ref": "#/definitions/NonCovidPatientsMethod"
         }
       },
       "required": [
