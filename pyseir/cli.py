@@ -145,6 +145,7 @@ class SubStateRegionPipelineInput:
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
+                # TODO switch back.
                 run_fitter=False,
                 state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
@@ -309,7 +310,6 @@ def _build_all_for_states(
         root.info(f"executing pipeline for {len(substate_inputs)} counties")
 
         substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
-        print(len(substate_pipelines))
 
     substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
 

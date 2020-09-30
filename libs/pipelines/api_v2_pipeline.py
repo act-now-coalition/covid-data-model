@@ -61,11 +61,11 @@ class RegionalInput:
     ) -> "RegionalInput":
         combined_data = combined_datasets.RegionalData.from_region(region)
 
+        # Not all regions have Rt or ICU data due to various filters in pyseir code.
         try:
             rt_data = rt_data.get_one_region(region)
         except timeseries.RegionLatestNotFound:
             rt_data = None
-
         try:
             icu_data = icu_data.get_one_region(region)
         except timeseries.RegionLatestNotFound:
