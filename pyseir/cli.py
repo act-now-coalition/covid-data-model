@@ -92,7 +92,9 @@ class StatePipeline:
         icu_input = infer_icu.RegionalInput.from_regional_data(
             combined_datasets.RegionalData.from_region(region)
         )
-        icu_data = infer_icu.get_icu_timeseries_from_regional_input(icu_input)
+        icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+            icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+        )
 
         fitter_input = model_fitter.RegionalInput.from_state_region(region)
         fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
@@ -174,7 +176,9 @@ class SubStatePipeline:
 
             # Run ICU adjustment
             icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
-            icu_data = infer_icu.get_icu_timeseries_from_regional_input(icu_input)
+            icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+                icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+            )
 
             if input.run_fitter:
                 fitter_input = model_fitter.RegionalInput.from_substate_region(
