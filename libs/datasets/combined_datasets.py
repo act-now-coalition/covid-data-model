@@ -123,10 +123,9 @@ def load_us_timeseries_dataset(
 def load_us_latest_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
 ) -> latest_values_dataset.LatestValuesDataset:
-    filename = dataset_pointer.form_filename(DatasetType.LATEST)
-    pointer_path = pointer_directory / filename
-    pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset()
+    us_timeseries = load_us_timeseries_dataset(pointer_directory=pointer_directory)
+    # Returned object contains a DataFrame with a LOCATION_ID column
+    return LatestValuesDataset(us_timeseries.latest_data_with_fips.reset_index())
 
 
 def get_county_name(region: Region) -> Optional[str]:
