@@ -64,7 +64,14 @@
       "type": "integer"
     },
     "metrics": {
-      "$ref": "#/definitions/Metrics"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Metrics"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "actuals": {
       "$ref": "#/definitions/Actuals"
@@ -222,7 +229,14 @@
           ]
         },
         "icuHeadroomDetails": {
-          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ICUHeadroomMetricDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [

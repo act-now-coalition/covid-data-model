@@ -129,7 +129,14 @@
           ]
         },
         "icuHeadroomDetails": {
-          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ICUHeadroomMetricDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "date": {
           "title": "Date",

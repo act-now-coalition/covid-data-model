@@ -567,7 +567,14 @@
             ]
           },
           "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "description": "Calculated metrics data based on known actuals."
@@ -805,7 +812,14 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "$ref": "#/components/schemas/Metrics"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
@@ -913,7 +927,14 @@
             ]
           },
           "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "date": {
             "title": "Date",
@@ -1104,7 +1125,14 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "$ref": "#/components/schemas/Metrics"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"

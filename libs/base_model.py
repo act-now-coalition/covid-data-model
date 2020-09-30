@@ -25,17 +25,9 @@ class APIBaseModel(pydantic.BaseModel):
                             {"type": existing_type},
                             {"type": "null"},
                         ]
-                        print(schema["properties"][field_name])
-
-                        # schema['properties']['nullable'] = True
-                    # print(field_name, field)
-                    # print(field.field_info)
-                    # print(field.outer_type_)
-                    # print(field.type_)
-                    # print(field.allow_none)
-                # print(vars(field))
-                # print(field.type_)
-                # print(dir(field.type_))
-            # for field in model.fields:
-            #     print(field)
-            # print(model)
+                    if "$ref" in existing_field:
+                        existing_type = existing_field.pop("$ref")
+                        existing_field["anyOf"] = [
+                            {"$ref": existing_type},
+                            {"type": "null"},
+                        ]
