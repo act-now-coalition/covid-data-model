@@ -1,18 +1,13 @@
 import enum
-from typing import List
+from typing import List, Optional
 
 from covidactnow.datapublic import common_fields
+from api import can_api_v2_definition
+
+RiskLevel = can_api_v2_definition.RiskLevel
 
 
-class RiskLevel(common_fields.ValueAsStrMixin, str, enum.Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
-    UNKNOWN = "UNKNOWN"
-
-
-def calc_risk_level(value: float, thresholds: List[float]):
+def calc_risk_level(value: Optional[float], thresholds: List[float]):
     """
     Check the value against thresholds to determine the risk level for the metric. Each threshold is the
     upper limit for the risk level.
@@ -26,6 +21,10 @@ def calc_risk_level(value: float, thresholds: List[float]):
     """
     assert len(thresholds) == 3, "Must pass low, med and high thresholds."
     level_low, level_med, level_high = thresholds
+
+    if value is None:
+        return RiskLevel.UNKNOWN
+
     risk_level = RiskLevel.UNKNOWN
     if value <= level_low:
         risk_level = RiskLevel.LOW
@@ -95,3 +94,30 @@ def top_level_risk_level(
     else:
         top_level_risk = RiskLevel.LOW
     return top_level_risk
+
+
+def calculate_risk_level_from_metrics(
+    metrics: can_api_v2_definition.Metrics,
+) -> can_api_v2_definition.RiskLevels:
+
+    case_density_level = case_density_risk_level(metrics.caseDensity)
+    test_positivity_level = test_positivity_risk_level(metrics.testPositivityRatio)
+    contact_tracing_level = contact_tracing_risk_level(metrics.contactTracerCapacityRatio)
+    icu_headroom_level = icu_headroom_ratio_risk_level(metrics.icuHeadroomRatio)
+    infection_rate_level = infection_rate_risk_level(metrics.infectionRate)
+
+    overall_level = top_level_risk_level(
+        case_density_level,
+        test_positivity_level,
+        contact_tracing_level,
+        icu_headroom_level,
+        infection_rate_level,
+    )
+    return can_api_v2_definition.RiskLevels(
+        overall=overall_level,
+        testPositivityRatio=test_positivity_level,
+        caseDensity=case_density_level,
+        contactTracerCapacityRatio=contact_tracing_level,
+        infectionRate=infection_rate_level,
+        icuHeadroomRatio=icu_headroom_level,
+    )

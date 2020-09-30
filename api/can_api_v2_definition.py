@@ -1,4 +1,5 @@
 from typing import List, Optional
+import enum
 from libs.datasets.dataset_utils import AggregationLevel
 from api import can_api_definition
 from libs import base_model
@@ -86,6 +87,25 @@ class Metrics(base_model.APIBaseModel):
     icuHeadroomDetails: can_api_definition.ICUHeadroomMetricDetails = pydantic.Field(None)
 
 
+class RiskLevel(enum.Enum):
+    LOW = 0
+    MEDIUM = 1
+    HIGH = 2
+    CRITICAL = 3
+    UNKNOWN = 4
+
+
+class RiskLevels(base_model.APIBaseModel):
+    """Calculated metrics data based on known actuals."""
+
+    overall: RiskLevel = pydantic.Field(...)
+    testPositivityRatio: RiskLevel = pydantic.Field(...)
+    caseDensity: RiskLevel = pydantic.Field(...)
+    contactTracerCapacityRatio: RiskLevel = pydantic.Field(...)
+    infectionRate: RiskLevel = pydantic.Field(...)
+    icuHeadroomRatio: RiskLevel = pydantic.Field(...)
+
+
 class MetricsTimeseriesRow(Metrics):
     """Metrics data for a specific day."""
 
@@ -114,7 +134,8 @@ class RegionSummary(base_model.APIBaseModel):
         ..., description="Total Population in geographic region.", gt=0
     )
 
-    metrics: Optional[Metrics] = pydantic.Field(...)
+    metrics: Metrics = pydantic.Field(...)
+    riskLevels: RiskLevels
     actuals: Actuals = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")

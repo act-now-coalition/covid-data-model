@@ -15,6 +15,7 @@ from api.can_api_v2_definition import MetricsTimeseriesRow
 from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from libs import dataset_deployer
 from libs import top_level_metrics
+from libs import top_level_metric_risk_levels
 from libs import pipeline
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -97,7 +98,7 @@ def generate_metrics_and_latest(
         Tuple of MetricsTimeseriesRows for all days and the metrics overview.
     """
     if timeseries.empty:
-        return [], None
+        return [], Metrics()
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
         timeseries, model_output
@@ -126,7 +127,8 @@ def build_timeseries_for_region(
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
             fips_timeseries, model_output
         )
-        region_summary = build_api_v2.build_region_summary(fips_latest, metrics_latest)
+        risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
+        region_summary = build_api_v2.build_region_summary(fips_latest, metrics_latest, risk_levels)
         region_timeseries = build_api_v2.build_region_timeseries(
             region_summary, fips_timeseries, metrics_timeseries
         )
