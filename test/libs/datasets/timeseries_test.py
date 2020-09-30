@@ -281,3 +281,29 @@ def test_merge():
         )
     )
     assert_combined_like(ts_merged_1, ts_expected)
+
+
+def test_drop_na_dates():
+    ts_in = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-03,Bar County,county,,\n"
+            "iso1:us#fips:97111,,Bar County,county,,\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,3,33\n"
+            "iso1:us#cbsa:10100,,,,3,33\n"
+        )
+    )
+    ts_result = ts_in.drop_na_dates()
+
+    ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,fips,county,aggregate_level,m1,m2\n"
+            "iso1:us#fips:97111,2020-04-02,97111,Bar County,county,2,\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,3,33\n"
+            "iso1:us#fips:97111,,97111,Bar County,county,,\n"
+            "iso1:us#cbsa:10100,,,,,3,33\n"
+        )
+    )
+    assert_combined_like(ts_result, ts_expected)
