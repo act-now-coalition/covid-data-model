@@ -16,6 +16,7 @@ from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from libs import dataset_deployer
 from libs import top_level_metrics
 from libs import pipeline
+from libs.datasets import timeseries
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
@@ -36,9 +37,9 @@ class RegionalInput:
 
     _combined_data: combined_datasets.RegionalData
 
-    rt_data: OneRegionTimeseriesDataset
+    rt_data: Optional[OneRegionTimeseriesDataset]
 
-    icu_data: OneRegionTimeseriesDataset
+    icu_data: Optional[OneRegionTimeseriesDataset]
 
     @property
     def fips(self) -> str:
@@ -60,11 +61,18 @@ class RegionalInput:
     ) -> "RegionalInput":
         combined_data = combined_datasets.RegionalData.from_region(region)
 
+        try:
+            rt_data = rt_data.get_one_region(region)
+        except timeseries.RegionLatestNotFound:
+            rt_data = None
+
+        try:
+            icu_data = icu_data.get_one_region(region)
+        except timeseries.RegionLatestNotFound:
+            icu_data = None
+
         return RegionalInput(
-            region=region,
-            _combined_data=combined_data,
-            rt_data=rt_data.get_one_region(region),
-            icu_data=icu_data.get_one_region(region),
+            region=region, _combined_data=combined_data, rt_data=rt_data, icu_data=icu_data,
         )
 
 

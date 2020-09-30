@@ -47,6 +47,7 @@ def _cache_global_datasets():
     # is not needed as the only goal is to populate the cache.
     combined_datasets.load_us_latest_dataset()
     combined_datasets.load_us_timeseries_dataset()
+    infer_icu.get_region_weight_map()
 
 
 @click.group()
@@ -142,7 +143,7 @@ class SubStateRegionPipelineInput:
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                run_fitter=(region in whitelist_regions),
+                run_fitter=False,
                 state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
@@ -164,36 +165,41 @@ class SubStatePipeline:
 
     @staticmethod
     def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
-        assert not input.region.is_state()
-        # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
-        # infection_rate.
-        infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
-        infer_df = infer_rt.run_rt(infer_rt_input)
+        try:
+            assert not input.region.is_state()
+            # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
+            # infection_rate.
+            infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
+            infer_df = infer_rt.run_rt(infer_rt_input)
 
-        # Run ICU adjustment
-        icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
-        icu_data = infer_icu.get_icu_timeseries_from_regional_input(icu_input)
+            # Run ICU adjustment
+            icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
+            icu_data = infer_icu.get_icu_timeseries_from_regional_input(icu_input)
 
-        if input.run_fitter:
-            fitter_input = model_fitter.RegionalInput.from_substate_region(
-                input.region, input.state_fitter
+            if input.run_fitter:
+                fitter_input = model_fitter.RegionalInput.from_substate_region(
+                    input.region, input.state_fitter
+                )
+                fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
+                ensembles_input = ensemble_runner.RegionalInput.for_substate(
+                    fitter, state_fitter=input.state_fitter
+                )
+                ensemble = ensemble_runner.make_and_run(ensembles_input)
+            else:
+                fitter = None
+                ensemble = None
+
+            return SubStatePipeline(
+                region=input.region,
+                infer_df=infer_df,
+                icu_data=icu_data,
+                fitter=fitter,
+                ensemble=ensemble,
+                _combined_data=input.regional_combined_dataset,
             )
-            fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-            ensembles_input = ensemble_runner.RegionalInput.for_substate(
-                fitter, state_fitter=input.state_fitter
-            )
-            ensemble = ensemble_runner.make_and_run(ensembles_input)
-        else:
-            fitter = None
-            ensemble = None
-        return SubStatePipeline(
-            region=input.region,
-            infer_df=infer_df,
-            icu_data=icu_data,
-            fitter=fitter,
-            ensemble=ensemble,
-            _combined_data=input.regional_combined_dataset,
-        )
+        except Exception:
+            root.exception(f"Failed to run substate region {input.region}")
+            raise
 
     @property
     def fips(self) -> str:

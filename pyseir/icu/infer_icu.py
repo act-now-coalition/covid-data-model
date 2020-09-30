@@ -170,7 +170,7 @@ def _calculate_icu_timeseries(
             superset_icu = _estimate_icu_from_hospitalized(data["current_hospitalized_superset"])
 
         # Get Disaggregation Weighting
-        weight = _get_region_weight_map()[region][weight_by]
+        weight = get_region_weight_map()[region][weight_by]
         log.info(disaggregation=True)
         return weight * superset_icu
 
@@ -249,7 +249,7 @@ def _estimate_icu_from_hospitalized(
 
 
 @lru_cache(None)
-def _get_region_weight_map() -> Mapping[pipeline.Region, Mapping[ICUWeightsPath, float]]:
+def get_region_weight_map() -> Mapping[pipeline.Region, Mapping[ICUWeightsPath, float]]:
     """Returns a map of maps with region and icu weight paths as keys."""
     region_map = collections.defaultdict(dict)
     for method in [ICUWeightsPath.POPULATION, ICUWeightsPath.ONE_MONTH_TRAILING_CASES]:
