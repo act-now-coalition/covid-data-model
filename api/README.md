@@ -1,9 +1,15 @@
 # (DEPRECATED) V0 API
 
-## V1 API
+## :warning: API Deprecated
 
-See [https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md) for most up to date API surface.
- 
+API V1 is now deprecated and will stop daily updates on *Monday, October 5th*.
+
+Please refer to the [documentation](https://apidocs.covidactnow.org) for the latest version of the API.
+
+For assistance migrating to V2, check out the [migration guide](https://apidocs.covidactnow.org/migration).
+
+If you have any questions, do not hesitate to reach out to <api@covidactnow.org>. Thanks!
+
 ## V0 Schema Overview
 
 **This API schema is deprecated and we recommend the v1 API schema linked above**
