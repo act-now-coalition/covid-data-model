@@ -484,36 +484,86 @@
       },
       "Metrics": {
         "title": "Metrics",
+        "required": [
+          "testPositivityRatio",
+          "caseDensity",
+          "contactTracerCapacityRatio",
+          "infectionRate",
+          "infectionRateCI90",
+          "icuHeadroomRatio"
+        ],
         "type": "object",
         "properties": {
           "testPositivityRatio": {
             "title": "Testpositivityratio",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "caseDensity": {
             "title": "Casedensity",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "The number of cases per 100k population calculated using a 7-day rolling average."
           },
           "contactTracerCapacityRatio": {
             "title": "Contacttracercapacityratio",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average."
           },
           "infectionRate": {
             "title": "Infectionrate",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "R_t, or the estimated number of infections arising from a typical case."
           },
           "infectionRateCI90": {
             "title": "Infectionrateci90",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "90th percentile confidence interval upper endpoint of the infection rate."
           },
           "icuHeadroomRatio": {
             "title": "Icuheadroomratio",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "icuHeadroomDetails": {
             "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
@@ -523,26 +573,60 @@
       },
       "HospitalResourceUtilization": {
         "title": "HospitalResourceUtilization",
+        "required": [
+          "capacity",
+          "currentUsageTotal",
+          "currentUsageCovid",
+          "typicalUsageRate"
+        ],
         "type": "object",
         "properties": {
           "capacity": {
             "title": "Capacity",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Total capacity for resource."
           },
           "currentUsageTotal": {
             "title": "Currentusagetotal",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)"
           },
           "currentUsageCovid": {
             "title": "Currentusagecovid",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Currently used capacity for resource by COVID "
           },
           "typicalUsageRate": {
             "title": "Typicalusagerate",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Typical used capacity rate for resource. This excludes any COVID usage."
           }
         },
@@ -550,31 +634,75 @@
       },
       "Actuals": {
         "title": "Actuals",
+        "required": [
+          "cases",
+          "deaths",
+          "positiveTests",
+          "negativeTests",
+          "contactTracers",
+          "hospitalBeds",
+          "icuBeds"
+        ],
         "type": "object",
         "properties": {
           "cases": {
             "title": "Cases",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Cumulative number of confirmed or suspected cases"
           },
           "deaths": {
             "title": "Deaths",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19"
           },
           "positiveTests": {
             "title": "Positivetests",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Cumulative positive test results to date"
           },
           "negativeTests": {
             "title": "Negativetests",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Cumulative negative test results to date"
           },
           "contactTracers": {
             "title": "Contacttracers",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Number of Contact Tracers"
           },
           "hospitalBeds": {
@@ -604,8 +732,12 @@
           "fips",
           "country",
           "state",
+          "county",
           "level",
+          "lat",
+          "long",
           "population",
+          "metrics",
           "actuals",
           "lastUpdatedDate"
         ],
@@ -628,7 +760,14 @@
           },
           "county": {
             "title": "County",
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "County name"
           },
           "level": {
@@ -636,12 +775,26 @@
           },
           "lat": {
             "title": "Lat",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Latitude of point within the state or county"
           },
           "long": {
             "title": "Long",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Longitude of point within the state or county"
           },
           "population": {
@@ -651,7 +804,14 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "$ref": "#/components/schemas/Metrics"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
@@ -676,38 +836,86 @@
       "MetricsTimeseriesRow": {
         "title": "MetricsTimeseriesRow",
         "required": [
+          "testPositivityRatio",
+          "caseDensity",
+          "contactTracerCapacityRatio",
+          "infectionRate",
+          "infectionRateCI90",
+          "icuHeadroomRatio",
           "date"
         ],
         "type": "object",
         "properties": {
           "testPositivityRatio": {
             "title": "Testpositivityratio",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "caseDensity": {
             "title": "Casedensity",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "The number of cases per 100k population calculated using a 7-day rolling average."
           },
           "contactTracerCapacityRatio": {
             "title": "Contacttracercapacityratio",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average."
           },
           "infectionRate": {
             "title": "Infectionrate",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "R_t, or the estimated number of infections arising from a typical case."
           },
           "infectionRateCI90": {
             "title": "Infectionrateci90",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "90th percentile confidence interval upper endpoint of the infection rate."
           },
           "icuHeadroomRatio": {
             "title": "Icuheadroomratio",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "icuHeadroomDetails": {
             "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
@@ -724,33 +932,75 @@
       "ActualsTimeseriesRow": {
         "title": "ActualsTimeseriesRow",
         "required": [
+          "cases",
+          "deaths",
+          "positiveTests",
+          "negativeTests",
+          "contactTracers",
+          "hospitalBeds",
+          "icuBeds",
           "date"
         ],
         "type": "object",
         "properties": {
           "cases": {
             "title": "Cases",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Cumulative number of confirmed or suspected cases"
           },
           "deaths": {
             "title": "Deaths",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19"
           },
           "positiveTests": {
             "title": "Positivetests",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Cumulative positive test results to date"
           },
           "negativeTests": {
             "title": "Negativetests",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Cumulative negative test results to date"
           },
           "contactTracers": {
             "title": "Contacttracers",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Number of Contact Tracers"
           },
           "hospitalBeds": {
@@ -786,8 +1036,12 @@
           "fips",
           "country",
           "state",
+          "county",
           "level",
+          "lat",
+          "long",
           "population",
+          "metrics",
           "actuals",
           "lastUpdatedDate",
           "actualsTimeseries"
@@ -811,7 +1065,14 @@
           },
           "county": {
             "title": "County",
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "County name"
           },
           "level": {
@@ -819,12 +1080,26 @@
           },
           "lat": {
             "title": "Lat",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Latitude of point within the state or county"
           },
           "long": {
             "title": "Long",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Longitude of point within the state or county"
           },
           "population": {
@@ -834,7 +1109,14 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "$ref": "#/components/schemas/Metrics"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
@@ -874,7 +1156,7 @@
     "securitySchemes": {
       "API Key": {
         "type": "apiKey",
-        "description": "\nAn API key is required.\n\nRegister for an API key [here](/getting-started/access).\n    ",
+        "description": "\nAn API key is required.\n\nRegister for an API key [here](/access).\n    ",
         "name": "apiKey",
         "in": "query"
       }
