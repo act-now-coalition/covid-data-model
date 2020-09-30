@@ -24,13 +24,7 @@
       "type": "string"
     },
     "level": {
-      "title": "Level",
-      "description": "Level of region.",
-      "enum": [
-        "country",
-        "state",
-        "county"
-      ]
+      "$ref": "#/definitions/AggregationLevel"
     },
     "lat": {
       "title": "Lat",
@@ -79,13 +73,43 @@
     "fips",
     "country",
     "state",
+    "county",
     "level",
+    "lat",
+    "long",
     "population",
+    "metrics",
     "actuals",
     "lastUpdatedDate",
     "actualsTimeseries"
   ],
   "definitions": {
+    "AggregationLevel": {
+      "title": "AggregationLevel",
+      "description": "An enumeration.",
+      "enum": [
+        "country",
+        "state",
+        "county"
+      ]
+    },
+    "CovidPatientsMethod": {
+      "title": "CovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients with covid.",
+      "enum": [
+        "actual",
+        "estimated"
+      ]
+    },
+    "NonCovidPatientsMethod": {
+      "title": "NonCovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients without covid.",
+      "enum": [
+        "actual",
+        "estimated_from_typical_utilization",
+        "estimated_from_total_icu_actual"
+      ]
+    },
     "ICUHeadroomMetricDetails": {
       "title": "ICUHeadroomMetricDetails",
       "description": "Details about how the ICU Headroom Metric was calculated.",
@@ -97,12 +121,7 @@
           "type": "integer"
         },
         "currentIcuCovidMethod": {
-          "title": "Currenticucovidmethod",
-          "description": "Method used to determine number of current ICU patients with covid.",
-          "enum": [
-            "actual",
-            "estimated"
-          ]
+          "$ref": "#/definitions/CovidPatientsMethod"
         },
         "currentIcuNonCovid": {
           "title": "Currenticunoncovid",
@@ -110,13 +129,7 @@
           "type": "integer"
         },
         "currentIcuNonCovidMethod": {
-          "title": "Currenticunoncovidmethod",
-          "description": "Method used to determine number of current ICU patients without covid.",
-          "enum": [
-            "actual",
-            "estimated_from_typical_utilization",
-            "estimated_from_total_icu_actual"
-          ]
+          "$ref": "#/definitions/NonCovidPatientsMethod"
         }
       },
       "required": [
@@ -163,7 +176,16 @@
         "icuHeadroomDetails": {
           "$ref": "#/definitions/ICUHeadroomMetricDetails"
         }
-      }
+      },
+      "required": [
+        "testPositivityRatio",
+        "caseDensity",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio",
+        "icuHeadroomDetails"
+      ]
     },
     "HospitalResourceUtilization": {
       "title": "HospitalResourceUtilization",
@@ -190,7 +212,13 @@
           "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
           "type": "number"
         }
-      }
+      },
+      "required": [
+        "capacity",
+        "currentUsageTotal",
+        "currentUsageCovid",
+        "typicalUsageRate"
+      ]
     },
     "Actuals": {
       "title": "Actuals",
@@ -240,7 +268,16 @@
             }
           ]
         }
-      }
+      },
+      "required": [
+        "cases",
+        "deaths",
+        "positiveTests",
+        "negativeTests",
+        "contactTracers",
+        "hospitalBeds",
+        "icuBeds"
+      ]
     },
     "MetricsTimeseriesRow": {
       "title": "MetricsTimeseriesRow",
@@ -287,6 +324,13 @@
         }
       },
       "required": [
+        "testPositivityRatio",
+        "caseDensity",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio",
+        "icuHeadroomDetails",
         "date"
       ]
     },
@@ -346,6 +390,13 @@
         }
       },
       "required": [
+        "cases",
+        "deaths",
+        "positiveTests",
+        "negativeTests",
+        "contactTracers",
+        "hospitalBeds",
+        "icuBeds",
         "date"
       ]
     }

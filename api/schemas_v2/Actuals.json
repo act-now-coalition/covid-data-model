@@ -47,6 +47,15 @@
       ]
     }
   },
+  "required": [
+    "cases",
+    "deaths",
+    "positiveTests",
+    "negativeTests",
+    "contactTracers",
+    "hospitalBeds",
+    "icuBeds"
+  ],
   "definitions": {
     "HospitalResourceUtilization": {
       "title": "HospitalResourceUtilization",
@@ -73,7 +82,13 @@
           "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
           "type": "number"
         }
-      }
+      },
+      "required": [
+        "capacity",
+        "currentUsageTotal",
+        "currentUsageCovid",
+        "typicalUsageRate"
+      ]
     }
   }
 }

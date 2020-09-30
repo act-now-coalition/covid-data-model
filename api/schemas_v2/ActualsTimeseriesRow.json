@@ -54,6 +54,13 @@
     }
   },
   "required": [
+    "cases",
+    "deaths",
+    "positiveTests",
+    "negativeTests",
+    "contactTracers",
+    "hospitalBeds",
+    "icuBeds",
     "date"
   ],
   "definitions": {
@@ -82,7 +89,13 @@
           "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
           "type": "number"
         }
-      }
+      },
+      "required": [
+        "capacity",
+        "currentUsageTotal",
+        "currentUsageCovid",
+        "typicalUsageRate"
+      ]
     }
   }
 }

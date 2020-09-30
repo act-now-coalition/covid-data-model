@@ -484,6 +484,15 @@
       },
       "Metrics": {
         "title": "Metrics",
+        "required": [
+          "testPositivityRatio",
+          "caseDensity",
+          "contactTracerCapacityRatio",
+          "infectionRate",
+          "infectionRateCI90",
+          "icuHeadroomRatio",
+          "icuHeadroomDetails"
+        ],
         "type": "object",
         "properties": {
           "testPositivityRatio": {
@@ -523,6 +532,12 @@
       },
       "HospitalResourceUtilization": {
         "title": "HospitalResourceUtilization",
+        "required": [
+          "capacity",
+          "currentUsageTotal",
+          "currentUsageCovid",
+          "typicalUsageRate"
+        ],
         "type": "object",
         "properties": {
           "capacity": {
@@ -550,6 +565,15 @@
       },
       "Actuals": {
         "title": "Actuals",
+        "required": [
+          "cases",
+          "deaths",
+          "positiveTests",
+          "negativeTests",
+          "contactTracers",
+          "hospitalBeds",
+          "icuBeds"
+        ],
         "type": "object",
         "properties": {
           "cases": {
@@ -604,8 +628,12 @@
           "fips",
           "country",
           "state",
+          "county",
           "level",
+          "lat",
+          "long",
           "population",
+          "metrics",
           "actuals",
           "lastUpdatedDate"
         ],
@@ -676,6 +704,13 @@
       "MetricsTimeseriesRow": {
         "title": "MetricsTimeseriesRow",
         "required": [
+          "testPositivityRatio",
+          "caseDensity",
+          "contactTracerCapacityRatio",
+          "infectionRate",
+          "infectionRateCI90",
+          "icuHeadroomRatio",
+          "icuHeadroomDetails",
           "date"
         ],
         "type": "object",
@@ -724,6 +759,13 @@
       "ActualsTimeseriesRow": {
         "title": "ActualsTimeseriesRow",
         "required": [
+          "cases",
+          "deaths",
+          "positiveTests",
+          "negativeTests",
+          "contactTracers",
+          "hospitalBeds",
+          "icuBeds",
           "date"
         ],
         "type": "object",
@@ -786,8 +828,12 @@
           "fips",
           "country",
           "state",
+          "county",
           "level",
+          "lat",
+          "long",
           "population",
+          "metrics",
           "actuals",
           "lastUpdatedDate",
           "actualsTimeseries"
