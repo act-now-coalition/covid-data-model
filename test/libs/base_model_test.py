@@ -27,7 +27,7 @@ def test_optional_field_modifies_schema_properly():
         bee: Optional[Bar] = pydantic.Field(...)
 
     results = Foo.schema()
-    print(results)
+
     expected = {
         "title": "Foo",
         "description": "Base model for API output.",
