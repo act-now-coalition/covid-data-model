@@ -1172,7 +1172,7 @@
     "securitySchemes": {
       "API Key": {
         "type": "apiKey",
-        "description": "\nAn API key is required.\n\nRegister for an API key [here](/getting-started/access).\n    ",
+        "description": "\nAn API key is required.\n\nRegister for an API key [here](/access).\n    ",
         "name": "apiKey",
         "in": "query"
       }
