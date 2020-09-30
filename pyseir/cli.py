@@ -306,7 +306,7 @@ def _build_all_for_states(
         state_fitter_map, fips=fips, states=states
     )
 
-    with Pool(maxtasksperchild=1) as p:
+    with Pool() as p:
         root.info(f"executing pipeline for {len(substate_inputs)} counties")
 
         substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
