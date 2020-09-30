@@ -357,7 +357,7 @@ def run_infer_rt(state, states_only):
     ),
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
-@click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
+@click.option("--output-dir", default="output/", type=str, help="Directory to deploy webui output.")
 def build_all(
     states, output_interval_days, output_dir, skip_whitelist, states_only, fips,
 ):
