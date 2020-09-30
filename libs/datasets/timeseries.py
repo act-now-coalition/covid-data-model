@@ -541,10 +541,6 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         """Adds a new_cases column to this dataset by calculating the daily diff in cases.
 
         Note: This is a mutating operation.
-
-        Args:
-            mrts: MultiRegionTimeseriesDataset
-
         """
         grouped_df = self.groupby_region()
         self.data[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].diff(1)
