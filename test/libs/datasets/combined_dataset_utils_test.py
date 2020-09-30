@@ -1,5 +1,4 @@
 import pathlib
-import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
 
