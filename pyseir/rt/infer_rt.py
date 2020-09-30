@@ -520,7 +520,7 @@ class RtInferenceEngine:
 
         self.log_likelihood = log_likelihood
 
-        if plot:
+        if plot and False:
             plotting.plot_posteriors(x=posteriors)  # Returns Figure.
             # The interpreter will handle this as it sees fit. Normal builds never call plot flag.
 
@@ -716,7 +716,7 @@ class RtInferenceEngine:
                 / np.power(suppression, self.tail_suppression_correction / 2)
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
-        if plot:
+        if plot and False:
             fig = plotting.plot_rt(
                 df=df_all,
                 include_deaths=self.include_deaths,

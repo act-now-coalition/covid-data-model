@@ -161,7 +161,7 @@ class SubStatePipeline:
 
     region: pipeline.Region
     infer_df: pd.DataFrame
-    icu_data: OneRegionTimeseriesDataset
+    icu_data: Optional[OneRegionTimeseriesDataset]
     _combined_data: combined_datasets.RegionalData
     fitter: Optional[model_fitter.ModelFitter] = None
     ensemble: Optional[ensemble_runner.EnsembleRunner] = None
@@ -176,9 +176,13 @@ class SubStatePipeline:
 
         # Run ICU adjustment
         icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
-        icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-            icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-        )
+        try:
+            icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+                icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+            )
+        except KeyError:
+            icu_data = None
+            root.exception(f"Failed to run icu data for {input.region}")
 
         if input.run_fitter:
             fitter_input = model_fitter.RegionalInput.from_substate_region(
@@ -261,7 +265,7 @@ def _write_pipeline_output(
     multiregion_rt.to_csv(output_path)
     root.info(f"outputting web results for states and counties to {output_path}")
 
-    icu_df = pd.concat(p.icu_data.data for p in pipelines).reset_index(drop=True)
+    icu_df = pd.concat(p.icu_data.data for p in pipelines if p.icu_data).reset_index(drop=True)
     timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
     latest = timeseries_dataset.latest_values_object()
     multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
