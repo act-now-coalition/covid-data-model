@@ -4,62 +4,73 @@
   "type": "object",
   "properties": {
     "testPositivityRatio": {
+      "title": "Testpositivityratio",
+      "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
       "anyOf": [
         {
-          "type": "null"
+          "type": "number"
         },
         {
-          "type": "number"
+          "type": "null"
         }
       ]
     },
     "caseDensity": {
+      "title": "Casedensity",
+      "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
       "anyOf": [
         {
-          "type": "null"
+          "type": "number"
         },
         {
-          "type": "number"
+          "type": "null"
         }
       ]
     },
     "contactTracerCapacityRatio": {
+      "title": "Contacttracercapacityratio",
+      "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
       "anyOf": [
         {
-          "type": "null"
+          "type": "number"
         },
         {
-          "type": "number"
+          "type": "null"
         }
       ]
     },
     "infectionRate": {
+      "title": "Infectionrate",
+      "description": "R_t, or the estimated number of infections arising from a typical case.",
       "anyOf": [
         {
-          "type": "null"
+          "type": "number"
         },
         {
-          "type": "number"
+          "type": "null"
         }
       ]
     },
     "infectionRateCI90": {
+      "title": "Infectionrateci90",
+      "description": "90th percentile confidence interval upper endpoint of the infection rate.",
       "anyOf": [
         {
-          "type": "null"
+          "type": "number"
         },
         {
-          "type": "number"
+          "type": "null"
         }
       ]
     },
     "icuHeadroomRatio": {
+      "title": "Icuheadroomratio",
       "anyOf": [
         {
-          "type": "null"
+          "type": "number"
         },
         {
-          "type": "number"
+          "type": "null"
         }
       ]
     },

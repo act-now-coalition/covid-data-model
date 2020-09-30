@@ -19,12 +19,14 @@
       "type": "string"
     },
     "county": {
+      "title": "County",
+      "description": "County name",
       "anyOf": [
         {
-          "type": "null"
+          "type": "string"
         },
         {
-          "type": "string"
+          "type": "null"
         }
       ]
     },
@@ -32,22 +34,26 @@
       "$ref": "#/definitions/AggregationLevel"
     },
     "lat": {
+      "title": "Lat",
+      "description": "Latitude of point within the state or county",
       "anyOf": [
         {
-          "type": "null"
+          "type": "number"
         },
         {
-          "type": "number"
+          "type": "null"
         }
       ]
     },
     "long": {
+      "title": "Long",
+      "description": "Longitude of point within the state or county",
       "anyOf": [
         {
-          "type": "null"
+          "type": "number"
         },
         {
-          "type": "number"
+          "type": "null"
         }
       ]
     },
@@ -145,62 +151,73 @@
       "type": "object",
       "properties": {
         "testPositivityRatio": {
+          "title": "Testpositivityratio",
+          "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
           "anyOf": [
             {
-              "type": "null"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "null"
             }
           ]
         },
         "caseDensity": {
+          "title": "Casedensity",
+          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
           "anyOf": [
             {
-              "type": "null"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "null"
             }
           ]
         },
         "contactTracerCapacityRatio": {
+          "title": "Contacttracercapacityratio",
+          "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
           "anyOf": [
             {
-              "type": "null"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "null"
             }
           ]
         },
         "infectionRate": {
+          "title": "Infectionrate",
+          "description": "R_t, or the estimated number of infections arising from a typical case.",
           "anyOf": [
             {
-              "type": "null"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "null"
             }
           ]
         },
         "infectionRateCI90": {
+          "title": "Infectionrateci90",
+          "description": "90th percentile confidence interval upper endpoint of the infection rate.",
           "anyOf": [
             {
-              "type": "null"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "null"
             }
           ]
         },
         "icuHeadroomRatio": {
+          "title": "Icuheadroomratio",
           "anyOf": [
             {
-              "type": "null"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "null"
             }
           ]
         },
@@ -224,42 +241,50 @@
       "type": "object",
       "properties": {
         "capacity": {
+          "title": "Capacity",
+          "description": "Total capacity for resource.",
           "anyOf": [
             {
-              "type": "null"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "null"
             }
           ]
         },
         "currentUsageTotal": {
+          "title": "Currentusagetotal",
+          "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
           "anyOf": [
             {
-              "type": "null"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "null"
             }
           ]
         },
         "currentUsageCovid": {
+          "title": "Currentusagecovid",
+          "description": "Currently used capacity for resource by COVID ",
           "anyOf": [
             {
-              "type": "null"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "null"
             }
           ]
         },
         "typicalUsageRate": {
+          "title": "Typicalusagerate",
+          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
           "anyOf": [
             {
-              "type": "null"
+              "type": "number"
             },
             {
-              "type": "number"
+              "type": "null"
             }
           ]
         }
@@ -277,52 +302,62 @@
       "type": "object",
       "properties": {
         "cases": {
+          "title": "Cases",
+          "description": "Cumulative number of confirmed or suspected cases",
           "anyOf": [
             {
-              "type": "null"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "null"
             }
           ]
         },
         "deaths": {
+          "title": "Deaths",
+          "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19",
           "anyOf": [
             {
-              "type": "null"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "null"
             }
           ]
         },
         "positiveTests": {
+          "title": "Positivetests",
+          "description": "Cumulative positive test results to date",
           "anyOf": [
             {
-              "type": "null"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "null"
             }
           ]
         },
         "negativeTests": {
+          "title": "Negativetests",
+          "description": "Cumulative negative test results to date",
           "anyOf": [
             {
-              "type": "null"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "null"
             }
           ]
         },
         "contactTracers": {
+          "title": "Contacttracers",
+          "description": "Number of Contact Tracers",
           "anyOf": [
             {
-              "type": "null"
+              "type": "integer"
             },
             {
-              "type": "integer"
+              "type": "null"
             }
           ]
         },

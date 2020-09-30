@@ -18,9 +18,15 @@ class APIBaseModel(pydantic.BaseModel):
                 if field.allow_none and field.required:
                     print("*****")
                     print(field_name)
-                    if "type" in schema["properties"][field_name]:
-                        existing_schema_type = schema["properties"][field_name]["type"]
-                        schema["properties"][field_name] = ["null", existing_schema_type]
+                    existing_field = schema["properties"][field_name]
+                    if "type" in existing_field:
+                        existing_type = existing_field.pop("type")
+                        existing_field["anyOf"] = [
+                            {"type": existing_type},
+                            {"type": "null"},
+                        ]
+                        print(schema["properties"][field_name])
+
                         # schema['properties']['nullable'] = True
                     # print(field_name, field)
                     # print(field.field_info)
