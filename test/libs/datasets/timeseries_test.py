@@ -230,7 +230,7 @@ def _combined_sorted_by_location_date(ts: timeseries.MultiRegionTimeseriesDatase
     )
 
 
-def _assert_combined_like(
+def assert_combined_like(
     ts1: timeseries.MultiRegionTimeseriesDataset, ts2: timeseries.MultiRegionTimeseriesDataset
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
@@ -263,7 +263,7 @@ def test_merge():
     # Check that merge is symmetric
     ts_merged_1 = ts_fips.merge(ts_cbsa)
     ts_merged_2 = ts_cbsa.merge(ts_fips)
-    _assert_combined_like(ts_merged_1, ts_merged_2)
+    assert_combined_like(ts_merged_1, ts_merged_2)
 
     ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
@@ -280,30 +280,4 @@ def test_merge():
             "iso1:us#fips:97222,,Foo County,county,,11\n"
         )
     )
-    _assert_combined_like(ts_merged_1, ts_expected)
-
-
-def test_drop_na_dates():
-    ts_in = timeseries.MultiRegionTimeseriesDataset.from_csv(
-        io.StringIO(
-            "location_id,date,county,aggregate_level,m1,m2\n"
-            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
-            "iso1:us#fips:97111,2020-04-03,Bar County,county,,\n"
-            "iso1:us#fips:97111,,Bar County,county,,\n"
-            "iso1:us#cbsa:10100,2020-04-02,,,,\n"
-            "iso1:us#cbsa:10100,2020-04-03,,,3,33\n"
-            "iso1:us#cbsa:10100,,,,3,33\n"
-        )
-    )
-    ts_result = ts_in.drop_na_dates()
-
-    ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
-        io.StringIO(
-            "location_id,date,fips,county,aggregate_level,m1,m2\n"
-            "iso1:us#fips:97111,2020-04-02,97111,Bar County,county,2,\n"
-            "iso1:us#cbsa:10100,2020-04-03,,,,3,33\n"
-            "iso1:us#fips:97111,,97111,Bar County,county,,\n"
-            "iso1:us#cbsa:10100,,,,,3,33\n"
-        )
-    )
-    _assert_combined_like(ts_result, ts_expected)
+    assert_combined_like(ts_merged_1, ts_expected)
