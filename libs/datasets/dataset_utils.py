@@ -16,6 +16,7 @@ GEO_DATA_COLUMNS = [
     CommonFields.AGGREGATE_LEVEL,
     CommonFields.COUNTRY,
     CommonFields.COUNTY,
+    CommonFields.LOCATION_ID,
 ]
 
 

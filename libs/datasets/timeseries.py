@@ -25,6 +25,7 @@ from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
 from libs.datasets.dataset_utils import DatasetType
+from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 import pandas.core.groupby.generic
@@ -562,6 +563,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         if self.provenance is not None:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().to_csv(provenance_path)
+
+    def drop_na_dates(self) -> "MultiRegionTimeseriesDataset":
+        """Returns a new object with dates removed that don't have timeseries real values."""
+        ts_columns = set(self.data_with_fips.columns) - set(GEO_DATA_COLUMNS) - {CommonFields.DATE}
+        ts_df = self.data_with_fips.dropna("index", "all", subset=list(ts_columns))
+        return MultiRegionTimeseriesDataset.from_dataframes(
+            ts_df, self.latest_data_with_fips.reset_index()
+        )
 
 
 def _remove_padded_nans(df, columns):

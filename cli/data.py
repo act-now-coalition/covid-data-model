@@ -86,7 +86,7 @@ def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
     )
     multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         timeseries_dataset, latest_dataset
-    )
+    ).drop_na_dates()
     if aggregate_to_msas:
         aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
         multiregion_dataset = multiregion_dataset.merge(aggregator.aggregate(multiregion_dataset))
@@ -113,6 +113,16 @@ def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
 
     if summary_filename:
         _save_field_summary(multiregion_dataset, path_prefix / summary_filename)
+
+
+@main.command()
+@click.argument("filename_in", type=click.Path(exists=True))
+@click.argument("filename_out", type=click.Path(exists=False))
+def filter_drop_na_dates(filename_in: pathlib.Path, filename_out: pathlib.Path):
+    """Apply the drop_na_dates filter to FILENAME_IN and write FILENAME_OUT."""
+    multiregion_in = MultiRegionTimeseriesDataset.from_csv(filename_in)
+    multiregion_out = multiregion_in.drop_na_dates()
+    multiregion_out.to_csv(filename_out)
 
 
 @main.command()
