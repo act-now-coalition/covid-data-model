@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional
 from libs.datasets.dataset_utils import AggregationLevel
 from api import can_api_definition
 from libs import base_model

@@ -12,6 +12,7 @@ class APIBaseModel(pydantic.BaseModel):
     class Config:
         json_dumps = _nan_safe_json_dumps
 
+        @staticmethod
         def schema_extra(schema, model):
             # Updating json schema output to respect optional typed fields.
             # Without this code, the schema output doesn't signify that a value
