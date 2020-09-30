@@ -6,27 +6,62 @@
     "cases": {
       "title": "Cases",
       "description": "Cumulative number of confirmed or suspected cases",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "deaths": {
       "title": "Deaths",
       "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "positiveTests": {
       "title": "Positivetests",
       "description": "Cumulative positive test results to date",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "negativeTests": {
       "title": "Negativetests",
       "description": "Cumulative negative test results to date",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "contactTracers": {
       "title": "Contacttracers",
       "description": "Number of Contact Tracers",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "hospitalBeds": {
       "title": "Hospitalbeds",
@@ -54,6 +89,13 @@
     }
   },
   "required": [
+    "cases",
+    "deaths",
+    "positiveTests",
+    "negativeTests",
+    "contactTracers",
+    "hospitalBeds",
+    "icuBeds",
     "date"
   ],
   "definitions": {
@@ -65,24 +107,58 @@
         "capacity": {
           "title": "Capacity",
           "description": "Total capacity for resource.",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentUsageTotal": {
           "title": "Currentusagetotal",
           "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentUsageCovid": {
           "title": "Currentusagecovid",
           "description": "Currently used capacity for resource by COVID ",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "typicalUsageRate": {
           "title": "Typicalusagerate",
           "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
-      }
+      },
+      "required": [
+        "capacity",
+        "currentUsageTotal",
+        "currentUsageCovid",
+        "typicalUsageRate"
+      ]
     }
   }
 }
