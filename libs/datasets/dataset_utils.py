@@ -142,18 +142,6 @@ def check_index_values_are_unique(data, index=None, duplicates_as_error=True):
     return None
 
 
-def decorate_new_cases(multiregion_timeseries):
-    """Adds a new_cases column to the dataset by calculating the daily diff in cases.
-
-    Args:
-        multiregion_timeseries: MultiRegionTimeseriesDataset
-
-    """
-    df = multiregion_timeseries.groupby_region()
-    multiregion_timeseries.data[CommonFields.NEW_CASES] = df[CommonFields.CASES].diff(1)
-    return multiregion_timeseries
-
-
 def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_aggregation):
     from_data = data[data.aggregate_level == from_aggregation.value]
     new_data = from_data.groupby(groupby_fields).sum().reset_index()

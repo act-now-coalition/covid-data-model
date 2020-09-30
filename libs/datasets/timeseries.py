@@ -537,6 +537,18 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self.data.groupby(CommonFields.LOCATION_ID)
 
+    def calculate_and_insert_new_cases(self):
+        """Adds a new_cases column to this dataset by calculating the daily diff in cases.
+
+        Note: This is a mutating operation.
+
+        Args:
+            mrts: MultiRegionTimeseriesDataset
+
+        """
+        grouped_df = self.groupby_region()
+        self.data[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].diff(1)
+
     @property
     def empty(self) -> bool:
         return self.data.empty
