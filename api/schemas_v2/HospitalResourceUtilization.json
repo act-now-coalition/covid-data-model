@@ -3,22 +3,46 @@
   "description": "Base model for API output.",
   "type": "object",
   "properties": {
-    "capacity": [
-      "null",
-      "integer"
-    ],
-    "currentUsageTotal": [
-      "null",
-      "integer"
-    ],
-    "currentUsageCovid": [
-      "null",
-      "integer"
-    ],
-    "typicalUsageRate": [
-      "null",
-      "number"
-    ]
+    "capacity": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "currentUsageTotal": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "currentUsageCovid": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "typicalUsageRate": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    }
   },
   "required": [
     "capacity",

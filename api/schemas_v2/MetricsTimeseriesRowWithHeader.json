@@ -3,30 +3,66 @@
   "description": "Prediction timeseries row with location information.",
   "type": "object",
   "properties": {
-    "testPositivityRatio": [
-      "null",
-      "number"
-    ],
-    "caseDensity": [
-      "null",
-      "number"
-    ],
-    "contactTracerCapacityRatio": [
-      "null",
-      "number"
-    ],
-    "infectionRate": [
-      "null",
-      "number"
-    ],
-    "infectionRateCI90": [
-      "null",
-      "number"
-    ],
-    "icuHeadroomRatio": [
-      "null",
-      "number"
-    ],
+    "testPositivityRatio": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "caseDensity": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "contactTracerCapacityRatio": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "infectionRate": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "infectionRateCI90": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "icuHeadroomRatio": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
     "icuHeadroomDetails": {
       "$ref": "#/definitions/ICUHeadroomMetricDetails"
     },

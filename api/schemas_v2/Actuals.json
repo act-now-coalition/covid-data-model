@@ -3,26 +3,56 @@
   "description": "Known actuals data.",
   "type": "object",
   "properties": {
-    "cases": [
-      "null",
-      "integer"
-    ],
-    "deaths": [
-      "null",
-      "integer"
-    ],
-    "positiveTests": [
-      "null",
-      "integer"
-    ],
-    "negativeTests": [
-      "null",
-      "integer"
-    ],
-    "contactTracers": [
-      "null",
-      "integer"
-    ],
+    "cases": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "deaths": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "positiveTests": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "negativeTests": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "contactTracers": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
     "hospitalBeds": {
       "title": "Hospitalbeds",
       "description": "Information about hospital bed utilization",
@@ -57,22 +87,46 @@
       "description": "Base model for API output.",
       "type": "object",
       "properties": {
-        "capacity": [
-          "null",
-          "integer"
-        ],
-        "currentUsageTotal": [
-          "null",
-          "integer"
-        ],
-        "currentUsageCovid": [
-          "null",
-          "integer"
-        ],
-        "typicalUsageRate": [
-          "null",
-          "number"
-        ]
+        "capacity": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "currentUsageTotal": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "currentUsageCovid": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "typicalUsageRate": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
       },
       "required": [
         "capacity",

@@ -66,30 +66,66 @@
       "description": "Calculated metrics data based on known actuals.",
       "type": "object",
       "properties": {
-        "testPositivityRatio": [
-          "null",
-          "number"
-        ],
-        "caseDensity": [
-          "null",
-          "number"
-        ],
-        "contactTracerCapacityRatio": [
-          "null",
-          "number"
-        ],
-        "infectionRate": [
-          "null",
-          "number"
-        ],
-        "infectionRateCI90": [
-          "null",
-          "number"
-        ],
-        "icuHeadroomRatio": [
-          "null",
-          "number"
-        ],
+        "testPositivityRatio": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "caseDensity": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "contactTracerCapacityRatio": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "infectionRate": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "infectionRateCI90": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "icuHeadroomRatio": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
         "icuHeadroomDetails": {
           "$ref": "#/definitions/ICUHeadroomMetricDetails"
         }
@@ -109,22 +145,46 @@
       "description": "Base model for API output.",
       "type": "object",
       "properties": {
-        "capacity": [
-          "null",
-          "integer"
-        ],
-        "currentUsageTotal": [
-          "null",
-          "integer"
-        ],
-        "currentUsageCovid": [
-          "null",
-          "integer"
-        ],
-        "typicalUsageRate": [
-          "null",
-          "number"
-        ]
+        "capacity": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "currentUsageTotal": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "currentUsageCovid": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "typicalUsageRate": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
       },
       "required": [
         "capacity",
@@ -138,26 +198,56 @@
       "description": "Known actuals data.",
       "type": "object",
       "properties": {
-        "cases": [
-          "null",
-          "integer"
-        ],
-        "deaths": [
-          "null",
-          "integer"
-        ],
-        "positiveTests": [
-          "null",
-          "integer"
-        ],
-        "negativeTests": [
-          "null",
-          "integer"
-        ],
-        "contactTracers": [
-          "null",
-          "integer"
-        ],
+        "cases": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "deaths": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "positiveTests": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "negativeTests": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "contactTracers": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
         "hospitalBeds": {
           "title": "Hospitalbeds",
           "description": "Information about hospital bed utilization",
@@ -207,21 +297,39 @@
           "description": "2-letter ANSI state code.",
           "type": "string"
         },
-        "county": [
-          "null",
-          "string"
-        ],
+        "county": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
         "level": {
           "$ref": "#/definitions/AggregationLevel"
         },
-        "lat": [
-          "null",
-          "number"
-        ],
-        "long": [
-          "null",
-          "number"
-        ],
+        "lat": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "long": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
         "population": {
           "title": "Population",
           "description": "Total Population in geographic region.",
