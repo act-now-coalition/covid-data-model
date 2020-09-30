@@ -138,14 +138,7 @@
           ]
         },
         "icuHeadroomDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ICUHeadroomMetricDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
         }
       },
       "required": [
@@ -154,8 +147,7 @@
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
-        "icuHeadroomRatio",
-        "icuHeadroomDetails"
+        "icuHeadroomRatio"
       ]
     },
     "HospitalResourceUtilization": {
@@ -390,14 +382,7 @@
           ]
         },
         "icuHeadroomDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ICUHeadroomMetricDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
         },
         "date": {
           "title": "Date",
@@ -413,7 +398,6 @@
         "infectionRate",
         "infectionRateCI90",
         "icuHeadroomRatio",
-        "icuHeadroomDetails",
         "date"
       ]
     },

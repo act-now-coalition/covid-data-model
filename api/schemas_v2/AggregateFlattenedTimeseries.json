@@ -129,14 +129,7 @@
           ]
         },
         "icuHeadroomDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ICUHeadroomMetricDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
         },
         "date": {
           "title": "Date",
@@ -188,7 +181,6 @@
         "infectionRate",
         "infectionRateCI90",
         "icuHeadroomRatio",
-        "icuHeadroomDetails",
         "date",
         "state",
         "fips",

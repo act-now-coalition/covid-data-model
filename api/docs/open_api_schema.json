@@ -490,8 +490,7 @@
           "contactTracerCapacityRatio",
           "infectionRate",
           "infectionRateCI90",
-          "icuHeadroomRatio",
-          "icuHeadroomDetails"
+          "icuHeadroomRatio"
         ],
         "type": "object",
         "properties": {
@@ -567,14 +566,7 @@
             ]
           },
           "icuHeadroomDetails": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
           }
         },
         "description": "Calculated metrics data based on known actuals."
@@ -850,7 +842,6 @@
           "infectionRate",
           "infectionRateCI90",
           "icuHeadroomRatio",
-          "icuHeadroomDetails",
           "date"
         ],
         "type": "object",
@@ -927,14 +918,7 @@
             ]
           },
           "icuHeadroomDetails": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
           },
           "date": {
             "title": "Date",
