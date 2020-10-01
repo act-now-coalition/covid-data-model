@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from libs.datasets.dataset_utils import AggregationLevel
 from api import can_api_definition
 from libs import base_model
@@ -7,43 +7,43 @@ import datetime
 
 
 class HospitalResourceUtilization(base_model.APIBaseModel):
-    capacity: int = pydantic.Field(None, description="Total capacity for resource.")
-    currentUsageTotal: int = pydantic.Field(
-        None, description="Currently used capacity for resource by all patients (COVID + Non-COVID)"
+    capacity: Optional[int] = pydantic.Field(..., description="Total capacity for resource.")
+    currentUsageTotal: Optional[int] = pydantic.Field(
+        ..., description="Currently used capacity for resource by all patients (COVID + Non-COVID)"
     )
-    currentUsageCovid: int = pydantic.Field(
-        None, description="Currently used capacity for resource by COVID "
+    currentUsageCovid: Optional[int] = pydantic.Field(
+        ..., description="Currently used capacity for resource by COVID "
     )
-    typicalUsageRate: float = pydantic.Field(
-        None, description="Typical used capacity rate for resource. This excludes any COVID usage."
+    typicalUsageRate: Optional[float] = pydantic.Field(
+        ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
     )
 
 
 class Actuals(base_model.APIBaseModel):
     """Known actuals data."""
 
-    cases: int = pydantic.Field(
-        None, description="Cumulative number of confirmed or suspected cases"
+    cases: Optional[int] = pydantic.Field(
+        ..., description="Cumulative number of confirmed or suspected cases"
     )
-    deaths: int = pydantic.Field(
-        None,
+    deaths: Optional[int] = pydantic.Field(
+        ...,
         description=(
             "Cumulative number of deaths that are suspected or "
             "confirmed to have been caused by COVID-19"
         ),
     )
-    positiveTests: int = pydantic.Field(
-        None, description="Cumulative positive test results to date"
+    positiveTests: Optional[int] = pydantic.Field(
+        ..., description="Cumulative positive test results to date"
     )
-    negativeTests: int = pydantic.Field(
-        None, description="Cumulative negative test results to date"
+    negativeTests: Optional[int] = pydantic.Field(
+        ..., description="Cumulative negative test results to date"
     )
-    contactTracers: int = pydantic.Field(None, description="Number of Contact Tracers")
-    hospitalBeds: HospitalResourceUtilization = pydantic.Field(
-        None, description="Information about hospital bed utilization"
+    contactTracers: Optional[int] = pydantic.Field(..., description="Number of Contact Tracers")
+    hospitalBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
+        ..., description="Information about hospital bed utilization"
     )
-    icuBeds: HospitalResourceUtilization = pydantic.Field(
-        None, description="Information about ICU bed utilization"
+    icuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
+        ..., description="Information about ICU bed utilization"
     )
 
 
@@ -56,33 +56,33 @@ class ActualsTimeseriesRow(Actuals):
 class Metrics(base_model.APIBaseModel):
     """Calculated metrics data based on known actuals."""
 
-    testPositivityRatio: float = pydantic.Field(
-        None,
+    testPositivityRatio: Optional[float] = pydantic.Field(
+        ...,
         description="Ratio of people who test positive calculated using a 7-day rolling average.",
     )
 
-    caseDensity: float = pydantic.Field(
-        None,
+    caseDensity: Optional[float] = pydantic.Field(
+        ...,
         description="The number of cases per 100k population calculated using a 7-day rolling average.",
     )
 
-    contactTracerCapacityRatio: float = pydantic.Field(
-        None,
+    contactTracerCapacityRatio: Optional[float] = pydantic.Field(
+        ...,
         description=(
             "Ratio of currently hired tracers to estimated "
             "tracers needed based on 7-day daily case average."
         ),
     )
 
-    infectionRate: float = pydantic.Field(
-        None, description="R_t, or the estimated number of infections arising from a typical case."
+    infectionRate: Optional[float] = pydantic.Field(
+        ..., description="R_t, or the estimated number of infections arising from a typical case."
     )
 
-    infectionRateCI90: float = pydantic.Field(
-        None,
+    infectionRateCI90: Optional[float] = pydantic.Field(
+        ...,
         description="90th percentile confidence interval upper endpoint of the infection rate.",
     )
-    icuHeadroomRatio: float = pydantic.Field(None)
+    icuHeadroomRatio: Optional[float] = pydantic.Field(...)
     icuHeadroomDetails: can_api_definition.ICUHeadroomMetricDetails = pydantic.Field(None)
 
 
@@ -101,16 +101,20 @@ class RegionSummary(base_model.APIBaseModel):
     )
     country: str = pydantic.Field(..., description="2-letter ISO-3166 Country code.")
     state: str = pydantic.Field(..., description="2-letter ANSI state code.")
-    county: str = pydantic.Field(None, description="County name")
+    county: Optional[str] = pydantic.Field(..., description="County name")
 
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
-    lat: float = pydantic.Field(None, description="Latitude of point within the state or county")
-    long: float = pydantic.Field(None, description="Longitude of point within the state or county")
+    lat: Optional[float] = pydantic.Field(
+        ..., description="Latitude of point within the state or county"
+    )
+    long: Optional[float] = pydantic.Field(
+        ..., description="Longitude of point within the state or county"
+    )
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
     )
 
-    metrics: Metrics = pydantic.Field(None)
+    metrics: Optional[Metrics] = pydantic.Field(...)
     actuals: Actuals = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")

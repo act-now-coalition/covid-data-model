@@ -184,7 +184,7 @@ The Covid Act Now API provides historical covid projections updated daily.
     api_key_description = """
 An API key is required.
 
-Register for an API key [here](/getting-started/access).
+Register for an API key [here](/access).
     """
     spec = OpenAPI.parse_obj(
         {

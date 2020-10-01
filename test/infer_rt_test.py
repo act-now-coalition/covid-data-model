@@ -7,6 +7,7 @@ import structlog
 from libs.datasets import combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
+from libs.datasets import timeseries
 from pyseir import cli
 
 from pyseir.rt import utils
@@ -257,7 +258,7 @@ def test_generate_infection_rate_metric_fake_fips():
     assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
     assert infer_input.timeseries.empty
 
-    with pytest.raises(combined_datasets.RegionLatestNotFound):
+    with pytest.raises(timeseries.RegionLatestNotFound):
         # Totally bogus FIPS not even in latest data raises an exception
         infer_rt.RegionalInput.from_fips("48998")
 

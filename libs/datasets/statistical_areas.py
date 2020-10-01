@@ -24,18 +24,16 @@ class CountyToCBSAAggregator:
 
     def aggregate(self, dataset_in: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
-        # Make a copy to avoid modifying the input. DataFrame.assign is an alternative but the API
-        # doesn't work well here.
-        df = dataset_in.data_with_fips.copy()
-        df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
-
-        # TODO(tom): Put the title in the data when it is clear where it goes in the returned value
-        # TODO(tom): Handle dates with a subset of counties reporting.
-        # TODO(tom): Handle data columns that don't make sense aggregated with sum.
-        df_cbsa = df.groupby([CBSA_COLUMN, CommonFields.DATE], as_index=False).sum()
-        df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
-
-        return MultiRegionTimeseriesDataset(df_cbsa)
+        return MultiRegionTimeseriesDataset.from_combined_dataframe(
+            pd.concat(
+                [
+                    self._aggregate_fips_df(dataset_in.data_with_fips, groupby_date=True),
+                    # No need to reset latest_data_with_fips LOCATION_ID index because FIPS is used.
+                    self._aggregate_fips_df(dataset_in.latest_data_with_fips, groupby_date=False),
+                ],
+                ignore_index=True,
+            )
+        )
 
     @staticmethod
     def from_local_public_data() -> "CountyToCBSAAggregator":
@@ -47,6 +45,11 @@ class CountyToCBSAAggregator:
             dtype={"FIPS State Code": str, "FIPS County Code": str},
         )
         df[CommonFields.FIPS] = df["FIPS State Code"] + df["FIPS County Code"]
+        df = df.loc[df[CommonFields.FIPS].notna(), :]
+
+        dups = df.duplicated(CommonFields.FIPS, keep=False)
+        if dups.any():
+            raise ValueError(f"Duplicate FIPS:\n{df.loc[dups, CommonFields.FIPS]}")
 
         county_map = df.set_index(CommonFields.FIPS)["CBSA Code"].to_dict()
 
@@ -58,3 +61,18 @@ class CountyToCBSAAggregator:
         )
 
         return CountyToCBSAAggregator(county_map=county_map, cbsa_title_map=cbsa_title_map)
+
+    def _aggregate_fips_df(self, df: pd.DataFrame, groupby_date: bool) -> pd.DataFrame:
+        # Make a copy to avoid modifying the input. DataFrame.assign is an alternative but the API
+        # doesn't work well here.
+        df = df.copy()
+        df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
+
+        # TODO(tom): Put the title in the data when it is clear where it goes in the returned value
+        # TODO(tom): Handle dates with a subset of counties reporting.
+        # TODO(tom): Handle data columns that don't make sense aggregated with sum.
+        groupby_columns = [CBSA_COLUMN, CommonFields.DATE] if groupby_date else [CBSA_COLUMN]
+        df_cbsa = df.groupby(groupby_columns, as_index=False).sum()
+        df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
+
+        return df_cbsa

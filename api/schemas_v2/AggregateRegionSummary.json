@@ -1,0 +1,408 @@
+{
+  "title": "AggregateRegionSummary",
+  "description": "Summary data for multiple regions.",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/RegionSummary"
+  },
+  "definitions": {
+    "AggregationLevel": {
+      "title": "AggregationLevel",
+      "description": "An enumeration.",
+      "enum": [
+        "country",
+        "state",
+        "county"
+      ]
+    },
+    "CovidPatientsMethod": {
+      "title": "CovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients with covid.",
+      "enum": [
+        "actual",
+        "estimated"
+      ]
+    },
+    "NonCovidPatientsMethod": {
+      "title": "NonCovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients without covid.",
+      "enum": [
+        "actual",
+        "estimated_from_typical_utilization",
+        "estimated_from_total_icu_actual"
+      ]
+    },
+    "ICUHeadroomMetricDetails": {
+      "title": "ICUHeadroomMetricDetails",
+      "description": "Details about how the ICU Headroom Metric was calculated.",
+      "type": "object",
+      "properties": {
+        "currentIcuCovid": {
+          "title": "Currenticucovid",
+          "description": "Current number of covid patients in icu.",
+          "type": "integer"
+        },
+        "currentIcuCovidMethod": {
+          "$ref": "#/definitions/CovidPatientsMethod"
+        },
+        "currentIcuNonCovid": {
+          "title": "Currenticunoncovid",
+          "description": "Current number of covid patients in icu.",
+          "type": "integer"
+        },
+        "currentIcuNonCovidMethod": {
+          "$ref": "#/definitions/NonCovidPatientsMethod"
+        }
+      },
+      "required": [
+        "currentIcuCovid",
+        "currentIcuCovidMethod",
+        "currentIcuNonCovid",
+        "currentIcuNonCovidMethod"
+      ]
+    },
+    "Metrics": {
+      "title": "Metrics",
+      "description": "Calculated metrics data based on known actuals.",
+      "type": "object",
+      "properties": {
+        "testPositivityRatio": {
+          "title": "Testpositivityratio",
+          "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "caseDensity": {
+          "title": "Casedensity",
+          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contactTracerCapacityRatio": {
+          "title": "Contacttracercapacityratio",
+          "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "infectionRate": {
+          "title": "Infectionrate",
+          "description": "R_t, or the estimated number of infections arising from a typical case.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "infectionRateCI90": {
+          "title": "Infectionrateci90",
+          "description": "90th percentile confidence interval upper endpoint of the infection rate.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "icuHeadroomRatio": {
+          "title": "Icuheadroomratio",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "icuHeadroomDetails": {
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+        }
+      },
+      "required": [
+        "testPositivityRatio",
+        "caseDensity",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio"
+      ]
+    },
+    "HospitalResourceUtilization": {
+      "title": "HospitalResourceUtilization",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "title": "Capacity",
+          "description": "Total capacity for resource.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentUsageTotal": {
+          "title": "Currentusagetotal",
+          "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentUsageCovid": {
+          "title": "Currentusagecovid",
+          "description": "Currently used capacity for resource by COVID ",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "typicalUsageRate": {
+          "title": "Typicalusagerate",
+          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "capacity",
+        "currentUsageTotal",
+        "currentUsageCovid",
+        "typicalUsageRate"
+      ]
+    },
+    "Actuals": {
+      "title": "Actuals",
+      "description": "Known actuals data.",
+      "type": "object",
+      "properties": {
+        "cases": {
+          "title": "Cases",
+          "description": "Cumulative number of confirmed or suspected cases",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deaths": {
+          "title": "Deaths",
+          "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "positiveTests": {
+          "title": "Positivetests",
+          "description": "Cumulative positive test results to date",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "negativeTests": {
+          "title": "Negativetests",
+          "description": "Cumulative negative test results to date",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contactTracers": {
+          "title": "Contacttracers",
+          "description": "Number of Contact Tracers",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hospitalBeds": {
+          "title": "Hospitalbeds",
+          "description": "Information about hospital bed utilization",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HospitalResourceUtilization"
+            }
+          ]
+        },
+        "icuBeds": {
+          "title": "Icubeds",
+          "description": "Information about ICU bed utilization",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HospitalResourceUtilization"
+            }
+          ]
+        }
+      },
+      "required": [
+        "cases",
+        "deaths",
+        "positiveTests",
+        "negativeTests",
+        "contactTracers",
+        "hospitalBeds",
+        "icuBeds"
+      ]
+    },
+    "RegionSummary": {
+      "title": "RegionSummary",
+      "description": "Summary of actual and prediction data for a single region.",
+      "type": "object",
+      "properties": {
+        "fips": {
+          "title": "Fips",
+          "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+          "type": "string"
+        },
+        "country": {
+          "title": "Country",
+          "description": "2-letter ISO-3166 Country code.",
+          "type": "string"
+        },
+        "state": {
+          "title": "State",
+          "description": "2-letter ANSI state code.",
+          "type": "string"
+        },
+        "county": {
+          "title": "County",
+          "description": "County name",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "level": {
+          "$ref": "#/definitions/AggregationLevel"
+        },
+        "lat": {
+          "title": "Lat",
+          "description": "Latitude of point within the state or county",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "long": {
+          "title": "Long",
+          "description": "Longitude of point within the state or county",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "population": {
+          "title": "Population",
+          "description": "Total Population in geographic region.",
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "metrics": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Metrics"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actuals": {
+          "$ref": "#/definitions/Actuals"
+        },
+        "lastUpdatedDate": {
+          "title": "Lastupdateddate",
+          "description": "Date of latest data",
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "fips",
+        "country",
+        "state",
+        "county",
+        "level",
+        "lat",
+        "long",
+        "population",
+        "metrics",
+        "actuals",
+        "lastUpdatedDate"
+      ]
+    }
+  }
+}

@@ -83,9 +83,7 @@ def run_on_regions(
 
 
 def generate_metrics_and_latest(
-    timeseries: OneRegionTimeseriesDataset,
-    latest: dict,
-    model_output: Optional[CANPyseirLocationOutput],
+    timeseries: OneRegionTimeseriesDataset, model_output: Optional[CANPyseirLocationOutput],
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
     Build metrics with timeseries.
@@ -102,7 +100,7 @@ def generate_metrics_and_latest(
         return [], None
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, latest, model_output
+        timeseries, model_output
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
@@ -126,7 +124,7 @@ def build_timeseries_for_region(
     try:
         fips_timeseries = regional_input.timeseries
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
-            fips_timeseries, fips_latest, model_output
+            fips_timeseries, model_output
         )
         region_summary = build_api_v2.build_region_summary(fips_latest, metrics_latest)
         region_timeseries = build_api_v2.build_region_timeseries(
