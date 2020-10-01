@@ -1,18 +1,14 @@
+import os
 import pathlib
+import math
+from datetime import datetime
 
 import pytest  # pylint: disable=unused-import
 import pandas as pd
 import numpy as np
-import math
 
-# from numbers import Number
 from scipy import stats
-
-# from random import choices, randrange
-# import structlog
 from matplotlib import pyplot as plt
-
-from datetime import datetime  # , timedelta, time
 
 from pyseir.models.demographics import Demographics
 from pyseir.models.nowcast_seir_model import (
@@ -22,7 +18,6 @@ from pyseir.models.nowcast_seir_model import (
     extend_rt_function_with_new_cases_forecast,
 )
 
-# from pyseir.rt.constants import InferRtConstants
 from pyseir.models.historical_data import (
     HistoricalData,
     ForecastData,
@@ -30,11 +25,9 @@ from pyseir.models.historical_data import (
     EARLY_OUTBREAK_START_DAY_BY_STATE,
 )
 
-# rom pyseir.utils import get_run_artifact_path, RunArtifact
-# from test.mocks.inference import load_data
-# from test.mocks.inference.load_data import RateChange
+from pyseir import OUTPUT_DIR
 
-TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
+TEST_OUTPUT_DIR = pathlib.Path(os.path.join(OUTPUT_DIR, "test_results"))
 TEST_OUTPUT_DIR.mkdir(exist_ok=True)
 
 MAKE_PLOTS = False  # Change to true to generate plots
@@ -204,7 +197,7 @@ def test_historical_period_state_deaths_and_hospitalizations():
     # Store charts in directories per "starts" period (early, recent)
     test_dir = {}
     for when in starts.keys():
-        test_dir[when] = pathlib.Path(TEST_OUTPUT_DIR / when)
+        test_dir[when] = pathlib.Path(os.path.join(TEST_OUTPUT_DIR, when))
         test_dir[when].mkdir(exist_ok=True)
 
     for state in states:
