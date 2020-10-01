@@ -284,7 +284,7 @@ def test_merge():
 
 
 def test_calculate_new_cases():
-    mrts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+    mrts_before = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,cases\n"
             "iso1:us#fips:1,2000-01-01,0\n"
@@ -312,5 +312,5 @@ def test_calculate_new_cases():
         )
     )
 
-    mrts.calculate_and_insert_new_cases()
-    pd.testing.assert_frame_equal(mrts.data, mrts_expected.data, check_like=True)
+    mrts_after = timeseries.add_new_cases(mrts=mrts_before)
+    pd.testing.assert_frame_equal(mrts_after.data, mrts_expected.data, check_like=True)

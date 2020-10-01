@@ -537,14 +537,6 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self.data.groupby(CommonFields.LOCATION_ID)
 
-    def calculate_and_insert_new_cases(self):
-        """Adds a new_cases column to this dataset by calculating the daily diff in cases.
-
-        Note: This is a mutating operation.
-        """
-        grouped_df = self.groupby_region()
-        self.data[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].diff(1)
-
     @property
     def empty(self) -> bool:
         return self.data.empty
@@ -580,3 +572,14 @@ def _remove_padded_nans(df, columns):
     last_valid_index = max(df[column].last_valid_index() for column in columns)
     df = df.iloc[first_valid_index : last_valid_index + 1]
     return df.reset_index(drop=True)
+
+
+def add_new_cases(mrts: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
+    """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
+    df_copy = mrts.data.copy()
+    grouped_df = mrts.groupby_region()
+    df_copy[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].diff(1)
+    new_mrts = MultiRegionTimeseriesDataset.from_dataframes(
+        timeseries_df=df_copy, latest_df=mrts.latest_data.reset_index(), provenance=mrts.provenance
+    )
+    return new_mrts
