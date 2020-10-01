@@ -35,6 +35,7 @@ from pyseir.models.historical_data import (
 # from test.mocks.inference.load_data import RateChange
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
+TEST_OUTPUT_DIR.mkdir(exist_ok=True)
 
 MAKE_PLOTS = False  # Change to true to generate plots
 

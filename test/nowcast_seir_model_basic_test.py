@@ -16,6 +16,7 @@ from pyseir.models.nowcast_seir_model import (
 from pyseir.models.historical_data import HistoricalData, adjust_rt_to_match_cases
 
 TEST_OUTPUT_DIR = pathlib.Path(__file__).parent.parent / "output" / "test_results"
+TEST_OUTPUT_DIR.mkdir(exist_ok=True)
 
 MAKE_PLOTS = False  # Change to true to generate plots
 
