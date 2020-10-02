@@ -230,7 +230,7 @@ def _combined_sorted_by_location_date(ts: timeseries.MultiRegionTimeseriesDatase
     )
 
 
-def _assert_combined_like(
+def assert_combined_like(
     ts1: timeseries.MultiRegionTimeseriesDataset, ts2: timeseries.MultiRegionTimeseriesDataset
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
@@ -263,7 +263,7 @@ def test_merge():
     # Check that merge is symmetric
     ts_merged_1 = ts_fips.merge(ts_cbsa)
     ts_merged_2 = ts_cbsa.merge(ts_fips)
-    _assert_combined_like(ts_merged_1, ts_merged_2)
+    assert_combined_like(ts_merged_1, ts_merged_2)
 
     ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
@@ -280,7 +280,7 @@ def test_merge():
             "iso1:us#fips:97222,,Foo County,county,,11\n"
         )
     )
-    _assert_combined_like(ts_merged_1, ts_expected)
+    assert_combined_like(ts_merged_1, ts_expected)
 
 
 def test_calculate_new_cases():
