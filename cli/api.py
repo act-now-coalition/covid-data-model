@@ -221,6 +221,7 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
 @click.option("--fips")
 def generate_top_counties(disable_validation, input_dir, output, state, fips: Optional[str]):
     """The entry function for invocation"""
+    return
     intervention = Intervention.SELECTED_INTERVENTION
     active_states = [state.abbr for state in us.STATES] + ["PR"]
     regions = combined_datasets.get_subset_regions(
