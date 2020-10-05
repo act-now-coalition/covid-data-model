@@ -100,7 +100,7 @@ def build_bulk_flattened_timeseries(
         }
         actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}
         metrics_by_date = {row.date: row for row in region_timeseries.metricsTimeseries}
-        dates = sorted(list({*metrics_by_date.keys(), *actuals_by_date.keys()}))
+        dates = sorted({*metrics_by_date.keys(), *actuals_by_date.keys()})
         for date in dates:
             data = {
                 "date": date,
