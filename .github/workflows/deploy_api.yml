@@ -124,6 +124,8 @@ jobs:
     - name: remove local tmp directory and local data build
       run: |
         rm -rf ./tmp/data/
+        # /data is a persistent volume on our build machines that does not get
+        # automatically cleaned up.
         rm -r /data/api-results-${{env.SNAPSHOT_ID}}
 
     - name: Trigger website PR generation if conditions are met (master branch, morning build, etc)
