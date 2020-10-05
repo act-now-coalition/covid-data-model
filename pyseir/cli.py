@@ -263,17 +263,17 @@ def _write_pipeline_output(
     )
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
-    root.info(f"outputting web results for states and counties to {output_path}")
+    root.info(f"Saving Rt results to {output_path}")
 
     icu_df = pd.concat(p.icu_data.data for p in pipelines if p.icu_data).reset_index(drop=True)
-    timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
+    timeseries_dataset = TimeseriesDataset(icu_df)
     latest = timeseries_dataset.latest_values_object()
-    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
+    multiregion_icu = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         timeseries_dataset, latest
     )
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
-    multiregion_rt.to_csv(output_path)
-    root.info(f"outputting web results for states and counties to {output_path}")
+    multiregion_icu.to_csv(output_path)
+    root.info(f"Saving icu results to {output_path}")
 
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better

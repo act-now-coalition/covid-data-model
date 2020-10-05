@@ -66,6 +66,7 @@ class RegionalInput:
             rt_data = rt_data.get_one_region(region)
         except timeseries.RegionLatestNotFound:
             rt_data = None
+
         try:
             icu_data = icu_data.get_one_region(region)
         except timeseries.RegionLatestNotFound:

@@ -185,8 +185,10 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     _logger.info(f"Loading all regional inputs.")
     icu_data_path = model_output_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
     icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+
     rt_data_path = model_output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
     rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
+
     regional_inputs = [
         api_v2_pipeline.RegionalInput.from_region_and_model_output(region, rt_data, icu_data)
         for region in regions

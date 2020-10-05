@@ -59,7 +59,7 @@ def calculate_metrics_for_timeseries(
         infection_rate = rt_data["Rt_MAP_composite"]
         infection_rate_ci90 = rt_data["Rt_ci95_composite"] - rt_data["Rt_MAP_composite"]
 
-    if icu_data and not rt_data.empty:
+    if icu_data and not icu_data.empty:
         icu_data = icu_data.date_indexed
         estimated_current_icu = icu_data[CommonFields.CURRENT_ICU]
 
