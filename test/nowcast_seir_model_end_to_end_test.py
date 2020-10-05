@@ -27,8 +27,7 @@ from pyseir.models.historical_data import (
 
 from pyseir import OUTPUT_DIR
 
-TEST_OUTPUT_DIR = pathlib.Path(os.path.join(OUTPUT_DIR, "test_results"))
-TEST_OUTPUT_DIR.mkdir(exist_ok=True)
+TEST_OUTPUT_DIR = pathlib.Path(OUTPUT_DIR) / "test_results"
 
 MAKE_PLOTS = False  # Change to true to generate plots
 
