@@ -152,19 +152,24 @@ class AggregateRegionSummaryWithTimeseries(base_model.APIBaseModel):
     __root__: List[RegionSummaryWithTimeseries] = pydantic.Field(...)
 
 
-class MetricsTimeseriesRowWithHeader(MetricsTimeseriesRow):
+class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     """Prediction timeseries row with location information."""
 
-    country: str = "US"
-    state: str = pydantic.Field(..., description="The state name")
-    county: str = pydantic.Field(None, description="The county name")
-    fips: str = pydantic.Field(..., description="Fips for State + County. Five character code")
+    date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
+    country: str = pydantic.Field(..., description="2-letter ISO-3166 Country code.")
+    state: str = pydantic.Field(..., description="2-letter ANSI state code.")
+    county: Optional[str] = pydantic.Field(..., description="County name")
+    fips: str = pydantic.Field(
+        ...,
+        description="Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+    )
     lat: float = pydantic.Field(None, description="Latitude of point within the state or county")
     long: float = pydantic.Field(None, description="Longitude of point within the state or county")
-    lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
+    actuals: Optional[Actuals] = pydantic.Field(..., description="Actuals for given day")
+    metrics: Optional[Metrics] = pydantic.Field(..., description="Metrics for given day")
 
 
 class AggregateFlattenedTimeseries(base_model.APIBaseModel):
     """Flattened prediction timeseries data for multiple regions."""
 
-    __root__: List[MetricsTimeseriesRowWithHeader] = pydantic.Field(...)
+    __root__: List[RegionTimeseriesRowWithHeader] = pydantic.Field(...)
