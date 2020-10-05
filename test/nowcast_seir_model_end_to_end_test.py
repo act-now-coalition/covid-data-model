@@ -1,4 +1,3 @@
-import os
 import pathlib
 import math
 from datetime import datetime
@@ -193,12 +192,6 @@ def test_historical_period_state_deaths_and_hospitalizations():
     # Keep track of the model calibrations for each state and period
     calibrations = []
 
-    # Store charts in directories per "starts" period (early, recent)
-    test_dir = {}
-    for when in starts.keys():
-        test_dir[when] = pathlib.Path(os.path.join(TEST_OUTPUT_DIR, when))
-        test_dir[when].mkdir(exist_ok=True)
-
     for state in states:
         # Do a test for each period (when) for each state
         for (when, std_start) in starts.items():
@@ -240,21 +233,23 @@ def test_historical_period_state_deaths_and_hospitalizations():
                 (state, when, run.model.lr_fh[0], run.model.lr_fd[0], ratios["SMAPE"],)
             )
 
-            if MAKE_PLOTS:
+            if MAKE_PLOTS and when == "recent":
                 # Save figure for each state in each period
                 # TODO store test result metrics in file rather than only in chart title string
                 fig.savefig(
-                    test_dir[when]
-                    / (
-                        f"test_random_periods_%s_%s_start=%d_calibration=(%.2f,%.2f->%.2f)_smape=%.2f.pdf"
-                        % (
-                            state,
-                            when,
-                            start,
-                            run.model.lr_fh[0],
-                            run.model.lr_fd[0],
-                            run.model.lr_fh[0] * run.model.lr_fd[0],
-                            ratios["SMAPE"],
+                    (
+                        TEST_OUTPUT_DIR
+                        / (
+                            f"test_historical_period_%s_period_%s_start=%d_calibration=(%.2f,%.2f->%.2f)_smape=%.2f.pdf"
+                            % (
+                                when,
+                                state,
+                                start,
+                                run.model.lr_fh[0],
+                                run.model.lr_fd[0],
+                                run.model.lr_fh[0] * run.model.lr_fd[0],
+                                ratios["SMAPE"],
+                            )
                         )
                     ),
                     bbox_inches="tight",
@@ -281,7 +276,8 @@ def test_historical_period_state_deaths_and_hospitalizations():
         plt.yscale("log")
         plt.title(f"%s with avg SMAPE=%.3f" % (when, sub["smape"].mean()))
         fig.savefig(
-            test_dir[when] / (f"test_random_state_calibrations_%s.pdf" % when), bbox_inches="tight"
+            (TEST_OUTPUT_DIR / (f"test_historical_period_%s_state_calibrations.pdf" % when)),
+            bbox_inches="tight",
         )
         plt.close(fig)
 
@@ -418,7 +414,7 @@ def test_reproduce_TX_late_peak():
     fig.savefig(TEST_OUTPUT_DIR / "test_reproduce_TX_late_peak.pdf", bbox_inches="tight")
 
 
-def test_intertia_of_model():
+def test_inertia_of_model():
     """
     Explores delay of H and D relative to C and overshoot/undershoot with variable dwell time
     parameters.
@@ -470,7 +466,7 @@ def test_intertia_of_model():
         assert (d_delay) in [2, 1, 0]  # 1 +/- 1
 
     if MAKE_PLOTS:
-        fig.savefig(TEST_OUTPUT_DIR / "test_intertia_of_model.pdf", bbox_inches="tight")
+        fig.savefig(TEST_OUTPUT_DIR / "test_inertia_of_model.pdf", bbox_inches="tight")
 
 
 def test_simulate_iowa_late_august():
