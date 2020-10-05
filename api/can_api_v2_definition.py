@@ -170,6 +170,6 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
 
 
 class AggregateFlattenedTimeseries(base_model.APIBaseModel):
-    """Flattened prediction timeseries data for multiple regions."""
+    """Flattened timeseries data for multiple regions."""
 
     __root__: List[RegionTimeseriesRowWithHeader] = pydantic.Field(...)
