@@ -17,6 +17,7 @@ from libs.datasets.combined_datasets import (
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import add_new_cases
 from libs.qa import dataset_summary
 from libs.qa import data_availability
 from libs.datasets.timeseries import TimeseriesDataset
@@ -87,6 +88,7 @@ def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
     multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         timeseries_dataset, latest_dataset
     )
+    multiregion_dataset = add_new_cases(multiregion_dataset)
     if aggregate_to_msas:
         aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
         multiregion_dataset = multiregion_dataset.merge(aggregator.aggregate(multiregion_dataset))
