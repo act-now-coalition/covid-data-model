@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 import multiprocessing
 import pathlib
+import time
 
 import pydantic
 import structlog
@@ -172,7 +173,16 @@ def deploy_single_level(
         deploy_json_api_output(timeseries, output_path)
 
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
+    start = time.time()
     flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
+    duration = time.time() - start
+    logger.info(
+        f"Built bulk flattened timeseries in {duration} seconds", aggregate_level=level.value
+    )
+    output_path = path_builder.bulk_flattened_timeseries_data(FileType.CSV)
+    deploy_csv_api_output(
+        flattened_timeseries, output_path, keys_to_skip=["actuals.date", "metrics.date"]
+    )
 
     output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON)
     deploy_json_api_output(bulk_timeseries, output_path)
@@ -189,9 +199,13 @@ def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathl
     output_path.write_text(region_result.json())
 
 
-def deploy_csv_api_output(api_output: pydantic.BaseModel, output_path: pathlib.Path) -> None:
+def deploy_csv_api_output(
+    api_output: pydantic.BaseModel,
+    output_path: pathlib.Path,
+    keys_to_skip: Optional[List[str]] = None,
+) -> None:
     if not hasattr(api_output, "__root__"):
         raise AssertionError("Missing root data")
 
     rows = dataset_deployer.remove_root_wrapper(api_output.dict())
-    dataset_deployer.write_nested_csv(rows, output_path)
+    dataset_deployer.write_nested_csv(rows, output_path, keys_to_skip=keys_to_skip)
