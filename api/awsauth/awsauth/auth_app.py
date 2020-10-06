@@ -25,6 +25,7 @@ def init():
 
 
 if IS_LAMBDA:
+    # Only running initialization inside of a lambda environment
     init()
 
 
