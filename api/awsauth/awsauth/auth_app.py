@@ -3,13 +3,13 @@ import re
 import json
 import logging
 
-from api_key_repo import APIKeyRepo
+from awsauth.api_key_repo import APIKeyRepo
 
 
 _logger = logging.getLogger(__name__)
 
 
-EMAIL_REGEX = "^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$"
+EMAIL_REGEX = r"[^@\s]+@[^@\s]+\.[a-zA-Z0-9]+$"
 
 
 class InvalidAPIKey(Exception):
@@ -52,7 +52,6 @@ def register(event, context):
         raise ValueError("Missing email parameter")
 
     email = event["email"]
-
     if not re.match(EMAIL_REGEX, email):
         raise InvalidEmail(email)
 
