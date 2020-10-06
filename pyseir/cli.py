@@ -250,7 +250,7 @@ def _patch_substatepipeline_nola_infection_rate(
 
 def _write_pipeline_output(
     pipelines: List[Union[SubStatePipeline, StatePipeline]],
-    output_dir,
+    output_dir: str,
     output_interval_days: int = 4,
 ):
 
