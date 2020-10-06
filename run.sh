@@ -106,10 +106,6 @@ execute_api() {
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json "${API_OUTPUT_DIR}"
 
-  echo ">>> Generating Top 100 Counties json to ${API_OUTPUT_COUNTIES}/counties_top_100.json"
-  mkdir -p "${API_OUTPUT_COUNTIES}"
-  ./run.py api generate-top-counties -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_COUNTIES}"
-
   echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
   mkdir -p "${API_OUTPUT_STATES}"
   ./run.py api generate-api  -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_STATES}" --summary-output "${API_OUTPUT_US}" -l state
