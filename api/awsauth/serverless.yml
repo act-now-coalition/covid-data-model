@@ -53,6 +53,7 @@ provider:
 
   environment:
     API_KEYS_TABLE: ${self:custom.tableName}
+    SENTRY_DSN: ${env:SENTRY_DSN}
 
 
 # you can add packaging information here
