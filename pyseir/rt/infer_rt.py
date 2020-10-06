@@ -173,31 +173,31 @@ def filter_and_smooth_input_data(
 
         if all(requirements):
             if column == "cases":
-                # fig = plt.figure(figsize=(10, 6))
-                # ax = fig.add_subplot(111)  # plt.axes
-                # ax.set_yscale("log")
-                # chart_min = max(0.1, smoothed.min())
-                # ax.set_ylim((chart_min, df[column].max()))
-                # plt.scatter(
-                #     dates[-len(df[column]) :],
-                #     df[column],
-                #     alpha=0.3,
-                #     label=f"Smoothing of: {column}",
-                # )
-                # plt.plot(dates[-len(df[column]) :], smoothed)
-                # plt.grid(True, which="both")
-                # plt.xticks(rotation=30)
-                # plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
+                fig = plt.figure(figsize=(10, 6))
+                ax = fig.add_subplot(111)  # plt.axes
+                ax.set_yscale("log")
+                chart_min = max(0.1, smoothed.min())
+                ax.set_ylim((chart_min, df[column].max()))
+                plt.scatter(
+                    dates[-len(df[column]) :],
+                    df[column],
+                    alpha=0.3,
+                    label=f"Smoothing of: {column}",
+                )
+                plt.plot(dates[-len(df[column]) :], smoothed)
+                plt.grid(True, which="both")
+                plt.xticks(rotation=30)
+                plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
 
-                # if not figure_collector:
-                #     plot_path = pyseir.utils.get_run_artifact_path(
-                #         region, RunArtifact.RT_SMOOTHING_REPORT
-                #     )
-                #     plt.savefig(plot_path, bbox_inches="tight")
-                #     plt.close(fig)
-                # else:
-                #     figure_collector["1_smoothed_cases"] = fig
-                pass
+                if not figure_collector:
+                    plot_path = pyseir.utils.get_run_artifact_path(
+                        region, RunArtifact.RT_SMOOTHING_REPORT
+                    )
+                    plt.savefig(plot_path, bbox_inches="tight")
+                    plt.close(fig)
+                else:
+                    figure_collector["1_smoothed_cases"] = fig
+
             df[column] = smoothed
         else:
             df = df.drop(columns=column, inplace=False)
@@ -520,7 +520,7 @@ class RtInferenceEngine:
 
         self.log_likelihood = log_likelihood
 
-        if plot and False:
+        if plot:
             plotting.plot_posteriors(x=posteriors)  # Returns Figure.
             # The interpreter will handle this as it sees fit. Normal builds never call plot flag.
 
@@ -716,7 +716,7 @@ class RtInferenceEngine:
                 / np.power(suppression, self.tail_suppression_correction / 2)
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
-        if plot and False:
+        if plot:
             fig = plotting.plot_rt(
                 df=df_all,
                 include_deaths=self.include_deaths,

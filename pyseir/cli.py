@@ -145,8 +145,7 @@ class SubStateRegionPipelineInput:
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                # TODO switch back.
-                run_fitter=False,
+                run_fitter=region in whitelist_regions,
                 state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
@@ -269,12 +268,10 @@ def _write_pipeline_output(
     timeseries_dataset = TimeseriesDataset(icu_df)
     latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
     multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
-    # multiregion_icu = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
-    #     timeseries_dataset, latest
-    # )
+
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
-    root.info(f"Saving icu results to {output_path}")
+    root.info(f"Saving ICU results to {output_path}")
 
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
