@@ -38,9 +38,9 @@ class RegionalInput:
 
     model_output: Optional[CANPyseirLocationOutput]
 
-    rt_data: OneRegionTimeseriesDataset
+    rt_data: Optional[OneRegionTimeseriesDataset]
 
-    icu_data: OneRegionTimeseriesDataset
+    icu_data: Optional[OneRegionTimeseriesDataset]
 
     intervention: Intervention
 
@@ -75,13 +75,24 @@ class RegionalInput:
         model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
             region.fips, intervention, model_output_dir
         )
+
+        try:
+            rt_data = rt_data.get_one_region(region)
+        except timeseries.RegionLatestNotFound:
+            rt_data = None
+
+        try:
+            icu_data = icu_data.get_one_region(region)
+        except timeseries.RegionLatestNotFound:
+            icu_data = None
+
         return RegionalInput(
             region=region,
             model_output=model_output,
             intervention=intervention,
             _combined_data=combined_data,
-            rt_data=rt_data.get_one_region(region),
-            icu_data=icu_data.get_one_region(region),
+            rt_data=rt_data,
+            icu_data=icu_data,
         )
 
 
