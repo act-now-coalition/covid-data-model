@@ -22,18 +22,26 @@ def nyc_model_output_path() -> pathlib.Path:
 
 
 @pytest.fixture
-def nyc_rt_dataset(nyc_region) -> timeseries.OneRegionTimeseriesDataset:
-    # generated from running pyseir model output.
+def rt_dataset():
     test_root = pathlib.Path(__file__).parent
     path = test_root / "data" / "pyseir" / "rt_combined_metric.csv"
-    dataset = timeseries.MultiRegionTimeseriesDataset.from_csv(path)
-    return dataset.get_one_region(nyc_region)
+    return timeseries.MultiRegionTimeseriesDataset.from_csv(path)
 
 
 @pytest.fixture
-def nyc_icu_dataset(nyc_region) -> timeseries.OneRegionTimeseriesDataset:
-    # generated from running pyseir model output.
+def icu_dataset():
     test_root = pathlib.Path(__file__).parent
     path = test_root / "data" / "pyseir" / "icu_combined_metric.csv"
-    dataset = timeseries.MultiRegionTimeseriesDataset.from_csv(path)
-    return dataset.get_one_region(nyc_region)
+    return timeseries.MultiRegionTimeseriesDataset.from_csv(path)
+
+
+@pytest.fixture
+def nyc_rt_dataset(nyc_region, rt_dataset) -> timeseries.OneRegionTimeseriesDataset:
+    # generated from running pyseir model output.
+    return rt_dataset.get_one_region(nyc_region)
+
+
+@pytest.fixture
+def nyc_icu_dataset(nyc_region, icu_dataset) -> timeseries.OneRegionTimeseriesDataset:
+    # generated from running pyseir model output.
+    return icu_dataset.get_one_region(nyc_region)
