@@ -111,7 +111,7 @@ def test_top_level_metrics_basic():
     }
     one_region = dataclasses.replace(one_region, latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, require_recent_icu_data=False
+        one_region, None, None, require_recent_icu_data=False
     )
 
     expected = _build_metrics_df(
@@ -139,7 +139,7 @@ def test_top_level_metrics_no_test_positivity():
         CommonFields.ICU_BEDS: 10,
     }
     one_region = dataclasses.replace(one_region, latest=latest)
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
 
     expected = _build_metrics_df(
         "2020-08-17,36,,,,,\n"
@@ -151,6 +151,7 @@ def test_top_level_metrics_no_test_positivity():
 
 
 def test_top_level_metrics_with_rt():
+    region = Region.from_fips("36")
     data = (
         "date,fips,cases,positive_tests,negative_tests,contact_tracers_count"
         ",current_icu,current_icu_total,icu_beds\n"
@@ -159,18 +160,16 @@ def test_top_level_metrics_with_rt():
         "2020-08-19,36,,,,3,,,\n"
         "2020-08-20,36,40,40,360,4,,,\n"
     )
-    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
+    one_region = _fips_csv_to_one_region(data, region)
 
-    data = io.StringIO(
-        "date,fips,Rt_indicator,Rt_indicator_ci90,intervention,all_hospitalized,beds,infected_c\n"
-        "2020-08-17,36,1.1,.1,0,1,10,\n"
-        "2020-08-18,36,1.2,.1,0,1,10,\n"
-        "2020-08-19,36,1.1,.2,0,1,10,\n"
-        "2020-08-20,36,1.1,.1,0,1,10,\n"
-        "2020-09-21,36,,,0,1,10,\n"
+    data = (
+        "date,fips,Rt_MAP_composite,Rt_ci95_composite\n"
+        "2020-08-17,36,1.1,1.2\n"
+        "2020-08-18,36,1.2,1.3\n"
+        "2020-08-19,36,1.1,1.3\n"
+        "2020-08-20,36,1.1,1.2\n"
     )
-    data = common_df.read_csv(data, set_index=False)
-    model_output = CANPyseirLocationOutput(data)
+    rt_data = _fips_csv_to_one_region(data, region)
 
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -180,7 +179,7 @@ def test_top_level_metrics_with_rt():
         CommonFields.ICU_BEDS: 25,
     }
     one_region = dataclasses.replace(one_region, latest=latest)
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, model_output)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, rt_data, None)
     expected = _build_metrics_df(
         "2020-08-17,36,,,,1.1,.1\n"
         "2020-08-18,36,10,0.1,0.04,1.2,.1\n"
