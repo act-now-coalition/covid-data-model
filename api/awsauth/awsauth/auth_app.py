@@ -9,6 +9,8 @@ from awsauth.api_key_repo import APIKeyRepo
 _logger = logging.getLogger(__name__)
 
 
+# Fairly permissive email regex taken from
+# https://stackoverflow.com/questions/8022530/how-to-check-for-valid-email-address#comment52453093_8022584
 EMAIL_REGEX = r"[^@\s]+@[^@\s]+\.[a-zA-Z0-9]+$"
 
 
