@@ -267,10 +267,11 @@ def _write_pipeline_output(
 
     icu_df = pd.concat(p.icu_data.data for p in pipelines if p.icu_data).reset_index(drop=True)
     timeseries_dataset = TimeseriesDataset(icu_df)
-    latest = timeseries_dataset.latest_values_object()
-    multiregion_icu = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
-        timeseries_dataset, latest
-    )
+    latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
+    multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
+    # multiregion_icu = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
+    #     timeseries_dataset, latest
+    # )
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving icu results to {output_path}")
