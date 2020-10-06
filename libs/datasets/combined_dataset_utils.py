@@ -55,9 +55,8 @@ def update_data_public_head(
 
     Args:
         data_directory: Directory to save dataset and pointer.
-        pointer_path_dir: Directory to save DatasetPointer files.
-        latest_dataset: The LatestValuesDataset to persist.
-        timeseries_dataset: The TimeseriesDataset to persist.
+        latest_dataset: The LatestValuesDataset to persist for debugging. It is not read downstream.
+        timeseries_dataset: The dataset to persist.
 
     Returns: Tuple of DatasetPointers to latest and timeseries datasets.
     """
