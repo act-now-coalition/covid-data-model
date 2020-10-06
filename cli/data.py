@@ -63,7 +63,7 @@ def update_forecasts(filename):
 
 @main.command()
 @click.option("--summary-filename", default="timeseries_summary.csv")
-@click.option("--wide-dates-filename", default="timeseries-wide-dates.csv")
+@click.option("--wide-dates-filename", default="multiregion-wide-dates.csv")
 @click.option("--aggregate-to-msas", is_flag=True, help="Aggregate counties to MSAs")
 def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
@@ -93,7 +93,7 @@ def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
         aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
         multiregion_dataset = multiregion_dataset.merge(aggregator.aggregate(multiregion_dataset))
 
-    _, timeseries_pointer = combined_dataset_utils.update_data_public_head(
+    _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, multiregion_dataset,
     )
 
@@ -110,7 +110,7 @@ def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
     if wide_dates_filename:
         wide_dates_df.write_csv(
             timeseries_dataset.get_date_columns(),
-            timeseries_pointer.path.with_name(wide_dates_filename),
+            multiregion_pointer.path.with_name(wide_dates_filename),
         )
 
     if summary_filename:
