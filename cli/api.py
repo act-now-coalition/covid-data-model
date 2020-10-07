@@ -174,6 +174,8 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
         states=active_states,
     )
     _logger.info(f"Loading all regional inputs.")
+    regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
+
     regional_inputs = [
         api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
         for region in regions

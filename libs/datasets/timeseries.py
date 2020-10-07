@@ -7,6 +7,8 @@ from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Sequence
+from typing import Tuple
+
 from typing_extensions import final
 
 import pandas as pd
@@ -515,6 +517,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
         return OneRegionTimeseriesDataset(data=ts_df, latest=latest_dict)
 
+    def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
+        location_ids = pd.Index(sorted(r.location_id for r in regions))
+        timeseries_df = self.data.loc[self.data[CommonFields.LOCATION_ID].isin(location_ids), :]
+        latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
+        return MultiRegionTimeseriesDataset.from_timeseries_df(
+            timeseries_df, provenance=provenance
+        ).append_latest_df(latest_df)
+
     def get_counties(
         self, after: Optional[datetime.datetime] = None
     ) -> "MultiRegionTimeseriesDataset":
@@ -527,6 +537,17 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         # `after` doesn't make sense for latest because it doesn't contain date information.
         # Keep latest data for regions that are in the new timeseries DataFrame.
+        # TODO(tom): Replace this with re-calculating latest data from the new timeseries so that
+        # metrics which no longer have real values are excluded.
+        latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
+
+        return MultiRegionTimeseriesDataset.from_combined_dataframe(
+            pd.concat([ts_df, latest_df], ignore_index=True), provenance=provenance
+        )
+
+    def _get_latest_and_provenance_for_locations(
+        self, location_ids
+    ) -> Tuple[pd.DataFrame, Optional[pd.Series]]:
         latest_df = self.latest_data.loc[
             self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids), :
         ].reset_index()
@@ -536,10 +557,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             ]
         else:
             provenance = None
-
-        return MultiRegionTimeseriesDataset.from_combined_dataframe(
-            pd.concat([ts_df, latest_df], ignore_index=True), provenance=provenance
-        )
+        return latest_df, provenance
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self.data.groupby(CommonFields.LOCATION_ID)
