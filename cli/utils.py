@@ -1,3 +1,4 @@
+from typing import Optional
 import logging
 import pathlib
 import subprocess
@@ -9,6 +10,8 @@ import git
 
 from covidactnow.datapublic import common_df
 from libs import github_utils
+from libs import update_api_user_metrics
+from libs import google_sheet_helpers
 from libs.datasets import combined_datasets
 from libs.datasets import dataset_utils
 
@@ -112,3 +115,17 @@ def csv_diff(csv_path_or_rev_left, csv_path_right):
     print(differ_l)
     print(f"File: {csv_path_right}")
     print(differ_r)
+
+
+@main.command()
+@click.option("--name", envvar="API_USERS_SHEET_NAME", default="API Usage - Test")
+@click.option("--sheet-id", envvar="API_USERS_SHEET_ID")
+@click.option("--share-email")
+def update_api_users(name: str, share_email: Optional[str], sheet_id: Optional[str]):
+    if sheet_id:
+        sheet = google_sheet_helpers.open_spreadsheet(sheet_id)
+    else:
+        sheet = google_sheet_helpers.open_or_create_spreadsheet(name, share_email=share_email)
+
+    rows = update_api_user_metrics.run_users_query()
+    update_api_user_metrics.update_google_sheet(sheet, "API Usage", rows)

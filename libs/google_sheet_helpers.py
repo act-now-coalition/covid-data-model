@@ -64,6 +64,46 @@ def create_or_replace_worksheet(
     return sheet.add_worksheet(worksheet_name, 100, 100)
 
 
+def create_or_clear_worksheet(sheet: gspread.Spreadsheet, worksheet_name: str) -> gspread.Worksheet:
+    """Creates or clears a worksheet with name `worksheet_name`.
+
+    Note(chris): Taking the approach of deleting worksheet to make sure that
+    state of worksheet is totally clean.  Other methods of clearing worksheet using gspread
+    did not clear conditional formatting rules.
+
+    Args:
+        sheet: Spreadsheet
+        worksheet_name: Name of worksheet.
+
+    Returns: Newly created Worksheet.
+    """
+    try:
+        worksheet = sheet.worksheet(worksheet_name)
+        worksheet.clear()
+        return worksheet
+    except gspread.WorksheetNotFound:
+        pass
+
+    return sheet.add_worksheet(worksheet_name, 100, 100)
+
+
+def open_spreadsheet(
+    sheet_id: str, gspread_client: Optional[gspread.Client] = None,
+) -> gspread.Spreadsheet:
+    """Opens or creates a spreadsheet, optionally sharing with `share_email`.
+
+    Args:
+        sheet_name: Name of sheet to open or create.
+        share_email: Email to share sheet with.
+
+    Returns: Spreadsheet.
+    """
+
+    gspread_client = gspread_client or init_client()
+
+    return gspread_client.open_by_key(sheet_id)
+
+
 def open_or_create_spreadsheet(
     sheet_name: str,
     share_email: Optional[str] = None,
