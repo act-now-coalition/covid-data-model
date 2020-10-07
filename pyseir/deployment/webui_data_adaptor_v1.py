@@ -6,7 +6,6 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
-from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
 from libs.datasets import combined_datasets
 from pyseir.deployment import model_to_observed_shim as shim

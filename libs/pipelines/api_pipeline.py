@@ -19,6 +19,7 @@ from api.can_api_definition import (
 from libs import dataset_deployer
 from libs import pipeline
 from libs import top_level_metrics
+from libs.datasets import timeseries
 from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput

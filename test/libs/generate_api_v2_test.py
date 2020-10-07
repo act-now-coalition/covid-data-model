@@ -4,9 +4,7 @@ import pytest
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import RegionSummary
-from libs.datasets import can_model_output_schema as schema
 from libs.datasets import combined_datasets
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.functions import build_api_v2
 from libs.pipelines import api_v2_pipeline
 

@@ -8,9 +8,7 @@ from covidactnow.datapublic import common_fields
 
 from api import can_api_definition
 from libs import series_utils
-from libs.datasets import can_model_output_schema as schema
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs import icu_headroom_metric
 
 Metrics = can_api_definition.Metrics

@@ -18,7 +18,6 @@ from libs import dataset_deployer
 from libs import top_level_metrics
 from libs import pipeline
 from libs.datasets import timeseries
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.enums import Intervention

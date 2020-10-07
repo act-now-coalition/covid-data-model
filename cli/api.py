@@ -1,6 +1,5 @@
 import logging
 import pathlib
-from typing import Optional
 
 import click
 import us
@@ -8,8 +7,6 @@ import us
 import pydantic
 import api
 from api import update_open_api_spec
-from api.can_api_definition import RegionSummaryWithTimeseries
-from api.can_api_definition import AggregateRegionSummaryWithTimeseries
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
 from libs.pipelines import api_v2_pipeline

@@ -8,7 +8,6 @@ from covidactnow.datapublic import common_df
 from api import can_api_definition
 from libs import top_level_metrics
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
