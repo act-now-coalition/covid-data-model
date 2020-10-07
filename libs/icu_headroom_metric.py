@@ -17,6 +17,10 @@ DEFAULT_ICU_UTILIZATION = 0.75
 
 DEFAULT_ICU_DECOMP = 0.21
 
+NJ_CORRECTION = (
+    0.176 - 0.57 + DEFAULT_ICU_DECOMP
+)  # https://trello.com/c/T15w5VLq/418-nj-icu-occupancy-rate-nonsensical
+
 ICU_DECOMP_OVERRIDE = {
     "AL": 0.15,
     "AZ": 0.4,
@@ -29,6 +33,7 @@ ICU_DECOMP_OVERRIDE = {
     "MS": 0.37,
     "NV": 0.25,
     "RI": 0,
+    "NJ": NJ_CORRECTION,
 }
 
 
