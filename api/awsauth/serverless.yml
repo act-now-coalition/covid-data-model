@@ -58,6 +58,7 @@ provider:
   environment:
     API_KEYS_TABLE: ${self:custom.tableName}
     SENTRY_DSN: ${env:SENTRY_DSN}
+    EMAILS_ENABLED: ${env:EMAILS_ENABLED}
 
 
 # you can add packaging information here

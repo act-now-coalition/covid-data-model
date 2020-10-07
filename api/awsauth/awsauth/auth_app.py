@@ -2,15 +2,18 @@ import uuid
 import os
 import re
 import json
+import pathlib
 import logging
 
 import sentry_sdk
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 from awsauth.api_key_repo import APIKeyRepo
-from awsauth import emails
+from awsauth.email_repo import EmailRepo
+from awsauth import ses_client
 
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
+WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
 
 
 _logger = logging.getLogger(__name__)
@@ -40,10 +43,18 @@ class InvalidAPIKey(Exception):
         self.api_key = api_key
 
 
-class InvalidEmail(Exception):
-    def __init__(self, email):
-        super().__init__(f"Invalid email: {email}")
-        self.email = email
+def _build_welcome_email(to_email: str, api_key: str) -> ses_client.EmailData:
+    welcome_email_html = WELCOME_EMAIL_PATH.read_text()
+    welcome_email_html = welcome_email_html.format(api_key=api_key)
+
+    return ses_client.EmailData(
+        subject="Welcome to the Covid Act Now API!",
+        from_email="api@covidactnow.org",
+        reply_to="api@covidactnow.org",
+        to_email=to_email,
+        html=welcome_email_html,
+        configuration_set="api-welcome-emails",
+    )
 
 
 def _create_api_key(email: str) -> str:
@@ -60,8 +71,9 @@ def _get_or_create_api_key(email):
     api_key = _create_api_key(email)
     APIKeyRepo.add_api_key(email, api_key)
 
-    welcome_email = emails.build_welcome_email(email, api_key)
-    emails.send_registration_email(welcome_email)
+    welcome_email = _build_welcome_email(email, api_key)
+    if not EmailRepo.send_email(welcome_email):
+        _logger.error(f"Failed to send email to {email}")
 
     return api_key
 
