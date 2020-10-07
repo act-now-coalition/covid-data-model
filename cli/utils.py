@@ -128,4 +128,4 @@ def update_api_users(name: str, share_email: Optional[str], sheet_id: Optional[s
         sheet = google_sheet_helpers.open_or_create_spreadsheet(name, share_email=share_email)
 
     rows = update_api_user_metrics.run_users_query()
-    update_api_user_metrics.update_google_sheet(sheet, "API Usage", rows)
+    update_api_user_metrics.update_google_sheet(sheet, "API Usage Activity Report", rows)

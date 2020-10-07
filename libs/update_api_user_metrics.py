@@ -66,7 +66,7 @@ def run_query(
 
 
 def run_users_query():
-    log_group = os.environ["API_USERS_LOG_GROUP"]
+    log_group = os.environ["API_LOG_GROUP"]
     query = TOTAL_USERS_QUERY
     start_time = START_DATE
     to_date_string = lambda x: datetime.datetime.fromisoformat(x).date().isoformat()
