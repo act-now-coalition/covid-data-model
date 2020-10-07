@@ -68,6 +68,11 @@ class APIKeyRepo:
 
     @staticmethod
     def record_email_sent(email):
+        """Record time email successfully sent.
+
+        Args:
+            email: Email address of user.
+        """
         client = dynamo_client.DynamoDBClient()
         key = {
             "email": email,

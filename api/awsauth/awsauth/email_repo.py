@@ -1,4 +1,3 @@
-import pathlib
 import sentry_sdk
 from awsauth import ses_client
 
@@ -6,10 +5,12 @@ from awsauth import ses_client
 class EmailRepo:
     @staticmethod
     def send_email(email: ses_client.EmailData) -> bool:
-        """Sends email
+        """Sends email.
 
         Args:
             email: Email to send.
+
+        Returns: True on successful send, False otherwise
         """
         client = ses_client.SESClient()
         try:
