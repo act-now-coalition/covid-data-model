@@ -16,7 +16,7 @@ npm install -g serverless
 Currently we have a `dev` and `prod` stage.
 
 There are two environment variables:
- * `EMAILS_ENABLED`: If set, will send email on registration.
+ * `EMAILS_ENABLED`: If set, will send email on registration. Should be disabled on dev unless explicitly testing.
  * `SENTRY_DSN`: Sentry DSN used to report sentry errors. This should be set on prod.
 
 ```

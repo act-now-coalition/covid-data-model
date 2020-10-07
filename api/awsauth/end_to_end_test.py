@@ -7,8 +7,7 @@ DEV_API_URL = "https://api-dev.covidactnow.org/v2"
 
 def test_api_flow():
     randomness = uuid.uuid4().hex[:8]
-    test_email = f"chris+{randomness}@covidactnow.org"
-    # test_email = "bounce@simulator.amazonses.com"
+    test_email = f"testEmail+{randomness}@covidactnow.org"
 
     response = requests.post(DEV_API_URL + "/register", json={"email": test_email})
     assert response.ok
