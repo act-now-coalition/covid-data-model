@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 import os
+import datetime
 
 from awsauth import dynamo_client
 
@@ -21,7 +22,8 @@ class APIKeyRepo:
         """
         # TODO: Client should only be initialized once
         client = dynamo_client.DynamoDBClient()
-        obj = {"email": email, "api_key": api_key}
+        now = datetime.datetime.utcnow().isoformat()
+        obj = {"email": email, "api_key": api_key, "created_at": now}
         client.put_item(API_KEY_TABLE_NAME, obj)
 
     @staticmethod

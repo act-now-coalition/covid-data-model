@@ -92,6 +92,8 @@ resources:
           AttributeType: S
         - AttributeName: api_key
           AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
       KeySchema:
         - AttributeName: email
           KeyType: HASH
