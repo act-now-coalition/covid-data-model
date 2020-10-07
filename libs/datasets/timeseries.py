@@ -10,6 +10,7 @@ from typing import Sequence
 from typing import Tuple
 
 from covidactnow.datapublic import common_fields
+from covidactnow.datapublic.common_fields import PdFields
 from typing_extensions import final
 
 import pandas as pd
@@ -179,7 +180,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             self.data.loc[:, COMMON_FIELDS_TIMESERIES_KEYS + list(ts_value_columns)]
             .melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS, value_vars=ts_value_columns,)
             .dropna()
-            .set_index([CommonFields.FIPS, "variable", CommonFields.DATE])
+            .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
             .apply(pd.to_numeric)
         )
         # Unstack by DATE, creating a row for each FIPS-variable timeseries and a column for each DATE.
@@ -193,7 +194,7 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
         geo_data_per_fips = dataset_utils.fips_index_geo_data(self.data)
         # Make a DataFrame with a row for each summary.index element
-        assert summary.index.names == [CommonFields.FIPS, "variable"]
+        assert summary.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
         geo_data = pd.merge(
             pd.DataFrame(data=[], index=summary.index),
             geo_data_per_fips,
@@ -379,7 +380,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     # the column.
     latest_data: pd.DataFrame
 
-    # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and 'variable'.
+    # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
     provenance: Optional[pd.Series] = None
 
     @property
@@ -413,8 +414,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             .dropna()
             .reset_index(drop=True)
         )
-        long[CommonFields.VALUE].apply(pd.to_numeric)
-        # .set_index([CommonFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE])[CommonFields.VALUE]
+        long[PdFields.VALUE].apply(pd.to_numeric)
+        # .set_index([CommonFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE])[PdFields.VALUE]
         return long
 
     @staticmethod

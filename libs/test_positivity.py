@@ -7,6 +7,7 @@ from typing import Sequence
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
+from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
@@ -22,7 +23,7 @@ class Method:
 
     def calculate(self, delta_df: pd.DataFrame) -> pd.DataFrame:
         assert delta_df.columns.names == [CommonFields.DATE]
-        assert delta_df.index.names == [CommonFields.VARIABLE, CommonFields.LOCATION_ID]
+        assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
@@ -84,8 +85,8 @@ class AllMethods:
         assert set(ts_value_cols).issubset(set(metrics_in.data.columns))
 
         input_long = metrics_in.timeseries_long(ts_value_cols).set_index(
-            [CommonFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
-        )[CommonFields.VALUE]
+            [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
+        )[PdFields.VALUE]
         dates = input_long.index.get_level_values(CommonFields.DATE)
         start_date = dates.min()
         end_date = dates.max()
@@ -105,9 +106,9 @@ class AllMethods:
         all_wide = (
             pd.concat(
                 {method.name: method.calculate(diff_df) for method in methods},
-                names=[CommonFields.VARIABLE],
+                names=[PdFields.VARIABLE],
             )
-            .reorder_levels([CommonFields.LOCATION_ID, CommonFields.VARIABLE])
+            .reorder_levels([CommonFields.LOCATION_ID, PdFields.VARIABLE])
             # Drop empty timeseries
             .dropna("index", "all")
             .sort_index()
@@ -119,19 +120,20 @@ class AllMethods:
 
         has_recent_data = all_wide.loc[:, recent_date_range].notna().any(axis=1)
         all_recent_data = all_wide.loc[has_recent_data, :].reset_index()
-        all_recent_data[CommonFields.VARIABLE] = all_recent_data[CommonFields.VARIABLE].astype(
+        all_recent_data[PdFields.VARIABLE] = all_recent_data[PdFields.VARIABLE].astype(
             method_cat_type
         )
         first = all_recent_data.groupby(CommonFields.LOCATION_ID).first()
-        provenance = first[CommonFields.VARIABLE].astype(str).rename(CommonFields.PROVENANCE)
+        provenance = first[PdFields.VARIABLE].astype(str).rename(PdFields.PROVENANCE)
         provenance.index = pd.MultiIndex.from_product(
-            [provenance.index, ["positivity"]],
-            names=[CommonFields.LOCATION_ID, CommonFields.VARIABLE],
+            [provenance.index, [CommonFields.TEST_POSITIVITY]],
+            names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
         )
-        positivity = first.drop(columns=[CommonFields.VARIABLE])
+        positivity = first.drop(columns=[PdFields.VARIABLE])
 
         test_positivity = MultiRegionTimeseriesDataset.from_timeseries_df(
-            positivity.stack().rename("positivity").reset_index(), provenance=provenance
+            positivity.stack().rename(CommonFields.TEST_POSITIVITY).reset_index(),
+            provenance=provenance,
         )
 
         return AllMethods(all_methods_timeseries=all_wide, test_positivity=test_positivity)

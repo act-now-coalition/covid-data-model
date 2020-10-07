@@ -48,7 +48,7 @@ def test_positivity():
 
     expected_positivity = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
-            "location_id,date,positivity\n"
+            "location_id,date,test_positivity\n"
             "iso1:us#iso2:as,2020-04-04,0.02\n"
             "iso1:us#iso2:tx,2020-04-04,0.1\n"
         )
@@ -56,8 +56,12 @@ def test_positivity():
     assert_combined_like(all_methods.test_positivity, expected_positivity)
     positivity_provenance = all_methods.test_positivity.provenance
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
-    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {"positivity": "method2"}
-    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {"positivity": "method1"}
+    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
+        CommonFields.TEST_POSITIVITY: "method2"
+    }
+    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
+        CommonFields.TEST_POSITIVITY: "method1"
+    }
 
 
 def test_positivity_recent_days():
@@ -90,7 +94,7 @@ def test_positivity_recent_days():
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_all, check_like=True)
     expected_positivity = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
-            "location_id,date,positivity\n"
+            "location_id,date,test_positivity\n"
             "iso1:us#iso2:as,2020-04-02,0.02\n"
             "iso1:us#iso2:as,2020-04-03,0.02\n"
             "iso1:us#iso2:as,2020-04-04,0.02\n"
@@ -102,10 +106,18 @@ def test_positivity_recent_days():
     assert_combined_like(all_methods.test_positivity, expected_positivity)
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     positivity_provenance = all_methods.test_positivity.provenance
-    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {"positivity": "method2"}
-    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {"positivity": "method1"}
+    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
+        CommonFields.TEST_POSITIVITY: "method2"
+    }
+    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
+        CommonFields.TEST_POSITIVITY: "method1"
+    }
 
     all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=4)
     positivity_provenance = all_methods.test_positivity.provenance
-    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {"positivity": "method1"}
-    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {"positivity": "method1"}
+    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
+        CommonFields.TEST_POSITIVITY: "method1"
+    }
+    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
+        CommonFields.TEST_POSITIVITY: "method1"
+    }
