@@ -14,6 +14,11 @@ npm install -g serverless
 ## Deploy
 
 Currently we have a `dev` and `prod` stage.
+
+There are two environment variables:
+ * `EMAILS_ENABLED`: If set, will send email on registration.
+ * `SENTRY_DSN`: Sentry DSN used to report sentry errors. This should be set on prod.
+
 ```
-sls deploy --stage {dev,prod}
+EMAILS_ENABLED=true SENTRY_DSN=<sentry dsn> sls deploy --stage {dev,prod}
 ```
