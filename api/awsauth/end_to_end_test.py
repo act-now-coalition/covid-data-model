@@ -7,7 +7,7 @@ DEV_API_URL = "https://api-dev.covidactnow.org/v2"
 
 def test_api_flow():
     randomness = uuid.uuid4().hex[:8]
-    test_email = f"testEmail+{randomness}@gmail.com"
+    test_email = f"chris+{randomness}@covidactnow.org"
 
     response = requests.post(DEV_API_URL + "/register", json={"email": test_email})
     data = response.json()
@@ -25,6 +25,6 @@ def test_api_flow():
     assert response.ok
 
 
-def test_invalid_api_key():
-    response = requests.get(f"{DEV_API_URL}/states.json", {"apiKey": "fake api key"})
-    assert response.status_code == 403
+# def test_invalid_api_key():
+#     response = requests.get(f"{DEV_API_URL}/states.json", {"apiKey": "fake api key"})
+#     assert response.status_code == 403

@@ -8,7 +8,7 @@ import sentry_sdk
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 from awsauth.api_key_repo import APIKeyRepo
-
+from awsauth import emails
 
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
 
@@ -59,6 +59,9 @@ def _get_or_create_api_key(email):
 
     api_key = _create_api_key(email)
     APIKeyRepo.add_api_key(email, api_key)
+
+    welcome_email = emails.build_welcome_email(email, api_key)
+    emails.send_registration_email(welcome_email)
 
     return api_key
 
