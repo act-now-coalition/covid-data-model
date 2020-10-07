@@ -11,7 +11,7 @@ def build_welcome_email(to_email: str, api_key: str):
     welcome_email_html = welcome_email_html.format(api_key=api_key)
 
     return ses_client.EmailData(
-        subject="Your Covid Act Now API Key",
+        subject="Welcome to the Covid Act Now API!",
         from_email="api@covidactnow.org",
         reply_to="api@covidactnow.org",
         to_email=to_email,
