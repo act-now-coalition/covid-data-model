@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any
 import os
 
-import dynamo_client
+from awsauth import dynamo_client
 
 
 API_KEY_TABLE_NAME = os.environ["API_KEYS_TABLE"]

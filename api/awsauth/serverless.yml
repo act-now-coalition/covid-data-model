@@ -24,6 +24,10 @@ frameworkVersion: '2'
 custom:
   tableName: 'can-api-keys-${self:provider.stage}'
 
+
+plugins:
+  - serverless-python-requirements
+
 provider:
   name: aws
   runtime: python3.7
@@ -49,22 +53,27 @@ provider:
 
   environment:
     API_KEYS_TABLE: ${self:custom.tableName}
+    SENTRY_DSN: ${env:SENTRY_DSN}
 
 
 # you can add packaging information here
-#package:
-#  include:
-#    - include-me.py
-#    - include-me-dir/**
-#  exclude:
-#    - exclude-me.py
-#    - exclude-me-dir/**
+package:
+  exclude:
+    - node_modules/**
+    - .idea/**
+    - .requirements/**
+    - env/**
+    - README.md
+    - package.json
+    - package-lock.json
+    - requirements.txt
+    - end_to_end_test.py
 
 functions:
   apiRegisterAPIKey:
-    handler: auth_app.register
+    handler: awsauth/auth_app.register
   apiCheckApiKey:
-    handler: auth_app.check_api_key
+    handler: awsauth/auth_app.check_api_key
 
 
 # you can add CloudFormation resource templates here
