@@ -17,9 +17,8 @@ DEFAULT_ICU_UTILIZATION = 0.75
 
 DEFAULT_ICU_DECOMP = 0.21
 
-NJ_CORRECTION = (
-    0.176 - 0.57 + DEFAULT_ICU_DECOMP
-)  # https://trello.com/c/T15w5VLq/418-nj-icu-occupancy-rate-nonsensical
+NJ_CORRECTION = 0.176 - 0.57 + DEFAULT_ICU_DECOMP
+# https://trello.com/c/T15w5VLq/418-nj-icu-occupancy-rate-nonsensical
 # This is temporarily correcting for incorrect typical occupancy rate by
 # applying the shim in the decom override. It is negative, because we want
 # to say that the expect ICU occupancy is greater than the reported ICU occupancy
