@@ -9,6 +9,7 @@ from typing import List, Optional, Union, TextIO
 from typing import Sequence
 from typing import Tuple
 
+from covidactnow.datapublic import common_fields
 from typing_extensions import final
 
 import pandas as pd
@@ -403,6 +404,18 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         return MultiRegionTimeseriesDataset.from_csv(path_or_buf)
+
+    def timeseries_long(self, columns: List[common_fields.FieldName]) -> pd.DataFrame:
+        key_cols = [CommonFields.LOCATION_ID, CommonFields.DATE]
+        long = (
+            self.data.loc[:, key_cols + columns]
+            .melt(id_vars=key_cols, value_vars=columns)
+            .dropna()
+            .reset_index(drop=True)
+        )
+        long[CommonFields.VALUE].apply(pd.to_numeric)
+        # .set_index([CommonFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE])[CommonFields.VALUE]
+        return long
 
     @staticmethod
     def from_timeseries_df(
