@@ -98,7 +98,7 @@ def update_info_sheet(
     sheet_name: str = "Update Info",
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
 ):
-    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
+    filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     data = [
