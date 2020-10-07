@@ -463,9 +463,13 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         # Extract rows of combined_df which don't have a date.
         latest_df = combined_df.loc[~rows_with_date, :].dropna("columns", "all")
 
-        return MultiRegionTimeseriesDataset.from_timeseries_df(
+        multiregion_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
             timeseries_df, provenance=provenance
-        ).append_latest_df(latest_df)
+        )
+        if not latest_df.empty:
+            multiregion_timeseries = multiregion_timeseries.append_latest_df(latest_df)
+
+        return multiregion_timeseries
 
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
@@ -486,12 +490,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         if ts.provenance is not None:
             # Check that current index is as expected. Names will be fixed after remapping, below.
-            assert ts.provenance.index.names == [CommonFields.FIPS, "variable"]
+            assert ts.provenance.index.names == [CommonFields.FIPS, CommonFields.VARIABLE]
             provenance = ts.provenance.copy()
             provenance.index = provenance.index.map(
                 lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
             )
-            provenance.index.rename([CommonFields.LOCATION_ID, "variable"], inplace=True)
+            provenance.index.rename([CommonFields.LOCATION_ID, CommonFields.VARIABLE], inplace=True)
         else:
             provenance = None
 
