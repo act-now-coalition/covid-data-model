@@ -51,9 +51,14 @@ provider:
         - dynamodb:Scan
       Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.API_KEYS_TABLE}/index/*"
 
+    - Effect: Allow
+      Action:
+        - ses:SendEmail
+      Resource: "arn:aws:ses:${self:provider.region}:*:identity/covidactnow.org"
   environment:
     API_KEYS_TABLE: ${self:custom.tableName}
     SENTRY_DSN: ${env:SENTRY_DSN}
+    EMAILS_ENABLED: ${env:EMAILS_ENABLED}
 
 
 # you can add packaging information here
@@ -87,6 +92,10 @@ resources:
         - AttributeName: email
           AttributeType: S
         - AttributeName: api_key
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+        - AttributeName: welcome_email_sent_at
           AttributeType: S
       KeySchema:
         - AttributeName: email

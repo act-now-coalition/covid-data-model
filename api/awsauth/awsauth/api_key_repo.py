@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 import os
+import datetime
 
 from awsauth import dynamo_client
 
@@ -21,7 +22,8 @@ class APIKeyRepo:
         """
         # TODO: Client should only be initialized once
         client = dynamo_client.DynamoDBClient()
-        obj = {"email": email, "api_key": api_key}
+        now = datetime.datetime.utcnow().isoformat()
+        obj = {"email": email, "api_key": api_key, "created_at": now}
         client.put_item(API_KEY_TABLE_NAME, obj)
 
     @staticmethod
@@ -63,3 +65,18 @@ class APIKeyRepo:
             raise Exception("Multiple emails found for API key")
 
         return items[0]
+
+    @staticmethod
+    def record_email_sent(email):
+        """Record time email successfully sent.
+
+        Args:
+            email: Email address of user.
+        """
+        client = dynamo_client.DynamoDBClient()
+        key = {
+            "email": email,
+        }
+        client.update_item(
+            API_KEY_TABLE_NAME, key, welcome_email_sent_at=datetime.datetime.utcnow().isoformat()
+        )
