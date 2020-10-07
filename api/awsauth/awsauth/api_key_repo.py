@@ -65,3 +65,13 @@ class APIKeyRepo:
             raise Exception("Multiple emails found for API key")
 
         return items[0]
+
+    @staticmethod
+    def record_email_sent(email):
+        client = dynamo_client.DynamoDBClient()
+        key = {
+            "email": email,
+        }
+        client.update_item(
+            API_KEY_TABLE_NAME, key, welcome_email_sent_at=datetime.datetime.utcnow().isoformat()
+        )

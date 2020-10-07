@@ -25,6 +25,6 @@ def test_api_flow():
     assert response.ok
 
 
-# def test_invalid_api_key():
-#     response = requests.get(f"{DEV_API_URL}/states.json", {"apiKey": "fake api key"})
-#     assert response.status_code == 403
+def test_invalid_api_key():
+    response = requests.get(f"{DEV_API_URL}/states.json", {"apiKey": "fake api key"})
+    assert response.status_code == 403

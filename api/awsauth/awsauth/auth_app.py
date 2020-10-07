@@ -72,7 +72,9 @@ def _get_or_create_api_key(email):
     APIKeyRepo.add_api_key(email, api_key)
 
     welcome_email = _build_welcome_email(email, api_key)
-    if not EmailRepo.send_email(welcome_email):
+    if EmailRepo.send_email(welcome_email):
+        APIKeyRepo.record_email_sent(email)
+    else:
         _logger.error(f"Failed to send email to {email}")
 
     return api_key

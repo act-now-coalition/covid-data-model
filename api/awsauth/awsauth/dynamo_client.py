@@ -51,3 +51,13 @@ class DynamoDBClient:
         """
         table = self._client.Table(table)
         table.put_item(Item=item)
+
+    def update_item(self, table: str, key: dict, **updates):
+        table = self._client.Table(table)
+        update_expression = "set " + ", ".join(f"{column}=:{column}" for column in updates)
+        table.update_item(
+            Key=key,
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues={f":{column}": value for column, value in updates.items()},
+            ReturnValues="UPDATED_NEW",
+        )

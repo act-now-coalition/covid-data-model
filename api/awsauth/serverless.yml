@@ -95,6 +95,8 @@ resources:
           AttributeType: S
         - AttributeName: created_at
           AttributeType: S
+        - AttributeName: welcome_email_sent_at
+          AttributeType: S
       KeySchema:
         - AttributeName: email
           KeyType: HASH
