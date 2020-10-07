@@ -86,10 +86,9 @@ def register(event, context):
 
 
 def _generate_accept_policy(user_record: dict, method_arn):
-    # The last part of the method arn does not give permission to the underlying resource.
-    # Replacing with a wildcard to give access to paths below.
-    *first, _ = method_arn.split("/")
-    method_arn = "/".join([*first, "*"])
+    # Want to give access to all data so that we can cache policy responses, not just the
+    # level or file they requested.
+    method_arn = re.sub(r"(.*/GET/).*", r"\1*", method_arn)
     return {
         "principalId": user_record["email"],
         "policyDocument": {
@@ -103,10 +102,6 @@ def _generate_accept_policy(user_record: dict, method_arn):
 
 
 def _generate_deny_policy(method_arn):
-    # The last part of the method arn does not give permission to the underlying resource.
-    # Replacing with a wildcard to give access to paths below.
-    *first, _ = method_arn.split("/")
-    method_arn = "/".join([*first, "*"])
     return {
         "policyDocument": {
             "Version": "2012-10-17",
@@ -120,6 +115,7 @@ def _generate_deny_policy(method_arn):
 def check_api_key(event, context):
     """Checks API Key included in request for registered value."""
     method_arn = event["methodArn"]
+
     if not event["queryStringParameters"]["apiKey"]:
         return _generate_deny_policy(method_arn)
 
