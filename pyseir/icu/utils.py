@@ -28,10 +28,13 @@ def calculate_case_based_weights() -> dict:
     last_month_cum_cases.name = "summed_cases"
 
     df = last_month_cum_cases.reset_index().dropna()
-    df["state_fips"] = df["fips"].str.slice(0, 2)  # Apply State Labels to Groupby
+    # Example location_id value = 'iso1:us#iso2:us-ak#fips:02013'
+    df["state_location_id"] = df["location_id"].str.split("#").str[1]  # 'iso2:us-ak'
+    df["fips_location_id"] = df["location_id"].str.split("#").str[-1].str.split(":").str[-1]
+    # '02013'
     # Normalize the cases based on the groupby total
-    df["weight"] = df.groupby("state_fips")["summed_cases"].transform(lambda x: x / x.sum())
-    df["weight"] = df["weight"].round(5)
+    df["weight"] = df.groupby("state_location_id")["summed_cases"].transform(lambda x: x / x.sum())
+    df["weight"] = df["weight"].round(4)
     # Convert to dict mapping
-    output = df.set_index("fips")["weight"].to_dict()
+    output = df.set_index("fips_location_id")["weight"].to_dict()
     return output
