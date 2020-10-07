@@ -10,6 +10,7 @@ import api
 from api import update_open_api_spec
 from api.can_api_definition import RegionSummaryWithTimeseries
 from api.can_api_definition import AggregateRegionSummaryWithTimeseries
+from libs import test_positivity
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
 from libs.pipelines import api_v2_pipeline
@@ -174,7 +175,9 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
         states=active_states,
     )
     _logger.info(f"Loading all regional inputs.")
+
     regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
+    test_positivity.AllMethods.run(regions_data)
 
     regional_inputs = [
         api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
