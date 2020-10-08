@@ -32,9 +32,8 @@ def calc_risk_level(value: Optional[float], thresholds: List[float]):
         risk_level = RiskLevel.MEDIUM
     elif value <= level_high:
         risk_level = RiskLevel.HIGH
-    elif value > level_high:
-        risk_level = RiskLevel.CRITICAL
-    return risk_level
+
+    return RiskLevel.CRITICAL
 
 
 def case_density_risk_level(value: float):
@@ -48,11 +47,23 @@ def test_positivity_risk_level(value: float):
 
 
 def contact_tracing_risk_level(value: float):
-    # NOTE: Setting the upperLimit to 0 means we will not grade anybody as
-    # RiskLevel.LOW ("Critical" on the website). The lowest grade you can get is
-    # RiskLevel.MEDIUM.
-    thresholds = [0, 0.1, 0.9]
-    return calc_risk_level(value, thresholds)
+    # Contact tracing risk level is flipped, so implementing
+    # separate logic here to handle it.
+    level_high, level_med, level_low = (0, 0.1, 0.9)
+
+    if value is None:
+        return RiskLevel.UNKNOWN
+
+    risk_level = RiskLevel.UNKNOWN
+
+    if value > level_low:
+        risk_level = RiskLevel.LOW
+    elif value > level_med:
+        risk_level = RiskLevel.MEDIUM
+    elif value > level_high:
+        risk_level = RiskLevel.HIGH
+
+    return RiskLevel.UNKNOWN
 
 
 def icu_headroom_ratio_risk_level(value: float):
@@ -83,16 +94,17 @@ def top_level_risk_level(
     ]
     top_level_risk = RiskLevel.UNKNOWN
 
-    if RiskLevel.CRITICAL in levelList or contact_tracing_level == RiskLevel.LOW:
+    if RiskLevel.CRITICAL in levelList:
         top_level_risk = RiskLevel.CRITICAL
-    elif RiskLevel.HIGH in levelList or contact_tracing_level == RiskLevel.MEDIUM:
+    elif RiskLevel.HIGH in levelList:
         top_level_risk = RiskLevel.HIGH
-    elif RiskLevel.MEDIUM in levelList or contact_tracing_level == RiskLevel.HIGH:
+    elif RiskLevel.MEDIUM in levelList:
         top_level_risk = RiskLevel.MEDIUM
-    elif RiskLevel.UNKNOWN in levelList or contact_tracing_level == RiskLevel.UNKNOWN:
+    elif RiskLevel.UNKNOWN in levelList:
         top_level_risk = RiskLevel.UNKNOWN
     else:
         top_level_risk = RiskLevel.LOW
+
     return top_level_risk
 
 
