@@ -10,6 +10,7 @@ import api
 from api import update_open_api_spec
 from api.can_api_definition import RegionSummaryWithTimeseries
 from api.can_api_definition import AggregateRegionSummaryWithTimeseries
+from libs import test_positivity
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
 from libs.pipelines import api_v2_pipeline
@@ -145,6 +146,22 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.STATE
         ]
         api_pipeline.deploy_single_level(intervention, state_timeseries, summary_output, output)
+
+
+@main.command()
+@click.option(
+    "--test-positivity-all-methods",
+    default="results/output/test-positivity.csv",
+    type=pathlib.Path,
+)
+def generate_test_positivity(test_positivity_all_methods: pathlib.Path):
+    active_states = [state.abbr for state in us.STATES]
+    active_states = active_states + ["PR", "MP"]
+    regions = combined_datasets.get_subset_regions(exclude_county_999=True, states=active_states,)
+
+    regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
+    test_positivity_results = test_positivity.AllMethods.run(regions_data)
+    test_positivity_results.write(test_positivity_all_methods)
 
 
 @main.command()
