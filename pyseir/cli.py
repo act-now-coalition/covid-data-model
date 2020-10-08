@@ -1,6 +1,5 @@
 from typing import Mapping, Optional, List, Union
 import dataclasses
-import pathlib
 import sys
 import os
 from dataclasses import dataclass
@@ -16,18 +15,14 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_init
 from libs import pipeline
 from libs.datasets import AggregationLevel
-from libs.datasets import combined_datasets
-from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
-from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
-from pyseir.icu import infer_icu
 import pyseir.rt.patches
 from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
 from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
+from libs.datasets import combined_datasets
 import pyseir.utils
 from pyseir.inference.whitelist import WhitelistGenerator
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
@@ -46,7 +41,6 @@ def _cache_global_datasets():
     # is not needed as the only goal is to populate the cache.
     combined_datasets.load_us_latest_dataset()
     combined_datasets.load_us_timeseries_dataset()
-    infer_icu.get_region_weight_map()
 
 
 @click.group()
@@ -77,8 +71,6 @@ class StatePipeline:
     # infer_df provides support for the infection rate result.
     # TODO(tom): Rename when not refactoring it.
     infer_df: pd.DataFrame
-
-    icu_data: OneRegionTimeseriesDataset
     fitter: model_fitter.ModelFitter
     ensemble: ensemble_runner.EnsembleRunner
 
@@ -86,22 +78,11 @@ class StatePipeline:
     def run(region: pipeline.Region) -> "StatePipeline":
         assert region.is_state()
         infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
-
-        # Run ICU adjustment
-        icu_input = infer_icu.RegionalInput.from_regional_data(
-            combined_datasets.RegionalData.from_region(region)
-        )
-        icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-            icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-        )
-
         fitter_input = model_fitter.RegionalInput.from_state_region(region)
         fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
         ensembles_input = ensemble_runner.RegionalInput.for_state(fitter)
         ensemble = ensemble_runner.make_and_run(ensembles_input)
-        return StatePipeline(
-            region=region, infer_df=infer_df, icu_data=icu_data, fitter=fitter, ensemble=ensemble
-        )
+        return StatePipeline(region=region, infer_df=infer_df, fitter=fitter, ensemble=ensemble)
 
 
 @dataclass
@@ -140,11 +121,10 @@ class SubStateRegionPipelineInput:
                 list(state_fitter_map.keys()), fips=fips, whitelist_df=whitelist_df
             )
         )
-
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                run_fitter=region in whitelist_regions,
+                run_fitter=(region in whitelist_regions),
                 state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
@@ -159,7 +139,6 @@ class SubStatePipeline:
 
     region: pipeline.Region
     infer_df: pd.DataFrame
-    icu_data: Optional[OneRegionTimeseriesDataset]
     _combined_data: combined_datasets.RegionalData
     fitter: Optional[model_fitter.ModelFitter] = None
     ensemble: Optional[ensemble_runner.EnsembleRunner] = None
@@ -171,17 +150,6 @@ class SubStatePipeline:
         # infection_rate.
         infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
         infer_df = infer_rt.run_rt(infer_rt_input)
-
-        # Run ICU adjustment
-        icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
-        try:
-            icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-                icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-            )
-        except KeyError:
-            icu_data = None
-            root.exception(f"Failed to run icu data for {input.region}")
-
         if input.run_fitter:
             fitter_input = model_fitter.RegionalInput.from_substate_region(
                 input.region, input.state_fitter
@@ -194,11 +162,9 @@ class SubStatePipeline:
         else:
             fitter = None
             ensemble = None
-
         return SubStatePipeline(
             region=input.region,
             infer_df=infer_df,
-            icu_data=icu_data,
             fitter=fitter,
             ensemble=ensemble,
             _combined_data=input.regional_combined_dataset,
@@ -249,29 +215,20 @@ def _patch_substatepipeline_nola_infection_rate(
 
 def _write_pipeline_output(
     pipelines: List[Union[SubStatePipeline, StatePipeline]],
-    output_dir: str,
+    output_dir,
     output_interval_days: int = 4,
 ):
 
-    infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-    # TODO: Use constructors in MultiRegionTimeseriesDataset
-    timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
-    latest = timeseries_dataset.latest_values_object()
-    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
-        timeseries_dataset, latest
+    infection_rate_metric_df = pd.concat(p.infer_df for p in pipelines)
+
+    infection_rate_metric_df.to_csv(
+        path_or_buf=pyseir.utils.get_summary_artifact_path(
+            pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED
+        ),
+        index=False,
     )
-    output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
-    multiregion_rt.to_csv(output_path)
-    root.info(f"Saving Rt results to {output_path}")
 
-    icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-    timeseries_dataset = TimeseriesDataset(icu_df)
-    latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
-    multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
-
-    output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
-    multiregion_icu.to_csv(output_path)
-    root.info(f"Saving ICU results to {output_path}")
+    root.info(f"outputting web results for states and counties")
 
     # does not parallelize well, because web_ui mapper doesn't serialize efficiently
     # TODO: Remove intermediate artifacts and paralellize artifacts creation better
@@ -279,12 +236,12 @@ def _write_pipeline_output(
     web_ui_mapper = WebUIDataAdaptorV1(
         output_interval_days=output_interval_days, output_dir=output_dir,
     )
+
     webui_inputs = [
         webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
         for p in pipelines
         if p.fitter
     ]
-
     with Pool(maxtasksperchild=1) as p:
         p.map(web_ui_mapper.write_region_safely, webui_inputs)
 
@@ -310,7 +267,6 @@ def _build_all_for_states(
 
     with Pool(maxtasksperchild=1) as p:
         root.info(f"executing pipeline for {len(substate_inputs)} counties")
-
         substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
 
     substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
@@ -365,7 +321,7 @@ def run_infer_rt(state, states_only):
     ),
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
-@click.option("--output-dir", default="output/", type=str, help="Directory to deploy webui output.")
+@click.option("--output-dir", default=None, type=str, help="Directory to deploy webui output.")
 def build_all(
     states, output_interval_days, output_dir, skip_whitelist, states_only, fips,
 ):

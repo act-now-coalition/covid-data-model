@@ -6,10 +6,12 @@ from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
 from libs.datasets import combined_datasets
 from pyseir.deployment import model_to_observed_shim as shim
 from pyseir.ensembles import ensemble_runner
+from pyseir.icu import infer_icu
 from pyseir.inference import model_fitter
 from pyseir.utils import get_run_artifact_path, RunArtifact
 from libs.enums import Intervention
@@ -30,6 +32,7 @@ class RegionalInput:
     region: Region
 
     _combined_data: combined_datasets.RegionalData
+    _state_combined_data: Optional[combined_datasets.RegionalData]
     _mle_fit_result: Mapping[str, Any]
     _ensemble_results: Mapping[str, Any]
     _infection_rate: Optional[pd.DataFrame]
@@ -41,9 +44,15 @@ class RegionalInput:
         infection_rate: Optional[pd.DataFrame],
     ) -> "RegionalInput":
         region = fitter.region
+        state_combined_data = (
+            combined_datasets.RegionalData.from_region(region.get_state_region())
+            if region.is_county()
+            else None
+        )
         return RegionalInput(
             region=region,
             _combined_data=fitter.regional_input._combined_data,
+            _state_combined_data=state_combined_data,
             _mle_fit_result=fitter.fit_results,
             _ensemble_results=ensemble.all_outputs,
             _infection_rate=infection_rate,
@@ -85,6 +94,21 @@ class RegionalInput:
             DataFrame containing the R_t inferences.
         """
         return self._infection_rate
+
+    def is_county(self):
+        return self.region.is_county()
+
+    @property
+    def timeseries(self) -> OneRegionTimeseriesDataset:
+        return self._combined_data.timeseries
+
+    @property
+    def state_timeseries(self) -> Optional[OneRegionTimeseriesDataset]:
+        """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
+        if self.region.is_state():
+            return None
+        else:
+            return self._state_combined_data.timeseries
 
 
 class WebUIDataAdaptorV1:
@@ -172,6 +196,13 @@ class WebUIDataAdaptorV1:
             observed_total_hosps=observed_total_hosps_latest,
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
         )
+        # ICU PATCH
+        icu_patch_ts = infer_icu.get_icu_timeseries(
+            region=regional_input.region,
+            regional_combined_data=regional_input.timeseries,
+            state_combined_data=regional_input.state_timeseries,
+            weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES,
+        )
 
         # Iterate through each suppression policy.
         # Model output is interpolated to the dates desired for the API.
@@ -219,7 +250,13 @@ class WebUIDataAdaptorV1:
             # marker for the future if the ICU utilization calculations is dis-entangled from the
             # PySEIR model outputs.
 
-            output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
+            # output_model[schema.INFECTED_C] = (icu_shim+interpolated_model_icu_values).clip(min=0)
+
+            # Applying Patch for ICU Linear Regression
+            infer_icu_patch = icu_patch_ts.reindex(
+                [pd.Timestamp(x) for x in output_model[schema.DATE]]
+            )
+            output_model[schema.INFECTED_C] = infer_icu_patch.to_numpy()
 
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = (

@@ -6,11 +6,8 @@ from libs.datasets import combined_datasets
 from libs.pipeline import Region
 from pyseir import cli
 from pyseir.inference import whitelist
-from pyseir.utils import get_run_artifact_path
-from pyseir.utils import RunArtifact
-from pyseir.utils import SummaryArtifact
+from pyseir.utils import get_run_artifact_path, RunArtifact
 import libs.datasets.can_model_output_schema as schema
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.functions import generate_api
 import pytest
@@ -33,10 +30,6 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         path = pathlib.Path(path)
         assert path.exists()
         output = CANPyseirLocationOutput.load_from_path(path)
-
-        icu_data_path = tmp_path / SummaryArtifact.ICU_METRIC_COMBINED.value
-        icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
-        assert icu_data.get_one_region(region)
 
         timeseries = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
         summary = generate_api.generate_region_summary(timeseries.latest, None, output)

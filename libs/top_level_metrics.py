@@ -8,7 +8,9 @@ from covidactnow.datapublic import common_fields
 
 from api import can_api_definition
 from libs import series_utils
+from libs.datasets import can_model_output_schema as schema
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs import icu_headroom_metric
 
 Metrics = can_api_definition.Metrics
@@ -37,8 +39,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
 
 def calculate_metrics_for_timeseries(
     timeseries: OneRegionTimeseriesDataset,
-    rt_data: Optional[OneRegionTimeseriesDataset],
-    icu_data: Optional[OneRegionTimeseriesDataset],
+    model_output: Optional[CANPyseirLocationOutput],
     require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
@@ -52,14 +53,27 @@ def calculate_metrics_for_timeseries(
     estimated_current_icu = None
     infection_rate = np.nan
     infection_rate_ci90 = np.nan
-    if rt_data and not rt_data.empty:
-        rt_data = rt_data.date_indexed
-        infection_rate = rt_data["Rt_MAP_composite"]
-        infection_rate_ci90 = rt_data["Rt_ci95_composite"] - rt_data["Rt_MAP_composite"]
+    if model_output:
+        # TODO(chris): Currently merging model output data into the timeseries data to align model
+        # data with raw data.  However, if the index was properly set on both datasets to be DATE,
+        # this would not be necessary.  In the future, consider indexing data on date so that
+        # merges are not necessary.
 
-    if icu_data and not icu_data.empty:
-        icu_data = icu_data.date_indexed
-        estimated_current_icu = icu_data[CommonFields.CURRENT_ICU]
+        # Only merging date up to the most recent timeseries date (model data includes
+        # future projections for other values and we don't want to pad the end with NaNs).
+        up_to_latest_day = model_output.data[schema.DATE] <= data.index.max()
+        fields_to_include = [
+            schema.DATE,
+            schema.RT_INDICATOR,
+            schema.RT_INDICATOR_CI90,
+            schema.CURRENT_ICU,
+        ]
+        model_data = model_output.data.loc[up_to_latest_day, fields_to_include]
+        model_data = model_data.set_index(schema.DATE)
+
+        infection_rate = model_data[schema.RT_INDICATOR]
+        infection_rate_ci90 = model_data[schema.RT_INDICATOR_CI90]
+        estimated_current_icu = model_data[schema.CURRENT_ICU]
 
     cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)

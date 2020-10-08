@@ -4,7 +4,9 @@ import pytest
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import RegionSummary
+from libs.datasets import can_model_output_schema as schema
 from libs.datasets import combined_datasets
+from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.functions import build_api_v2
 from libs.pipelines import api_v2_pipeline
 
@@ -13,25 +15,27 @@ from libs.pipelines import api_v2_pipeline
     "include_model_output,rt_null", [(True, True), (True, False), (False, False)]
 )
 def test_build_summary_for_fips(
-    include_model_output, rt_null, nyc_region, nyc_icu_dataset, nyc_rt_dataset
+    include_model_output, rt_null, nyc_model_output_path, nyc_fips, nyc_region
 ):
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    nyc_latest = us_latest.get_record_for_fips(nyc_region.fips)
+    nyc_latest = us_latest.get_record_for_fips(nyc_fips)
     model_output = None
     expected_projections = None
 
     if include_model_output:
+        model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
+
         if rt_null:
-            nyc_rt_dataset = None
-    else:
-        nyc_icu_dataset = None
-        nyc_rt_dataset = None
+            model_output.data[schema.RT_INDICATOR] = None
+            model_output.data[schema.RT_INDICATOR_CI90] = None
+        rt = model_output.latest_rt
+        rt_ci_90 = model_output.latest_rt_ci90
 
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
 
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
-        fips_timeseries, nyc_rt_dataset, nyc_icu_dataset
+        fips_timeseries, model_output
     )
     assert latest_metric
     summary = build_api_v2.build_region_summary(nyc_latest, latest_metric)
@@ -70,16 +74,18 @@ def test_build_summary_for_fips(
     assert expected.dict() == summary.dict()
 
 
+@pytest.mark.parametrize("include_projections", [True])
 def test_generate_timeseries_for_fips(
-    nyc_model_output_path, nyc_region, nyc_rt_dataset, nyc_icu_dataset
+    include_projections, nyc_model_output_path, nyc_fips, nyc_region
 ):
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
-    nyc_latest = us_latest.get_record_for_fips(nyc_region.fips)
+    nyc_latest = us_latest.get_record_for_fips(nyc_fips)
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
+    model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
-        nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset
+        nyc_timeseries, model_output
     )
 
     region_summary = build_api_v2.build_region_summary(nyc_latest, latest_metric)
