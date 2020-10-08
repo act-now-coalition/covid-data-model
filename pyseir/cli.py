@@ -255,18 +255,16 @@ def _write_pipeline_output(
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
     timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
-    latest = timeseries_dataset.latest_values_object()
     multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
-        timeseries_dataset, latest
+        timeseries_dataset, None
     )
+
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
     icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-    timeseries_dataset = TimeseriesDataset(icu_df)
-    latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
-    multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
+    multiregion_icu = MultiRegionTimeseriesDataset.from_combined_dataframe(icu_df)
 
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)

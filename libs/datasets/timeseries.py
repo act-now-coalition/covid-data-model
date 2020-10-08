@@ -484,11 +484,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     @staticmethod
     def from_timeseries_and_latest(
-        ts: TimeseriesDataset, latest: LatestValuesDataset
+        ts: TimeseriesDataset, latest: Optional[LatestValuesDataset]
     ) -> "MultiRegionTimeseriesDataset":
         """Converts legacy FIPS to new LOCATION_ID and calls `from_timeseries_df` to finish construction."""
         timeseries_df = ts.data.copy()
         _add_location_id(timeseries_df)
+
+        if not latest:
+            latest = ts.latest_values_object()
 
         latest_df = latest.data.copy()
         _add_location_id(latest_df)
