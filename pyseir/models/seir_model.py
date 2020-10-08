@@ -17,6 +17,39 @@ def derivative(t):
     return np.append(z0, (t[1:] - t[:-1]))
 
 
+def steady_state_ratios(r, suppression=1.0):
+
+    tlist = np.linspace(0, 60, 61)
+    if r > 1:
+        initial_infected = 100
+    else:
+        initial_infected = 10000
+    const_suppression = lambda t: suppression
+
+    model = SEIRModel(
+        N=10000000,
+        t_list=tlist,
+        suppression_policy=const_suppression,
+        R0=r,
+        A_initial=0.7 * initial_infected,
+        I_initial=initial_infected,
+    )
+
+    model.run()
+    last = lambda s: model.results[s][-1]
+    lastI = last("I")
+
+    return (
+        last("E") / lastI,
+        1.0,
+        last("A") / lastI,
+        last("HGen") / lastI,
+        last("HICU") / lastI,
+        last("HVent") / lastI,
+        last("direct_deaths_per_day") / lastI,
+    )
+
+
 class SEIRModel:
     """
     This class implements a SEIR-like compartmental epidemic model
@@ -503,7 +536,7 @@ class SEIRModel:
             HAdmissions_ICU
         )  # Derivative of the cumulative.
 
-    def plot_results(self, y_scale="log", xlim=None) -> plt.Figure:
+    def plot_results(self, y_scale="log", xlim=None, alternate_plots=False) -> plt.Figure:
         """
         Generate a summary plot for the simulation.
 
@@ -514,33 +547,48 @@ class SEIRModel:
         """
         # Plot the data on three separate curves for S(t), I(t) and R(t)
         fig = plt.figure(facecolor="w", figsize=(20, 6))
-        plt.subplot(131)
-        plt.plot(self.t_list, self.results["S"], alpha=1, lw=2, label="Susceptible")
-        plt.plot(self.t_list, self.results["E"], alpha=0.5, lw=2, label="Exposed")
-        plt.plot(self.t_list, self.results["A"], alpha=0.5, lw=2, label="Asymptomatic")
-        plt.plot(self.t_list, self.results["I"], alpha=0.5, lw=2, label="Infected")
-        plt.plot(
-            self.t_list,
-            self.results["R"],
-            alpha=1,
-            lw=2,
-            label="Recovered & Immune",
-            linestyle="--",
-        )
 
-        # Total for ensuring all compartments sum to 1.
-        plt.plot(
-            self.t_list,
-            self.results["S"]
-            + self.results["E"]
-            + self.results["A"]
-            + self.results["I"]
-            + self.results["R"]
-            + self.results["D"]
-            + self.results["HGen"]
-            + self.results["HICU"],
-            label="Total",
-        )
+        # ---------------------------- Left plot -------------------------
+        plt.subplot(131)
+        if not alternate_plots:
+            plt.plot(self.t_list, self.results["S"], alpha=1, lw=2, label="Susceptible")
+        plt.plot(self.t_list, self.results["E"], alpha=0.5, lw=2, label="Exposed", linestyle="--")
+
+        if not alternate_plots:
+            plt.plot(self.t_list, self.results["A"], alpha=0.5, lw=2, label="Asymptomatic")
+            plt.plot(self.t_list, self.results["I"], alpha=0.5, lw=2, label="Infected")
+            plt.plot(
+                self.t_list,
+                self.results["R"],
+                alpha=1,
+                lw=2,
+                label="Recovered & Immune",
+                linestyle="--",
+            )
+            plt.plot(
+                self.t_list,
+                self.results["S"]
+                + self.results["E"]
+                + self.results["A"]
+                + self.results["I"]
+                + self.results["R"]
+                + self.results["D"]
+                + self.results["HGen"]
+                + self.results["HICU"],
+                label="Total",
+            )
+        else:
+            a_plus_i = self.results["A"] + self.results["I"]
+            plt.plot(self.t_list, a_plus_i, alpha=0.5, lw=2, label="Infected + Asymptomatic")
+            h_all = self.results["HGen"] + self.results["HICU"] + self.results["HVent"]
+            plt.plot(self.t_list, h_all, alpha=0.5, lw=4, label="All Hospitalized")
+            plt.plot(
+                self.t_list,
+                self.results["direct_deaths_per_day"],
+                alpha=0.5,
+                lw=4,
+                label="New Deaths",
+            )
 
         plt.xlabel("Time [days]", fontsize=12)
         plt.yscale(y_scale)
@@ -550,8 +598,12 @@ class SEIRModel:
             plt.xlim(*xlim)
         else:
             plt.xlim(0, self.t_list.max())
-        plt.ylim(1, self.N * 1.1)
+        if not alternate_plots:
+            plt.ylim(1, self.N * 1.1)
+        else:
+            plt.gca().set_ylim(bottom=1)
 
+        # ---------------------------- Center plot -------------------------
         plt.subplot(132)
 
         plt.plot(
@@ -662,10 +714,39 @@ class SEIRModel:
         else:
             plt.xlim(0, self.t_list.max())
 
+        # ---------------------------- Right plot -------------------------
         # Reproduction numbers
         plt.subplot(133)
-        plt.plot(self.t_list, [self.suppression_policy(t) for t in self.t_list], c="steelblue")
-        plt.ylabel("Contact Rate Reduction")
+
+        if not alternate_plots:
+            plt.plot(self.t_list, [self.suppression_policy(t) for t in self.t_list], c="steelblue")
+            plt.ylabel("Contact Rate Reduction")
+        else:
+            plt.plot(
+                self.t_list, self.results["E"] / self.results["I"], alpha=0.5, lw=2, label="E/I"
+            )
+            plt.plot(
+                self.t_list, self.results["A"] / self.results["I"], alpha=0.5, lw=2, label="A/I"
+            )
+            plt.plot(
+                self.t_list,
+                (self.results["HGen"] + self.results["HICU"] + self.results["HVent"])
+                / self.results["I"],
+                alpha=0.5,
+                lw=4,
+                label="H/I",
+            )
+            plt.plot(
+                self.t_list,
+                self.results["direct_deaths_per_day"]
+                / (self.results["HGen"] + self.results["HICU"] + self.results["HVent"]),
+                alpha=0.5,
+                lw=4,
+                label="D/H",
+            )
+            plt.ylabel("Ratios check")
+            plt.legend(framealpha=0.5)
+            plt.yscale("log")
         plt.xlabel("Time [days]", fontsize=12)
         plt.grid(True, which="both")
         return fig
