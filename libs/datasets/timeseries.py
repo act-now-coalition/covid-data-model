@@ -407,6 +407,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         return MultiRegionTimeseriesDataset.from_csv(path_or_buf)
 
     def timeseries_long(self, columns: List[common_fields.FieldName]) -> pd.DataFrame:
+        """Returns a subset of the data in a long format DataFrame, where all values are in a single column.
+
+        Returns: a DataFrame with columns LOCATION_ID, DATE, VARIABLE, VALUE
+        """
+
         key_cols = [CommonFields.LOCATION_ID, CommonFields.DATE]
         long = (
             self.data.loc[:, key_cols + columns]
@@ -415,7 +420,6 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             .reset_index(drop=True)
         )
         long[PdFields.VALUE].apply(pd.to_numeric)
-        # .set_index([CommonFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE])[PdFields.VALUE]
         return long
 
     @staticmethod

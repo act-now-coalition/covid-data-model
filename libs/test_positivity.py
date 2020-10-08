@@ -2,6 +2,7 @@ import dataclasses
 import pathlib
 from itertools import chain
 from typing import Sequence
+import structlog
 
 import pandas as pd
 
@@ -9,6 +10,9 @@ from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+
+
+_log = structlog.get_logger()
 
 
 @dataclasses.dataclass
@@ -80,7 +84,9 @@ class AllMethods:
         ts_value_cols = list(
             set(chain.from_iterable((method.numerator, method.denominator) for method in methods))
         )
-        assert set(ts_value_cols).issubset(set(metrics_in.data.columns))
+        missing_columns = set(ts_value_cols) - set(metrics_in.data.columns)
+        if missing_columns:
+            raise AssertionError(f"Data missing for test positivity: {missing_columns}")
 
         input_long = metrics_in.timeseries_long(ts_value_cols).set_index(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
