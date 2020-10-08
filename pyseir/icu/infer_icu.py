@@ -57,11 +57,11 @@ class RegionalInput:
 
     @property
     def state_timeseries(self) -> Optional[OneRegionTimeseriesDataset]:
-        """Get the TimeseriesDataset for the state of a substate region, or None for a state."""
-        if self.region.is_state():
-            return None
-        else:
+        """Get the TimeseriesDataset for the state of a county region, or None for other regions."""
+        if self.region.is_county():
             return self._state_combined_data.timeseries
+        else:
+            return None
 
     @staticmethod
     def from_regional_data(regional_data: combined_datasets.RegionalData):
@@ -114,8 +114,7 @@ def get_icu_timeseries_from_regional_input(
         weight_by: The method by which to estimate county level utilization from state level utilization when
             no county level inpatient/icu data is available.
 
-    Returns:
-        A date-indexed series of ICU estimate for heads-in-beds for a given region
+    Returns: Timeseries of ICU estimate for heads-in-beds for a given region.
     """
     region = regional_input.region
     log = logger.new(region=str(region), event=f"ICU for Region = {region}")

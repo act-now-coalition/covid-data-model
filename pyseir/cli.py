@@ -253,7 +253,7 @@ def _write_pipeline_output(
     output_interval_days: int = 4,
 ):
 
-    infection_rate_metric_df = pd.concat(p.infer_df for p in pipelines).reset_index(drop=True)
+    infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
     timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
     latest = timeseries_dataset.latest_values_object()
     multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
@@ -263,7 +263,7 @@ def _write_pipeline_output(
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
-    icu_df = pd.concat(p.icu_data.data for p in pipelines if p.icu_data).reset_index(drop=True)
+    icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
     timeseries_dataset = TimeseriesDataset(icu_df)
     latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
     multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
@@ -307,7 +307,7 @@ def _build_all_for_states(
         state_fitter_map, fips=fips, states=states
     )
 
-    with Pool() as p:
+    with Pool(maxtasksperchild=1) as p:
         root.info(f"executing pipeline for {len(substate_inputs)} counties")
 
         substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
