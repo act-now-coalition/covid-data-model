@@ -11,12 +11,12 @@ from enum import Enum
 
 import pandas as pd
 
+from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import DATA_DIR
-from covidactnow.datapublic.common_fields import CommonFields
 
 logger = structlog.get_logger()
 
@@ -123,7 +123,7 @@ def get_icu_timeseries_from_regional_input(
     icu_timeseries = _calculate_icu_timeseries(
         data=data, region=region, use_actuals=use_actuals, weight_by=weight_by, log=log,
     )
-
+    icu_timeseries.name = CommonFields.CURRENT_ICU
     icu_df = icu_timeseries.reset_index()
     icu_df[CommonFields.FIPS] = region.fips
     icu_df[CommonFields.LOCATION_ID] = region.location_id
