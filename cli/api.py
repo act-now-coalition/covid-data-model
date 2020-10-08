@@ -191,10 +191,9 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
         states=active_states,
     )
     _logger.info(f"Loading all regional inputs.")
-
     regional_inputs = [
         api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
-        for region in regions  # TODO(tom): use regions_data
+        for region in regions
     ]
     _logger.info(f"Finished loading all regional inputs.")
 
