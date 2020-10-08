@@ -86,7 +86,13 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
     CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
     CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
+    CommonFields.TOTAL_TESTS: [CovidTrackingDataSource],
     CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
+    CommonFields.POSITIVE_TESTS_VIRAL: [CovidTrackingDataSource],
+    CommonFields.TOTAL_TESTS_VIRAL: [CovidTrackingDataSource],
+    CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],
+    CommonFields.TOTAL_TESTS_PEOPLE_VIRAL: [CovidTrackingDataSource],
+    CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
