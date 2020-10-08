@@ -96,8 +96,6 @@ execute_model() {
   echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
   pushd output
   zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
-  echo ">>> Moving Rt Combined Metric to Artifact Directory"
-  mv pyseir/rt_combined_metric.csv "${API_OUTPUT_DIR}/rt_combined_metric.csv"
   popd
 }
 
@@ -107,10 +105,6 @@ execute_api() {
 
   echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
   generate_version_json "${API_OUTPUT_DIR}"
-
-  echo ">>> Generating Top 100 Counties json to ${API_OUTPUT_COUNTIES}/counties_top_100.json"
-  mkdir -p "${API_OUTPUT_COUNTIES}"
-  ./run.py api generate-top-counties -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_COUNTIES}"
 
   echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
   mkdir -p "${API_OUTPUT_STATES}"

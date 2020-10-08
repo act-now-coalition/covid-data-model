@@ -49,7 +49,7 @@ def _build_welcome_email(to_email: str, api_key: str) -> ses_client.EmailData:
 
     return ses_client.EmailData(
         subject="Welcome to the Covid Act Now API!",
-        from_email="api@covidactnow.org",
+        from_email="Covid Act Now API <api@covidactnow.org>",
         reply_to="api@covidactnow.org",
         to_email=to_email,
         html=welcome_email_html,
