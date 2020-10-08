@@ -6,6 +6,7 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import PdFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
 from libs.datasets import combined_datasets
@@ -314,3 +315,33 @@ def test_calculate_new_cases():
 
     mrts_after = timeseries.add_new_cases(mrts=mrts_before)
     pd.testing.assert_frame_equal(mrts_after.data, mrts_expected.data, check_like=True)
+
+
+def test_timeseries_long():
+    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
+            "iso1:us#cbsa:10100,,,,,3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+
+    expected = pd.read_csv(
+        io.StringIO(
+            "location_id,date,variable,value\n"
+            "iso1:us#cbsa:10100,2020-04-02,m2,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,m2,3\n"
+            "iso1:us#fips:97111,2020-04-02,m1,2\n"
+            "iso1:us#fips:97111,2020-04-04,m1,4\n"
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"value": float},
+    )
+    long = ts.timeseries_long(["m1", "m2"]).sort_values(
+        [CommonFields.LOCATION_ID, PdFields.VARIABLE, CommonFields.DATE], ignore_index=True
+    )
+    pd.testing.assert_frame_equal(long, expected, check_like=True)
