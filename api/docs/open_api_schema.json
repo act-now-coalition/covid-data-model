@@ -316,6 +316,42 @@
         }
       ]
     },
+    "/states.timeseries.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "State Data"
+        ],
+        "summary": "All states timeseries (csv)",
+        "description": "Region summaries with timeseries for all states",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
     "/counties.json?apiKey={apiKey}": {
       "get": {
         "tags": [
@@ -423,154 +459,46 @@
           }
         }
       ]
+    },
+    "/counties.timeseries.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "County Data"
+        ],
+        "summary": "All counties timeseries (csv)",
+        "description": "Region summaries with timeseries for all counties",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     }
   },
   "components": {
     "schemas": {
-      "AggregationLevel": {
-        "title": "AggregationLevel",
-        "enum": [
-          "country",
-          "state",
-          "county"
-        ],
-        "description": "An enumeration."
-      },
-      "CovidPatientsMethod": {
-        "title": "CovidPatientsMethod",
-        "enum": [
-          "actual",
-          "estimated"
-        ],
-        "description": "Method used to determine number of current ICU patients with covid."
-      },
-      "NonCovidPatientsMethod": {
-        "title": "NonCovidPatientsMethod",
-        "enum": [
-          "actual",
-          "estimated_from_typical_utilization",
-          "estimated_from_total_icu_actual"
-        ],
-        "description": "Method used to determine number of current ICU patients without covid."
-      },
-      "ICUHeadroomMetricDetails": {
-        "title": "ICUHeadroomMetricDetails",
-        "required": [
-          "currentIcuCovid",
-          "currentIcuCovidMethod",
-          "currentIcuNonCovid",
-          "currentIcuNonCovidMethod"
-        ],
-        "type": "object",
-        "properties": {
-          "currentIcuCovid": {
-            "title": "Currenticucovid",
-            "type": "integer",
-            "description": "Current number of covid patients in icu."
-          },
-          "currentIcuCovidMethod": {
-            "$ref": "#/components/schemas/CovidPatientsMethod"
-          },
-          "currentIcuNonCovid": {
-            "title": "Currenticunoncovid",
-            "type": "integer",
-            "description": "Current number of covid patients in icu."
-          },
-          "currentIcuNonCovidMethod": {
-            "$ref": "#/components/schemas/NonCovidPatientsMethod"
-          }
-        },
-        "description": "Details about how the ICU Headroom Metric was calculated."
-      },
-      "Metrics": {
-        "title": "Metrics",
-        "required": [
-          "testPositivityRatio",
-          "caseDensity",
-          "contactTracerCapacityRatio",
-          "infectionRate",
-          "infectionRateCI90",
-          "icuHeadroomRatio"
-        ],
-        "type": "object",
-        "properties": {
-          "testPositivityRatio": {
-            "title": "Testpositivityratio",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Ratio of people who test positive calculated using a 7-day rolling average."
-          },
-          "caseDensity": {
-            "title": "Casedensity",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
-          },
-          "contactTracerCapacityRatio": {
-            "title": "Contacttracercapacityratio",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average."
-          },
-          "infectionRate": {
-            "title": "Infectionrate",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "R_t, or the estimated number of infections arising from a typical case."
-          },
-          "infectionRateCI90": {
-            "title": "Infectionrateci90",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "90th percentile confidence interval upper endpoint of the infection rate."
-          },
-          "icuHeadroomRatio": {
-            "title": "Icuheadroomratio",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
-          }
-        },
-        "description": "Calculated metrics data based on known actuals."
-      },
       "HospitalResourceUtilization": {
         "title": "HospitalResourceUtilization",
         "required": [
@@ -725,6 +653,235 @@
           }
         },
         "description": "Known actuals data."
+      },
+      "CovidPatientsMethod": {
+        "title": "CovidPatientsMethod",
+        "enum": [
+          "actual",
+          "estimated"
+        ],
+        "description": "Method used to determine number of current ICU patients with covid."
+      },
+      "NonCovidPatientsMethod": {
+        "title": "NonCovidPatientsMethod",
+        "enum": [
+          "actual",
+          "estimated_from_typical_utilization",
+          "estimated_from_total_icu_actual"
+        ],
+        "description": "Method used to determine number of current ICU patients without covid."
+      },
+      "ICUHeadroomMetricDetails": {
+        "title": "ICUHeadroomMetricDetails",
+        "required": [
+          "currentIcuCovid",
+          "currentIcuCovidMethod",
+          "currentIcuNonCovid",
+          "currentIcuNonCovidMethod"
+        ],
+        "type": "object",
+        "properties": {
+          "currentIcuCovid": {
+            "title": "Currenticucovid",
+            "type": "integer",
+            "description": "Current number of covid patients in icu."
+          },
+          "currentIcuCovidMethod": {
+            "$ref": "#/components/schemas/CovidPatientsMethod"
+          },
+          "currentIcuNonCovid": {
+            "title": "Currenticunoncovid",
+            "type": "integer",
+            "description": "Current number of covid patients in icu."
+          },
+          "currentIcuNonCovidMethod": {
+            "$ref": "#/components/schemas/NonCovidPatientsMethod"
+          }
+        },
+        "description": "Details about how the ICU Headroom Metric was calculated."
+      },
+      "Metrics": {
+        "title": "Metrics",
+        "required": [
+          "testPositivityRatio",
+          "caseDensity",
+          "contactTracerCapacityRatio",
+          "infectionRate",
+          "infectionRateCI90",
+          "icuHeadroomRatio"
+        ],
+        "type": "object",
+        "properties": {
+          "testPositivityRatio": {
+            "title": "Testpositivityratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of people who test positive calculated using a 7-day rolling average."
+          },
+          "caseDensity": {
+            "title": "Casedensity",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
+          },
+          "contactTracerCapacityRatio": {
+            "title": "Contacttracercapacityratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average."
+          },
+          "infectionRate": {
+            "title": "Infectionrate",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "R_t, or the estimated number of infections arising from a typical case."
+          },
+          "infectionRateCI90": {
+            "title": "Infectionrateci90",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "90th percentile confidence interval upper endpoint of the infection rate."
+          },
+          "icuHeadroomRatio": {
+            "title": "Icuheadroomratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "icuHeadroomDetails": {
+            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+          }
+        },
+        "description": "Calculated metrics data based on known actuals."
+      },
+      "RegionTimeseriesRowWithHeader": {
+        "title": "RegionTimeseriesRowWithHeader",
+        "required": [
+          "date",
+          "country",
+          "state",
+          "county",
+          "fips",
+          "actuals",
+          "metrics"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string",
+            "description": "Date of timeseries data point",
+            "format": "date"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string",
+            "description": "2-letter ISO-3166 Country code."
+          },
+          "state": {
+            "title": "State",
+            "type": "string",
+            "description": "2-letter ANSI state code."
+          },
+          "county": {
+            "title": "County",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "County name"
+          },
+          "fips": {
+            "title": "Fips",
+            "type": "string",
+            "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters."
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number",
+            "description": "Latitude of point within the state or county"
+          },
+          "long": {
+            "title": "Long",
+            "type": "number",
+            "description": "Longitude of point within the state or county"
+          },
+          "actuals": {
+            "title": "Actuals",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Actuals"
+              }
+            ],
+            "description": "Actuals for given day"
+          },
+          "metrics": {
+            "title": "Metrics",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Metrics"
+              }
+            ],
+            "description": "Metrics for given day"
+          }
+        },
+        "description": "Prediction timeseries row with location information."
+      },
+      "AggregateFlattenedTimeseries": {
+        "title": "AggregateFlattenedTimeseries",
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RegionTimeseriesRowWithHeader"
+        },
+        "description": "Flattened timeseries data for multiple regions."
+      },
+      "AggregationLevel": {
+        "title": "AggregationLevel",
+        "enum": [
+          "country",
+          "state",
+          "county"
+        ],
+        "description": "An enumeration."
       },
       "RegionSummary": {
         "title": "RegionSummary",

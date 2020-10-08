@@ -25,8 +25,7 @@ def test_build_api_output_for_intervention(nyc_region, nyc_model_output_path, tm
     expected_outputs = [
         "counties.timeseries.json",
         "counties.csv",
-        # TODO: Add aggregate timeseries csv back in
-        # "counties.timeseries.csv",
+        "counties.timeseries.csv",
         "counties.json",
         "county/36061.json",
         "county/36061.timeseries.json",

@@ -9,6 +9,7 @@ from api.can_api_v2_definition import (
     Metrics,
     RegionSummary,
     RegionSummaryWithTimeseries,
+    RegionTimeseriesRowWithHeader,
 )
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -99,5 +100,17 @@ def build_bulk_flattened_timeseries(
             "long": region_timeseries.long,
             "lastUpdatedDate": datetime.utcnow(),
         }
+        actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}
+        metrics_by_date = {row.date: row for row in region_timeseries.metricsTimeseries}
+        dates = sorted({*metrics_by_date.keys(), *actuals_by_date.keys()})
+        for date in dates:
+            data = {
+                "date": date,
+                "actuals": actuals_by_date.get(date),
+                "metrics": metrics_by_date.get(date),
+            }
+            data.update(summary_data)
+            row = RegionTimeseriesRowWithHeader(**data)
+            rows.append(row)
 
     return AggregateFlattenedTimeseries(__root__=rows)
