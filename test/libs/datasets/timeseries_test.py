@@ -240,7 +240,7 @@ def assert_combined_like(
     pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
 
 
-def test_merge():
+def test_append_regions():
     ts_fips = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,county,aggregate_level,m1,m2\n"
@@ -262,8 +262,8 @@ def test_merge():
         )
     )
     # Check that merge is symmetric
-    ts_merged_1 = ts_fips.merge(ts_cbsa)
-    ts_merged_2 = ts_cbsa.merge(ts_fips)
+    ts_merged_1 = ts_fips.append_regions(ts_cbsa)
+    ts_merged_2 = ts_cbsa.append_regions(ts_fips)
     assert_combined_like(ts_merged_1, ts_merged_2)
 
     ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(

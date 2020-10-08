@@ -519,7 +519,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         assert self.data.index.is_monotonic_increasing
         assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
 
-    def merge(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
+    def append_regions(
+        self, other: "MultiRegionTimeseriesDataset"
+    ) -> "MultiRegionTimeseriesDataset":
         return MultiRegionTimeseriesDataset.from_timeseries_df(
             pd.concat([self.data, other.data], ignore_index=True)
         ).append_latest_df(
@@ -609,6 +611,13 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         if self.provenance is not None:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().to_csv(provenance_path)
+
+    def join_columns(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
+        pass
+
+    def iter_one_regions(self) -> Iterable[OneRegionTimeseriesDataset]:
+        pass
+        # XXX
 
 
 def _remove_padded_nans(df, columns):
