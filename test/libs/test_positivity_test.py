@@ -1,7 +1,6 @@
 import io
 import pandas as pd
 
-from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets import timeseries

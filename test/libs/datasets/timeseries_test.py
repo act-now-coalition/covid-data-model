@@ -6,6 +6,7 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import PdFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
 from libs.datasets import combined_datasets
@@ -341,6 +342,6 @@ def test_timeseries_long():
         dtype={"value": float},
     )
     long = ts.timeseries_long(["m1", "m2"]).sort_values(
-        [CommonFields.LOCATION_ID, CommonFields.VARIABLE, CommonFields.DATE], ignore_index=True
+        [CommonFields.LOCATION_ID, PdFields.VARIABLE, CommonFields.DATE], ignore_index=True
     )
     pd.testing.assert_frame_equal(long, expected, check_like=True)

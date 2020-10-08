@@ -1,7 +1,6 @@
 import dataclasses
 import pathlib
 from itertools import chain
-from typing import List
 from typing import Sequence
 
 import pandas as pd
@@ -9,7 +8,6 @@ import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
-from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 
 

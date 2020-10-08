@@ -160,7 +160,14 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 @click.option("--aggregation-level", "-l", type=AggregationLevel)
 @click.option("--state")
 @click.option("--fips")
-def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
+@click.option(
+    "--test-positivity-all-methods",
+    default="results/output/test-positivity.csv",
+    type=pathlib.Path,
+)
+def generate_api_v2(
+    model_output_dir, output, aggregation_level, state, fips, test_positivity_all_methods
+):
     """The entry function for invocation"""
 
     active_states = [state.abbr for state in us.STATES]
@@ -177,11 +184,13 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     _logger.info(f"Loading all regional inputs.")
 
     regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
-    test_positivity.AllMethods.run(regions_data)
+    test_positivity_results = test_positivity.AllMethods.run(regions_data)
+    test_positivity_results.write(test_positivity_all_methods)
 
+    # TODO(tom): XXX pass test positivity to RegionalInput
     regional_inputs = [
         api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
-        for region in regions
+        for region in regions  # TODO(tom): use regions_data
     ]
     _logger.info(f"Finished loading all regional inputs.")
 

@@ -491,12 +491,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         if ts.provenance is not None:
             # Check that current index is as expected. Names will be fixed after remapping, below.
-            assert ts.provenance.index.names == [CommonFields.FIPS, CommonFields.VARIABLE]
+            assert ts.provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
             provenance = ts.provenance.copy()
             provenance.index = provenance.index.map(
                 lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
             )
-            provenance.index.rename([CommonFields.LOCATION_ID, CommonFields.VARIABLE], inplace=True)
+            provenance.index.rename([CommonFields.LOCATION_ID, PdFields.VARIABLE], inplace=True)
         else:
             provenance = None
 
