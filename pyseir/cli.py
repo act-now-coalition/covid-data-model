@@ -254,6 +254,7 @@ def _write_pipeline_output(
 ):
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
+    # TODO: Use constructors in MultiRegionTimeseriesDataset
     timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
     latest = timeseries_dataset.latest_values_object()
     multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
