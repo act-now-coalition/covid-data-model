@@ -29,6 +29,7 @@ from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
 from libs.datasets.dataset_utils import DatasetType
+from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 import pandas.core.groupby.generic
@@ -613,7 +614,32 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             self.provenance.sort_index().to_csv(provenance_path)
 
     def join_columns(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
-        pass
+        if not other.latest_data.empty:
+            raise NotImplementedError("No support for joining other with latest_data")
+        other_df = other.data_with_fips.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+        self_df = self.data_with_fips.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+        other_geo_columns = set(other_df.columns) & set(GEO_DATA_COLUMNS)
+        other_ts_columns = (
+            set(other_df.columns) - set(GEO_DATA_COLUMNS) - set(TimeseriesDataset.INDEX_FIELDS)
+        )
+        common_ts_columns = other_ts_columns & set(self.data_with_fips.columns)
+        if common_ts_columns:
+            raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
+        common_geo_columns = list(set(self.data_with_fips.columns) & other_geo_columns)
+        self_common_geo_columns = self_df.loc[:, common_geo_columns].fillna("")
+        other_common_geo_columns = other_df.loc[:, common_geo_columns].fillna("")
+        if (self_common_geo_columns != other_common_geo_columns).any(axis=None):
+            unequal_rows = (self_common_geo_columns != other_common_geo_columns).any(axis=1)
+            _log.info(
+                "Geo data unexpectedly varies",
+                self_rows=self_df.loc[unequal_rows, common_geo_columns],
+                other_rows=other_df.loc[unequal_rows, common_geo_columns],
+            )
+            raise ValueError("Geo data unexpectedly varies")
+        combined_df = pd.concat([self_df, other_df[list(other_ts_columns)]], axis=1)
+        return MultiRegionTimeseriesDataset.from_timeseries_df(
+            combined_df.reset_index()
+        ).append_latest_df(self.latest_data_with_fips.reset_index())
 
     def iter_one_regions(self) -> Iterable[OneRegionTimeseriesDataset]:
         pass

@@ -345,3 +345,56 @@ def test_timeseries_long():
         [CommonFields.LOCATION_ID, PdFields.VARIABLE, CommonFields.DATE], ignore_index=True
     )
     pd.testing.assert_frame_equal(long, expected, check_like=True)
+
+
+def test_join_columns():
+    ts_1 = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,\n"
+            "iso1:us#cbsa:10100,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+            "iso1:us#fips:97111,,Bar County,county,4\n"
+        )
+    )
+    ts_2 = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,\n"
+        )
+    )
+    ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
+            "iso1:us#cbsa:10100,,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+    ts_joined = ts_1.join_columns(ts_2)
+    assert_combined_like(ts_joined, ts_expected)
+
+    with pytest.raises(NotImplementedError):
+        ts_2.join_columns(ts_1)
+
+    with pytest.raises(ValueError):
+        # Raises because the same column is in both datasets
+        ts_2.join_columns(ts_2)
+
+    ts_2_variation_df = ts_2.combined_df.copy()
+    ts_2_variation_df.loc[
+        ts_2_variation_df[CommonFields.COUNTY] == "Bar County", CommonFields.COUNTY
+    ] = "Bart County"
+    ts_2_variation = timeseries.MultiRegionTimeseriesDataset.from_combined_dataframe(
+        ts_2_variation_df
+    )
+    with pytest.raises(ValueError):
+        ts_1.join_columns(ts_2_variation)
