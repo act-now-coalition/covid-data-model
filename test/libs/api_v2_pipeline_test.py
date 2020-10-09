@@ -5,7 +5,6 @@ from libs.pipeline import Region
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets import AggregationLevel
-from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 
 @pytest.fixture

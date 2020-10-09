@@ -9,7 +9,6 @@ from typing import Set
 import structlog
 
 import pandas as pd
-import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
