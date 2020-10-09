@@ -614,6 +614,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             self.provenance.sort_index().to_csv(provenance_path)
 
     def join_columns(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
+        """Joins the timeseries columns in `other` with those in `self`."""
         if not other.latest_data.empty:
             raise NotImplementedError("No support for joining other with latest_data")
         other_df = other.data_with_fips.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
@@ -624,9 +625,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         )
         common_ts_columns = other_ts_columns & set(self.data_with_fips.columns)
         if common_ts_columns:
+            # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
         common_geo_columns = list(set(self.data_with_fips.columns) & other_geo_columns)
-        # TODO(tom): fix geo columns check
+        # TODO(tom): fix geo columns check, no later than when self.data is changed to contain only
+        # timeseries
         # self_common_geo_columns = self_df.loc[:, common_geo_columns].fillna("")
         # other_common_geo_columns = other_df.loc[:, common_geo_columns].fillna("")
         # try:

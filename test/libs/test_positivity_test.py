@@ -168,6 +168,8 @@ def test_missing_columns_for_all_tests():
 
 
 def test_column_present_with_no_data():
+    # MultiRegionTimeseriesDataset.from_csv drops columns with no real values so make a DataFrame
+    # to pass to from_timeseries_df.
     ts_df = common_df.read_csv(
         io.StringIO(
             "location_id,date,total_tests\n"

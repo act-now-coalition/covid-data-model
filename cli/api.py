@@ -203,6 +203,8 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     rt_data_path = model_output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
     rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
 
+    # If calculating test positivity finishes join it with the combined_datasets into one
+    # MultiRegionTimeseriesDataset
     regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
     try:
         test_positivity_results = test_positivity.AllMethods.run(regions_data)
