@@ -1,10 +1,14 @@
 import dataclasses
 import pathlib
 from itertools import chain
+from typing import List
 from typing import Sequence
+from typing import Set
+
 import structlog
 
 import pandas as pd
+import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
@@ -23,9 +27,15 @@ class Method:
     numerator: FieldName
     denominator: FieldName
 
+    @property
+    def columns(self) -> Set[str]:
+        return {self.numerator, self.denominator}
+
     def calculate(self, delta_df: pd.DataFrame) -> pd.DataFrame:
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+        if not (self.columns <= set(delta_df.index.get_level_values(PdFields.VARIABLE))):
+            return pd.DataFrame([])
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
@@ -64,6 +74,10 @@ TEST_POSITIVITY_METHODS = (
 )
 
 
+class NoTestPositivityResultsException(Exception):
+    pass
+
+
 @dataclasses.dataclass
 class AllMethods:
     """The result of calculating all test positivity methods for all regions"""
@@ -81,14 +95,15 @@ class AllMethods:
         diff_days: int = 7,
         recent_days: int = 14,
     ) -> "AllMethods":
-        ts_value_cols = list(
-            set(chain.from_iterable((method.numerator, method.denominator) for method in methods))
-        )
-        missing_columns = set(ts_value_cols) - set(metrics_in.data.columns)
-        if missing_columns:
-            raise AssertionError(f"Data missing for test positivity: {missing_columns}")
+        metrics_in_column_set = set(metrics_in.data.columns)
+        ts_value_columns_set = set()
+        for method in methods:
+            if method.columns <= metrics_in_column_set:
+                ts_value_columns_set.update(method.columns)
+        if not ts_value_columns_set:
+            raise ValueError(f"No data for test positivity")
 
-        input_long = metrics_in.timeseries_long(ts_value_cols).set_index(
+        input_long = metrics_in.timeseries_long(list(ts_value_columns_set)).set_index(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
         )[PdFields.VALUE]
         dates = input_long.index.get_level_values(CommonFields.DATE)
@@ -107,11 +122,16 @@ class AllMethods:
         # It looks like our input data has few or no holes so this works well enough.
         diff_df = input_wide.diff(periods=diff_days, axis=1)
 
+        results = {}
+        for method in methods:
+            result = method.calculate(diff_df)
+            if not result.empty:
+                results[method.name] = result
+        if not results:
+            raise NoTestPositivityResultsException()
+
         all_wide = (
-            pd.concat(
-                {method.name: method.calculate(diff_df) for method in methods},
-                names=[PdFields.VARIABLE],
-            )
+            pd.concat(results, names=[PdFields.VARIABLE],)
             .reorder_levels([CommonFields.LOCATION_ID, PdFields.VARIABLE])
             # Drop empty timeseries
             .dropna("index", "all")

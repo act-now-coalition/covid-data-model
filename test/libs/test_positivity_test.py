@@ -1,5 +1,6 @@
 import io
 import pandas as pd
+import pytest
 
 from covidactnow.datapublic.common_fields import CommonFields
 
@@ -120,3 +121,45 @@ def test_positivity_recent_days():
     assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
         CommonFields.TEST_POSITIVITY: "method1"
     }
+
+
+def test_missing_column_for_one_method():
+    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,positive_tests,positive_tests_viral,total_tests\n"
+            "iso1:us#iso2:tx,2020-04-01,1,10,100\n"
+            "iso1:us#iso2:tx,2020-04-02,2,20,200\n"
+            "iso1:us#iso2:tx,2020-04-03,3,30,300\n"
+            "iso1:us#iso2:tx,2020-04-04,4,40,400\n"
+        )
+    )
+    methods = [
+        Method("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
+        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        Method("method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL),
+    ]
+    assert (
+        AllMethods.run(ts, methods, diff_days=1, recent_days=4)
+        .test_positivity.provenance.loc["iso1:us#iso2:tx"]
+        .at[CommonFields.TEST_POSITIVITY]
+        == "method1"
+    )
+
+
+def test_missing_columns_for_all_tests():
+    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,m1,m2,m3\n"
+            "iso1:us#iso2:tx,2020-04-01,1,10,100\n"
+            "iso1:us#iso2:tx,2020-04-02,2,20,200\n"
+            "iso1:us#iso2:tx,2020-04-03,3,30,300\n"
+            "iso1:us#iso2:tx,2020-04-04,4,40,400\n"
+        )
+    )
+    methods = [
+        Method("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
+        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        Method("method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL),
+    ]
+    with pytest.raises(ValueError):
+        AllMethods.run(ts, methods, diff_days=1, recent_days=4)
