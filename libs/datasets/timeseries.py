@@ -641,9 +641,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             combined_df.reset_index()
         ).append_latest_df(self.latest_data_with_fips.reset_index())
 
-    def iter_one_regions(self) -> Iterable[OneRegionTimeseriesDataset]:
-        pass
-        # XXX
+    def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
+        """Iterates through all the regions in this object"""
+        for location_id, data_group in self.data_with_fips.groupby(CommonFields.LOCATION_ID):
+            latest_row = self.latest_data.loc[location_id, :]
+            latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
+            yield Region(location_id=location_id, fips=None), OneRegionTimeseriesDataset(
+                data_group, latest_dict
+            )
 
 
 def _remove_padded_nans(df, columns):

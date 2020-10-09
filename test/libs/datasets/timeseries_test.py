@@ -398,3 +398,29 @@ def test_join_columns():
     )
     with pytest.raises(ValueError):
         ts_1.join_columns(ts_2_variation)
+
+
+def test_iter_one_region():
+    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,\n"
+            "iso1:us#cbsa:10100,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+            "iso1:us#fips:97111,,Bar County,county,4\n"
+            # 97222 does not have a row of latest data to make sure it still works
+            "iso1:us#fips:97222,2020-04-02,No Recent County,county,3\n"
+            "iso1:us#fips:97222,2020-04-04,No Recent County,county,5\n"
+        )
+    )
+    assert {region.location_id for region, _ in ts.iter_one_regions()} == {
+        "iso1:us#cbsa:10100",
+        "iso1:us#fips:97111",
+        "iso1:us#fips:97222",
+    }
+    for it_region, it_one_region in ts.iter_one_regions():
+        one_region = ts.get_one_region(it_region)
+        assert (one_region.data.fillna("") == it_one_region.data.fillna("")).all(axis=None)
+        assert one_region.latest == it_one_region.latest
