@@ -618,7 +618,7 @@ class RtInferenceEngine:
                 # which will be the first added to df_all. So merge with how ="left" rather than
                 # "outer"
                 df_all = df_all.merge(df_raw, left_index=True, right_index=True, how="left")
-                df_all = df_all.append_regions(df)
+                df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
 
             # ------------------------------------------------
             # Compute the indicator lag using the curvature
