@@ -36,7 +36,7 @@ class RegionalInput:
 
     model_output: Optional[CANPyseirLocationOutput]
 
-    _combined_data: combined_datasets.RegionalData
+    _combined_data_with_test_positivity: OneRegionTimeseriesDataset
 
     @property
     def fips(self) -> str:
@@ -44,22 +44,26 @@ class RegionalInput:
 
     @property
     def latest(self) -> Dict[str, Any]:
-        return self._combined_data.latest
+        return self._combined_data_with_test_positivity.latest
 
     @property
     def timeseries(self) -> OneRegionTimeseriesDataset:
-        return self._combined_data.timeseries
+        return self._combined_data_with_test_positivity
 
     @staticmethod
     def from_region_and_model_output(
-        region: pipeline.Region, model_output_dir: pathlib.Path
+        region: pipeline.Region,
+        combined_data_with_test_positivity: OneRegionTimeseriesDataset,
+        model_output_dir: pathlib.Path,
     ) -> "RegionalInput":
-        combined_data = combined_datasets.RegionalData.from_region(region)
-
         model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
             region.fips, INTERVENTION, model_output_dir
         )
-        return RegionalInput(region=region, model_output=model_output, _combined_data=combined_data)
+        return RegionalInput(
+            region=region,
+            model_output=model_output,
+            _combined_data_with_test_positivity=combined_data_with_test_positivity,
+        )
 
 
 def run_on_regions(

@@ -78,15 +78,18 @@ def calculate_metrics_for_timeseries(
     cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)
 
-    cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
-        data[CommonFields.POSITIVE_TESTS]
-    )
-    cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
-        data[CommonFields.NEGATIVE_TESTS]
-    )
-    test_positivity = calculate_test_positivity(
-        cumulative_positive_tests, cumulative_negative_tests
-    )
+    if CommonFields.TEST_POSITIVITY in data.columns:
+        test_positivity = data[CommonFields.TEST_POSITIVITY]
+    else:
+        cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
+            data[CommonFields.POSITIVE_TESTS]
+        )
+        cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
+            data[CommonFields.NEGATIVE_TESTS]
+        )
+        test_positivity = calculate_test_positivity(
+            cumulative_positive_tests, cumulative_negative_tests
+        )
     contact_tracer_capacity = calculate_contact_tracers(
         cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
     )

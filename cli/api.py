@@ -194,13 +194,16 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
 
     regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
     test_positivity_results = test_positivity.AllMethods.run(regions_data)
+    _logger.info(test_positivity_results.test_positivity.data_with_fips)
     combined_data_with_test_positivity = regions_data.join_columns(
         test_positivity_results.test_positivity
     )
 
     regional_inputs = [
-        api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
-        for region in combined_data_with_test_positivity.iter_one_region()
+        api_v2_pipeline.RegionalInput.from_region_and_model_output(
+            region, region_data, model_output_dir
+        )
+        for region, region_data in combined_data_with_test_positivity.iter_one_regions()
     ]
     _logger.info(f"Finished loading all regional inputs.")
 
