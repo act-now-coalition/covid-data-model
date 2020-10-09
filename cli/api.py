@@ -206,7 +206,7 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
     try:
         test_positivity_results = test_positivity.AllMethods.run(regions_data)
-    except test_positivity.NoTestPositivityResultsException:
+    except test_positivity.TestPositivityException:
         pass
     else:
         regions_data = regions_data.join_columns(test_positivity_results.test_positivity)

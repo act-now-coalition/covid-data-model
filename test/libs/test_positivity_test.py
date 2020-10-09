@@ -1,12 +1,14 @@
 import io
 import pandas as pd
 import pytest
+from covidactnow.datapublic import common_df
 
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets import timeseries
 from libs.test_positivity import AllMethods
 from libs.test_positivity import Method
+from libs import test_positivity
 from test.libs.datasets.timeseries_test import assert_combined_like
 
 
@@ -18,7 +20,7 @@ def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
     return df
 
 
-def test_positivity():
+def test_basic():
     ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,positive_tests,positive_tests_viral,total_tests,\n"
@@ -64,7 +66,7 @@ def test_positivity():
     }
 
 
-def test_positivity_recent_days():
+def test_recent_days():
     ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,positive_tests,positive_tests_viral,total_tests,\n"
@@ -161,5 +163,24 @@ def test_missing_columns_for_all_tests():
         Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
         Method("method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL),
     ]
-    with pytest.raises(ValueError):
+    with pytest.raises(test_positivity.NoMethodsWithRelevantColumns):
         AllMethods.run(ts, methods, diff_days=1, recent_days=4)
+
+
+def test_column_present_with_no_data():
+    ts_df = common_df.read_csv(
+        io.StringIO(
+            "location_id,date,total_tests\n"
+            "iso1:us#iso2:tx,2020-04-01,100\n"
+            "iso1:us#iso2:tx,2020-04-02,200\n"
+            "iso1:us#iso2:tx,2020-04-04,400\n"
+        ),
+        set_index=False,
+    )
+    ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
+    ts = timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(ts_df)
+    methods = [
+        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+    ]
+    with pytest.raises(test_positivity.NoColumnsWithDataException):
+        AllMethods.run(ts, methods, diff_days=1, recent_days=1)

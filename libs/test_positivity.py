@@ -1,6 +1,7 @@
 import dataclasses
 import pathlib
 from itertools import chain
+from typing import Iterable
 from typing import List
 from typing import Sequence
 from typing import Set
@@ -28,14 +29,18 @@ class Method:
     denominator: FieldName
 
     @property
-    def columns(self) -> Set[str]:
+    def columns(self) -> Set[FieldName]:
         return {self.numerator, self.denominator}
 
     def calculate(self, delta_df: pd.DataFrame) -> pd.DataFrame:
+        """Calculate a DataFrame with LOCATION_ID index and DATE columns.
+
+        Args:
+            delta_df: DataFrame with rows having MultiIndex of [VARIABLE, LOCATION_ID] and columns with DATE
+                index. Must contain at least one real value for eoch of self.columns.
+        """
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-        if not (self.columns <= set(delta_df.index.get_level_values(PdFields.VARIABLE))):
-            return pd.DataFrame([])
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
@@ -74,7 +79,15 @@ TEST_POSITIVITY_METHODS = (
 )
 
 
-class NoTestPositivityResultsException(Exception):
+class TestPositivityException(Exception):
+    pass
+
+
+class NoColumnsWithDataException(TestPositivityException):
+    pass
+
+
+class NoMethodsWithRelevantColumns(TestPositivityException):
     pass
 
 
@@ -85,25 +98,24 @@ class AllMethods:
     # Test positivity calculated in all valid methods for each region
     all_methods_timeseries: pd.DataFrame
 
-    # Test positivity using the best available method for each region
+    # A MultiRegionTimeseriesDataset with exactly one column, TEST_POSITIVITY, the best available
+    # method for each region.
     test_positivity: MultiRegionTimeseriesDataset
 
     @staticmethod
     def run(
-        metrics_in: MultiRegionTimeseriesDataset,
+        dataset_in: MultiRegionTimeseriesDataset,
         methods: Sequence[Method] = TEST_POSITIVITY_METHODS,
         diff_days: int = 7,
         recent_days: int = 14,
     ) -> "AllMethods":
-        metrics_in_column_set = set(metrics_in.data.columns)
-        ts_value_columns_set = set()
-        for method in methods:
-            if method.columns <= metrics_in_column_set:
-                ts_value_columns_set.update(method.columns)
-        if not ts_value_columns_set:
-            raise ValueError(f"No data for test positivity")
+        relevant_columns = AllMethods.__list_columns(
+            AllMethods.__methods_with_columns_available(methods, dataset_in.data.columns)
+        )
+        if not relevant_columns:
+            raise NoMethodsWithRelevantColumns()
 
-        input_long = metrics_in.timeseries_long(list(ts_value_columns_set)).set_index(
+        input_long = dataset_in.timeseries_long(relevant_columns).set_index(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
         )[PdFields.VALUE]
         dates = input_long.index.get_level_values(CommonFields.DATE)
@@ -122,16 +134,17 @@ class AllMethods:
         # It looks like our input data has few or no holes so this works well enough.
         diff_df = input_wide.diff(periods=diff_days, axis=1)
 
-        results = {}
-        for method in methods:
-            result = method.calculate(diff_df)
-            if not result.empty:
-                results[method.name] = result
-        if not results:
-            raise NoTestPositivityResultsException()
+        methods_with_data = AllMethods.__methods_with_columns_available(
+            methods, diff_df.index.get_level_values(PdFields.VARIABLE).unique()
+        )
+        if not methods_with_data:
+            raise NoColumnsWithDataException()
 
         all_wide = (
-            pd.concat(results, names=[PdFields.VARIABLE],)
+            pd.concat(
+                {method.name: method.calculate(diff_df) for method in methods_with_data},
+                names=[PdFields.VARIABLE],
+            )
             .reorder_levels([CommonFields.LOCATION_ID, PdFields.VARIABLE])
             # Drop empty timeseries
             .dropna("index", "all")
@@ -161,6 +174,18 @@ class AllMethods:
         )
 
         return AllMethods(all_methods_timeseries=all_wide, test_positivity=test_positivity)
+
+    @staticmethod
+    def __methods_with_columns_available(
+        methods_in: Sequence[Method], available_columns: Sequence[str]
+    ) -> Sequence[Method]:
+        available_columns_set = set(available_columns)
+        return [m for m in methods_in if m.columns <= available_columns_set]
+
+    @staticmethod
+    def __list_columns(methods: Iterable[Method]) -> List[FieldName]:
+        """Returns unsorted list of columns in given Method objects."""
+        return list(set(chain.from_iterable(method.columns for method in methods)))
 
     def write(self, csv_path: pathlib.Path):
         self.all_methods_timeseries.to_csv(
