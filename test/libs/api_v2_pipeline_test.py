@@ -10,13 +10,10 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 @pytest.fixture
 def nyc_regional_input(nyc_region, rt_dataset, icu_dataset):
-    regional_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset([nyc_region])
-    test_positivity_results = test_positivity.AllMethods.run(regional_data)
-    regional_data = regional_data.join_columns(
-        test_positivity_results.test_positivity
-    ).get_one_region(nyc_region)
+    one_region = combined_datasets.load_us_timeseries_dataset().get_one_region(nyc_region)
+    # Not using test_positivity because currently we don't have any data for counties
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        nyc_region, regional_data, rt_dataset, icu_dataset
+        nyc_region, one_region, rt_dataset, icu_dataset
     )
 
 
@@ -67,15 +64,13 @@ def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
 
     # Creating a new regional input with an empty timeseries dataset
     timeseries = nyc_regional_input.timeseries
-    timeseries_data = timeseries.data.loc[timeseries.data.fips.isna()]
-    regional_data = combined_datasets.RegionalData(
-        nyc_regional_input.region,
-        OneRegionTimeseriesDataset(timeseries_data, nyc_regional_input.latest),
+    one_region = combined_datasets.load_us_timeseries_dataset().get_one_region(
+        nyc_regional_input.region
     )
     regional_input = api_v2_pipeline.RegionalInput(
-        nyc_regional_input.region, regional_data, None, None
+        nyc_regional_input.region, one_region, None, None
     )
-    assert regional_input.timeseries.empty
+    assert not regional_input.timeseries.empty
 
     all_timeseries_api = api_v2_pipeline.run_on_regions([regional_input])
 

@@ -389,15 +389,16 @@ def test_join_columns():
         # Raises because the same column is in both datasets
         ts_2.join_columns(ts_2)
 
-    ts_2_variation_df = ts_2.combined_df.copy()
-    ts_2_variation_df.loc[
-        ts_2_variation_df[CommonFields.COUNTY] == "Bar County", CommonFields.COUNTY
-    ] = "Bart County"
-    ts_2_variation = timeseries.MultiRegionTimeseriesDataset.from_combined_dataframe(
-        ts_2_variation_df
-    )
-    with pytest.raises(ValueError):
-        ts_1.join_columns(ts_2_variation)
+    # Checking geo attributes is currently disabled.
+    # ts_2_variation_df = ts_2.combined_df.copy()
+    # ts_2_variation_df.loc[
+    #     ts_2_variation_df[CommonFields.COUNTY] == "Bar County", CommonFields.COUNTY
+    # ] = "Bart County"
+    # ts_2_variation = timeseries.MultiRegionTimeseriesDataset.from_combined_dataframe(
+    #     ts_2_variation_df
+    # )
+    # with pytest.raises(ValueError):
+    #     ts_1.join_columns(ts_2_variation)
 
 
 def test_iter_one_region():
