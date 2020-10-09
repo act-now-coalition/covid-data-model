@@ -327,8 +327,11 @@ class WebUIDataAdaptorV1:
                 output_model[schema.RT_INDICATOR_CI90] = "NaN"
             else:
                 rt_results.index = rt_results["date"].dt.strftime("%Y-%m-%d")
-                merged = output_model.append_regions(
-                    rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]]
+                merged = output_model.merge(
+                    rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
+                    right_index=True,
+                    left_on="date",
+                    how="left",
                 )
                 output_model[schema.RT_INDICATOR] = merged["Rt_MAP_composite"]
 
