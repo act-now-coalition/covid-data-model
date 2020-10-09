@@ -1,4 +1,5 @@
 import enum
+import math
 from typing import List, Optional
 
 from covidactnow.datapublic import common_fields
@@ -21,17 +22,18 @@ def calc_risk_level(value: Optional[float], thresholds: List[float]):
     """
     assert len(thresholds) == 3, "Must pass low, med and high thresholds."
     level_low, level_med, level_high = thresholds
-
     if value is None:
         return RiskLevel.UNKNOWN
 
-    risk_level = RiskLevel.UNKNOWN
+    if math.isinf(value):
+        return RiskLevel.UNKNOWN
+
     if value <= level_low:
-        risk_level = RiskLevel.LOW
+        return RiskLevel.LOW
     elif value <= level_med:
-        risk_level = RiskLevel.MEDIUM
+        return RiskLevel.MEDIUM
     elif value <= level_high:
-        risk_level = RiskLevel.HIGH
+        return RiskLevel.HIGH
 
     return RiskLevel.CRITICAL
 
@@ -54,14 +56,12 @@ def contact_tracing_risk_level(value: float):
     if value is None:
         return RiskLevel.UNKNOWN
 
-    risk_level = RiskLevel.UNKNOWN
-
     if value > level_low:
-        risk_level = RiskLevel.LOW
+        return RiskLevel.LOW
     elif value > level_med:
-        risk_level = RiskLevel.MEDIUM
+        return RiskLevel.MEDIUM
     elif value > level_high:
-        risk_level = RiskLevel.HIGH
+        return RiskLevel.HIGH
 
     return RiskLevel.UNKNOWN
 
@@ -86,6 +86,9 @@ def top_level_risk_level(
     """
     Calculate the overall risk for a region based on metric risk levels.
     """
+    if case_density_level is RiskLevel.LOW:
+        return RiskLevel.LOW
+
     levelList = [
         infection_rate_level,
         icu_headroom_level,
@@ -95,15 +98,15 @@ def top_level_risk_level(
     top_level_risk = RiskLevel.UNKNOWN
 
     if RiskLevel.CRITICAL in levelList:
-        top_level_risk = RiskLevel.CRITICAL
+        return RiskLevel.CRITICAL
     elif RiskLevel.HIGH in levelList:
-        top_level_risk = RiskLevel.HIGH
+        return RiskLevel.HIGH
     elif RiskLevel.MEDIUM in levelList:
-        top_level_risk = RiskLevel.MEDIUM
+        return RiskLevel.MEDIUM
     elif RiskLevel.UNKNOWN in levelList:
-        top_level_risk = RiskLevel.UNKNOWN
+        return RiskLevel.UNKNOWN
     else:
-        top_level_risk = RiskLevel.LOW
+        return RiskLevel.LOW
 
     return top_level_risk
 
@@ -111,7 +114,6 @@ def top_level_risk_level(
 def calculate_risk_level_from_metrics(
     metrics: can_api_v2_definition.Metrics,
 ) -> can_api_v2_definition.RiskLevels:
-
     case_density_level = case_density_risk_level(metrics.caseDensity)
     test_positivity_level = test_positivity_risk_level(metrics.testPositivityRatio)
     contact_tracing_level = contact_tracing_risk_level(metrics.contactTracerCapacityRatio)
@@ -125,7 +127,7 @@ def calculate_risk_level_from_metrics(
         icu_headroom_level,
         infection_rate_level,
     )
-    return can_api_v2_definition.RiskLevels(
+    levels = can_api_v2_definition.RiskLevels(
         overall=overall_level,
         testPositivityRatio=test_positivity_level,
         caseDensity=case_density_level,
@@ -133,3 +135,4 @@ def calculate_risk_level_from_metrics(
         infectionRate=infection_rate_level,
         icuHeadroomRatio=icu_headroom_level,
     )
+    return levels
