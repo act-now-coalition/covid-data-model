@@ -174,6 +174,7 @@ def test_one_region_dataset():
             "fips,county,aggregate_level,date,m1,m2\n" "97111,Bar County,county,2020-04-02,2,\n"
         ).reset_index(),
         {},
+        provenance={},
     )
     assert ts.has_one_region() == True
 
@@ -185,12 +186,14 @@ def test_one_region_dataset():
                 "97222,Foo County,county,2020-04-01,,10\n"
             ).reset_index(),
             {},
+            provenance={},
         )
 
     with structlog.testing.capture_logs() as logs:
         ts = timeseries.OneRegionTimeseriesDataset(
             read_csv_and_index_fips_date("fips,county,aggregate_level,date,m1,m2\n").reset_index(),
             {},
+            provenance={},
         )
     assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
     assert ts.empty
@@ -222,12 +225,16 @@ def test_multiregion_provenance():
     )
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     assert out.provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
+    assert out.get_one_region(Region.from_fips("97111")).provenance["m1"] == "src11"
     assert out.provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"
+    assert out.get_one_region(Region.from_fips("97222")).provenance["m2"] == "src22"
     assert out.provenance.loc["iso1:us#fips:03"].at["m2"] == "src32"
+    assert out.get_one_region(Region.from_fips("03")).provenance["m2"] == "src32"
 
     counties = out.get_counties(after=pd.to_datetime("2020-04-01"))
     assert "iso1:us#fips:03" not in counties.provenance.index
     assert counties.provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
+    assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == "src21"
 
 
 def _combined_sorted_by_location_date(ts: timeseries.MultiRegionTimeseriesDataset) -> pd.DataFrame:
@@ -453,3 +460,4 @@ def test_iter_one_region():
         one_region = ts.get_one_region(it_region)
         assert (one_region.data.fillna("") == it_one_region.data.fillna("")).all(axis=None)
         assert one_region.latest == it_one_region.latest
+        assert one_region.provenance == it_one_region.provenance

@@ -70,6 +70,8 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
+    provenance: Dict[str, str]
+
     def __post_init__(self):
         if CommonFields.LOCATION_ID in self.data.columns:
             region_count = self.data[CommonFields.LOCATION_ID].nunique()
@@ -105,12 +107,14 @@ class OneRegionTimeseriesDataset:
         rows_key = dataset_utils.make_rows_key(self.data, after=after,)
         columns_key = list(columns) if columns else slice(None, None, None)
         return OneRegionTimeseriesDataset(
-            self.data.loc[rows_key, columns_key].reset_index(drop=True), latest=self.latest,
+            self.data.loc[rows_key, columns_key].reset_index(drop=True),
+            latest=self.latest,
+            provenance=self.provenance,
         )
 
     def remove_padded_nans(self, columns: List[str]):
         return OneRegionTimeseriesDataset(
-            _remove_padded_nans(self.data, columns), latest=self.latest
+            _remove_padded_nans(self.data, columns), latest=self.latest, provenance=self.provenance,
         )
 
 
@@ -545,7 +549,16 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         # Some code far away from here depends on latest_dict containing None, not np.nan, for
         # non-real values.
         latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
-        return OneRegionTimeseriesDataset(data=ts_df, latest=latest_dict)
+
+        if self.provenance is not None:
+            provenance_series = self.provenance.loc[region.location_id]
+            provenance_dict = provenance_series[provenance_series.notna()].to_dict()
+        else:
+            provenance_dict = {}
+
+        return OneRegionTimeseriesDataset(
+            data=ts_df, latest=latest_dict, provenance=provenance_dict
+        )
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
@@ -666,8 +679,13 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         for location_id, data_group in self.data_with_fips.groupby(CommonFields.LOCATION_ID):
             latest_row = self.latest_data.loc[location_id, :]
             latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
+            if self.provenance is not None:
+                provenance_series = self.provenance.loc[location_id]
+                provenance_dict = provenance_series[provenance_series.notna()].to_dict()
+            else:
+                provenance_dict = {}
             yield Region(location_id=location_id, fips=None), OneRegionTimeseriesDataset(
-                data_group, latest_dict
+                data_group, latest_dict, provenance=provenance_dict,
             )
 
 
