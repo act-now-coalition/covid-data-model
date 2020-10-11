@@ -20,6 +20,12 @@ from test.dataset_utils_test import read_csv_and_index_fips_date
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
+def _provenance_from_str(provenance_str: str) -> pd.Series:
+    return pd.read_csv(io.StringIO(provenance_str)).set_index(
+        [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    )[PdFields.PROVENANCE]
+
+
 @pytest.mark.parametrize("include_na_at_end", [False, True])
 def test_remove_padded_nans(include_na_at_end):
     rows = [
@@ -238,6 +244,11 @@ def assert_combined_like(
     sorted1 = _combined_sorted_by_location_date(ts1)
     sorted2 = _combined_sorted_by_location_date(ts2)
     pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
+    if ts1.provenance is not None:
+        assert ts2.provenance is not None
+        pd.testing.assert_series_equal(ts1.provenance, ts2.provenance)
+    else:
+        assert ts2.provenance is None
 
 
 def test_append_regions():
@@ -357,7 +368,12 @@ def test_join_columns():
             "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
             "iso1:us#fips:97111,,Bar County,county,4\n"
-        )
+        ),
+        provenance_df=_provenance_from_str(
+            "location_id,variable,provenance\n"
+            "iso1:us#cbsa:10100,m1,ts110100prov\n"
+            "iso1:us#fips:97111,m1,ts197111prov\n"
+        ),
     )
     ts_2 = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
@@ -366,7 +382,12 @@ def test_join_columns():
             "iso1:us#cbsa:10100,2020-04-03,,,3\n"
             "iso1:us#fips:97111,2020-04-02,Bar County,county,\n"
             "iso1:us#fips:97111,2020-04-04,Bar County,county,\n"
-        )
+        ),
+        provenance_df=_provenance_from_str(
+            "location_id,variable,provenance\n"
+            "iso1:us#cbsa:10100,m2,ts110100prov\n"
+            "iso1:us#fips:97111,m2,ts197111prov\n"
+        ),
     )
     ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
@@ -377,7 +398,14 @@ def test_join_columns():
             "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
             "iso1:us#fips:97111,,Bar County,county,4,\n"
-        )
+        ),
+        provenance_df=_provenance_from_str(
+            "location_id,variable,provenance\n"
+            "iso1:us#cbsa:10100,m1,ts110100prov\n"
+            "iso1:us#fips:97111,m1,ts197111prov\n"
+            "iso1:us#cbsa:10100,m2,ts110100prov\n"
+            "iso1:us#fips:97111,m2,ts197111prov\n"
+        ),
     )
     ts_joined = ts_1.join_columns(ts_2)
     assert_combined_like(ts_joined, ts_expected)
