@@ -478,9 +478,22 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         return multiregion_timeseries
 
     @staticmethod
-    def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
+    def from_csv(
+        path_or_buf: Union[pathlib.Path, TextIO],
+        provenance: Union[None, pathlib.Path, TextIO] = None,
+    ) -> "MultiRegionTimeseriesDataset":
+        if provenance is None and isinstance(path_or_buf, pathlib.Path):
+            provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
+            if provenance_path.is_file():
+                provenance = provenance_path
+        if provenance:
+            provenance_df = pd.read_csv(provenance).set_index(
+                [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+            )
+        else:
+            provenance_df = None
         return MultiRegionTimeseriesDataset.from_combined_dataframe(
-            common_df.read_csv(path_or_buf, set_index=False)
+            common_df.read_csv(path_or_buf, set_index=False), provenance=provenance_df
         )
 
     @staticmethod
@@ -519,6 +532,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         assert self.data.index.is_unique
         assert self.data.index.is_monotonic_increasing
         assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
+        if self.provenance:
+            assert self.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
 
     def append_regions(
         self, other: "MultiRegionTimeseriesDataset"
