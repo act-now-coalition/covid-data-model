@@ -67,15 +67,11 @@ def create_or_replace_worksheet(
 def create_or_clear_worksheet(sheet: gspread.Spreadsheet, worksheet_name: str) -> gspread.Worksheet:
     """Creates or clears a worksheet with name `worksheet_name`.
 
-    Note(chris): Taking the approach of deleting worksheet to make sure that
-    state of worksheet is totally clean.  Other methods of clearing worksheet using gspread
-    did not clear conditional formatting rules.
-
     Args:
         sheet: Spreadsheet
         worksheet_name: Name of worksheet.
 
-    Returns: Newly created Worksheet.
+    Returns: Worksheet with name `worksheet_name`.
     """
     try:
         worksheet = sheet.worksheet(worksheet_name)

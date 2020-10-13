@@ -1,4 +1,4 @@
-from typing import Optional, List, Callable, Dict
+from typing import Optional, List, Callable, Dict, Any
 import os
 from libs import google_sheet_helpers
 import time
@@ -20,13 +20,29 @@ fields @timestamp, @message
 START_DATE = datetime.datetime(year=2020, month=9, day=15)
 
 
+class CloudWatchQueryError(Exception):
+    """Raised on a failed query to CloudWatch"""
+
+
 def run_query(
     log_group: str,
-    query,
+    query: str,
     start_time: datetime.datetime,
     end_time: Optional[datetime.datetime] = None,
     field_transformations: Optional[Dict[str, Callable]] = None,
 ) -> List[dict]:
+    """Runs query on log group, applying transformations from `field_transformations`.
+
+    Args:
+        log_group: Name of CloudWatch log group.
+        query: Query to run.
+        start_time: Time to start query from.
+        end_time: end time for query.  If not specified, uses current time.
+        field_transformations: Dictionary of field name to transformation function to apply
+            to query results.
+
+    Returns: List of {<field_name>: <value>, ...} records.
+    """
     field_transformations = field_transformations or {}
     client = boto3.client("logs")
     end_time = end_time if end_time else datetime.datetime.utcnow()
@@ -47,7 +63,7 @@ def run_query(
         response = client.get_query_results(queryId=query_id)
 
     if response["status"] != "Complete":
-        raise Exception("ahhhh")
+        raise CloudWatchQueryError()
 
     rows = []
     for result in response["results"]:
@@ -65,10 +81,10 @@ def run_query(
     return rows
 
 
-def run_users_query():
-    log_group = os.environ["API_LOG_GROUP"]
+def run_user_activity_summary_query(log_group: str) -> List[Dict[str, Any]]:
     query = TOTAL_USERS_QUERY
     start_time = START_DATE
+    # Transforms datestring to YYY-MM-DD format
     to_date_string = lambda x: datetime.datetime.fromisoformat(x).date().isoformat()
     field_transformations = {
         "signupDate": to_date_string,
