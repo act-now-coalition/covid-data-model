@@ -2,14 +2,14 @@
   "dataset_type": "latest",
   "path": "data/latest.csv",
   "data_git_info": {
-    "sha": "a7aec70404b31f8b0657e132b275970eb8895dca",
+    "sha": "8dfaa9214c89538b24f485caacccc5dcfdf68266",
     "branch": "master",
-    "is_dirty": true
-  },
-  "model_git_info": {
-    "sha": "4ae49be5a945a01122a3158fb2750130bbd19fac",
-    "branch": "tgb-test-positivity-multiregion-api",
     "is_dirty": false
   },
-  "updated_at": "2020-10-13T05:07:28.849582"
+  "model_git_info": {
+    "sha": "55950b0d12db6436324dca6fee8ab14b7a7f534c",
+    "branch": "master",
+    "is_dirty": false
+  },
+  "updated_at": "2020-10-13T11:57:45.326366"
 }
