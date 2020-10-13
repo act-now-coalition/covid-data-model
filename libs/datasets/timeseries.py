@@ -98,7 +98,7 @@ class OneRegionTimeseriesDataset:
         # It'd be faster to use self.data.itertuples or find a way to avoid yield_records, but that
         # needs larger changes in code calling this.
         for idx, row in self.data.iterrows():
-            yield row.where(pd.notnull(row), None).to_dict()
+            yield row.loc[row.notna()].to_dict()
 
     def get_subset(self, after=None, columns=tuple()):
         rows_key = dataset_utils.make_rows_key(self.data, after=after,)
@@ -538,12 +538,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             raise RegionLatestNotFound(region)
         # Some code far away from here depends on latest_dict containing None, not np.nan, for
         # non-real values.
-        latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
+        latest_dict = latest_row.loc[latest_row.notna()].to_dict()
         return OneRegionTimeseriesDataset(data=ts_df, latest=latest_dict)
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
-        timeseries_df = self.data.loc[self.data[CommonFields.LOCATION_ID].isin(location_ids), :]
+        timeseries_df = self.data.loc[
+            self.data[CommonFields.LOCATION_ID].isin(location_ids), :
+        ].dropna("columns", "all")
         latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
         return MultiRegionTimeseriesDataset.from_timeseries_df(
             timeseries_df, provenance=provenance
@@ -555,7 +557,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         ts_rows_key = dataset_utils.make_rows_key(
             self.data, aggregation_level=AggregationLevel.COUNTY, after=after
         )
-        ts_df = self.data.loc[ts_rows_key, :].reset_index(drop=True)
+        ts_df = self.data.loc[ts_rows_key, :].dropna("columns", "all").reset_index(drop=True)
 
         location_ids = ts_df[CommonFields.LOCATION_ID].unique()
 
@@ -572,9 +574,16 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def _get_latest_and_provenance_for_locations(
         self, location_ids
     ) -> Tuple[pd.DataFrame, Optional[pd.Series]]:
-        latest_df = self.latest_data.loc[
-            self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids), :
-        ].reset_index()
+        latest_df = (
+            self.latest_data.loc[
+                self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(
+                    location_ids
+                ),
+                :,
+            ]
+            .reset_index()
+            .dropna("columns", "all")
+        )
         if self.provenance is not None:
             provenance = self.provenance[
                 self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
