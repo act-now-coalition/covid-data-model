@@ -9,12 +9,7 @@
       "type": "integer"
     },
     "currentIcuCovidMethod": {
-      "title": "Currenticucovidmethod",
-      "description": "Method used to determine number of current ICU patients with covid.",
-      "enum": [
-        "actual",
-        "estimated"
-      ]
+      "$ref": "#/definitions/CovidPatientsMethod"
     },
     "currentIcuNonCovid": {
       "title": "Currenticunoncovid",
@@ -22,13 +17,7 @@
       "type": "integer"
     },
     "currentIcuNonCovidMethod": {
-      "title": "Currenticunoncovidmethod",
-      "description": "Method used to determine number of current ICU patients without covid.",
-      "enum": [
-        "actual",
-        "estimated_from_typical_utilization",
-        "estimated_from_total_icu_actual"
-      ]
+      "$ref": "#/definitions/NonCovidPatientsMethod"
     }
   },
   "required": [
@@ -36,5 +25,24 @@
     "currentIcuCovidMethod",
     "currentIcuNonCovid",
     "currentIcuNonCovidMethod"
-  ]
+  ],
+  "definitions": {
+    "CovidPatientsMethod": {
+      "title": "CovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients with covid.",
+      "enum": [
+        "actual",
+        "estimated"
+      ]
+    },
+    "NonCovidPatientsMethod": {
+      "title": "NonCovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients without covid.",
+      "enum": [
+        "actual",
+        "estimated_from_typical_utilization",
+        "estimated_from_total_icu_actual"
+      ]
+    }
+  }
 }
