@@ -108,8 +108,8 @@ class AllMethods:
         diff_days: int = 7,
         recent_days: int = 14,
     ) -> "AllMethods":
-        relevant_columns = AllMethods.__list_columns(
-            AllMethods.__methods_with_columns_available(methods, dataset_in.data.columns)
+        relevant_columns = AllMethods._list_columns(
+            AllMethods._methods_with_columns_available(methods, dataset_in.data.columns)
         )
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
@@ -133,7 +133,7 @@ class AllMethods:
         # It looks like our input data has few or no holes so this works well enough.
         diff_df = input_wide.diff(periods=diff_days, axis=1)
 
-        methods_with_data = AllMethods.__methods_with_columns_available(
+        methods_with_data = AllMethods._methods_with_columns_available(
             methods, diff_df.index.get_level_values(PdFields.VARIABLE).unique()
         )
         if not methods_with_data:
@@ -175,14 +175,14 @@ class AllMethods:
         return AllMethods(all_methods_timeseries=all_wide, test_positivity=test_positivity)
 
     @staticmethod
-    def __methods_with_columns_available(
+    def _methods_with_columns_available(
         methods_in: Sequence[Method], available_columns: Sequence[str]
     ) -> Sequence[Method]:
         available_columns_set = set(available_columns)
         return [m for m in methods_in if m.columns <= available_columns_set]
 
     @staticmethod
-    def __list_columns(methods: Iterable[Method]) -> List[FieldName]:
+    def _list_columns(methods: Iterable[Method]) -> List[FieldName]:
         """Returns unsorted list of columns in given Method objects."""
         return list(set(chain.from_iterable(method.columns for method in methods)))
 
