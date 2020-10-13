@@ -1,9 +1,11 @@
 from typing import Optional, List, Callable, Dict, Any
-import os
-from libs import google_sheet_helpers
 import time
-import boto3
 import datetime
+
+import gspread
+import boto3
+
+from libs import google_sheet_helpers
 
 TOTAL_USERS_QUERY = """
 fields @timestamp, @message
@@ -86,17 +88,28 @@ def run_user_activity_summary_query(log_group: str) -> List[Dict[str, Any]]:
     start_time = START_DATE
     # Transforms datestring to YYY-MM-DD format
     to_date_string = lambda x: datetime.datetime.fromisoformat(x).date().isoformat()
+
+    # Field names match those in `TOTAL_USERS_QUERY` defined above.
     field_transformations = {
         "signupDate": to_date_string,
         "daysActive": int,
         "totalRequests": int,
         "latestDate": to_date_string,
     }
+
     return run_query(log_group, query, start_time, field_transformations=field_transformations)
 
 
-def update_google_sheet(sheet, worksheet_name, data):
+def update_google_sheet(
+    sheet: gspread.Spreadsheet, worksheet_name: str, data: List[Dict[str, Any]]
+):
+    """Updates Google Sheet with latest data.
 
+    Args:
+        sheet: Google Sheet to update
+        worksheet_name: Name of worksheet to update.
+        data: List of rows containing user activity.
+    """
     worksheet = google_sheet_helpers.create_or_clear_worksheet(sheet, worksheet_name)
 
     header = list(data[0].keys())
@@ -104,4 +117,5 @@ def update_google_sheet(sheet, worksheet_name, data):
     for result in data:
         rows.append([result[column] for column in header])
 
-    worksheet.update(rows)
+    # Setting raw=False allows Google Sheets to parse date strings as dates.
+    worksheet.update(rows, raw=False)
