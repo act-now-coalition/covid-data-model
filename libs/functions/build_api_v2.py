@@ -7,6 +7,7 @@ from api.can_api_v2_definition import (
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
     Metrics,
+    RiskLevels,
     RegionSummary,
     RegionSummaryWithTimeseries,
     RegionTimeseriesRowWithHeader,
@@ -45,7 +46,7 @@ def _build_actuals(actual_data: dict) -> Actuals:
 
 
 def build_region_summary(
-    latest_values: dict, latest_metrics: Optional[Metrics], risk_levels
+    latest_values: dict, latest_metrics: Optional[Metrics], risk_levels: RiskLevels
 ) -> RegionSummary:
     actuals = _build_actuals(latest_values)
     return RegionSummary(

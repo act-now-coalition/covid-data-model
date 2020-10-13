@@ -86,6 +86,18 @@ class Metrics(base_model.APIBaseModel):
     icuHeadroomRatio: Optional[float] = pydantic.Field(...)
     icuHeadroomDetails: can_api_definition.ICUHeadroomMetricDetails = pydantic.Field(None)
 
+    @staticmethod
+    def empty():
+        """Returns an empty Metrics object."""
+        return Metrics(
+            testPositivityRatio=None,
+            caseDensity=None,
+            contactTracerCapacityRatio=None,
+            infectionRate=None,
+            infectionRateCI90=None,
+            icuHeadroomRatio=None,
+        )
+
 
 class RiskLevel(enum.Enum):
     LOW = 0

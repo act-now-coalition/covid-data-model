@@ -116,7 +116,7 @@ def generate_metrics_and_latest(
         Tuple of MetricsTimeseriesRows for all days and the metrics overview.
     """
     if timeseries.empty:
-        return [], Metrics()
+        return [], Metrics.empty()
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
         timeseries, rt_data, icu_data

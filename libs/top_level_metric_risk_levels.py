@@ -1,17 +1,15 @@
-import enum
 import math
 from typing import List, Optional
 
-from covidactnow.datapublic import common_fields
 from api import can_api_v2_definition
 
 RiskLevel = can_api_v2_definition.RiskLevel
 
 
-def calc_risk_level(value: Optional[float], thresholds: List[float]):
-    """
-    Check the value against thresholds to determine the risk level for the metric. Each threshold is the
-    upper limit for the risk level.
+def calc_risk_level(value: Optional[float], thresholds: List[float]) -> RiskLevel:
+    """Check the value against thresholds to determine the risk level for the metric.
+
+    Each threshold is the upper limit for the risk level.
 
     Args:
         value: value of the metric.
@@ -38,19 +36,18 @@ def calc_risk_level(value: Optional[float], thresholds: List[float]):
     return RiskLevel.CRITICAL
 
 
-def case_density_risk_level(value: float):
+def case_density_risk_level(value: float) -> RiskLevel:
     thresholds = [1, 10, 25]
     return calc_risk_level(value, thresholds)
 
 
-def test_positivity_risk_level(value: float):
+def test_positivity_risk_level(value: float) -> RiskLevel:
     thresholds = [0.03, 0.1, 0.2]
     return calc_risk_level(value, thresholds)
 
 
-def contact_tracing_risk_level(value: float):
-    # Contact tracing risk level is flipped, so implementing
-    # separate logic here to handle it.
+def contact_tracing_risk_level(value: float) -> RiskLevel:
+    # Contact tracing risk level is flipped (lower value indicates a higher risk).
     level_high, level_med, level_low = (0, 0.1, 0.9)
 
     if value is None:
@@ -66,12 +63,12 @@ def contact_tracing_risk_level(value: float):
     return RiskLevel.UNKNOWN
 
 
-def icu_headroom_ratio_risk_level(value: float):
+def icu_headroom_ratio_risk_level(value: float) -> RiskLevel:
     thresholds = [0.5, 0.6, 0.7]
     return calc_risk_level(value, thresholds)
 
 
-def infection_rate_risk_level(value: float):
+def infection_rate_risk_level(value: float) -> RiskLevel:
     thresholds = [0.9, 1.1, 1.4]
     return calc_risk_level(value, thresholds)
 
@@ -82,20 +79,18 @@ def top_level_risk_level(
     contact_tracing_level: RiskLevel,
     icu_headroom_level: RiskLevel,
     infection_rate_level: RiskLevel,
-):
-    """
-    Calculate the overall risk for a region based on metric risk levels.
-    """
+) -> RiskLevel:
+    """Calculate the overall risk for a region based on metric risk levels."""
     if case_density_level is RiskLevel.LOW:
         return RiskLevel.LOW
 
     levelList = [
         infection_rate_level,
+        contact_tracing_level,
         icu_headroom_level,
         test_positivity_level,
         case_density_level,
     ]
-    top_level_risk = RiskLevel.UNKNOWN
 
     if RiskLevel.CRITICAL in levelList:
         return RiskLevel.CRITICAL
@@ -108,7 +103,7 @@ def top_level_risk_level(
     else:
         return RiskLevel.LOW
 
-    return top_level_risk
+    return RiskLevel.UNKNOWN
 
 
 def calculate_risk_level_from_metrics(
