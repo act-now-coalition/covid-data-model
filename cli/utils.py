@@ -122,6 +122,15 @@ def csv_diff(csv_path_or_rev_left, csv_path_right):
 @click.option("--sheet-id", envvar="API_USERS_SHEET_ID")
 @click.option("--share-email")
 def update_api_users(name: str, share_email: Optional[str], sheet_id: Optional[str]):
+    """Update API User Usage sheet.
+
+    Queries Access Logs and summarizes activity for each API User.
+
+    Args:
+        name: Sheet name.
+        sheet_id: Google Sheets ID of existing sheet.
+        share_email: Email to share created sheet with if new sheet.
+    """
     if sheet_id:
         sheet = google_sheet_helpers.open_spreadsheet(sheet_id)
     else:
