@@ -1,11 +1,15 @@
 from typing import Optional, List, Callable, Dict, Any
 import time
 import datetime
+import logging
 
 import gspread
 import boto3
 
 from libs import google_sheet_helpers
+
+_logger = logging.getLogger(__name__)
+
 
 TOTAL_USERS_QUERY = """
 fields @timestamp, @message
@@ -26,12 +30,11 @@ class CloudWatchQueryError(Exception):
     """Raised on a failed query to CloudWatch"""
 
 
-def run_query(
+def _run_query(
     log_group: str,
     query: str,
     start_time: datetime.datetime,
     end_time: Optional[datetime.datetime] = None,
-    field_transformations: Optional[Dict[str, Callable]] = None,
 ) -> List[dict]:
     """Runs query on log group, applying transformations from `field_transformations`.
 
@@ -60,13 +63,19 @@ def run_query(
     response = None
 
     while response is None or response["status"] == "Running":
-        print("Waiting for query to complete ...")
+        _logger.info("Waiting for query to complete ...")
         time.sleep(1)
         response = client.get_query_results(queryId=query_id)
 
     if response["status"] != "Complete":
         raise CloudWatchQueryError()
 
+    return response
+
+
+def _prepare_results(
+    response, field_transformations: Optional[Dict[str, Callable]] = None
+) -> Dict[str, Any]:
     rows = []
     for result in response["results"]:
         row = {}
@@ -97,7 +106,8 @@ def run_user_activity_summary_query(log_group: str) -> List[Dict[str, Any]]:
         "latestDate": to_date_string,
     }
 
-    return run_query(log_group, query, start_time, field_transformations=field_transformations)
+    results = _run_query(log_group, query, start_time)
+    return _prepare_results(results, field_transformations=field_transformations)
 
 
 def update_google_sheet(
