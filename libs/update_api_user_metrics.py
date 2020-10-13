@@ -43,12 +43,9 @@ def _run_query(
         query: Query to run.
         start_time: Time to start query from.
         end_time: end time for query.  If not specified, uses current time.
-        field_transformations: Dictionary of field name to transformation function to apply
-            to query results.
 
     Returns: List of {<field_name>: <value>, ...} records.
     """
-    field_transformations = field_transformations or {}
     client = boto3.client("logs")
     end_time = end_time if end_time else datetime.datetime.utcnow()
     start_query_response = client.start_query(
@@ -60,9 +57,9 @@ def _run_query(
 
     query_id = start_query_response["queryId"]
 
-    response = None
+    response = client.get_query_results(queryId=query_id)
 
-    while response is None or response["status"] == "Running":
+    while response["status"] == "Running":
         _logger.info("Waiting for query to complete ...")
         time.sleep(1)
         response = client.get_query_results(queryId=query_id)
@@ -76,6 +73,8 @@ def _run_query(
 def _prepare_results(
     response, field_transformations: Optional[Dict[str, Callable]] = None
 ) -> Dict[str, Any]:
+    field_transformations = field_transformations or {}
+
     rows = []
     for result in response["results"]:
         row = {}

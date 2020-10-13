@@ -1,5 +1,4 @@
 from datetime import datetime
-import mock
 from libs import update_api_user_metrics
 
 
