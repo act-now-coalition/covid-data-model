@@ -533,6 +533,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         try:
             latest_row = self.latest_data.loc[region.location_id, :]
         except KeyError:
+            latest_row = pd.Series([], dtype=object)
+        if ts_df.empty and latest_row.empty:
             raise RegionLatestNotFound(region)
         # Some code far away from here depends on latest_dict containing None, not np.nan, for
         # non-real values.
