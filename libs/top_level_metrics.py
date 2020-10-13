@@ -64,7 +64,12 @@ def calculate_metrics_for_timeseries(
     cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)
 
-    if CommonFields.TEST_POSITIVITY in data.columns:
+    if (
+        CommonFields.TEST_POSITIVITY in data.columns
+        and data[CommonFields.TEST_POSITIVITY].notna().any()
+    ):
+        # Only use TEST_POSITIVITY column if there is at least one real value in the timeseries for
+        # this region.
         test_positivity = data[CommonFields.TEST_POSITIVITY]
     else:
         cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(

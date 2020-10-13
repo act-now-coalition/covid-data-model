@@ -1,10 +1,13 @@
 import pytest
+from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import test_positivity
+from libs.datasets import timeseries
 from libs.pipeline import Region
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets import AggregationLevel
+import pandas as pd
 
 
 @pytest.fixture
@@ -21,9 +24,26 @@ def il_regional_input(rt_dataset, icu_dataset):
     region = Region.from_state("IL")
     regional_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset([region])
     test_positivity_results = test_positivity.AllMethods.run(regional_data)
+
     regional_data = regional_data.join_columns(
         test_positivity_results.test_positivity
     ).get_one_region(region)
+    return api_v2_pipeline.RegionalInput.from_region_and_model_output(
+        region, regional_data, rt_dataset, icu_dataset
+    )
+
+
+@pytest.fixture
+def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
+    region = Region.from_state("IL")
+    regional_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset([region])
+    empty_test_positivity = timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(
+        pd.DataFrame(
+            [], columns=[CommonFields.LOCATION_ID, CommonFields.DATE, CommonFields.TEST_POSITIVITY]
+        )
+    )
+
+    regional_data = regional_data.join_columns(empty_test_positivity).get_one_region(region)
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
         region, regional_data, rt_dataset, icu_dataset
     )
@@ -36,6 +56,15 @@ def test_build_timeseries_and_summary_outputs(nyc_regional_input):
 
 def test_build_timeseries_and_summary_outputs_for_il_state(il_regional_input):
     timeseries = api_v2_pipeline.build_timeseries_for_region(il_regional_input)
+    assert timeseries
+
+
+def test_build_timeseries_and_summary_outputs_for_il_state_with_empty_test_postivity_columnn(
+    il_regional_input_empty_test_positivity_column,
+):
+    timeseries = api_v2_pipeline.build_timeseries_for_region(
+        il_regional_input_empty_test_positivity_column
+    )
     assert timeseries
 
 
