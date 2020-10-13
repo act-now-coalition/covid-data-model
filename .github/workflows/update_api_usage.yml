@@ -31,6 +31,10 @@ env:
 
   GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA }}
 
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.API_USAGE_UPDATER_SECRET_ACCESS_KEY }}
+
+  AWS_ACCESS_KEY_ID: ${{ secrets.API_USAGE_UPDATER_ACCESS_KEY_ID }}
+
 jobs:
   update-and-promote-datasets:
     runs-on: ubuntu-latest
