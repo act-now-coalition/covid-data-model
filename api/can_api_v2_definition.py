@@ -165,7 +165,7 @@ class RegionSummary(base_model.APIBaseModel):
     )
 
     metrics: Metrics = pydantic.Field(...)
-    riskLevels: RiskLevels
+    riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
     actuals: Actuals = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")

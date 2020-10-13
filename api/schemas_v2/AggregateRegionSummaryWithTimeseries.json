@@ -615,7 +615,13 @@
           "$ref": "#/definitions/Metrics"
         },
         "riskLevels": {
-          "$ref": "#/definitions/RiskLevels"
+          "title": "Risklevels",
+          "description": "Risk levels for region.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevels"
+            }
+          ]
         },
         "actuals": {
           "$ref": "#/definitions/Actuals"

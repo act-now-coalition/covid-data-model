@@ -1009,7 +1009,13 @@
             "$ref": "#/components/schemas/Metrics"
           },
           "riskLevels": {
-            "$ref": "#/components/schemas/RiskLevels"
+            "title": "Risklevels",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevels"
+              }
+            ],
+            "description": "Risk levels for region."
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
@@ -1311,7 +1317,13 @@
             "$ref": "#/components/schemas/Metrics"
           },
           "riskLevels": {
-            "$ref": "#/components/schemas/RiskLevels"
+            "title": "Risklevels",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevels"
+              }
+            ],
+            "description": "Risk levels for region."
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
