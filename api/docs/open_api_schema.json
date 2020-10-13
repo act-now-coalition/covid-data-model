@@ -883,6 +883,50 @@
         ],
         "description": "An enumeration."
       },
+      "RiskLevel": {
+        "title": "RiskLevel",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown"
+      },
+      "RiskLevels": {
+        "title": "RiskLevels",
+        "required": [
+          "overall",
+          "testPositivityRatio",
+          "caseDensity",
+          "contactTracerCapacityRatio",
+          "infectionRate",
+          "icuHeadroomRatio"
+        ],
+        "type": "object",
+        "properties": {
+          "overall": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "testPositivityRatio": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "caseDensity": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "contactTracerCapacityRatio": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "infectionRate": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "icuHeadroomRatio": {
+            "$ref": "#/components/schemas/RiskLevel"
+          }
+        },
+        "description": "COVID risk levels for a region."
+      },
       "RegionSummary": {
         "title": "RegionSummary",
         "required": [
@@ -895,6 +939,7 @@
           "long",
           "population",
           "metrics",
+          "riskLevels",
           "actuals",
           "lastUpdatedDate"
         ],
@@ -961,14 +1006,10 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Metrics"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/Metrics"
+          },
+          "riskLevels": {
+            "$ref": "#/components/schemas/RiskLevels"
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
@@ -1199,6 +1240,7 @@
           "long",
           "population",
           "metrics",
+          "riskLevels",
           "actuals",
           "lastUpdatedDate",
           "actualsTimeseries"
@@ -1266,14 +1308,10 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Metrics"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/Metrics"
+          },
+          "riskLevels": {
+            "$ref": "#/components/schemas/RiskLevels"
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"

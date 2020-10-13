@@ -100,22 +100,40 @@ class Metrics(base_model.APIBaseModel):
 
 
 class RiskLevel(enum.Enum):
+    """COVID Risk Level.
+
+## Risk Level Definitions
+ *Low* - On track to contain COVID
+ *Medium* - Slow disease growth
+ *High* - At risk of outbreak
+ *Critical* - Active or imminent outbreak
+ *Unknown* - Risk unknown
+"""
+
     LOW = 0
+
     MEDIUM = 1
+
     HIGH = 2
+
     CRITICAL = 3
+
     UNKNOWN = 4
 
 
 class RiskLevels(base_model.APIBaseModel):
-    """Calculated metrics data based on known actuals."""
+    """COVID risk levels for a region."""
 
-    overall: RiskLevel = pydantic.Field(...)
-    testPositivityRatio: RiskLevel = pydantic.Field(...)
-    caseDensity: RiskLevel = pydantic.Field(...)
-    contactTracerCapacityRatio: RiskLevel = pydantic.Field(...)
-    infectionRate: RiskLevel = pydantic.Field(...)
-    icuHeadroomRatio: RiskLevel = pydantic.Field(...)
+    overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region.")
+    testPositivityRatio: RiskLevel = pydantic.Field(
+        ..., description="Test positivity ratio risk level."
+    )
+    caseDensity: RiskLevel = pydantic.Field(..., description="Case density risk level.")
+    contactTracerCapacityRatio: RiskLevel = pydantic.Field(
+        ..., description="Contact tracer capacity ratio risk level."
+    )
+    infectionRate: RiskLevel = pydantic.Field(..., description="Infection rate risk level.")
+    icuHeadroomRatio: RiskLevel = pydantic.Field(..., description="ICU headroom ratio risk level.")
 
 
 class MetricsTimeseriesRow(Metrics):
