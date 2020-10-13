@@ -60,7 +60,7 @@ def contact_tracing_risk_level(value: float):
         return RiskLevel.LOW
     elif value > level_med:
         return RiskLevel.MEDIUM
-    elif value > level_high:
+    elif value >= level_high:
         return RiskLevel.HIGH
 
     return RiskLevel.UNKNOWN
