@@ -122,7 +122,7 @@ def csv_diff(csv_path_or_rev_left, csv_path_right):
 @click.option("--name", envvar="API_USERS_SHEET_NAME", default="API Usage - Test")
 @click.option("--sheet-id", envvar="API_USERS_SHEET_ID")
 @click.option("--share-email")
-def update_api_users(
+def update_api_user_usage(
     log_group: str, name: str, share_email: Optional[str], sheet_id: Optional[str]
 ):
     """Update API User Usage sheet.
