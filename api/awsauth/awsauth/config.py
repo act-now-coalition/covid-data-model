@@ -10,6 +10,8 @@ class EnvConstants(pydantic.BaseSettings):
 
     API_KEY_TABLE_NAME: str
 
+    FIREHOSE_TABLE_NAME: str
+
     SENTRY_DSN: str
 
     EMAILS_ENABLED: bool

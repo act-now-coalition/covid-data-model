@@ -157,7 +157,7 @@ resources:
   FirehoseToS3Role:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: FirehoseToS3Role
+      RoleName: FirehoseToS3Role${self:provider.stage}
       AssumeRolePolicyDocument:
         Statement:
         - Effect: Allow

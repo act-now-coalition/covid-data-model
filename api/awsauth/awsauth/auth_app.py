@@ -114,7 +114,7 @@ def _record_successful_request(request: dict, record: dict):
         "ip": request["clientIp"],
     }
 
-    FIREHOSE_CLIENT.put_data("covidactnow-api-access-logs-dev", data)
+    FIREHOSE_CLIENT.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
 
 
 def register(event, context):
