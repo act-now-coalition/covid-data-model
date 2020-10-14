@@ -26,6 +26,19 @@ _logger = logging.getLogger(__name__)
 
 FIREHOSE_CLIENT = None
 
+# Headers needed to return for CORS OPTIONS request
+CORS_OPTIONS_HEADERS = {
+    "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
+    "access-control-allow-headers": [
+        {
+            "key": "Access-Control-Allow-Headers",
+            "value": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        }
+    ],
+    "access-control-allow-methods": [{"key": "Access-Control-Allow-Methods", "value": "POST"}],
+    "access-control-max-age": [{"key": "Access-Control-Max-Age", "value": "86400"}],
+}
+
 
 def init():
     global FIREHOSE_CLIENT
@@ -181,28 +194,18 @@ def check_api_key_edge(event, context):
 
     _record_successful_request(request, record)
 
+    # Return request, which forwards to S3 backend.
     return request
 
 
 def register_edge(event, context):
 
+    # For more details on the structure of the event, see:
+    # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html#example-viewer-request
     request = event["Records"][0]["cf"]["request"]
 
     if request["method"] == "OPTIONS":
-        options_headers = {
-            "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
-            "access-control-allow-headers": [
-                {
-                    "key": "Access-Control-Allow-Headers",
-                    "value": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-                }
-            ],
-            "access-control-allow-methods": [
-                {"key": "Access-Control-Allow-Methods", "value": "POST"}
-            ],
-            "access-control-max-age": [{"key": "Access-Control-Max-Age", "value": "86400"}],
-        }
-        return {"status": 200, "headers": options_headers}
+        return {"status": 200, "headers": CORS_OPTIONS_HEADERS}
 
     data = request["body"]["data"]
 
