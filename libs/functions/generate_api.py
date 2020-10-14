@@ -60,8 +60,8 @@ def _generate_actuals(actual_data: dict, intervention: Intervention) -> Actuals:
     return Actuals(
         population=actual_data.get(CommonFields.POPULATION),
         intervention=intervention.name,
-        cumulativeConfirmedCases=actual_data.get(CommonFields.CASES),
-        cumulativeDeaths=actual_data.get(CommonFields.DEATHS),
+        cumulativeConfirmedCases=actual_data[CommonFields.CASES],
+        cumulativeDeaths=actual_data[CommonFields.DEATHS],
         cumulativePositiveTests=actual_data.get(CommonFields.POSITIVE_TESTS),
         cumulativeNegativeTests=actual_data.get(CommonFields.NEGATIVE_TESTS),
         hospitalBeds={

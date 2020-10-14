@@ -24,8 +24,8 @@ def _build_actuals(actual_data: dict) -> Actuals:
 
     """
     return Actuals(
-        cases=actual_data.get(CommonFields.CASES),
-        deaths=actual_data.get(CommonFields.DEATHS),
+        cases=actual_data[CommonFields.CASES],
+        deaths=actual_data[CommonFields.DEATHS],
         positiveTests=actual_data.get(CommonFields.POSITIVE_TESTS),
         negativeTests=actual_data.get(CommonFields.NEGATIVE_TESTS),
         contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
