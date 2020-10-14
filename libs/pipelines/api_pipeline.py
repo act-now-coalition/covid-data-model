@@ -187,6 +187,11 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
     ]
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
     bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
+
+    deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
+    deploy_json_api_output(intervention, bulk_summaries, summary_folder)
+    deploy_csv_api_output(intervention, bulk_summaries, summary_folder)
+
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
     if not flattened_timeseries.__root__:
         logger.error(
@@ -196,11 +201,7 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
         )
         return
 
-    deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
     deploy_csv_api_output(intervention, flattened_timeseries, summary_folder)
-
-    deploy_json_api_output(intervention, bulk_summaries, summary_folder)
-    deploy_csv_api_output(intervention, bulk_summaries, summary_folder)
 
 
 def deploy_json_api_output(
