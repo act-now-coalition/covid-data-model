@@ -533,10 +533,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         try:
             latest_row = self.latest_data.loc[region.location_id, :]
         except KeyError:
+            latest_row = pd.Series([], dtype=object)
+        if ts_df.empty and latest_row.empty:
             raise RegionLatestNotFound(region)
         # Some code far away from here depends on latest_dict containing None, not np.nan, for
         # non-real values.
-        latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
+        latest_dict = latest_row.loc[latest_row.notna()].to_dict()
         return OneRegionTimeseriesDataset(data=ts_df, latest=latest_dict)
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
@@ -570,9 +572,10 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def _get_latest_and_provenance_for_locations(
         self, location_ids
     ) -> Tuple[pd.DataFrame, Optional[pd.Series]]:
-        latest_df = self.latest_data.loc[
-            self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids), :
-        ].reset_index()
+        latest_rows = self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        latest_df = self.latest_data.loc[latest_rows, :].reset_index().dropna("columns", "all")
         if self.provenance is not None:
             provenance = self.provenance[
                 self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
