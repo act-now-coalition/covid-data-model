@@ -14,6 +14,8 @@ class EnvConstants(pydantic.BaseSettings):
 
     SENTRY_DSN: str
 
+    SENTRY_ENVIRONMENT: str
+
     EMAILS_ENABLED: bool
 
     AWS_REGION: str = "us-east-1"

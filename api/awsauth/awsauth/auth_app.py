@@ -42,12 +42,13 @@ CORS_OPTIONS_HEADERS = {
 
 def init():
     global FIREHOSE_CLIENT
-    FIREHOSE_CLIENT = FirehoseClient()
-
     Config.init()
+
+    FIREHOSE_CLIENT = FirehoseClient()
 
     sentry_sdk.init(
         dsn=Config.Constants.SENTRY_DSN,
+        environment=Config.Constants.SENTRY_ENVIRONMENT,
         integrations=[AwsLambdaIntegration()],
         traces_sample_rate=1.0,  # adjust the sample rate in production as needed
     )
