@@ -1,4 +1,7 @@
 import uuid
+import urllib.parse
+import datetime
+import base64
 import os
 import re
 import json
@@ -8,9 +11,12 @@ import logging
 import sentry_sdk
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
+from awsauth import ses_client
 from awsauth.api_key_repo import APIKeyRepo
 from awsauth.email_repo import EmailRepo
-from awsauth import ses_client
+from awsauth.firehose_client import FirehoseClient
+from awsauth.config import Config
+
 
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
 WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
@@ -18,10 +24,30 @@ WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
 
 _logger = logging.getLogger(__name__)
 
+FIREHOSE_CLIENT = None
+
+# Headers needed to return for CORS OPTIONS request
+CORS_OPTIONS_HEADERS = {
+    "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
+    "access-control-allow-headers": [
+        {
+            "key": "Access-Control-Allow-Headers",
+            "value": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        }
+    ],
+    "access-control-allow-methods": [{"key": "Access-Control-Allow-Methods", "value": "POST"}],
+    "access-control-max-age": [{"key": "Access-Control-Max-Age", "value": "86400"}],
+}
+
 
 def init():
+    global FIREHOSE_CLIENT
+    FIREHOSE_CLIENT = FirehoseClient()
+
+    Config.init()
+
     sentry_sdk.init(
-        dsn=os.getenv("SENTRY_DSN"),
+        dsn=Config.Constants.SENTRY_DSN,
         integrations=[AwsLambdaIntegration()],
         traces_sample_rate=1.0,  # adjust the sample rate in production as needed
     )
@@ -80,9 +106,15 @@ def _get_or_create_api_key(email):
     return api_key
 
 
-def _check_api_key(api_key):
-    if not APIKeyRepo.get_record_for_api_key(api_key):
-        raise InvalidAPIKey(api_key)
+def _record_successful_request(request: dict, record: dict):
+    data = {
+        "timestamp": datetime.datetime.utcnow().isoformat().replace("T", " "),
+        "email": record["email"],
+        "path": request["uri"],
+        "ip": request["clientIp"],
+    }
+
+    FIREHOSE_CLIENT.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
 
 
 def register(event, context):
@@ -98,7 +130,6 @@ def register(event, context):
     body = {"api_key": api_key, "email": email}
 
     response = {"statusCode": 200, "body": json.dumps(body)}
-
     return response
 
 
@@ -143,3 +174,65 @@ def check_api_key(event, context):
         return _generate_deny_policy(method_arn)
 
     return _generate_accept_policy(record, method_arn)
+
+
+def check_api_key_edge(event, context):
+    request = event["Records"][0]["cf"]["request"]
+
+    query_parameters = urllib.parse.parse_qs(request["querystring"])
+    # parse query parameter by taking first api key in query string arg.
+    api_key = None
+    for api_key in query_parameters.get("apiKey") or []:
+        break
+
+    if not api_key:
+        return {"status": 403, "statusDescription": "Unauthorized"}
+
+    record = APIKeyRepo.get_record_for_api_key(api_key)
+    if not record:
+        return {"status": 403, "statusDescription": "Unauthorized"}
+
+    _record_successful_request(request, record)
+
+    # Return request, which forwards to S3 backend.
+    return request
+
+
+def register_edge(event, context):
+    """API Registration function used in Lambda@Edge cloudfront distribution.
+
+    Handles CORS for OPTIONS and POST requests.
+    """
+    # For more details on the structure of the event, see:
+    # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html#example-viewer-request
+    request = event["Records"][0]["cf"]["request"]
+
+    if request["method"] == "OPTIONS":
+        return {"status": 200, "headers": CORS_OPTIONS_HEADERS}
+
+    data = request["body"]["data"]
+
+    # Data can either be 'text' or 'base64'. If 'base64' decode data.
+    if request["body"]["encoding"] == "base64":
+        data = base64.b64decode(data)
+
+    data = json.loads(data)
+
+    # Headers needed for CORS.
+    headers = {
+        "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
+    }
+    if "email" not in data:
+        return {"status": 400, "errorMessage": "Missing email parameter", "headers": headers}
+
+    email = data["email"]
+    if not re.match(EMAIL_REGEX, email):
+        return {"status": 400, "errorMessage": "Invalid email", "headers": headers}
+
+    api_key = _get_or_create_api_key(email)
+    body = {"api_key": api_key, "email": email}
+
+    headers["content-type"] = [{"key": "Content-Type", "value": "application/json"}]
+    response = {"status": 200, "body": json.dumps(body), "headers": headers}
+
+    return response

@@ -543,7 +543,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             latest_row = self.latest_data.loc[location_id, :]
         except KeyError:
             latest_row = pd.Series([], dtype=object)
-        return latest_row.loc[latest_row.notna()].to_dict()
+        return latest_row.where(pd.notnull(latest_row), None).to_dict()
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
@@ -576,10 +576,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def _get_latest_and_provenance_for_locations(
         self, location_ids
     ) -> Tuple[pd.DataFrame, Optional[pd.Series]]:
-        latest_rows = self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        latest_df = self.latest_data.loc[latest_rows, :].reset_index().dropna("columns", "all")
+        latest_df = self.latest_data.loc[
+            self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids), :
+        ].reset_index()
         if self.provenance is not None:
             provenance = self.provenance[
                 self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
