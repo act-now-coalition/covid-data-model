@@ -24,12 +24,26 @@
     "Rt": {
       "title": "Rt",
       "description": "Inferred Rt",
-      "type": "number"
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "RtCI90": {
       "title": "Rtci90",
       "description": "Rt 90th percentile confidence interval upper endpoint.",
-      "type": "number"
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
@@ -52,14 +66,28 @@
         "peakDate": {
           "title": "Peakdate",
           "description": "Date of peak resource utilization",
-          "type": "string",
-          "format": "date"
+          "format": "date",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "shortageStartDate": {
           "title": "Shortagestartdate",
           "description": "Date when resource shortage begins",
-          "type": "string",
-          "format": "date"
+          "format": "date",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [

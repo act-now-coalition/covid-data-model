@@ -30,6 +30,7 @@ from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
+from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets import dataset_filter
 from libs import us_state_abbrev
 from libs.pipeline import Region
@@ -84,8 +85,18 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [
+        CDSDataset,
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        HHSTestingDataset,
+    ],
+    CommonFields.POSITIVE_TESTS: [
+        CDSDataset,
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        HHSTestingDataset,
+    ],
     CommonFields.TOTAL_TESTS: [CovidTrackingDataSource],
     CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
     CommonFields.POSITIVE_TESTS_VIRAL: [CovidTrackingDataSource],
