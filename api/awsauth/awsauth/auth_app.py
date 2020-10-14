@@ -1,4 +1,7 @@
 import uuid
+import urllib.parse
+import datetime
+import base64
 import os
 import re
 import json
@@ -8,10 +11,10 @@ import logging
 import sentry_sdk
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
+from awsauth import ses_client
 from awsauth.api_key_repo import APIKeyRepo
 from awsauth.email_repo import EmailRepo
-from awsauth import ses_client
-
+from awsauth.firehose_client import FirehoseClient
 from awsauth.config import Config
 
 
@@ -21,8 +24,12 @@ WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
 
 _logger = logging.getLogger(__name__)
 
+FIREHOSE_CLIENT = None
+
 
 def init():
+    global FIREHOSE_CLIENT
+    FIREHOSE_CLIENT = FirehoseClient()
 
     Config.init()
 
@@ -86,9 +93,15 @@ def _get_or_create_api_key(email):
     return api_key
 
 
-def _check_api_key(api_key):
-    if not APIKeyRepo.get_record_for_api_key(api_key):
-        raise InvalidAPIKey(api_key)
+def _record_successful_request(request: dict, record: dict):
+    data = {
+        "timestamp": datetime.datetime.utcnow().isoformat().replace("T", " "),
+        "email": record["email"],
+        "path": request["uri"],
+        "ip": request["clientIp"],
+    }
+
+    FIREHOSE_CLIENT.put_data("covidactnow-api-access-logs-dev", data)
 
 
 def register(event, context):
@@ -104,7 +117,6 @@ def register(event, context):
     body = {"api_key": api_key, "email": email}
 
     response = {"statusCode": 200, "body": json.dumps(body)}
-
     return response
 
 
@@ -149,3 +161,72 @@ def check_api_key(event, context):
         return _generate_deny_policy(method_arn)
 
     return _generate_accept_policy(record, method_arn)
+
+
+def check_api_key_edge(event, context):
+    request = event["Records"][0]["cf"]["request"]
+
+    query_parameters = urllib.parse.parse_qs(request["querystring"])
+    # parse query parameter by taking first api key in query string arg.
+    api_key = None
+    for api_key in query_parameters.get("apiKey") or []:
+        break
+
+    if not api_key:
+        return {"status": 403, "statusDescription": "Unauthorized"}
+
+    record = APIKeyRepo.get_record_for_api_key(api_key)
+    if not record:
+        return {"status": 403, "statusDescription": "Unauthorized"}
+
+    _record_successful_request(request, record)
+
+    return request
+
+
+def register_edge(event, context):
+
+    request = event["Records"][0]["cf"]["request"]
+
+    if request["method"] == "OPTIONS":
+        options_headers = {
+            "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
+            "access-control-allow-headers": [
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+                }
+            ],
+            "access-control-allow-methods": [
+                {"key": "Access-Control-Allow-Methods", "value": "POST"}
+            ],
+            "access-control-max-age": [{"key": "Access-Control-Max-Age", "value": "86400"}],
+        }
+        return {"status": 200, "headers": options_headers}
+
+    data = request["body"]["data"]
+
+    # Data can either be 'text' or 'base64'. If 'base64' decode data.
+    if request["body"]["encoding"] == "base64":
+        data = base64.b64decode(data)
+
+    data = json.loads(data)
+
+    # Headers needed for CORS.
+    headers = {
+        "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
+    }
+    if "email" not in data:
+        return {"status": 400, "errorMessage": "Missing email parameter", "headers": headers}
+
+    email = data["email"]
+    if not re.match(EMAIL_REGEX, email):
+        return {"status": 400, "errorMessage": "Invalid email", "headers": headers}
+
+    api_key = _get_or_create_api_key(email)
+    body = {"api_key": api_key, "email": email}
+
+    headers["content-type"] = [{"key": "Content-Type", "value": "application/json"}]
+    response = {"status": 200, "body": json.dumps(body), "headers": headers}
+
+    return response
