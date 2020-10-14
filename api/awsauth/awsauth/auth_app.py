@@ -199,7 +199,10 @@ def check_api_key_edge(event, context):
 
 
 def register_edge(event, context):
+    """API Registration function used in Lambda@Edge cloudfront distribution.
 
+    Handles CORS for OPTIONS and POST requests.
+    """
     # For more details on the structure of the event, see:
     # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html#example-viewer-request
     request = event["Records"][0]["cf"]["request"]
