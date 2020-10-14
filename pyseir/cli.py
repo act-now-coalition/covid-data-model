@@ -143,7 +143,10 @@ class SubStateRegionPipelineInput:
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                run_fitter=region in whitelist_regions,
+                # Disabling fitters.  To re-enable fitters and output webui output, uncomment
+                # the following line and run cli command with `--webui-output-enabled`.
+                # run_fitter=region in whitelist_regions,
+                run_fitter=False,
                 state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
@@ -247,6 +250,7 @@ def _write_pipeline_output(
     pipelines: List[Union[SubStatePipeline, StatePipeline]],
     output_dir: str,
     output_interval_days: int = 4,
+    write_webui_output: bool = False,
 ):
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
@@ -261,20 +265,21 @@ def _write_pipeline_output(
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving ICU results to {output_path}")
 
-    # does not parallelize well, because web_ui mapper doesn't serialize efficiently
-    # TODO: Remove intermediate artifacts and paralellize artifacts creation better
-    # Approximately 40% of the processing time is taken on this step
-    web_ui_mapper = WebUIDataAdaptorV1(
-        output_interval_days=output_interval_days, output_dir=output_dir,
-    )
-    webui_inputs = [
-        webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
-        for p in pipelines
-        if p.fitter
-    ]
+    if write_webui_output:
+        # does not parallelize well, because web_ui mapper doesn't serialize efficiently
+        # TODO: Remove intermediate artifacts and paralellize artifacts creation better
+        # Approximately 40% of the processing time is taken on this step
+        web_ui_mapper = WebUIDataAdaptorV1(
+            output_interval_days=output_interval_days, output_dir=output_dir,
+        )
+        webui_inputs = [
+            webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
+            for p in pipelines
+            if p.fitter
+        ]
 
-    with Pool(maxtasksperchild=1) as p:
-        p.map(web_ui_mapper.write_region_safely, webui_inputs)
+        with Pool(maxtasksperchild=1) as p:
+            p.map(web_ui_mapper.write_region_safely, webui_inputs)
 
 
 def _build_all_for_states(
@@ -354,8 +359,15 @@ def run_infer_rt(state, states_only):
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default="output/", type=str, help="Directory to deploy webui output.")
+@click.option("--webui-output-enabled", is_flag=True, help="If true, writes web ui output.")
 def build_all(
-    states, output_interval_days, output_dir, skip_whitelist, states_only, fips,
+    states,
+    output_interval_days,
+    output_dir,
+    skip_whitelist,
+    states_only,
+    fips,
+    webui_output_enabled,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -365,7 +377,12 @@ def build_all(
         states = ALL_STATES
 
     pipelines = _build_all_for_states(states, states_only=states_only, fips=fips,)
-    _write_pipeline_output(pipelines, output_dir, output_interval_days=output_interval_days)
+    _write_pipeline_output(
+        pipelines,
+        output_dir,
+        output_interval_days=output_interval_days,
+        write_webui_output=webui_output_enabled,
+    )
 
 
 if __name__ == "__main__":
