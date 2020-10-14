@@ -6,7 +6,6 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from covidactnow.datapublic.common_fields import CommonFields
 from scipy import stats as sps
 from matplotlib import pyplot as plt
 
@@ -660,7 +659,7 @@ class RtInferenceEngine:
                         )
 
         if df_all is None:
-            self.log.warning(f"Inference not possible for {self.regional_input.region}")
+            self.log.warning(f"Inference not possible for {self.regional_input.region.fips}")
             return pd.DataFrame()
 
         if self.include_deaths and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
@@ -735,5 +734,5 @@ class RtInferenceEngine:
             self.log.warning("Inference not possible")
         else:
             df_all = df_all.reset_index(drop=False)  # Move date to column from index to column
-            df_all[CommonFields.LOCATION_ID] = self.regional_input.region.location_id
+            df_all["fips"] = self.regional_input.region.fips
         return df_all

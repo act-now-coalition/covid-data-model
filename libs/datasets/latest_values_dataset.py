@@ -167,8 +167,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
     def get_record_for_fips(self, fips) -> dict:
         """Gets all data for a given fips code.
 
-        TODO(tom): This function is only called from tests. Replace the calls and remove it.
-
         Args:
             fips: 2 digits for a state or 5 digits for a county
 

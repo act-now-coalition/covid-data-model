@@ -38,9 +38,10 @@ class DatasetBase(SaveableDatasetInterface):
         raise NotImplementedError("Subsclass must implement")
 
     def yield_records(self) -> Iterable[dict]:
-        # TODO(tom): This function is only called from tests. Replace the calls and remove it.
+        # It'd be faster to use self.data.itertuples or find a way to avoid yield_records, but that
+        # needs larger changes in code calling this.
         for idx, row in self.data.iterrows():
-            yield row.loc[row.notna()].to_dict()
+            yield row.where(pd.notnull(row), None).to_dict()
 
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
