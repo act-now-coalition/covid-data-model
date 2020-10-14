@@ -141,8 +141,10 @@ class WebUIDataAdaptorV1:
         idx_offset = int(fit_results["t_today"] - fit_results["t0"])
 
         observed_death_latest = observed_latest_dict[CommonFields.DEATHS]
-        observed_total_hosps_latest = observed_latest_dict[CommonFields.CURRENT_HOSPITALIZED]
-        observed_icu_latest = observed_latest_dict[CommonFields.CURRENT_ICU]
+        observed_total_hosps_latest = observed_latest_dict.get(
+            CommonFields.CURRENT_HOSPITALIZED, np.nan
+        )
+        observed_icu_latest = observed_latest_dict.get(CommonFields.CURRENT_ICU, np.nan)
 
         # For Deaths
         model_death_latest = pyseir_outputs[baseline_policy]["total_deaths"]["ci_50"][idx_offset]
