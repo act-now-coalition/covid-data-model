@@ -79,6 +79,20 @@ class RegionalInput:
             icu_data=icu_data,
         )
 
+    @staticmethod
+    def from_one_regions(
+        region: pipeline.Region,
+        regional_data: OneRegionTimeseriesDataset,
+        rt_data: Optional[OneRegionTimeseriesDataset],
+        icu_data: Optional[OneRegionTimeseriesDataset],
+    ):
+        return RegionalInput(
+            region=region,
+            _combined_data_with_test_positivity=regional_data,
+            rt_data=rt_data,
+            icu_data=icu_data,
+        )
+
 
 def run_on_regions(
     regional_inputs: List[RegionalInput],

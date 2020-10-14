@@ -212,9 +212,11 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
 
     icu_data_path = model_output_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
     icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+    icu_data_map = dict(icu_data.iter_one_regions())
 
     rt_data_path = model_output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
     rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
+    rt_data_map = dict(rt_data.iter_one_regions())
 
     # If calculating test positivity finishes join it with the combined_datasets into one
     # MultiRegionTimeseriesDataset
@@ -226,15 +228,15 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     else:
         regions_data = regions_data.join_columns(test_positivity_results.test_positivity)
 
-    build_input = functools.partial(
-        api_v2_pipeline.RegionalInput.from_region_and_model_output,
-        combined_data_with_test_positivity=regions_data,
-        icu_data=icu_data,
-        rt_data=rt_data,
-    )
-
-    with multiprocessing.Pool(maxtasksperchild=1) as pool:
-        regional_inputs = pool.map(build_input, regions)
+    regional_inputs = [
+        api_v2_pipeline.RegionalInput.from_one_regions(
+            region,
+            regional_data,
+            icu_data=icu_data_map.get(region),
+            rt_data=rt_data_map.get(region),
+        )
+        for region, regional_data in regions_data.iter_one_regions()
+    ]
 
     _logger.info(f"Finished loading all regional inputs.")
 
