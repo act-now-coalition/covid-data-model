@@ -43,4 +43,4 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
     timeseries_loaded = combined_datasets.load_us_timeseries_dataset(pointer_directory=tmp_path)
     latest_loaded = combined_datasets.load_us_latest_dataset(pointer_directory=tmp_path)
     assert latest_loaded.get_record_for_fips(nyc_fips) == latest_nyc_record
-    assert_combined_like(timeseries_loaded, multiregion_timeseries_nyc)
+    assert_combined_like(timeseries_loaded, multiregion_timeseries_nyc, drop_na_timeseries=True)
