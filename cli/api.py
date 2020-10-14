@@ -222,7 +222,8 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
         rt_data=rt_data,
     )
 
-    regional_inputs = pool.map(build_input, regions)
+    with multiprocessing.Pool(maxtasksperchild=1) as pool:
+        regional_inputs = pool.map(build_input, regions)
 
     _logger.info(f"Finished loading all regional inputs.")
 
