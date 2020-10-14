@@ -67,15 +67,10 @@ class RegionalInput:
     def from_region_and_intervention(
         region: pipeline.Region,
         intervention: Intervention,
-        model_output_dir: pathlib.Path,
         rt_data: MultiRegionTimeseriesDataset,
         icu_data: MultiRegionTimeseriesDataset,
     ) -> "RegionalInput":
         combined_data = combined_datasets.RegionalData.from_region(region)
-
-        model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
-            region.fips, intervention, model_output_dir
-        )
 
         try:
             rt_data = rt_data.get_one_region(region)
@@ -89,7 +84,7 @@ class RegionalInput:
 
         return RegionalInput(
             region=region,
-            model_output=model_output,
+            model_output=None,
             intervention=intervention,
             _combined_data=combined_data,
             rt_data=rt_data,
@@ -154,26 +149,17 @@ def build_timeseries_for_region(
     regional_input: RegionalInput,
 ) -> Optional[RegionSummaryWithTimeseries]:
     intervention = regional_input.intervention
-    model_output = regional_input.model_output
 
     if intervention is Intervention.SELECTED_INTERVENTION:
         intervention = get_can_projection.get_intervention_for_state(regional_input.state)
-
-    if not model_output and intervention is not Intervention.OBSERVED_INTERVENTION:
-        # All model output is currently tied to a specific intervention. However,
-        # we want to generate results for regions that don't have a fit result, but we're not
-        # duplicating non-model outputs.
-        return None
 
     try:
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
             regional_input.timeseries, regional_input.rt_data, regional_input.icu_data,
         )
-        region_summary = api.generate_region_summary(
-            regional_input.latest, metrics_latest, model_output
-        )
+        region_summary = api.generate_region_summary(regional_input.latest, metrics_latest, None)
         region_timeseries = api.generate_region_timeseries(
-            region_summary, regional_input.timeseries, metrics_timeseries, model_output
+            region_summary, regional_input.timeseries, metrics_timeseries, None
         )
     except Exception:
         logger.exception(f"Failed to build timeseries for fips.")

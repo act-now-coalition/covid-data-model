@@ -121,6 +121,9 @@ def update_v2_schemas(api_output_path, schemas_output_dir):
 def generate_api(input_dir, output, summary_output, aggregation_level, state, fips):
     """The entry function for invocation"""
 
+    # Caching load of us timeseries dataset
+    combined_datasets.load_us_timeseries_dataset()
+
     active_states = [state.abbr for state in us.STATES]
     active_states = active_states + ["PR", "MP"]
     regions = combined_datasets.get_subset_regions(
@@ -138,12 +141,16 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 
     for intervention in list(Intervention):
         _logger.info(f"Running intervention {intervention.name}")
-        regional_inputs = [
-            api_pipeline.RegionalInput.from_region_and_intervention(
-                region, intervention, input_dir, rt_data, icu_data
-            )
-            for region in regions
-        ]
+
+        _load_input = functools.partial(
+            api_pipeline.RegionalInput.from_region_and_intervention,
+            intervention=intervention,
+            rt_data=rt_data,
+            icu_data=icu_data,
+        )
+        with multiprocessing.Pool(maxtasksperchild=1) as pool:
+            regional_inputs = pool.map(_load_input, regions)
+
         _logger.info(f"Loaded {len(regional_inputs)} regions.")
         all_timeseries = api_pipeline.run_on_all_regional_inputs_for_intervention(regional_inputs)
         county_timeseries = [
