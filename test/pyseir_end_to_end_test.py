@@ -26,7 +26,7 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         fips = "16001"
         region = Region.from_fips(fips)
         pipelines = cli._build_all_for_states(states=["ID"], fips=fips)
-        cli._write_pipeline_output(pipelines, tmp_path)
+        cli._write_pipeline_output(pipelines, tmp_path, write_webui_output=True)
         path = get_run_artifact_path(region, RunArtifact.WEB_UI_RESULT).replace(
             "__INTERVENTION_IDX__", "2"
         )
