@@ -20,8 +20,8 @@ from libs.pipelines import api_pipeline
     "include_projections,rt_null", [(True, True), (True, False), (False, False)]
 )
 def test_build_summary_for_fips(
-    include_projections,
-    rt_null,
+    include_projections: bool,
+    rt_null: bool,
     nyc_model_output_path,
     nyc_region,
     nyc_rt_dataset,
@@ -88,7 +88,7 @@ def test_build_summary_for_fips(
                 "currentUsageTotal": None,
                 "typicalUsageRate": nyc_latest["icu_occupancy_rate"],
             },
-            contactTracers=nyc_latest["contact_tracers_count"],
+            contactTracers=nyc_latest.get("contact_tracers_count"),  # Only available for states
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
         projections=expected_projections,
@@ -109,7 +109,6 @@ def test_generate_timeseries_for_fips(
 
     nyc_latest = us_latest.get_record_for_fips(nyc_region.fips)
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
-    intervention = Intervention.OBSERVED_INTERVENTION
     model_output = CANPyseirLocationOutput.load_from_path(nyc_model_output_path)
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest(
         nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset

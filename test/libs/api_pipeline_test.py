@@ -19,35 +19,19 @@ def test_build_timeseries_and_summary_outputs(
 ):
 
     regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
-        nyc_region, intervention, nyc_model_output_path.parent, rt_dataset, icu_dataset
+        nyc_region, intervention, rt_dataset, icu_dataset
     )
     timeseries = api_pipeline.build_timeseries_for_region(regional_input)
 
-    if intervention is Intervention.NO_INTERVENTION:
-        # Test data does not contain no intervention model, should not output any results.
-        assert not timeseries
-        return
-
     assert timeseries
-
-    if intervention is Intervention.STRONG_INTERVENTION:
-        assert timeseries.projections
-        assert timeseries.timeseries
-    elif intervention is Intervention.OBSERVED_INTERVENTION:
-        assert not timeseries.projections
-        assert not timeseries.timeseries
+    assert not timeseries.projections
+    assert not timeseries.timeseries
 
 
-def test_build_api_output_for_intervention(
-    nyc_region, nyc_model_output_path, tmp_path, rt_dataset, icu_dataset
-):
+def test_build_api_output_for_intervention(nyc_region, tmp_path, rt_dataset, icu_dataset):
     county_output = tmp_path / "county"
     regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
-        nyc_region,
-        Intervention.STRONG_INTERVENTION,
-        nyc_model_output_path.parent,
-        rt_dataset,
-        icu_dataset,
+        nyc_region, Intervention.STRONG_INTERVENTION, rt_dataset, icu_dataset,
     )
     all_timeseries_api = api_pipeline.run_on_all_regional_inputs_for_intervention([regional_input])
 
@@ -57,7 +41,8 @@ def test_build_api_output_for_intervention(
     expected_outputs = [
         "counties.STRONG_INTERVENTION.timeseries.json",
         "counties.STRONG_INTERVENTION.csv",
-        "counties.STRONG_INTERVENTION.timeseries.csv",
+        # No projections are being generated so
+        # "counties.STRONG_INTERVENTION.timeseries.csv",
         "counties.STRONG_INTERVENTION.json",
         "county/36061.STRONG_INTERVENTION.json",
         "county/36061.STRONG_INTERVENTION.timeseries.json",
@@ -66,12 +51,13 @@ def test_build_api_output_for_intervention(
     output_paths = [
         str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
     ]
+
     assert sorted(output_paths) == sorted(expected_outputs)
 
 
-def test_output_no_timeseries_rows(nyc_region, tmp_path, rt_dataset, icu_dataset):
+def test_output_no_timeseries_rows(nyc_region, rt_dataset, icu_dataset):
     regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
-        nyc_region, Intervention.OBSERVED_INTERVENTION, tmp_path, rt_dataset, icu_dataset
+        nyc_region, Intervention.OBSERVED_INTERVENTION, rt_dataset, icu_dataset
     )
 
     # Creating a new regional input with an empty timeseries dataset

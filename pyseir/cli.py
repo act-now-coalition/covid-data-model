@@ -17,7 +17,6 @@ from covidactnow.datapublic import common_init
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir.deployment import webui_data_adaptor_v1
@@ -144,7 +143,10 @@ class SubStateRegionPipelineInput:
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                run_fitter=region in whitelist_regions,
+                # Disabling fitters.  To re-enable fitters and output webui output, uncomment
+                # the following line and run cli command with `--webui-output-enabled`.
+                # run_fitter=region in whitelist_regions,
+                run_fitter=False,
                 state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
@@ -204,10 +206,6 @@ class SubStatePipeline:
             _combined_data=input.regional_combined_dataset,
         )
 
-    @property
-    def fips(self) -> str:
-        return self.region.fips
-
     def population(self) -> float:
         return self._combined_data.latest[CommonFields.POPULATION]
 
@@ -216,18 +214,19 @@ def _patch_substatepipeline_nola_infection_rate(
     pipelines: List[SubStatePipeline],
 ) -> List[SubStatePipeline]:
     """Returns a new list of pipeline objects with New Orleans infection rate patched."""
-    pipeline_map = {p.fips: p for p in pipelines}
+    pipeline_map = {p.region: p for p in pipelines}
 
-    input_fips = set(pipeline_map.keys())
-    fips_to_patch = input_fips & set(NEW_ORLEANS_FIPS)
-    if fips_to_patch:
+    input_regions = set(pipeline_map.keys())
+    new_orleans_regions = set(pipeline.Region.from_fips(f) for f in NEW_ORLEANS_FIPS)
+    regions_to_patch = input_regions & new_orleans_regions
+    if regions_to_patch:
         root.info("Applying New Orleans Patch")
-        if len(fips_to_patch) != len(NEW_ORLEANS_FIPS):
+        if len(regions_to_patch) != len(new_orleans_regions):
             root.warning(
-                f"Missing New Orleans counties break patch: {set(NEW_ORLEANS_FIPS) - input_fips}"
+                f"Missing New Orleans counties break patch: {new_orleans_regions - input_regions}"
             )
 
-        nola_input_pipelines = [pipeline_map[fips] for fips in fips_to_patch]
+        nola_input_pipelines = [pipeline_map[fips] for fips in regions_to_patch]
         infection_rate_map = {p.region: p.infer_df for p in nola_input_pipelines}
         population_map = {p.region: p.population() for p in nola_input_pipelines}
 
@@ -236,12 +235,12 @@ def _patch_substatepipeline_nola_infection_rate(
             infection_rate_map, population_map
         )
 
-        for fips in fips_to_patch:
+        for region in regions_to_patch:
             this_fips_infection_rate = nola_infection_rate.copy()
-            this_fips_infection_rate.insert(0, CommonFields.FIPS, fips)
+            this_fips_infection_rate.insert(0, CommonFields.LOCATION_ID, region.location_id)
             # Make a new SubStatePipeline object with the new infer_df
-            pipeline_map[fips] = dataclasses.replace(
-                pipeline_map[fips], infer_df=this_fips_infection_rate,
+            pipeline_map[region] = dataclasses.replace(
+                pipeline_map[region], infer_df=this_fips_infection_rate,
             )
 
     return list(pipeline_map.values())
@@ -251,42 +250,36 @@ def _write_pipeline_output(
     pipelines: List[Union[SubStatePipeline, StatePipeline]],
     output_dir: str,
     output_interval_days: int = 4,
+    write_webui_output: bool = False,
 ):
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-    # TODO: Use constructors in MultiRegionTimeseriesDataset
-    timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
-    latest = timeseries_dataset.latest_values_object()
-    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
-        timeseries_dataset, latest
-    )
+    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_df(infection_rate_metric_df)
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
     icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-    timeseries_dataset = TimeseriesDataset(icu_df)
-    latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
-    multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
-
+    multiregion_icu = MultiRegionTimeseriesDataset.from_timeseries_df(icu_df)
     output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving ICU results to {output_path}")
 
-    # does not parallelize well, because web_ui mapper doesn't serialize efficiently
-    # TODO: Remove intermediate artifacts and paralellize artifacts creation better
-    # Approximately 40% of the processing time is taken on this step
-    web_ui_mapper = WebUIDataAdaptorV1(
-        output_interval_days=output_interval_days, output_dir=output_dir,
-    )
-    webui_inputs = [
-        webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
-        for p in pipelines
-        if p.fitter
-    ]
+    if write_webui_output:
+        # does not parallelize well, because web_ui mapper doesn't serialize efficiently
+        # TODO: Remove intermediate artifacts and paralellize artifacts creation better
+        # Approximately 40% of the processing time is taken on this step
+        web_ui_mapper = WebUIDataAdaptorV1(
+            output_interval_days=output_interval_days, output_dir=output_dir,
+        )
+        webui_inputs = [
+            webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
+            for p in pipelines
+            if p.fitter
+        ]
 
-    with Pool(maxtasksperchild=1) as p:
-        p.map(web_ui_mapper.write_region_safely, webui_inputs)
+        with Pool(maxtasksperchild=1) as p:
+            p.map(web_ui_mapper.write_region_safely, webui_inputs)
 
 
 def _build_all_for_states(
@@ -366,8 +359,15 @@ def run_infer_rt(state, states_only):
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default="output/", type=str, help="Directory to deploy webui output.")
+@click.option("--webui-output-enabled", is_flag=True, help="If true, writes web ui output.")
 def build_all(
-    states, output_interval_days, output_dir, skip_whitelist, states_only, fips,
+    states,
+    output_interval_days,
+    output_dir,
+    skip_whitelist,
+    states_only,
+    fips,
+    webui_output_enabled,
 ):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
@@ -377,7 +377,12 @@ def build_all(
         states = ALL_STATES
 
     pipelines = _build_all_for_states(states, states_only=states_only, fips=fips,)
-    _write_pipeline_output(pipelines, output_dir, output_interval_days=output_interval_days)
+    _write_pipeline_output(
+        pipelines,
+        output_dir,
+        output_interval_days=output_interval_days,
+        write_webui_output=webui_output_enabled,
+    )
 
 
 if __name__ == "__main__":

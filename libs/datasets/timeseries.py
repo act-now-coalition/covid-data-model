@@ -533,14 +533,17 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
-        try:
-            latest_row = self.latest_data.loc[region.location_id, :]
-        except KeyError:
+        latest_dict = self._location_id_latest_dict(region.location_id)
+        if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
-        # Some code far away from here depends on latest_dict containing None, not np.nan, for
-        # non-real values.
-        latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
         return OneRegionTimeseriesDataset(data=ts_df, latest=latest_dict)
+
+    def _location_id_latest_dict(self, location_id: str) -> dict:
+        try:
+            latest_row = self.latest_data.loc[location_id, :]
+        except KeyError:
+            latest_row = pd.Series([], dtype=object)
+        return latest_row.loc[latest_row.notna()].to_dict()
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
@@ -573,9 +576,10 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def _get_latest_and_provenance_for_locations(
         self, location_ids
     ) -> Tuple[pd.DataFrame, Optional[pd.Series]]:
-        latest_df = self.latest_data.loc[
-            self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids), :
-        ].reset_index()
+        latest_rows = self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        latest_df = self.latest_data.loc[latest_rows, :].reset_index().dropna("columns", "all")
         if self.provenance is not None:
             provenance = self.provenance[
                 self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
@@ -652,8 +656,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
         for location_id, data_group in self.data_with_fips.groupby(CommonFields.LOCATION_ID):
-            latest_row = self.latest_data.loc[location_id, :]
-            latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
+            latest_dict = self._location_id_latest_dict(location_id)
             yield Region(location_id=location_id, fips=None), OneRegionTimeseriesDataset(
                 data_group, latest_dict
             )

@@ -87,9 +87,6 @@ execute_model() {
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
-  mv ${API_OUTPUT_DIR}/web_ui/* ${API_OUTPUT_DIR}/
-
-  rmdir ${API_OUTPUT_DIR}/web_ui/
 
   # Capture all the PDFs pyseir creates in output/pyseir since they are
   # extremely helpful for debugging / QA'ing the model results.

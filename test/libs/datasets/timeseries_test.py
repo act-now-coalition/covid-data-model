@@ -224,19 +224,26 @@ def test_multiregion_provenance():
     assert counties.provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
 
 
-def _combined_sorted_by_location_date(ts: timeseries.MultiRegionTimeseriesDataset) -> pd.DataFrame:
+def _combined_sorted_by_location_date(
+    ts: timeseries.MultiRegionTimeseriesDataset, drop_na_timeseries: bool
+) -> pd.DataFrame:
     """Returns the combined data, sorted by LOCATION_ID and DATE."""
-    return ts.combined_df.sort_values(
+    df = ts.combined_df.sort_values(
         [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
     )
+    if drop_na_timeseries:
+        df = df.dropna("columns", "all")
+    return df
 
 
 def assert_combined_like(
-    ts1: timeseries.MultiRegionTimeseriesDataset, ts2: timeseries.MultiRegionTimeseriesDataset
+    ts1: timeseries.MultiRegionTimeseriesDataset,
+    ts2: timeseries.MultiRegionTimeseriesDataset,
+    drop_na_timeseries=False,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
-    sorted1 = _combined_sorted_by_location_date(ts1)
-    sorted2 = _combined_sorted_by_location_date(ts2)
+    sorted1 = _combined_sorted_by_location_date(ts1, drop_na_timeseries=drop_na_timeseries)
+    sorted2 = _combined_sorted_by_location_date(ts2, drop_na_timeseries=drop_na_timeseries)
     pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
 
 
