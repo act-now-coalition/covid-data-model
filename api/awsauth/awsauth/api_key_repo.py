@@ -1,5 +1,4 @@
 from typing import Optional, Dict, Any
-import os
 import datetime
 from awsauth.config import Config
 from awsauth import dynamo_client
