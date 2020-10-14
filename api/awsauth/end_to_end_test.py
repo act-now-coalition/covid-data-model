@@ -1,6 +1,5 @@
 import requests
 import uuid
-import json
 
 DEV_API_URL = "https://api-dev.covidactnow.org/v2"
 
@@ -12,7 +11,7 @@ def test_api_flow():
     response = requests.post(DEV_API_URL + "/register", json={"email": test_email})
     assert response.ok
     data = response.json()
-    api_key = json.loads(data["body"])["api_key"]
+    api_key = data["api_key"]
 
     response = requests.get(f"{DEV_API_URL}/state/MA.json", {"apiKey": api_key})
     assert response.ok
