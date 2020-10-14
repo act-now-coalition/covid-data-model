@@ -1,6 +1,5 @@
 import requests
 import uuid
-import json
 
 DEV_API_URL = "https://api-dev.covidactnow.org/v2"
 

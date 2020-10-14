@@ -92,7 +92,7 @@ package:
     - end_to_end_test.py
 
 functions:
-  apiRegisterApiKey:
+  apiRegisterAPIKey:
     handler: awsauth/auth_app.register
 
   apiCheckApiKey:
