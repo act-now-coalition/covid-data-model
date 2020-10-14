@@ -5,6 +5,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "serverless-lambda-edge-pre-existing-cloudfront": "^1.1.4",
     "serverless-python-requirements": "^2.4.1"
   }
 }

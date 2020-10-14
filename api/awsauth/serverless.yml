@@ -22,11 +22,13 @@ frameworkVersion: '2'
 
 
 custom:
+
   tableName: 'can-api-keys-${self:provider.stage}'
 
 
 plugins:
   - serverless-python-requirements
+  - serverless-lambda-edge-pre-existing-cloudfront
 
 provider:
   name: aws
@@ -35,6 +37,20 @@ provider:
   stage: ${opt:stage, 'dev'}
 
   iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource:
+        - "arn:aws:logs:*:*:log-group:/aws/lambda/*"
+    - Effect: Allow
+      Action:
+        - firehose:DeleteDeliveryStream
+        - firehose:PutRecord
+        - firehose:PutRecordBatch
+        - firehose:UpdateDestination
+      Resource: '*'
     - Effect: Allow
       Action:
         - dynamodb:Query
@@ -49,16 +65,12 @@ provider:
       Action:
         - dynamodb:Query
         - dynamodb:Scan
-      Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.API_KEYS_TABLE}/index/*"
+      Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tableName}/index/*"
 
     - Effect: Allow
       Action:
         - ses:SendEmail
       Resource: "arn:aws:ses:${self:provider.region}:*:identity/covidactnow.org"
-  environment:
-    API_KEYS_TABLE: ${self:custom.tableName}
-    SENTRY_DSN: ${env:SENTRY_DSN}
-    EMAILS_ENABLED: ${env:EMAILS_ENABLED}
 
 
 # you can add packaging information here
@@ -75,10 +87,33 @@ package:
     - end_to_end_test.py
 
 functions:
-  apiRegisterAPIKey:
+  apiRegisterApiKey:
     handler: awsauth/auth_app.register
+
   apiCheckApiKey:
     handler: awsauth/auth_app.check_api_key
+
+  apiRegisterApiKeyEdge:
+    handler: awsauth/auth_app.register_edge
+    memorySize: 128
+    timeout: 2
+    events:
+      - preExistingCloudFront:
+          distributionId: ${env:CLOUDFRONT_DISTRIBUTION_ID}
+          eventType: viewer-request
+          pathPattern: 'v2/register'
+          includeBody: true
+
+  apiCheckAPIKeyEdge:
+    handler: awsauth/auth_app.check_api_key_edge
+    memorySize: 128
+    timeout: 2
+    events:
+      - preExistingCloudFront:
+          distributionId: ${env:CLOUDFRONT_DISTRIBUTION_ID}
+          eventType: viewer-request
+          pathPattern: 'v2/*'
+          includeBody: false
 
 
 # you can add CloudFormation resource templates here
@@ -114,4 +149,49 @@ resources:
            ReadCapacityUnits: '1'
            WriteCapacityUnits: '1'
 
-  # TODO: Add API Gateway cloudformation
+  FirehoseToS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: FirehoseToS3Role
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - firehose.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+      - PolicyName: FirehoseToS3Policy
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Action:
+              - s3:AbortMultipartUpload
+              - s3:GetBucketLocation
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:ListBucketMultipartUploads
+              - s3:PutObject
+              Resource: '*'
+  ServerlessKinesisFirehoseBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: covidactnow-api-access-logs-${self:provider.stage}
+  ServerlessKinesisFirehose:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: covidactnow-api-access-logs-${self:provider.stage}
+      S3DestinationConfiguration:
+        BucketARN:
+          Fn::Join:
+          - ''
+          - - 'arn:aws:s3:::'
+            - Ref: ServerlessKinesisFirehoseBucket
+        BufferingHints:
+          IntervalInSeconds: "300"
+          SizeInMBs: "5"
+        CompressionFormat: "UNCOMPRESSED"
+        # Prefix: "raw/"
+        RoleARN: { Fn::GetAtt: [ FirehoseToS3Role, Arn ] }
