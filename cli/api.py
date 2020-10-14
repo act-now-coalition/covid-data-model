@@ -226,12 +226,15 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     else:
         regions_data = regions_data.join_columns(test_positivity_results.test_positivity)
 
-    regional_inputs = [
-        api_v2_pipeline.RegionalInput.from_region_and_model_output(
-            region, region_data, rt_data, icu_data
-        )
-        for region, region_data in regions_data.iter_one_regions()
-    ]
+    build_input = functools.partial(
+        api_v2_pipeline.RegionalInput.from_region_and_model_output,
+        combined_data_with_test_positivity=regions_data,
+        icu_data=icu_data,
+        rt_data=rt_data,
+    )
+
+    with multiprocessing.Pool(maxtasksperchild=1) as pool:
+        regional_inputs = pool.map(build_input, regions)
 
     _logger.info(f"Finished loading all regional inputs.")
 

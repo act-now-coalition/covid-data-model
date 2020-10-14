@@ -12,10 +12,10 @@ import pandas as pd
 
 @pytest.fixture
 def nyc_regional_input(nyc_region, rt_dataset, icu_dataset):
-    one_region = combined_datasets.load_us_timeseries_dataset().get_one_region(nyc_region)
+    us_dataset = combined_datasets.load_us_timeseries_dataset()
     # Not using test_positivity because currently we don't have any data for counties
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        nyc_region, one_region, rt_dataset, icu_dataset
+        nyc_region, us_dataset, rt_dataset, icu_dataset
     )
 
 
@@ -25,9 +25,7 @@ def il_regional_input(rt_dataset, icu_dataset):
     regional_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset([region])
     test_positivity_results = test_positivity.AllMethods.run(regional_data)
 
-    regional_data = regional_data.join_columns(
-        test_positivity_results.test_positivity
-    ).get_one_region(region)
+    regional_data = regional_data.join_columns(test_positivity_results.test_positivity)
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
         region, regional_data, rt_dataset, icu_dataset
     )
@@ -43,7 +41,7 @@ def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
         )
     )
 
-    regional_data = regional_data.join_columns(empty_test_positivity).get_one_region(region)
+    regional_data = regional_data.join_columns(empty_test_positivity)
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
         region, regional_data, rt_dataset, icu_dataset
     )
