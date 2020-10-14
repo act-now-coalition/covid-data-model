@@ -16,6 +16,8 @@ class EnvConstants(pydantic.BaseSettings):
 
     EMAILS_ENABLED: bool
 
+    AWS_REGION: str = "us-east-1"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

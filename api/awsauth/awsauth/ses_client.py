@@ -23,7 +23,7 @@ class EmailData:
 
 class SESClient:
     def __init__(self, client=None):
-        self._client = client or boto3.client("ses")
+        self._client = client or boto3.client("ses", region_name=Config.Constants.AWS_REGION)
 
     def send_email(self, email: EmailData) -> Optional[dict]:
         if not Config.Constants.EMAILS_ENABLED:

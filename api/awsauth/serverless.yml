@@ -101,7 +101,7 @@ functions:
   apiRegisterApiKeyEdge:
     handler: awsauth/auth_app.register_edge
     memorySize: 128
-    timeout: 2
+    timeout: 5
     events:
       - preExistingCloudFront:
           distributionId: ${env:CLOUDFRONT_DISTRIBUTION_ID}
@@ -112,7 +112,7 @@ functions:
   apiCheckAPIKeyEdge:
     handler: awsauth/auth_app.check_api_key_edge
     memorySize: 128
-    timeout: 2
+    timeout: 5
     events:
       - preExistingCloudFront:
           distributionId: ${env:CLOUDFRONT_DISTRIBUTION_ID}
