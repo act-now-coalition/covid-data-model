@@ -1,11 +1,10 @@
 from typing import Optional, Dict, Any
 import os
 import datetime
-
+from awsauth.config import Config
 from awsauth import dynamo_client
 
 
-API_KEY_TABLE_NAME = os.environ["API_KEYS_TABLE"]
 API_KEY_INDEX_NAME = "apiKeys"
 
 
@@ -24,7 +23,7 @@ class APIKeyRepo:
         client = dynamo_client.DynamoDBClient()
         now = datetime.datetime.utcnow().isoformat()
         obj = {"email": email, "api_key": api_key, "created_at": now}
-        client.put_item(API_KEY_TABLE_NAME, obj)
+        client.put_item(Config.Constants.API_KEY_TABLE_NAME, obj)
 
     @staticmethod
     def get_api_key(email) -> Optional[str]:
@@ -39,7 +38,7 @@ class APIKeyRepo:
         client = dynamo_client.DynamoDBClient()
 
         key = {"email": email}
-        api_key_item = client.get_item(API_KEY_TABLE_NAME, key)
+        api_key_item = client.get_item(Config.Constants.API_KEY_TABLE_NAME, key)
 
         if not api_key_item:
             return None
@@ -57,7 +56,9 @@ class APIKeyRepo:
         """
         # TODO: Client should only be initialized once
         client = dynamo_client.DynamoDBClient()
-        items = client.query_index(API_KEY_TABLE_NAME, API_KEY_INDEX_NAME, "api_key", api_key)
+        items = client.query_index(
+            Config.Constants.API_KEY_TABLE_NAME, API_KEY_INDEX_NAME, "api_key", api_key
+        )
         if not items:
             return None
 
@@ -78,5 +79,7 @@ class APIKeyRepo:
             "email": email,
         }
         client.update_item(
-            API_KEY_TABLE_NAME, key, welcome_email_sent_at=datetime.datetime.utcnow().isoformat()
+            Config.Constants.API_KEY_TABLE_NAME,
+            key,
+            welcome_email_sent_at=datetime.datetime.utcnow().isoformat(),
         )

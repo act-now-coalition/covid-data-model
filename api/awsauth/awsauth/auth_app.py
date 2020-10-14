@@ -12,6 +12,9 @@ from awsauth.api_key_repo import APIKeyRepo
 from awsauth.email_repo import EmailRepo
 from awsauth import ses_client
 
+from awsauth.config import Config
+
+
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
 WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
 
@@ -20,8 +23,11 @@ _logger = logging.getLogger(__name__)
 
 
 def init():
+
+    Config.init()
+
     sentry_sdk.init(
-        dsn=os.getenv("SENTRY_DSN"),
+        dsn=Config.Constants.SENTRY_DSN,
         integrations=[AwsLambdaIntegration()],
         traces_sample_rate=1.0,  # adjust the sample rate in production as needed
     )

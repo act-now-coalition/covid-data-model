@@ -4,6 +4,8 @@ import logging
 import dataclasses
 
 import boto3
+from awsauth.config import Config
+
 
 _logger = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ class SESClient:
         self._client = client or boto3.client("ses")
 
     def send_email(self, email: EmailData) -> Optional[dict]:
-        if not os.getenv("EMAILS_ENABLED"):
+        if not Config.Constants.EMAILS_ENABLED:
             _logger.info(f"Email send disabled, skipping sending email: {email}.")
             return None
 
