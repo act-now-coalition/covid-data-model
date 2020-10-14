@@ -22,12 +22,17 @@ frameworkVersion: '2'
 
 
 custom:
-
   tableName: 'can-api-keys-${self:provider.stage}'
-
+  dotenv:
+    # Lambda@Edge functions don't support environment variables. Specifying include
+    # here makes sure that we're only including environment variables matching '',
+    # which should be none of them.
+    include:
+      - ''
 
 plugins:
   - serverless-python-requirements
+  - serverless-dotenv-plugin
   - serverless-lambda-edge-pre-existing-cloudfront
 
 provider:

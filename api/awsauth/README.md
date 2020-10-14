@@ -15,10 +15,22 @@ npm install -g serverless
 
 Currently we have a `dev` and `prod` stage.
 
-There are two environment variables:
- * `EMAILS_ENABLED`: If set, will send email on registration. Should be disabled on dev unless explicitly testing.
- * `SENTRY_DSN`: Sentry DSN used to report sentry errors. This should be set on prod.
+Deploys are set up to look for environment variables in a `.env` file.
+
+Create a .env file similar to this template:
+```
+# AWS Dynamo Table Name for API Keys
+API_KEY_TABLE_NAME=
+
+# Sentry DSN for reporting errors
+SENTRY_DSN=
+# If true, will send email on registration
+EMAILS_ENABLED=
+
+# Cloudfront distribution ID number for data deploy
+CLOUDFRONT_DISTRIBUTION_ID=
+```
 
 ```
-EMAILS_ENABLED=true SENTRY_DSN=<sentry dsn> sls deploy --stage {dev,prod}
+sls deploy --stage {dev,prod}
 ```
