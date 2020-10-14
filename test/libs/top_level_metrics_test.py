@@ -122,6 +122,35 @@ def test_top_level_metrics_basic():
     pd.testing.assert_frame_equal(expected, results)
 
 
+def test_top_level_metrics_incomplete_latest():
+    data = (
+        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count"
+        ",current_icu,current_icu_total,icu_beds\n"
+        "2020-08-17,36,10,10,90,1,10,20,\n"
+        "2020-08-18,36,20,20,180,2,10,20,\n"
+        "2020-08-19,36,,,,3,10,20,\n"
+        "2020-08-20,36,40,40,360,4,10,20,\n"
+    )
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.FIPS: "36",
+        CommonFields.STATE: "NY",
+    }
+    one_region = dataclasses.replace(one_region, latest=latest)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+        one_region, None, None, require_recent_icu_data=False
+    )
+
+    expected = _build_metrics_df(
+        "2020-08-17,36,,,,,,\n"
+        "2020-08-18,36,10,0.1,0.04,,,\n"
+        "2020-08-19,36,,0.1,,,,\n"
+        "2020-08-20,36,,0.1,,,,\n"
+    )
+    pd.testing.assert_frame_equal(expected, results)
+
+
 def test_top_level_metrics_no_test_positivity():
     data = (
         "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
