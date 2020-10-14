@@ -329,7 +329,7 @@ class RegionalData:
 
     @property  # TODO(tom): Change to cached_property when we're using Python 3.8
     def display_name(self) -> str:
-        county = self.latest.get(CommonFields.COUNTY)
+        county = self.latest[CommonFields.COUNTY]
         state = self.latest[CommonFields.STATE]
         if county:
             return f"{county}, {state}"
