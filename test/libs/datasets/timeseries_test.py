@@ -20,12 +20,6 @@ from test.dataset_utils_test import read_csv_and_index_fips_date
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
-def _provenance_from_str(provenance_str: str) -> pd.Series:
-    return pd.read_csv(io.StringIO(provenance_str)).set_index(
-        [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-    )[PdFields.PROVENANCE]
-
-
 @pytest.mark.parametrize("include_na_at_end", [False, True])
 def test_remove_padded_nans(include_na_at_end):
     rows = [
@@ -376,7 +370,7 @@ def test_join_columns():
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
             "iso1:us#fips:97111,,Bar County,county,4\n"
         ),
-        provenance_df=_provenance_from_str(
+        provenance=parse_provenance_csv(
             "location_id,variable,provenance\n"
             "iso1:us#cbsa:10100,m1,ts110100prov\n"
             "iso1:us#fips:97111,m1,ts197111prov\n"
@@ -390,7 +384,7 @@ def test_join_columns():
             "iso1:us#fips:97111,2020-04-02,Bar County,county,\n"
             "iso1:us#fips:97111,2020-04-04,Bar County,county,\n"
         ),
-        provenance_df=_provenance_from_str(
+        provenance=parse_provenance_csv(
             "location_id,variable,provenance\n"
             "iso1:us#cbsa:10100,m2,ts110100prov\n"
             "iso1:us#fips:97111,m2,ts197111prov\n"
@@ -406,7 +400,7 @@ def test_join_columns():
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
             "iso1:us#fips:97111,,Bar County,county,4,\n"
         ),
-        provenance_df=_provenance_from_str(
+        provenance=parse_provenance_csv(
             "location_id,variable,provenance\n"
             "iso1:us#cbsa:10100,m1,ts110100prov\n"
             "iso1:us#fips:97111,m1,ts197111prov\n"
@@ -493,3 +487,11 @@ def test_iter_one_region():
         assert (one_region.data.fillna("") == it_one_region.data.fillna("")).all(axis=None)
         assert one_region.latest == it_one_region.latest
         assert one_region.provenance == it_one_region.provenance
+
+
+def parse_provenance_csv(csv_str: str) -> pd.Series:
+    """Parses a string with columns for location_id, variable and provenance."""
+    df = pd.read_csv(io.StringIO(csv_str))
+    assert list(df.columns) == [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.PROVENANCE]
+    df = df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[PdFields.PROVENANCE]
+    return df
