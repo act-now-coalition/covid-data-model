@@ -240,7 +240,7 @@ def assert_combined_like(
     pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
 
 
-def test_merge():
+def test_append_regions():
     ts_fips = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,county,aggregate_level,m1,m2\n"
@@ -262,8 +262,8 @@ def test_merge():
         )
     )
     # Check that merge is symmetric
-    ts_merged_1 = ts_fips.merge(ts_cbsa)
-    ts_merged_2 = ts_cbsa.merge(ts_fips)
+    ts_merged_1 = ts_fips.append_regions(ts_cbsa)
+    ts_merged_2 = ts_cbsa.append_regions(ts_fips)
     assert_combined_like(ts_merged_1, ts_merged_2)
 
     ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
@@ -345,3 +345,115 @@ def test_timeseries_long():
         [CommonFields.LOCATION_ID, PdFields.VARIABLE, CommonFields.DATE], ignore_index=True
     )
     pd.testing.assert_frame_equal(long, expected, check_like=True)
+
+
+def test_join_columns():
+    ts_1 = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,\n"
+            "iso1:us#cbsa:10100,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+            "iso1:us#fips:97111,,Bar County,county,4\n"
+        )
+    )
+    ts_2 = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,\n"
+        )
+    )
+    ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
+            "iso1:us#cbsa:10100,,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+    ts_joined = ts_1.join_columns(ts_2)
+    assert_combined_like(ts_joined, ts_expected)
+
+    with pytest.raises(NotImplementedError):
+        ts_2.join_columns(ts_1)
+
+    with pytest.raises(ValueError):
+        # Raises because the same column is in both datasets
+        ts_2.join_columns(ts_2)
+
+    # Checking geo attributes is currently disabled.
+    # ts_2_variation_df = ts_2.combined_df.copy()
+    # ts_2_variation_df.loc[
+    #     ts_2_variation_df[CommonFields.COUNTY] == "Bar County", CommonFields.COUNTY
+    # ] = "Bart County"
+    # ts_2_variation = timeseries.MultiRegionTimeseriesDataset.from_combined_dataframe(
+    #     ts_2_variation_df
+    # )
+    # with pytest.raises(ValueError):
+    #     ts_1.join_columns(ts_2_variation)
+
+
+def test_join_columns_missing_regions():
+    ts_1 = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,\n"
+            "iso1:us#cbsa:10100,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+            "iso1:us#fips:97111,,Bar County,county,4\n"
+        )
+    )
+    ts_2 = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m2\n" "iso1:us#cbsa:10100,2020-04-02,,,2\n"
+        )
+    )
+    ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,\n"
+            "iso1:us#cbsa:10100,,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+    ts_joined = ts_1.join_columns(ts_2)
+    assert_combined_like(ts_joined, ts_expected)
+
+
+def test_iter_one_region():
+    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,\n"
+            "iso1:us#cbsa:10100,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+            "iso1:us#fips:97111,,Bar County,county,4\n"
+            # 97222 does not have a row of latest data to make sure it still works
+            "iso1:us#fips:97222,2020-04-02,No Recent County,county,3\n"
+            "iso1:us#fips:97222,2020-04-04,No Recent County,county,5\n"
+        )
+    )
+    assert {region.location_id for region, _ in ts.iter_one_regions()} == {
+        "iso1:us#cbsa:10100",
+        "iso1:us#fips:97111",
+        "iso1:us#fips:97222",
+    }
+    for it_region, it_one_region in ts.iter_one_regions():
+        one_region = ts.get_one_region(it_region)
+        assert (one_region.data.fillna("") == it_one_region.data.fillna("")).all(axis=None)
+        assert one_region.latest == it_one_region.latest
