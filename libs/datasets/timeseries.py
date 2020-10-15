@@ -545,9 +545,6 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         latest_dict = self._location_id_latest_dict(region.location_id)
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
-        # Some code far away from here depends on latest_dict containing None, not np.nan, for
-        # non-real values.
-        latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
 
         if self.provenance is not None:
             provenance_series = self.provenance.loc[region.location_id]
