@@ -55,10 +55,12 @@ class RegionalInput:
     @staticmethod
     def from_region_and_model_output(
         region: pipeline.Region,
-        combined_data_with_test_positivity: OneRegionTimeseriesDataset,
+        combined_data_with_test_positivity: MultiRegionTimeseriesDataset,
         rt_data: MultiRegionTimeseriesDataset,
         icu_data: MultiRegionTimeseriesDataset,
     ) -> "RegionalInput":
+        one_region_data = combined_data_with_test_positivity.get_one_region(region)
+
         # Not all regions have Rt or ICU data due to various filters in pyseir code.
         try:
             rt_data = rt_data.get_one_region(region)
@@ -72,7 +74,21 @@ class RegionalInput:
 
         return RegionalInput(
             region=region,
-            _combined_data_with_test_positivity=combined_data_with_test_positivity,
+            _combined_data_with_test_positivity=one_region_data,
+            rt_data=rt_data,
+            icu_data=icu_data,
+        )
+
+    @staticmethod
+    def from_one_regions(
+        region: pipeline.Region,
+        regional_data: OneRegionTimeseriesDataset,
+        rt_data: Optional[OneRegionTimeseriesDataset],
+        icu_data: Optional[OneRegionTimeseriesDataset],
+    ):
+        return RegionalInput(
+            region=region,
+            _combined_data_with_test_positivity=regional_data,
             rt_data=rt_data,
             icu_data=icu_data,
         )

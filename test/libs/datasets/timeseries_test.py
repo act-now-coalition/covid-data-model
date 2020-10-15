@@ -436,6 +436,38 @@ def test_join_columns():
     #     ts_1.join_columns(ts_2_variation)
 
 
+def test_join_columns_missing_regions():
+    ts_1 = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,\n"
+            "iso1:us#cbsa:10100,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+            "iso1:us#fips:97111,,Bar County,county,4\n"
+        )
+    )
+    ts_2 = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m2\n" "iso1:us#cbsa:10100,2020-04-02,,,2\n"
+        )
+    )
+    ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,\n"
+            "iso1:us#cbsa:10100,,,,,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+    ts_joined = ts_1.join_columns(ts_2)
+    assert_combined_like(ts_joined, ts_expected)
+
+
 def test_iter_one_region():
     ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(

@@ -33,7 +33,12 @@ const SignupForm = () => {
       .then((res) => res.json())
       .then((data) => {
         setErrorMessage(undefined);
-        setApiKey(JSON.parse(data.body).api_key);
+        // Older API returned data json encoded in "body" parameter.
+        if (data.body) {
+          setApiKey(JSON.parse(data.body).api_key);
+        } else {
+          setApiKey(data.api_key);
+        }
       })
       .catch((err) => setErrorMessage("Must supply a valid email address"));
   };

@@ -542,9 +542,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
-        try:
-            latest_row = self.latest_data.loc[region.location_id, :]
-        except KeyError:
+        latest_dict = self._location_id_latest_dict(region.location_id)
+        if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
         # Some code far away from here depends on latest_dict containing None, not np.nan, for
         # non-real values.
@@ -559,6 +558,13 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         return OneRegionTimeseriesDataset(
             data=ts_df, latest=latest_dict, provenance=provenance_dict
         )
+
+    def _location_id_latest_dict(self, location_id: str) -> dict:
+        try:
+            latest_row = self.latest_data.loc[location_id, :]
+        except KeyError:
+            latest_row = pd.Series([], dtype=object)
+        return latest_row.where(pd.notnull(latest_row), None).to_dict()
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
@@ -677,8 +683,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
         for location_id, data_group in self.data_with_fips.groupby(CommonFields.LOCATION_ID):
-            latest_row = self.latest_data.loc[location_id, :]
-            latest_dict = latest_row.where(pd.notnull(latest_row), None).to_dict()
+            latest_dict = self._location_id_latest_dict(location_id)
             if self.provenance is not None:
                 provenance_series = self.provenance.loc[location_id]
                 provenance_dict = provenance_series[provenance_series.notna()].to_dict()
