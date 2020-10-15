@@ -64,7 +64,8 @@ def test_output_no_timeseries_rows(nyc_region, rt_dataset, icu_dataset):
     timeseries = regional_input.timeseries
     timeseries_data = timeseries.data.loc[timeseries.data.fips.isna()]
     regional_data = combined_datasets.RegionalData(
-        regional_input.region, OneRegionTimeseriesDataset(timeseries_data, regional_input.latest),
+        regional_input.region,
+        OneRegionTimeseriesDataset(timeseries_data, regional_input.latest, {}),
     )
     regional_input = api_pipeline.RegionalInput(
         regional_input.region,

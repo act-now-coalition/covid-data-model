@@ -4,6 +4,7 @@ import pytest
 from covidactnow.datapublic import common_df
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
 from libs.test_positivity import AllMethods
@@ -17,6 +18,14 @@ def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
     df = pd.read_csv(io.StringIO(csv_str))
     df = df.set_index(list(df.columns[0:2]))
     df.columns = pd.to_datetime(df.columns)
+    return df
+
+
+def _parse_provenance_csv(csv_str: str) -> pd.Series:
+    """Parses a string with columns for location_id, variable and provenance."""
+    df = pd.read_csv(io.StringIO(csv_str))
+    assert list(df.columns) == [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.PROVENANCE]
+    df = df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[PdFields.PROVENANCE]
     return df
 
 
@@ -48,14 +57,21 @@ def test_basic():
     )
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
 
+    expected_provenance = _parse_provenance_csv(
+        "location_id,variable,provenance\n"
+        "iso1:us#iso2:as,test_positivity,method2\n"
+        "iso1:us#iso2:tx,test_positivity,method1\n"
+    )
     expected_positivity = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,test_positivity\n"
             "iso1:us#iso2:as,2020-04-04,0.02\n"
             "iso1:us#iso2:tx,2020-04-04,0.1\n"
-        )
+        ),
+        provenance_df=expected_provenance,
     )
     assert_combined_like(all_methods.test_positivity, expected_positivity)
+
     positivity_provenance = all_methods.test_positivity.provenance
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
@@ -94,6 +110,11 @@ def test_recent_days():
         "iso1:us#iso2:tx,method2,,0.01,0.01,0.01\n"
     )
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_all, check_like=True)
+    expected_provenance = _parse_provenance_csv(
+        "location_id,variable,provenance\n"
+        "iso1:us#iso2:as,test_positivity,method2\n"
+        "iso1:us#iso2:tx,test_positivity,method1\n"
+    )
     expected_positivity = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,test_positivity\n"
@@ -103,7 +124,8 @@ def test_recent_days():
             "iso1:us#iso2:tx,2020-04-02,0.1\n"
             "iso1:us#iso2:tx,2020-04-03,0.1\n"
             "iso1:us#iso2:tx,2020-04-04,0.1\n"
-        )
+        ),
+        provenance_df=expected_provenance,
     )
     assert_combined_like(all_methods.test_positivity, expected_positivity)
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
