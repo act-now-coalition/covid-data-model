@@ -99,6 +99,7 @@ class Metrics(base_model.APIBaseModel):
         )
 
 
+@enum.unique
 class RiskLevel(enum.Enum):
     """COVID Risk Level.
 

@@ -84,7 +84,7 @@ def top_level_risk_level(
     if case_density_level is RiskLevel.LOW:
         return RiskLevel.LOW
 
-    levelList = [
+    level_list = [
         infection_rate_level,
         contact_tracing_level,
         icu_headroom_level,
@@ -92,13 +92,13 @@ def top_level_risk_level(
         case_density_level,
     ]
 
-    if RiskLevel.CRITICAL in levelList:
+    if RiskLevel.CRITICAL in level_list:
         return RiskLevel.CRITICAL
-    elif RiskLevel.HIGH in levelList:
+    elif RiskLevel.HIGH in level_list:
         return RiskLevel.HIGH
-    elif RiskLevel.MEDIUM in levelList:
+    elif RiskLevel.MEDIUM in level_list:
         return RiskLevel.MEDIUM
-    elif RiskLevel.UNKNOWN in levelList:
+    elif RiskLevel.UNKNOWN in level_list:
         return RiskLevel.UNKNOWN
     else:
         return RiskLevel.LOW
