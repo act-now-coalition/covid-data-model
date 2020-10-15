@@ -150,6 +150,50 @@
         "icuHeadroomRatio"
       ]
     },
+    "RiskLevel": {
+      "title": "RiskLevel",
+      "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "RiskLevels": {
+      "title": "RiskLevels",
+      "description": "COVID risk levels for a region.",
+      "type": "object",
+      "properties": {
+        "overall": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "testPositivityRatio": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "caseDensity": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "contactTracerCapacityRatio": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "infectionRate": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "icuHeadroomRatio": {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      },
+      "required": [
+        "overall",
+        "testPositivityRatio",
+        "caseDensity",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "icuHeadroomRatio"
+      ]
+    },
     "HospitalResourceUtilization": {
       "title": "HospitalResourceUtilization",
       "description": "Base model for API output.",
@@ -568,12 +612,14 @@
           "type": "integer"
         },
         "metrics": {
-          "anyOf": [
+          "$ref": "#/definitions/Metrics"
+        },
+        "riskLevels": {
+          "title": "Risklevels",
+          "description": "Risk levels for region.",
+          "allOf": [
             {
-              "$ref": "#/definitions/Metrics"
-            },
-            {
-              "type": "null"
+              "$ref": "#/definitions/RiskLevels"
             }
           ]
         },
@@ -611,6 +657,7 @@
         "long",
         "population",
         "metrics",
+        "riskLevels",
         "actuals",
         "lastUpdatedDate",
         "actualsTimeseries"

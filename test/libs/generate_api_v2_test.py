@@ -4,6 +4,7 @@ import pytest
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import RegionSummary
+from libs import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
 from libs.functions import build_api_v2
 from libs.pipelines import api_v2_pipeline
@@ -33,8 +34,9 @@ def test_build_summary_for_fips(
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
         fips_timeseries, nyc_rt_dataset, nyc_icu_dataset
     )
+    risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
-    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric)
+    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels)
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",
@@ -45,6 +47,7 @@ def test_build_summary_for_fips(
         lat=None,
         long=None,
         metrics=latest_metric,
+        riskLevels=risk_levels,
         actuals=Actuals(
             cases=nyc_latest["cases"],
             deaths=nyc_latest["deaths"],
@@ -81,13 +84,14 @@ def test_generate_timeseries_for_fips(
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
         nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset
     )
+    risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
 
-    region_summary = build_api_v2.build_region_summary(nyc_latest, latest_metric)
+    region_summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels)
     region_timeseries = build_api_v2.build_region_timeseries(
         region_summary, nyc_timeseries, metrics_series
     )
 
-    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric)
+    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels)
 
     assert summary.dict() == region_timeseries.region_summary.dict()
     # Double checking that serialized json does not contain NaNs, all values should
