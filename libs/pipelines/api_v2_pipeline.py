@@ -148,7 +148,9 @@ def build_timeseries_for_region(
             region_summary, fips_timeseries, metrics_timeseries
         )
     except Exception:
-        logger.exception(f"Failed to build timeseries for fips.")
+        logger.exception(
+            f"Failed to build timeseries for region.", location_id=regional_input.region.location_id
+        )
         return None
 
     return region_timeseries
