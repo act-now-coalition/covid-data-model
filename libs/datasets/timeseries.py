@@ -630,3 +630,20 @@ def add_new_cases(mrts: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDa
         timeseries_df=df_copy, provenance=mrts.provenance
     ).append_latest_df(mrts.latest_data.reset_index())
     return new_mrts
+
+
+def remove_regions_without_population(
+    mrts: MultiRegionTimeseriesDataset,
+) -> MultiRegionTimeseriesDataset:
+    latest_df = mrts.latest_data.loc[
+        lambda df: df[CommonFields.POPULATION].notna(), :
+    ].reset_index()
+    locations_with_population = latest_df[CommonFields.LOCATION_ID]
+    ts_df = mrts.data.loc[
+        lambda df: df[CommonFields.LOCATION_ID].isin(locations_with_population), :
+    ]
+    # TODO(tom): use
+    new_mrts = MultiRegionTimeseriesDataset.from_timeseries_df(
+        timeseries_df=latest_df, provenance=mrts.provenance
+    ).append_latest_df(latest_df)
+    return new_mrts
