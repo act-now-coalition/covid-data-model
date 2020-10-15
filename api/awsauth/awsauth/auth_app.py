@@ -14,7 +14,6 @@ from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 from awsauth import ses_client
 from awsauth.api_key_repo import APIKeyRepo
 from awsauth.email_repo import EmailRepo
-from awsauth.firehose_client import FirehoseClient
 from awsauth.config import Config
 from awsauth.the_registry import registry
 

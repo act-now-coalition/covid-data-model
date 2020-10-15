@@ -1,7 +1,6 @@
 from typing import Optional, Dict, Any
 import datetime
 from awsauth.config import Config
-from awsauth import dynamo_client
 from awsauth.the_registry import registry
 
 API_KEY_INDEX_NAME = "apiKeys"

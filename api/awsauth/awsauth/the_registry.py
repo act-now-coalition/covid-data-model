@@ -3,7 +3,6 @@ from awsauth.ses_client import SESClient
 from awsauth.firehose_client import FirehoseClient
 from awsauth.dynamo_client import DynamoDBClient
 from awsauth.ses_client import SESClient
-from awsauth.config import Config
 
 
 class RegistryProvider:

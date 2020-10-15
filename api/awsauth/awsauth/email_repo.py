@@ -1,6 +1,6 @@
 import sentry_sdk
 from awsauth import ses_client
-from awsauth.the_registry import Registry
+from awsauth.the_registry import registry
 
 
 class EmailRepo:
