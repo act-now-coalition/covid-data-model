@@ -16,7 +16,7 @@ from awsauth.api_key_repo import APIKeyRepo
 from awsauth.email_repo import EmailRepo
 from awsauth.firehose_client import FirehoseClient
 from awsauth.config import Config
-
+from awsauth.the_registry import registry
 
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
 WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
@@ -44,8 +44,7 @@ CORS_OPTIONS_HEADERS = {
 def init():
     global FIREHOSE_CLIENT
     Config.init()
-
-    FIREHOSE_CLIENT = FirehoseClient()
+    registry.initialize()
 
     sentry_sdk.init(
         dsn=Config.Constants.SENTRY_DSN,
@@ -116,7 +115,7 @@ def _record_successful_request(request: dict, record: dict):
         "ip": request["clientIp"],
     }
 
-    FIREHOSE_CLIENT.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
+    registry.firehose_client.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
 
 
 def register(event, context):

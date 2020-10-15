@@ -2,7 +2,7 @@ from typing import Optional, Dict, Any
 import datetime
 from awsauth.config import Config
 from awsauth import dynamo_client
-
+from awsauth.the_registry import registry
 
 API_KEY_INDEX_NAME = "apiKeys"
 
@@ -19,7 +19,7 @@ class APIKeyRepo:
             api_key: API Key to add.
         """
         # TODO: Client should only be initialized once
-        client = dynamo_client.DynamoDBClient()
+        client = registry.dynamodb_client
         now = datetime.datetime.utcnow().isoformat()
         obj = {"email": email, "api_key": api_key, "created_at": now}
         client.put_item(Config.Constants.API_KEY_TABLE_NAME, obj)
@@ -34,7 +34,7 @@ class APIKeyRepo:
         Returns: API Key if exists, None if missing.
         """
         # TODO: Client should only be initialized once
-        client = dynamo_client.DynamoDBClient()
+        client = registry.dynamodb_client
 
         key = {"email": email}
         api_key_item = client.get_item(Config.Constants.API_KEY_TABLE_NAME, key)
@@ -54,7 +54,7 @@ class APIKeyRepo:
         Returns: Dict if exists, None if not found.
         """
         # TODO: Client should only be initialized once
-        client = dynamo_client.DynamoDBClient()
+        client = registry.dynamodb_client
         items = client.query_index(
             Config.Constants.API_KEY_TABLE_NAME, API_KEY_INDEX_NAME, "api_key", api_key
         )
@@ -73,7 +73,7 @@ class APIKeyRepo:
         Args:
             email: Email address of user.
         """
-        client = dynamo_client.DynamoDBClient()
+        client = registry.dynamodb_client
         key = {
             "email": email,
         }
