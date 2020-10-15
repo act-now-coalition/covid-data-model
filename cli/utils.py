@@ -118,12 +118,17 @@ def csv_diff(csv_path_or_rev_left, csv_path_right):
 
 
 @main.command()
-@click.option("--log-group", envvar="API_LOG_GROUP", required=True)
+@click.option("--table-name", envvar="API_TABLE_NAME", required=True)
+@click.option("--database-name", envvar="API_DATABASE_NAME", required=True)
 @click.option("--name", envvar="API_USERS_SHEET_NAME", default="API Usage - Test")
 @click.option("--sheet-id", envvar="API_USERS_SHEET_ID")
 @click.option("--share-email")
 def update_api_user_usage(
-    log_group: str, name: str, share_email: Optional[str], sheet_id: Optional[str]
+    table_name: str,
+    database_name: str,
+    name: str,
+    share_email: Optional[str],
+    sheet_id: Optional[str],
 ):
     """Update API User Usage sheet.
 
@@ -139,5 +144,5 @@ def update_api_user_usage(
     else:
         sheet = google_sheet_helpers.open_or_create_spreadsheet(name, share_email=share_email)
 
-    rows = update_api_user_metrics.run_user_activity_summary_query(log_group)
+    rows = update_api_user_metrics.run_user_activity_summary_query(table_name, database_name)
     update_api_user_metrics.update_google_sheet(sheet, "API Usage Activity Report", rows)

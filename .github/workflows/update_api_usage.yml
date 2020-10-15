@@ -26,8 +26,9 @@ env:
   # Google sheet id to update
   API_USERS_SHEET_ID: ${{ secrets.API_USERS_SHEET_ID }}
 
-  # CloudWatch Log group name
-  API_LOG_GROUP: ${{ secrets.API_LOG_GROUP }}
+  API_TABLE_NAME: ${{ secrets.API_TABLE_NAME }}
+
+  API_DATABASE_NAME: ${{ secrets.API_DATABASE_NAME }}
 
   GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA }}
 
