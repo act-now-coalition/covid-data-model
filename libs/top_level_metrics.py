@@ -87,8 +87,12 @@ def calculate_metrics_for_timeseries(
         test_positivity = calculate_test_positivity(
             cumulative_positive_tests, cumulative_negative_tests
         )
+        test_positivity_provenance = "pos_neg_tests"
     else:
         test_positivity = data[CommonFields.TEST_POSITIVITY]
+        test_positivity_provenance = timeseries.provenance.get(
+            CommonFields.TEST_POSITIVITY, "unknown_method"
+        )
 
     contact_tracer_capacity = calculate_contact_tracers(
         cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
