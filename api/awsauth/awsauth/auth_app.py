@@ -20,6 +20,7 @@ from awsauth.config import Config
 
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
 WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
+os.environ["AWS_REGION"] = "us-east-1"
 
 
 _logger = logging.getLogger(__name__)
