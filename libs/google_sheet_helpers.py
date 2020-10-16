@@ -33,7 +33,7 @@ def init_client() -> gspread.Client:
 
 
 def create_or_replace_worksheet(
-    sheet: gspread.Spreadsheet, worksheet_name: str
+    spreadsheet: gspread.Spreadsheet, worksheet_name: str
 ) -> gspread.Worksheet:
     """Creates or replaces a worksheet with name `worksheet_name`.
 
@@ -48,20 +48,20 @@ def create_or_replace_worksheet(
     Returns: Newly created Worksheet.
     """
     try:
-        worksheet = sheet.worksheet(worksheet_name)
+        worksheet = spreadsheet.worksheet(worksheet_name)
         try:
-            sheet.del_worksheet(worksheet)
+            spreadsheet.del_worksheet(worksheet)
         except Exception:
             # If worksheet name exists but is the only worksheet, need to add a new tmp sheet
             # first then delete the old one
-            new_worksheet = sheet.add_worksheet("tmp", 100, 100)
-            sheet.del_worksheet(worksheet)
+            new_worksheet = spreadsheet.add_worksheet("tmp", 100, 100)
+            spreadsheet.del_worksheet(worksheet)
             new_worksheet.update_title(worksheet_name)
             return new_worksheet
     except gspread.WorksheetNotFound:
         pass
 
-    return sheet.add_worksheet(worksheet_name, 100, 100)
+    return spreadsheet.add_worksheet(worksheet_name, 100, 100)
 
 
 def create_or_clear_worksheet(sheet: gspread.Spreadsheet, worksheet_name: str) -> gspread.Worksheet:
