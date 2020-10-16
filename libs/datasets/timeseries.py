@@ -29,6 +29,7 @@ from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
 import libs.qa.dataset_summary_gen
 from libs.datasets.dataset_utils import DatasetType
+from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 import pandas.core.groupby.generic
@@ -519,7 +520,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         assert self.data.index.is_monotonic_increasing
         assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
 
-    def merge(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
+    def append_regions(
+        self, other: "MultiRegionTimeseriesDataset"
+    ) -> "MultiRegionTimeseriesDataset":
         return MultiRegionTimeseriesDataset.from_timeseries_df(
             pd.concat([self.data, other.data], ignore_index=True)
         ).append_latest_df(
@@ -530,16 +533,17 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
+        latest_dict = self._location_id_latest_dict(region.location_id)
+        if ts_df.empty and not latest_dict:
+            raise RegionLatestNotFound(region)
+        return OneRegionTimeseriesDataset(data=ts_df, latest=latest_dict)
+
+    def _location_id_latest_dict(self, location_id: str) -> dict:
         try:
-            latest_row = self.latest_data.loc[region.location_id, :]
+            latest_row = self.latest_data.loc[location_id, :]
         except KeyError:
             latest_row = pd.Series([], dtype=object)
-        if ts_df.empty and latest_row.empty:
-            raise RegionLatestNotFound(region)
-        # Some code far away from here depends on latest_dict containing None, not np.nan, for
-        # non-real values.
-        latest_dict = latest_row.loc[latest_row.notna()].to_dict()
-        return OneRegionTimeseriesDataset(data=ts_df, latest=latest_dict)
+        return latest_row.where(pd.notnull(latest_row), None).to_dict()
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
@@ -612,6 +616,50 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         if self.provenance is not None:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().to_csv(provenance_path)
+
+    def join_columns(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
+        """Joins the timeseries columns in `other` with those in `self`."""
+        if not other.latest_data.empty:
+            raise NotImplementedError("No support for joining other with latest_data")
+        other_df = other.data_with_fips.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+        self_df = self.data_with_fips.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+        other_geo_columns = set(other_df.columns) & set(GEO_DATA_COLUMNS)
+        other_ts_columns = (
+            set(other_df.columns) - set(GEO_DATA_COLUMNS) - set(TimeseriesDataset.INDEX_FIELDS)
+        )
+        common_ts_columns = other_ts_columns & set(self.data_with_fips.columns)
+        if common_ts_columns:
+            # columns to be joined need to be disjoint
+            raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
+        common_geo_columns = list(set(self.data_with_fips.columns) & other_geo_columns)
+        # TODO(tom): fix geo columns check, no later than when self.data is changed to contain only
+        # timeseries
+        # self_common_geo_columns = self_df.loc[:, common_geo_columns].fillna("")
+        # other_common_geo_columns = other_df.loc[:, common_geo_columns].fillna("")
+        # try:
+        #    if (self_common_geo_columns != other_common_geo_columns).any(axis=None):
+        #        unequal_rows = (self_common_geo_columns != other_common_geo_columns).any(axis=1)
+        #        _log.info(
+        #            "Geo data unexpectedly varies",
+        #            self_rows=self_df.loc[unequal_rows, common_geo_columns],
+        #            other_rows=other_df.loc[unequal_rows, common_geo_columns],
+        #        )
+        #        raise ValueError("Geo data unexpectedly varies")
+        # except Exception:
+        #    _log.exception(f"Comparing df {self_common_geo_columns} to {other_common_geo_columns}")
+        #    raise
+        combined_df = pd.concat([self_df, other_df[list(other_ts_columns)]], axis=1)
+        return MultiRegionTimeseriesDataset.from_timeseries_df(
+            combined_df.reset_index()
+        ).append_latest_df(self.latest_data_with_fips.reset_index())
+
+    def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
+        """Iterates through all the regions in this object"""
+        for location_id, data_group in self.data_with_fips.groupby(CommonFields.LOCATION_ID):
+            latest_dict = self._location_id_latest_dict(location_id)
+            yield Region(location_id=location_id, fips=None), OneRegionTimeseriesDataset(
+                data_group, latest_dict
+            )
 
 
 def _remove_padded_nans(df, columns):

@@ -23,7 +23,6 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import build_api_v2
-from libs.datasets import combined_datasets
 from libs.datasets import AggregationLevel
 
 logger = structlog.getLogger()
@@ -36,7 +35,7 @@ INTERVENTION = Intervention.OBSERVED_INTERVENTION
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: combined_datasets.RegionalData
+    _combined_data: OneRegionTimeseriesDataset
 
     rt_data: Optional[OneRegionTimeseriesDataset]
 
@@ -52,15 +51,16 @@ class RegionalInput:
 
     @property
     def timeseries(self) -> OneRegionTimeseriesDataset:
-        return self._combined_data.timeseries
+        return self._combined_data
 
     @staticmethod
     def from_region_and_model_output(
         region: pipeline.Region,
+        combined_data: MultiRegionTimeseriesDataset,
         rt_data: MultiRegionTimeseriesDataset,
         icu_data: MultiRegionTimeseriesDataset,
     ) -> "RegionalInput":
-        combined_data = combined_datasets.RegionalData.from_region(region)
+        one_region_data = combined_data.get_one_region(region)
 
         # Not all regions have Rt or ICU data due to various filters in pyseir code.
         try:
@@ -74,7 +74,18 @@ class RegionalInput:
             icu_data = None
 
         return RegionalInput(
-            region=region, _combined_data=combined_data, rt_data=rt_data, icu_data=icu_data,
+            region=region, _combined_data=one_region_data, rt_data=rt_data, icu_data=icu_data,
+        )
+
+    @staticmethod
+    def from_one_regions(
+        region: pipeline.Region,
+        regional_data: OneRegionTimeseriesDataset,
+        rt_data: Optional[OneRegionTimeseriesDataset],
+        icu_data: Optional[OneRegionTimeseriesDataset],
+    ):
+        return RegionalInput(
+            region=region, _combined_data=regional_data, rt_data=rt_data, icu_data=icu_data,
         )
 
 
