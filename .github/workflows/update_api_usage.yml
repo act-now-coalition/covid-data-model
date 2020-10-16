@@ -77,6 +77,8 @@ jobs:
 
     - name: Update API User Usage sheet
       working-directory: ./covid-data-model
+      env:
+        AWS_DEFAULT_REGION: us-east-1
       run: |
         ./run.py utils update-api-user-usage
     - name: Slack notification
