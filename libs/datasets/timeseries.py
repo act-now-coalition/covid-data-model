@@ -547,6 +547,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
+        return self.get_locations_subset(location_ids)
+
+    def get_locations_subset(self, location_ids: Sequence[str]) -> "MultiRegionTimeseriesDataset":
         timeseries_df = self.data.loc[self.data[CommonFields.LOCATION_ID].isin(location_ids), :]
         latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
         return MultiRegionTimeseriesDataset.from_timeseries_df(
@@ -682,18 +685,13 @@ def add_new_cases(mrts: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDa
     return new_mrts
 
 
-def remove_regions_without_population(
+def drop_regions_without_population(
     mrts: MultiRegionTimeseriesDataset,
+    known_location_id_to_drop: Sequence[str],
+    log: Union[structlog.BoundLoggerBase, structlog.BoundLoggerLazyProxy],
 ) -> MultiRegionTimeseriesDataset:
-    latest_df = mrts.latest_data.loc[
-        lambda df: df[CommonFields.POPULATION].notna(), :
-    ].reset_index()
-    locations_with_population = latest_df[CommonFields.LOCATION_ID]
-    ts_df = mrts.data.loc[
-        lambda df: df[CommonFields.LOCATION_ID].isin(locations_with_population), :
-    ]
-    # TODO(tom): use
-    new_mrts = MultiRegionTimeseriesDataset.from_timeseries_df(
-        timeseries_df=latest_df, provenance=mrts.provenance
-    ).append_latest_df(latest_df)
-    return new_mrts
+    # Get Series with location_id index
+    latest_population = mrts.latest_data[CommonFields.POPULATION]
+    locations_with_population = mrts.latest_data.loc[latest_population.notna()].index
+    locations_without_population = mrts.latest_data.loc[latest_population.isna()].index
+    return mrts.get_locations_subset(locations_with_population)
