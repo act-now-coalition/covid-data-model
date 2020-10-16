@@ -3,10 +3,12 @@ from typing import Dict, List, Any, Optional
 import boto3
 from boto3.dynamodb.conditions import Key
 
+from awsauth.config import Config
+
 
 class DynamoDBClient:
     def __init__(self, client=None):
-        self._client = client or boto3.resource("dynamodb")
+        self._client = client or boto3.resource("dynamodb", region_name=Config.Constants.AWS_REGION)
 
     def get_item(self, table: str, key: Dict[str, Any]) -> Optional[Dict[Any, Any]]:
         """Get single item from table.
