@@ -9,6 +9,7 @@ name: Label API Snapshot.
 on:
   # Hook to trigger a manual run.
   # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
+  push:
   repository_dispatch:
     types: label-api-snapshot
 
@@ -18,30 +19,30 @@ jobs:
 
     env:
       AWS_S3_BUCKET: 'data.covidactnow.org'
-      LABEL: '${{ github.event.client_payload.label }}'
-      SNAPSHOT_ID: '${{ github.event.client_payload.snapshot_id }}'
+      # LABEL: '${{ github.event.client_payload.label }}'
+      # SNAPSHOT_ID: '${{ github.event.client_payload.snapshot_id }}'
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v2
-    - name: Verify Label provided
-      if: ${{ !env.LABEL }}
-      run: 'echo "Missing client_payload parameter: label" ; exit 1'
-    - name: Verify Snapshot ID provided
-      if: ${{ !env.SNAPSHOT_ID }}
-      run: 'echo "Missing client_payload parameter: snapshot_id" ; exit 1'
+    # - name: Checkout repo
+    #   uses: actions/checkout@v2
+    # - name: Verify Label provided
+    #   if: ${{ !env.LABEL }}
+    #   run: 'echo "Missing client_payload parameter: label" ; exit 1'
+    # - name: Verify Snapshot ID provided
+    #   if: ${{ !env.SNAPSHOT_ID }}
+    #   run: 'echo "Missing client_payload parameter: snapshot_id" ; exit 1'
 
-    # TODO: We want to replace this with a "symlink" of some kind, perhaps implemented at
-    # the CloudFront layer.
-    - name: Create Label (Copy files from /snapshot/${{env.SNAPSHOT_ID}}/ to /${{env.LABEL}}/)
-      uses: jakejarvis/s3-sync-action@master
-      with:
-        args: --acl public-read --follow-symlinks --delete
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        SOURCE_DIR: 's3://${{env.AWS_S3_BUCKET}}/snapshot/${{env.SNAPSHOT_ID}}/'
-        DEST_DIR: '${{env.LABEL}}/'
+    # # TODO: We want to replace this with a "symlink" of some kind, perhaps implemented at
+    # # the CloudFront layer.
+    # - name: Create Label (Copy files from /snapshot/${{env.SNAPSHOT_ID}}/ to /${{env.LABEL}}/)
+    #   uses: jakejarvis/s3-sync-action@master
+    #   with:
+    #     args: --acl public-read --follow-symlinks --delete
+    #   env:
+    #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     SOURCE_DIR: 's3://${{env.AWS_S3_BUCKET}}/snapshot/${{env.SNAPSHOT_ID}}/'
+    #     DEST_DIR: '${{env.LABEL}}/'
 
     - name: Invalidate Cloudfront Distribution
       uses: awact/cloudfront-action@master
@@ -51,11 +52,11 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         DISTRIBUTION_ID: ${{ secrets.API_CLOUDFRONT_DISTRIBUTION_ID }}
-    - name: Slack notification
-      if: always() # Pick up events even if the job fails or is canceled.
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DAILY_DEPLOYS }}
-        STATUS: ${{job.status}}
-      uses: Ilshidur/action-slack@fb92a78
-      with:
-        args: 'Action to label {{SNAPSHOT_ID}} as {{LABEL}}. Job status: {{STATUS}}'
+    # - name: Slack notification
+    #   if: always() # Pick up events even if the job fails or is canceled.
+    #   env:
+    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DAILY_DEPLOYS }}
+    #     STATUS: ${{job.status}}
+    #   uses: Ilshidur/action-slack@fb92a78
+    #   with:
+    #     args: 'Action to label {{SNAPSHOT_ID}} as {{LABEL}}. Job status: {{STATUS}}'
