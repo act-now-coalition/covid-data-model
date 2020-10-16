@@ -43,6 +43,14 @@ jobs:
         SOURCE_DIR: 's3://${{env.AWS_S3_BUCKET}}/snapshot/${{env.SNAPSHOT_ID}}/'
         DEST_DIR: '${{env.LABEL}}/'
 
+    - name: Invalidate Cloudfront Distribution
+      uses: awact/cloudfront-action@master
+      env:
+        SOURCE_PATH: '/*'
+        AWS_REGION: 'us-east-1'
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        DISTRIBUTION_ID: ${{ secrets.API_CLOUDFRONT_DISTRIBUTION_ID }}
     - name: Slack notification
       if: always() # Pick up events even if the job fails or is canceled.
       env:
