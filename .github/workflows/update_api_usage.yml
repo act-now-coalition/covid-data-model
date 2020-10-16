@@ -4,9 +4,10 @@ on:
   # This hook is automatically triggered by
   # https://github.com/covid-projections/covid-data-public/blob/master/.github/workflows/update_data.yml
   # after covid-data-public datasets have been updated.
-  schedule:
-     # Run every 4 hours at the top of the hour
-   - cron: '0 */6 * * *'
+  push:
+  # schedule:
+  #    # Run every 4 hours at the top of the hour
+  #  - cron: '0 */6 * * *'
 
 env:
   # !!! Change this to your BRANCH if you want to test it
