@@ -457,3 +457,37 @@ def test_iter_one_region():
         one_region = ts.get_one_region(it_region)
         assert (one_region.data.fillna("") == it_one_region.data.fillna("")).all(axis=None)
         assert one_region.latest == it_one_region.latest
+
+
+def test_drop_regions_without_population():
+    # Only regions with location_id containing 1 have population, those with 2 don't
+    ts_in = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,population,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,\n"
+            "iso1:us#cbsa:10100,,,,80000,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,,2\n"
+            "iso1:us#fips:97111,,Bar County,county,40000,4\n"
+            "iso1:us#cbsa:20200,2020-04-02,,,,\n"
+            "iso1:us#cbsa:20200,,,,,\n"
+            "iso1:us#fips:97222,2020-04-02,Bar County,county,,2\n"
+            "iso1:us#fips:97222,,Bar County,county,,4\n"
+        )
+    )
+    ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,population,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,\n"
+            "iso1:us#cbsa:10100,,,,80000,\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,,2\n"
+            "iso1:us#fips:97111,,Bar County,county,40000,4\n"
+        )
+    )
+    with structlog.testing.capture_logs() as logs:
+        ts_out = timeseries.drop_regions_without_population(
+            ts_in, ["iso1:us#fips:97222"], structlog.get_logger()
+        )
+    assert_combined_like(ts_out, ts_expected)
+
+    assert [l["event"] for l in logs] == ["Dropping unexpected regions without populaton"]
+    assert [l["location_ids"] for l in logs] == [{"iso1:us#cbsa:20200"}]

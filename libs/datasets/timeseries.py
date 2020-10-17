@@ -688,10 +688,13 @@ def add_new_cases(mrts: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDa
 def drop_regions_without_population(
     mrts: MultiRegionTimeseriesDataset,
     known_location_id_to_drop: Sequence[str],
-    log: Union[structlog.BoundLoggerBase, structlog.BoundLoggerLazyProxy],
+    log: Union[structlog.BoundLoggerBase, structlog._config.BoundLoggerLazyProxy],
 ) -> MultiRegionTimeseriesDataset:
-    # Get Series with location_id index
+    # latest_population is a Series with location_id index
     latest_population = mrts.latest_data[CommonFields.POPULATION]
     locations_with_population = mrts.latest_data.loc[latest_population.notna()].index
     locations_without_population = mrts.latest_data.loc[latest_population.isna()].index
+    unexpected_drops = set(locations_without_population) - set(known_location_id_to_drop)
+    if unexpected_drops:
+        log.warning("Dropping unexpected regions without populaton", location_ids=unexpected_drops)
     return mrts.get_locations_subset(locations_with_population)

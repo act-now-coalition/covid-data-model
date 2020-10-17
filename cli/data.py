@@ -5,11 +5,13 @@ import pathlib
 import os
 import json
 import shutil
+import structlog
 
 import click
 
 from libs import google_sheet_helpers, wide_dates_df
 from libs.datasets import statistical_areas
+from libs.datasets import timeseries
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
     US_STATES_FILTER,
@@ -126,6 +128,16 @@ def save_summary(output_dir: pathlib.Path, filename: str):
     """Saves summary of timeseries dataset indexed by fips and variable name."""
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
     _save_field_summary(us_timeseries, output_dir / filename)
+
+
+@main.command()
+@click.argument("output_path", type=pathlib.Path)
+def run_population_filter(output_path: pathlib.Path):
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    log = structlog.get_logger()
+    log.info("starting filter")
+    ts_out = timeseries.drop_regions_without_population(us_timeseries, [], log)
+    ts_out.to_csv(output_path)
 
 
 @main.command()
