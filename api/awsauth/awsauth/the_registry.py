@@ -3,6 +3,7 @@ from awsauth.ses_client import SESClient
 from awsauth.firehose_client import FirehoseClient
 from awsauth.dynamo_client import DynamoDBClient
 from awsauth.ses_client import SESClient
+from awsauth.hubspot_client import HubSpotClient
 
 
 class RegistryProvider:
@@ -17,6 +18,10 @@ class RegistryProvider:
     @property
     def dynamodb_client(self) -> DynamoDBClient:
         return DynamoDBClient()
+
+    @property
+    def hubspot_client(self) -> HubSpotClient:
+        return HubSpotClient()
 
 
 class Registry(object):
@@ -43,6 +48,10 @@ class Registry(object):
     @property
     def dynamodb_client(self) -> DynamoDBClient:
         return self._initialized_objects["dynamodb_client"]
+
+    @property
+    def hubspot_client(self) -> HubSpotClient:
+        return self._initialized_objects["hubspot_client"]
 
 
 # `registry` is a global object that contains connections to external resources.
