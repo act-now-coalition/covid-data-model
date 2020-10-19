@@ -1,5 +1,6 @@
 import sentry_sdk
 from awsauth import ses_client
+from awsauth.the_registry import registry
 
 
 class EmailRepo:
@@ -12,7 +13,7 @@ class EmailRepo:
 
         Returns: True on successful send, False otherwise
         """
-        client = ses_client.SESClient()
+        client = registry.ses_client
         try:
             client.send_email(email)
             return True

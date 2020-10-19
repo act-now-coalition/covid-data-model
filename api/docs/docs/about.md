@@ -50,7 +50,7 @@ ensure that we can continue to deliver best-in-class open-source COVID data, our
 volunteer-driven team appreciates donations here.
 
 We also ask that, as legally required by our license, all commercial entities wishing to
-access our API contact <info@covidactnow.org> to acquire a commercial license. We define
+access our API contact <api@covidactnow.org> to acquire a commercial license. We define
 commercial users as any individual or entity engaged in commercial activities, such as selling goods or services.
 
 Our non-commercial users can freely download, use, share, modify, or build upon our source code.
