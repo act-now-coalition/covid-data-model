@@ -1,3 +1,4 @@
+from typing import Optional
 import logging
 import pathlib
 import subprocess
@@ -9,6 +10,8 @@ import git
 
 from covidactnow.datapublic import common_df
 from libs import github_utils
+from libs import update_api_user_metrics
+from libs import google_sheet_helpers
 from libs.datasets import combined_datasets
 from libs.datasets import dataset_utils
 
@@ -112,3 +115,34 @@ def csv_diff(csv_path_or_rev_left, csv_path_right):
     print(differ_l)
     print(f"File: {csv_path_right}")
     print(differ_r)
+
+
+@main.command()
+@click.option("--table-name", envvar="API_TABLE_NAME", required=True)
+@click.option("--database-name", envvar="API_DATABASE_NAME", required=True)
+@click.option("--name", envvar="API_USERS_SHEET_NAME", default="API Usage - Test")
+@click.option("--sheet-id", envvar="API_USERS_SHEET_ID")
+@click.option("--share-email")
+def update_api_user_usage(
+    table_name: str,
+    database_name: str,
+    name: str,
+    share_email: Optional[str],
+    sheet_id: Optional[str],
+):
+    """Update API User Usage sheet.
+
+    Queries Access Logs and summarizes activity for each API User.
+
+    Args:
+        name: Sheet name.
+        sheet_id: Google Sheets ID of existing sheet.
+        share_email: Email to share created sheet with if new sheet.
+    """
+    if sheet_id:
+        sheet = google_sheet_helpers.open_spreadsheet(sheet_id)
+    else:
+        sheet = google_sheet_helpers.open_or_create_spreadsheet(name, share_email=share_email)
+
+    rows = update_api_user_metrics.run_user_activity_summary_query(table_name, database_name)
+    update_api_user_metrics.update_google_sheet(sheet, "API Usage Activity Report", rows)
