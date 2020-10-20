@@ -2,6 +2,7 @@
 id: about
 title: Covid Act Now API
 sidebar_label: About
+description: The Covid Act Now API provides data and metrics for all US states and counties updated daily.
 slug: /
 ---
 
