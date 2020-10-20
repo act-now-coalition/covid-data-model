@@ -67,7 +67,7 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [CovidCountyDataDataSource, JHUDataset],
+    CommonFields.CASES: [JHUDataset, CovidCountyDataDataSource],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
@@ -83,7 +83,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     ],
     CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource],
     CommonFields.CURRENT_VENTILATED: [CovidCountyDataDataSource, CovidTrackingDataSource,],
-    CommonFields.DEATHS: [CovidCountyDataDataSource, JHUDataset],
+    CommonFields.DEATHS: [JHUDataset, CovidCountyDataDataSource],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
     CommonFields.NEGATIVE_TESTS: [
