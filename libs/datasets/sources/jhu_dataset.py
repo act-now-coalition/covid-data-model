@@ -66,6 +66,11 @@ class JHUDataset(data_source.DataSource):
         for path in sorted(input_dir.glob("*.csv")):
             date = path.stem
             data = pd.read_csv(path, dtype={"FIPS": str})
+            if "FIPS" in data.columns:
+                fips_as_float_mask = data["FIPS"].fillna("").str.endswith(".0")
+                if fips_as_float_mask.any():
+                    _logger.info(f"Fixing FIPS in {path}")
+                    data["FIPS"] = data.loc[fips_as_float_mask, "FIPS"].str[0:-2]
             data = data.rename(columns=self.RENAMED_COLUMNS)
             data[self.Fields.DATE] = pd.to_datetime(date)
             loaded_data.append(data)

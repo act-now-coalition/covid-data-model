@@ -80,7 +80,10 @@ class DatasetDiff(BaseModel):
         if self.ts_diffs is None or self.ts_diffs.empty:
             ts_diffs_str = ""
         else:
-            most_diff_timeseries = self.ts_diffs.sort_values("diff", ascending=False).head(20)
+            has_overlap = self.ts_diffs["has_overlap"]
+            most_diff_timeseries = (
+                self.ts_diffs.loc[has_overlap, :].sort_values("diff", ascending=False).head(40)
+            )
             most_diff_variables = (
                 self.ts_diffs.groupby("variable has_overlap".split())
                 .mean()
@@ -106,6 +109,10 @@ TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()
 
         df = df.reset_index().replace({pd.NA: np.nan}).convert_dtypes()
         df[CommonFields.DATE] = pd.to_datetime(df[CommonFields.DATE])
+        empty_date = df[CommonFields.DATE].isna()
+        if empty_date.any():
+            print(f"Dropping {empty_date.sum()} rows without date.")
+            df = df.loc[~empty_date, :]
         # Drop columns that don't really contain timeseries values.
         columns_to_drop = {
             "index",

@@ -10,6 +10,8 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
+
+from libs.datasets import JHUDataset
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets import data_source
@@ -25,7 +27,6 @@ from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.cds_dataset import CDSDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
@@ -66,7 +67,7 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [NYTimesDataset],
+    CommonFields.CASES: [CovidCountyDataDataSource, JHUDataset],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
@@ -82,7 +83,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     ],
     CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource],
     CommonFields.CURRENT_VENTILATED: [CovidCountyDataDataSource, CovidTrackingDataSource,],
-    CommonFields.DEATHS: [NYTimesDataset],
+    CommonFields.DEATHS: [CovidCountyDataDataSource, JHUDataset],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
     CommonFields.NEGATIVE_TESTS: [
