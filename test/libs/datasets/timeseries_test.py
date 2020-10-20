@@ -490,4 +490,4 @@ def test_drop_regions_without_population():
     assert_combined_like(ts_out, ts_expected)
 
     assert [l["event"] for l in logs] == ["Dropping unexpected regions without populaton"]
-    assert [l["location_ids"] for l in logs] == [{"iso1:us#cbsa:20200"}]
+    assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20200"]]
