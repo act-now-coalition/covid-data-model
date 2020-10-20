@@ -101,7 +101,7 @@ functions:
   apiRegisterApiKeyEdge:
     handler: awsauth/auth_app.register_edge
     memorySize: 128
-    timeout: 2
+    timeout: 5
     events:
       - preExistingCloudFront:
           distributionId: ${env:CLOUDFRONT_DISTRIBUTION_ID}
@@ -112,7 +112,7 @@ functions:
   apiCheckAPIKeyEdge:
     handler: awsauth/auth_app.check_api_key_edge
     memorySize: 128
-    timeout: 2
+    timeout: 5
     events:
       - preExistingCloudFront:
           distributionId: ${env:CLOUDFRONT_DISTRIBUTION_ID}
@@ -128,6 +128,7 @@ resources:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: ${self:custom.tableName}
+      BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: email
           AttributeType: S
@@ -140,9 +141,6 @@ resources:
       KeySchema:
         - AttributeName: email
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
       GlobalSecondaryIndexes:
        - IndexName: apiKeys
          KeySchema:
@@ -150,9 +148,6 @@ resources:
            KeyType: HASH
          Projection:
            ProjectionType: ALL
-         ProvisionedThroughput:
-           ReadCapacityUnits: '1'
-           WriteCapacityUnits: '1'
 
   FirehoseToS3Role:
     Type: AWS::IAM::Role

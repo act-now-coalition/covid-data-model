@@ -14,12 +14,12 @@ from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 from awsauth import ses_client
 from awsauth.api_key_repo import APIKeyRepo
 from awsauth.email_repo import EmailRepo
-from awsauth.firehose_client import FirehoseClient
 from awsauth.config import Config
-
+from awsauth.the_registry import registry
 
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
 WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
+os.environ["AWS_REGION"] = "us-east-1"
 
 
 _logger = logging.getLogger(__name__)
@@ -42,12 +42,12 @@ CORS_OPTIONS_HEADERS = {
 
 def init():
     global FIREHOSE_CLIENT
-    FIREHOSE_CLIENT = FirehoseClient()
-
     Config.init()
+    registry.initialize()
 
     sentry_sdk.init(
         dsn=Config.Constants.SENTRY_DSN,
+        environment=Config.Constants.SENTRY_ENVIRONMENT,
         integrations=[AwsLambdaIntegration()],
         traces_sample_rate=1.0,  # adjust the sample rate in production as needed
     )
@@ -114,7 +114,7 @@ def _record_successful_request(request: dict, record: dict):
         "ip": request["clientIp"],
     }
 
-    FIREHOSE_CLIENT.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
+    registry.firehose_client.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
 
 
 def register(event, context):
