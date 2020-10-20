@@ -696,5 +696,7 @@ def drop_regions_without_population(
     locations_without_population = mrts.latest_data.loc[latest_population.isna()].index
     unexpected_drops = set(locations_without_population) - set(known_location_id_to_drop)
     if unexpected_drops:
-        log.warning("Dropping unexpected regions without populaton", location_ids=unexpected_drops)
+        log.warning(
+            "Dropping unexpected regions without populaton", location_ids=sorted(unexpected_drops)
+        )
     return mrts.get_locations_subset(locations_with_population)
