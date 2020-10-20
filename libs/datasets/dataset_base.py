@@ -40,7 +40,7 @@ class DatasetBase(SaveableDatasetInterface):
     def yield_records(self) -> Iterable[dict]:
         # TODO(tom): This function is only called from tests. Replace the calls and remove it.
         for idx, row in self.data.iterrows():
-            yield row.loc[row.notna()].to_dict()
+            yield row.where(pd.notnull(row), None).to_dict()
 
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
