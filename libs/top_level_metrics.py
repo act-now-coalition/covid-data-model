@@ -3,6 +3,7 @@ import enum
 from datetime import timedelta
 import pandas as pd
 import numpy as np
+from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_fields
 
@@ -24,6 +25,9 @@ RT_TRUNCATION_DAYS = 7
 MAX_METRIC_LOOKBACK_DAYS = 7
 
 
+EMPTY_TS = pd.Series([], dtype="float64")
+
+
 class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     # Note that the values of these fields must match the field names of the `Metrics`
     # class in `can_api_definition`
@@ -35,8 +39,8 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     ICU_HEADROOM_RATIO = "icuHeadroomRatio"
 
 
-def has_data_in_past_7_days(series: pd.Series) -> bool:
-    return series_utils.has_recent_data(series, days_back=7, required_non_null_datapoints=4)
+def has_data_in_past_10_days(series: pd.Series) -> bool:
+    return series_utils.has_recent_data(series, days_back=10, required_non_null_datapoints=1)
 
 
 def calculate_metrics_for_timeseries(
@@ -68,31 +72,7 @@ def calculate_metrics_for_timeseries(
     cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)
 
-    # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
-    # for this region.
-    positive_negative_recent = has_data_in_past_7_days(
-        data[CommonFields.POSITIVE_TESTS]
-    ) and has_data_in_past_7_days(data[CommonFields.NEGATIVE_TESTS])
-    test_positivity_available = (
-        CommonFields.TEST_POSITIVITY in data.columns
-        and data[CommonFields.TEST_POSITIVITY].notna().any()
-    )
-    if positive_negative_recent or not test_positivity_available:
-        cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
-            data[CommonFields.POSITIVE_TESTS]
-        )
-        cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
-            data[CommonFields.NEGATIVE_TESTS]
-        )
-        test_positivity = calculate_test_positivity(
-            cumulative_positive_tests, cumulative_negative_tests
-        )
-        test_positivity_provenance = "pos_neg_tests"
-    else:
-        test_positivity = data[CommonFields.TEST_POSITIVITY]
-        test_positivity_provenance = timeseries.provenance.get(
-            CommonFields.TEST_POSITIVITY, "unknown_method"
-        )
+    test_positivity = calculate_or_copy_test_positivity(data)
 
     contact_tracer_capacity = calculate_contact_tracers(
         cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
@@ -123,6 +103,25 @@ def calculate_metrics_for_timeseries(
         metric_summary = calculate_latest_metrics(metrics, icu_metric_details)
 
     return metrics, metric_summary
+
+
+def calculate_or_copy_test_positivity(data):
+    # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
+    # for this region.
+    positive_negative_recent = has_data_in_past_10_days(
+        data[CommonFields.POSITIVE_TESTS]
+    ) and has_data_in_past_10_days(data[CommonFields.NEGATIVE_TESTS])
+    test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
+    if positive_negative_recent or not test_positivity.notna().any():
+        cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
+            data[CommonFields.POSITIVE_TESTS]
+        )
+        cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
+            data[CommonFields.NEGATIVE_TESTS]
+        )
+        return calculate_test_positivity(cumulative_positive_tests, cumulative_negative_tests)
+    else:
+        return test_positivity
 
 
 def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):

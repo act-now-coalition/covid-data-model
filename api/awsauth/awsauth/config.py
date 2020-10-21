@@ -14,7 +14,15 @@ class EnvConstants(pydantic.BaseSettings):
 
     SENTRY_DSN: str
 
+    SENTRY_ENVIRONMENT: str
+
     EMAILS_ENABLED: bool
+
+    AWS_REGION: str = "us-east-1"
+
+    HUBSPOT_API_KEY: str
+
+    HUBSPOT_ENABLED: bool
 
     class Config:
         env_file = ".env"

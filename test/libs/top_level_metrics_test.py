@@ -3,6 +3,7 @@ import io
 
 import numpy as np
 import pandas as pd
+import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from api import can_api_definition
@@ -206,18 +207,18 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
     pd.testing.assert_frame_equal(expected, results)
 
 
-@freeze_time("2020-08-23")
-def test_top_level_metrics_stale_pos_neg_tests_has_positivity_ratio():
-    # 3 days with positive_tests and negative_tests in the past 7 days are not enough for it to be
-    # used so test_positivity appears in the output
+@pytest.mark.parametrize("pos_neg_tests_recent", [False, True])
+def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
+    # positive_tests and negative_tests appear on 8/10 and 8/11. They will be used when
+    # that is within 10 days of 'today'.
     data = (
         "date,fips,cases,test_positivity,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
-        "2020-08-17,36,10,0.02,,,1,,\n"
-        "2020-08-18,36,20,,,,2,,\n"
-        "2020-08-19,36,30,,,,3,,\n"
-        "2020-08-20,36,40,,1,10,4,,\n"
-        "2020-08-21,36,50,,2,20,4,,\n"
-        "2020-08-22,36,60,,2,30,4,,\n"
+        "2020-08-10,36,10,0.02,1,10,1,,\n"
+        "2020-08-11,36,20,,2,20,2,,\n"
+        "2020-08-12,36,30,,,,3,,\n"
+        "2020-08-13,36,40,,,,4,,\n"
+        "2020-08-14,36,50,,,,4,,\n"
+        "2020-08-15,36,60,,,,4,,\n"
     )
     one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
@@ -227,49 +228,33 @@ def test_top_level_metrics_stale_pos_neg_tests_has_positivity_ratio():
         CommonFields.ICU_BEDS: 10,
     }
     one_region = dataclasses.replace(one_region, latest=latest)
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
 
-    expected = _build_metrics_df(
-        "2020-08-17,36,,0.02,,,\n"
-        "2020-08-18,36,10,,0.04,,\n"
-        "2020-08-19,36,10,,0.06,,\n"
-        "2020-08-20,36,10,,0.08,,\n"
-        "2020-08-21,36,10,,0.08,,\n"
-        "2020-08-22,36,10,,0.08,,\n"
-    )
-    pd.testing.assert_frame_equal(expected, results)
+    if pos_neg_tests_recent:
+        freeze_date = "2020-08-21"
+        # positive_tests and negative_tests are used
+        expected = _build_metrics_df(
+            "2020-08-10,36,,,,,\n"
+            "2020-08-11,36,10,0.0909,0.04,,\n"
+            "2020-08-12,36,10,,0.06,,\n"
+            "2020-08-13,36,10,,0.08,,\n"
+            "2020-08-14,36,10,,0.08,,\n"
+            "2020-08-15,36,10,,0.08,,\n"
+        )
+    else:
+        freeze_date = "2020-08-22"
+        # positive_tests and negative_tests no longer recent so test_positivity is copied to output.
+        expected = _build_metrics_df(
+            "2020-08-10,36,,0.02,,,\n"
+            "2020-08-11,36,10,,0.04,,\n"
+            "2020-08-12,36,10,,0.06,,\n"
+            "2020-08-13,36,10,,0.08,,\n"
+            "2020-08-14,36,10,,0.08,,\n"
+            "2020-08-15,36,10,,0.08,,\n"
+        )
 
+    with freeze_time(freeze_date):
+        results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
 
-@freeze_time("2020-08-23")
-def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio():
-    # 4 days with positive_tests and negative_tests in the past 7 days causes it to be used.
-    data = (
-        "date,fips,cases,test_positivity,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
-        "2020-08-17,36,10,0.02,,,1,,\n"
-        "2020-08-18,36,20,,,,2,,\n"
-        "2020-08-19,36,30,,0,0,3,,\n"
-        "2020-08-20,36,40,,1,10,4,,\n"
-        "2020-08-21,36,50,,2,20,4,,\n"
-        "2020-08-22,36,60,,2,30,4,,\n"
-    )
-    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
-    latest = {
-        CommonFields.POPULATION: 100_000,
-        CommonFields.FIPS: "36",
-        CommonFields.STATE: "NY",
-        CommonFields.ICU_BEDS: 10,
-    }
-    one_region = dataclasses.replace(one_region, latest=latest)
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
-
-    expected = _build_metrics_df(
-        "2020-08-17,36,,,,,\n"
-        "2020-08-18,36,10,,0.04,,\n"
-        "2020-08-19,36,10,,0.06,,\n"
-        "2020-08-20,36,10,0.0909,0.08,,\n"
-        "2020-08-21,36,10,0.0909,0.08,,\n"
-        "2020-08-22,36,10,0.0625,0.08,,\n"
-    )
     # check_less_precise so only 3 digits need match for testPositivityRatio
     pd.testing.assert_frame_equal(expected, results, check_less_precise=True)
 

@@ -194,7 +194,7 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
 
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
     if not flattened_timeseries.__root__:
-        logger.error(
+        logger.warning(
             "No summaries, skipping deploying bulk data",
             intervention=intervention,
             summary_folder=summary_folder,

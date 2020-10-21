@@ -300,13 +300,13 @@ def test_calculate_new_cases():
     mrts_before = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,cases\n"
-            "iso1:us#fips:1,2000-01-01,0\n"
-            "iso1:us#fips:1,2000-01-02,1\n"
-            "iso1:us#fips:1,2000-01-03,1\n"
-            "iso1:us#fips:2,2000-01-01,5\n"
-            "iso1:us#fips:2,2000-01-02,7\n"
-            "iso1:us#fips:3,2000-01-01,9\n"
-            "iso1:us#fips:4,2000-01-01,\n"
+            "iso1:us#fips:1,2020-01-01,0\n"
+            "iso1:us#fips:1,2020-01-02,1\n"
+            "iso1:us#fips:1,2020-01-03,1\n"
+            "iso1:us#fips:2,2020-01-01,5\n"
+            "iso1:us#fips:2,2020-01-02,7\n"
+            "iso1:us#fips:3,2020-01-01,9\n"
+            "iso1:us#fips:4,2020-01-01,\n"
             "iso1:us#fips:1,,100"
         )
     )
@@ -314,18 +314,18 @@ def test_calculate_new_cases():
     mrts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,cases,new_cases\n"
-            "iso1:us#fips:1,2000-01-01,0,\n"
-            "iso1:us#fips:1,2000-01-02,1,1\n"
-            "iso1:us#fips:1,2000-01-03,1,0\n"
-            "iso1:us#fips:2,2000-01-01,5,\n"
-            "iso1:us#fips:2,2000-01-02,7,2\n"
-            "iso1:us#fips:3,2000-01-01,9,\n"
-            "iso1:us#fips:4,2000-01-01,,\n"
+            "iso1:us#fips:1,2020-01-01,0,0\n"
+            "iso1:us#fips:1,2020-01-02,1,1\n"
+            "iso1:us#fips:1,2020-01-03,1,0\n"
+            "iso1:us#fips:2,2020-01-01,5,5\n"
+            "iso1:us#fips:2,2020-01-02,7,2\n"
+            "iso1:us#fips:3,2020-01-01,9,9\n"
+            "iso1:us#fips:4,2020-01-01,,\n"
             "iso1:us#fips:1,,100,\n"
         )
     )
 
-    mrts_after = timeseries.add_new_cases(mrts=mrts_before)
+    mrts_after = timeseries.add_new_cases(mrts_before)
     pd.testing.assert_frame_equal(mrts_after.data, mrts_expected.data, check_like=True)
 
 
