@@ -48,32 +48,9 @@ class Method:
 
 TEST_POSITIVITY_METHODS = (
     Method(
-        "positiveCasesViral_totalTestEncountersViral",
-        CommonFields.POSITIVE_CASES_VIRAL,
-        CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL,
-    ),
-    Method(
         "positiveTestsViral_totalTestsViral",
         CommonFields.POSITIVE_TESTS_VIRAL,
         CommonFields.TOTAL_TESTS_VIRAL,
-    ),
-    Method(
-        "positiveCasesViral_totalTestsViral",
-        CommonFields.POSITIVE_CASES_VIRAL,
-        CommonFields.TOTAL_TESTS_VIRAL,
-    ),
-    Method(
-        "positiveTests_totalTestsViral", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_VIRAL
-    ),
-    Method(
-        "positiveCasesViral_totalTestsPeopleViral",
-        CommonFields.POSITIVE_CASES_VIRAL,
-        CommonFields.TOTAL_TESTS_PEOPLE_VIRAL,
-    ),
-    Method(
-        "positiveCasesViral_totalTestResults",
-        CommonFields.POSITIVE_CASES_VIRAL,
-        CommonFields.TOTAL_TESTS,
     ),
 )
 

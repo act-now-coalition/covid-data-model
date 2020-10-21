@@ -39,8 +39,8 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     ICU_HEADROOM_RATIO = "icuHeadroomRatio"
 
 
-def has_data_in_past_7_days(series: pd.Series) -> bool:
-    return series_utils.has_recent_data(series, days_back=7, required_non_null_datapoints=4)
+def has_data_in_past_10_days(series: pd.Series) -> bool:
+    return series_utils.has_recent_data(series, days_back=10, required_non_null_datapoints=1)
 
 
 def calculate_metrics_for_timeseries(
@@ -108,9 +108,9 @@ def calculate_metrics_for_timeseries(
 def calculate_or_copy_test_positivity(data):
     # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
     # for this region.
-    positive_negative_recent = has_data_in_past_7_days(
+    positive_negative_recent = has_data_in_past_10_days(
         data[CommonFields.POSITIVE_TESTS]
-    ) and has_data_in_past_7_days(data[CommonFields.NEGATIVE_TESTS])
+    ) and has_data_in_past_10_days(data[CommonFields.NEGATIVE_TESTS])
     test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
     if positive_negative_recent or not test_positivity.notna().any():
         cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
