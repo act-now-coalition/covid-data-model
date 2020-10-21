@@ -671,12 +671,29 @@ def _remove_padded_nans(df, columns):
     return df.reset_index(drop=True)
 
 
-def add_new_cases(mrts: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
+def _diff_preserving_first_value(series):
+
+    series_diff = series.diff()
+    first_valid_index = series.first_valid_index()
+    if first_valid_index is None:
+        return series_diff
+
+    series_diff[first_valid_index] = series[series.first_valid_index()]
+    return series_diff
+
+
+def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
     """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
-    df_copy = mrts.data.copy()
-    grouped_df = mrts.groupby_region()
-    df_copy[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].diff(1)
-    new_mrts = MultiRegionTimeseriesDataset.from_timeseries_df(
-        timeseries_df=df_copy, provenance=mrts.provenance
-    ).append_latest_df(mrts.latest_data.reset_index())
-    return new_mrts
+    df_copy = timeseries.data.copy()
+    grouped_df = timeseries.groupby_region()
+    # Calculating new cases using diff will remove the first detected value from the case series.
+    # We want to capture the first day a region reports a case. Since our data sources have
+    # been capturing cases in all states from the beginning of the pandemic, we are treating
+    # The first days as appropriate new case data.
+    df_copy[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].apply(
+        _diff_preserving_first_value
+    )
+    new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
+        timeseries_df=df_copy, provenance=timeseries.provenance
+    ).append_latest_df(timeseries.latest_data.reset_index())
+    return new_timeseries
