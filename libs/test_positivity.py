@@ -13,6 +13,8 @@ import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import timeseries
+
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 
 
@@ -167,3 +169,16 @@ class AllMethods:
         self.all_methods_timeseries.to_csv(
             csv_path, date_format="%Y-%m-%d", index=True, float_format="%.05g",
         )
+
+
+def run_and_maybe_join_columns(
+    mrts: timeseries.MultiRegionTimeseriesDataset, log
+) -> timeseries.MultiRegionTimeseriesDataset:
+    """Calculates test positivity and joins it with the input if it finishes"""
+    try:
+        test_positivity_results = AllMethods.run(mrts)
+    except TestPositivityException:
+        log.exception("test_positivity failed")
+        return mrts
+    else:
+        return mrts.join_columns(test_positivity_results.test_positivity)
