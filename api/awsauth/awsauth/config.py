@@ -20,6 +20,10 @@ class EnvConstants(pydantic.BaseSettings):
 
     AWS_REGION: str = "us-east-1"
 
+    HUBSPOT_API_KEY: str
+
+    HUBSPOT_ENABLED: bool
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

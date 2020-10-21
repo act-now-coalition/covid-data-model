@@ -16,6 +16,8 @@ from awsauth.api_key_repo import APIKeyRepo
 from awsauth.email_repo import EmailRepo
 from awsauth.config import Config
 from awsauth.the_registry import registry
+from awsauth import hubspot_client
+
 
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
 WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
@@ -102,6 +104,13 @@ def _get_or_create_api_key(email):
         APIKeyRepo.record_email_sent(email)
     else:
         _logger.error(f"Failed to send email to {email}")
+
+    # attempt to add hubspot contact, but don't block reg on failure.
+    try:
+        registry.hubspot_client.create_contact(email)
+    except hubspot_client.HubSpotAPICallFailed:
+        _logger.error("HubSpot call failed")
+        sentry_sdk.capture_exception()
 
     return api_key
 
