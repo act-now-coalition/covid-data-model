@@ -8,6 +8,7 @@ from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets import AggregationLevel
 import pandas as pd
+import structlog
 
 
 @pytest.fixture
@@ -23,9 +24,10 @@ def nyc_regional_input(nyc_region, rt_dataset, icu_dataset):
 def il_regional_input(rt_dataset, icu_dataset):
     region = Region.from_state("IL")
     regional_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset([region])
-    test_positivity_results = test_positivity.AllMethods.run(regional_data)
+    regional_data = test_positivity.run_and_maybe_join_columns(
+        regional_data, structlog.get_logger()
+    )
 
-    regional_data = regional_data.join_columns(test_positivity_results.test_positivity)
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
         region, regional_data, rt_dataset, icu_dataset
     )
