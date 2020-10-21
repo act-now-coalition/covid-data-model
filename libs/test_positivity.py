@@ -13,8 +13,6 @@ import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
-from cli.api import _logger
-from libs.datasets import combined_datasets
 from libs.datasets import timeseries
 
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
