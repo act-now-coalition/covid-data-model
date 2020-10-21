@@ -8,6 +8,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_fields
 
 from api import can_api_definition
+from api.can_api_definition import TestPositivityRatioMethod
 from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs import icu_headroom_metric
@@ -72,7 +73,7 @@ def calculate_metrics_for_timeseries(
     cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)
 
-    test_positivity = calculate_or_copy_test_positivity(data)
+    test_positivity, test_positivity_method = calculate_or_copy_test_positivity(timeseries)
 
     contact_tracer_capacity = calculate_contact_tracers(
         cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
@@ -100,12 +101,17 @@ def calculate_metrics_for_timeseries(
 
     metric_summary = None
     if not metrics.empty:
-        metric_summary = calculate_latest_metrics(metrics, icu_metric_details)
+        metric_summary = calculate_latest_metrics(
+            metrics, icu_metric_details, test_positivity_method
+        )
 
     return metrics, metric_summary
 
 
-def calculate_or_copy_test_positivity(data):
+def calculate_or_copy_test_positivity(
+    ts: OneRegionTimeseriesDataset,
+) -> Tuple[pd.Series, TestPositivityRatioMethod]:
+    data = ts.date_indexed
     # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
     # for this region.
     positive_negative_recent = has_data_in_past_10_days(
@@ -119,9 +125,22 @@ def calculate_or_copy_test_positivity(data):
         cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
             data[CommonFields.NEGATIVE_TESTS]
         )
-        return calculate_test_positivity(cumulative_positive_tests, cumulative_negative_tests)
+        if (
+            ts.provenance.get(CommonFields.POSITIVE_TESTS) == "HHS"
+            and ts.provenance.get(CommonFields.NEGATIVE_TESTS) == "HHS"
+        ):
+            method = TestPositivityRatioMethod.HHS
+        else:
+            method = TestPositivityRatioMethod.OTHER
+        return (
+            calculate_test_positivity(cumulative_positive_tests, cumulative_negative_tests),
+            method,
+        )
     else:
-        return test_positivity
+        method = TestPositivityRatioMethod.get(
+            ts.provenance.get(CommonFields.TEST_POSITIVITY, "other")
+        )
+        return test_positivity, method
 
 
 def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
@@ -210,6 +229,7 @@ def calculate_contact_tracers(
 def calculate_latest_metrics(
     data: pd.DataFrame,
     icu_metric_details: Optional[ICUHeadroomMetricDetails],
+    test_positivity_method: Optional[TestPositivityRatioMethod],
     max_lookback_days: int = MAX_METRIC_LOOKBACK_DAYS,
 ) -> Metrics:
     """Calculate latest metrics from top level metrics data.
@@ -253,4 +273,8 @@ def calculate_latest_metrics(
 
     metrics[MetricsFields.INFECTION_RATE] = data[MetricsFields.INFECTION_RATE][rt_index]
     metrics[MetricsFields.INFECTION_RATE_CI90] = data[MetricsFields.INFECTION_RATE_CI90][rt_index]
-    return Metrics(**metrics, icuHeadroomDetails=icu_metric_details)
+    return Metrics(
+        **metrics,
+        icuHeadroomDetails=icu_metric_details,
+        testPositivityRatioMethod=test_positivity_method,
+    )

@@ -325,7 +325,7 @@ def test_calculate_latest_rt():
         f"2020-08-13,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
         "2020-08-20,36,10,0.1,0.08,2.0,0.2\n"
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert metrics.infectionRate == prev_rt
     assert metrics.infectionRateCI90 == prev_rt_ci90
 
@@ -338,7 +338,7 @@ def test_lookback_days():
         f"2020-08-13,36,10,0.1,0.06,,\n"
         "2020-08-20,,,,,,\n"
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert not metrics.caseDensity
     assert not metrics.testPositivityRatio
     assert not metrics.infectionRate
@@ -347,14 +347,14 @@ def test_lookback_days():
 
 def test_calculate_latest_rt_no_previous_row():
     data = _build_metrics_df("2020-08-20,36,10,0.1,0.08,2.0,0.2\n")
-    metrics = top_level_metrics.calculate_latest_metrics(data, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
 
 
 def test_calculate_latest_rt_no_rt():
     data = _build_metrics_df("2020-08-20,36,10,0.1,0.08,,\n")
-    metrics = top_level_metrics.calculate_latest_metrics(data, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
 
@@ -375,5 +375,5 @@ def test_calculate_latest_different_latest_days():
         icuHeadroomRatio=None,
         icuHeadroomDetails=None,
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data, None, max_lookback_days=8)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None, None, max_lookback_days=8)
     assert metrics == expected_metrics
