@@ -38,7 +38,7 @@ class Method:
 
         Args:
             delta_df: DataFrame with rows having MultiIndex of [VARIABLE, LOCATION_ID] and columns with DATE
-                index. Must contain at least one real value for eoch of self.columns.
+                index. Must contain at least one real value for each of self.columns.
         """
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
@@ -91,6 +91,7 @@ class AllMethods:
         diff_days: int = 7,
         recent_days: int = 14,
     ) -> "AllMethods":
+        """Runs `methods` on `dataset_in` and returns the results or raises a TestPositivityException."""
         relevant_columns = AllMethods._list_columns(
             AllMethods._methods_with_columns_available(methods, dataset_in.data.columns)
         )
@@ -180,7 +181,7 @@ class AllMethods:
 def run_and_maybe_join_columns(
     mrts: timeseries.MultiRegionTimeseriesDataset, log
 ) -> timeseries.MultiRegionTimeseriesDataset:
-    """Calculates test positivity and joins it with the input if it finishes"""
+    """Calculates test positivity and joins it with the input, if successful."""
     try:
         test_positivity_results = AllMethods.run(mrts)
     except TestPositivityException:
