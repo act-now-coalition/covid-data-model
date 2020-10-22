@@ -149,7 +149,6 @@ execute_zip_folder() {
 execute() {
   execute_model
   execute_api_v2
-  execute_api
   execute_zip_folder
 }
 
