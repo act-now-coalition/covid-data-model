@@ -186,10 +186,10 @@ def test_column_present_with_no_data():
     # to pass to from_timeseries_df.
     ts_df = common_df.read_csv(
         io.StringIO(
-            "location_id,date,total_tests\n"
-            "iso1:us#iso2:tx,2020-04-01,100\n"
-            "iso1:us#iso2:tx,2020-04-02,200\n"
-            "iso1:us#iso2:tx,2020-04-04,400\n"
+            "location_id,date,positive_tests,total_tests\n"
+            "iso1:us#iso2:tx,2020-04-01,,100\n"
+            "iso1:us#iso2:tx,2020-04-02,,200\n"
+            "iso1:us#iso2:tx,2020-04-04,,400\n"
         ),
         set_index=False,
     )
@@ -199,4 +199,25 @@ def test_column_present_with_no_data():
         Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
     with pytest.raises(test_positivity.NoColumnsWithDataException):
+        AllMethods.run(ts, methods, diff_days=1, recent_days=1)
+
+
+def test_all_columns_na():
+    # MultiRegionTimeseriesDataset.from_csv drops columns with no real values so make a DataFrame
+    # to pass to from_timeseries_df.
+    ts_df = common_df.read_csv(
+        io.StringIO(
+            "location_id,date,positive_tests,total_tests\n"
+            "iso1:us#iso2:tx,2020-04-01,,\n"
+            "iso1:us#iso2:tx,2020-04-02,,\n"
+            "iso1:us#iso2:tx,2020-04-04,,\n"
+        ),
+        set_index=False,
+    )
+    ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
+    ts = timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(ts_df)
+    methods = [
+        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+    ]
+    with pytest.raises(test_positivity.NoRealTimeseriesValuesException):
         AllMethods.run(ts, methods, diff_days=1, recent_days=1)

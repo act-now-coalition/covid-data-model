@@ -69,6 +69,10 @@ class NoMethodsWithRelevantColumns(TestPositivityException):
     pass
 
 
+class NoRealTimeseriesValuesException(TestPositivityException):
+    pass
+
+
 @dataclasses.dataclass
 class AllMethods:
     """The result of calculating all test positivity methods for all regions"""
@@ -97,6 +101,8 @@ class AllMethods:
             [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
         )[PdFields.VALUE]
         dates = input_long.index.get_level_values(CommonFields.DATE)
+        if dates.empty:
+            raise NoRealTimeseriesValuesException()
         start_date = dates.min()
         end_date = dates.max()
         input_date_range = pd.date_range(start=start_date, end=end_date)
