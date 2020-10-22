@@ -234,10 +234,10 @@ def _combined_sorted_by_location_date(ts: timeseries.MultiRegionTimeseriesDatase
 def assert_combined_like(
     ts1: timeseries.MultiRegionTimeseriesDataset, ts2: timeseries.MultiRegionTimeseriesDataset
 ):
-    """Asserts that two datasets contain similar date, ignoring order."""
+    """Asserts that two datasets contain similar date, ignoring order and dtypes."""
     sorted1 = _combined_sorted_by_location_date(ts1)
     sorted2 = _combined_sorted_by_location_date(ts2)
-    pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
+    pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True, check_dtype=False)
 
 
 def test_append_regions():
