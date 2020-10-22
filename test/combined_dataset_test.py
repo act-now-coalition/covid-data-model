@@ -59,20 +59,18 @@ def test_combined_county_has_some_data(fips):
     assert latest.get_record_for_fips(fips=fips)[CommonFields.DEATHS] > 1
 
 
-# Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
-@pytest.mark.parametrize("fips", ["06075", "48201"])
+# Check some counties picked arbitrarily: (Marion County, IN)/18097 and (Harris County, TX)/48201
+@pytest.mark.parametrize("fips", ["18097", "48201"])
 def test_combined_county_has_some_timeseries_data(fips):
     region = Region.from_fips(fips)
     latest = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
     df = latest.data.set_index(CommonFields.DATE)
-    assert df.loc["2020-05-01", CommonFields.CASES] > 0
-    assert df.loc["2020-05-01", CommonFields.DEATHS] > 0
-    if fips.startswith(
-        "06"
-    ):  # TODO(tom): Remove this condition when we have county data in TX too.
-        assert df.loc["2020-05-01", CommonFields.POSITIVE_TESTS] > 0
-        assert df.loc["2020-05-01", CommonFields.NEGATIVE_TESTS] > 0
-        assert df.loc["2020-05-01", CommonFields.CURRENT_ICU] > 0
+    date = "2020-09-01"  # Arbitrary date that both FIPS have data for.
+    assert df.loc[date, CommonFields.CASES] > 0
+    assert df.loc[date, CommonFields.DEATHS] > 0
+    assert df.loc[date, CommonFields.POSITIVE_TESTS] > 0
+    assert df.loc[date, CommonFields.NEGATIVE_TESTS] > 0
+    assert df.loc[date, CommonFields.CURRENT_ICU] > 0
 
 
 @pytest.mark.slow
