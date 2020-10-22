@@ -547,6 +547,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionTimeseriesDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
+        return self.get_locations_subset(location_ids)
+
+    def get_locations_subset(self, location_ids: Sequence[str]) -> "MultiRegionTimeseriesDataset":
         timeseries_df = self.data.loc[self.data[CommonFields.LOCATION_ID].isin(location_ids), :]
         latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
         return MultiRegionTimeseriesDataset.from_timeseries_df(
@@ -697,3 +700,20 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
         timeseries_df=df_copy, provenance=timeseries.provenance
     ).append_latest_df(timeseries.latest_data.reset_index())
     return new_timeseries
+
+
+def drop_regions_without_population(
+    mrts: MultiRegionTimeseriesDataset,
+    known_location_id_to_drop: Sequence[str],
+    log: Union[structlog.BoundLoggerBase, structlog._config.BoundLoggerLazyProxy],
+) -> MultiRegionTimeseriesDataset:
+    # latest_population is a Series with location_id index
+    latest_population = mrts.latest_data[CommonFields.POPULATION]
+    locations_with_population = mrts.latest_data.loc[latest_population.notna()].index
+    locations_without_population = mrts.latest_data.loc[latest_population.isna()].index
+    unexpected_drops = set(locations_without_population) - set(known_location_id_to_drop)
+    if unexpected_drops:
+        log.warning(
+            "Dropping unexpected regions without populaton", location_ids=sorted(unexpected_drops)
+        )
+    return mrts.get_locations_subset(locations_with_population)
