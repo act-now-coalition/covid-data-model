@@ -697,8 +697,6 @@ class ModelFitter:
                 model_fitter = cls(regional_input)
                 try:
                     model_fitter.fit()
-                    if model_fitter.mle_model and os.environ.get("PYSEIR_PLOT_RESULTS") == "True":
-                        model_plotting.plot_fitting_results(model_fitter)
                 except RuntimeError as e:
                     log.warning("No convergence.. Retrying " + str(e))
                 retries_left = retries_left - 1
