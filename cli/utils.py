@@ -146,3 +146,4 @@ def update_api_user_usage(
 
     rows = update_api_user_metrics.run_user_activity_summary_query(table_name, database_name)
     update_api_user_metrics.update_google_sheet(sheet, "API Usage Activity Report", rows)
+    update_api_user_metrics.update_hubspot_users(rows)

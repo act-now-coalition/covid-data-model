@@ -1,8 +1,9 @@
 from typing import Optional, List, Callable, Dict, Any
+import os
 import time
 import datetime
 import logging
-
+import requests
 import gspread
 import boto3
 
@@ -18,15 +19,43 @@ SELECT MIN(DATE(timestamp)) AS "signupDate",
          count(*) AS "totalRequests",
          email
 FROM default.{table}
-GROUP BY email;
+GROUP BY email
 """
 
 
 ATHENA_BUCKET = "s3://covidactnow-athena-results"
+HUBSPOT_API_KEY = os.getenv["HUBSPOT_API_KEY"]
 
 
 class CloudWatchQueryError(Exception):
     """Raised on a failed query to CloudWatch"""
+
+
+def update_hubspot_activity(email, latest_active_at, days_active):
+    """Updates Hubspot contact with latest activity dates."""
+    contacts_url = "https://api.hubapi.com/crm/v3/objects/contacts"
+
+    query_string = {"hapikey": HUBSPOT_API_KEY}
+
+    date = datetime.datetime.strptime(latest_active_at + " +0000", "%Y-%m-%d %z")
+    url = f"https://api.hubapi.com/contacts/v1/contact/createOrUpdate/email/{email}"
+
+    response = requests.post(
+        url,
+        params=query_string,
+        json={
+            "email": email,
+            "properties": [
+                {"property": "last_api_request_at", "value": int(date.timestamp()) * 1000},
+                {"property": "api_days_active", "value": days_active},
+            ],
+        },
+    )
+    if not response.ok:
+        _logger.warning(f"Failed to update hubspot activity for {email}")
+        return
+
+    _logger.info(f"Successfully updated {email}")
 
 
 def _run_query(database: str, query: str,) -> List[dict]:
@@ -133,3 +162,13 @@ def update_google_sheet(
 
     # Setting raw=False allows Google Sheets to parse date strings as dates.
     worksheet.update(rows, raw=False)
+
+
+def update_hubspot_users(data: List[Dict[str, Any]]):
+    """Updates hubspot users"""
+    if not HUBSPOT_API_KEY:
+        _logger.warning("Hubspot API key not provided, skipping hubspot update")
+        return
+
+    for row in data:
+        update_hubspot_activity(row["email"], row["latestDate"], row["daysActive"])
