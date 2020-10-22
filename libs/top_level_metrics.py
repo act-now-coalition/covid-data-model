@@ -48,6 +48,7 @@ def calculate_metrics_for_timeseries(
     timeseries: OneRegionTimeseriesDataset,
     rt_data: Optional[OneRegionTimeseriesDataset],
     icu_data: Optional[OneRegionTimeseriesDataset],
+    log,
     require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
@@ -73,7 +74,7 @@ def calculate_metrics_for_timeseries(
     cumulative_cases = data[CommonFields.CASES]
     case_density = calculate_case_density(cumulative_cases, population)
 
-    test_positivity, test_positivity_method = calculate_or_copy_test_positivity(timeseries)
+    test_positivity, test_positivity_method = calculate_or_copy_test_positivity(timeseries, log)
 
     contact_tracer_capacity = calculate_contact_tracers(
         cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
@@ -108,8 +109,22 @@ def calculate_metrics_for_timeseries(
     return metrics, metric_summary
 
 
+def _lookup_test_positivity_method(
+    positive_tests_provenance: Optional[str], negative_tests_provenance: Optional[str], log
+) -> TestPositivityRatioMethod:
+    if positive_tests_provenance == "HHSTesting" and negative_tests_provenance == "HHSTesting":
+        return TestPositivityRatioMethod.HHSTesting
+    else:
+        log.info(
+            "Unable to find TestPositivityRatioMethod",
+            positive_tests_provenance=positive_tests_provenance,
+            negative_tests_provenance=negative_tests_provenance,
+        )
+        return TestPositivityRatioMethod.OTHER
+
+
 def calculate_or_copy_test_positivity(
-    ts: OneRegionTimeseriesDataset,
+    ts: OneRegionTimeseriesDataset, log,
 ) -> Tuple[pd.Series, TestPositivityRatioMethod]:
     data = ts.date_indexed
     # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
@@ -125,21 +140,21 @@ def calculate_or_copy_test_positivity(
         cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
             data[CommonFields.NEGATIVE_TESTS]
         )
-        if (
-            ts.provenance.get(CommonFields.POSITIVE_TESTS) == "HHS"
-            and ts.provenance.get(CommonFields.NEGATIVE_TESTS) == "HHS"
-        ):
-            method = TestPositivityRatioMethod.HHS
-        else:
-            method = TestPositivityRatioMethod.OTHER
+        method = _lookup_test_positivity_method(
+            ts.provenance.get(CommonFields.POSITIVE_TESTS),
+            ts.provenance.get(CommonFields.NEGATIVE_TESTS),
+            log,
+        )
         return (
             calculate_test_positivity(cumulative_positive_tests, cumulative_negative_tests),
             method,
         )
     else:
-        method = TestPositivityRatioMethod.get(
-            ts.provenance.get(CommonFields.TEST_POSITIVITY, "other")
-        )
+        provenance = ts.provenance.get(CommonFields.TEST_POSITIVITY)
+        method = TestPositivityRatioMethod.get(provenance)
+        if method is None:
+            log.info("Unable to find TestPositivityRatioMethod", provenance=provenance)
+            method = TestPositivityRatioMethod.OTHER
         return test_positivity, method
 
 

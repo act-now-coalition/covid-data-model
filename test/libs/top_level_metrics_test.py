@@ -4,6 +4,7 @@ import io
 import numpy as np
 import pandas as pd
 import pytest
+import structlog
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from api import can_api_definition
@@ -112,7 +113,7 @@ def test_top_level_metrics_basic():
     }
     one_region = dataclasses.replace(one_region, latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, None, require_recent_icu_data=False
+        one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
     )
 
     expected = _build_metrics_df(
@@ -141,7 +142,7 @@ def test_top_level_metrics_incomplete_latest():
     }
     one_region = dataclasses.replace(one_region, latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, None, require_recent_icu_data=False
+        one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
     )
 
     expected = _build_metrics_df(
@@ -169,7 +170,9 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
         CommonFields.ICU_BEDS: 10,
     }
     one_region = dataclasses.replace(one_region, latest=latest)
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+        one_region, None, None, structlog.get_logger()
+    )
 
     expected = _build_metrics_df(
         "2020-08-17,36,,,,,\n"
@@ -196,7 +199,9 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
         CommonFields.ICU_BEDS: 10,
     }
     one_region = dataclasses.replace(one_region, latest=latest)
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+        one_region, None, None, structlog.get_logger()
+    )
 
     expected = _build_metrics_df(
         "2020-08-17,36,,0.02,,,\n"
@@ -253,7 +258,9 @@ def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tes
         )
 
     with freeze_time(freeze_date):
-        results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
+        results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+            one_region, None, None, structlog.get_logger()
+        )
 
     # check_less_precise so only 3 digits need match for testPositivityRatio
     pd.testing.assert_frame_equal(expected, results, check_less_precise=True)
@@ -288,7 +295,9 @@ def test_top_level_metrics_with_rt():
         CommonFields.ICU_BEDS: 25,
     }
     one_region = dataclasses.replace(one_region, latest=latest)
-    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, rt_data, None)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+        one_region, rt_data, None, structlog.get_logger()
+    )
     expected = _build_metrics_df(
         "2020-08-17,36,,,,1.1,.1\n"
         "2020-08-18,36,10,0.1,0.04,1.2,.1\n"

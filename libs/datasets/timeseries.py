@@ -485,6 +485,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def from_csv(
         path_or_buf: Union[pathlib.Path, TextIO], provenance: Optional[pd.Series] = None,
     ) -> "MultiRegionTimeseriesDataset":
+        if provenance is None and isinstance(path_or_buf, pathlib.Path):
+            provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
+            if provenance_path.is_file():
+                provenance = pd.read_csv(provenance_path).set_index(
+                    [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+                )[PdFields.VALUE]
         return MultiRegionTimeseriesDataset.from_combined_dataframe(
             common_df.read_csv(path_or_buf, set_index=False), provenance=provenance,
         )
