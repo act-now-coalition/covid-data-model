@@ -22,7 +22,7 @@ env:
   AWS_S3_BUCKET: 'data.covidactnow.org'
 
   # Use plotting by default on CI
-  PYSEIR_PLOT_RESULTS: 'True'
+  PYSEIR_PLOT_RESULTS: 'False'
 
   # The snapshot ID that identifies all of the API artifacts we're generating and ends
   # up in the final /snapshot/{id}/ URL.
