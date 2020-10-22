@@ -20,10 +20,6 @@ def _build_metrics_df(content: str) -> pd.DataFrame:
         "date,fips,caseDensity,testPositivityRatio,contactTracerCapacityRatio,"
         "infectionRate,infectionRateCI90,icuHeadroomRatio\n"
     )
-    """
-    date   caseDensity    contactTracerCapacityRatio,
-        fips   testPositivityRatio     infectionRate,infectionRateCI90,icuHeadroomRatio\n
-        """
     data = io.StringIO(f"{header}\n{content}")
     return common_df.read_csv(data, set_index=False)
 
@@ -224,11 +220,11 @@ def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tes
     data = (
         "date,fips,cases,test_positivity,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
         "2020-08-10,36,10,0.02,1,10,1,,\n"
-        "2020-08-11,36,20,,2,20,2,,\n"
-        "2020-08-12,36,30,,,,3,,\n"
-        "2020-08-13,36,40,,,,4,,\n"
-        "2020-08-14,36,50,,,,4,,\n"
-        "2020-08-15,36,60,,,,4,,\n"
+        "2020-08-11,36,20,0.03,2,20,2,,\n"
+        "2020-08-12,36,30,0.04,,,3,,\n"
+        "2020-08-13,36,40,0.05,,,4,,\n"
+        "2020-08-14,36,50,0.06,,,4,,\n"
+        "2020-08-15,36,60,0.07,,,4,,\n"
     )
     one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
@@ -255,11 +251,11 @@ def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tes
         # positive_tests and negative_tests no longer recent so test_positivity is copied to output.
         expected = _build_metrics_df(
             "2020-08-10,36,,0.02,,,\n"
-            "2020-08-11,36,10,,0.04,,\n"
-            "2020-08-12,36,10,,0.06,,\n"
-            "2020-08-13,36,10,,0.08,,\n"
-            "2020-08-14,36,10,,0.08,,\n"
-            "2020-08-15,36,10,,0.08,,\n"
+            "2020-08-11,36,10,0.03,0.04,,\n"
+            "2020-08-12,36,10,0.04,0.06,,\n"
+            "2020-08-13,36,10,0.05,0.08,,\n"
+            "2020-08-14,36,10,0.06,0.08,,\n"
+            "2020-08-15,36,10,0.07,0.08,,\n"
         )
 
     with freeze_time(freeze_date):
