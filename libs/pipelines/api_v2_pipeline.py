@@ -35,7 +35,7 @@ INTERVENTION = Intervention.OBSERVED_INTERVENTION
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: OneRegionTimeseriesDataset
+    _combined_data_with_test_positivity: OneRegionTimeseriesDataset
 
     rt_data: Optional[OneRegionTimeseriesDataset]
 
@@ -47,20 +47,20 @@ class RegionalInput:
 
     @property
     def latest(self) -> Dict[str, Any]:
-        return self._combined_data.latest
+        return self._combined_data_with_test_positivity.latest
 
     @property
     def timeseries(self) -> OneRegionTimeseriesDataset:
-        return self._combined_data
+        return self._combined_data_with_test_positivity
 
     @staticmethod
     def from_region_and_model_output(
         region: pipeline.Region,
-        combined_data: MultiRegionTimeseriesDataset,
+        combined_data_with_test_positivity: MultiRegionTimeseriesDataset,
         rt_data: MultiRegionTimeseriesDataset,
         icu_data: MultiRegionTimeseriesDataset,
     ) -> "RegionalInput":
-        one_region_data = combined_data.get_one_region(region)
+        one_region_data = combined_data_with_test_positivity.get_one_region(region)
 
         # Not all regions have Rt or ICU data due to various filters in pyseir code.
         try:
@@ -74,7 +74,10 @@ class RegionalInput:
             icu_data = None
 
         return RegionalInput(
-            region=region, _combined_data=one_region_data, rt_data=rt_data, icu_data=icu_data,
+            region=region,
+            _combined_data_with_test_positivity=one_region_data,
+            rt_data=rt_data,
+            icu_data=icu_data,
         )
 
     @staticmethod
@@ -85,7 +88,10 @@ class RegionalInput:
         icu_data: Optional[OneRegionTimeseriesDataset],
     ):
         return RegionalInput(
-            region=region, _combined_data=regional_data, rt_data=rt_data, icu_data=icu_data,
+            region=region,
+            _combined_data_with_test_positivity=regional_data,
+            rt_data=rt_data,
+            icu_data=icu_data,
         )
 
 
