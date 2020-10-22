@@ -551,16 +551,21 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         latest_dict = self._location_id_latest_dict(region.location_id)
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
-
-        if self.provenance is not None:
-            provenance_series = self.provenance.loc[region.location_id]
-            provenance_dict = provenance_series[provenance_series.notna()].to_dict()
-        else:
-            provenance_dict = {}
+        provenance_dict = self._location_id_provenance_dict(region.location_id)
 
         return OneRegionTimeseriesDataset(
-            data=ts_df, latest=latest_dict, provenance=provenance_dict
+            data=ts_df, latest=latest_dict, provenance=provenance_dict,
         )
+
+    def _location_id_provenance_dict(self, location_id: str) -> dict:
+        if self.provenance is None:
+            return {}
+        try:
+            provenance_series = self.provenance.loc[location_id]
+        except KeyError:
+            return {}
+        else:
+            return provenance_series[provenance_series.notna()].to_dict()
 
     def _location_id_latest_dict(self, location_id: str) -> dict:
         try:
@@ -687,11 +692,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         """Iterates through all the regions in this object"""
         for location_id, data_group in self.data_with_fips.groupby(CommonFields.LOCATION_ID):
             latest_dict = self._location_id_latest_dict(location_id)
-            if self.provenance is not None:
-                provenance_series = self.provenance.loc[location_id]
-                provenance_dict = provenance_series[provenance_series.notna()].to_dict()
-            else:
-                provenance_dict = {}
+            provenance_dict = self._location_id_provenance_dict(location_id)
             yield Region(location_id=location_id, fips=None), OneRegionTimeseriesDataset(
                 data_group, latest_dict, provenance=provenance_dict,
             )
