@@ -20,6 +20,10 @@ def _build_metrics_df(content: str) -> pd.DataFrame:
         "date,fips,caseDensity,testPositivityRatio,contactTracerCapacityRatio,"
         "infectionRate,infectionRateCI90,icuHeadroomRatio\n"
     )
+    """
+    date   caseDensity    contactTracerCapacityRatio,
+        fips   testPositivityRatio     infectionRate,infectionRateCI90,icuHeadroomRatio\n
+        """
     data = io.StringIO(f"{header}\n{content}")
     return common_df.read_csv(data, set_index=False)
 
@@ -125,6 +129,7 @@ def test_top_level_metrics_basic():
 
 
 def test_top_level_metrics_incomplete_latest():
+    # This test doesn't have ICU_BEDS set in `latest`. It checks that the metrics are still built.
     data = (
         "date,fips,cases,positive_tests,negative_tests,contact_tracers_count"
         ",current_icu,current_icu_total,icu_beds\n"
@@ -138,6 +143,7 @@ def test_top_level_metrics_incomplete_latest():
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
+        # ICU_BEDS not set
     }
     one_region = dataclasses.replace(one_region, latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
@@ -154,6 +160,8 @@ def test_top_level_metrics_incomplete_latest():
 
 
 def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
+    # All of positive_tests, negative_tests are empty and test_positivity is absent. Make sure
+    # other metrics are still produced.
     data = (
         "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
         "2020-08-17,36,10,,,1,,\n"
@@ -181,12 +189,14 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
 
 
 def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
+    # All of positive_tests, negative_tests are empty. test_positivity has a real value. Make sure
+    # test_positivity is copied to the output and other metrics are produced.
     data = (
         "date,fips,cases,test_positivity,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
         "2020-08-17,36,10,0.02,,,1,,\n"
-        "2020-08-18,36,20,,,,2,,\n"
-        "2020-08-19,36,30,,,,3,,\n"
-        "2020-08-20,36,40,,,,4,,\n"
+        "2020-08-18,36,20,0.03,,,2,,\n"
+        "2020-08-19,36,30,0.04,,,3,,\n"
+        "2020-08-20,36,40,0.05,,,4,,\n"
     )
     one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
@@ -200,9 +210,9 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
 
     expected = _build_metrics_df(
         "2020-08-17,36,,0.02,,,\n"
-        "2020-08-18,36,10,,0.04,,\n"
-        "2020-08-19,36,10,,0.06,,\n"
-        "2020-08-20,36,10,,0.08,,\n"
+        "2020-08-18,36,10,0.03,0.04,,\n"
+        "2020-08-19,36,10,0.04,0.06,,\n"
+        "2020-08-20,36,10,0.05,0.08,,\n"
     )
     pd.testing.assert_frame_equal(expected, results)
 

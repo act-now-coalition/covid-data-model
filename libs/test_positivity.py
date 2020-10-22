@@ -38,7 +38,7 @@ class Method:
 
         Args:
             delta_df: DataFrame with rows having MultiIndex of [VARIABLE, LOCATION_ID] and columns with DATE
-                index. Must contain at least one real value for eoch of self.columns.
+                index. Must contain at least one real value for each of self.columns.
         """
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]

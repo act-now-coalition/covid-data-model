@@ -218,7 +218,7 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
     rt_data_map = dict(rt_data.iter_one_regions())
 
-    # If calculating test positivity finishes join it with the combined_datasets into one
+    # If calculating test positivity succeeds join it with the combined_datasets into one
     # MultiRegionTimeseriesDataset
     regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
     regions_data = test_positivity.run_and_maybe_join_columns(regions_data, _logger)

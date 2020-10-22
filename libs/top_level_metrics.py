@@ -106,6 +106,8 @@ def calculate_metrics_for_timeseries(
 
 
 def calculate_or_copy_test_positivity(data):
+    # TODO(tom): Move all these calculations to test_positivity.AllMethods or something applied to each
+    # datasource with test metrics.
     # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
     # for this region.
     positive_negative_recent = has_data_in_past_10_days(
