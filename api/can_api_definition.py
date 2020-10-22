@@ -79,6 +79,7 @@ class CovidPatientsMethod(enum.Enum):
 class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
     """Method used to determine test positivity ratio."""
 
+    # XXX Fill out with actual method names
     HHS = "hhs"
     METHOD2 = "method2"
     OTHER = "other"
