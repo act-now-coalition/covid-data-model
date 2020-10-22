@@ -168,7 +168,7 @@ def calculate_new_case_data_by_region(
     county_case_data = county_case_timeseries.data
 
     times_new = (county_case_data["date"] - t0).dt.days.iloc[1:]
-    observed_new_cases = county_case_data[CommonFields.NEW_CASES]
+    observed_new_cases = county_case_data[CommonFields.NEW_CASES].to_numpy()[1:]
 
     if include_testing_correction:
         df_new_tests = calculate_new_test_data_by_region(
