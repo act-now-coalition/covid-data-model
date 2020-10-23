@@ -14,6 +14,7 @@ from api.can_api_v2_definition import (
 )
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs import pipeline
 
 
 def _build_actuals(actual_data: dict) -> Actuals:
@@ -46,7 +47,10 @@ def _build_actuals(actual_data: dict) -> Actuals:
 
 
 def build_region_summary(
-    latest_values: dict, latest_metrics: Optional[Metrics], risk_levels: RiskLevels
+    latest_values: dict,
+    latest_metrics: Optional[Metrics],
+    risk_levels: RiskLevels,
+    region: pipeline.Region,
 ) -> RegionSummary:
     actuals = _build_actuals(latest_values)
     return RegionSummary(
@@ -62,6 +66,7 @@ def build_region_summary(
         metrics=latest_metrics,
         riskLevels=risk_levels,
         lastUpdatedDate=datetime.utcnow(),
+        locationId=region.location_id,
     )
 
 
@@ -73,6 +78,7 @@ def build_region_timeseries(
     for row in timeseries.yield_records():
         # Timeseries records don't have population
         row[CommonFields.POPULATION] = region_summary.population
+        row[CommonFields.LOCATION_ID] = region_summary.locationId
         actual = _build_actuals(row)
         timeseries_row = ActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
@@ -99,6 +105,7 @@ def build_bulk_flattened_timeseries(
             "fips": region_timeseries.fips,
             "lat": region_timeseries.lat,
             "long": region_timeseries.long,
+            "locationId": region_timeseries.locationId,
             "lastUpdatedDate": datetime.utcnow(),
         }
         actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}

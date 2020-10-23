@@ -162,7 +162,9 @@ def build_timeseries_for_region(
             fips_timeseries, regional_input.rt_data, regional_input.icu_data
         )
         risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
-        region_summary = build_api_v2.build_region_summary(fips_latest, metrics_latest, risk_levels)
+        region_summary = build_api_v2.build_region_summary(
+            fips_latest, metrics_latest, risk_levels, regional_input.region
+        )
         region_timeseries = build_api_v2.build_region_timeseries(
             region_summary, fips_timeseries, metrics_timeseries
         )
