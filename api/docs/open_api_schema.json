@@ -654,23 +654,6 @@
         },
         "description": "Known actuals data."
       },
-      "CovidPatientsMethod": {
-        "title": "CovidPatientsMethod",
-        "enum": [
-          "actual",
-          "estimated"
-        ],
-        "description": "Method used to determine number of current ICU patients with covid."
-      },
-      "NonCovidPatientsMethod": {
-        "title": "NonCovidPatientsMethod",
-        "enum": [
-          "actual",
-          "estimated_from_typical_utilization",
-          "estimated_from_total_icu_actual"
-        ],
-        "description": "Method used to determine number of current ICU patients without covid."
-      },
       "ICUHeadroomMetricDetails": {
         "title": "ICUHeadroomMetricDetails",
         "required": [
@@ -687,7 +670,12 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuCovidMethod": {
-            "$ref": "#/components/schemas/CovidPatientsMethod"
+            "title": "Currenticucovidmethod",
+            "enum": [
+              "actual",
+              "estimated"
+            ],
+            "description": "Method used to determine number of current ICU patients with covid."
           },
           "currentIcuNonCovid": {
             "title": "Currenticunoncovid",
@@ -695,7 +683,13 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuNonCovidMethod": {
-            "$ref": "#/components/schemas/NonCovidPatientsMethod"
+            "title": "Currenticunoncovidmethod",
+            "enum": [
+              "actual",
+              "estimated_from_typical_utilization",
+              "estimated_from_total_icu_actual"
+            ],
+            "description": "Method used to determine number of current ICU patients without covid."
           }
         },
         "description": "Details about how the ICU Headroom Metric was calculated."
@@ -797,6 +791,7 @@
           "state",
           "county",
           "fips",
+          "locationId",
           "actuals",
           "metrics"
         ],
@@ -845,6 +840,11 @@
             "type": "number",
             "description": "Longitude of point within the state or county"
           },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
+          },
           "actuals": {
             "title": "Actuals",
             "allOf": [
@@ -874,26 +874,6 @@
         },
         "description": "Flattened timeseries data for multiple regions."
       },
-      "AggregationLevel": {
-        "title": "AggregationLevel",
-        "enum": [
-          "country",
-          "state",
-          "county"
-        ],
-        "description": "An enumeration."
-      },
-      "RiskLevel": {
-        "title": "RiskLevel",
-        "enum": [
-          0,
-          1,
-          2,
-          3,
-          4
-        ],
-        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown"
-      },
       "RiskLevels": {
         "title": "RiskLevels",
         "required": [
@@ -907,22 +887,70 @@
         "type": "object",
         "properties": {
           "overall": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "title": "Overall",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "description": "Overall risk level for region."
           },
           "testPositivityRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "title": "Testpositivityratio",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "description": "Test positivity ratio risk level."
           },
           "caseDensity": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "title": "Casedensity",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "description": "Case density risk level."
           },
           "contactTracerCapacityRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "title": "Contacttracercapacityratio",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "description": "Contact tracer capacity ratio risk level."
           },
           "infectionRate": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "title": "Infectionrate",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "description": "Infection rate risk level."
           },
           "icuHeadroomRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "title": "Icuheadroomratio",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "description": "ICU headroom ratio risk level."
           }
         },
         "description": "COVID risk levels for a region."
@@ -936,6 +964,7 @@
           "county",
           "level",
           "lat",
+          "locationId",
           "long",
           "population",
           "metrics",
@@ -973,7 +1002,13 @@
             "description": "County name"
           },
           "level": {
-            "$ref": "#/components/schemas/AggregationLevel"
+            "title": "Level",
+            "enum": [
+              "country",
+              "state",
+              "county"
+            ],
+            "description": "Level of region."
           },
           "lat": {
             "title": "Lat",
@@ -986,6 +1021,11 @@
               }
             ],
             "description": "Latitude of point within the state or county"
+          },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
           },
           "long": {
             "title": "Long",
@@ -1243,6 +1283,7 @@
           "county",
           "level",
           "lat",
+          "locationId",
           "long",
           "population",
           "metrics",
@@ -1281,7 +1322,13 @@
             "description": "County name"
           },
           "level": {
-            "$ref": "#/components/schemas/AggregationLevel"
+            "title": "Level",
+            "enum": [
+              "country",
+              "state",
+              "county"
+            ],
+            "description": "Level of region."
           },
           "lat": {
             "title": "Lat",
@@ -1294,6 +1341,11 @@
               }
             ],
             "description": "Latitude of point within the state or county"
+          },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
           },
           "long": {
             "title": "Long",

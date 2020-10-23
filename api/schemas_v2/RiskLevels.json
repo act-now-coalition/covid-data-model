@@ -4,22 +4,70 @@
   "type": "object",
   "properties": {
     "overall": {
-      "$ref": "#/definitions/RiskLevel"
+      "title": "Overall",
+      "description": "Overall risk level for region.",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
     },
     "testPositivityRatio": {
-      "$ref": "#/definitions/RiskLevel"
+      "title": "Testpositivityratio",
+      "description": "Test positivity ratio risk level.",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
     },
     "caseDensity": {
-      "$ref": "#/definitions/RiskLevel"
+      "title": "Casedensity",
+      "description": "Case density risk level.",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
     },
     "contactTracerCapacityRatio": {
-      "$ref": "#/definitions/RiskLevel"
+      "title": "Contacttracercapacityratio",
+      "description": "Contact tracer capacity ratio risk level.",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
     },
     "infectionRate": {
-      "$ref": "#/definitions/RiskLevel"
+      "title": "Infectionrate",
+      "description": "Infection rate risk level.",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
     },
     "icuHeadroomRatio": {
-      "$ref": "#/definitions/RiskLevel"
+      "title": "Icuheadroomratio",
+      "description": "ICU headroom ratio risk level.",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
     }
   },
   "required": [
@@ -29,18 +77,5 @@
     "contactTracerCapacityRatio",
     "infectionRate",
     "icuHeadroomRatio"
-  ],
-  "definitions": {
-    "RiskLevel": {
-      "title": "RiskLevel",
-      "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown",
-      "enum": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ]
-    }
-  }
+  ]
 }
