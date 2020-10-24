@@ -5,7 +5,6 @@ import sys
 import os
 from dataclasses import dataclass
 import logging
-from multiprocessing import Pool
 
 import us
 import pandas as pd
@@ -20,6 +19,7 @@ from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs.parallel_utils import parallel_map
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
@@ -290,8 +290,7 @@ def _write_pipeline_output(
             if p.fitter
         ]
 
-        with Pool(maxtasksperchild=1) as p:
-            p.map(web_ui_mapper.write_region_safely, webui_inputs)
+        parallel_map(web_ui_mapper.write_region_safely, webui_inputs)
 
 
 def _build_all_for_states(
@@ -301,10 +300,9 @@ def _build_all_for_states(
     _cache_global_datasets()
 
     # do everything for just states in parallel
-    with Pool(maxtasksperchild=1) as pool:
-        states_regions = [pipeline.Region.from_state(s) for s in states]
-        state_pipelines: List[StatePipeline] = pool.map(StatePipeline.run, states_regions)
-        state_fitter_map = {p.region: p.fitter for p in state_pipelines}
+    states_regions = [pipeline.Region.from_state(s) for s in states]
+    state_pipelines: List[StatePipeline] = parallel_map(StatePipeline.run, states_regions)
+    state_fitter_map = {p.region: p.fitter for p in state_pipelines}
 
     if states_only:
         return state_pipelines
@@ -313,10 +311,8 @@ def _build_all_for_states(
         state_fitter_map, fips=fips, states=states
     )
 
-    with Pool(maxtasksperchild=1) as p:
-        root.info(f"executing pipeline for {len(substate_inputs)} counties")
-
-        substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
+    root.info(f"executing pipeline for {len(substate_inputs)} counties")
+    substate_pipelines = parallel_map(SubStatePipeline.run, substate_inputs)
 
     substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
 

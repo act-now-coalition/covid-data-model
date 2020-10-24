@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
-import multiprocessing
 import pathlib
 import time
 
@@ -24,6 +23,7 @@ from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import build_api_v2
 from libs.datasets import AggregationLevel
+from libs.parallel_utils import parallel_map
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
@@ -96,15 +96,9 @@ class RegionalInput:
 
 
 def run_on_regions(
-    regional_inputs: List[RegionalInput],
-    pool: multiprocessing.Pool = None,
-    sort_func=None,
-    limit=None,
+    regional_inputs: List[RegionalInput], sort_func=None, limit=None,
 ) -> List[RegionSummaryWithTimeseries]:
-    # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
-    # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
-    pool = pool or multiprocessing.Pool(maxtasksperchild=1)
-    results = pool.map(build_timeseries_for_region, regional_inputs)
+    results = parallel_map(build_timeseries_for_region, regional_inputs)
     all_timeseries = [result for result in results if result]
 
     if sort_func:

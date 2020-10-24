@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from typing import List
 
@@ -9,14 +8,11 @@ import logging
 from libs import pipeline
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs.parallel_utils import pandas_parallel_apply
 
 from pyseir import load_data
 from datetime import datetime
 from covidactnow.datapublic.common_fields import CommonFields
-from pandarallel import pandarallel
-
-VISIBIBLE_PROGRESS_BAR = os.environ.get("PYSEIR_VERBOSITY") == "True"
-pandarallel.initialize(progress_bar=VISIBIBLE_PROGRESS_BAR)
 
 
 @dataclass
@@ -45,14 +41,11 @@ class WhitelistGenerator:
         """
         logging.info("Generating county level whitelist...")
 
-        df_candidates = (
-            timeseries.get_counties()
-            .groupby_region()
-            # Use pandarallel. It doesn't support the `name` attribute so leave FIPS as a regular
-            # column so it can be read in the applied function.
-            .parallel_apply(_whitelist_candidates_per_fips)
-            .reset_index(drop=True)
-        )
+        # Use pandarallel. It doesn't support the `name` attribute so leave FIPS as a regular
+        # column so it can be read in the applied function.
+        df_candidates = pandas_parallel_apply(
+            _whitelist_candidates_per_fips, timeseries.get_counties().groupby_region()
+        ).reset_index(drop=True)
 
         df_candidates["inference_ok"] = (
             (df_candidates.nonzero_case_datapoints >= self.nonzero_case_datapoints)
