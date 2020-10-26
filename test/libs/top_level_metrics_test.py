@@ -3,6 +3,7 @@ import io
 
 import numpy as np
 import pandas as pd
+import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from api import can_api_definition
@@ -11,6 +12,7 @@ from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
+from freezegun import freeze_time
 
 
 def _build_metrics_df(content: str) -> pd.DataFrame:
@@ -40,7 +42,7 @@ def test_calculate_case_density():
     """
     It should use population, smoothing and a normalizing factor to calculate case density.
     """
-    cases = _series_with_date_index([0, 0, 20, 60, 120])
+    cases = _series_with_date_index([0, 0, 20, 40, 60])
     pop = 100
     every_ten = 10
     smooth = 2
@@ -50,7 +52,7 @@ def test_calculate_case_density():
     )
 
     pd.testing.assert_series_equal(
-        density, _series_with_date_index([np.nan, 0.0, 1.0, 3.0, 5.0], dtype="float"),
+        density, _series_with_date_index([0.0, 0.0, 1.0, 3.0, 5.0], dtype="float"),
     )
 
 
@@ -93,12 +95,12 @@ def test_calculate_test_positivity_extra_day():
 
 def test_top_level_metrics_basic():
     data = (
-        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count"
+        "date,fips,cases,new_cases,positive_tests,negative_tests,contact_tracers_count"
         ",current_icu,current_icu_total,icu_beds\n"
-        "2020-08-17,36,10,10,90,1,10,20,\n"
-        "2020-08-18,36,20,20,180,2,10,20,\n"
-        "2020-08-19,36,,,,3,10,20,\n"
-        "2020-08-20,36,40,40,360,4,10,20,\n"
+        "2020-08-17,36,10,10,10,90,1,10,20,\n"
+        "2020-08-18,36,20,10,20,180,2,10,20,\n"
+        "2020-08-19,36,,,,,3,10,20,\n"
+        "2020-08-20,36,40,,40,360,4,10,20,\n"
     )
     one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
@@ -114,7 +116,7 @@ def test_top_level_metrics_basic():
     )
 
     expected = _build_metrics_df(
-        "2020-08-17,36,,,,,,0.5\n"
+        "2020-08-17,36,10,,0.02,,,0.5\n"
         "2020-08-18,36,10,0.1,0.04,,,0.5\n"
         "2020-08-19,36,,0.1,,,,0.5\n"
         "2020-08-20,36,,0.1,,,,0.5\n"
@@ -122,13 +124,46 @@ def test_top_level_metrics_basic():
     pd.testing.assert_frame_equal(expected, results)
 
 
-def test_top_level_metrics_no_test_positivity():
+def test_top_level_metrics_incomplete_latest():
+    # This test doesn't have ICU_BEDS set in `latest`. It checks that the metrics are still built.
     data = (
-        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
-        "2020-08-17,36,10,,,1,,\n"
-        "2020-08-18,36,20,,,2,,\n"
-        "2020-08-19,36,30,,,3,,\n"
-        "2020-08-20,36,40,,,4,,\n"
+        "date,fips,new_cases,cases,positive_tests,negative_tests,contact_tracers_count"
+        ",current_icu,current_icu_total,icu_beds\n"
+        "2020-08-17,36,10,10,10,90,1,10,20,\n"
+        "2020-08-18,36,10,20,20,180,2,10,20,\n"
+        "2020-08-19,36,10,,,,3,10,20,\n"
+        "2020-08-20,36,10,40,40,360,4,10,20,\n"
+    )
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.FIPS: "36",
+        CommonFields.STATE: "NY",
+        # ICU_BEDS not set
+    }
+    one_region = dataclasses.replace(one_region, latest=latest)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+        one_region, None, None, require_recent_icu_data=False
+    )
+
+    expected = _build_metrics_df(
+        "2020-08-17,36,10,,0.02,,,\n"
+        "2020-08-18,36,10,0.1,0.04,,,\n"
+        "2020-08-19,36,10,0.1,0.06,,,\n"
+        "2020-08-20,36,10,0.1,0.08,,,\n"
+    )
+    pd.testing.assert_frame_equal(expected, results, check_dtype=False)
+
+
+def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
+    # All of positive_tests, negative_tests are empty and test_positivity is absent. Make sure
+    # other metrics are still produced.
+    data = (
+        "date,fips,new_cases,cases,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
+        "2020-08-17,36,10.0,10.0,,,1,,\n"
+        "2020-08-18,36,10.0,20.0,,,2,,\n"
+        "2020-08-19,36,10.0,30.0,,,3,,\n"
+        "2020-08-20,36,10.0,40.0,,,4,,\n"
     )
     one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
@@ -141,23 +176,104 @@ def test_top_level_metrics_no_test_positivity():
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
 
     expected = _build_metrics_df(
-        "2020-08-17,36,,,,,\n"
-        "2020-08-18,36,10,,0.04,,\n"
-        "2020-08-19,36,10,,0.06,,\n"
-        "2020-08-20,36,10,,0.08,,\n"
+        "2020-08-17,36,10.0,,0.02,,\n"
+        "2020-08-18,36,10.0,,0.04,,\n"
+        "2020-08-19,36,10.0,,0.06,,\n"
+        "2020-08-20,36,10.0,,0.08,,\n"
     )
     pd.testing.assert_frame_equal(expected, results)
+
+
+def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
+    # All of positive_tests, negative_tests are empty. test_positivity has a real value. Make sure
+    # test_positivity is copied to the output and other metrics are produced.
+    data = (
+        "date,fips,new_cases,cases,test_positivity,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
+        "2020-08-17,36,10,10,0.02,,,1,,\n"
+        "2020-08-18,36,10,20,0.03,,,2,,\n"
+        "2020-08-19,36,10,30,0.04,,,3,,\n"
+        "2020-08-20,36,10,40,0.05,,,4,,\n"
+    )
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.FIPS: "36",
+        CommonFields.STATE: "NY",
+        CommonFields.ICU_BEDS: 10,
+    }
+    one_region = dataclasses.replace(one_region, latest=latest)
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
+
+    expected = _build_metrics_df(
+        "2020-08-17,36,10,0.02,0.02,,\n"
+        "2020-08-18,36,10,0.03,0.04,,\n"
+        "2020-08-19,36,10,0.04,0.06,,\n"
+        "2020-08-20,36,10,0.05,0.08,,\n"
+    )
+    pd.testing.assert_frame_equal(expected, results, check_dtype=False)
+
+
+@pytest.mark.parametrize("pos_neg_tests_recent", [False, True])
+def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
+    # positive_tests and negative_tests appear on 8/10 and 8/11. They will be used when
+    # that is within 10 days of 'today'.
+    data = (
+        "date,fips,new_cases,cases,test_positivity,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
+        "2020-08-10,36,10,10,0.02,1,10,1,,\n"
+        "2020-08-11,36,10,20,0.03,2,20,2,,\n"
+        "2020-08-12,36,10,30,0.04,,,3,,\n"
+        "2020-08-13,36,10,40,0.05,,,4,,\n"
+        "2020-08-14,36,10,50,0.06,,,4,,\n"
+        "2020-08-15,36,10,60,0.07,,,4,,\n"
+    )
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.FIPS: "36",
+        CommonFields.STATE: "NY",
+        CommonFields.ICU_BEDS: 10,
+    }
+    one_region = dataclasses.replace(one_region, latest=latest)
+
+    if pos_neg_tests_recent:
+        freeze_date = "2020-08-21"
+        # positive_tests and negative_tests are used
+        expected = _build_metrics_df(
+            "2020-08-10,36,10,,0.02,,\n"
+            "2020-08-11,36,10,0.0909,0.04,,\n"
+            "2020-08-12,36,10,,0.06,,\n"
+            "2020-08-13,36,10,,0.08,,\n"
+            "2020-08-14,36,10,,0.08,,\n"
+            "2020-08-15,36,10,,0.08,,\n"
+        )
+    else:
+        freeze_date = "2020-08-22"
+        # positive_tests and negative_tests no longer recent so test_positivity is copied to output.
+        expected = _build_metrics_df(
+            "2020-08-10,36,10,0.02,0.02,,\n"
+            "2020-08-11,36,10,0.03,0.04,,\n"
+            "2020-08-12,36,10,0.04,0.06,,\n"
+            "2020-08-13,36,10,0.05,0.08,,\n"
+            "2020-08-14,36,10,0.06,0.08,,\n"
+            "2020-08-15,36,10,0.07,0.08,,\n"
+        )
+
+    with freeze_time(freeze_date):
+        results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, None, None)
+
+    # check_less_precise so only 3 digits need match for testPositivityRatio
+    pd.testing.assert_frame_equal(expected, results, check_less_precise=True, check_dtype=False)
 
 
 def test_top_level_metrics_with_rt():
     region = Region.from_fips("36")
     data = (
-        "date,fips,cases,positive_tests,negative_tests,contact_tracers_count"
+        "date,fips,new_cases,positive_tests,negative_tests,contact_tracers_count"
         ",current_icu,current_icu_total,icu_beds\n"
-        "2020-08-17,36,10,10,90,1,,,\n"
-        "2020-08-18,36,20,20,180,2,,,\n"
+        "2020-08-17,36,,10,90,1,,,\n"
+        "2020-08-18,36,10,20,180,2,,,\n"
         "2020-08-19,36,,,,3,,,\n"
-        "2020-08-20,36,40,40,360,4,,,\n"
+        "2020-08-20,36,,40,360,4,,,\n"
     )
     one_region = _fips_csv_to_one_region(data, region)
 
@@ -180,8 +296,8 @@ def test_top_level_metrics_with_rt():
     one_region = dataclasses.replace(one_region, latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(one_region, rt_data, None)
     expected = _build_metrics_df(
-        "2020-08-17,36,,,,1.1,.1\n"
-        "2020-08-18,36,10,0.1,0.04,1.2,.1\n"
+        "2020-08-17,36,0,,,1.1,.1\n"
+        "2020-08-18,36,5,0.1,0.08,1.2,.1\n"
         "2020-08-19,36,,0.1,,1.1,.2\n"
         "2020-08-20,36,,0.1,,1.1,.1\n"
     )
@@ -190,11 +306,11 @@ def test_top_level_metrics_with_rt():
 
 def test_calculate_contact_tracers():
 
-    cases = _series_with_date_index([0.0, 1.0, 4.0])
+    cases = _series_with_date_index([0.0, 1.0, 3.0])
     contact_tracers = _series_with_date_index([5, 5, 5])
 
     results = top_level_metrics.calculate_contact_tracers(cases, contact_tracers)
-    expected = _series_with_date_index([np.nan, 1.0, 0.5])
+    expected = _series_with_date_index([np.nan, 2.0, 0.75])
     pd.testing.assert_series_equal(results, expected)
 
 
