@@ -460,9 +460,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def append_provenance_csv(
         self, path_or_buf: Union[pathlib.Path, TextIO]
     ) -> "MultiRegionTimeseriesDataset":
-        return self.append_provenance_df(pd.read_csv(path_or_buf))
+        df = pd.read_csv(path_or_buf)
+        if PdFields.VALUE in df.columns:
+            # Handle older CSV files that used 'value' header for provenance.
+            df = df.rename(columns={PdFields.VALUE: PdFields.PROVENANCE})
+        return self.append_provenance_df(df)
 
     def append_provenance_df(self, provenance_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
+        """Returns a new object containing data in self and given provenance information."""
         if self.provenance is not None:
             raise NotImplementedError("TODO(tom): add support for merging provenance data")
         assert provenance_df.index.names == [None]
@@ -510,14 +515,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
-        mrts = MultiRegionTimeseriesDataset.from_combined_dataframe(
+        dataset = MultiRegionTimeseriesDataset.from_combined_dataframe(
             common_df.read_csv(path_or_buf, set_index=False)
         )
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.is_file():
-                mrts = mrts.append_provenance_csv(provenance_path)
-        return mrts
+                dataset = dataset.append_provenance_csv(provenance_path)
+        return dataset
 
     @staticmethod
     def from_timeseries_and_latest(
