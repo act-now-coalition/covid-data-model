@@ -1,8 +1,9 @@
+from typing import Optional
 import math
 from dataclasses import dataclass
 from datetime import timedelta
 import structlog
-from typing import Optional
+
 
 import numpy as np
 import pandas as pd
@@ -57,12 +58,12 @@ def run_rt(
     """
 
     # Generate the Data Packet to Pass to RtInferenceEngine
-    input_df = _generate_input_data(
+    smoothed_cases = _generate_input_data(
         regional_input=regional_input,
         include_testing_correction=include_testing_correction,
         figure_collector=figure_collector,
     )
-    if input_df.dropna().empty:
+    if smoothed_cases is None:
         rt_log.warning(
             event="Infer Rt Skipped. No Data Passed Filter Requirements:",
             region=regional_input.display_name,
@@ -72,7 +73,7 @@ def run_rt(
     # Save a reference to instantiated engine (eventually I want to pull out the figure
     # generation and saving so that I don't have to pass a display_name and fips into the class
     engine = RtInferenceEngine(
-        data=input_df, display_name=regional_input.display_name, regional_input=regional_input,
+        smoothed_cases, display_name=regional_input.display_name, regional_input=regional_input,
     )
 
     # Generate the output DataFrame (consider renaming the function infer_all to be clearer)
@@ -85,7 +86,7 @@ def _generate_input_data(
     regional_input: RegionalInput,
     include_testing_correction: bool,
     figure_collector: Optional[list],
-) -> pd.DataFrame:
+) -> Optional[pd.Series]:
     """
     Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
 
@@ -94,7 +95,7 @@ def _generate_input_data(
     """
     # TODO: Outlier Removal Before Test Correction
     try:
-        (times, observed_new_cases, _,) = load_data.calculate_new_case_data_by_region(
+        times, observed_new_cases, _ = load_data.calculate_new_case_data_by_region(
             regional_input.timeseries,
             t0=InferRtConstants.REF_DATE,
             include_testing_correction=include_testing_correction,
@@ -105,87 +106,79 @@ def _generate_input_data(
             "the Infection Rate Metric",
             region=regional_input.display_name,
         )
-        return pd.DataFrame()
+        return None
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
 
-    df = filter_and_smooth_input_data(
-        df=pd.DataFrame(dict(cases=observed_new_cases), index=date),
-        figure_collector=figure_collector,
-        region=regional_input.region,
-        log=rt_log.new(region=regional_input.display_name),
+    observed_new_cases = pd.Series(observed_new_cases, index=date)
+
+    observed_new_cases = filter_and_smooth_input_data(
+        observed_new_cases,
+        date,
+        regional_input.region,
+        figure_collector,
+        rt_log.new(region=regional_input.display_name),
     )
-    return df
+    return observed_new_cases
 
 
 def filter_and_smooth_input_data(
-    df: pd.DataFrame,
+    cases: pd.Series,
+    dates: list,
     region: pipeline.Region,
     figure_collector: Optional[list],
     log: structlog.BoundLoggerBase,
-) -> pd.DataFrame:
+) -> Optional[pd.Series]:
     """Do Filtering Here Before it Gets to the Inference Engine"""
-    MIN_CUMULATIVE_COUNTS = dict(cases=20)
-    MIN_INCIDENT_COUNTS = dict(cases=5)
+    MIN_CUMULATIVE_CASE_COUNT = 20
+    MIN_INCIDENT_CASE_COUNT = 5
 
-    dates = df.index
-    # Apply Business Logic To Filter Raw Data
-    for column in ["cases"]:
-        requirements = [  # All Must Be True
-            df[column].count() > InferRtConstants.MIN_TIMESERIES_LENGTH,
-            df[column].sum() > MIN_CUMULATIVE_COUNTS[column],
-            df[column].max() > MIN_INCIDENT_COUNTS[column],
-        ]
-        # Now Apply Input Outlier Detection and Smoothing
+    requirements = [  # All Must Be True
+        cases.count() > InferRtConstants.MIN_TIMESERIES_LENGTH,
+        cases.sum() > MIN_CUMULATIVE_CASE_COUNT,
+        cases.max() > MIN_INCIDENT_CASE_COUNT,
+    ]
+    # Now Apply Input Outlier Detection and Smoothing
 
-        filtered = utils.replace_outliers(df[column], log=rt_log.new(column=column))
-        # TODO find way to indicate which points filtered in figure below
+    filtered = utils.replace_outliers(cases, log=rt_log)
+    # TODO find way to indicate which points filtered in figure below
 
-        assert len(filtered) == len(df[column])
-        smoothed = filtered.rolling(
-            InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
-            win_type="gaussian",
-            min_periods=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD,
-            center=True,
-        ).mean(std=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD)
-        # TODO: Only start once non-zero to maintain backwards compatibility?
+    assert len(filtered) == len(cases)
+    smoothed = filtered.rolling(
+        InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
+        win_type="gaussian",
+        min_periods=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD,
+        center=True,
+    ).mean(std=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD)
+    # TODO: Only start once non-zero to maintain backwards compatibility?
 
-        # Check if the Post Smoothed Meets the Requirements
-        requirements.append(smoothed.max() > MIN_INCIDENT_COUNTS[column])
+    # Check if the Post Smoothed Meets the Requirements
+    requirements.append(smoothed.max() > MIN_INCIDENT_CASE_COUNT)
 
-        if all(requirements):
-            if column == "cases":
-                fig = plt.figure(figsize=(10, 6))
-                ax = fig.add_subplot(111)  # plt.axes
-                ax.set_yscale("log")
-                chart_min = max(0.1, smoothed.min())
-                ax.set_ylim((chart_min, df[column].max()))
-                plt.scatter(
-                    dates[-len(df[column]) :],
-                    df[column],
-                    alpha=0.3,
-                    label=f"Smoothing of: {column}",
-                )
-                plt.plot(dates[-len(df[column]) :], smoothed)
-                plt.grid(True, which="both")
-                plt.xticks(rotation=30)
-                plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
+    if not all(requirements):
+        return None
 
-                if not figure_collector:
-                    plot_path = pyseir.utils.get_run_artifact_path(
-                        region, RunArtifact.RT_SMOOTHING_REPORT
-                    )
-                    plt.savefig(plot_path, bbox_inches="tight")
-                    plt.close(fig)
-                else:
-                    figure_collector["1_smoothed_cases"] = fig
+    fig = plt.figure(figsize=(10, 6))
+    ax = fig.add_subplot(111)  # plt.axes
+    ax.set_yscale("log")
+    chart_min = max(0.1, smoothed.min())
+    ax.set_ylim((chart_min, cases.max()))
+    plt.scatter(
+        dates[-len(cases) :], cases, alpha=0.3, label=f"Smoothing of: cases",
+    )
+    plt.plot(dates[-len(cases) :], smoothed)
+    plt.grid(True, which="both")
+    plt.xticks(rotation=30)
+    plt.xlim(min(dates[-len(cases) :]), max(dates) + timedelta(days=2))
 
-            df[column] = smoothed
-        else:
-            df = df.drop(columns=column, inplace=False)
-            log.info("Dropping:", columns=column, requirements=requirements)
+    if not figure_collector:
+        plot_path = pyseir.utils.get_run_artifact_path(region, RunArtifact.RT_SMOOTHING_REPORT)
+        plt.savefig(plot_path, bbox_inches="tight")
+        plt.close(fig)
+    else:
+        figure_collector["1_smoothed_cases"] = fig
 
-    return df
+    return smoothed
 
 
 class RtInferenceEngine:
@@ -205,11 +198,11 @@ class RtInferenceEngine:
     """
 
     def __init__(
-        self, data, display_name, regional_input: RegionalInput, figure_collector=None,
+        self, cases, display_name, regional_input: RegionalInput, figure_collector=None,
     ):
 
-        self.dates = data.index
-        self.cases = data.cases if "cases" in data else None
+        self.dates = cases.index
+        self.cases = cases
 
         self.display_name = display_name
         self.regional_input = regional_input
