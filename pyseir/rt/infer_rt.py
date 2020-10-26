@@ -14,7 +14,7 @@ from libs.datasets import combined_datasets
 from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import load_data
-from pyseir.utils import TimeseriesType, RunArtifact
+from pyseir.utils import RunArtifact
 import pyseir.utils
 from pyseir.rt.constants import InferRtConstants
 from pyseir.rt import plotting, utils
@@ -198,7 +198,7 @@ class RtInferenceEngine:
     """
 
     def __init__(
-        self, cases, display_name, regional_input: RegionalInput, figure_collector=None,
+        self, cases: pd.Series, display_name, regional_input: RegionalInput, figure_collector=None,
     ):
 
         self.dates = cases.index
@@ -227,29 +227,6 @@ class RtInferenceEngine:
         self.log = structlog.getLogger(Rt_Inference_Target=self.display_name)
         self.log_likelihood = None  # TODO: Add this later. Not in init.
         self.log.info(event="Running:")
-
-    def get_timeseries(self, timeseries_type):
-        """
-        Given a timeseries type, return the dates, times, and requested values.
-
-        Parameters
-        ----------
-        timeseries_type: TimeseriesType
-            Which type of time-series to return.
-
-        Returns
-        -------
-        dates: list(datetime)
-            Dates for each observation
-        timeseries:
-            The requested timeseries.
-        """
-        timeseries_type = TimeseriesType(timeseries_type)
-
-        if timeseries_type is TimeseriesType.NEW_CASES:
-            return self.dates, self.cases
-        else:
-            raise ValueError
 
     def evaluate_head_tail_suppression(self):
         """
@@ -339,7 +316,7 @@ class RtInferenceEngine:
 
         return use_sigma, process_matrix
 
-    def get_posteriors(self, timeseries_type, plot=False):
+    def get_posteriors(self, dates, timeseries, plot=False):
         """
         Generate posteriors for R_t.
 
@@ -364,15 +341,11 @@ class RtInferenceEngine:
             #TODO figure out why this value sometimes truncates the series
 
         """
-        dates, timeseries = self.get_timeseries(timeseries_type=timeseries_type)
-
         if len(timeseries) == 0:
-            self.log.info("empty timeseries, skipping", timeseries_type=str(timeseries_type.value))
-            return None, None, None, None
+            self.log.info("empty timeseries, skipping")
+            return None, None, None
         else:
-            self.log.info(
-                "Analyzing posteriors for timeseries", timeseries_type=str(timeseries_type.value)
-            )
+            self.log.info("Analyzing posteriors for timeseries")
 
         # (1) Calculate Lambda (the Poisson likelihood given the data) based on
         # the observed increase from t-1 cases to t cases.
@@ -491,25 +464,6 @@ class RtInferenceEngine:
 
         return dates[start_idx:], posteriors, start_idx
 
-    def get_available_timeseries(self):
-        """
-        Determine available timeseries for Rt inference calculation
-        with constraints below.
-
-
-        Returns
-        -------
-        available_timeseries:
-          array of available timeseries saved as TimeseriesType
-        """
-        available_timeseries = []
-        _, cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)
-
-        if np.sum(cases) > self.min_cases:
-            available_timeseries.append(TimeseriesType.NEW_CASES)
-
-        return available_timeseries
-
     def infer_all(self, plot=True) -> pd.DataFrame:
         """
         Infer R_t from all available data sources.
@@ -525,62 +479,39 @@ class RtInferenceEngine:
             Columns containing MAP estimates and confidence intervals.
         """
         df_all = None
-        available_timeseries = []
-        if self.cases is not None:
-            available_timeseries.append(TimeseriesType.NEW_CASES)
 
-        for timeseries_type in available_timeseries:
-            # Add Raw Data Output to Output DataFrame
-            dates_raw, timeseries_raw = self.get_timeseries(timeseries_type)
-            df_raw = pd.DataFrame()
-            df_raw["date"] = dates_raw
-            df_raw = df_raw.set_index("date")
-            df_raw[timeseries_type.value] = timeseries_raw
+        df = pd.DataFrame()
+        try:
+            dates, posteriors, start_idx = self.get_posteriors(self.dates, self.cases)
+        except Exception as e:
+            rt_log.exception(
+                event="Posterior Calculation Error", region=self.regional_input.display_name,
+            )
+            raise e
 
-            df = pd.DataFrame()
-            try:
-                dates, posteriors, start_idx = self.get_posteriors(timeseries_type)
-            except Exception as e:
-                rt_log.exception(
-                    event="Posterior Calculation Error", region=self.regional_input.display_name,
-                )
-                raise e
-
-            # Note that it is possible for the dates to be missing days
-            # This can cause problems when:
-            #   1) computing posteriors that assume continuous data (above),
-            #   2) when merging data with variable keys
-            if posteriors is None:
-                continue
-
-            df[f"Rt_MAP__{timeseries_type.value}"] = posteriors.idxmax()
-            for ci in self.confidence_intervals:
-                ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
-
-                low_val = 1 - ci
-                high_val = ci
-                df[f"Rt_ci{int(math.floor(100 * low_val))}__{timeseries_type.value}"] = ci_low
-                df[f"Rt_ci{int(math.floor(100 * high_val))}__{timeseries_type.value}"] = ci_high
-
-            df["date"] = dates
-            df = df.set_index("date")
-
-            if df_all is None:
-                df_all = df
-            else:
-                # To avoid any surprises merging the data, keep only the keys from the case data
-                # which will be the first added to df_all. So merge with how ="left" rather than
-                # "outer"
-                df_all = df_all.merge(df_raw, left_index=True, right_index=True, how="left")
-                df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
-
-        if df_all is None:
-            self.log.warning(f"Inference not possible for {self.regional_input.region.fips}")
+        # Note that it is possible for the dates to be missing days
+        # This can cause problems when:
+        #   1) computing posteriors that assume continuous data (above),
+        #   2) when merging data with variable keys
+        if posteriors is None:
             return pd.DataFrame()
 
-        if "Rt_MAP__new_cases" in df_all:
-            df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
-            df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
+        df[f"Rt_MAP__new_cases"] = posteriors.idxmax()
+        for ci in self.confidence_intervals:
+            ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
+
+            low_val = 1 - ci
+            high_val = ci
+            df[f"Rt_ci{int(math.floor(100 * low_val))}__new_cases"] = ci_low
+            df[f"Rt_ci{int(math.floor(100 * high_val))}__new_cases"] = ci_high
+
+        df["date"] = dates
+        df = df.set_index("date")
+
+        df_all = df
+
+        df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
+        df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
         # Correct for tail suppression
         suppression = 1.0 * np.ones(len(df_all))
@@ -622,7 +553,7 @@ class RtInferenceEngine:
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
         if plot:
-            fig = plotting.plot_rt(df=df_all, display_name=self.display_name,)
+            fig = plotting.plot_rt(df=df_all, display_name=self.display_name)
             if self.figure_collector is None:
                 output_path = pyseir.utils.get_run_artifact_path(
                     self.regional_input.region, RunArtifact.RT_INFERENCE_REPORT
