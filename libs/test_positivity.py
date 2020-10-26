@@ -1,13 +1,19 @@
 import dataclasses
 import pathlib
 from itertools import chain
+from typing import Iterable
+from typing import List
 from typing import Sequence
+from typing import Set
+
 import structlog
 
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
+
+from libs.datasets import timeseries
 
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 
@@ -23,7 +29,17 @@ class Method:
     numerator: FieldName
     denominator: FieldName
 
+    @property
+    def columns(self) -> Set[FieldName]:
+        return {self.numerator, self.denominator}
+
     def calculate(self, delta_df: pd.DataFrame) -> pd.DataFrame:
+        """Calculate a DataFrame with LOCATION_ID index and DATE columns.
+
+        Args:
+            delta_df: DataFrame with rows having MultiIndex of [VARIABLE, LOCATION_ID] and columns with DATE
+                index. Must contain at least one real value for each of self.columns.
+        """
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
@@ -34,34 +50,27 @@ class Method:
 
 TEST_POSITIVITY_METHODS = (
     Method(
-        "positiveCasesViral_totalTestEncountersViral",
-        CommonFields.POSITIVE_CASES_VIRAL,
-        CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL,
-    ),
-    Method(
         "positiveTestsViral_totalTestsViral",
         CommonFields.POSITIVE_TESTS_VIRAL,
         CommonFields.TOTAL_TESTS_VIRAL,
     ),
-    Method(
-        "positiveCasesViral_totalTestsViral",
-        CommonFields.POSITIVE_CASES_VIRAL,
-        CommonFields.TOTAL_TESTS_VIRAL,
-    ),
-    Method(
-        "positiveTests_totalTestsViral", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_VIRAL
-    ),
-    Method(
-        "positiveCasesViral_totalTestsPeopleViral",
-        CommonFields.POSITIVE_CASES_VIRAL,
-        CommonFields.TOTAL_TESTS_PEOPLE_VIRAL,
-    ),
-    Method(
-        "positiveCasesViral_totalTestResults",
-        CommonFields.POSITIVE_CASES_VIRAL,
-        CommonFields.TOTAL_TESTS,
-    ),
 )
+
+
+class TestPositivityException(Exception):
+    pass
+
+
+class NoColumnsWithDataException(TestPositivityException):
+    pass
+
+
+class NoMethodsWithRelevantColumns(TestPositivityException):
+    pass
+
+
+class NoRealTimeseriesValuesException(TestPositivityException):
+    pass
 
 
 @dataclasses.dataclass
@@ -71,27 +80,30 @@ class AllMethods:
     # Test positivity calculated in all valid methods for each region
     all_methods_timeseries: pd.DataFrame
 
-    # Test positivity using the best available method for each region
+    # A MultiRegionTimeseriesDataset with exactly one column, TEST_POSITIVITY, the best available
+    # method for each region.
     test_positivity: MultiRegionTimeseriesDataset
 
     @staticmethod
     def run(
-        metrics_in: MultiRegionTimeseriesDataset,
+        dataset_in: MultiRegionTimeseriesDataset,
         methods: Sequence[Method] = TEST_POSITIVITY_METHODS,
         diff_days: int = 7,
         recent_days: int = 14,
     ) -> "AllMethods":
-        ts_value_cols = list(
-            set(chain.from_iterable((method.numerator, method.denominator) for method in methods))
+        """Runs `methods` on `dataset_in` and returns the results or raises a TestPositivityException."""
+        relevant_columns = AllMethods._list_columns(
+            AllMethods._methods_with_columns_available(methods, dataset_in.data.columns)
         )
-        missing_columns = set(ts_value_cols) - set(metrics_in.data.columns)
-        if missing_columns:
-            raise AssertionError(f"Data missing for test positivity: {missing_columns}")
+        if not relevant_columns:
+            raise NoMethodsWithRelevantColumns()
 
-        input_long = metrics_in.timeseries_long(ts_value_cols).set_index(
+        input_long = dataset_in.timeseries_long(relevant_columns).set_index(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
         )[PdFields.VALUE]
         dates = input_long.index.get_level_values(CommonFields.DATE)
+        if dates.empty:
+            raise NoRealTimeseriesValuesException()
         start_date = dates.min()
         end_date = dates.max()
         input_date_range = pd.date_range(start=start_date, end=end_date)
@@ -107,9 +119,15 @@ class AllMethods:
         # It looks like our input data has few or no holes so this works well enough.
         diff_df = input_wide.diff(periods=diff_days, axis=1)
 
+        methods_with_data = AllMethods._methods_with_columns_available(
+            methods, diff_df.index.get_level_values(PdFields.VARIABLE).unique()
+        )
+        if not methods_with_data:
+            raise NoColumnsWithDataException()
+
         all_wide = (
             pd.concat(
-                {method.name: method.calculate(diff_df) for method in methods},
+                {method.name: method.calculate(diff_df) for method in methods_with_data},
                 names=[PdFields.VARIABLE],
             )
             .reorder_levels([CommonFields.LOCATION_ID, PdFields.VARIABLE])
@@ -142,7 +160,32 @@ class AllMethods:
 
         return AllMethods(all_methods_timeseries=all_wide, test_positivity=test_positivity)
 
+    @staticmethod
+    def _methods_with_columns_available(
+        methods_in: Sequence[Method], available_columns: Sequence[str]
+    ) -> Sequence[Method]:
+        available_columns_set = set(available_columns)
+        return [m for m in methods_in if m.columns <= available_columns_set]
+
+    @staticmethod
+    def _list_columns(methods: Iterable[Method]) -> List[FieldName]:
+        """Returns unsorted list of columns in given Method objects."""
+        return list(set(chain.from_iterable(method.columns for method in methods)))
+
     def write(self, csv_path: pathlib.Path):
         self.all_methods_timeseries.to_csv(
             csv_path, date_format="%Y-%m-%d", index=True, float_format="%.05g",
         )
+
+
+def run_and_maybe_join_columns(
+    mrts: timeseries.MultiRegionTimeseriesDataset, log
+) -> timeseries.MultiRegionTimeseriesDataset:
+    """Calculates test positivity and joins it with the input, if successful."""
+    try:
+        test_positivity_results = AllMethods.run(mrts)
+    except TestPositivityException:
+        log.exception("test_positivity failed")
+        return mrts
+    else:
+        return mrts.join_columns(test_positivity_results.test_positivity)
