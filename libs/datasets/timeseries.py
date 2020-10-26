@@ -520,7 +520,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         )
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
-            if provenance_path.is_file():
+            if provenance_path.exists():
                 dataset = dataset.append_provenance_csv(provenance_path)
         return dataset
 
