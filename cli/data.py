@@ -5,11 +5,14 @@ import pathlib
 import os
 import json
 import shutil
+import structlog
 
 import click
 
 from libs import google_sheet_helpers, wide_dates_df
+from libs import pipeline
 from libs.datasets import statistical_areas
+from libs.datasets import timeseries
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
     US_STATES_FILTER,
@@ -25,6 +28,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.sources import forecast_hub
+from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 from pyseir import DATA_DIR
 import pyseir.icu.utils
 from pyseir.icu import infer_icu
@@ -126,6 +130,35 @@ def save_summary(output_dir: pathlib.Path, filename: str):
     """Saves summary of timeseries dataset indexed by fips and variable name."""
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
     _save_field_summary(us_timeseries, output_dir / filename)
+
+
+KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
+    # Territories other than PR
+    "iso1:us#iso2:us-vi",
+    "iso1:us#iso2:us-as",
+    "iso1:us#iso2:us-gu",
+    # Subregion of AS
+    "iso1:us#iso2:us-vi#fips:78030",
+    "iso1:us#iso2:us-vi#fips:78020",
+    "iso1:us#iso2:us-vi#fips:78010",
+    # Retired FIPS
+    "iso1:us#iso2:us-sd#fips:46113",
+    "iso1:us#iso2:us-va#fips:51515",
+    # All the unknown county FIPS
+    *[pipeline.fips_to_location_id(f) for f in ABBREV_US_UNKNOWN_COUNTY_FIPS.values()],
+]
+
+
+@main.command()
+@click.argument("output_path", type=pathlib.Path)
+def run_population_filter(output_path: pathlib.Path):
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    log = structlog.get_logger()
+    log.info("starting filter")
+    ts_out = timeseries.drop_regions_without_population(
+        us_timeseries, KNOWN_LOCATION_ID_WITHOUT_POPULATION, log
+    )
+    ts_out.to_csv(output_path)
 
 
 @main.command()
