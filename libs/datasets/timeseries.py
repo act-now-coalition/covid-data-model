@@ -485,6 +485,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         This method splits rows with DATE NaT into the latest values DataFrame, adds a FIPS column
         derived from LOCATION_ID, drops columns without data and calls `from_timeseries_df` to finish
         the construction.
+
+        TODO(tom): This method isn't really useful beyond from_csv. Stop calling it directly and
+        inline in from_csv.
         """
         assert combined_df.index.names == [None]
         if CommonFields.LOCATION_ID not in combined_df.columns:
@@ -506,18 +509,15 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         return multiregion_timeseries
 
     @staticmethod
-    def from_csv(
-        path_or_buf: Union[pathlib.Path, TextIO], provenance: Optional[pd.Series] = None,
-    ) -> "MultiRegionTimeseriesDataset":
-        if provenance is None and isinstance(path_or_buf, pathlib.Path):
+    def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
+        mrts = MultiRegionTimeseriesDataset.from_combined_dataframe(
+            common_df.read_csv(path_or_buf, set_index=False)
+        )
+        if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.is_file():
-                provenance = pd.read_csv(provenance_path).set_index(
-                    [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-                )[PdFields.VALUE]
-        return MultiRegionTimeseriesDataset.from_combined_dataframe(
-            common_df.read_csv(path_or_buf, set_index=False), provenance=provenance,
-        )
+                mrts = mrts.append_provenance_csv(provenance_path)
+        return mrts
 
     @staticmethod
     def from_timeseries_and_latest(
@@ -672,7 +672,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         )
         if self.provenance is not None:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
-            self.provenance.sort_index().to_csv(provenance_path)
+            self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
 
     def join_columns(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
         """Joins the timeseries columns in `other` with those in `self`."""
