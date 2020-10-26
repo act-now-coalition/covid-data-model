@@ -38,6 +38,8 @@ def update_hubspot_activity(email, latest_active_at, days_active):
 
     query_string = {"hapikey": HUBSPOT_API_KEY}
 
+    # Hubspot date field should be at UTC midnight.  Adding the timestamp parsing
+    # makes the date timestamp respect the UTC timezone.
     date = datetime.datetime.strptime(latest_active_at + " +0000", "%Y-%m-%d %z")
     url = f"https://api.hubapi.com/contacts/v1/contact/createOrUpdate/email/{email}"
 

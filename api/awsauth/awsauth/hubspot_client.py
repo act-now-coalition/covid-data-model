@@ -21,7 +21,7 @@ class HubSpotClient:
             return
 
         # https://pypi.org/project/hubspot-api-client/
-        url = f"https://api.hubapi.com/contacts/v1/contact/email/{email}/profile"
+        url = "https://api.hubapi.com/crm/v3/objects/contacts"
 
         querystring = {"hapikey": Config.Constants.HUBSPOT_API_KEY}
         data = {"properties": {"email": email}}
