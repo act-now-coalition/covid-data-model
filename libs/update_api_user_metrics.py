@@ -2,6 +2,7 @@ from typing import Optional, List, Callable, Dict, Any
 import os
 import time
 import datetime
+from datetime import timedelta
 import logging
 import requests
 import gspread
@@ -24,7 +25,7 @@ GROUP BY email
 
 
 ATHENA_BUCKET = "s3://covidactnow-athena-results"
-HUBSPOT_API_KEY = os.getenv["HUBSPOT_API_KEY"]
+HUBSPOT_API_KEY = os.getenv("HUBSPOT_API_KEY")
 
 
 class CloudWatchQueryError(Exception):
@@ -164,11 +165,22 @@ def update_google_sheet(
     worksheet.update(rows, raw=False)
 
 
-def update_hubspot_users(data: List[Dict[str, Any]]):
-    """Updates hubspot users"""
+def update_hubspot_users(data: List[Dict[str, Any]], only_update_recent: bool = True):
+    """Updates hubspot users with usage activity.
+
+    Args:
+        data: List of query results.
+        only_update_recent: If True only updates users with usage in the past 2 days.
+    """
     if not HUBSPOT_API_KEY:
         _logger.warning("Hubspot API key not provided, skipping hubspot update")
         return
 
+    recent_activity_date = datetime.datetime.now() - timedelta(days=2)
     for row in data:
+        last_activity_date = datetime.datetime.strptime(row["latestDate"], "%Y-%m-%d")
+        if only_update_recent and last_activity_date < recent_activity_date:
+            _logger.info(f"{row['email']} has no recent usage, skipping")
+            continue
+
         update_hubspot_activity(row["email"], row["latestDate"], row["daysActive"])
