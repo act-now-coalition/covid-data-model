@@ -10,6 +10,7 @@ from libs.test_positivity import AllMethods
 from libs.test_positivity import Method
 from libs import test_positivity
 from test.libs.datasets.timeseries_test import assert_combined_like
+from test.libs.datasets.timeseries_test import parse_provenance_csv
 
 
 def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
@@ -48,14 +49,21 @@ def test_basic():
     )
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
 
+    expected_provenance = parse_provenance_csv(
+        "location_id,variable,provenance\n"
+        "iso1:us#iso2:as,test_positivity,method2\n"
+        "iso1:us#iso2:tx,test_positivity,method1\n"
+    )
     expected_positivity = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,test_positivity\n"
             "iso1:us#iso2:as,2020-04-04,0.02\n"
             "iso1:us#iso2:tx,2020-04-04,0.1\n"
-        )
+        ),
+        provenance=expected_provenance,
     )
     assert_combined_like(all_methods.test_positivity, expected_positivity)
+
     positivity_provenance = all_methods.test_positivity.provenance
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
@@ -94,6 +102,11 @@ def test_recent_days():
         "iso1:us#iso2:tx,method2,,0.01,0.01,0.01\n"
     )
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_all, check_like=True)
+    expected_provenance = parse_provenance_csv(
+        "location_id,variable,provenance\n"
+        "iso1:us#iso2:as,test_positivity,method2\n"
+        "iso1:us#iso2:tx,test_positivity,method1\n"
+    )
     expected_positivity = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
             "location_id,date,test_positivity\n"
@@ -103,7 +116,8 @@ def test_recent_days():
             "iso1:us#iso2:tx,2020-04-02,0.1\n"
             "iso1:us#iso2:tx,2020-04-03,0.1\n"
             "iso1:us#iso2:tx,2020-04-04,0.1\n"
-        )
+        ),
+        provenance=expected_provenance,
     )
     assert_combined_like(all_methods.test_positivity, expected_positivity)
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
