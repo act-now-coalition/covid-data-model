@@ -55,7 +55,7 @@ def test_inference_ok_with_5_days_cases_changed():
         "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-04,400,100,4\n"
         "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-05,500,100,5\n"
         "iso1:us#fips:97222,US,ZZ,Foo County,county,2020-04-06,600,100,6\n"
-        "iso1:us#fips:97111,US,ZZ,Bar County,county,,500,500,5\n"
+        "iso1:us#fips:97111,US,ZZ,Bar County,county,,500,100,5\n"
         "iso1:us#fips:97222,US,ZZ,Foo County,county,,100,100,1\n"
     )
     input_dataset = MultiRegionTimeseriesDataset.from_csv(csv_string_io)
