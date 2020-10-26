@@ -48,7 +48,6 @@ class RegionalInput:
 
 def run_rt(
     regional_input: RegionalInput,
-    include_deaths: bool = False,
     include_testing_correction: bool = False,
     figure_collector: Optional[list] = None,
 ) -> pd.DataFrame:
@@ -61,7 +60,6 @@ def run_rt(
     input_df = _generate_input_data(
         regional_input=regional_input,
         include_testing_correction=include_testing_correction,
-        include_deaths=include_deaths,
         figure_collector=figure_collector,
     )
     if input_df.dropna().empty:
@@ -74,10 +72,7 @@ def run_rt(
     # Save a reference to instantiated engine (eventually I want to pull out the figure
     # generation and saving so that I don't have to pass a display_name and fips into the class
     engine = RtInferenceEngine(
-        data=input_df,
-        display_name=regional_input.display_name,
-        regional_input=regional_input,
-        include_deaths=include_deaths,
+        data=input_df, display_name=regional_input.display_name, regional_input=regional_input,
     )
 
     # Generate the output DataFrame (consider renaming the function infer_all to be clearer)
@@ -89,7 +84,6 @@ def run_rt(
 def _generate_input_data(
     regional_input: RegionalInput,
     include_testing_correction: bool,
-    include_deaths: bool,
     figure_collector: Optional[list],
 ) -> pd.DataFrame:
     """
@@ -100,11 +94,7 @@ def _generate_input_data(
     """
     # TODO: Outlier Removal Before Test Correction
     try:
-        (
-            times,
-            observed_new_cases,
-            observed_new_deaths,
-        ) = load_data.calculate_new_case_data_by_region(
+        (times, observed_new_cases, _,) = load_data.calculate_new_case_data_by_region(
             regional_input.timeseries,
             t0=InferRtConstants.REF_DATE,
             include_testing_correction=include_testing_correction,
@@ -120,8 +110,7 @@ def _generate_input_data(
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
 
     df = filter_and_smooth_input_data(
-        df=pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date),
-        include_deaths=include_deaths,
+        df=pd.DataFrame(dict(cases=observed_new_cases), index=date),
         figure_collector=figure_collector,
         region=regional_input.region,
         log=rt_log.new(region=regional_input.display_name),
@@ -132,17 +121,16 @@ def _generate_input_data(
 def filter_and_smooth_input_data(
     df: pd.DataFrame,
     region: pipeline.Region,
-    include_deaths: bool,
     figure_collector: Optional[list],
     log: structlog.BoundLoggerBase,
 ) -> pd.DataFrame:
     """Do Filtering Here Before it Gets to the Inference Engine"""
-    MIN_CUMULATIVE_COUNTS = dict(cases=20, deaths=10)
-    MIN_INCIDENT_COUNTS = dict(cases=5, deaths=5)
+    MIN_CUMULATIVE_COUNTS = dict(cases=20)
+    MIN_INCIDENT_COUNTS = dict(cases=5)
 
     dates = df.index
     # Apply Business Logic To Filter Raw Data
-    for column in ["cases", "deaths"]:
+    for column in ["cases"]:
         requirements = [  # All Must Be True
             df[column].count() > InferRtConstants.MIN_TIMESERIES_LENGTH,
             df[column].sum() > MIN_CUMULATIVE_COUNTS[column],
@@ -164,12 +152,6 @@ def filter_and_smooth_input_data(
 
         # Check if the Post Smoothed Meets the Requirements
         requirements.append(smoothed.max() > MIN_INCIDENT_COUNTS[column])
-
-        # Check include_deaths Flag
-        if column == "deaths" and not include_deaths:
-            requirements.append(False)
-        else:
-            requirements.append(True)
 
         if all(requirements):
             if column == "cases":
@@ -215,8 +197,6 @@ class RtInferenceEngine:
     ----------
     data: DataFrame
         DataFrame with a Date index and at least one "cases" column.
-    include_deaths: bool
-        If True, include the deaths timeseries in the calculation. XCorrelated and Averaged
     display_name: str
         Needed for Figures. Should just return figures along with dataframe and then deal with title
         and save location somewhere downstream.
@@ -225,19 +205,12 @@ class RtInferenceEngine:
     """
 
     def __init__(
-        self,
-        data,
-        display_name,
-        regional_input: RegionalInput,
-        include_deaths=False,
-        figure_collector=None,
+        self, data, display_name, regional_input: RegionalInput, figure_collector=None,
     ):
 
         self.dates = data.index
         self.cases = data.cases if "cases" in data else None
-        self.deaths = data.deaths if "deaths" in data else None
 
-        self.include_deaths = include_deaths
         self.display_name = display_name
         self.regional_input = regional_input
         self.figure_collector = figure_collector
@@ -250,7 +223,6 @@ class RtInferenceEngine:
         self.ref_date = InferRtConstants.REF_DATE
         self.confidence_intervals = InferRtConstants.CONFIDENCE_INTERVALS
         self.min_cases = InferRtConstants.MIN_COUNTS_TO_INFER
-        self.min_deaths = InferRtConstants.MIN_COUNTS_TO_INFER
         self.min_ts_length = InferRtConstants.MIN_TIMESERIES_LENGTH
         self.serial_period = InferRtConstants.SERIAL_PERIOD
         self.max_scaling_sigma = InferRtConstants.MAX_SCALING_OF_SIGMA
@@ -283,8 +255,6 @@ class RtInferenceEngine:
 
         if timeseries_type is TimeseriesType.NEW_CASES:
             return self.dates, self.cases
-        elif timeseries_type is TimeseriesType.NEW_DEATHS:
-            return self.dates, self.deaths
         else:
             raise ValueError
 
@@ -384,7 +354,7 @@ class RtInferenceEngine:
         ----------
         ----------
         timeseries_type: TimeseriesType
-            New X per day (cases, deaths etc).
+            New X per day (cases).
         plot: bool
             If True, plot a cool looking est of posteriors.
 
@@ -541,17 +511,13 @@ class RtInferenceEngine:
         """
         available_timeseries = []
         _, cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)
-        _, deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)
 
         if np.sum(cases) > self.min_cases:
             available_timeseries.append(TimeseriesType.NEW_CASES)
 
-        if np.sum(deaths) > self.min_deaths:
-            available_timeseries.append(TimeseriesType.NEW_DEATHS)
-
         return available_timeseries
 
-    def infer_all(self, plot=True, shift_deaths=0) -> pd.DataFrame:
+    def infer_all(self, plot=True) -> pd.DataFrame:
         """
         Infer R_t from all available data sources.
 
@@ -559,9 +525,6 @@ class RtInferenceEngine:
         ----------
         plot: bool
             If True, generate a plot of the inference.
-        shift_deaths: int
-            Shift the death time series by this amount with respect to cases
-            (when plotting only, does not shift the returned result).
 
         Returns
         -------
@@ -572,8 +535,6 @@ class RtInferenceEngine:
         available_timeseries = []
         if self.cases is not None:
             available_timeseries.append(TimeseriesType.NEW_CASES)
-        if self.deaths is not None:  # We drop deaths in the data loader so don't need to check here
-            available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
         for timeseries_type in available_timeseries:
             # Add Raw Data Output to Output DataFrame
@@ -620,60 +581,11 @@ class RtInferenceEngine:
                 df_all = df_all.merge(df_raw, left_index=True, right_index=True, how="left")
                 df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
 
-            # ------------------------------------------------
-            # Compute the indicator lag using the curvature
-            # alignment method.
-            # ------------------------------------------------
-            if (
-                timeseries_type in (TimeseriesType.NEW_DEATHS,)
-                and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns
-            ):
-
-                # Go back up to 30 days or the max time series length we have if shorter.
-                last_idx = max(-21, -len(df))
-                series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
-                series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
-
-                shift_in_days = utils.align_time_series(series_a=series_a, series_b=series_b)
-
-                df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
-                self.log.debug(
-                    "Using timeshift of: %s for timeseries type: %s ",
-                    shift_in_days,
-                    timeseries_type,
-                )
-                # Shift all the columns.
-                for col in df_all.columns:
-                    if timeseries_type.value in col:
-                        df_all[col] = df_all[col].shift(shift_in_days)
-                        # Extend death rt signals beyond
-                        # shift to avoid sudden jumps in composite metric.
-                        #
-                        # N.B interpolate() behaves differently depending on the location
-                        # of the missing values: For any nans appearing in between valid
-                        # elements of the series, an interpolated value is filled in.
-                        # For values at the end of the series, the last *valid* value is used.
-                        self.log.debug("Filling in %s missing values", shift_in_days)
-                        df_all[col] = df_all[col].interpolate(
-                            limit_direction="forward", method="linear"
-                        )
-
         if df_all is None:
             self.log.warning(f"Inference not possible for {self.regional_input.region.fips}")
             return pd.DataFrame()
 
-        if self.include_deaths and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
-            df_all["Rt_MAP_composite"] = np.nanmean(
-                df_all[["Rt_MAP__new_cases", "Rt_MAP__new_deaths"]], axis=1
-            )
-            # Just use the Stdev of cases. A correlated quadrature summed error
-            # would be better, but is also more confusing and difficult to fix
-            # discontinuities between death and case errors since deaths are
-            # only available for a subset. Systematic errors are much larger in
-            # any case.
-            df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
-
-        elif "Rt_MAP__new_cases" in df_all:
+        if "Rt_MAP__new_cases" in df_all:
             df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
             df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
@@ -717,12 +629,7 @@ class RtInferenceEngine:
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
         if plot:
-            fig = plotting.plot_rt(
-                df=df_all,
-                include_deaths=self.include_deaths,
-                shift_deaths=shift_deaths,
-                display_name=self.display_name,
-            )
+            fig = plotting.plot_rt(df=df_all, display_name=self.display_name,)
             if self.figure_collector is None:
                 output_path = pyseir.utils.get_run_artifact_path(
                     self.regional_input.region, RunArtifact.RT_INFERENCE_REPORT

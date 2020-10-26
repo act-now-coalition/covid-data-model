@@ -31,27 +31,9 @@ def plot_posteriors(x) -> plt.Figure:
     return fig
 
 
-def plot_rt(df, include_deaths, shift_deaths, display_name) -> plt.Figure:
+def plot_rt(df, display_name) -> plt.Figure:
     """"""
     fig, ax = plt.subplots(figsize=(10, 6))
-
-    if "Rt_ci5__new_deaths" in df:
-        if include_deaths:
-            plt.fill_between(
-                df.index,
-                df["Rt_ci5__new_deaths"],
-                df["Rt_ci95__new_deaths"],
-                alpha=0.2,
-                color="firebrick",
-            )
-        # Show for reference even if not used
-        plt.scatter(
-            df.index,
-            df["Rt_MAP__new_deaths"].shift(periods=shift_deaths),
-            s=25,
-            color="firebrick",
-            label="New Deaths",
-        )
 
     if "Rt_ci5__new_cases" in df:
         plt.fill_between(

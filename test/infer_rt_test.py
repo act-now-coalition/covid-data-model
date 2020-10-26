@@ -64,7 +64,6 @@ def run_individual(
     smoothed_df = infer_rt.filter_and_smooth_input_data(
         df=input_df,
         region=regional_input.region,
-        include_deaths=False,
         figure_collector=collector,
         log=structlog.getLogger(),
     )
