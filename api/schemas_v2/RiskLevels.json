@@ -4,70 +4,22 @@
   "type": "object",
   "properties": {
     "overall": {
-      "title": "Overall",
-      "description": "Overall risk level for region.",
-      "enum": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ]
+      "$ref": "#/definitions/RiskLevel"
     },
     "testPositivityRatio": {
-      "title": "Testpositivityratio",
-      "description": "Test positivity ratio risk level.",
-      "enum": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ]
+      "$ref": "#/definitions/RiskLevel"
     },
     "caseDensity": {
-      "title": "Casedensity",
-      "description": "Case density risk level.",
-      "enum": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ]
+      "$ref": "#/definitions/RiskLevel"
     },
     "contactTracerCapacityRatio": {
-      "title": "Contacttracercapacityratio",
-      "description": "Contact tracer capacity ratio risk level.",
-      "enum": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ]
+      "$ref": "#/definitions/RiskLevel"
     },
     "infectionRate": {
-      "title": "Infectionrate",
-      "description": "Infection rate risk level.",
-      "enum": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ]
+      "$ref": "#/definitions/RiskLevel"
     },
     "icuHeadroomRatio": {
-      "title": "Icuheadroomratio",
-      "description": "ICU headroom ratio risk level.",
-      "enum": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ]
+      "$ref": "#/definitions/RiskLevel"
     }
   },
   "required": [
@@ -77,5 +29,18 @@
     "contactTracerCapacityRatio",
     "infectionRate",
     "icuHeadroomRatio"
-  ]
+  ],
+  "definitions": {
+    "RiskLevel": {
+      "title": "RiskLevel",
+      "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    }
+  }
 }

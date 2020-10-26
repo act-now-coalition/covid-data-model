@@ -654,6 +654,23 @@
         },
         "description": "Known actuals data."
       },
+      "CovidPatientsMethod": {
+        "title": "CovidPatientsMethod",
+        "enum": [
+          "actual",
+          "estimated"
+        ],
+        "description": "Method used to determine number of current ICU patients with covid."
+      },
+      "NonCovidPatientsMethod": {
+        "title": "NonCovidPatientsMethod",
+        "enum": [
+          "actual",
+          "estimated_from_typical_utilization",
+          "estimated_from_total_icu_actual"
+        ],
+        "description": "Method used to determine number of current ICU patients without covid."
+      },
       "ICUHeadroomMetricDetails": {
         "title": "ICUHeadroomMetricDetails",
         "required": [
@@ -670,12 +687,7 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuCovidMethod": {
-            "title": "Currenticucovidmethod",
-            "enum": [
-              "actual",
-              "estimated"
-            ],
-            "description": "Method used to determine number of current ICU patients with covid."
+            "$ref": "#/components/schemas/CovidPatientsMethod"
           },
           "currentIcuNonCovid": {
             "title": "Currenticunoncovid",
@@ -683,13 +695,7 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuNonCovidMethod": {
-            "title": "Currenticunoncovidmethod",
-            "enum": [
-              "actual",
-              "estimated_from_typical_utilization",
-              "estimated_from_total_icu_actual"
-            ],
-            "description": "Method used to determine number of current ICU patients without covid."
+            "$ref": "#/components/schemas/NonCovidPatientsMethod"
           }
         },
         "description": "Details about how the ICU Headroom Metric was calculated."
@@ -874,6 +880,26 @@
         },
         "description": "Flattened timeseries data for multiple regions."
       },
+      "AggregationLevel": {
+        "title": "AggregationLevel",
+        "enum": [
+          "country",
+          "state",
+          "county"
+        ],
+        "description": "An enumeration."
+      },
+      "RiskLevel": {
+        "title": "RiskLevel",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown"
+      },
       "RiskLevels": {
         "title": "RiskLevels",
         "required": [
@@ -887,70 +913,22 @@
         "type": "object",
         "properties": {
           "overall": {
-            "title": "Overall",
-            "enum": [
-              0,
-              1,
-              2,
-              3,
-              4
-            ],
-            "description": "Overall risk level for region."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "testPositivityRatio": {
-            "title": "Testpositivityratio",
-            "enum": [
-              0,
-              1,
-              2,
-              3,
-              4
-            ],
-            "description": "Test positivity ratio risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "caseDensity": {
-            "title": "Casedensity",
-            "enum": [
-              0,
-              1,
-              2,
-              3,
-              4
-            ],
-            "description": "Case density risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "contactTracerCapacityRatio": {
-            "title": "Contacttracercapacityratio",
-            "enum": [
-              0,
-              1,
-              2,
-              3,
-              4
-            ],
-            "description": "Contact tracer capacity ratio risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "infectionRate": {
-            "title": "Infectionrate",
-            "enum": [
-              0,
-              1,
-              2,
-              3,
-              4
-            ],
-            "description": "Infection rate risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "icuHeadroomRatio": {
-            "title": "Icuheadroomratio",
-            "enum": [
-              0,
-              1,
-              2,
-              3,
-              4
-            ],
-            "description": "ICU headroom ratio risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           }
         },
         "description": "COVID risk levels for a region."
@@ -1002,13 +980,7 @@
             "description": "County name"
           },
           "level": {
-            "title": "Level",
-            "enum": [
-              "country",
-              "state",
-              "county"
-            ],
-            "description": "Level of region."
+            "$ref": "#/components/schemas/AggregationLevel"
           },
           "lat": {
             "title": "Lat",
@@ -1322,13 +1294,7 @@
             "description": "County name"
           },
           "level": {
-            "title": "Level",
-            "enum": [
-              "country",
-              "state",
-              "county"
-            ],
-            "description": "Level of region."
+            "$ref": "#/components/schemas/AggregationLevel"
           },
           "lat": {
             "title": "Lat",
