@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import pathlib
 import warnings
@@ -70,7 +71,11 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
-    provenance: Dict[str, str]
+    # A default exists for convience in tests. Non-test could is expected to explicitly set
+    # provenance.
+    # Because these objects are frozen it /might/ be safe to use default={} but using a factory to
+    # make a new instance of the mutable {} is safer.
+    provenance: Dict[str, str] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self):
         if CommonFields.LOCATION_ID in self.data.columns:
@@ -452,6 +457,25 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         return MultiRegionTimeseriesDataset(self.data, latest_df, provenance=self.provenance)
 
+    def append_provenance_csv(
+        self, path_or_buf: Union[pathlib.Path, TextIO]
+    ) -> "MultiRegionTimeseriesDataset":
+        return self.append_provenance_df(pd.read_csv(path_or_buf))
+
+    def append_provenance_df(self, provenance_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
+        if self.provenance is not None:
+            raise NotImplementedError("TODO(tom): add support for merging provenance data")
+        assert provenance_df.index.names == [None]
+        assert CommonFields.LOCATION_ID in provenance_df.columns
+        assert PdFields.VARIABLE in provenance_df.columns
+        assert PdFields.PROVENANCE in provenance_df.columns
+        provenance_series = provenance_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[
+            PdFields.PROVENANCE
+        ]
+        return MultiRegionTimeseriesDataset(
+            self.data, latest_data=self.latest_data, provenance=provenance_series
+        )
+
     @staticmethod
     def from_combined_dataframe(
         combined_df: pd.DataFrame, provenance: Optional[pd.Series] = None
@@ -558,6 +582,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         )
 
     def _location_id_provenance_dict(self, location_id: str) -> dict:
+        """Returns the provenance dict of a location_id."""
         if self.provenance is None:
             return {}
         try:
@@ -568,6 +593,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             return provenance_series[provenance_series.notna()].to_dict()
 
     def _location_id_latest_dict(self, location_id: str) -> dict:
+        """Returns the latest values dict of a location_id."""
         try:
             latest_row = self.latest_data.loc[location_id, :]
         except KeyError:
