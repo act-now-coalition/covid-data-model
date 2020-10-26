@@ -78,7 +78,6 @@ def build_region_timeseries(
     for row in timeseries.yield_records():
         # Timeseries records don't have population
         row[CommonFields.POPULATION] = region_summary.population
-        row[CommonFields.LOCATION_ID] = region_summary.locationId
         actual = _build_actuals(row)
         timeseries_row = ActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
