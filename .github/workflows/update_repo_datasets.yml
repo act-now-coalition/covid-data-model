@@ -17,12 +17,16 @@ env:
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
+  SENTRY_ENVIRONMENT: 'production'
+
   # use a webhook to write to slack channel dev-alerts for QA
   SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
 
   DATA_AVAILABILITY_SHEET_NAME: "Data Availability"
 
   GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA }}
+
+  TRIGGER_API_BUILD: ${{ github.event.client_payload.trigger_api_build }}
 
 jobs:
   update-and-promote-datasets:
@@ -68,9 +72,30 @@ jobs:
       run: |
         ./run.py data update
 
+    - name: Update External Forecasts
+      working-directory: ./covid-data-model
+      run: |
+        ./run.py data update-forecasts
+
     - name: Create Update Commit
       working-directory: ./covid-data-model
       run: ./tools/push-data-update.sh
+
+    - name: Maybe Trigger API build
+      if: ${{ env.TRIGGER_API_BUILD }}
+      working-directory: ./covid-data-model
+      env:
+        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+      run: |
+        ./tools/build-snapshot.sh master
+    - name: Slack notification
+      if: ${{ env.TRIGGER_API_BUILD }}
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+      uses: Ilshidur/action-slack@fb92a78
+      with:
+        args: 'Started new API build from dataset updater action.'
+
     - name: Update Data Availability Sheet
       working-directory: ./covid-data-model
       run: |

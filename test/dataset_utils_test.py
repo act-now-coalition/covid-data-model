@@ -7,7 +7,7 @@ import numpy as np
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
 from libs.datasets import dataset_utils
-from libs.datasets.combined_datasets import _build_data_and_provenance, Override
+from libs.datasets.combined_datasets import _build_data_and_provenance
 from libs.datasets.dataset_utils import AggregationLevel
 import pytest
 
@@ -74,7 +74,6 @@ def read_csv_and_index_fips_date(csv_str: str) -> pd.DataFrame:
 
 
 def test_fill_fields_and_timeseries_from_column():
-    # Timeseries in existing_df and new_df are merged together.
     existing_df = read_csv_and_index_fips_date(
         "fips,state,aggregate_level,county,cnt,date,foo\n"
         "55005,ZZ,county,North County,1,2020-05-01,ab\n"
@@ -88,120 +87,26 @@ def test_fill_fields_and_timeseries_from_column():
         "fips,state,aggregate_level,county,cnt,date\n"
         "55006,ZZ,county,South County,44,2020-05-04\n"
         "55007,ZZ,county,West County,28,2020-05-03\n"
-        "55005,ZZ,county,North County,3,2020-05-03\n"
         "55,ZZ,state,Grand State,42,2020-05-02\n"
     )
 
     datasets = {"existing": existing_df, "new": new_df}
 
     result, _ = _build_data_and_provenance(
-        {"cnt": ["existing", "new"], "foo": ["existing"]}, datasets, Override.BY_TIMESERIES
+        {"cnt": ["existing", "new"], "foo": ["existing"]}, datasets
     )
 
     expected = read_csv_and_index_fips_date(
         "fips,state,aggregate_level,county,cnt,date,foo\n"
-        "55005,ZZ,county,North County,,2020-05-01,ab\n"
-        "55005,ZZ,county,North County,,2020-05-02,cd\n"
-        "55005,ZZ,county,North County,3,2020-05-03,ef\n"
+        "55005,ZZ,county,North County,1,2020-05-01,ab\n"
+        "55005,ZZ,county,North County,2,2020-05-02,cd\n"
+        "55005,ZZ,county,North County,,2020-05-03,ef\n"
         "55006,ZZ,county,South County,44,2020-05-04,gh\n"
         "55007,ZZ,county,West County,28,2020-05-03,\n"
         "55,ZZ,state,Grand State,,2020-05-01,ij\n"
         "55,ZZ,state,Grand State,42,2020-05-02,\n"
         "55,ZZ,state,Grand State,,2020-05-03,kl\n"
     )
-    assert to_dict(["fips", "date"], result) == to_dict(["fips", "date"], expected)
-
-
-def test_fill_fields_with_data_source():
-    existing_df = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu,preserved\n"
-        "55005,ZZ,county,North County,43,ab\n"
-        "55006,ZZ,county,South County,,cd\n"
-        "55,ZZ,state,Grand State,46,ef\n"
-    )
-    new_df = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu\n"
-        "55006,ZZ,county,South County,27\n"
-        "55007,ZZ,county,West County,28\n"
-        "55,ZZ,state,Grand State,64\n"
-    )
-
-    datasets = {"existing": existing_df, "new": new_df}
-
-    result, _ = _build_data_and_provenance(
-        {"current_icu": ["existing", "new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
-    )
-
-    expected = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu,preserved\n"
-        "55005,ZZ,county,North County,43,ab\n"
-        "55006,ZZ,county,South County,27,cd\n"
-        "55007,ZZ,county,West County,28,\n"
-        "55,ZZ,state,Grand State,64,ef\n"
-    )
-
-    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-
-
-def test_fill_fields_with_data_source_nan_overwrite():
-    existing_df = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu,preserved\n"
-        "55,ZZ,state,Grand State,46,ef\n"
-    )
-    new_df = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu\n" "55,ZZ,state,Grand State,\n"
-    )
-
-    datasets = {"existing": existing_df, "new": new_df}
-
-    result, _ = _build_data_and_provenance(
-        {"current_icu": ["existing", "new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
-    )
-
-    expected = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu,preserved\n" "55,ZZ,state,Grand State,,ef\n"
-    )
-
-    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-
-
-def test_fill_fields_with_data_source_timeseries():
-    # Timeseries in existing_df and new_df are merged together.
-    existing_df = read_csv_and_index_fips_date(
-        "fips,state,aggregate_level,county,cnt,date,foo\n"
-        "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-        "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-        "55005,ZZ,county,North County,,2020-05-03,ef\n"
-        "55006,ZZ,county,South County,4,2020-05-04,gh\n"
-        "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
-        "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
-    )
-    new_df = read_csv_and_index_fips_date(
-        "fips,state,aggregate_level,county,cnt,date\n"
-        "55006,ZZ,county,South County,44,2020-05-04\n"
-        "55007,ZZ,county,West County,28,2020-05-03\n"
-        "55005,ZZ,county,North County,3,2020-05-03\n"
-        "55,ZZ,state,Grand State,42,2020-05-02\n"
-    )
-
-    datasets = {"existing": existing_df, "new": new_df}
-
-    result, _ = _build_data_and_provenance(
-        {"cnt": ["existing", "new"], "foo": ["existing"]}, datasets, Override.BY_ROW
-    )
-
-    expected = read_csv_and_index_fips_date(
-        "fips,state,aggregate_level,county,cnt,date,foo\n"
-        "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-        "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-        "55005,ZZ,county,North County,3,2020-05-03,ef\n"
-        "55006,ZZ,county,South County,44,2020-05-04,gh\n"
-        "55007,ZZ,county,West County,28,2020-05-03,\n"
-        "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
-        "55,ZZ,state,Grand State,42,2020-05-02,\n"
-        "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
-    )
-
     assert to_dict(["fips", "date"], result) == to_dict(["fips", "date"], expected)
 
 
@@ -221,7 +126,7 @@ def test_fill_fields_with_data_source_add_column():
     datasets = {"existing": existing_df, "new": new_df}
 
     result, _ = _build_data_and_provenance(
-        {"current_icu": ["new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
+        {"current_icu": ["new"], "preserved": ["existing"]}, datasets
     )
 
     expected = read_csv_and_index_fips(
@@ -244,7 +149,7 @@ def test_fill_fields_with_data_source_no_rows_input():
     datasets = {"existing": existing_df, "new": new_df}
 
     result, _ = _build_data_and_provenance(
-        {"current_icu": ["new"], "preserved": ["existing"]}, datasets, Override.BY_ROW
+        {"current_icu": ["new"], "preserved": ["existing"]}, datasets
     )
 
     expected = read_csv_and_index_fips(
@@ -264,12 +169,14 @@ def column_as_set(
     on=None,
     after=None,
     before=None,
+    exclude_county_999=False,
+    exclude_fips_prefix=None,
 ):
     """Return values in selected rows and column of df.
 
-    Exists to call `make_binary_array` without listing all the parameters.
+    Exists to call `make_rows_key` without listing all the parameters.
     """
-    rows_binary_array = dataset_utils.make_binary_array(
+    rows_key = dataset_utils.make_rows_key(
         df,
         aggregation_level,
         country=None,
@@ -279,22 +186,22 @@ def column_as_set(
         on=on,
         after=after,
         before=before,
+        exclude_county_999=exclude_county_999,
+        exclude_fips_prefix=exclude_fips_prefix,
     )
-    return set(df.loc[rows_binary_array][column])
+    return set(df.loc[rows_key][column])
 
 
 def test_make_binary_array():
-    df = pd.read_csv(
-        StringIO(
-            "city,county,state,fips,country,aggregate_level,date,metric\n"
-            "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
-            "New York City,,ZZ,97324,USA,city,2020-03-22,march22-nyc\n"
-            "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
-            ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
-            ",,ZZ,97001,USA,state,2020-03-23,mystate\n"
-            ",,,,UK,country,2020-03-23,foo\n"
-        )
-    )
+    df = read_csv_and_index_fips_date(
+        "city,county,state,fips,country,aggregate_level,date,metric\n"
+        "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
+        "New York City,,ZZ,97324,USA,city,2020-03-22,march22-nyc\n"
+        "New York City,,ZZ,97324,USA,city,2020-03-24,march24-nyc\n"
+        ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
+        ",,ZZ,97,USA,state,2020-03-23,mystate\n"
+        ",,,,UK,country,2020-03-23,foo\n"
+    ).reset_index()
 
     assert column_as_set(df, "country", AggregationLevel.COUNTRY) == {"UK"}
     assert column_as_set(df, "metric", AggregationLevel.STATE) == {"mystate"}
@@ -307,3 +214,53 @@ def test_make_binary_array():
     assert column_as_set(
         df, "metric", None, states=["ZZ"], after="2020-03-22", before="2020-03-24"
     ) == {"smithville-march23", "county-metric", "mystate",}
+
+
+def test_make_binary_array_exclude_county_999():
+    df = read_csv_and_index_fips_date(
+        "city,county,state,fips,country,aggregate_level,date,metric\n"
+        "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
+        ",North County,ZZ,97001,USA,county,2020-03-23,county-metric\n"
+        ",Unknown County,ZZ,97999,USA,county,2020-03-23,unknown-county\n"
+        ",,ZZ,97,USA,state,2020-03-23,mystate\n"
+        ",,,,UK,country,2020-03-23,foo\n"
+    ).reset_index()
+
+    assert column_as_set(df, "metric", AggregationLevel.COUNTY) == {
+        "county-metric",
+        "unknown-county",
+    }
+    assert column_as_set(df, "metric", AggregationLevel.COUNTY, exclude_county_999=True) == {
+        "county-metric"
+    }
+    assert column_as_set(df, "metric", None, exclude_county_999=True) == {
+        "smithville-march23",
+        "county-metric",
+        "mystate",
+        "foo",
+    }
+
+
+def test_make_binary_array_exclude_fips_prefix():
+    df = read_csv_and_index_fips_date(
+        "city,county,state,fips,country,aggregate_level,date,metric\n"
+        "Smithville,,ZZ,97123,USA,city,2020-03-23,smithville-march23\n"
+        ",North County,ZZ,01001,USA,county,2020-03-23,county-in-01\n"
+        ",Unknown County,ZZ,97999,USA,county,2020-03-23,unknown-county\n"
+        ",,ZZ,97,USA,state,2020-03-23,state97\n"
+        ",,,,UK,country,2020-03-23,country-uk\n"
+    ).reset_index()
+
+    assert column_as_set(df, "metric", AggregationLevel.COUNTY) == {
+        "county-in-01",
+        "unknown-county",
+    }
+    assert column_as_set(df, "metric", AggregationLevel.COUNTY, exclude_fips_prefix="97") == {
+        "county-in-01"
+    }
+    assert column_as_set(df, "metric", None, exclude_fips_prefix="01") == {
+        "smithville-march23",
+        "unknown-county",
+        "state97",
+        "country-uk",
+    }

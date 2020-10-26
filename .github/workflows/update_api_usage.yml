@@ -1,0 +1,93 @@
+name: Update API User Usage
+
+on:
+  # This hook is automatically triggered by
+  # https://github.com/covid-projections/covid-data-public/blob/master/.github/workflows/update_data.yml
+  # after covid-data-public datasets have been updated.
+  schedule:
+     # Run every 4 hours at the top of the hour
+   - cron: '0 */6 * * *'
+
+env:
+  # !!! Change this to your BRANCH if you want to test it
+  COVID_DATA_MODEL_REF: 'master'
+
+  # To pin to an old data sets, put the branch/tag/commit here:
+  COVID_DATA_PUBLIC_REF: 'master'
+
+  # Used by python code that reports errors to sentry.
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+  SENTRY_ENVIRONMENT: 'production'
+
+  # use a webhook to write to slack channel dev-alerts for QA
+  SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
+
+  # Google sheet id to update
+  API_USERS_SHEET_ID: ${{ secrets.API_USERS_SHEET_ID }}
+
+  API_TABLE_NAME: ${{ secrets.API_TABLE_NAME }}
+
+  API_DATABASE_NAME: ${{ secrets.API_DATABASE_NAME }}
+
+  GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA }}
+
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.API_USAGE_UPDATER_SECRET_ACCESS_KEY }}
+
+  AWS_ACCESS_KEY_ID: ${{ secrets.API_USAGE_UPDATER_ACCESS_KEY_ID }}
+
+  HUBSPOT_API_KEY: $${{ secrets.HUBSPOT_API_KEY }}
+
+jobs:
+  update-and-promote-datasets:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout covid-data-model
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-model
+        path: covid-data-model
+        ref: '${{env.COVID_DATA_MODEL_REF}}'
+        lfs: true
+
+    - name: Checkout covid-data-public
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-public
+        path: covid-data-public
+        lfs: true
+        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
+
+    - name: Setup Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7'
+
+    - name: Cache Pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+
+    - name: Install Dependencies
+      working-directory: ./covid-data-model
+      run: pip install -r requirements.txt
+
+    - name: Update API User Usage sheet
+      working-directory: ./covid-data-model
+      env:
+        AWS_DEFAULT_REGION: us-east-1
+      run: |
+        ./run.py utils update-api-user-usage
+    - name: Slack notification
+      if: failure()
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+        STATUS: ${{job.status}}
+      uses: Ilshidur/action-slack@fb92a78
+      with:
+        args: 'Update API usage failed'

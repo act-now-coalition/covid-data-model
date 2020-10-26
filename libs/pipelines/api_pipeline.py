@@ -1,7 +1,10 @@
+from typing import Any
+from typing import Dict
 from typing import Iterator, List, Optional
 import functools
 import multiprocessing
 import pathlib
+from dataclasses import dataclass
 
 import pydantic
 import structlog
@@ -14,11 +17,14 @@ from api.can_api_definition import (
     RegionSummaryWithTimeseries,
 )
 from libs import dataset_deployer
+from libs import pipeline
 from libs import top_level_metrics
+from libs.datasets import timeseries
 from libs.datasets import CommonFields
-from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets import combined_datasets
 from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
 from libs.functions import get_can_projection
@@ -27,18 +33,71 @@ logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
 
 
-def run_on_all_fips_for_intervention(
-    latest_values: LatestValuesDataset,
-    timeseries: TimeseriesDataset,
-    intervention: Intervention,
-    model_output_dir: pathlib.Path,
+@dataclass(frozen=True)
+class RegionalInput:
+    region: pipeline.Region
+
+    model_output: Optional[CANPyseirLocationOutput]
+
+    rt_data: Optional[OneRegionTimeseriesDataset]
+
+    icu_data: Optional[OneRegionTimeseriesDataset]
+
+    intervention: Intervention
+
+    _combined_data: combined_datasets.RegionalData
+
+    @property
+    def fips(self) -> str:
+        return self.region.fips
+
+    @property
+    def state(self) -> str:
+        return self.latest[CommonFields.STATE]
+
+    @property
+    def latest(self) -> Dict[str, Any]:
+        return self._combined_data.latest
+
+    @property
+    def timeseries(self) -> OneRegionTimeseriesDataset:
+        return self._combined_data.timeseries
+
+    @staticmethod
+    def from_region_and_intervention(
+        region: pipeline.Region,
+        intervention: Intervention,
+        rt_data: MultiRegionTimeseriesDataset,
+        icu_data: MultiRegionTimeseriesDataset,
+    ) -> "RegionalInput":
+        combined_data = combined_datasets.RegionalData.from_region(region)
+
+        try:
+            rt_data = rt_data.get_one_region(region)
+        except timeseries.RegionLatestNotFound:
+            rt_data = None
+
+        try:
+            icu_data = icu_data.get_one_region(region)
+        except timeseries.RegionLatestNotFound:
+            icu_data = None
+
+        return RegionalInput(
+            region=region,
+            model_output=None,
+            intervention=intervention,
+            _combined_data=combined_data,
+            rt_data=rt_data,
+            icu_data=icu_data,
+        )
+
+
+def run_on_all_regional_inputs_for_intervention(
+    regional_inputs: List[RegionalInput],
     pool: multiprocessing.Pool = None,
     sort_func=None,
     limit=None,
 ) -> Iterator[RegionSummaryWithTimeseries]:
-    run_fips = functools.partial(
-        build_timeseries_for_fips, intervention, latest_values, timeseries, model_output_dir
-    )
 
     # Load interventions outside of subprocesses to properly cache.
     get_can_projection.get_interventions()
@@ -46,14 +105,8 @@ def run_on_all_fips_for_intervention(
     # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
     # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
     pool = pool or multiprocessing.Pool(maxtasksperchild=1)
-    results = pool.map(run_fips, latest_values.all_fips)
-    all_timeseries = []
-
-    for region_timeseries in results:
-        if not region_timeseries:
-            continue
-
-        all_timeseries.append(region_timeseries)
+    results = pool.map(build_timeseries_for_region, regional_inputs)
+    all_timeseries = [region_timeseries for region_timeseries in results if region_timeseries]
 
     if sort_func:
         all_timeseries.sort(key=sort_func)
@@ -64,56 +117,49 @@ def run_on_all_fips_for_intervention(
     return all_timeseries
 
 
-def generate_metrics_and_latest_for_fips(
-    timeseries: TimeseriesDataset, latest: dict, model_output: Optional[CANPyseirLocationOutput],
+def generate_metrics_and_latest(
+    timeseries: OneRegionTimeseriesDataset,
+    rt_data: Optional[OneRegionTimeseriesDataset],
+    icu_data: Optional[OneRegionTimeseriesDataset],
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
-    For a FIPS, generate a MetricsTimeseriesRow per day and return the latest.
+    Build metrics with timeseries.
 
     Args:
-        fips: FIPS to run on.
+        timeseries: Timeseries for one region
+        rt_data: Infection rate timeseries.
+        icu_data: ICU timeseries.
 
     Returns:
-        Tuple of MetricsTimeseriesRows for all days and the latest.
+        Tuple of MetricsTimeseriesRows for all days and the metrics overview.
     """
+    if timeseries.empty:
+        return [], None
+
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, latest, model_output
+        timeseries, rt_data, icu_data
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
+
     return metrics_for_fips, latest
 
 
-def build_timeseries_for_fips(
-    intervention, us_latest, us_timeseries, model_output_dir, fips
+def build_timeseries_for_region(
+    regional_input: RegionalInput,
 ) -> Optional[RegionSummaryWithTimeseries]:
-    fips_latest = us_latest.get_record_for_fips(fips)
+    intervention = regional_input.intervention
 
     if intervention is Intervention.SELECTED_INTERVENTION:
-        state = fips_latest[CommonFields.STATE]
-        intervention = get_can_projection.get_intervention_for_state(state)
-
-    model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
-        fips, intervention, model_output_dir
-    )
-    if not model_output and intervention is not Intervention.OBSERVED_INTERVENTION:
-        # All model output is currently tied to a specific intervention. However,
-        # we want to generate results for regions that don't have a fit result, but we're not
-        # duplicating non-model outputs.
-        return None
+        intervention = get_can_projection.get_intervention_for_state(regional_input.state)
 
     try:
-        fips_timeseries = us_timeseries.get_subset(None, fips=fips)
-        if fips_timeseries.empty:
-            logger.warning("Missing data for fips, skipping region summary generation.", fips=fips)
-            return None
-
-        metrics_timeseries, metrics_latest = generate_metrics_and_latest_for_fips(
-            fips_timeseries, fips_latest, model_output
+        metrics_timeseries, metrics_latest = generate_metrics_and_latest(
+            regional_input.timeseries, regional_input.rt_data, regional_input.icu_data,
         )
-        region_summary = api.generate_region_summary(fips_latest, metrics_latest, model_output)
+        region_summary = api.generate_region_summary(regional_input.latest, metrics_latest, None)
         region_timeseries = api.generate_region_timeseries(
-            region_summary, fips_timeseries, metrics_timeseries, model_output
+            region_summary, regional_input.timeseries, metrics_timeseries, None
         )
     except Exception:
         logger.exception(f"Failed to build timeseries for fips.")
@@ -135,27 +181,27 @@ def deploy_single_level(intervention, all_timeseries, summary_folder, region_fol
 
     logger.info(f"Deploying {intervention.name}")
 
-    all_summaries = []
     deploy_timeseries_partial = functools.partial(_deploy_timeseries, intervention, region_folder)
     all_summaries = [
         deploy_timeseries_partial(region_timeseries) for region_timeseries in all_timeseries
     ]
     bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
     bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
+
+    deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
+    deploy_json_api_output(intervention, bulk_summaries, summary_folder)
+    deploy_csv_api_output(intervention, bulk_summaries, summary_folder)
+
     flattened_timeseries = api.generate_bulk_flattened_timeseries(bulk_timeseries)
     if not flattened_timeseries.__root__:
-        logger.error(
+        logger.warning(
             "No summaries, skipping deploying bulk data",
             intervention=intervention,
             summary_folder=summary_folder,
         )
         return
 
-    deploy_json_api_output(intervention, bulk_timeseries, summary_folder)
     deploy_csv_api_output(intervention, flattened_timeseries, summary_folder)
-
-    deploy_json_api_output(intervention, bulk_summaries, summary_folder)
-    deploy_csv_api_output(intervention, bulk_summaries, summary_folder)
 
 
 def deploy_json_api_output(

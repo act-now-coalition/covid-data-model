@@ -22,7 +22,7 @@ class JHUDataset(data_source.DataSource):
 
     DATA_FOLDER = "data/cases-jhu/csse_covid_19_daily_reports"
     SOURCE_NAME = "JHU"
-    HAS_AGGREGATED_NYC_BOROUGH = True
+    HAS_AGGREGATED_NYC_BOROUGH = False
 
     class Fields(object):
         FIPS = "FIPS"
@@ -59,7 +59,6 @@ class JHUDataset(data_source.DataSource):
     COMMON_FIELD_MAP = {
         CommonFields.CASES: Fields.CONFIRMED,
         CommonFields.DEATHS: Fields.DEATHS,
-        CommonFields.RECOVERED: Fields.RECOVERED,
     }
 
     def __init__(self, input_dir):

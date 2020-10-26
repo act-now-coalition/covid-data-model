@@ -1,0 +1,12 @@
+{
+  "name": "aws-api-auth",
+  "version": "1.0.0",
+  "description": "Authentication for Covid Act Now API",
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "serverless-dotenv-plugin": "^3.0.0",
+    "serverless-lambda-edge-pre-existing-cloudfront": "^1.1.4",
+    "serverless-python-requirements": "^2.4.1"
+  }
+}

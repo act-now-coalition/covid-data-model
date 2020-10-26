@@ -33,7 +33,7 @@ def init_client() -> gspread.Client:
 
 
 def create_or_replace_worksheet(
-    sheet: gspread.Spreadsheet, worksheet_name: str
+    spreadsheet: gspread.Spreadsheet, worksheet_name: str
 ) -> gspread.Worksheet:
     """Creates or replaces a worksheet with name `worksheet_name`.
 
@@ -48,20 +48,56 @@ def create_or_replace_worksheet(
     Returns: Newly created Worksheet.
     """
     try:
-        worksheet = sheet.worksheet(worksheet_name)
+        worksheet = spreadsheet.worksheet(worksheet_name)
         try:
-            sheet.del_worksheet(worksheet)
+            spreadsheet.del_worksheet(worksheet)
         except Exception:
             # If worksheet name exists but is the only worksheet, need to add a new tmp sheet
             # first then delete the old one
-            new_worksheet = sheet.add_worksheet("tmp", 100, 100)
-            sheet.del_worksheet(worksheet)
+            new_worksheet = spreadsheet.add_worksheet("tmp", 100, 100)
+            spreadsheet.del_worksheet(worksheet)
             new_worksheet.update_title(worksheet_name)
             return new_worksheet
     except gspread.WorksheetNotFound:
         pass
 
+    return spreadsheet.add_worksheet(worksheet_name, 100, 100)
+
+
+def create_or_clear_worksheet(sheet: gspread.Spreadsheet, worksheet_name: str) -> gspread.Worksheet:
+    """Creates or clears a worksheet with name `worksheet_name`.
+
+    Args:
+        sheet: Spreadsheet
+        worksheet_name: Name of worksheet.
+
+    Returns: Worksheet with name `worksheet_name`.
+    """
+    try:
+        worksheet = sheet.worksheet(worksheet_name)
+        worksheet.clear()
+        return worksheet
+    except gspread.WorksheetNotFound:
+        pass
+
     return sheet.add_worksheet(worksheet_name, 100, 100)
+
+
+def open_spreadsheet(
+    sheet_id: str, gspread_client: Optional[gspread.Client] = None,
+) -> gspread.Spreadsheet:
+    """Opens or creates a spreadsheet, optionally sharing with `share_email`.
+
+    Args:
+        sheet_name: Name of sheet to open or create.
+        share_email: Email to share sheet with.
+
+    Returns: Spreadsheet.
+    """
+
+    gspread_client = gspread_client or init_client()
+
+    return gspread_client.open_by_key(sheet_id)
 
 
 def open_or_create_spreadsheet(
@@ -98,7 +134,7 @@ def update_info_sheet(
     sheet_name: str = "Update Info",
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
 ):
-    filename = dataset_pointer.form_filename(DatasetType.TIMESERIES)
+    filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     data = [

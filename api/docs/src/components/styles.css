@@ -1,0 +1,61 @@
+.redocusaurus .redoc-wrap {
+    border-bottom: 1px solid var(--ifm-toc-border-color);
+  }
+  
+  /* ------ Headings Overrides ------- */
+  
+  .redocusaurus h2,h3,h4 {
+    color: var(--ifm-font-color-base);
+  }
+  
+  .redocusaurus h5 {
+    color: var(--ifm-font-color-secondary) !important;
+  }
+  
+  .redocusaurus h5 > span {
+    color: var(--ifm-font-color-secondary) !important;
+  }
+  
+  /* ------- Sidebar Overrides (Left Panel) ------- */
+  
+  .redocusaurus .menu-content {
+    border-right: 1px solid var(--ifm-toc-border-color);
+  }
+  
+  /* Logo Background */
+  .redocusaurus .menu-content div:first-child {
+    background-color: transparent !important;
+  }
+  
+  /* ------- Right Panel Overrides ------- */
+  
+  .redocusaurus code {
+    color: var(--ifm-color-emphasis-100);
+    padding: 0px;
+  }
+  
+  html[data-theme="dark"] .redocusaurus code {
+    color: var(--ifm-color-emphasis-900);
+  }
+  
+  .redocusaurus ul > li.react-tabs__tab--selected:not(.tab-error):not(.tab-success) {
+    color: #303846 !important;
+  }
+  
+  /* ------ Schema Styling Overrides ------- */
+  
+  .redocusaurus table th, table td {
+    border: none;
+  }
+  
+  .redocusaurus table:not(.security-details) td {
+    border-bottom: none !important;
+  }
+  
+  .redocusaurus table.security-details > tbody > tr  {
+    color: var(--ifm-font-color);
+  }
+  
+  .redocusaurus table.security-details tr {
+    background-color: var(--ifm-background-color)
+  }

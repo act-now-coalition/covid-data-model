@@ -6,7 +6,7 @@ import structlog
 import pydantic
 
 from libs import git_lfs_object_helpers
-from libs.datasets.dataset_base import DatasetBase
+from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets import dataset_utils
 from libs.github_utils import GitSummary
@@ -38,14 +38,14 @@ class DatasetPointer(pydantic.BaseModel):
     def filename(self) -> str:
         return self.path.filename
 
-    def save_dataset(self, dataset: DatasetBase) -> pathlib.Path:
+    def save_dataset(self, dataset: SaveableDatasetInterface) -> pathlib.Path:
         dataset.to_csv(self.path)
         _logger.info("Successfully saved dataset", path=str(self.path))
         return self.path
 
     def load_dataset(
         self, before: str = None, previous_commit: bool = False, commit: str = None
-    ) -> DatasetBase:
+    ) -> SaveableDatasetInterface:
         """Load dataset from file specified by pointer.
 
         If options are specified, will load from git history of the file.

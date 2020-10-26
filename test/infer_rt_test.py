@@ -4,11 +4,20 @@ import pytest
 import pandas as pd
 import structlog
 
+from libs.datasets import combined_datasets
+from covidactnow.datapublic.common_fields import CommonFields
+from libs import pipeline
+from libs.datasets import timeseries
 from pyseir import cli
+
 from pyseir.rt import utils
 from pyseir.rt import infer_rt
 from test.mocks.inference import load_data
 from test.mocks.inference.load_data import RateChange
+
+
+# turns all warnings into errors for this module
+pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
 def test_replace_outliers_on_last_day():
@@ -43,6 +52,8 @@ def run_individual(
     display_name: str,
     output_dir: pathlib.Path = TEST_OUTPUT_DIR,
 ):
+    output_dir.mkdir(exist_ok=True)
+
     # TODO fails below if deaths not present even if not using
     data_generator = load_data.DataGenerator(spec)
     input_df = load_data.create_synthetic_df(data_generator)
@@ -107,13 +118,13 @@ def test_constant_cases_high_count(tmp_path):
         ratechange2=RateChange(80, 1.5),  # To avoid plotting issues
     )
     rt1, rt2, t_switch, rt = run_individual(
-        "20", data_spec, "test_constant_cases_high_count"  # Kansas
+        "20", data_spec, "test_constant_cases_high_count", output_dir=tmp_path  # Kansas
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow
-def test_med_scale_strong_growth_and_decay():
+def test_med_scale_strong_growth_and_decay(tmp_path):
     """Track cases growing strongly and then decaying strongly"""
     (rt1, rt2, t_switch, rt) = run_individual(
         "36",  # New York
@@ -125,13 +136,14 @@ def test_med_scale_strong_growth_and_decay():
             ratechange2=RateChange(50, 0.7),
         ),
         "test_med_scale_strong_growth_and_decay",
+        output_dir=tmp_path,
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.skip(reason="From Alex: Test is failing rt = .84 instead of rt1")
 @pytest.mark.slow
-def test_low_cases_weak_growth():
+def test_low_cases_weak_growth(tmp_path):
     """Track with low scale (count = 5) and slow growth"""
     (rt1, rt2, t_switch, rt) = run_individual(
         "50",  # Vermont
@@ -143,12 +155,13 @@ def test_low_cases_weak_growth():
             ratechange2=RateChange(70, 1.2),
         ),
         "test_low_cases_weak_growth",
+        output_dir=tmp_path,
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow
-def test_high_scale_late_growth():
+def test_high_scale_late_growth(tmp_path):
     """Track decaying from high initial count to low number then strong growth"""
     (rt1, rt2, t_switch, rt) = run_individual(
         "02",  # Alaska
@@ -160,12 +173,13 @@ def test_high_scale_late_growth():
             ratechange2=RateChange(70, 1.5),
         ),
         "test_high_scale_late_growth",
+        output_dir=tmp_path,
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow
-def test_low_scale_two_decays():
+def test_low_scale_two_decays(tmp_path):
     """Track low scale decay at two different rates"""
     (rt1, rt2, t_switch, rt) = run_individual(
         "06",  # California
@@ -177,12 +191,13 @@ def test_low_scale_two_decays():
             ratechange2=RateChange(50, 0.7),
         ),
         "test_low_scale_two_decays",
+        output_dir=tmp_path,
     )
     check_standard_assertions(rt1, rt2, t_switch, rt)
 
 
 @pytest.mark.slow
-def test_smoothing_and_causality():
+def test_smoothing_and_causality(tmp_path):
     run_individual(
         "56",  # Wyoming
         load_data.DataSpec(
@@ -193,16 +208,11 @@ def test_smoothing_and_causality():
             ratechange2=RateChange(95, 5.0),
         ),
         "test_smoothing_and_causality",
+        output_dir=tmp_path,
     )
 
 
-def test_generate_infection_rate_metric_no_region_given():
-    FIPS = []
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
-    df = cli._generate_infection_rate_metric(regions=regions)
-    assert df.empty
-
-
+@pytest.mark.slow
 def test_generate_infection_rate_metric_one_empty():
     FIPS = [
         "51017",  # Bath County VA Almost No Cases. Will be filtered out under any thresholds.
@@ -210,27 +220,47 @@ def test_generate_infection_rate_metric_one_empty():
     ]
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
 
-    df = cli._generate_infection_rate_metric(regions)
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
     returned_fips = df.fips.unique()
     assert "51153" in returned_fips
     assert "51017" not in returned_fips
 
 
+@pytest.mark.slow
 def test_generate_infection_rate_metric_two_aggregate_levels():
     FIPS = ["06", "06075"]  # CA  # San Francisco, CA
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
 
-    df = cli._generate_infection_rate_metric(regions)
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
     returned_fips = df.fips.unique()
     assert "06" in returned_fips
     assert "06075" in returned_fips
 
 
-def test_generate_infection_rate_metric_fake_fips():
-    FIPS = ["48999"]  # TX Misc Fips Holder
+@pytest.mark.slow
+def test_generate_infection_rate_new_orleans_patch():
+    FIPS = ["22", "22051", "22071"]  # LA, Jefferson and Orleans
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
-    with pytest.raises(AssertionError):
-        cli._generate_infection_rate_metric(regions)
+
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
+    returned_fips = df.fips.unique()
+    assert "22" in returned_fips
+    assert "22051" in returned_fips
+    assert "22071" in returned_fips
+    assert not df[CommonFields.DATE].isna().any()
+    assert not df[CommonFields.FIPS].isna().any()
+
+
+def test_generate_infection_rate_metric_fake_fips():
+    with structlog.testing.capture_logs() as logs:
+        # TX Misc Fips Holder timeseries not found in combined data
+        infer_input = infer_rt.RegionalInput.from_fips("48999")
+    assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
+    assert infer_input.timeseries.empty
+
+    with pytest.raises(timeseries.RegionLatestNotFound):
+        # Totally bogus FIPS not even in latest data raises an exception
+        infer_rt.RegionalInput.from_fips("48998")
 
 
 @pytest.mark.xfail(raises=ValueError)
@@ -238,6 +268,33 @@ def test_generate_infection_rate_with_nans():
     # Ma Counties is currently failing with a ValueError due to recent period of non-reporting
     FIPS = ["25001"]  # MA lots of NaN
     regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
-    df = cli._generate_infection_rate_metric(regions)
+    df = pd.concat(infer_rt.run_rt(input) for input in regions)
     returned_fips = df.fips.unique()
     assert "25001" in returned_fips
+
+
+@pytest.mark.slow
+def test_patch_substatepipeline_nola_infection_rate():
+    nola_fips = [
+        "22051",  # Jefferson
+        "22071",  # Orleans
+    ]
+    pipelines = []
+    for fips in nola_fips:
+        region = pipeline.Region.from_fips(fips)
+        infection_rate_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
+        pipelines.append(
+            cli.SubStatePipeline(
+                region=region,
+                infer_df=infection_rate_df,
+                icu_data=None,
+                _combined_data=combined_datasets.RegionalData.from_region(region),
+            )
+        )
+
+    patched = cli._patch_substatepipeline_nola_infection_rate(pipelines)
+
+    df = pd.concat(p.infer_df for p in patched)
+    returned_fips = df.fips.unique()
+    assert "22051" in returned_fips
+    assert "51017" not in returned_fips

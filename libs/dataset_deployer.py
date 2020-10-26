@@ -1,9 +1,12 @@
-from typing import List
+from typing import List, Optional
+import enum
 import os
 import pathlib
 import csv
 import io
 import logging
+
+import pandas as pd
 
 _logger = logging.getLogger(__name__)
 
@@ -68,7 +71,9 @@ def flatten_dict(data: dict, level_separator: str = ".") -> dict:
     return flattened
 
 
-def write_nested_csv(data: List[dict], output_path: pathlib.Path):
+def write_nested_csv(
+    data: List[dict], output_path: pathlib.Path, keys_to_skip: Optional[List[str]] = None
+):
     """Writes list of data as a nested csv.
 
     Args:
@@ -79,6 +84,8 @@ def write_nested_csv(data: List[dict], output_path: pathlib.Path):
     if not data:
         raise ValueError("Cannot upload a 0 length list.")
     header = flatten_dict(data[0]).keys()
+    if keys_to_skip:
+        header = [column for column in header if column not in keys_to_skip]
 
     _logger.info(f"Writing to {output_path}")
     with output_path.open("w") as csvfile:
@@ -90,6 +97,11 @@ def write_nested_csv(data: List[dict], output_path: pathlib.Path):
             # if a nested key is optional (i.e. {a: Optional[dict]}) and there is no
             # value for a, (i.e. {a: None}), don't write a, as it's not in the header.
             flattened_row = {k: v for k, v in flattened_row.items() if k in header}
+            flattened_row = {k: v for k, v in flattened_row.items() if not pd.isnull(v)}
+            flattened_row = {
+                k: v.value if isinstance(v, enum.Enum) else v for k, v in flattened_row.items()
+            }
+
             writer.writerow(flattened_row)
 
 

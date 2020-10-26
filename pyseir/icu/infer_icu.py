@@ -1,4 +1,9 @@
+import collections
 import json
+from functools import lru_cache
+from typing import Mapping
+from typing import Optional
+
 import structlog
 import os.path
 from dataclasses import dataclass
@@ -6,9 +11,12 @@ from enum import Enum
 
 import pandas as pd
 
-from pyseir import DATA_DIR
-import libs.datasets.combined_datasets as combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
+from libs import pipeline
+from libs.datasets import combined_datasets
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs.datasets.timeseries import TimeseriesDataset
+from pyseir import DATA_DIR
 
 logger = structlog.get_logger()
 
@@ -31,70 +39,118 @@ class LinearRegressionCoefficients:
     b: float = -1.6083
 
 
+@dataclass
+class RegionalInput:
+
+    regional_data: combined_datasets.RegionalData
+
+    _state_combined_data: Optional[combined_datasets.RegionalData]
+
+    @property
+    def region(self) -> pipeline.Region:
+        return self.regional_data.region
+
+    @property
+    def timeseries(self) -> OneRegionTimeseriesDataset:
+        """Get the TimeseriesDataset"""
+        return self.regional_data.timeseries
+
+    @property
+    def state_timeseries(self) -> Optional[OneRegionTimeseriesDataset]:
+        """Get the TimeseriesDataset for the state of a county region, or None for other regions."""
+        if self.region.is_county():
+            return self._state_combined_data.timeseries
+        else:
+            return None
+
+    @staticmethod
+    def from_regional_data(regional_data: combined_datasets.RegionalData):
+        region = regional_data.region
+        state_combined_data = (
+            combined_datasets.RegionalData.from_region(region.get_state_region())
+            if region.is_county()
+            else None
+        )
+        return RegionalInput(regional_data=regional_data, _state_combined_data=state_combined_data)
+
+
 def get_icu_timeseries(
-    fips: str, use_actuals: bool = True, weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION
+    region: pipeline.Region,
+    regional_combined_data: OneRegionTimeseriesDataset,
+    state_combined_data: Optional[OneRegionTimeseriesDataset],
+    use_actuals: bool = True,
+    weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
 ) -> pd.Series:
     """
-    Load data for region of interest and return ICU Utilization numerator.
+    Loads data for region of interest and returns ICU Utilization numerator.
 
-    Parameters
-    ----------
-    fips: str
-        Region of interest
-    use_actuals: bool
-        If True, return actuals when available. If False, always use predictions.
-    weight_by: ICUWeightsPath
-        The method by which to estimate county level utilization from state level utilization when
-        no county level inpatient/icu data is available.
+    Args:
+        region: Region of interest
+        use_actuals: If True, return actuals when available. If False, always use predictions.
+        weight_by: The method by which to estimate county level utilization from state level utilization when
+            no county level inpatient/icu data is available.
 
-    Returns
-    -------
-    output: pandas.Series
+    Returns:
         A date-indexed series of ICU estimate for heads-in-beds for a given region
-
     """
-    log = logger.new(fips=fips, event=f"ICU for Fips = {fips}")
-    data = _get_data_for_icu_calc(fips)
+    log = logger.new(region=str(region), event=f"ICU for Region = {region}")
+    data = _get_data_for_icu_calc(regional_combined_data, state_combined_data)
     return _calculate_icu_timeseries(
-        data=data, fips=fips, use_actuals=use_actuals, weight_by=weight_by, log=log
+        data=data, region=region, use_actuals=use_actuals, weight_by=weight_by, log=log,
     )
+
+
+def get_icu_timeseries_from_regional_input(
+    regional_input: RegionalInput,
+    use_actuals: bool = True,
+    weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
+) -> OneRegionTimeseriesDataset:
+    """
+    Loads data for region of interest and returns ICU Utilization numerator.
+
+    Args:
+        region: Region of interest
+        use_actuals: If True, return actuals when available. If False, always use predictions.
+        weight_by: The method by which to estimate county level utilization from state level utilization when
+            no county level inpatient/icu data is available.
+
+    Returns: Timeseries of ICU estimate for heads-in-beds for a given region.
+    """
+    region = regional_input.region
+    log = logger.new(region=str(region), event=f"ICU for Region = {region}")
+    data = _get_data_for_icu_calc(regional_input.timeseries, regional_input.state_timeseries)
+    icu_timeseries = _calculate_icu_timeseries(
+        data=data, region=region, use_actuals=use_actuals, weight_by=weight_by, log=log,
+    )
+    icu_timeseries.name = CommonFields.CURRENT_ICU
+    icu_df = icu_timeseries.reset_index()
+    icu_df[CommonFields.FIPS] = region.fips
+    icu_df[CommonFields.LOCATION_ID] = region.location_id
+    return OneRegionTimeseriesDataset(icu_df, {})
 
 
 def _calculate_icu_timeseries(
     data: pd.DataFrame,
-    fips: str,
+    region: pipeline.Region,
     use_actuals: bool = True,
     weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
     log=None,
 ) -> pd.Series:
-    """
-        Load data for region of interest and return ICU Utilization numerator.
+    """Loads data for region of interest and return ICU Utilization numerator.
 
-    Parameters
-    ----------
-    data: pd.DataFrame
-        DataFrame for the region of interest (which includes the data for the higher aggregation
-        level of that region of interest.
-    fips: str
-        Region of interest key used for calculating state-to-county disaggregation weights as needed
-    use_actuals: bool
-        If True, return actuals when available. If False, always use predictions.
-    weight_by: ICUWeightsPath
-        The method by which to estimate county level utilization from state level utilization when
-        no county level inpatient/icu data is available.
-    log:
-        Logging object
+    Args:
+        data: DataFrame for the region of interest (which includes the data for the higher
+          aggregation level of that region of interest.
+        region: Region of interest key used for calculating state-to-county disaggregation weights
+          as needed
+        use_actuals: If True, return actuals when available. If False, always use predictions.
+        weight_by: The method by which to estimate county level utilization from state level
+          utilization when no county level inpatient/icu data is available.
+        log: Logging object
 
-    Returns
-    -------
-    output: pandas.Series
-        A date-indexed series of ICU estimate for heads-in-beds for a given region
+    Returns: A date-indexed series of ICU estimate for heads-in-beds for a given region
     """
     has = data.apply(lambda x: not x.dropna().empty).to_dict()
-
-    if fips == "36061":
-        has["current_icu"] = False
-        has["current_hospitalized"] = False
 
     if use_actuals and has["current_icu"]:
         log.info(current_icu=True)
@@ -113,12 +169,16 @@ def _calculate_icu_timeseries(
             superset_icu = _estimate_icu_from_hospitalized(data["current_hospitalized_superset"])
 
         # Get Disaggregation Weighting
-        weight = _get_weight_by_fips(fips, method=weight_by)
+        weight = get_region_weight_map()[region][weight_by]
         log.info(disaggregation=True)
         return weight * superset_icu
 
 
-def _get_data_for_icu_calc(fips: str, lookback_date=ICUConfig.LOOKBACK_DATE) -> pd.DataFrame:
+def _get_data_for_icu_calc(
+    regional_combined_data: OneRegionTimeseriesDataset,
+    state_combined_data: Optional[OneRegionTimeseriesDataset],
+    lookback_date=ICUConfig.LOOKBACK_DATE,
+) -> pd.DataFrame:
     """
     Get the timeseries data for the current aggregation level and the superset aggregation level.
     In the case where the current aggregation level is the highest (state), return the superset as
@@ -126,8 +186,6 @@ def _get_data_for_icu_calc(fips: str, lookback_date=ICUConfig.LOOKBACK_DATE) -> 
 
     Parameters
     ----------
-    fips: str
-        Region of interest
     lookback_date: bool
         The start date for the returned estimate. The linear regression estimate is
         fit on recent data, with no assumption that the process is stationary. So the further back
@@ -145,18 +203,17 @@ def _get_data_for_icu_calc(fips: str, lookback_date=ICUConfig.LOOKBACK_DATE) -> 
         CommonFields.DEATHS,
         CommonFields.CURRENT_ICU,
         CommonFields.CURRENT_HOSPITALIZED,
-    ]
+    ] + TimeseriesDataset.INDEX_FIELDS
 
-    this_level_df = (
-        combined_datasets.get_timeseries_for_fips(fips, columns=COLUMNS)
-        .get_subset(after=lookback_date)
-        .data.set_index("date")
-    )
-    super_level_df = (
-        combined_datasets.get_timeseries_for_fips(fips[:2], columns=COLUMNS)
-        .get_subset(after=lookback_date)
-        .data.set_index("date")
-    )
+    this_level_df = regional_combined_data.get_subset(
+        after=lookback_date, columns=COLUMNS
+    ).data.set_index("date")
+    if state_combined_data:
+        super_level_df = state_combined_data.get_subset(
+            after=lookback_date, columns=COLUMNS
+        ).data.set_index("date")
+    else:
+        super_level_df = this_level_df
     return pd.merge(
         this_level_df,
         super_level_df,
@@ -190,11 +247,13 @@ def _estimate_icu_from_hospitalized(
     return estimated_icu
 
 
-def _get_weight_by_fips(fips: str, method: ICUWeightsPath = ICUWeightsPath.POPULATION) -> float:
-    """
-    Load disaggregation mapping based on ICUWeightsPath and return state-to-county weight for a
-    given fips region of interest.
-    """
-    with open(method.value) as f:
-        weights = json.load(f)
-    return weights[fips]
+@lru_cache(None)
+def get_region_weight_map() -> Mapping[pipeline.Region, Mapping[ICUWeightsPath, float]]:
+    """Returns a map of maps with region and icu weight paths as keys."""
+    region_map = collections.defaultdict(dict)
+    for method in [ICUWeightsPath.POPULATION, ICUWeightsPath.ONE_MONTH_TRAILING_CASES]:
+        with open(method.value) as f:
+            weights = json.load(f)
+            for fips, weight in weights.items():
+                region_map[pipeline.Region.from_fips(fips)][method] = weight
+    return region_map

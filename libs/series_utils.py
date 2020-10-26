@@ -28,7 +28,6 @@ def smooth_with_rolling_average(
     Returns:
         Smoothed series.
     """
-
     # Drop trailing NAs so that we don't smooth for day we don't yet have data.
     series = series.loc[: series.last_valid_index()]
 
@@ -36,7 +35,16 @@ def smooth_with_rolling_average(
         series = series.copy()
         series.loc[series < 0] = None
 
-    rolling_average = series.rolling(window, min_periods=1).mean()
+    def mean_with_no_trailing_nan(x):
+        """Return mean of series unless last value is nan."""
+        if np.isnan(x.iloc[-1]):
+            return np.nan
+
+        return x.mean()
+
+    # Apply function to a rolling window
+    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.core.window.rolling.Rolling.apply.html
+    rolling_average = series.rolling(window, min_periods=1).apply(mean_with_no_trailing_nan)
     if include_trailing_zeros:
         return rolling_average
 
@@ -49,8 +57,10 @@ def smooth_with_rolling_average(
         return series
 
 
-def interpolate_stalled_values(series: pd.Series) -> pd.Series:
-    """Interpolates periods where values have stopped increasing,
+def interpolate_stalled_and_missing_values(
+    series: pd.Series, interpolate_stalled: bool = True
+) -> pd.Series:
+    """Interpolates periods where values have stopped increasing or have gaps.
 
     Args:
         series: Series with a datetime index
@@ -59,10 +69,11 @@ def interpolate_stalled_values(series: pd.Series) -> pd.Series:
     start, end = series.first_valid_index(), series.last_valid_index()
     series_with_values = series.loc[start:end]
 
-    series_with_values[(series_with_values.diff() == 0)] = None
+    if interpolate_stalled:
+        series_with_values[(series_with_values.diff() == 0)] = None
     # Use the index to determine breaks between data (so
     # missing data is not improperly interpolated)
-    series.loc[start:end] = series_with_values.interpolate(method="time").round()
+    series.loc[start:end] = series_with_values.interpolate(method="time").apply(np.floor)
 
     return series
 

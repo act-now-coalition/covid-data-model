@@ -19,14 +19,28 @@
         "peakDate": {
           "title": "Peakdate",
           "description": "Date of peak resource utilization",
-          "type": "string",
-          "format": "date"
+          "format": "date",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "shortageStartDate": {
           "title": "Shortagestartdate",
           "description": "Date when resource shortage begins",
-          "type": "string",
-          "format": "date"
+          "format": "date",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -61,12 +75,26 @@
         "Rt": {
           "title": "Rt",
           "description": "Inferred Rt",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "RtCI90": {
           "title": "Rtci90",
           "description": "Rt 90th percentile confidence interval upper endpoint.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -84,27 +112,62 @@
         "capacity": {
           "title": "Capacity",
           "description": "*deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "totalCapacity": {
           "title": "Totalcapacity",
           "description": "Total capacity for resource.",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentUsageCovid": {
           "title": "Currentusagecovid",
           "description": "Currently used capacity for resource by COVID ",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentUsageTotal": {
           "title": "Currentusagetotal",
           "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "typicalUsageRate": {
           "title": "Typicalusagerate",
           "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -124,7 +187,14 @@
           "title": "Population",
           "description": "Total population in geographic region [*deprecated*: refer to summary for this]",
           "exclusiveMinimum": 0,
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "intervention": {
           "title": "Intervention",
@@ -134,28 +204,70 @@
         "cumulativeConfirmedCases": {
           "title": "Cumulativeconfirmedcases",
           "description": "Number of confirmed cases so far",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "cumulativePositiveTests": {
           "title": "Cumulativepositivetests",
           "description": "Number of positive test results to date",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "cumulativeNegativeTests": {
           "title": "Cumulativenegativetests",
           "description": "Number of negative test results to date",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "cumulativeDeaths": {
           "title": "Cumulativedeaths",
           "description": "Number of deaths so far",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "hospitalBeds": {
-          "$ref": "#/definitions/ResourceUtilization"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResourceUtilization"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "ICUBeds": {
-          "$ref": "#/definitions/ResourceUtilization"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResourceUtilization"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "contactTracers": {
           "title": "Contacttracers",
@@ -174,31 +286,49 @@
         "ICUBeds"
       ]
     },
+    "CovidPatientsMethod": {
+      "title": "CovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients with covid.",
+      "enum": [
+        "actual",
+        "estimated"
+      ]
+    },
+    "NonCovidPatientsMethod": {
+      "title": "NonCovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients without covid.",
+      "enum": [
+        "actual",
+        "estimated_from_typical_utilization",
+        "estimated_from_total_icu_actual"
+      ]
+    },
     "ICUHeadroomMetricDetails": {
       "title": "ICUHeadroomMetricDetails",
       "description": "Details about how the ICU Headroom Metric was calculated.",
       "type": "object",
       "properties": {
+        "currentIcuCovid": {
+          "title": "Currenticucovid",
+          "description": "Current number of covid patients in icu.",
+          "type": "integer"
+        },
         "currentIcuCovidMethod": {
-          "title": "Currenticucovidmethod",
-          "description": "Method used to determine number of current ICU patients with covid.",
-          "enum": [
-            "actual",
-            "estimated"
-          ]
+          "$ref": "#/definitions/CovidPatientsMethod"
+        },
+        "currentIcuNonCovid": {
+          "title": "Currenticunoncovid",
+          "description": "Current number of covid patients in icu.",
+          "type": "integer"
         },
         "currentIcuNonCovidMethod": {
-          "title": "Currenticunoncovidmethod",
-          "description": "Method used to determine number of current ICU patients without covid.",
-          "enum": [
-            "actual",
-            "estimated_from_typical_utilization",
-            "estimated_from_total_icu_actual"
-          ]
+          "$ref": "#/definitions/NonCovidPatientsMethod"
         }
       },
       "required": [
+        "currentIcuCovid",
         "currentIcuCovidMethod",
+        "currentIcuNonCovid",
         "currentIcuNonCovidMethod"
       ]
     },
@@ -210,31 +340,73 @@
         "testPositivityRatio": {
           "title": "Testpositivityratio",
           "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "caseDensity": {
           "title": "Casedensity",
           "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "contactTracerCapacityRatio": {
           "title": "Contacttracercapacityratio",
           "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "infectionRate": {
           "title": "Infectionrate",
           "description": "R_t, or the estimated number of infections arising from a typical case.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "infectionRateCI90": {
           "title": "Infectionrateci90",
           "description": "90th percentile confidence interval upper endpoint of the infection rate.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "icuHeadroomRatio": {
           "title": "Icuheadroomratio",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "icuHeadroomDetails": {
           "$ref": "#/definitions/ICUHeadroomMetricDetails"
@@ -273,7 +445,14 @@
         "ICUBedsInUse": {
           "title": "Icubedsinuse",
           "description": "Number of ICU beds projected to be in-use or that were actually in use (if in the past)",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "ICUBedCapacity": {
           "title": "Icubedcapacity",
@@ -293,12 +472,26 @@
         "RtIndicator": {
           "title": "Rtindicator",
           "description": "Historical or Inferred Rt",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "RtIndicatorCI90": {
           "title": "Rtindicatorci90",
           "description": "Rt standard deviation",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "cumulativeDeaths": {
           "title": "Cumulativedeaths",
@@ -308,22 +501,50 @@
         "cumulativeInfected": {
           "title": "Cumulativeinfected",
           "description": "Number of cumulative infections",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentInfected": {
           "title": "Currentinfected",
           "description": "Number of current infections",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentSusceptible": {
           "title": "Currentsusceptible",
           "description": "Number of people currently susceptible ",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentExposed": {
           "title": "Currentexposed",
           "description": "Number of people currently exposed",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -352,7 +573,14 @@
           "title": "Population",
           "description": "Total population in geographic region [*deprecated*: refer to summary for this]",
           "exclusiveMinimum": 0,
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "intervention": {
           "title": "Intervention",
@@ -362,28 +590,70 @@
         "cumulativeConfirmedCases": {
           "title": "Cumulativeconfirmedcases",
           "description": "Number of confirmed cases so far",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "cumulativePositiveTests": {
           "title": "Cumulativepositivetests",
           "description": "Number of positive test results to date",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "cumulativeNegativeTests": {
           "title": "Cumulativenegativetests",
           "description": "Number of negative test results to date",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "cumulativeDeaths": {
           "title": "Cumulativedeaths",
           "description": "Number of deaths so far",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "hospitalBeds": {
-          "$ref": "#/definitions/ResourceUtilization"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResourceUtilization"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "ICUBeds": {
-          "$ref": "#/definitions/ResourceUtilization"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResourceUtilization"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "contactTracers": {
           "title": "Contacttracers",
@@ -417,31 +687,73 @@
         "testPositivityRatio": {
           "title": "Testpositivityratio",
           "description": "Ratio of people who test positive calculated using a 7-day rolling average.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "caseDensity": {
           "title": "Casedensity",
           "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "contactTracerCapacityRatio": {
           "title": "Contacttracercapacityratio",
           "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "infectionRate": {
           "title": "Infectionrate",
           "description": "R_t, or the estimated number of infections arising from a typical case.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "infectionRateCI90": {
           "title": "Infectionrateci90",
           "description": "90th percentile confidence interval upper endpoint of the infection rate.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "icuHeadroomRatio": {
           "title": "Icuheadroomratio",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "icuHeadroomDetails": {
           "$ref": "#/definitions/ICUHeadroomMetricDetails"
@@ -481,12 +793,26 @@
         "lat": {
           "title": "Lat",
           "description": "Latitude of point within the state or county",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "long": {
           "title": "Long",
           "description": "Longitude of point within the state or county",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "stateName": {
           "title": "Statename",
@@ -505,10 +831,24 @@
           "format": "date"
         },
         "projections": {
-          "$ref": "#/definitions/Projections"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Projections"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "actuals": {
-          "$ref": "#/definitions/Actuals"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Actuals"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "metrics": {
           "title": "Metrics",
@@ -527,10 +867,17 @@
         },
         "timeseries": {
           "title": "Timeseries",
-          "type": "array",
           "items": {
             "$ref": "#/definitions/PredictionTimeseriesRow"
-          }
+          },
+          "anyOf": [
+            {
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "actualsTimeseries": {
           "title": "Actualstimeseries",
@@ -541,10 +888,17 @@
         },
         "metricsTimeseries": {
           "title": "Metricstimeseries",
-          "type": "array",
           "items": {
             "$ref": "#/definitions/MetricsTimeseriesRow"
-          }
+          },
+          "anyOf": [
+            {
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [

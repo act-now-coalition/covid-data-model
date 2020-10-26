@@ -10,10 +10,12 @@ from scipy import stats as sps
 
 # from matplotlib import pyplot as plt
 
+from libs.datasets import combined_datasets
 from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import load_data
 from pyseir.utils import TimeseriesType, RunArtifact
+import pyseir.utils
 from pyseir.rt.constants import InferRtConstants
 from pyseir.rt import utils, whitelist
 
@@ -28,24 +30,25 @@ rt_log = structlog.get_logger(__name__)
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: pipeline.RegionalCombinedData
+    _combined_data: combined_datasets.RegionalData
 
     @property
     def display_name(self) -> str:
         return str(self.region)
 
+    @property
+    def timeseries(self) -> timeseries.OneRegionTimeseriesDataset:
+        return self._combined_data.timeseries
+
     @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
-            region=region, _combined_data=pipeline.RegionalCombinedData.from_region(region),
+            region=region, _combined_data=combined_datasets.RegionalData.from_region(region),
         )
 
     @staticmethod
     def from_fips(fips: str) -> "RegionalInput":
         return RegionalInput.from_region(pipeline.Region.from_fips(fips))
-
-    def get_timeseries(self) -> timeseries.TimeseriesDataset:
-        return self._combined_data.get_timeseries()
 
 
 def run_rt(
@@ -88,12 +91,6 @@ def run_rt(
     # Generate the output DataFrame (consider renaming the function infer_all to be clearer)
     output_df = engine.infer_all()
 
-    # Save the output to json for downstream repacking and incorporation.
-    if not output_df.empty:
-        output_path = regional_input.region.run_artifact_path_to_write(
-            RunArtifact.RT_INFERENCE_RESULT
-        )
-        output_df.to_json(output_path)
     return output_df
 
 
@@ -111,11 +108,23 @@ def _generate_input_data(
     """
     log = rt_log.bind(region=regional_input.display_name)
     # TODO: Outlier Removal Before Test Correction
-    (times, observed_new_cases, observed_new_deaths,) = load_data.calculate_new_case_data_by_region(
-        regional_input.get_timeseries(),
-        t0=InferRtConstants.REF_DATE,
-        include_testing_correction=include_testing_correction,
-    )
+    try:
+        (
+            times,
+            observed_new_cases,
+            observed_new_deaths,
+        ) = load_data.calculate_new_case_data_by_region(
+            regional_input.timeseries,
+            t0=InferRtConstants.REF_DATE,
+            include_testing_correction=include_testing_correction,
+        )
+    except AssertionError as e:
+        rt_log.exception(
+            event="An AssertionError was raised in the loading of the data for the calculation of "
+            "the Infection Rate Metric",
+            region=regional_input.display_name,
+        )
+        return pd.DataFrame()
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
 

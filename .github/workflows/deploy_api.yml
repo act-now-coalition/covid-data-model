@@ -102,7 +102,9 @@ jobs:
 
 
     - name: Build API (run.sh .. .. execute_api)
-      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
+      run: |
+        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
+        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
 
     - name: make and copy to local tmp directory
       run: |
@@ -119,9 +121,12 @@ jobs:
         SOURCE_DIR: './tmp/data/api-results-${{env.SNAPSHOT_ID}}/'
         DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}/'
 
-    - name: remove local tmp directory
+    - name: remove local tmp directory and local data build
       run: |
         rm -rf ./tmp/data/
+        # /data is a persistent volume on our build machines that does not get
+        # automatically cleaned up.
+        rm -r /data/api-results-${{env.SNAPSHOT_ID}}
 
     - name: Trigger website PR generation if conditions are met (master branch, morning build, etc)
       env:

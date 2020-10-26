@@ -1,25 +1,17 @@
-import json
-import os
 from dataclasses import dataclass
-from typing import Any
-from typing import Mapping
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import structlog
 from datetime import timedelta, datetime
 import numpy as np
 import pandas as pd
 
-import pyseir
-from libs import pipeline
 from libs.pipeline import Region
-from libs.pipeline import RegionalCombinedData
+from libs.datasets import combined_datasets
 from pyseir.deployment import model_to_observed_shim as shim
-from pyseir.icu import infer_icu
+from pyseir.ensembles import ensemble_runner
 from pyseir.inference import model_fitter
-from pyseir.rt.utils import NEW_ORLEANS_FIPS
-from pyseir.rt.utils import NEW_ORLEANS_FIPS
-from pyseir.utils import get_run_artifact_path, RunArtifact, RunMode
+from pyseir.utils import get_run_artifact_path, RunArtifact
 from libs.enums import Intervention
 from libs.datasets import CommonFields
 import libs.datasets.can_model_output_schema as schema
@@ -37,19 +29,24 @@ class RegionalInput:
 
     region: Region
 
-    _combined_data: RegionalCombinedData
-    _mle_fit_result: Optional[Mapping[str, Any]] = None
+    _combined_data: combined_datasets.RegionalData
+    _mle_fit_result: Mapping[str, Any]
+    _ensemble_results: Mapping[str, Any]
+    _infection_rate: Optional[pd.DataFrame]
 
     @staticmethod
-    def from_region(region: Region) -> "RegionalInput":
-        return RegionalInput(region=region, _combined_data=RegionalCombinedData.from_region(region))
-
-    @staticmethod
-    def from_model_fitter(fitter: model_fitter.ModelFitter) -> "RegionalInput":
+    def from_results(
+        fitter: model_fitter.ModelFitter,
+        ensemble: ensemble_runner.EnsembleRunner,
+        infection_rate: Optional[pd.DataFrame],
+    ) -> "RegionalInput":
+        region = fitter.region
         return RegionalInput(
-            region=fitter.region,
+            region=region,
             _combined_data=fitter.regional_input._combined_data,
             _mle_fit_result=fitter.fit_results,
+            _ensemble_results=ensemble.all_outputs,
+            _infection_rate=infection_rate,
         )
 
     @property
@@ -60,10 +57,11 @@ class RegionalInput:
     def fips(self) -> str:
         return self.region.fips
 
-    def get_us_latest(self):
-        return self._combined_data.get_us_latest()
+    @property
+    def latest(self) -> Mapping[str, Any]:
+        return self._combined_data.latest
 
-    def load_inference_result(self) -> Mapping[str, Any]:
+    def inference_result(self) -> Mapping[str, Any]:
         """
         Load fit results by state or county fips code.
 
@@ -72,22 +70,13 @@ class RegionalInput:
         : dict
             Dictionary of fit result information.
         """
-        if self._mle_fit_result is not None:
-            return self._mle_fit_result
-        return pipeline.load_inference_result(self.region)
+        return self._mle_fit_result
 
-    def load_ensemble_results(self) -> Optional[dict]:
+    def ensemble_results(self) -> Mapping[str, Any]:
         """Retrieves ensemble results for this region."""
-        output_filename = self.region.run_artifact_path_to_read(
-            pyseir.utils.RunArtifact.ENSEMBLE_RESULT
-        )
-        if not os.path.exists(output_filename):
-            return None
+        return self._ensemble_results
 
-        with open(output_filename) as f:
-            return json.load(f)
-
-    def load_rt_result(self) -> Optional[pd.DataFrame]:
+    def inferred_infection_rate(self) -> Optional[pd.DataFrame]:
         """Loads the Rt inference result.
 
         Returns
@@ -95,17 +84,7 @@ class RegionalInput:
         results: pd.DataFrame
             DataFrame containing the R_t inferences.
         """
-        if self.fips in NEW_ORLEANS_FIPS:
-            log.info("Applying New Orleans Patch")
-            return pyseir.rt.patches.patch_aggregate_rt_results(NEW_ORLEANS_FIPS)
-
-        path = self.region.run_artifact_path_to_read(pyseir.utils.RunArtifact.RT_INFERENCE_RESULT)
-        if not os.path.exists(path):
-            return None
-        return pd.read_json(path)
-
-    def is_county(self):
-        return self.region.is_county()
+        return self._infection_rate
 
 
 class WebUIDataAdaptorV1:
@@ -120,12 +99,17 @@ class WebUIDataAdaptorV1:
     """
 
     def __init__(
-        self, output_interval_days=4, run_mode="can-before", output_dir=None, include_imputed=False,
+        self, output_interval_days=4, output_dir=None, include_imputed=False,
     ):
         self.output_interval_days = output_interval_days
-        self.run_mode = RunMode(run_mode)
         self.include_imputed = include_imputed
         self.output_dir = output_dir
+
+    def write_region_safely(self, regional_input: RegionalInput) -> None:
+        try:
+            self.write_region(regional_input)
+        except Exception:
+            log.exception("Failed to write WebUI output", fips=regional_input.fips)
 
     def write_region(self, regional_input: RegionalInput) -> None:
         """Generates the CAN UI output format for a given region.
@@ -134,15 +118,15 @@ class WebUIDataAdaptorV1:
             regional_input: the region and its data
         """
         # Get the latest observed values to use in calculating shims
-        observed_latest_dict = regional_input.get_us_latest()
+        observed_latest_dict = regional_input.latest
 
         state = observed_latest_dict[CommonFields.STATE]
         log.info("Mapping output to WebUI.", state=state, fips=regional_input.fips)
         shim_log = structlog.getLogger(fips=regional_input.fips)
-        pyseir_outputs = regional_input.load_ensemble_results()
+        pyseir_outputs = regional_input.ensemble_results()
 
         try:
-            fit_results = regional_input.load_inference_result()
+            fit_results = regional_input.inference_result()
             t0_simulation = datetime.fromisoformat(fit_results["t0_date"])
         except (KeyError, ValueError):
             log.error("Fit result not found for fips. Skipping...", fips=regional_input.fips)
@@ -187,10 +171,6 @@ class WebUIDataAdaptorV1:
             observed_icu=observed_icu_latest,
             observed_total_hosps=observed_total_hosps_latest,
             log=shim_log.bind(type=CommonFields.CURRENT_ICU),
-        )
-        # ICU PATCH
-        icu_patch_ts = infer_icu.get_icu_timeseries(
-            fips=regional_input.fips, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
         )
 
         # Iterate through each suppression policy.
@@ -239,13 +219,7 @@ class WebUIDataAdaptorV1:
             # marker for the future if the ICU utilization calculations is dis-entangled from the
             # PySEIR model outputs.
 
-            # output_model[schema.INFECTED_C] = (icu_shim+interpolated_model_icu_values).clip(min=0)
-
-            # Applying Patch for ICU Linear Regression
-            infer_icu_patch = icu_patch_ts.reindex(
-                [pd.Timestamp(x) for x in output_model[schema.DATE]]
-            )
-            output_model[schema.INFECTED_C] = infer_icu_patch.to_numpy()
+            output_model[schema.INFECTED_C] = (icu_shim + interpolated_model_icu_values).clip(min=0)
 
             # General + ICU beds. don't include vent here because they are also counted in ICU
             output_model[schema.ALL_HOSPITALIZED] = (
@@ -302,11 +276,19 @@ class WebUIDataAdaptorV1:
                 (output_dates >= datetime(month=3, day=3, year=2020))
                 & (output_dates < datetime.today() + timedelta(days=90))
             ]
-            output_model = output_model.fillna(0)
 
             # Fill in results for the Rt indicator.
-            rt_results = regional_input.load_rt_result()
-            if rt_results is not None:
+            rt_results = regional_input.inferred_infection_rate()
+
+            if rt_results is None or rt_results.empty:
+                log.warning(
+                    "No Rt Results found, clearing Rt in output.",
+                    fips=regional_input.fips,
+                    suppression_policy=suppression_policy,
+                )
+                output_model[schema.RT_INDICATOR] = "NaN"
+                output_model[schema.RT_INDICATOR_CI90] = "NaN"
+            else:
                 rt_results.index = rt_results["date"].dt.strftime("%Y-%m-%d")
                 merged = output_model.merge(
                     rt_results[["Rt_MAP_composite", "Rt_ci95_composite"]],
@@ -321,14 +303,6 @@ class WebUIDataAdaptorV1:
                 output_model[schema.RT_INDICATOR_CI90] = (
                     merged["Rt_ci95_composite"] - merged["Rt_MAP_composite"]
                 )
-            else:
-                log.warning(
-                    "No Rt Results found, clearing Rt in output.",
-                    fips=regional_input.fips,
-                    suppression_policy=suppression_policy,
-                )
-                output_model[schema.RT_INDICATOR] = "NaN"
-                output_model[schema.RT_INDICATOR_CI90] = "NaN"
 
             output_model[[schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]] = output_model[
                 [schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
@@ -347,20 +321,22 @@ class WebUIDataAdaptorV1:
                     schema.FIPS,
                 )
             ]
+            # Casing floats to ints and then replacing filled in zeros with NaN values instead of
+            # propagating zeros.
+            na_int_columns = output_model.loc[:, int_columns].isna()
             output_model.loc[:, int_columns] = output_model[int_columns].fillna(0).astype(int)
+            output_model[na_int_columns] = np.nan
             output_model.loc[
                 :, [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
             ] = output_model[
                 [schema.Rt, schema.Rt_ci90, schema.RT_INDICATOR, schema.RT_INDICATOR_CI90]
-            ].fillna(
-                0
-            )
+            ]
 
             output_model[schema.FIPS] = regional_input.fips
             intervention = Intervention.from_webui_data_adaptor(suppression_policy)
             output_model[schema.INTERVENTION] = intervention.value
             output_path = get_run_artifact_path(
-                regional_input.fips, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
+                regional_input.region, RunArtifact.WEB_UI_RESULT, output_dir=self.output_dir
             )
             output_path = output_path.replace("__INTERVENTION_IDX__", str(intervention.value))
             output_model.to_json(output_path, orient=OUTPUT_JSON_ORIENT)

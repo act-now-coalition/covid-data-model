@@ -1,6 +1,9 @@
 import os
 import logging
 import urllib.request
+from typing import Optional
+from typing import Tuple
+
 import requests
 import re
 import io
@@ -15,7 +18,9 @@ import pandas as pd
 import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields
+from libs import pipeline
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 import pyseir.utils
 
@@ -133,41 +138,33 @@ def cache_public_implementations_data():
 
 
 def calculate_new_case_data_by_region(
-    region_timeseries: TimeseriesDataset,
+    region_timeseries: OneRegionTimeseriesDataset,
     t0: datetime,
-    include_testing_correction=False,
-    testing_correction_smoothing_tau=5,
-):
+    include_testing_correction: bool = False,
+    testing_correction_smoothing_tau: float = 5,
+) -> Tuple[np.array, np.array, np.array]:
     """
     Calculate new cases from combined data.
 
-    Parameters
-    ----------
-    region_timeseries: TimeseriesDataset
-        Combined data for a region
-    t0: datetime
-        Datetime to offset by.
-    include_testing_correction: bool
-        If True, include a correction for new expanded or decreaseed test
-        coverage.
-    testing_correction_smoothing_tau: float
-        expected_positives_from_test_increase is smoothed based on an
-        exponentially weighted moving average of decay factor specified here.
+    Args:
+        region_timeseries: Combined data for a region
+        t0: Datetime to offset by.
+        include_testing_correction: If True, include a correction for new expanded or decreaseed
+          test coverage.
+        testing_correction_smoothing_tau: expected_positives_from_test_increase is smoothed based
+          on an exponentially weighted moving average of decay factor specified here.
 
-    Returns
-    -------
-    times: array(float)
-        List of float days since t0 for the case and death counts below
-    observed_new_cases: array(int)
-        Array of new cases observed each day.
-    observed_new_deaths: array(int)
-        Array of new deaths observed each day.
+    Returns:
+        times: List of float days since t0 for the case and death counts below
+        observed_new_cases: Array of integer new cases observed each day.
+        observed_new_deaths: Array of integer new deaths observed each day.
     """
-    assert not region_timeseries.data.empty
+    assert not region_timeseries.empty
     assert region_timeseries.has_one_region()
-    county_case_timeseries = region_timeseries.get_columns_and_date_subset(
-        columns=[CommonFields.CASES, CommonFields.DEATHS], min_range_with_some_value=True
-    )
+    columns = [CommonFields.CASES, CommonFields.DEATHS]
+    county_case_timeseries = region_timeseries.get_subset(
+        columns=(TimeseriesDataset.INDEX_FIELDS + columns)
+    ).remove_padded_nans(columns)
     county_case_data = county_case_timeseries.data
 
     times_new = (county_case_data["date"] - t0).dt.days.iloc[1:]
@@ -194,71 +191,72 @@ def calculate_new_case_data_by_region(
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
 
 
-def get_hospitalization_data():
+@lru_cache(maxsize=None)
+def get_hospitalization_data() -> pd.DataFrame:
     """
+    Creates a DataFrame of hospitalization timeseries with non-unique LOCATION_ID index.
+
     Since we're using this data for hospitalized data only, only returning
     values with hospitalization data.  I think as the use cases of this data source
     expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
     hospitalization data.
-    Returns
-    -------
-    TimeseriesDataset
     """
-    data = combined_datasets.load_us_timeseries_dataset().data
+    # TODO(tom): Change this function to accept the combined data as a parameter and call it once
+    # so the cache can be removed.
+    data = combined_datasets.load_us_timeseries_dataset().data  # processing rows, ignoring indexes
     has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
     has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
-    return TimeseriesDataset(data[has_current_hospital | has_cumulative_hospital])
+
+    return (
+        data[has_current_hospital | has_cumulative_hospital]
+        .set_index(CommonFields.LOCATION_ID)
+        .sort_index()
+    )
 
 
-@lru_cache(maxsize=32)
-def load_hospitalization_data(
-    fips: str,
+def get_hospitalization_data_for_region(region: pipeline.Region) -> pd.DataFrame:
+    """Returns a DataFrame of data in region or an empty DataFrame"""
+    all_data = get_hospitalization_data()
+    return all_data.loc[all_data.index.intersection([region.location_id])]
+
+
+def calculate_hospitalization_data(
+    hospitalization_df: pd.DataFrame,
     t0: datetime,
     category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
-):
+) -> Tuple[Optional[np.array], Optional[np.array], Optional[HospitalizationDataType]]:
     """
     Obtain hospitalization data. We clip because there are sometimes negatives
     either due to data reporting or corrections in case count. These are always
     tiny so we just make downstream easier to work with by clipping.
 
-    Parameters
-    ----------
-    fips: str
-        County fips to lookup.
-    t0: datetime
-        Datetime to offset by.
+    Args:
+    hospitalization_df: one region of data returned by `get_hospitalization_data_for_region`
+    t0: Datetime to offset by.
     category: HospitalizationCategory
 
-    Returns
-    -------
-    relative_days: array(float)
-        List of float days since t0 for the hospitalization data.
-    observed_hospitalizations: array(int)
-        Array of new cases observed each day.
-    type: HospitalizationDataType
-        Specifies cumulative or current hospitalizations.
+    Returns:
+        relative_days: Array of float days since t0 for the hospitalization data.
+        observed_hospitalizations: Array of int new cases observed each day.
+        type: Specifies cumulative or current hospitalizations.
     """
-    hospitalization_data = get_hospitalization_data().get_data(fips=fips)
-
-    if len(hospitalization_data) == 0:
+    if hospitalization_df.empty:
         return None, None, None
 
-    if (hospitalization_data[f"current_{category}"] > 0).any():
-        hospitalization_data = hospitalization_data[
-            hospitalization_data[f"current_{category}"].notnull()
-        ]
-        relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
+    if (hospitalization_df[f"current_{category}"] > 0).any():
+        hospitalization_df = hospitalization_df[hospitalization_df[f"current_{category}"].notnull()]
+        relative_days = (hospitalization_df["date"].dt.date - t0.date()).dt.days.values
         return (
             relative_days,
-            hospitalization_data[f"current_{category}"].values.clip(min=0),
+            hospitalization_df[f"current_{category}"].values.clip(min=0),
             HospitalizationDataType.CURRENT_HOSPITALIZATIONS,
         )
-    elif (hospitalization_data[f"cumulative_{category}"] > 0).any():
-        hospitalization_data = hospitalization_data[
-            hospitalization_data[f"cumulative_{category}"].notnull()
+    elif (hospitalization_df[f"cumulative_{category}"] > 0).any():
+        hospitalization_df = hospitalization_df[
+            hospitalization_df[f"cumulative_{category}"].notnull()
         ]
-        relative_days = (hospitalization_data["date"].dt.date - t0.date()).dt.days.values
-        cumulative = hospitalization_data[f"cumulative_{category}"].values.clip(min=0)
+        relative_days = (hospitalization_df["date"].dt.date - t0.date()).dt.days.values
+        cumulative = hospitalization_df[f"cumulative_{category}"].values.clip(min=0)
         # Some minor glitches for a few states..
         for i in range(len(cumulative[1:])):
             if cumulative[i] > cumulative[i + 1]:
@@ -269,20 +267,21 @@ def load_hospitalization_data(
 
 
 def calculate_new_test_data_by_region(
-    timeseries_dataset: TimeseriesDataset, t0: datetime, smoothing_tau=5, correction_threshold=5
+    timeseries_dataset: OneRegionTimeseriesDataset,
+    t0: datetime,
+    smoothing_tau=5,
+    correction_threshold=5,
 ):
     """
     Return a timeseries of new tests for a geography. Note that due to reporting
     discrepancies county to county, and state-to-state, these often do not go
     back as far as case data.
-    Parameters
-    ----------
-    timeseries_dataset
-        Data for the region
-    t0: datetime
-        Reference datetime to use.
-    Returns
-    -------
+
+    Args:
+        timeseries_dataset: Data for the region
+        t0: Reference datetime to use.
+
+    Returns:
     df: pd.DataFrame
         DataFrame containing columns:
         - 'date',

@@ -3,6 +3,16 @@
 <!--- Make changes in api/README.V1.tmpl.md and run `./run.py api update-schemas` --->
 # Covid Act Now API (V1)
 
+## :warning: API V1 Deprecated
+
+API V1 is now deprecated and will stop daily updates on *Monday, October 5th*.
+
+Please refer to the [documentation](https://apidocs.covidactnow.org) for the latest version of the API.
+
+For assistance migrating to V2, check out the [migration guide](https://apidocs.covidactnow.org/migration).
+
+If you have any questions, do not hesitate to reach out to <api@covidactnow.org>. Thanks!
+
 ## Introduction
 
 The Covid Act Now API provides the same data that powers [CovidActNow.org](https://covidactnow.org) but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools. Read our [blog post](https://blog.covidactnow.org/covid-act-now-api-intervention-model/) annoucing the API for more context and background.
@@ -235,13 +245,25 @@ Utilization of hospital resources.
 | currentUsageTotal | integer | Currently used capacity for resource by all patients (COVID + Non-COVID)                                                                                                                                                                |
 | typicalUsageRate  | number  | Typical used capacity rate for resource. This excludes any COVID usage.                                                                                                                                                                 |
 
+### CovidPatientsMethod
+Method used to determine number of current ICU patients with covid.
+
+
+
+### NonCovidPatientsMethod
+Method used to determine number of current ICU patients without covid.
+
+
+
 ### ICUHeadroomMetricDetails
 Details about how the ICU Headroom Metric was calculated.
 
-| name                     | type   | description                                                            |
-|--------------------------|--------|------------------------------------------------------------------------|
-| currentIcuCovidMethod    |        | Method used to determine number of current ICU patients with covid.    |
-| currentIcuNonCovidMethod |        | Method used to determine number of current ICU patients without covid. |
+| name                     | type                                              | description                                                            |
+|--------------------------|---------------------------------------------------|------------------------------------------------------------------------|
+| currentIcuCovid          | integer                                           | Current number of covid patients in icu.                               |
+| currentIcuCovidMethod    | [CovidPatientsMethod](#CovidPatientsMethod)       | Method used to determine number of current ICU patients with covid.    |
+| currentIcuNonCovid       | integer                                           | Current number of covid patients in icu.                               |
+| currentIcuNonCovidMethod | [NonCovidPatientsMethod](#NonCovidPatientsMethod) | Method used to determine number of current ICU patients without covid. |
 
 ### Metrics
 Calculated metrics data based on known actuals.
@@ -281,8 +303,8 @@ Known actuals data.
 | cumulativePositiveTests  | integer                                     | Number of positive test results to date                                         |
 | cumulativeNegativeTests  | integer                                     | Number of negative test results to date                                         |
 | cumulativeDeaths         | integer                                     | Number of deaths so far                                                         |
-| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
-| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
+| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) |                                                                                 |
+| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) |                                                                                 |
 | contactTracers           | integer                                     | # of Contact Tracers                                                            |
 
 ### ActualsTimeseriesRow
@@ -296,8 +318,8 @@ Actual data for a specific day.
 | cumulativePositiveTests  | integer                                     | Number of positive test results to date                                         |
 | cumulativeNegativeTests  | integer                                     | Number of negative test results to date                                         |
 | cumulativeDeaths         | integer                                     | Number of deaths so far                                                         |
-| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
-| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) | Utilization of hospital resources.                                              |
+| hospitalBeds             | [ResourceUtilization](#ResourceUtilization) |                                                                                 |
+| ICUBeds                  | [ResourceUtilization](#ResourceUtilization) |                                                                                 |
 | contactTracers           | integer                                     | # of Contact Tracers                                                            |
 | date                     | string                                      |                                                                                 |
 
@@ -313,8 +335,8 @@ Summary of actual and prediction data for a single region.
 | stateName       | string                      | The state name                                                                       |
 | countyName      | string                      | The county name                                                                      |
 | lastUpdatedDate | string                      | Date of latest data                                                                  |
-| projections     | [Projections](#Projections) | Summary of projection data.                                                          |
-| actuals         | [Actuals](#Actuals)         | Known actuals data.                                                                  |
+| projections     | [Projections](#Projections) |                                                                                      |
+| actuals         | [Actuals](#Actuals)         |                                                                                      |
 | metrics         | [Metrics](#Metrics)         | Region level metrics                                                                 |
 | population      | integer                     | Total Population in geographic region.                                               |
 
@@ -350,8 +372,8 @@ Summary data for a region with prediction timeseries data and actual timeseries 
 | stateName         | string                      | The state name                                                                       |
 | countyName        | string                      | The county name                                                                      |
 | lastUpdatedDate   | string                      | Date of latest data                                                                  |
-| projections       | [Projections](#Projections) | Summary of projection data.                                                          |
-| actuals           | [Actuals](#Actuals)         | Known actuals data.                                                                  |
+| projections       | [Projections](#Projections) |                                                                                      |
+| actuals           | [Actuals](#Actuals)         |                                                                                      |
 | metrics           | [Metrics](#Metrics)         | Region level metrics                                                                 |
 | population        | integer                     | Total Population in geographic region.                                               |
 | timeseries        | array                       |                                                                                      |

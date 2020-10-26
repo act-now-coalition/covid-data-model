@@ -1,10 +1,8 @@
 import pytest
-
-from libs.datasets import combined_datasets
 from libs.enums import Intervention
 from libs.pipelines import api_pipeline
-
-NYC_FIPS = "36061"
+from libs.datasets import combined_datasets
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 
 @pytest.mark.slow
@@ -16,40 +14,26 @@ NYC_FIPS = "36061"
         Intervention.NO_INTERVENTION,
     ],
 )
-def test_build_timeseries_and_summary_outputs(nyc_model_output_path, nyc_fips, intervention):
+def test_build_timeseries_and_summary_outputs(
+    nyc_model_output_path, nyc_region, intervention, rt_dataset, icu_dataset
+):
 
-    us_latest = combined_datasets.load_us_latest_dataset()
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
-
-    timeseries = api_pipeline.build_timeseries_for_fips(
-        intervention, us_latest, us_timeseries, nyc_model_output_path.parent, nyc_fips
+    regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
+        nyc_region, intervention, rt_dataset, icu_dataset
     )
-
-    if intervention is Intervention.NO_INTERVENTION:
-        # Test data does not contain no intervention model, should not output any results.
-        assert not timeseries
-        return
+    timeseries = api_pipeline.build_timeseries_for_region(regional_input)
 
     assert timeseries
-
-    if intervention is Intervention.STRONG_INTERVENTION:
-        assert timeseries.projections
-        assert timeseries.timeseries
-    elif intervention is Intervention.OBSERVED_INTERVENTION:
-        assert not timeseries.projections
-        assert not timeseries.timeseries
+    assert not timeseries.projections
+    assert not timeseries.timeseries
 
 
-def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_path):
+def test_build_api_output_for_intervention(nyc_region, tmp_path, rt_dataset, icu_dataset):
     county_output = tmp_path / "county"
-    us_latest = combined_datasets.load_us_latest_dataset()
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
-
-    nyc_latest = us_latest.get_subset(None, fips=nyc_fips)
-    nyc_timeseries = us_timeseries.get_subset(None, fips=nyc_fips)
-    all_timeseries_api = api_pipeline.run_on_all_fips_for_intervention(
-        nyc_latest, nyc_timeseries, Intervention.STRONG_INTERVENTION, nyc_model_output_path.parent
+    regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
+        nyc_region, Intervention.STRONG_INTERVENTION, rt_dataset, icu_dataset,
     )
+    all_timeseries_api = api_pipeline.run_on_all_regional_inputs_for_intervention([regional_input])
 
     api_pipeline.deploy_single_level(
         Intervention.STRONG_INTERVENTION, all_timeseries_api, tmp_path, county_output
@@ -57,7 +41,8 @@ def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_
     expected_outputs = [
         "counties.STRONG_INTERVENTION.timeseries.json",
         "counties.STRONG_INTERVENTION.csv",
-        "counties.STRONG_INTERVENTION.timeseries.csv",
+        # No projections are being generated so
+        # "counties.STRONG_INTERVENTION.timeseries.csv",
         "counties.STRONG_INTERVENTION.json",
         "county/36061.STRONG_INTERVENTION.json",
         "county/36061.STRONG_INTERVENTION.timeseries.json",
@@ -66,4 +51,31 @@ def test_build_api_output_for_intervention(nyc_fips, nyc_model_output_path, tmp_
     output_paths = [
         str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
     ]
+
     assert sorted(output_paths) == sorted(expected_outputs)
+
+
+def test_output_no_timeseries_rows(nyc_region, rt_dataset, icu_dataset):
+    regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
+        nyc_region, Intervention.OBSERVED_INTERVENTION, rt_dataset, icu_dataset
+    )
+
+    # Creating a new regional input with an empty timeseries dataset
+    timeseries = regional_input.timeseries
+    timeseries_data = timeseries.data.loc[timeseries.data.fips.isna()]
+    regional_data = combined_datasets.RegionalData(
+        regional_input.region, OneRegionTimeseriesDataset(timeseries_data, regional_input.latest),
+    )
+    regional_input = api_pipeline.RegionalInput(
+        regional_input.region,
+        regional_input.model_output,
+        None,
+        None,
+        regional_input.intervention,
+        regional_data,
+    )
+    assert regional_input.timeseries.empty
+
+    all_timeseries_api = api_pipeline.run_on_all_regional_inputs_for_intervention([regional_input])
+
+    assert all_timeseries_api

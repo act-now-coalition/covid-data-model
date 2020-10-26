@@ -1,9 +1,8 @@
 import os
-import us
 from datetime import datetime
 from enum import Enum
 from scipy import signal
-from covidactnow.datapublic.common_fields import CommonFields
+from libs.pipeline import Region
 
 from pyseir import OUTPUT_DIR
 from libs.datasets import combined_datasets
@@ -28,23 +27,11 @@ class TimeseriesType(Enum):
     NEW_TESTS = "new_tests"
 
 
-class RunMode(Enum):
-    DEFAULT = "default"
-
-    # Inference based + future suppression policy.
-    CAN_INFERENCE_DERIVED = "can-inference-derived"
-
-
 class RunArtifact(Enum):
-    RT_INFERENCE_RESULT = "rt_inference_result"
     RT_INFERENCE_REPORT = "rt_inference_report"
     RT_SMOOTHING_REPORT = "rt_smoothing_report"
 
-    MLE_FIT_RESULT = "mle_fit_result"
-    MLE_FIT_MODEL = "mle_fit_model"
     MLE_FIT_REPORT = "mle_fit_report"
-
-    ENSEMBLE_RESULT = "ensemble_result"
 
     WEB_UI_RESULT = "web_ui_result"
 
@@ -76,7 +63,7 @@ def get_summary_artifact_path(artifact: SummaryArtifact, output_dir=None) -> str
     return os.path.join(output_dir, "pyseir", artifact.value)
 
 
-def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
+def get_run_artifact_path(region: Region, artifact, output_dir=None) -> str:
     """
     Get an artifact path for a given locale and artifact type.
 
@@ -95,16 +82,18 @@ def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
     path: str
         Location of the artifact.
     """
-    state_obj = us.states.lookup(fips[:2])
-    if not state_obj:
-        raise AssertionError(f"No state_obj for {fips}")
-    if len(fips) == 5:
+
+    if region.is_county():
         agg_level = AggregationLevel.COUNTY
-        county = combined_datasets.get_us_latest_for_fips(fips)[CommonFields.COUNTY]
-    elif len(fips) == 2:
+        state_obj = region.get_state_region().state_obj()
+        county = combined_datasets.get_county_name(region)
+    elif region.is_state():
         agg_level = AggregationLevel.STATE
+        state_obj = region.state_obj()
+        county = None
     else:
-        agg_level = None
+        raise AssertionError(f"No state_obj for {region}")
+    fips = region.fips
 
     artifact = RunArtifact(artifact)
 
@@ -142,19 +131,6 @@ def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
                 f"Rt_smoothing__{state_obj.name}__{fips}.pdf",
             )
 
-    elif artifact is RunArtifact.RT_INFERENCE_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                DATA_FOLDER(output_dir, state_obj.name),
-                f"Rt_results__{state_obj.name}__{county}__{fips}.json",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"Rt_results__{state_obj.name}__{fips}.json",
-            )
-
     elif artifact is RunArtifact.MLE_FIT_REPORT:
         if agg_level is AggregationLevel.COUNTY:
             path = os.path.join(
@@ -166,46 +142,6 @@ def get_run_artifact_path(fips: str, artifact, output_dir=None) -> str:
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
                 f"mle_fit_results__{state_obj.name}__{fips}.pdf",
-            )
-
-    elif artifact is RunArtifact.MLE_FIT_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_results__{state_obj.name}_counties.json",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_results__{state_obj.name}_state_only.json",
-            )
-
-    elif artifact is RunArtifact.MLE_FIT_MODEL:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                DATA_FOLDER(output_dir, state_obj.name),
-                f"mle_fit_model__{state_obj.name}__{county}__{fips}.pkl",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"mle_fit_model__{state_obj.name}_state_only.pkl",
-            )
-
-    elif artifact is RunArtifact.ENSEMBLE_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                DATA_FOLDER(output_dir, state_obj.name),
-                f"ensemble_projections__{state_obj.name}__{county}__{fips}.json",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "data",
-                f"ensemble_projections__{state_obj.name}__{fips}.json",
             )
 
     elif artifact is RunArtifact.WEB_UI_RESULT:

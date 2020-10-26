@@ -11,14 +11,28 @@
     "peakDate": {
       "title": "Peakdate",
       "description": "Date of peak resource utilization",
-      "type": "string",
-      "format": "date"
+      "format": "date",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "shortageStartDate": {
       "title": "Shortagestartdate",
       "description": "Date when resource shortage begins",
-      "type": "string",
-      "format": "date"
+      "format": "date",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [

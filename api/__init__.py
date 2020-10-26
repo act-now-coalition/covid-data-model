@@ -17,11 +17,14 @@ def _get_subclasses_recursively(cls) -> Iterator[Type]:
         yield from _get_subclasses_recursively(subclass)
 
 
-def find_public_model_classes() -> List[Type[base_model.APIBaseModel]]:
+def find_public_model_classes(api_v2: bool = False) -> List[Type[base_model.APIBaseModel]]:
     """Finds all model classes (i.e. that derive from base_model.APIBaseModel) for export.
 
     Performs a bit of python magic to load all modules in the in the `api/` folder
     and find all subclasses of `base_model.APIBaseModel`.
+
+    Args:
+        api_v2: If True, returns v2 schemas, if False, returns v1 schemas
 
     Returns: List of api model classes.
     """
@@ -29,7 +32,8 @@ def find_public_model_classes() -> List[Type[base_model.APIBaseModel]]:
     # This allows us to then enumerate base_model.APIBaseModel.__subclasses__
     # to find all our model classes.
     root = pathlib.Path(__file__).parent
-    for path in root.rglob("*.py"):
+
+    for path in root.glob("*.py"):
         relative = path.relative_to(root.parent)
         module_name = str(relative).replace("\\", "/").replace("/", ".")[:-3]
 
@@ -45,7 +49,9 @@ def find_public_model_classes() -> List[Type[base_model.APIBaseModel]]:
     # Calling `base_model.APIBaseModel.__subclasses__()` only returns direct subclasses.
     # To find all classes that may inherit from subclasses of APIBaseModel, we need to
     # recursively get subclasses.
+    expected_module = "api.can_api_v2_definition" if api_v2 else "api.can_api_definition"
     for subclass in _get_subclasses_recursively(base_model.APIBaseModel):
-        model_classes.append(subclass)
+        if subclass.__module__ == expected_module:
+            model_classes.append(subclass)
 
     return model_classes
