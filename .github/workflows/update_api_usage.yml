@@ -36,6 +36,8 @@ env:
 
   AWS_ACCESS_KEY_ID: ${{ secrets.API_USAGE_UPDATER_ACCESS_KEY_ID }}
 
+  HUBSPOT_API_KEY: $${{ secrets.HUBSPOT_API_KEY }}
+
 jobs:
   update-and-promote-datasets:
     runs-on: ubuntu-latest

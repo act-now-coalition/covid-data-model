@@ -518,6 +518,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         dataset = MultiRegionTimeseriesDataset.from_combined_dataframe(
             common_df.read_csv(path_or_buf, set_index=False)
         )
+        if isinstance(path_or_buf, pathlib.Path):
+            provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
+            if provenance_path.exists():
+                dataset = dataset.append_provenance_csv(provenance_path)
+        return dataset
 
     @staticmethod
     def from_timeseries_and_latest(
