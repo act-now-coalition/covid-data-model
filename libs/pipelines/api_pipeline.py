@@ -22,7 +22,6 @@ from libs import top_level_metrics
 from libs.datasets import timeseries
 from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
@@ -36,8 +35,6 @@ PROD_BUCKET = "data.covidactnow.org"
 @dataclass(frozen=True)
 class RegionalInput:
     region: pipeline.Region
-
-    model_output: Optional[CANPyseirLocationOutput]
 
     rt_data: Optional[OneRegionTimeseriesDataset]
 
@@ -84,7 +81,6 @@ class RegionalInput:
 
         return RegionalInput(
             region=region,
-            model_output=None,
             intervention=intervention,
             _combined_data=combined_data,
             rt_data=rt_data,
