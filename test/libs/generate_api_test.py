@@ -9,12 +9,7 @@ from libs.pipelines import api_pipeline
 
 
 def test_build_summary_for_fips(
-    include_projections,
-    rt_null,
-    nyc_model_output_path,
-    nyc_region,
-    nyc_rt_dataset,
-    nyc_icu_dataset,
+    nyc_region, nyc_rt_dataset, nyc_icu_dataset,
 ):
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
