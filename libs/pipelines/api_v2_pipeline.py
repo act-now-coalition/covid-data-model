@@ -119,9 +119,10 @@ def generate_metrics_and_latest(
     Build metrics with timeseries.
 
     Args:
-        timeseries: Timeseries for one region
-        latest: Dictionary of latest values for region
-        model_output: Optional model output for region.
+        timeseries: Timeseries for one region.
+        rt_data: Rt data.
+        icu_data: Estimated ICU usage data.
+
 
     Returns:
         Tuple of MetricsTimeseriesRows for all days and the metrics overview.
