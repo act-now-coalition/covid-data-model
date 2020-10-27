@@ -1,7 +1,6 @@
 import logging
 import pathlib
 import functools
-import multiprocessing
 import click
 
 import us
@@ -9,6 +8,7 @@ import us
 import pydantic
 import api
 from api import update_open_api_spec
+from libs import parallel_utils
 from libs import test_positivity
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
@@ -148,8 +148,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
             rt_data=rt_data,
             icu_data=icu_data,
         )
-        with multiprocessing.Pool(maxtasksperchild=1) as pool:
-            regional_inputs = pool.map(_load_input, regions)
+        regional_inputs = parallel_utils.parallel_map(_load_input, regions)
 
         _logger.info(f"Loaded {len(regional_inputs)} regions.")
         all_timeseries = api_pipeline.run_on_all_regional_inputs_for_intervention(regional_inputs)

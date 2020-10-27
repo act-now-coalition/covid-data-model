@@ -63,20 +63,14 @@ def _get_cases_for_times(generator: DataGenerator, times) -> np.array:
     return np.array(list(map(generator.generate_data, times)))
 
 
-def create_synthetic_df(data_generator) -> pd.DataFrame:
+def create_synthetic_cases(data_generator) -> pd.DataFrame:
     """
     Generates case and death data.
     """
     times = list(range(0, 100))
     dates = pd.date_range("2020-01-01", periods=100)
     observed_new_cases = _get_cases_for_times(data_generator, times)
-    data = dict()
-    data["cases"] = observed_new_cases
-    # if not data_generator.disable_deaths: - TODO fails if deaths missing elsewhere
-    data["deaths"] = 0.03 * observed_new_cases
-
-    df = pd.DataFrame(data=data, index=dates)
-    return df
+    return pd.Series(observed_new_cases, index=dates)
 
 
 # _________________Other methods to mock__________________
