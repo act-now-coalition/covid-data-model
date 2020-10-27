@@ -639,10 +639,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def _get_latest_and_provenance_for_locations(
         self, location_ids
     ) -> Tuple[pd.DataFrame, Optional[pd.Series]]:
-        latest_rows = self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        latest_df = self.latest_data.loc[latest_rows, :].reset_index().dropna("columns", "all")
+        latest_df = self.latest_data.loc[
+            self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids), :
+        ].reset_index()
         if self.provenance is not None:
             provenance = self.provenance[
                 self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
