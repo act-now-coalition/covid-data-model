@@ -1,13 +1,7 @@
 import datetime
 
-import pytest
-
-from api.can_api_definition import (
-    Actuals,
-    Projections,
-    RegionSummary,
-    ResourceUsageProjection,
-)
+from api.can_api_definition import Actuals
+from api.can_api_definition import RegionSummary
 from libs.datasets import combined_datasets
 from libs.enums import Intervention
 from libs.functions import generate_api

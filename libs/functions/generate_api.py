@@ -7,7 +7,6 @@ from api.can_api_definition import (
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
     Metrics,
-    PredictionTimeseriesRow,
     PredictionTimeseriesRowWithHeader,
     RegionSummary,
     RegionSummaryWithTimeseries,
@@ -60,25 +59,6 @@ def _generate_actuals(actual_data: dict, intervention: Intervention) -> Actuals:
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
         contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
-    )
-
-
-def _generate_prediction_timeseries_row(json_data_row) -> PredictionTimeseriesRow:
-    return PredictionTimeseriesRow(
-        date=json_data_row[can_schema.DATE].to_pydatetime(),
-        hospitalBedsRequired=json_data_row[can_schema.ALL_HOSPITALIZED],
-        hospitalBedCapacity=json_data_row[can_schema.BEDS],
-        ICUBedsInUse=json_data_row[can_schema.INFECTED_C],
-        ICUBedCapacity=json_data_row[can_schema.ICU_BED_CAPACITY],
-        ventilatorsInUse=json_data_row[can_schema.CURRENT_VENTILATED],
-        ventilatorCapacity=json_data_row[can_schema.VENTILATOR_CAPACITY],
-        RtIndicator=json_data_row[can_schema.RT_INDICATOR],
-        RtIndicatorCI90=json_data_row[can_schema.RT_INDICATOR_CI90],
-        currentInfected=json_data_row[can_schema.ALL_INFECTED],
-        currentSusceptible=json_data_row[can_schema.TOTAL_SUSCEPTIBLE],
-        currentExposed=json_data_row[can_schema.EXPOSED],
-        cumulativeDeaths=json_data_row[can_schema.DEAD],
-        cumulativeInfected=json_data_row[can_schema.CUMULATIVE_INFECTED],
     )
 
 
