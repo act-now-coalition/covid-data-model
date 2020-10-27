@@ -16,6 +16,7 @@ from api.can_api_definition import (
     RegionSummaryWithTimeseries,
 )
 from libs import dataset_deployer
+from libs import parallel_utils
 from libs import pipeline
 from libs import top_level_metrics
 from libs.datasets import timeseries
@@ -27,7 +28,6 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
 from libs.functions import get_can_projection
-from libs.parallel_utils import parallel_map
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
@@ -99,7 +99,7 @@ def run_on_all_regional_inputs_for_intervention(
     # Load interventions outside of subprocesses to properly cache.
     get_can_projection.get_interventions()
 
-    results = parallel_map(build_timeseries_for_region, regional_inputs)
+    results = parallel_utils.parallel_map(build_timeseries_for_region, regional_inputs)
     all_timeseries = [region_timeseries for region_timeseries in results if region_timeseries]
 
     if sort_func:

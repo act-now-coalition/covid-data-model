@@ -13,13 +13,13 @@ import click
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
+from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.parallel_utils import parallel_map
 from pyseir.deployment import webui_data_adaptor_v1
 from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
@@ -290,7 +290,7 @@ def _write_pipeline_output(
             if p.fitter
         ]
 
-        parallel_map(web_ui_mapper.write_region_safely, webui_inputs)
+        parallel_utils.parallel_map(web_ui_mapper.write_region_safely, webui_inputs)
 
 
 def _build_all_for_states(
@@ -301,7 +301,9 @@ def _build_all_for_states(
 
     # do everything for just states in parallel
     states_regions = [pipeline.Region.from_state(s) for s in states]
-    state_pipelines: List[StatePipeline] = parallel_map(StatePipeline.run, states_regions)
+    state_pipelines: List[StatePipeline] = list(
+        parallel_utils.parallel_map(StatePipeline.run, states_regions)
+    )
     state_fitter_map = {p.region: p.fitter for p in state_pipelines}
 
     if states_only:
@@ -312,7 +314,7 @@ def _build_all_for_states(
     )
 
     root.info(f"executing pipeline for {len(substate_inputs)} counties")
-    substate_pipelines = parallel_map(SubStatePipeline.run, substate_inputs)
+    substate_pipelines = parallel_utils.parallel_map(SubStatePipeline.run, substate_inputs)
 
     substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
 

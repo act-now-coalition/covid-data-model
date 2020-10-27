@@ -16,6 +16,7 @@ from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from libs import dataset_deployer
 from libs import top_level_metrics
 from libs import top_level_metric_risk_levels
+from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import timeseries
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -23,7 +24,6 @@ from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import build_api_v2
 from libs.datasets import AggregationLevel
-from libs.parallel_utils import parallel_map
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
@@ -98,7 +98,7 @@ class RegionalInput:
 def run_on_regions(
     regional_inputs: List[RegionalInput], sort_func=None, limit=None,
 ) -> List[RegionSummaryWithTimeseries]:
-    results = parallel_map(build_timeseries_for_region, regional_inputs)
+    results = parallel_utils.parallel_map(build_timeseries_for_region, regional_inputs)
     all_timeseries = [result for result in results if result]
 
     if sort_func:
