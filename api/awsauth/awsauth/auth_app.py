@@ -128,6 +128,7 @@ def _record_successful_request(request: dict, record: dict):
         "email": record["email"],
         "path": request["uri"],
         "ip": request["clientIp"],
+        "is_covid_response_simulator_user": record.get("is_covid_response_simulator_user", False),
     }
 
     registry.firehose_client.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
