@@ -46,6 +46,11 @@
       "description": "Longitude of point within the state or county",
       "type": "number"
     },
+    "locationId": {
+      "title": "Locationid",
+      "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
+      "type": "string"
+    },
     "actuals": {
       "title": "Actuals",
       "description": "Actuals for given day",
@@ -71,6 +76,7 @@
     "state",
     "county",
     "fips",
+    "locationId",
     "actuals",
     "metrics"
   ],

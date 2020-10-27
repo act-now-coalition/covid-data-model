@@ -158,6 +158,10 @@ class RegionSummary(base_model.APIBaseModel):
     lat: Optional[float] = pydantic.Field(
         ..., description="Latitude of point within the state or county"
     )
+    locationId: str = pydantic.Field(
+        ...,
+        description="Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
+    )
     long: Optional[float] = pydantic.Field(
         ..., description="Longitude of point within the state or county"
     )
@@ -217,6 +221,10 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     )
     lat: float = pydantic.Field(None, description="Latitude of point within the state or county")
     long: float = pydantic.Field(None, description="Longitude of point within the state or county")
+    locationId: str = pydantic.Field(
+        ...,
+        description="Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
+    )
     actuals: Optional[Actuals] = pydantic.Field(..., description="Actuals for given day")
     metrics: Optional[Metrics] = pydantic.Field(..., description="Metrics for given day")
 
