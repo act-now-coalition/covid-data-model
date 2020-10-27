@@ -255,7 +255,7 @@
           "200": {
             "description": "",
             "content": {
-              "application/json": {
+              "application/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
@@ -327,7 +327,7 @@
           "200": {
             "description": "",
             "content": {
-              "application/json": {
+              "application/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
                 }
@@ -399,7 +399,7 @@
           "200": {
             "description": "",
             "content": {
-              "application/json": {
+              "application/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
@@ -471,7 +471,7 @@
           "200": {
             "description": "",
             "content": {
-              "application/json": {
+              "application/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
                 }
@@ -797,6 +797,7 @@
           "state",
           "county",
           "fips",
+          "locationId",
           "actuals",
           "metrics"
         ],
@@ -844,6 +845,11 @@
             "title": "Long",
             "type": "number",
             "description": "Longitude of point within the state or county"
+          },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
           },
           "actuals": {
             "title": "Actuals",
@@ -936,6 +942,7 @@
           "county",
           "level",
           "lat",
+          "locationId",
           "long",
           "population",
           "metrics",
@@ -986,6 +993,11 @@
               }
             ],
             "description": "Latitude of point within the state or county"
+          },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
           },
           "long": {
             "title": "Long",
@@ -1243,6 +1255,7 @@
           "county",
           "level",
           "lat",
+          "locationId",
           "long",
           "population",
           "metrics",
@@ -1294,6 +1307,11 @@
               }
             ],
             "description": "Latitude of point within the state or county"
+          },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
           },
           "long": {
             "title": "Long",
