@@ -36,16 +36,16 @@ import pytest
 @pytest.mark.slow
 def test_unique_index_values_us_timeseries():
     timeseries = combined_datasets.load_us_timeseries_dataset()
-    timeseries_data = timeseries.data.set_index(TimeseriesDataset.INDEX_FIELDS)
-    duplicates = timeseries_data.index.duplicated()
-    assert not sum(duplicates)
+    timeseries_data = timeseries.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+    duplicates = timeseries_data.index.duplicated(keep=False)
+    assert not duplicates.any(), timeseries_data.loc[duplicates, :]
 
 
 def test_unique_index_values_us_latest():
     latest = combined_datasets.load_us_latest_dataset()
-    latest_data = latest.data.set_index(latest.INDEX_FIELDS)
+    latest_data = latest.data.set_index(CommonFields.LOCATION_ID)
     duplicates = latest_data.index.duplicated()
-    assert not sum(duplicates)
+    assert not duplicates.any(), latest_data.loc[duplicates, :]
 
 
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
