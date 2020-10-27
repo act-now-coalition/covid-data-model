@@ -22,7 +22,6 @@ from libs import top_level_metrics
 from libs.datasets import timeseries
 from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
@@ -36,8 +35,6 @@ PROD_BUCKET = "data.covidactnow.org"
 @dataclass(frozen=True)
 class RegionalInput:
     region: pipeline.Region
-
-    model_output: Optional[CANPyseirLocationOutput]
 
     rt_data: Optional[OneRegionTimeseriesDataset]
 
@@ -84,7 +81,6 @@ class RegionalInput:
 
         return RegionalInput(
             region=region,
-            model_output=None,
             intervention=intervention,
             _combined_data=combined_data,
             rt_data=rt_data,
@@ -157,9 +153,9 @@ def build_timeseries_for_region(
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
             regional_input.timeseries, regional_input.rt_data, regional_input.icu_data,
         )
-        region_summary = api.generate_region_summary(regional_input.latest, metrics_latest, None)
+        region_summary = api.generate_region_summary(regional_input.latest, metrics_latest)
         region_timeseries = api.generate_region_timeseries(
-            region_summary, regional_input.timeseries, metrics_timeseries, None
+            region_summary, regional_input.timeseries, metrics_timeseries
         )
     except Exception:
         logger.exception(f"Failed to build timeseries for fips.")
