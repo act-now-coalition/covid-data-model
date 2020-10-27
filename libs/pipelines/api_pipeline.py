@@ -2,7 +2,6 @@ from typing import Any
 from typing import Dict
 from typing import Iterator, List, Optional
 import functools
-import multiprocessing
 import pathlib
 from dataclasses import dataclass
 
@@ -17,6 +16,7 @@ from api.can_api_definition import (
     RegionSummaryWithTimeseries,
 )
 from libs import dataset_deployer
+from libs import parallel_utils
 from libs import pipeline
 from libs import top_level_metrics
 from libs.datasets import timeseries
@@ -89,19 +89,13 @@ class RegionalInput:
 
 
 def run_on_all_regional_inputs_for_intervention(
-    regional_inputs: List[RegionalInput],
-    pool: multiprocessing.Pool = None,
-    sort_func=None,
-    limit=None,
+    regional_inputs: List[RegionalInput], sort_func=None, limit=None,
 ) -> Iterator[RegionSummaryWithTimeseries]:
 
     # Load interventions outside of subprocesses to properly cache.
     get_can_projection.get_interventions()
 
-    # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
-    # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
-    pool = pool or multiprocessing.Pool(maxtasksperchild=1)
-    results = pool.map(build_timeseries_for_region, regional_inputs)
+    results = parallel_utils.parallel_map(build_timeseries_for_region, regional_inputs)
     all_timeseries = [region_timeseries for region_timeseries in results if region_timeseries]
 
     if sort_func:

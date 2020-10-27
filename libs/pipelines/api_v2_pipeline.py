@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
-import multiprocessing
 import pathlib
 import time
 
@@ -17,6 +16,7 @@ from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from libs import dataset_deployer
 from libs import top_level_metrics
 from libs import top_level_metric_risk_levels
+from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import timeseries
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -96,15 +96,9 @@ class RegionalInput:
 
 
 def run_on_regions(
-    regional_inputs: List[RegionalInput],
-    pool: multiprocessing.Pool = None,
-    sort_func=None,
-    limit=None,
+    regional_inputs: List[RegionalInput], sort_func=None, limit=None,
 ) -> List[RegionSummaryWithTimeseries]:
-    # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
-    # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
-    pool = pool or multiprocessing.Pool(maxtasksperchild=1)
-    results = pool.map(build_timeseries_for_region, regional_inputs)
+    results = parallel_utils.parallel_map(build_timeseries_for_region, regional_inputs)
     all_timeseries = [result for result in results if result]
 
     if sort_func:

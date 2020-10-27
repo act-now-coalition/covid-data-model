@@ -5,7 +5,6 @@ import sys
 import os
 from dataclasses import dataclass
 import logging
-from multiprocessing import Pool
 
 import us
 import pandas as pd
@@ -14,6 +13,7 @@ import click
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
+from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
@@ -277,10 +277,11 @@ def _build_all_for_states(
     _cache_global_datasets()
 
     # do everything for just states in parallel
-    with Pool(maxtasksperchild=1) as pool:
-        states_regions = [pipeline.Region.from_state(s) for s in states]
-        state_pipelines: List[StatePipeline] = pool.map(StatePipeline.run, states_regions)
-        state_fitter_map = {p.region: p.fitter for p in state_pipelines}
+    states_regions = [pipeline.Region.from_state(s) for s in states]
+    state_pipelines: List[StatePipeline] = list(
+        parallel_utils.parallel_map(StatePipeline.run, states_regions)
+    )
+    state_fitter_map = {p.region: p.fitter for p in state_pipelines}
 
     if states_only:
         return state_pipelines
@@ -289,10 +290,8 @@ def _build_all_for_states(
         state_fitter_map, fips=fips, states=states
     )
 
-    with Pool(maxtasksperchild=1) as p:
-        root.info(f"executing pipeline for {len(substate_inputs)} counties")
-
-        substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
+    root.info(f"executing pipeline for {len(substate_inputs)} counties")
+    substate_pipelines = parallel_utils.parallel_map(SubStatePipeline.run, substate_inputs)
 
     substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
 
