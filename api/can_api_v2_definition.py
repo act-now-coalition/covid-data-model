@@ -61,6 +61,9 @@ class Metrics(base_model.APIBaseModel):
         ...,
         description="Ratio of people who test positive calculated using a 7-day rolling average.",
     )
+    testPositivityRatioMethod: Optional[
+        can_api_definition.TestPositivityRatioMethod
+    ] = pydantic.Field(None)
 
     caseDensity: Optional[float] = pydantic.Field(
         ...,
@@ -129,6 +132,9 @@ class RiskLevels(base_model.APIBaseModel):
     testPositivityRatio: RiskLevel = pydantic.Field(
         ..., description="Test positivity ratio risk level."
     )
+    testPositivityRatioMethod: Optional[
+        can_api_definition.TestPositivityRatioMethod
+    ] = pydantic.Field(None)
     caseDensity: RiskLevel = pydantic.Field(..., description="Case density risk level.")
     contactTracerCapacityRatio: RiskLevel = pydantic.Field(
         ..., description="Contact tracer capacity ratio risk level."

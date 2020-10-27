@@ -112,15 +112,17 @@ def calculate_metrics_for_timeseries(
 def _lookup_test_positivity_method(
     positive_tests_provenance: Optional[str], negative_tests_provenance: Optional[str], log
 ) -> TestPositivityRatioMethod:
-    if positive_tests_provenance == "HHSTesting" and negative_tests_provenance == "HHSTesting":
-        return TestPositivityRatioMethod.HHSTesting
-    else:
+    method = None
+    if positive_tests_provenance and positive_tests_provenance == negative_tests_provenance:
+        method = TestPositivityRatioMethod.get(positive_tests_provenance)
+    if method is None:
         log.info(
             "Unable to find TestPositivityRatioMethod",
             positive_tests_provenance=positive_tests_provenance,
             negative_tests_provenance=negative_tests_provenance,
         )
-        return TestPositivityRatioMethod.OTHER
+        method = TestPositivityRatioMethod.OTHER
+    return method
 
 
 def calculate_or_copy_test_positivity(
@@ -275,7 +277,7 @@ def calculate_latest_metrics(
             metrics[field] = data[field][last_available]
 
     if not data[MetricsFields.INFECTION_RATE].any():
-        return Metrics(**metrics)
+        return Metrics(**metrics, testPositivityRatioMethod=test_positivity_method)
 
     # Infection rate is handled differently - the infection rate surfaced is actually the value
     # `RT_TRUNCATION_DAYS` in the past.
@@ -286,7 +288,7 @@ def calculate_latest_metrics(
     if stale_rt or rt_index not in data.index:
         metrics[MetricsFields.INFECTION_RATE] = None
         metrics[MetricsFields.INFECTION_RATE_CI90] = None
-        return Metrics(**metrics)
+        return Metrics(**metrics, testPositivityRatioMethod=test_positivity_method)
 
     metrics[MetricsFields.INFECTION_RATE] = data[MetricsFields.INFECTION_RATE][rt_index]
     metrics[MetricsFields.INFECTION_RATE_CI90] = data[MetricsFields.INFECTION_RATE_CI90][rt_index]

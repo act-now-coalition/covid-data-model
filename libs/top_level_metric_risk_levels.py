@@ -111,6 +111,7 @@ def calculate_risk_level_from_metrics(
 ) -> can_api_v2_definition.RiskLevels:
     case_density_level = case_density_risk_level(metrics.caseDensity)
     test_positivity_level = test_positivity_risk_level(metrics.testPositivityRatio)
+    test_positivity_method = metrics.testPositivityRatioMethod
     contact_tracing_level = contact_tracing_risk_level(metrics.contactTracerCapacityRatio)
     icu_headroom_level = icu_headroom_ratio_risk_level(metrics.icuHeadroomRatio)
     infection_rate_level = infection_rate_risk_level(metrics.infectionRate)
@@ -125,6 +126,7 @@ def calculate_risk_level_from_metrics(
     levels = can_api_v2_definition.RiskLevels(
         overall=overall_level,
         testPositivityRatio=test_positivity_level,
+        testPositivityRatioMethod=test_positivity_method,
         caseDensity=case_density_level,
         contactTracerCapacityRatio=contact_tracing_level,
         infectionRate=infection_rate_level,

@@ -52,6 +52,7 @@ def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
 def test_build_timeseries_and_summary_outputs(nyc_regional_input):
     timeseries = api_v2_pipeline.build_timeseries_for_region(nyc_regional_input)
     assert timeseries
+    assert timeseries.riskLevels.testPositivityRatioMethod
 
 
 def test_build_timeseries_and_summary_outputs_for_il_state(il_regional_input):
