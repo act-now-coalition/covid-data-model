@@ -439,6 +439,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         assert timeseries_df.index.names == [None]
         assert CommonFields.LOCATION_ID in timeseries_df.columns
         empty_latest_df = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
+        if CommonFields.FIPS in timeseries_df.columns:
+            timeseries_df = timeseries_df.drop(columns=[CommonFields.FIPS])
         return MultiRegionTimeseriesDataset(timeseries_df, empty_latest_df, provenance=provenance)
 
     def append_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
@@ -500,10 +502,10 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         _add_fips_if_missing(combined_df)
 
         rows_with_date = combined_df[CommonFields.DATE].notna()
-        timeseries_df = combined_df.loc[rows_with_date, :].dropna("columns", "all")
+        timeseries_df = combined_df.loc[rows_with_date, :]
 
         # Extract rows of combined_df which don't have a date.
-        latest_df = combined_df.loc[~rows_with_date, :].dropna("columns", "all")
+        latest_df = combined_df.loc[~rows_with_date, :]
 
         multiregion_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
             timeseries_df, provenance=provenance
