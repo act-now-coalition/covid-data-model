@@ -25,7 +25,7 @@ from pyseir.rt import infer_rt
 from pyseir.icu import infer_icu
 import pyseir.rt.patches
 from pyseir.ensembles import ensemble_runner
-from pyseir.inference import model_fitter
+
 import pyseir.utils
 from pyseir.inference.whitelist import WhitelistGenerator
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
@@ -77,8 +77,6 @@ class StatePipeline:
     infer_df: pd.DataFrame
 
     icu_data: OneRegionTimeseriesDataset
-    fitter: model_fitter.ModelFitter
-    ensemble: ensemble_runner.EnsembleRunner
 
     @staticmethod
     def run(region: pipeline.Region) -> "StatePipeline":
@@ -93,60 +91,38 @@ class StatePipeline:
             icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
         )
 
-        fitter_input = model_fitter.RegionalInput.from_state_region(region)
-        fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-        ensembles_input = ensemble_runner.RegionalInput.for_state(fitter)
-        ensemble = ensemble_runner.make_and_run(ensembles_input)
-        return StatePipeline(
-            region=region, infer_df=infer_df, icu_data=icu_data, fitter=fitter, ensemble=ensemble
-        )
+        return StatePipeline(region=region, infer_df=infer_df, icu_data=icu_data)
 
 
 @dataclass
 class SubStateRegionPipelineInput:
     region: pipeline.Region
-    run_fitter: bool
-    state_fitter: model_fitter.ModelFitter
     regional_combined_dataset: combined_datasets.RegionalData
 
     @staticmethod
     def build_all(
-        state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
-        fips: Optional[str] = None,
-        states: Optional[List[str]] = None,
+        fips: Optional[str] = None, states: Optional[List[str]] = None,
     ) -> List["SubStateRegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
         # Calculate the whitelist for the infection rate metric which makes no promises
         # about it's relationship to the SEIR subset
         if fips:  # A single Fips string was passed as a flag. Just run for that fips.
-            infer_rt_regions = {pipeline.Region.from_fips(fips)}
+            regions = {pipeline.Region.from_fips(fips)}
         else:  # Default to the full infection rate whitelist
-            infer_rt_regions = {
+            regions = {
                 *combined_datasets.get_subset_regions(
                     aggregation_level=AggregationLevel.COUNTY,
                     exclude_county_999=True,
                     states=states,
                 )
             }
-        # Now calculate the pyseir dependent whitelist
-        whitelist_df = _generate_whitelist()
-        # Make Region objects for all sub-state regions (counties, MSAs etc) that pass the whitelist
-        # and parameters used to select subsets of regions.
-        whitelist_regions = set(
-            whitelist.regions_in_states(
-                list(state_fitter_map.keys()), fips=fips, whitelist_df=whitelist_df
-            )
-        )
-
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                run_fitter=False,
-                state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
-            for region in (infer_rt_regions | whitelist_regions)
+            for region in regions
         ]
         return pipeline_inputs
 
@@ -159,8 +135,6 @@ class SubStatePipeline:
     infer_df: pd.DataFrame
     icu_data: Optional[OneRegionTimeseriesDataset]
     _combined_data: combined_datasets.RegionalData
-    fitter: Optional[model_fitter.ModelFitter] = None
-    ensemble: Optional[ensemble_runner.EnsembleRunner] = None
 
     @staticmethod
     def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
@@ -180,25 +154,10 @@ class SubStatePipeline:
             icu_data = None
             root.exception(f"Failed to run icu data for {input.region}")
 
-        if input.run_fitter:
-            fitter_input = model_fitter.RegionalInput.from_substate_region(
-                input.region, input.state_fitter
-            )
-            fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-            ensembles_input = ensemble_runner.RegionalInput.for_substate(
-                fitter, state_fitter=input.state_fitter
-            )
-            ensemble = ensemble_runner.make_and_run(ensembles_input)
-        else:
-            fitter = None
-            ensemble = None
-
         return SubStatePipeline(
             region=input.region,
             infer_df=infer_df,
             icu_data=icu_data,
-            fitter=fitter,
-            ensemble=ensemble,
             _combined_data=input.regional_combined_dataset,
         )
 
@@ -281,14 +240,11 @@ def _build_all_for_states(
     state_pipelines: List[StatePipeline] = list(
         parallel_utils.parallel_map(StatePipeline.run, states_regions)
     )
-    state_fitter_map = {p.region: p.fitter for p in state_pipelines}
 
     if states_only:
         return state_pipelines
 
-    substate_inputs = SubStateRegionPipelineInput.build_all(
-        state_fitter_map, fips=fips, states=states
-    )
+    substate_inputs = SubStateRegionPipelineInput.build_all(fips=fips, states=states)
 
     root.info(f"executing pipeline for {len(substate_inputs)} counties")
     substate_pipelines = parallel_utils.parallel_map(SubStatePipeline.run, substate_inputs)
