@@ -336,10 +336,7 @@ def test_calculate_new_cases():
     )
 
     timeseries_after = timeseries.add_new_cases(mrts_before)
-    pd.testing.assert_frame_equal(timeseries_after.data, mrts_expected.data, check_like=True)
-    pd.testing.assert_frame_equal(
-        timeseries_after.latest_data, mrts_expected.latest_data, check_like=True
-    )
+    assert_combined_like(mrts_expected, timeseries_after)
 
 
 def test_timeseries_long():
