@@ -140,11 +140,11 @@ def filter_and_smooth_input_data(
     ]
     # Now Apply Input Outlier Detection and Smoothing
 
-    filtered = utils.replace_outliers(cases, log=rt_log)
+    # filtered = utils.replace_outliers(cases, log=rt_log)
     # TODO find way to indicate which points filtered in figure below
 
-    assert len(filtered) == len(cases)
-    smoothed = filtered.rolling(
+    # assert len(filtered) == len(cases)
+    smoothed = cases.rolling(
         InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
         win_type="gaussian",
         min_periods=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD,
