@@ -754,6 +754,7 @@ def _diff_preserving_first_value(series):
 
 
 def _add_new_cases_to_latest(timeseries_df: pd.DataFrame, latest_df: pd.DataFrame) -> pd.DataFrame:
+    assert latest_df.index.names == [CommonFields.LOCATION_ID]
     latest_new_cases = dataset_utils.build_latest_for_column(timeseries_df, CommonFields.NEW_CASES)
 
     latest_copy = latest_df.copy()
