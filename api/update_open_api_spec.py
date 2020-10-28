@@ -53,6 +53,7 @@ class APIEndpoint:
             "schema": {"type": "string"},
         }
         parameters = self.parameters + [security]
+        content_type = "application/csv" if self.endpoint.endswith(".csv") else "application/json"
         return {
             "parameters": parameters,
             "get": {
@@ -63,9 +64,7 @@ class APIEndpoint:
                     "200": {
                         "description": "",
                         "content": {
-                            "application/json": {
-                                "schema": PydanticSchema(schema_class=self.schema_cls)
-                            }
+                            content_type: {"schema": PydanticSchema(schema_class=self.schema_cls)}
                         },
                     }
                 },

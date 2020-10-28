@@ -35,7 +35,7 @@ def test_build_summary_for_fips(
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
-    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels)
+    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels, nyc_region)
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",
@@ -43,6 +43,7 @@ def test_build_summary_for_fips(
         level="county",
         county="New York County",
         fips="36061",
+        locationId="iso1:us#iso2:us-ny#fips:36061",
         lat=None,
         long=None,
         metrics=latest_metric,
@@ -83,12 +84,14 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
 
-    region_summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels)
+    region_summary = build_api_v2.build_region_summary(
+        nyc_latest, latest_metric, risk_levels, nyc_region
+    )
     region_timeseries = build_api_v2.build_region_timeseries(
         region_summary, nyc_timeseries, metrics_series
     )
 
-    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels)
+    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels, nyc_region)
 
     assert summary.dict() == region_timeseries.region_summary.dict()
     # Double checking that serialized json does not contain NaNs, all values should
