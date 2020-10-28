@@ -753,6 +753,15 @@ def _diff_preserving_first_value(series):
     return series_diff
 
 
+def _add_new_cases_to_latest(timeseries_df: pd.DataFrame, latest_df: pd.DataFrame) -> pd.DataFrame:
+    assert latest_df.index.names == [CommonFields.LOCATION_ID]
+    latest_new_cases = dataset_utils.build_latest_for_column(timeseries_df, CommonFields.NEW_CASES)
+
+    latest_copy = latest_df.copy()
+    latest_copy[CommonFields.NEW_CASES] = latest_new_cases
+    return latest_copy.reset_index()
+
+
 def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
     """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
     df_copy = timeseries.data.copy()
@@ -764,9 +773,12 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     df_copy[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].apply(
         _diff_preserving_first_value
     )
+    latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
+
     new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
         timeseries_df=df_copy, provenance=timeseries.provenance
-    ).append_latest_df(timeseries.latest_data.reset_index())
+    ).append_latest_df(latest_values)
+
     return new_timeseries
 
 
