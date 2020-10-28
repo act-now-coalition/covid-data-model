@@ -314,6 +314,14 @@ def fips_index_geo_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_latest_for_column(timeseries_df: pd.DataFrame, column: CommonFields) -> pd.Series:
+    """Builds a series of the latest value for each column.
+
+    Args:
+        timeseries_df: Timeseries DF with location_id and date columns.
+        column: Column to build latest value for.
+
+    Returns: Series indexed by location_id with the latest value for `column`.
+    """
     assert CommonFields.LOCATION_ID in timeseries_df.columns
     assert CommonFields.DATE in timeseries_df.columns
 
