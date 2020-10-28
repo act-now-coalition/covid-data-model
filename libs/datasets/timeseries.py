@@ -110,7 +110,12 @@ class OneRegionTimeseriesDataset:
 
     def get_subset(self, after=None, columns=tuple()):
         rows_key = dataset_utils.make_rows_key(self.data, after=after,)
-        columns_key = list(columns) if columns else slice(None, None, None)
+        if columns:
+            assert CommonFields.LOCATION_ID in columns or CommonFields.FIPS in columns
+            assert CommonFields.DATE in columns
+            columns_key = list(columns)
+        else:
+            columns_key = slice(None, None, None)
         return OneRegionTimeseriesDataset(
             self.data.loc[rows_key, columns_key].reset_index(drop=True),
             latest=self.latest,
@@ -400,7 +405,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     @property
     def data_with_fips(self) -> pd.DataFrame:
         """data with FIPS column, use `data` when FIPS is not need."""
-        return self.data
+        data_copy = self.data.copy()
+        _add_fips_if_missing(data_copy)
+        return data_copy
 
     @property
     def latest_data_with_fips(self) -> pd.DataFrame:
@@ -664,7 +671,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         This method exists for interim use when calling code that doesn't use MultiRegionTimeseriesDataset.
         """
-        return TimeseriesDataset(self.data, provenance=self.provenance)
+        return TimeseriesDataset(self.data_with_fips, provenance=self.provenance)
 
     def to_csv(self, path: pathlib.Path):
         """Persists timeseries to CSV.
@@ -726,7 +733,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
-        for location_id, data_group in self.data_with_fips.groupby(CommonFields.LOCATION_ID):
+        for location_id, data_group in self.data.groupby(CommonFields.LOCATION_ID):
             latest_dict = self._location_id_latest_dict(location_id)
             provenance_dict = self._location_id_provenance_dict(location_id)
             yield Region(location_id=location_id, fips=None), OneRegionTimeseriesDataset(

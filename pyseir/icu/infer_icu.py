@@ -203,7 +203,9 @@ def _get_data_for_icu_calc(
         CommonFields.DEATHS,
         CommonFields.CURRENT_ICU,
         CommonFields.CURRENT_HOSPITALIZED,
-    ] + TimeseriesDataset.INDEX_FIELDS
+        CommonFields.DATE,
+        CommonFields.LOCATION_ID,
+    ]
 
     this_level_df = regional_combined_data.get_subset(
         after=lookback_date, columns=COLUMNS

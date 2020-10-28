@@ -60,7 +60,7 @@ class WhitelistGenerator:
 
 def _whitelist_candidates_per_fips(combined_data: pd.DataFrame):
     assert not combined_data.empty
-    assert combined_data[CommonFields.FIPS].nunique() == 1
+    assert combined_data[CommonFields.LOCATION_ID].nunique() == 1
     dataset = OneRegionTimeseriesDataset(combined_data.reset_index(), {})
     times, observed_new_cases, observed_new_deaths = load_data.calculate_new_case_data_by_region(
         dataset, t0=datetime(day=1, month=1, year=2020),

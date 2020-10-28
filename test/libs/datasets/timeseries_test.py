@@ -53,12 +53,17 @@ def test_multi_region_to_from_timeseries():
     multiregion = timeseries.MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         ts, ts.latest_values_object()
     )
+    print(multiregion.data_with_fips)
     pd.testing.assert_frame_equal(
-        ts.data, multiregion.data.drop(columns=[CommonFields.LOCATION_ID])
+        ts.data,
+        multiregion.data_with_fips.drop(columns=[CommonFields.LOCATION_ID]),
+        check_like=True,
     )
 
     ts_again = multiregion.to_timeseries()
-    pd.testing.assert_frame_equal(ts.data, ts_again.data.drop(columns=[CommonFields.LOCATION_ID]))
+    pd.testing.assert_frame_equal(
+        ts.data, ts_again.data.drop(columns=[CommonFields.LOCATION_ID]), check_like=True
+    )
 
 
 def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Path):
@@ -119,7 +124,6 @@ def test_multi_region_get_one_region():
         pd.to_datetime("2020-04-01"): {
             "m2": 10,
             "county": "Foo County",
-            "fips": "97222",
             "location_id": "iso1:us#fips:97222",
             "aggregate_level": "county",
         }
@@ -141,9 +145,9 @@ def test_multi_region_get_counties():
         )
     )
     counties_ts = ts.get_counties(after=pd.to_datetime("2020-04-01"))
-    assert to_dict(["fips", "date"], counties_ts.data[["fips", "date", "m1"]]) == {
-        ("97111", pd.to_datetime("2020-04-02")): {"m1": 2},
-        ("97111", pd.to_datetime("2020-04-03")): {"m1": 3},
+    assert to_dict(["location_id", "date"], counties_ts.data[["location_id", "date", "m1"]]) == {
+        ("iso1:us#fips:97111", pd.to_datetime("2020-04-02")): {"m1": 2},
+        ("iso1:us#fips:97111", pd.to_datetime("2020-04-03")): {"m1": 3},
     }
 
 

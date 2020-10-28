@@ -62,9 +62,9 @@ def test_inference_ok_with_5_days_cases_changed():
 
     df = WhitelistGenerator().generate_whitelist(input_dataset)
 
-    assert to_dict(["fips"], df) == {
-        "97111": {"state": "ZZ", "county": "Bar County", "inference_ok": False},
-        "97222": {"state": "ZZ", "county": "Foo County", "inference_ok": True},
+    assert to_dict(["location_id"], df) == {
+        "iso1:us#fips:97111": {"state": "ZZ", "county": "Bar County", "inference_ok": False},
+        "iso1:us#fips:97222": {"state": "ZZ", "county": "Foo County", "inference_ok": True},
     }
 
 

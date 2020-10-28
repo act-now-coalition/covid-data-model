@@ -14,7 +14,7 @@ from test.libs.datasets.timeseries_test import assert_combined_like
 def test_persist_and_load_dataset(tmp_path, nyc_fips):
     region = Region.from_fips(nyc_fips)
     dataset = combined_datasets.load_us_timeseries_dataset()
-    timeseries_nyc = TimeseriesDataset(dataset.get_one_region(region).data)
+    timeseries_nyc = dataset.get_regions_subset([region]).to_timeseries()
 
     pointer = combined_dataset_utils.persist_dataset(timeseries_nyc, tmp_path)
 
