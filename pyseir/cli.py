@@ -20,14 +20,12 @@ from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
 from pyseir.icu import infer_icu
 import pyseir.rt.patches
 from pyseir.ensembles import ensemble_runner
 
 import pyseir.utils
-from pyseir.inference.whitelist import WhitelistGenerator
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -51,12 +49,6 @@ def _cache_global_datasets():
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
     common_init.configure_logging()
-
-
-def _generate_whitelist() -> pd.DataFrame:
-    gen = WhitelistGenerator()
-    all_us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    return gen.generate_whitelist(all_us_timeseries)
 
 
 def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
@@ -105,11 +97,9 @@ class SubStateRegionPipelineInput:
     ) -> List["SubStateRegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        # Calculate the whitelist for the infection rate metric which makes no promises
-        # about it's relationship to the SEIR subset
         if fips:  # A single Fips string was passed as a flag. Just run for that fips.
             regions = {pipeline.Region.from_fips(fips)}
-        else:  # Default to the full infection rate whitelist
+        else:  # Default to all counties
             regions = {
                 *combined_datasets.get_subset_regions(
                     aggregation_level=AggregationLevel.COUNTY,
@@ -255,11 +245,6 @@ def _build_all_for_states(
 
 
 @entry_point.command()
-def generate_whitelist():
-    _generate_whitelist()
-
-
-@entry_point.command()
 @click.option(
     "--state", help="State to generate files for. If no state is given, all states are computed."
 )
@@ -284,9 +269,6 @@ def run_infer_rt(state, states_only):
     help="a list of states to generate files for. If no state is given, all states are computed.",
 )
 @click.option(
-    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase."
-)
-@click.option(
     "--fips",
     help=(
         "County level fips code to restrict runs to. "
@@ -296,9 +278,7 @@ def run_infer_rt(state, states_only):
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default="output/", type=str, help="Directory to deploy webui output.")
-def build_all(
-    states, output_dir, skip_whitelist, states_only, fips,
-):
+def build_all(states, output_dir, states_only, fips):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
     states = [us.states.lookup(state).abbr for state in states]
