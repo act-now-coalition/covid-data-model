@@ -1,6 +1,5 @@
 import unittest
 
-from libs import pipeline
 from libs.pipeline import Region
 from pyseir import cli
 from pyseir.utils import SummaryArtifact
