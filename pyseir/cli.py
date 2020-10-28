@@ -77,8 +77,6 @@ class StatePipeline:
     infer_df: pd.DataFrame
 
     icu_data: OneRegionTimeseriesDataset
-    fitter: model_fitter.ModelFitter
-    ensemble: ensemble_runner.EnsembleRunner
 
     @staticmethod
     def run(region: pipeline.Region) -> "StatePipeline":
@@ -93,13 +91,7 @@ class StatePipeline:
             icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
         )
 
-        fitter_input = model_fitter.RegionalInput.from_state_region(region)
-        fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-        ensembles_input = ensemble_runner.RegionalInput.for_state(fitter)
-        ensemble = ensemble_runner.make_and_run(ensembles_input)
-        return StatePipeline(
-            region=region, infer_df=infer_df, icu_data=icu_data, fitter=fitter, ensemble=ensemble
-        )
+        return StatePipeline(region=region, infer_df=infer_df, icu_data=icu_data)
 
 
 @dataclass
@@ -130,14 +122,6 @@ class SubStateRegionPipelineInput:
                 )
             }
         # Now calculate the pyseir dependent whitelist
-        whitelist_df = _generate_whitelist()
-        # Make Region objects for all sub-state regions (counties, MSAs etc) that pass the whitelist
-        # and parameters used to select subsets of regions.
-        whitelist_regions = set(
-            whitelist.regions_in_states(
-                list(state_fitter_map.keys()), fips=fips, whitelist_df=whitelist_df
-            )
-        )
 
         pipeline_inputs = [
             SubStateRegionPipelineInput(
@@ -146,7 +130,7 @@ class SubStateRegionPipelineInput:
                 state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
-            for region in (infer_rt_regions | whitelist_regions)
+            for region in (infer_rt_regions)
         ]
         return pipeline_inputs
 
@@ -281,7 +265,7 @@ def _build_all_for_states(
     state_pipelines: List[StatePipeline] = list(
         parallel_utils.parallel_map(StatePipeline.run, states_regions)
     )
-    state_fitter_map = {p.region: p.fitter for p in state_pipelines}
+    state_fitter_map = {}
 
     if states_only:
         return state_pipelines
