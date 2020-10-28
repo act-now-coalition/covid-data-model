@@ -770,6 +770,37 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     return new_timeseries
 
 
+def _zscore(x, window=10):
+    x = x.copy()
+    x[x == 0] = None
+    r = x.rolling(window=window, min_periods=3)
+    m = r.mean().shift(1)
+    s = r.std(ddof=0).shift(1)
+    z = (x - m) / s
+    return z.abs().round(1)
+
+
+def drop_new_case_outliers(
+    timeseries: MultiRegionTimeseriesDataset,
+) -> MultiRegionTimeseriesDataset:
+    df_copy = timeseries.data.copy()
+    grouped_df = timeseries.groupby_region()
+    # Calculating new cases using diff will remove the first detected value from the case series.
+    # We want to capture the first day a region reports a case. Since our data sources have
+    # been capturing cases in all states from the beginning of the pandemic, we are treating
+    # The first days as appropriate new case data.
+
+    zscores = grouped_df[CommonFields.NEW_CASES].apply(_zscore)
+    to_exclude = zscores > 8
+    excluded_cases = df_copy[CommonFields.NEW_CASES][to_exclude]
+    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
+    new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
+        timeseries_df=df_copy, provenance=timeseries.provenance
+    ).append_latest_df(timeseries.latest_data.reset_index())
+
+    return new_timeseries
+
+
 def drop_regions_without_population(
     mrts: MultiRegionTimeseriesDataset,
     known_location_id_to_drop: Sequence[str],
