@@ -3,7 +3,6 @@ import unittest
 from libs import pipeline
 from libs.pipeline import Region
 from pyseir import cli
-from pyseir.inference import whitelist
 from pyseir.utils import SummaryArtifact
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 import pytest
@@ -41,19 +40,3 @@ def test_pyseir_end_to_end_dc(tmp_path):
         # Checking to make sure that build all for states properly filters and only
         # returns DC data
         assert len(pipelines) == 2
-
-
-@pytest.mark.filterwarnings("error")
-@pytest.mark.slow
-@pytest.mark.parametrize("fips,expected_results", [(None, True), ("16013", True), ("26013", False)])
-def test_filters_counties_properly(fips, expected_results):
-    whitelist_df = cli._generate_whitelist()
-    state_regions = [pipeline.Region.from_state("ID")]
-    results = whitelist.regions_in_states(state_regions, whitelist_df, fips=fips)
-    if fips and expected_results:
-        assert results == [pipeline.Region.from_fips(fips)]
-    elif expected_results:
-        assert 30 < len(results) <= 44  # Whitelisted ID counties.
-
-    if not expected_results:
-        assert results == []

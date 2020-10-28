@@ -1,4 +1,4 @@
-from typing import Mapping, Optional, List, Union
+from typing import Optional, List, Union
 import dataclasses
 import pathlib
 import sys
@@ -23,7 +23,6 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir.rt import infer_rt
 from pyseir.icu import infer_icu
 import pyseir.rt.patches
-from pyseir.ensembles import ensemble_runner
 
 import pyseir.utils
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
