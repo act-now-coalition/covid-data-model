@@ -134,65 +134,6 @@ def _record_successful_request(request: dict, record: dict):
     registry.firehose_client.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
 
 
-def register(event, context):
-
-    if not "email" in event:
-        raise ValueError("Missing email parameter")
-
-    email = event["email"]
-    if not re.match(EMAIL_REGEX, email):
-        return {"statusCode": 400, "errorMessage": "Invalid email"}
-
-    api_key = _get_or_create_api_key(email, False)
-    body = {"api_key": api_key, "email": email}
-
-    response = {"statusCode": 200, "body": json.dumps(body)}
-    return response
-
-
-def _generate_accept_policy(user_record: dict, method_arn):
-    # Want to give access to all data so that we can cache policy responses, not just the
-    # level or file they requested.
-    method_arn = re.sub(r"(.*/GET/).*", r"\1*", method_arn)
-    return {
-        "principalId": user_record["email"],
-        "policyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [
-                {"Action": "execute-api:Invoke", "Effect": "Allow", "Resource": method_arn}
-            ],
-        },
-        "usageIdentifierKey": user_record["api_key"],
-    }
-
-
-def _generate_deny_policy(method_arn):
-    return {
-        "policyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [
-                {"Action": "execute-api:Invoke", "Effect": "Deny", "Resource": method_arn}
-            ],
-        },
-    }
-
-
-def check_api_key(event, context):
-    """Checks API Key included in request for registered value."""
-    method_arn = event["methodArn"]
-
-    if not event["queryStringParameters"]["apiKey"]:
-        return _generate_deny_policy(method_arn)
-
-    api_key = event["queryStringParameters"]["apiKey"]
-
-    record = APIKeyRepo.get_record_for_api_key(api_key)
-    if not record:
-        return _generate_deny_policy(method_arn)
-
-    return _generate_accept_policy(record, method_arn)
-
-
 def check_api_key_edge(event, context):
     request = event["Records"][0]["cf"]["request"]
 
