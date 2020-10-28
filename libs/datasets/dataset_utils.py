@@ -311,3 +311,12 @@ def fips_index_geo_data(df: pd.DataFrame) -> pd.DataFrame:
     # are rows in the input data sources that have different values for county name, state etc.
     fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)
     return fips_indexed
+
+
+def build_latest_for_column(timeseries_df: pd.DataFrame, column: CommonFields) -> pd.Series:
+    assert CommonFields.LOCATION_ID in timeseries_df.columns
+    assert CommonFields.DATE in timeseries_df.columns
+
+    data = timeseries_df.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+    column_data = data[column].groupby([CommonFields.LOCATION_ID]).ffill()
+    return column_data.groupby([CommonFields.LOCATION_ID]).last()
