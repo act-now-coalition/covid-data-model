@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "44cb0600cd3646165c480cb83883d2d37c533870",
-    "branch": "master",
+    "sha": "5171c4ab44fc042020b20480153ac5baa9966a29",
+    "branch": "tgb-msa-enable-combined",
     "is_dirty": false
   },
-  "updated_at": "2020-10-28T11:59:46.137508"
+  "updated_at": "2020-10-28T17:40:37.408897"
 }
