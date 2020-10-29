@@ -5,7 +5,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from libs.qa.common_df_diff import DatasetDiff
 from test.libs.datasets.timeseries_test import assert_combined_like
