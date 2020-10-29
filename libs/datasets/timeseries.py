@@ -801,9 +801,9 @@ def drop_new_case_outliers(
     df_copy = timeseries.data.copy()
     grouped_df = timeseries.groupby_region()
 
-    zscores = grouped_df[CommonFields.NEW_CASES].apply(_zscore)
-    to_exclude = zscores > zscore_threshold
+    zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
 
+    to_exclude = zscores > zscore_threshold
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
 
     latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
