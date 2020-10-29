@@ -10,17 +10,24 @@ class APIKeyRepo:
     """Logic for handling API Key functionality."""
 
     @staticmethod
-    def add_api_key(email: str, api_key: str):
+    def add_api_key(email: str, api_key: str, is_crs_user: bool):
         """Adds an email and api_key to database.
 
         Args:
             email: Email Address.
             api_key: API Key to add.
+            is_crs_user: True if user is registering using the Covid Response
+                Simulator Google Sheet.
         """
         # TODO: Client should only be initialized once
         client = registry.dynamodb_client
         now = datetime.datetime.utcnow().isoformat()
-        obj = {"email": email, "api_key": api_key, "created_at": now}
+        obj = {
+            "email": email,
+            "api_key": api_key,
+            "created_at": now,
+            "is_covid_response_simulator_user": is_crs_user,
+        }
         client.put_item(Config.Constants.API_KEY_TABLE_NAME, obj)
 
     @staticmethod
@@ -80,4 +87,19 @@ class APIKeyRepo:
             Config.Constants.API_KEY_TABLE_NAME,
             key,
             welcome_email_sent_at=datetime.datetime.utcnow().isoformat(),
+        )
+
+    @staticmethod
+    def record_covid_response_simulator_user(email):
+        """Record if user is a covid response simulator user.
+
+        Args:
+            email: Email address of user.
+        """
+        client = registry.dynamodb_client
+        key = {
+            "email": email,
+        }
+        client.update_item(
+            Config.Constants.API_KEY_TABLE_NAME, key, is_covid_response_simulator_user=True
         )

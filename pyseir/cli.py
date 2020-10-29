@@ -1,11 +1,10 @@
-from typing import Mapping, Optional, List, Union
+from typing import Optional, List, Union
 import dataclasses
 import pathlib
 import sys
 import os
 from dataclasses import dataclass
 import logging
-from multiprocessing import Pool
 
 import us
 import pandas as pd
@@ -14,22 +13,18 @@ import click
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
+from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from pyseir.deployment import webui_data_adaptor_v1
-from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
 from pyseir.icu import infer_icu
 import pyseir.rt.patches
-from pyseir.ensembles import ensemble_runner
-from pyseir.inference import model_fitter
-from pyseir.deployment.webui_data_adaptor_v1 import WebUIDataAdaptorV1
+
 import pyseir.utils
-from pyseir.inference.whitelist import WhitelistGenerator
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -55,12 +50,6 @@ def entry_point():
     common_init.configure_logging()
 
 
-def _generate_whitelist() -> pd.DataFrame:
-    gen = WhitelistGenerator()
-    all_us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    return gen.generate_whitelist(all_us_timeseries)
-
-
 def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
     """Create a list of Region objects containing just state or default."""
     if state:
@@ -79,8 +68,6 @@ class StatePipeline:
     infer_df: pd.DataFrame
 
     icu_data: OneRegionTimeseriesDataset
-    fitter: model_fitter.ModelFitter
-    ensemble: ensemble_runner.EnsembleRunner
 
     @staticmethod
     def run(region: pipeline.Region) -> "StatePipeline":
@@ -95,63 +82,36 @@ class StatePipeline:
             icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
         )
 
-        fitter_input = model_fitter.RegionalInput.from_state_region(region)
-        fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-        ensembles_input = ensemble_runner.RegionalInput.for_state(fitter)
-        ensemble = ensemble_runner.make_and_run(ensembles_input)
-        return StatePipeline(
-            region=region, infer_df=infer_df, icu_data=icu_data, fitter=fitter, ensemble=ensemble
-        )
+        return StatePipeline(region=region, infer_df=infer_df, icu_data=icu_data)
 
 
 @dataclass
 class SubStateRegionPipelineInput:
     region: pipeline.Region
-    run_fitter: bool
-    state_fitter: model_fitter.ModelFitter
     regional_combined_dataset: combined_datasets.RegionalData
 
     @staticmethod
     def build_all(
-        state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
-        fips: Optional[str] = None,
-        states: Optional[List[str]] = None,
+        fips: Optional[str] = None, states: Optional[List[str]] = None,
     ) -> List["SubStateRegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        # Calculate the whitelist for the infection rate metric which makes no promises
-        # about it's relationship to the SEIR subset
         if fips:  # A single Fips string was passed as a flag. Just run for that fips.
-            infer_rt_regions = {pipeline.Region.from_fips(fips)}
-        else:  # Default to the full infection rate whitelist
-            infer_rt_regions = {
+            regions = {pipeline.Region.from_fips(fips)}
+        else:  # Default to all counties
+            regions = {
                 *combined_datasets.get_subset_regions(
                     aggregation_level=AggregationLevel.COUNTY,
                     exclude_county_999=True,
                     states=states,
                 )
             }
-        # Now calculate the pyseir dependent whitelist
-        whitelist_df = _generate_whitelist()
-        # Make Region objects for all sub-state regions (counties, MSAs etc) that pass the whitelist
-        # and parameters used to select subsets of regions.
-        whitelist_regions = set(
-            whitelist.regions_in_states(
-                list(state_fitter_map.keys()), fips=fips, whitelist_df=whitelist_df
-            )
-        )
-
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                # Disabling fitters.  To re-enable fitters and output webui output, uncomment
-                # the following line and run cli command with `--webui-output-enabled`.
-                # run_fitter=region in whitelist_regions,
-                run_fitter=False,
-                state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
-            for region in (infer_rt_regions | whitelist_regions)
+            for region in regions
         ]
         return pipeline_inputs
 
@@ -164,8 +124,6 @@ class SubStatePipeline:
     infer_df: pd.DataFrame
     icu_data: Optional[OneRegionTimeseriesDataset]
     _combined_data: combined_datasets.RegionalData
-    fitter: Optional[model_fitter.ModelFitter] = None
-    ensemble: Optional[ensemble_runner.EnsembleRunner] = None
 
     @staticmethod
     def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
@@ -173,7 +131,11 @@ class SubStatePipeline:
         # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
         # infection_rate.
         infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
-        infer_df = infer_rt.run_rt(infer_rt_input)
+        try:
+            infer_df = infer_rt.run_rt(infer_rt_input)
+        except Exception:
+            root.exception(f"run_rt failed for {input.region}")
+            raise
 
         # Run ICU adjustment
         icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
@@ -185,25 +147,10 @@ class SubStatePipeline:
             icu_data = None
             root.exception(f"Failed to run icu data for {input.region}")
 
-        if input.run_fitter:
-            fitter_input = model_fitter.RegionalInput.from_substate_region(
-                input.region, input.state_fitter
-            )
-            fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-            ensembles_input = ensemble_runner.RegionalInput.for_substate(
-                fitter, state_fitter=input.state_fitter
-            )
-            ensemble = ensemble_runner.make_and_run(ensembles_input)
-        else:
-            fitter = None
-            ensemble = None
-
         return SubStatePipeline(
             region=input.region,
             infer_df=infer_df,
             icu_data=icu_data,
-            fitter=fitter,
-            ensemble=ensemble,
             _combined_data=input.regional_combined_dataset,
         )
 
@@ -251,11 +198,11 @@ def _patch_substatepipeline_nola_infection_rate(
 
 
 def _write_pipeline_output(
-    pipelines: List[Union[SubStatePipeline, StatePipeline]],
-    output_dir: str,
-    output_interval_days: int = 4,
-    write_webui_output: bool = False,
+    pipelines: List[Union[SubStatePipeline, StatePipeline]], output_dir: str,
 ):
+    output_dir_path = pathlib.Path(output_dir)
+    if not output_dir_path.exists():
+        output_dir_path.mkdir()
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
     # TODO: Use constructors in MultiRegionTimeseriesDataset
@@ -264,7 +211,7 @@ def _write_pipeline_output(
     multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         timeseries_dataset, latest
     )
-    output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
+    output_path = output_dir_path / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
@@ -273,25 +220,9 @@ def _write_pipeline_output(
     latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
     multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
 
-    output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
+    output_path = output_dir_path / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving ICU results to {output_path}")
-
-    if write_webui_output:
-        # does not parallelize well, because web_ui mapper doesn't serialize efficiently
-        # TODO: Remove intermediate artifacts and paralellize artifacts creation better
-        # Approximately 40% of the processing time is taken on this step
-        web_ui_mapper = WebUIDataAdaptorV1(
-            output_interval_days=output_interval_days, output_dir=output_dir,
-        )
-        webui_inputs = [
-            webui_data_adaptor_v1.RegionalInput.from_results(p.fitter, p.ensemble, p.infer_df)
-            for p in pipelines
-            if p.fitter
-        ]
-
-        with Pool(maxtasksperchild=1) as p:
-            p.map(web_ui_mapper.write_region_safely, webui_inputs)
 
 
 def _build_all_for_states(
@@ -301,31 +232,22 @@ def _build_all_for_states(
     _cache_global_datasets()
 
     # do everything for just states in parallel
-    with Pool(maxtasksperchild=1) as pool:
-        states_regions = [pipeline.Region.from_state(s) for s in states]
-        state_pipelines: List[StatePipeline] = pool.map(StatePipeline.run, states_regions)
-        state_fitter_map = {p.region: p.fitter for p in state_pipelines}
+    states_regions = [pipeline.Region.from_state(s) for s in states]
+    state_pipelines: List[StatePipeline] = list(
+        parallel_utils.parallel_map(StatePipeline.run, states_regions)
+    )
 
     if states_only:
         return state_pipelines
 
-    substate_inputs = SubStateRegionPipelineInput.build_all(
-        state_fitter_map, fips=fips, states=states
-    )
+    substate_inputs = SubStateRegionPipelineInput.build_all(fips=fips, states=states)
 
-    with Pool(maxtasksperchild=1) as p:
-        root.info(f"executing pipeline for {len(substate_inputs)} counties")
-
-        substate_pipelines = p.map(SubStatePipeline.run, substate_inputs)
+    root.info(f"executing pipeline for {len(substate_inputs)} counties")
+    substate_pipelines = parallel_utils.parallel_map(SubStatePipeline.run, substate_inputs)
 
     substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
 
     return state_pipelines + substate_pipelines
-
-
-@entry_point.command()
-def generate_whitelist():
-    _generate_whitelist()
 
 
 @entry_point.command()
@@ -353,15 +275,6 @@ def run_infer_rt(state, states_only):
     help="a list of states to generate files for. If no state is given, all states are computed.",
 )
 @click.option(
-    "--output-interval-days",
-    default=1,
-    type=int,
-    help="Number of days between outputs for the WebUI payload.",
-)
-@click.option(
-    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase."
-)
-@click.option(
     "--fips",
     help=(
         "County level fips code to restrict runs to. "
@@ -371,16 +284,7 @@ def run_infer_rt(state, states_only):
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default="output/", type=str, help="Directory to deploy webui output.")
-@click.option("--webui-output-enabled", is_flag=True, help="If true, writes web ui output.")
-def build_all(
-    states,
-    output_interval_days,
-    output_dir,
-    skip_whitelist,
-    states_only,
-    fips,
-    webui_output_enabled,
-):
+def build_all(states, output_dir, states_only, fips):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
     states = [us.states.lookup(state).abbr for state in states]
@@ -390,10 +294,7 @@ def build_all(
 
     pipelines = _build_all_for_states(states, states_only=states_only, fips=fips,)
     _write_pipeline_output(
-        pipelines,
-        output_dir,
-        output_interval_days=output_interval_days,
-        write_webui_output=webui_output_enabled,
+        pipelines, output_dir,
     )
 
 

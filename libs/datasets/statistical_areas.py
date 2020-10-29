@@ -74,5 +74,6 @@ class CountyToCBSAAggregator:
         groupby_columns = [CBSA_COLUMN, CommonFields.DATE] if groupby_date else [CBSA_COLUMN]
         df_cbsa = df.groupby(groupby_columns, as_index=False).sum()
         df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
+        df_cbsa = df_cbsa.drop(columns=[CBSA_COLUMN])
 
         return df_cbsa

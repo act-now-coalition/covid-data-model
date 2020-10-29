@@ -92,12 +92,6 @@ package:
     - end_to_end_test.py
 
 functions:
-  apiRegisterAPIKey:
-    handler: awsauth/auth_app.register
-
-  apiCheckApiKey:
-    handler: awsauth/auth_app.check_api_key
-
   apiRegisterApiKeyEdge:
     handler: awsauth/auth_app.register_edge
     memorySize: 128
@@ -138,6 +132,8 @@ resources:
           AttributeType: S
         - AttributeName: welcome_email_sent_at
           AttributeType: S
+        - AttributeName: is_covid_response_simulator_user
+          AttributeType: B
       KeySchema:
         - AttributeName: email
           KeyType: HASH

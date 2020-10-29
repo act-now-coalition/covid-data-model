@@ -14,9 +14,7 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
         Intervention.NO_INTERVENTION,
     ],
 )
-def test_build_timeseries_and_summary_outputs(
-    nyc_model_output_path, nyc_region, intervention, rt_dataset, icu_dataset
-):
+def test_build_timeseries_and_summary_outputs(nyc_region, intervention, rt_dataset, icu_dataset):
 
     regional_input = api_pipeline.RegionalInput.from_region_and_intervention(
         nyc_region, intervention, rt_dataset, icu_dataset
@@ -67,12 +65,7 @@ def test_output_no_timeseries_rows(nyc_region, rt_dataset, icu_dataset):
         regional_input.region, OneRegionTimeseriesDataset(timeseries_data, regional_input.latest),
     )
     regional_input = api_pipeline.RegionalInput(
-        regional_input.region,
-        regional_input.model_output,
-        None,
-        None,
-        regional_input.intervention,
-        regional_data,
+        regional_input.region, None, None, regional_input.intervention, regional_data,
     )
     assert regional_input.timeseries.empty
 

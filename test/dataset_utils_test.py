@@ -264,3 +264,34 @@ def test_make_binary_array_exclude_fips_prefix():
         "state97",
         "country-uk",
     }
+
+
+def test_build_latest_for_column_unsorted():
+    df = pd.read_csv(
+        StringIO(
+            "location_id,date,cases\n"
+            "iso1:us#fips:1,2020-10-28,10\n"
+            "iso1:us#fips:1,2020-10-27,6\n"
+        ),
+        low_memory=False,
+    )
+    result = dataset_utils.build_latest_for_column(df, CommonFields.CASES)
+    expected = pd.Series([10], index=["iso1:us#fips:1"], name="cases")
+    expected.index.name = "location_id"
+    pd.testing.assert_series_equal(result, expected)
+
+
+def test_build_latest_for_column_missing_last_value():
+    df = pd.read_csv(
+        StringIO(
+            "location_id,date,cases\n"
+            "iso1:us#fips:1,2020-10-27,10\n"
+            "iso1:us#fips:1,2020-10-28,11\n"
+            "iso1:us#fips:1,2020-10-29,\n"
+        ),
+        low_memory=False,
+    )
+    result = dataset_utils.build_latest_for_column(df, CommonFields.CASES)
+    expected = pd.Series([11.0], index=["iso1:us#fips:1"], name="cases")
+    expected.index.name = "location_id"
+    pd.testing.assert_series_equal(result, expected)
