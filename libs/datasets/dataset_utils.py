@@ -43,6 +43,9 @@ class AggregationLevel(enum.Enum):
     STATE = "state"
     COUNTY = "county"
 
+    # Core Base Statistical Area
+    CBSA = "cbsa"
+
 
 class DatasetType(enum.Enum):
 

@@ -394,6 +394,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     provenance: Optional[pd.Series] = None
 
     @property
+    def regions(self) -> Iterable[Region]:
+        for location_id in self.latest_data.index:
+            yield Region.from_location_id(location_id)
+
+    @property
     def dataset_type(self) -> DatasetType:
         return DatasetType.MULTI_REGION
 
@@ -722,12 +727,34 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             combined_df.reset_index(), provenance=combined_provenance,
         ).append_latest_df(self.latest_data_with_fips.reset_index())
 
+    def iter_regions(
+        self, level=None, exclude_county_999=False, state=None, fips=None, states=None
+    ):
+
+        for region in set(self.regions):
+            if level and region.level is not level:
+                continue
+
+            if exclude_county_999 and region.fips.endswith("999"):
+                continue
+
+            if state and region.state != state:
+                continue
+
+            if fips and region != fips:
+                continue
+
+            if states and region.state not in states:
+                continue
+
+            yield region
+
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
         for location_id, data_group in self.data_with_fips.groupby(CommonFields.LOCATION_ID):
             latest_dict = self._location_id_latest_dict(location_id)
             provenance_dict = self._location_id_provenance_dict(location_id)
-            yield Region(location_id=location_id, fips=None), OneRegionTimeseriesDataset(
+            yield Region.from_location_id(location_id), OneRegionTimeseriesDataset(
                 data_group, latest_dict, provenance=provenance_dict,
             )
 
