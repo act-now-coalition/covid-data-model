@@ -21,10 +21,8 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 import pyseir.utils
 
-# from pyseir.utils import get_run_artifact_path, RunArtifact, ewma_smoothing
 
 log = logging.getLogger(__name__)
 
