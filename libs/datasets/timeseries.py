@@ -78,17 +78,11 @@ class OneRegionTimeseriesDataset:
     provenance: Dict[str, str] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self):
-        if CommonFields.LOCATION_ID in self.data.columns:
-            region_count = self.data[CommonFields.LOCATION_ID].nunique()
-        elif CommonFields.FIPS in self.data.columns:
-            region_count = self.data[CommonFields.FIPS].nunique()
-        else:
-            region_count = None
-        if region_count is not None:
-            if region_count == 0:
-                _log.warning(f"Creating {self.__class__.__name__} with zero regions")
-            elif region_count != 1:
-                raise ValueError("Does not have exactly one region")
+        region_count = self.data[CommonFields.LOCATION_ID].nunique()
+        if region_count == 0:
+            _log.warning(f"Creating {self.__class__.__name__} with zero regions")
+        elif region_count != 1:
+            raise ValueError("Does not have exactly one region")
 
         if CommonFields.DATE not in self.data.columns:
             raise ValueError("A timeseries must have a date column")
@@ -114,7 +108,7 @@ class OneRegionTimeseriesDataset:
     def get_subset(self, after=None, columns=tuple()):
         rows_key = dataset_utils.make_rows_key(self.data, after=after,)
         if columns:
-            assert CommonFields.LOCATION_ID in columns or CommonFields.FIPS in columns
+            assert CommonFields.LOCATION_ID in columns
             assert CommonFields.DATE in columns
             columns_key = list(columns)
         else:
@@ -126,6 +120,7 @@ class OneRegionTimeseriesDataset:
         )
 
     def remove_padded_nans(self, columns: List[str]):
+        """Returns a copy of `self`, skipping rows at the start and end where `columns` are NA"""
         return OneRegionTimeseriesDataset(
             _remove_padded_nans(self.data, columns), latest=self.latest, provenance=self.provenance,
         )
