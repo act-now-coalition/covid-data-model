@@ -170,28 +170,33 @@ def test_multi_region_groupby():
 
 
 def test_one_region_dataset():
-    ts = timeseries.OneRegionTimeseriesDataset(
-        read_csv_and_index_fips_date(
-            "fips,county,aggregate_level,date,m1,m2\n" "97111,Bar County,county,2020-04-02,2,\n"
-        ).reset_index(),
-        {},
-    )
+    bar_county_row = {
+        "location_id": "iso1:us#fips:97111",
+        "county": "Bar County",
+        "aggregate_level": "county",
+        "date": "2020-04-02",
+        "m1": 2,
+        "m2": pd.NA,
+    }
+    ts = timeseries.OneRegionTimeseriesDataset(pd.DataFrame([bar_county_row]), {})
     assert ts.has_one_region() == True
 
+    foo_county_row = {
+        "location_id": "iso1:us#fips:97222",
+        "county": "Foo County",
+        "aggregate_level": "county",
+        "date": "2020-04-01",
+        "m1": pd.NA,
+        "m2": 10,
+    }
     with pytest.raises(ValueError):
         timeseries.OneRegionTimeseriesDataset(
-            read_csv_and_index_fips_date(
-                "fips,county,aggregate_level,date,m1,m2\n"
-                "97111,Bar County,county,2020-04-02,2,\n"
-                "97222,Foo County,county,2020-04-01,,10\n"
-            ).reset_index(),
-            {},
+            pd.DataFrame([bar_county_row, foo_county_row]), {},
         )
 
     with structlog.testing.capture_logs() as logs:
         ts = timeseries.OneRegionTimeseriesDataset(
-            read_csv_and_index_fips_date("fips,county,aggregate_level,date,m1,m2\n").reset_index(),
-            {},
+            pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()), {},
         )
     assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
     assert ts.empty
