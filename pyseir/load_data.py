@@ -163,11 +163,11 @@ def calculate_new_case_data_by_region(
     assert region_timeseries.has_one_region()
     columns = [CommonFields.NEW_CASES, CommonFields.DEATHS]
     county_case_timeseries = region_timeseries.get_subset(
-        columns=(TimeseriesDataset.INDEX_FIELDS + columns)
+        columns=([CommonFields.DATE] + columns)
     ).remove_padded_nans(columns)
     county_case_data = county_case_timeseries.data
 
-    times_new = (county_case_data["date"] - t0).dt.days.iloc[1:]
+    times_new = (county_case_data[CommonFields.DATE] - t0).dt.days.iloc[1:]
 
     observed_new_cases = county_case_data[CommonFields.NEW_CASES]
     # Converting to numpy and trimming off the first datapoint to match previous logic.
@@ -184,7 +184,8 @@ def calculate_new_case_data_by_region(
         observed_new_cases = df_cases["new_cases"].values
 
     observed_new_deaths = (
-        county_case_data["deaths"].values[1:] - county_case_data["deaths"].values[:-1]
+        county_case_data[CommonFields.DEATHS].values[1:]
+        - county_case_data[CommonFields.DEATHS].values[:-1]
     )
 
     # Clip because there are sometimes negatives either due to data reporting or

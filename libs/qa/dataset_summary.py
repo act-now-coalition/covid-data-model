@@ -18,7 +18,7 @@ IGNORE_COLUMNS = [
     CommonFields.COUNTRY,
     CommonFields.COUNTY,
     CommonFields.AGGREGATE_LEVEL,
-    CommonFields.LOCATION_ID,
+    CommonFields.FIPS,
 ]
 
 VARIABLE_FIELD = "variable"
@@ -26,27 +26,14 @@ VARIABLE_FIELD = "variable"
 SUMMARY_PATH = dataset_utils.DATA_DIRECTORY / "timeseries_summary.csv"
 
 
-class TimeseriesSummary(pydantic.BaseModel):
-    """Summary of timeseries dataset at a given commit sha."""
-
-    sha: str
-    timeseries: TimeseriesDataset
-    summary: pd.DataFrame
-    fips: Optional[str]
-    level: Optional[AggregationLevel]
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
 def summarize_timeseries_fields(data: pd.DataFrame) -> pd.DataFrame:
     data = data[[column for column in data.columns if column not in IGNORE_COLUMNS]]
 
-    melted = pd.melt(data, id_vars=[CommonFields.FIPS, CommonFields.DATE]).set_index(
+    melted = pd.melt(data, id_vars=[CommonFields.LOCATION_ID, CommonFields.DATE]).set_index(
         CommonFields.DATE
     )
-    fips_variable_grouped = melted.groupby([CommonFields.FIPS, VARIABLE_FIELD])
-    return fips_variable_grouped["value"].apply(generate_field_summary).unstack()
+    location_variable_grouped = melted.groupby([CommonFields.LOCATION_ID, VARIABLE_FIELD])
+    return location_variable_grouped["value"].apply(generate_field_summary).unstack()
 
 
 def find_missing_values_in_summary(
@@ -83,6 +70,4 @@ def load_summary(path: pathlib.Path = SUMMARY_PATH, commit: Optional[str] = None
         data = path.read_bytes()
 
     buf = io.BytesIO(data)
-    return pd.read_csv(buf, dtype={CommonFields.FIPS: str}).set_index(
-        [CommonFields.FIPS, VARIABLE_FIELD]
-    )
+    return pd.read_csv(buf).set_index([CommonFields.LOCATION_ID, VARIABLE_FIELD])
