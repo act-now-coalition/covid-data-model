@@ -1,4 +1,4 @@
-from typing import Mapping, Optional, List, Union
+from typing import Optional, List, Union
 import dataclasses
 import pathlib
 import sys
@@ -20,14 +20,11 @@ from libs.datasets import combined_datasets
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from pyseir.inference import whitelist
 from pyseir.rt import infer_rt
 from pyseir.icu import infer_icu
 import pyseir.rt.patches
-from pyseir.ensembles import ensemble_runner
-from pyseir.inference import model_fitter
+
 import pyseir.utils
-from pyseir.inference.whitelist import WhitelistGenerator
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -51,12 +48,6 @@ def _cache_global_datasets():
 def entry_point():
     """Basic entrypoint for cortex subcommands"""
     common_init.configure_logging()
-
-
-def _generate_whitelist() -> pd.DataFrame:
-    gen = WhitelistGenerator()
-    all_us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    return gen.generate_whitelist(all_us_timeseries)
 
 
 def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeline.Region]:
@@ -97,40 +88,30 @@ class StatePipeline:
 @dataclass
 class SubStateRegionPipelineInput:
     region: pipeline.Region
-    run_fitter: bool
-    state_fitter: model_fitter.ModelFitter
     regional_combined_dataset: combined_datasets.RegionalData
 
     @staticmethod
     def build_all(
-        state_fitter_map: Mapping[pipeline.Region, model_fitter.ModelFitter],
-        fips: Optional[str] = None,
-        states: Optional[List[str]] = None,
+        fips: Optional[str] = None, states: Optional[List[str]] = None,
     ) -> List["SubStateRegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        # Calculate the whitelist for the infection rate metric which makes no promises
-        # about it's relationship to the SEIR subset
         if fips:  # A single Fips string was passed as a flag. Just run for that fips.
-            infer_rt_regions = {pipeline.Region.from_fips(fips)}
-        else:  # Default to the full infection rate whitelist
-            infer_rt_regions = {
+            regions = {pipeline.Region.from_fips(fips)}
+        else:  # Default to all counties
+            regions = {
                 *combined_datasets.get_subset_regions(
                     aggregation_level=AggregationLevel.COUNTY,
                     exclude_county_999=True,
                     states=states,
                 )
             }
-        # Now calculate the pyseir dependent whitelist
-
         pipeline_inputs = [
             SubStateRegionPipelineInput(
                 region=region,
-                run_fitter=False,
-                state_fitter=state_fitter_map.get(region.get_state_region()),
                 regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
             )
-            for region in (infer_rt_regions)
+            for region in regions
         ]
         return pipeline_inputs
 
@@ -143,8 +124,6 @@ class SubStatePipeline:
     infer_df: pd.DataFrame
     icu_data: Optional[OneRegionTimeseriesDataset]
     _combined_data: combined_datasets.RegionalData
-    fitter: Optional[model_fitter.ModelFitter] = None
-    ensemble: Optional[ensemble_runner.EnsembleRunner] = None
 
     @staticmethod
     def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
@@ -164,25 +143,10 @@ class SubStatePipeline:
             icu_data = None
             root.exception(f"Failed to run icu data for {input.region}")
 
-        if input.run_fitter:
-            fitter_input = model_fitter.RegionalInput.from_substate_region(
-                input.region, input.state_fitter
-            )
-            fitter = model_fitter.ModelFitter.run_for_region(fitter_input)
-            ensembles_input = ensemble_runner.RegionalInput.for_substate(
-                fitter, state_fitter=input.state_fitter
-            )
-            ensemble = ensemble_runner.make_and_run(ensembles_input)
-        else:
-            fitter = None
-            ensemble = None
-
         return SubStatePipeline(
             region=input.region,
             infer_df=infer_df,
             icu_data=icu_data,
-            fitter=fitter,
-            ensemble=ensemble,
             _combined_data=input.regional_combined_dataset,
         )
 
@@ -265,14 +229,11 @@ def _build_all_for_states(
     state_pipelines: List[StatePipeline] = list(
         parallel_utils.parallel_map(StatePipeline.run, states_regions)
     )
-    state_fitter_map = {}
 
     if states_only:
         return state_pipelines
 
-    substate_inputs = SubStateRegionPipelineInput.build_all(
-        state_fitter_map, fips=fips, states=states
-    )
+    substate_inputs = SubStateRegionPipelineInput.build_all(fips=fips, states=states)
 
     root.info(f"executing pipeline for {len(substate_inputs)} counties")
     substate_pipelines = parallel_utils.parallel_map(SubStatePipeline.run, substate_inputs)
@@ -280,11 +241,6 @@ def _build_all_for_states(
     substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
 
     return state_pipelines + substate_pipelines
-
-
-@entry_point.command()
-def generate_whitelist():
-    _generate_whitelist()
 
 
 @entry_point.command()
@@ -312,9 +268,6 @@ def run_infer_rt(state, states_only):
     help="a list of states to generate files for. If no state is given, all states are computed.",
 )
 @click.option(
-    "--skip-whitelist", default=False, is_flag=True, type=bool, help="Skip the whitelist phase."
-)
-@click.option(
     "--fips",
     help=(
         "County level fips code to restrict runs to. "
@@ -324,9 +277,7 @@ def run_infer_rt(state, states_only):
 )
 @click.option("--states-only", is_flag=True, help="If set, only runs on states.")
 @click.option("--output-dir", default="output/", type=str, help="Directory to deploy webui output.")
-def build_all(
-    states, output_dir, skip_whitelist, states_only, fips,
-):
+def build_all(states, output_dir, states_only, fips):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
     states = [us.states.lookup(state).abbr for state in states]

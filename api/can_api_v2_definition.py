@@ -46,6 +46,20 @@ class Actuals(base_model.APIBaseModel):
     icuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
         ..., description="Information about ICU bed utilization"
     )
+    newCases: Optional[int] = pydantic.Field(
+        ...,
+        description="""
+New confirmed or suspected cases.
+
+New cases are a processed timeseries of cases - summing new cases may not equal
+the cumulative case count.
+
+Notable exceptions:
+ 1. If a region does not report cases for a period of time, the first day
+    cases start reporting again will not be included. This day likely includes
+    multiple days worth of cases and can be misleading to the overall series.
+""",
+    )
 
 
 class ActualsTimeseriesRow(Actuals):

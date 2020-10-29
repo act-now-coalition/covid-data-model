@@ -43,6 +43,7 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL),
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
+        newCases=actual_data[CommonFields.NEW_CASES],
     )
 
 

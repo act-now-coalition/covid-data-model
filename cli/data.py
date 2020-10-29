@@ -68,7 +68,12 @@ def update_forecasts(filename):
 @main.command()
 @click.option("--summary-filename", default="timeseries_summary.csv")
 @click.option("--wide-dates-filename", default="multiregion-wide-dates.csv")
-@click.option("--aggregate-to-msas", is_flag=True, help="Aggregate counties to MSAs")
+@click.option(
+    "--aggregate-to-msas/--no-aggregate-to-msas",
+    is_flag=True,
+    help="Aggregate counties to MSAs",
+    default=True,
+)
 def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)

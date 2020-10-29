@@ -89,15 +89,22 @@ def _create_api_key(email: str) -> str:
     return uuid.uuid4().hex
 
 
-def _get_or_create_api_key(email):
+def _get_or_create_api_key(email: str, is_crs_user: bool):
     api_key = APIKeyRepo.get_api_key(email)
+
     if api_key:
+        # Record if existing users are covid response simulator users as they
+        # may have registered not in the CRS.  This ensures that anyone who
+        # gets their api key through the CRS registration will be recorded as a CRS user.
+        if is_crs_user:
+            APIKeyRepo.record_covid_response_simulator_user(email)
+
         return api_key
 
     _logger.info(f"No API Key found for email {email}, creating new key")
 
     api_key = _create_api_key(email)
-    APIKeyRepo.add_api_key(email, api_key)
+    APIKeyRepo.add_api_key(email, api_key, is_crs_user)
 
     welcome_email = _build_welcome_email(email, api_key)
     if EmailRepo.send_email(welcome_email):
@@ -121,68 +128,10 @@ def _record_successful_request(request: dict, record: dict):
         "email": record["email"],
         "path": request["uri"],
         "ip": request["clientIp"],
+        "is_covid_response_simulator_user": record.get("is_covid_response_simulator_user", False),
     }
 
     registry.firehose_client.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
-
-
-def register(event, context):
-
-    if not "email" in event:
-        raise ValueError("Missing email parameter")
-
-    email = event["email"]
-    if not re.match(EMAIL_REGEX, email):
-        return {"statusCode": 400, "errorMessage": "Invalid email"}
-
-    api_key = _get_or_create_api_key(email)
-    body = {"api_key": api_key, "email": email}
-
-    response = {"statusCode": 200, "body": json.dumps(body)}
-    return response
-
-
-def _generate_accept_policy(user_record: dict, method_arn):
-    # Want to give access to all data so that we can cache policy responses, not just the
-    # level or file they requested.
-    method_arn = re.sub(r"(.*/GET/).*", r"\1*", method_arn)
-    return {
-        "principalId": user_record["email"],
-        "policyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [
-                {"Action": "execute-api:Invoke", "Effect": "Allow", "Resource": method_arn}
-            ],
-        },
-        "usageIdentifierKey": user_record["api_key"],
-    }
-
-
-def _generate_deny_policy(method_arn):
-    return {
-        "policyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [
-                {"Action": "execute-api:Invoke", "Effect": "Deny", "Resource": method_arn}
-            ],
-        },
-    }
-
-
-def check_api_key(event, context):
-    """Checks API Key included in request for registered value."""
-    method_arn = event["methodArn"]
-
-    if not event["queryStringParameters"]["apiKey"]:
-        return _generate_deny_policy(method_arn)
-
-    api_key = event["queryStringParameters"]["apiKey"]
-
-    record = APIKeyRepo.get_record_for_api_key(api_key)
-    if not record:
-        return _generate_deny_policy(method_arn)
-
-    return _generate_accept_policy(record, method_arn)
 
 
 def check_api_key_edge(event, context):
@@ -238,7 +187,8 @@ def register_edge(event, context):
     if not re.match(EMAIL_REGEX, email):
         return {"status": 400, "errorMessage": "Invalid email", "headers": headers}
 
-    api_key = _get_or_create_api_key(email)
+    is_crs_user = data.get("is_crs_user", False)
+    api_key = _get_or_create_api_key(email, is_crs_user)
     body = {"api_key": api_key, "email": email}
 
     headers["content-type"] = [{"key": "Content-Type", "value": "application/json"}]
