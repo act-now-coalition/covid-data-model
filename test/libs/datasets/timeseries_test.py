@@ -53,7 +53,6 @@ def test_multi_region_to_from_timeseries():
     multiregion = timeseries.MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         ts, ts.latest_values_object()
     )
-    print(multiregion.data_with_fips)
     pd.testing.assert_frame_equal(
         ts.data,
         multiregion.data_with_fips.drop(columns=[CommonFields.LOCATION_ID]),
