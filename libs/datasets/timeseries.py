@@ -770,9 +770,12 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating
     # The first days as appropriate new case data.
-    df_copy[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].apply(
-        _diff_preserving_first_value
-    )
+    new_cases = grouped_df[CommonFields.CASES].apply(_diff_preserving_first_value)
+
+    # Remove the occasional negative case adjustments.
+    new_cases[new_cases < 0] = pd.NA
+
+    df_copy[CommonFields.NEW_CASES] = new_cases
     latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
 
     new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
