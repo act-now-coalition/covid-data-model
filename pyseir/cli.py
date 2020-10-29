@@ -200,6 +200,9 @@ def _patch_substatepipeline_nola_infection_rate(
 def _write_pipeline_output(
     pipelines: List[Union[SubStatePipeline, StatePipeline]], output_dir: str,
 ):
+    output_dir_path = pathlib.Path(output_dir)
+    if not output_dir_path.exists():
+        output_dir_path.mkdir()
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
     # TODO: Use constructors in MultiRegionTimeseriesDataset
@@ -208,7 +211,7 @@ def _write_pipeline_output(
     multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         timeseries_dataset, latest
     )
-    output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
+    output_path = output_dir_path / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
@@ -217,7 +220,7 @@ def _write_pipeline_output(
     latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
     multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
 
-    output_path = pathlib.Path(output_dir) / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
+    output_path = output_dir_path / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving ICU results to {output_path}")
 
