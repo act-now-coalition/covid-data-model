@@ -762,6 +762,15 @@ def _diff_preserving_first_value(series):
     return series_diff
 
 
+def _add_new_cases_to_latest(timeseries_df: pd.DataFrame, latest_df: pd.DataFrame) -> pd.DataFrame:
+    assert latest_df.index.names == [CommonFields.LOCATION_ID]
+    latest_new_cases = dataset_utils.build_latest_for_column(timeseries_df, CommonFields.NEW_CASES)
+
+    latest_copy = latest_df.copy()
+    latest_copy[CommonFields.NEW_CASES] = latest_new_cases
+    return latest_copy.reset_index()
+
+
 def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
     """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
     df_copy = timeseries.data.copy()
@@ -770,12 +779,18 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating
     # The first days as appropriate new case data.
-    df_copy[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].apply(
-        _diff_preserving_first_value
-    )
+    new_cases = grouped_df[CommonFields.CASES].apply(_diff_preserving_first_value)
+
+    # Remove the occasional negative case adjustments.
+    new_cases[new_cases < 0] = pd.NA
+
+    df_copy[CommonFields.NEW_CASES] = new_cases
+    latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
+
     new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
         timeseries_df=df_copy, provenance=timeseries.provenance
-    ).append_latest_df(timeseries.latest_data.reset_index())
+    ).append_latest_df(latest_values)
+
     return new_timeseries
 
 

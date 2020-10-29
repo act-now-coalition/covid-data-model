@@ -1,9 +1,6 @@
 name: Update API User Usage
 
 on:
-  # This hook is automatically triggered by
-  # https://github.com/covid-projections/covid-data-public/blob/master/.github/workflows/update_data.yml
-  # after covid-data-public datasets have been updated.
   schedule:
      # Run every 4 hours at the top of the hour
    - cron: '0 */6 * * *'
@@ -36,7 +33,7 @@ env:
 
   AWS_ACCESS_KEY_ID: ${{ secrets.API_USAGE_UPDATER_ACCESS_KEY_ID }}
 
-  HUBSPOT_API_KEY: $${{ secrets.HUBSPOT_API_KEY }}
+  HUBSPOT_API_KEY: ${{ secrets.HUBSPOT_API_KEY }}
 
 jobs:
   update-and-promote-datasets:

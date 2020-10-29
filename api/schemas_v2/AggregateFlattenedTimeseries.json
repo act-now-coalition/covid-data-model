@@ -149,6 +149,18 @@
               "$ref": "#/definitions/HospitalResourceUtilization"
             }
           ]
+        },
+        "newCases": {
+          "title": "Newcases",
+          "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -158,7 +170,8 @@
         "negativeTests",
         "contactTracers",
         "hospitalBeds",
-        "icuBeds"
+        "icuBeds",
+        "newCases"
       ]
     },
     "CovidPatientsMethod": {

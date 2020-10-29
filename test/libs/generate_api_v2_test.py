@@ -67,6 +67,7 @@ def test_build_summary_for_fips(
                 "typicalUsageRate": nyc_latest["icu_occupancy_rate"],
             },
             contactTracers=nyc_latest["contact_tracers_count"],
+            newCases=nyc_latest["new_cases"],
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
     )
