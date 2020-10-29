@@ -806,9 +806,11 @@ def drop_new_case_outliers(
 
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
 
+    latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
+
     new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
         timeseries_df=df_copy, provenance=timeseries.provenance
-    ).append_latest_df(timeseries.latest_data.reset_index())
+    ).append_latest_df(latest_values)
 
     return new_timeseries
 
