@@ -10,7 +10,6 @@ from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import cli
 
-from pyseir.rt import utils
 from pyseir.rt import infer_rt
 from test.mocks.inference import load_data
 from test.mocks.inference.load_data import RateChange
@@ -18,15 +17,6 @@ from test.mocks.inference.load_data import RateChange
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
-
-
-def test_replace_outliers_on_last_day():
-    x = pd.Series([10, 10, 10, 500], [0, 1, 2, 3])
-
-    results = utils.replace_outliers(x, structlog.getLogger(), local_lookback_window=3)
-
-    expected = pd.Series([10, 10, 10, 10], [0, 1, 2, 3])
-    pd.testing.assert_series_equal(results, expected)
 
 
 """
