@@ -131,7 +131,11 @@ class SubStatePipeline:
         # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
         # infection_rate.
         infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
-        infer_df = infer_rt.run_rt(infer_rt_input)
+        try:
+            infer_df = infer_rt.run_rt(infer_rt_input)
+        except Exception:
+            root.exception(f"run_rt failed for {input.region}")
+            raise
 
         # Run ICU adjustment
         icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
