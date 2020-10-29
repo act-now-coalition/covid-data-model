@@ -80,12 +80,15 @@ class OneRegionTimeseriesDataset:
     def __post_init__(self):
         if CommonFields.LOCATION_ID in self.data.columns:
             region_count = self.data[CommonFields.LOCATION_ID].nunique()
-        else:
+        elif CommonFields.FIPS in self.data.columns:
             region_count = self.data[CommonFields.FIPS].nunique()
-        if region_count == 0:
-            _log.warning(f"Creating {self.__class__.__name__} with zero regions")
-        elif region_count != 1:
-            raise ValueError("Does not have exactly one region")
+        else:
+            region_count = None
+        if region_count is not None:
+            if region_count == 0:
+                _log.warning(f"Creating {self.__class__.__name__} with zero regions")
+            elif region_count != 1:
+                raise ValueError("Does not have exactly one region")
 
         if CommonFields.DATE not in self.data.columns:
             raise ValueError("A timeseries must have a date column")
@@ -770,9 +773,12 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating
     # The first days as appropriate new case data.
-    df_copy[CommonFields.NEW_CASES] = grouped_df[CommonFields.CASES].apply(
-        _diff_preserving_first_value
-    )
+    new_cases = grouped_df[CommonFields.CASES].apply(_diff_preserving_first_value)
+
+    # Remove the occasional negative case adjustments.
+    new_cases[new_cases < 0] = pd.NA
+
+    df_copy[CommonFields.NEW_CASES] = new_cases
     latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
 
     new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(

@@ -338,6 +338,31 @@ def test_calculate_new_cases():
     assert_combined_like(mrts_expected, timeseries_after)
 
 
+def test_new_cases_remove_negative():
+    mrts_before = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,cases\n"
+            "iso1:us#fips:1,2020-01-01,100\n"
+            "iso1:us#fips:1,2020-01-02,50\n"
+            "iso1:us#fips:1,2020-01-03,75\n"
+            "iso1:us#fips:1,,75\n"
+        )
+    )
+
+    mrts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
+        io.StringIO(
+            "location_id,date,cases,new_cases\n"
+            "iso1:us#fips:1,2020-01-01,100,100\n"
+            "iso1:us#fips:1,2020-01-02,50,\n"
+            "iso1:us#fips:1,2020-01-03,75,25\n"
+            "iso1:us#fips:1,,75,25.0\n"
+        )
+    )
+
+    timeseries_after = timeseries.add_new_cases(mrts_before)
+    assert_combined_like(mrts_expected, timeseries_after)
+
+
 def test_timeseries_long():
     ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
