@@ -596,7 +596,7 @@ def _build_one_column_multiregion_dataset(
         if not pd.isna(value) and value is not None:
             break
 
-    rows.append({CommonFields.LOCATION_ID: location_id, "date": None, column: value})
+    rows.append({CommonFields.LOCATION_ID: location_id, "date": pd.NaT, column: value})
 
     df = pd.DataFrame(rows)
     return timeseries.MultiRegionTimeseriesDataset.from_combined_dataframe(df)
@@ -627,3 +627,12 @@ def test_remove_outliers_threshold():
     values = [1.0] * 7 + [None]
     expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
     assert_combined_like(result, expected)
+
+
+def test_not_removing_short_series():
+    values = [None] * 7 + [1, 1, 300]
+    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
+
+    # Should not modify becasue not higher than threshold
+    assert_combined_like(dataset, result)
