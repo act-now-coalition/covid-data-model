@@ -412,7 +412,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     @property
     def latest_data_with_fips(self) -> pd.DataFrame:
         """latest_data with FIPS column and LOCATION_ID index, use `latest_data` when FIPS is not need."""
-        return self.latest_data
+        data_copy = self.latest_data
+        _add_fips_if_missing(data_copy)
+        return data_copy
 
     @property
     def combined_df(self) -> pd.DataFrame:
@@ -506,7 +508,6 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         assert combined_df.index.names == [None]
         if CommonFields.LOCATION_ID not in combined_df.columns:
             raise ValueError("MultiRegionTimeseriesDataset.from_csv requires location_id column")
-        _add_fips_if_missing(combined_df)
 
         rows_with_date = combined_df[CommonFields.DATE].notna()
         timeseries_df = combined_df.loc[rows_with_date, :]
@@ -692,17 +693,17 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         """Joins the timeseries columns in `other` with those in `self`."""
         if not other.latest_data.empty:
             raise NotImplementedError("No support for joining other with latest_data")
-        other_df = other.data_with_fips.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
-        self_df = self.data_with_fips.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+        other_df = other.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+        self_df = self.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
         other_geo_columns = set(other_df.columns) & set(GEO_DATA_COLUMNS)
         other_ts_columns = (
             set(other_df.columns) - set(GEO_DATA_COLUMNS) - set(TimeseriesDataset.INDEX_FIELDS)
         )
-        common_ts_columns = other_ts_columns & set(self.data_with_fips.columns)
+        common_ts_columns = other_ts_columns & set(self.data.columns)
         if common_ts_columns:
             # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
-        common_geo_columns = list(set(self.data_with_fips.columns) & other_geo_columns)
+        common_geo_columns = list(set(self.data.columns) & other_geo_columns)
         # TODO(tom): fix geo columns check, no later than when self.data is changed to contain only
         # timeseries
         # self_common_geo_columns = self_df.loc[:, common_geo_columns].fillna("")
@@ -729,7 +730,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             combined_provenance = other.provenance
         return MultiRegionTimeseriesDataset.from_timeseries_df(
             combined_df.reset_index(), provenance=combined_provenance,
-        ).append_latest_df(self.latest_data_with_fips.reset_index())
+        ).append_latest_df(self.latest_data.reset_index())
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
