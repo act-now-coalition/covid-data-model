@@ -80,12 +80,15 @@ class OneRegionTimeseriesDataset:
     def __post_init__(self):
         if CommonFields.LOCATION_ID in self.data.columns:
             region_count = self.data[CommonFields.LOCATION_ID].nunique()
-        else:
+        elif CommonFields.FIPS in self.data.columns:
             region_count = self.data[CommonFields.FIPS].nunique()
-        if region_count == 0:
-            _log.warning(f"Creating {self.__class__.__name__} with zero regions")
-        elif region_count != 1:
-            raise ValueError("Does not have exactly one region")
+        else:
+            region_count = None
+        if region_count is not None:
+            if region_count == 0:
+                _log.warning(f"Creating {self.__class__.__name__} with zero regions")
+            elif region_count != 1:
+                raise ValueError("Does not have exactly one region")
 
         if CommonFields.DATE not in self.data.columns:
             raise ValueError("A timeseries must have a date column")
