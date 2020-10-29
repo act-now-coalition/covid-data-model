@@ -770,30 +770,30 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     return new_timeseries
 
 
-def _zscore(x, window=10):
-    x = x.copy()
-    x[x == 0] = None
-    r = x.rolling(window=window, min_periods=3)
-    m = r.mean().shift(1)
-    s = r.std(ddof=0).shift(1)
-    z = (x - m) / s
-    return z.abs().round(1)
+def _calculate_modified_zscore(series: pd.Series, window: int = 10) -> pd.Series:
+    """Calculates zscore removing zeros"""
+    series = series.copy()
+    series[series == 0] = None
+    rolling_series = series.rolling(window=window, min_periods=3)
+    # Shifting one to exclude current datapoint
+    mean = rolling_series.mean().shift(1)
+    std = rolling_series.std(ddof=0).shift(1)
+    z = (series - mean) / std
+
+    return z.abs()
 
 
 def drop_new_case_outliers(
-    timeseries: MultiRegionTimeseriesDataset,
+    timeseries: MultiRegionTimeseriesDataset, zscore_threshold: float = 8.0
 ) -> MultiRegionTimeseriesDataset:
     df_copy = timeseries.data.copy()
     grouped_df = timeseries.groupby_region()
-    # Calculating new cases using diff will remove the first detected value from the case series.
-    # We want to capture the first day a region reports a case. Since our data sources have
-    # been capturing cases in all states from the beginning of the pandemic, we are treating
-    # The first days as appropriate new case data.
 
     zscores = grouped_df[CommonFields.NEW_CASES].apply(_zscore)
-    to_exclude = zscores > 8
-    excluded_cases = df_copy[CommonFields.NEW_CASES][to_exclude]
+    to_exclude = zscores > zscore_threshold
+
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
+
     new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
         timeseries_df=df_copy, provenance=timeseries.provenance
     ).append_latest_df(timeseries.latest_data.reset_index())
