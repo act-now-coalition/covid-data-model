@@ -773,7 +773,7 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     new_cases = grouped_df[CommonFields.CASES].apply(_diff_preserving_first_value)
 
     # Remove the occasional negative case adjustments.
-    new_cases[new_cases < 0] = None
+    new_cases[new_cases < 0] = pd.NA
 
     df_copy[CommonFields.NEW_CASES] = new_cases
     latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
