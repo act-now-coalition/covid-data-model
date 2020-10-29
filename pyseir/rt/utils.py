@@ -169,7 +169,7 @@ def replace_outliers(
             changed_idx.append(idx)
             changed_value.append(int(x[idx]))
             slicer = slice(idx - local_lookback_window, idx + local_lookback_window)
-            changed_snippets.append(x[slicer].astype("Int64").tolist())
+            changed_snippets.append(x[slicer].tolist())
             try:
                 x[idx] = np.mean([x.iloc[idx - 1], x.iloc[idx + 1]])
             except IndexError:  # Value to replace can be newest and fail on x[idx+1].
