@@ -244,7 +244,7 @@ def assert_combined_like(
     """Asserts that two datasets contain similar date, ignoring order."""
     sorted1 = _combined_sorted_by_location_date(ts1)
     sorted2 = _combined_sorted_by_location_date(ts2)
-    pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
+    pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True, check_dtype=False)
     if ts1.provenance is not None:
         assert (
             ts2.provenance is not None
