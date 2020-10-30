@@ -58,6 +58,7 @@ Notable exceptions:
  1. If a region does not report cases for a period of time, the first day
     cases start reporting again will not be included. This day likely includes
     multiple days worth of cases and can be misleading to the overall series.
+ 2. Any days with negative new cases are removed.
 """,
     )
 
