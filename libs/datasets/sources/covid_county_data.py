@@ -72,14 +72,18 @@ class CovidCountyDataDataSource(data_source.DataSource):
 
         # Make a copy to avoid modifying the argument when using mask with inplace=True.
         df = data.copy()
+        # HACK: isnan() is only available in numexpr3 which isn't released yet. So we use nan != nan trick.
+        # https://github.com/pydata/numexpr/issues/23#issuecomment-58774009
+        isna = lambda column: f"({column} != {column})"
+        notna = lambda column: f"({column} == {column})"
         tests_and_cases = df.eval(
-            "negative_tests.isna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
+            f"{isna('negative_tests')} & {isna('positive_tests')} & {notna('total_tests')} & {notna('cases')}"
         )
         missing_neg = df.eval(
-            "negative_tests.isna() & positive_tests.notna() & total_tests.notna() & cases.notna()"
+            f"{isna('negative_tests')} & {notna('positive_tests')} & {notna('total_tests')} & {notna('cases')}"
         )
         missing_pos = df.eval(
-            "negative_tests.notna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
+            f"{notna('negative_tests')} & {isna('positive_tests')} & {notna('total_tests')} & {notna('cases')}"
         )
 
         # Keep the same order of rows in `provenance` as `df` so that the same masks can be used when
