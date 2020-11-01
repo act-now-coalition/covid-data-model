@@ -682,7 +682,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
 
-    def join_columns(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
+    def join_columns(
+        self, other: "MultiRegionTimeseriesDataset", replace: bool = False
+    ) -> "MultiRegionTimeseriesDataset":
         """Joins the timeseries columns in `other` with those in `self`."""
         if not other.latest_data.empty:
             raise NotImplementedError("No support for joining other with latest_data")
@@ -694,8 +696,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         )
         common_ts_columns = other_ts_columns & set(self.data_with_fips.columns)
         if common_ts_columns:
-            # columns to be joined need to be disjoint
-            raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
+            if replace:
+                self_df = self_df.drop(common_ts_columns, axis="columns")
+            else:
+                # columns to be joined need to be disjoint
+                raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
         common_geo_columns = list(set(self.data_with_fips.columns) & other_geo_columns)
         # TODO(tom): fix geo columns check, no later than when self.data is changed to contain only
         # timeseries

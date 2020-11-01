@@ -43,7 +43,7 @@ def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
         )
     )
 
-    regional_data = regional_data.join_columns(empty_test_positivity)
+    regional_data = regional_data.join_columns(empty_test_positivity, replace=True)
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
         region, regional_data, rt_dataset, icu_dataset
     )
