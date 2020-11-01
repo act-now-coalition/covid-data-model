@@ -9,6 +9,11 @@ from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.timeseries import TimeseriesDataset
 
+# 2020/11/01: By manual comparison of test positivity calculated via Covid County Data vs CMS
+# and local dashboards where available, these states have data that seems less credible than
+# our CMS data source.
+DISABLED_TEST_POSITIVITY_STATES = ["AL", "DE", "FL", "IN", "IA", "MD", "ND", "PA", "WI"]
+
 
 class CovidCountyDataDataSource(data_source.DataSource):
     DATA_PATH = "data/cases-covid-county-data/timeseries-common.csv"
@@ -81,6 +86,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
         missing_pos = df.eval(
             "negative_tests.notna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
         )
+        disabled = df.eval("state in @DISABLED_TEST_POSITIVITY_STATES")
 
         # Keep the same order of rows in `provenance` as `df` so that the same masks can be used when
         # writing it.
@@ -113,6 +119,12 @@ class CovidCountyDataDataSource(data_source.DataSource):
             inplace=True,
         )
         provenance[CommonFields.POSITIVE_TESTS].mask(missing_pos, "missing_pos", inplace=True)
+
+        # Remove disabled locations.
+        df[CommonFields.POSITIVE_TESTS].mask(disabled, None, inplace=True)
+        provenance[CommonFields.POSITIVE_TESTS].mask(disabled, "disabled", inplace=True)
+        df[CommonFields.NEGATIVE_TESTS].mask(disabled, None, inplace=True)
+        provenance[CommonFields.NEGATIVE_TESTS].mask(disabled, "disabled", inplace=True)
 
         # preventing a circular import by importing combined datasets here.
         # TODO(chris): Move provenance_wide_metrics_to_series to fix the circular import.
