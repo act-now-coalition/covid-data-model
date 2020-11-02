@@ -63,12 +63,6 @@ def _build_region_pipeline_input(region: pipeline.Region):
     )
 
 
-def _build_region_pipeline_input(region: pipeline.Region):
-    return SubStateRegionPipelineInput(
-        region=region, regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
-    )
-
-
 @dataclass
 class RegionPipelineInput:
     region: pipeline.Region
