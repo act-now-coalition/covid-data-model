@@ -96,7 +96,6 @@ class RegionPipeline:
 
     @staticmethod
     def run(input: RegionPipelineInput) -> "RegionPipeline":
-        assert not input.region.is_state()
         # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
         # infection_rate.
         infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
