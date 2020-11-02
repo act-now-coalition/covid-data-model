@@ -172,6 +172,11 @@ def _write_pipeline_output(
         output_dir_path.mkdir()
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
+    print(infection_rate_metric_df[infection_rate_metric_df.location_id.isna()])
+    infection_rate_metric_df = infection_rate_metric_df.loc[
+        infection_rate_metric_df.location_id.notna()
+    ]
+
     timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
     latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
     multiregion_rt = MultiRegionTimeseriesDataset(infection_rate_metric_df, latest)
@@ -252,7 +257,7 @@ def build_all(states, output_dir, states_only, fips):
 
     if not states:
         states = ALL_STATES
-    states = []
+    # states = []
     pipelines = _run_on_all_regions(states=states, states_only=states_only, fips=fips)
     _write_pipeline_output(pipelines, output_dir)
 
