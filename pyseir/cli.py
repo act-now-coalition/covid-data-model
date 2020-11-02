@@ -95,7 +95,6 @@ class RegionPipeline:
 
     @staticmethod
     def run(input: RegionPipelineInput) -> "RegionPipeline":
-        assert not input.region.is_state()
         # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
         # infection_rate.
         infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
@@ -111,7 +110,7 @@ class RegionPipeline:
             icu_data = infer_icu.get_icu_timeseries_from_regional_input(
                 icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
             )
-        except KeyError:
+        except Exception:
             icu_data = None
             root.exception(f"Failed to run icu data for {input.region}")
 
