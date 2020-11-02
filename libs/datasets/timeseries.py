@@ -685,7 +685,15 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def join_columns(
         self, other: "MultiRegionTimeseriesDataset", replace: bool = False
     ) -> "MultiRegionTimeseriesDataset":
-        """Joins the timeseries columns in `other` with those in `self`."""
+        """Joins the timeseries columns in `other` with those in `self`.
+
+        Args:
+            other: The timeseries dataset to join with `self`. all columns except the "geo" columns
+                   will be joined into `self`.
+            replace: Whether to allow `other` to contain columns that already exist in `self`.
+                     If set to True, the existing columns will be replaced. Else, an error will
+                     be thrown.
+        """
         if not other.latest_data.empty:
             raise NotImplementedError("No support for joining other with latest_data")
         other_df = other.data_with_fips.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])

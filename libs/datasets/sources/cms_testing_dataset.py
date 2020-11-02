@@ -19,5 +19,5 @@ class CMSTestingDataset(data_source.DataSource):
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
-        data = common_df.read_csv(input_path).reset_index()
+        data = common_df.read_csv(input_path, set_index=False)
         return cls(data)
