@@ -172,12 +172,9 @@ def _write_pipeline_output(
         output_dir_path.mkdir()
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-    # TODO: Use constructors in MultiRegionTimeseriesDataset
     timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
-    latest = timeseries_dataset.latest_values_object()
-    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
-        timeseries_dataset, latest
-    )
+    latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
+    multiregion_rt = MultiRegionTimeseriesDataset(infection_rate_metric_df, latest)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")

@@ -594,4 +594,5 @@ class RtInferenceEngine:
         else:
             df_all = df_all.reset_index(drop=False)  # Move date to column from index to column
             df_all["fips"] = self.regional_input.region.fips
+            df_all["location_id"] = self.regional_input.region.location_id
         return df_all
