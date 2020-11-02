@@ -282,7 +282,7 @@ def test_patch_substatepipeline_nola_infection_rate():
             )
         )
 
-    patched = cli._patch_substatepipeline_nola_infection_rate(pipelines)
+    patched = cli._patch_nola_infection_rate_in_pipelines(pipelines)
 
     df = pd.concat(p.infer_df for p in patched)
     returned_fips = df.fips.unique()
