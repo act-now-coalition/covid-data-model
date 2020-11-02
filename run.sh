@@ -97,6 +97,7 @@ execute_model() {
 }
 
 execute_api() {
+  echo "nope"
   # Go to repo root (where run.sh lives).
   # cd "$(dirname "$0")"
 
