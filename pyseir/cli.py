@@ -257,7 +257,8 @@ def build_all(states, output_dir, states_only, fips):
 
     if not states:
         states = ALL_STATES
-    # states = []
+    states = []
+
     pipelines = _run_on_all_regions(states=states, states_only=states_only, fips=fips)
     _write_pipeline_output(pipelines, output_dir)
 
