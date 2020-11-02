@@ -744,7 +744,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             if state and region.state != state:
                 continue
 
-            if fips and region != fips:
+            if fips and region.fips != fips:
                 continue
 
             if states and region.state not in states:

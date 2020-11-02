@@ -76,11 +76,10 @@ class RegionPipelineInput:
     ) -> List["RegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        regions = {
-            *combined_datasets.get_subset_regions(
-                fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
-            )
-        }
+        us_timeseries = combined_datasets.load_us_timeseries_dataset()
+        regions = us_timeseries.iter_regions(
+            fips=fips, level=level, exclude_county_999=True, states=states,
+        )
         pipeline_inputs = parallel_utils.parallel_map(_build_region_pipeline_input, regions)
         return list(pipeline_inputs)
 
@@ -255,9 +254,9 @@ def build_all(states, output_dir, states_only, fips):
     states = [us.states.lookup(state).abbr for state in states]
     states = [state for state in states if state in ALL_STATES]
 
-    if not len(states):
+    if not states:
         states = ALL_STATES
-
+    states = []
     pipelines = _run_on_all_regions(states=states, states_only=states_only, fips=fips)
     _write_pipeline_output(pipelines, output_dir)
 

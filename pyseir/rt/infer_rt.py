@@ -195,6 +195,7 @@ def filter_and_smooth_input_data(
     plt.xticks(rotation=30)
     plt.xlim(min(dates[-len(cases) :]), max(dates) + timedelta(days=2))
 
+    return smoothed
     if not figure_collector:
         plot_path = pyseir.utils.get_run_artifact_path(region, RunArtifact.RT_SMOOTHING_REPORT)
         plt.savefig(plot_path, bbox_inches="tight")
@@ -579,7 +580,7 @@ class RtInferenceEngine:
                 / np.power(suppression, self.tail_suppression_correction / 2)
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
-        if plot:
+        if plot and False:
             fig = plotting.plot_rt(df=df_all, display_name=self.display_name)
             if self.figure_collector is None:
                 output_path = pyseir.utils.get_run_artifact_path(
