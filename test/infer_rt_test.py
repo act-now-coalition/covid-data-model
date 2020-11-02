@@ -274,7 +274,7 @@ def test_patch_substatepipeline_nola_infection_rate():
         region = pipeline.Region.from_fips(fips)
         infection_rate_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
         pipelines.append(
-            cli.SubStatePipeline(
+            cli.RegionPipeline(
                 region=region,
                 infer_df=infection_rate_df,
                 icu_data=None,
