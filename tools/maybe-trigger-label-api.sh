@@ -36,7 +36,7 @@ prepare () {
   # We have daily jobs scheduled at 00:30 and 12:30 GMT. We want to run after the 12:30 one.
   currenttime=$(date -u +%H:%M)
   if [[ "$currenttime" < "12:00" ]]; then
-    echo "Not triggering covid-projections update-snapshot since time (${currenttime}) is before 12:00 GMT."
+    echo "Not triggering label-api since time (${currenttime}) is before 12:00 GMT."
     exit 0
   fi
 
