@@ -39,6 +39,7 @@ ICU_DECOMP_OVERRIDE = {
     "NV": 0.25,
     "RI": 0,
     "NJ": NJ_CORRECTION,
+    "UT": 0,  # https://trello.com/c/u8surBE7/533-small-icu-headroom-update-update-utah-decompensation-factor-to-align-with-local-sources
 }
 
 
