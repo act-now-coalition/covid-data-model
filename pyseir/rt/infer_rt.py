@@ -41,7 +41,7 @@ def normal_pdf(x, mean, std_deviation):
     return math.exp(-0.5 * u ** 2) / (SQRT2PI * std_deviation)
 
 
-@numba.njit(fastmath=True, parallel=True)
+@numba.njit(fastmath=True)
 def pdf_vector(x, loc, scale):
     """Replacement for scipy pdf function."""
     array = np.empty((x.size, loc.size))
