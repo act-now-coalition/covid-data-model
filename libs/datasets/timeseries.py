@@ -78,6 +78,8 @@ class OneRegionTimeseriesDataset:
     provenance: Dict[str, str] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self):
+        assert CommonFields.LOCATION_ID in self.data.columns
+        assert CommonFields.DATE in self.data.columns
         region_count = self.data[CommonFields.LOCATION_ID].nunique()
         if region_count == 0:
             _log.warning(f"Creating {self.__class__.__name__} with zero regions")
@@ -107,12 +109,7 @@ class OneRegionTimeseriesDataset:
 
     def get_subset(self, after=None, columns=tuple()):
         rows_key = dataset_utils.make_rows_key(self.data, after=after,)
-        if columns:
-            assert CommonFields.LOCATION_ID in columns
-            assert CommonFields.DATE in columns
-            columns_key = list(columns)
-        else:
-            columns_key = slice(None, None, None)
+        columns_key = list(columns) if columns else slice(None, None, None)
         return OneRegionTimeseriesDataset(
             self.data.loc[rows_key, columns_key].reset_index(drop=True),
             latest=self.latest,
