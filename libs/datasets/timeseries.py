@@ -414,7 +414,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     @property
     def combined_df(self) -> pd.DataFrame:
         """"A DataFrame with timeseries data and latest data (with DATE=NaT) together."""
-        return pd.concat([self.data, self.latest_data.reset_index()], ignore_index=True)
+        return pd.concat(
+            [self.data_with_fips, self.latest_data_with_fips.reset_index()], ignore_index=True
+        )
 
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
