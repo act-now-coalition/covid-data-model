@@ -788,6 +788,65 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     return new_timeseries
 
 
+def _calculate_modified_zscore(series: pd.Series, window: int = 10, min_periods=3) -> pd.Series:
+    """Calculates zscore for each point in series comparing current point to past `window` days.
+
+    Each datapoint is compared to the distribution of the past `window` days as long as there are
+    `min_periods` number of non-nan values in the window.
+
+    In the calculation of z-score, zeros are thrown out. This is done to produce better results
+    for regions that regularly report zeros (for instance, RI reports zero new cases on
+    each weekend day).
+
+    Args:
+        series: Series to compute statistics for.
+        window: Size of window to calculate mean and std.
+        min_periods: Number of periods necessary to compute a score - will return nan otherwise.
+
+    Returns: Array of scores for each datapoint in series.
+    """
+    series = series.copy()
+    series[series == 0] = None
+    rolling_series = series.rolling(window=window, min_periods=min_periods)
+    # Shifting one to exclude current datapoint
+    mean = rolling_series.mean().shift(1)
+    std = rolling_series.std(ddof=0).shift(1)
+    z = (series - mean) / std
+    return z.abs()
+
+
+def drop_new_case_outliers(
+    timeseries: MultiRegionTimeseriesDataset,
+    zscore_threshold: float = 8.0,
+    case_threshold: int = 30,
+) -> MultiRegionTimeseriesDataset:
+    """Identifies and drops outliers from the new case series.
+
+    Args:
+        timeseries: Timeseries.
+        zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
+            threshold will be removed.
+        case_threshold: Min number of cases needed to count as an outlier.
+
+    Returns: timeseries with outliers removed from new_cases.
+    """
+    df_copy = timeseries.data.copy()
+    grouped_df = timeseries.groupby_region()
+
+    zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
+
+    to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
+    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
+
+    latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
+
+    new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
+        timeseries_df=df_copy, provenance=timeseries.provenance
+    ).append_latest_df(latest_values)
+
+    return new_timeseries
+
+
 def drop_regions_without_population(
     mrts: MultiRegionTimeseriesDataset,
     known_location_id_to_drop: Sequence[str],

@@ -85,6 +85,8 @@ def update(wide_dates_filename, aggregate_to_msas: bool):
         timeseries_dataset, latest_dataset
     )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
+    multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
+
     if aggregate_to_msas:
         aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
         multiregion_dataset = multiregion_dataset.append_regions(

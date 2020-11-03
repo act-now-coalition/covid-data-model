@@ -1,6 +1,5 @@
 import io
 import pathlib
-
 import pytest
 import pandas as pd
 import structlog
@@ -580,3 +579,60 @@ def test_merge_provenance():
         ts.append_provenance_csv(
             io.StringIO("location_id,variable,provenance\n" "iso1:us#fips:97111,m1,ts197111prov\n")
         )
+
+
+def _build_one_column_multiregion_dataset(
+    column, values, location_id="iso1:us#fips:97222", start_date="2020-08-25"
+):
+
+    dates = pd.date_range(start_date, periods=len(values), freq="D")
+    rows = []
+
+    for i, value in enumerate(values):
+        rows.append({CommonFields.LOCATION_ID: location_id, "date": dates[i], column: value})
+
+    # Find last non nan value, which simulates building the latest value entry
+    for value in reversed(values):
+        if not pd.isna(value) and value is not None:
+            break
+
+    rows.append({CommonFields.LOCATION_ID: location_id, "date": pd.NaT, column: value})
+
+    df = pd.DataFrame(rows)
+    return timeseries.MultiRegionTimeseriesDataset.from_combined_dataframe(df)
+
+
+def test_remove_outliers():
+    values = [10.0] * 7 + [1000.0]
+    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    dataset = timeseries.drop_new_case_outliers(dataset)
+
+    # Expected result is the same series with the last value removed
+    values = [10.0] * 7 + [None]
+    expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    assert_combined_like(dataset, expected)
+
+
+def test_remove_outliers_threshold():
+    values = [1.0] * 7 + [30.0]
+    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
+
+    # Should not modify becasue not higher than threshold
+    assert_combined_like(dataset, result)
+
+    result = timeseries.drop_new_case_outliers(dataset, case_threshold=29)
+
+    # Expected result is the same series with the last value removed
+    values = [1.0] * 7 + [None]
+    expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    assert_combined_like(result, expected)
+
+
+def test_not_removing_short_series():
+    values = [None] * 7 + [1, 1, 300]
+    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
+
+    # Should not modify becasue not higher than threshold
+    assert_combined_like(dataset, result)

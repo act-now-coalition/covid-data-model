@@ -72,14 +72,23 @@ class CovidCountyDataDataSource(data_source.DataSource):
 
         # Make a copy to avoid modifying the argument when using mask with inplace=True.
         df = data.copy()
-        tests_and_cases = df.eval(
-            "negative_tests.isna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
+        tests_and_cases = (
+            df["negative_tests"].isna()
+            & df["positive_tests"].isna()
+            & df["total_tests"].notna()
+            & df["cases"].notna()
         )
-        missing_neg = df.eval(
-            "negative_tests.isna() & positive_tests.notna() & total_tests.notna() & cases.notna()"
+        missing_neg = (
+            df["negative_tests"].isna()
+            & df["positive_tests"].notna()
+            & df["total_tests"].notna()
+            & df["cases"].notna()
         )
-        missing_pos = df.eval(
-            "negative_tests.notna() & positive_tests.isna() & total_tests.notna() & cases.notna()"
+        missing_pos = (
+            df["negative_tests"].notna()
+            & df["positive_tests"].isna()
+            & df["total_tests"].notna()
+            & df["cases"].notna()
         )
 
         # Keep the same order of rows in `provenance` as `df` so that the same masks can be used when
