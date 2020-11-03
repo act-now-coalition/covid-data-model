@@ -6,10 +6,13 @@ import structlog
 
 
 import numpy as np
+import numba
+import math
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from scipy import stats as sps
 from matplotlib import pyplot as plt
+
 
 from libs.datasets import combined_datasets
 from libs import pipeline
@@ -21,6 +24,33 @@ from pyseir.rt.constants import InferRtConstants
 from pyseir.rt import plotting, utils
 
 rt_log = structlog.get_logger(__name__)
+
+
+SQRT2PI = math.sqrt(2.0 * math.pi)
+
+
+@numba.vectorize([numba.float64(numba.float64, numba.float64, numba.float64)], fastmath=True)
+def normal_pdf(x, mean, std_deviation):
+    """Probability density function at `x` of a normal distribution.
+
+    Args:
+        x: Value
+        mean: Mean of distribution
+        std_deviation: Standard deviation of distribution.
+    """
+    u = (x - mean) / std_deviation
+    return math.exp(-0.5 * u ** 2) / (SQRT2PI * std_deviation)
+
+
+@numba.njit(fastmath=True)
+def pdf_vector(x, loc, scale):
+    """Replacement for scipy pdf function."""
+    array = np.empty((x.size, loc.size))
+    for i, a in enumerate(x):
+        for j, b in enumerate(loc):
+            array[i, j] = normal_pdf(a, b, scale)
+
+    return array
 
 
 @dataclass(frozen=True)
@@ -139,13 +169,7 @@ def filter_and_smooth_input_data(
         cases.sum() > MIN_CUMULATIVE_CASE_COUNT,
         cases.max() > MIN_INCIDENT_CASE_COUNT,
     ]
-    # Now Apply Input Outlier Detection and Smoothing
-
-    filtered = utils.replace_outliers(cases, log=rt_log)
-    # TODO find way to indicate which points filtered in figure below
-
-    assert len(filtered) == len(cases)
-    smoothed = filtered.rolling(
+    smoothed = cases.rolling(
         InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
         win_type="gaussian",
         min_periods=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD,
@@ -283,7 +307,10 @@ class RtInferenceEngine:
 
         use_sigma = min(a, b) * self.default_process_sigma
 
-        process_matrix = sps.norm(loc=self.r_list, scale=use_sigma).pdf(self.r_list[:, None])
+        # Build process matrix using optimized numba pdf function.
+        # This function is equivalent to the following call, but runs about 50% faster:
+        # process_matrix = sps.norm(loc=self.r_list, scale=use_sigma).pdf(self.r_list[:, None])
+        process_matrix = pdf_vector(self.r_list, self.r_list, use_sigma)
 
         # process_matrix applies gaussian smoothing to the previous posterior to make the prior.
         # But when the gaussian is wide much of its distribution function can be outside of the
