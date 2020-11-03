@@ -157,7 +157,7 @@ def calculate_or_copy_test_positivity(
         provenance = ts.provenance.get(CommonFields.TEST_POSITIVITY)
         method = TestPositivityRatioMethod.get(provenance)
         if method is None:
-            log.info("Unable to find TestPositivityRatioMethod", provenance=provenance)
+            log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
             method = TestPositivityRatioMethod.OTHER
         return test_positivity, method
 
@@ -261,7 +261,10 @@ def calculate_latest_metrics(
     Returns: Metrics
     """
     data = data.set_index(CommonFields.DATE)
-    metrics = {}
+    metrics = {
+        "testPositivityRatioMethod": test_positivity_method,
+        "icuHeadroomDetails": icu_metric_details,
+    }
     latest_date = data.index[-1]
 
     # Get latest value from data where available.
@@ -277,7 +280,7 @@ def calculate_latest_metrics(
             metrics[field] = data[field][last_available]
 
     if not data[MetricsFields.INFECTION_RATE].any():
-        return Metrics(**metrics, testPositivityRatioMethod=test_positivity_method)
+        return Metrics(**metrics)
 
     # Infection rate is handled differently - the infection rate surfaced is actually the value
     # `RT_TRUNCATION_DAYS` in the past.
@@ -288,12 +291,8 @@ def calculate_latest_metrics(
     if stale_rt or rt_index not in data.index:
         metrics[MetricsFields.INFECTION_RATE] = None
         metrics[MetricsFields.INFECTION_RATE_CI90] = None
-        return Metrics(**metrics, testPositivityRatioMethod=test_positivity_method)
+        return Metrics(**metrics)
 
     metrics[MetricsFields.INFECTION_RATE] = data[MetricsFields.INFECTION_RATE][rt_index]
     metrics[MetricsFields.INFECTION_RATE_CI90] = data[MetricsFields.INFECTION_RATE_CI90][rt_index]
-    return Metrics(
-        **metrics,
-        icuHeadroomDetails=icu_metric_details,
-        testPositivityRatioMethod=test_positivity_method,
-    )
+    return Metrics(**metrics)
