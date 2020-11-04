@@ -121,6 +121,7 @@
       "enum": [
         "HHSTesting",
         "Valorum",
+        "covid_tracking",
         "other"
       ]
     },
