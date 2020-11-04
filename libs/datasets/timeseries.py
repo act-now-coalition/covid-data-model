@@ -407,9 +407,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     @property
     def latest_data_with_fips(self) -> pd.DataFrame:
         """latest_data with FIPS column and LOCATION_ID index, use `latest_data` when FIPS is not need."""
-        data_copy = self.latest_data
+        data_copy = self.latest_data.reset_index()
         _add_fips_if_missing(data_copy)
-        return data_copy
+        return data_copy.set_index(CommonFields.LOCATION_ID)
 
     @property
     def combined_df(self) -> pd.DataFrame:
