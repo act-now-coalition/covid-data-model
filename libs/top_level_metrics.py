@@ -117,7 +117,7 @@ def _lookup_test_positivity_method(
     if positive_tests_provenance and positive_tests_provenance == negative_tests_provenance:
         method = TestPositivityRatioMethod.get(positive_tests_provenance)
     if method is None:
-        log.info(
+        log.debug(
             "Unable to find TestPositivityRatioMethod",
             positive_tests_provenance=positive_tests_provenance,
             negative_tests_provenance=negative_tests_provenance,

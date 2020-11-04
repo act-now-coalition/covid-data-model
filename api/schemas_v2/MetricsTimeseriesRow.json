@@ -15,6 +15,9 @@
         }
       ]
     },
+    "testPositivityRatioDetails": {
+      "$ref": "#/definitions/TestPositivityRatioDetails"
+    },
     "caseDensity": {
       "title": "Casedensity",
       "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
@@ -94,6 +97,28 @@
     "date"
   ],
   "definitions": {
+    "TestPositivityRatioMethod": {
+      "title": "TestPositivityRatioMethod",
+      "description": "Method used to determine test positivity ratio.",
+      "enum": [
+        "HHSTesting",
+        "Valorum",
+        "other"
+      ]
+    },
+    "TestPositivityRatioDetails": {
+      "title": "TestPositivityRatioDetails",
+      "description": "Details about how the test positivity ratio was calculated.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/definitions/TestPositivityRatioMethod"
+        }
+      },
+      "required": [
+        "source"
+      ]
+    },
     "CovidPatientsMethod": {
       "title": "CovidPatientsMethod",
       "description": "Method used to determine number of current ICU patients with covid.",
