@@ -39,7 +39,7 @@ def location_id_to_fips(location_id: str) -> Optional[str]:
 
     match = re.fullmatch(r"iso1:us#iso2:us-(..)", location_id)
     if match:
-        return us.states.lookup(match.group(1), field="abbr")
+        return us.states.lookup(match.group(1).upper(), field="abbr").fips
 
     return None
 

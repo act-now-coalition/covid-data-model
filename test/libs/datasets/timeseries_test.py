@@ -53,11 +53,15 @@ def test_multi_region_to_from_timeseries():
         ts, ts.latest_values_object()
     )
     pd.testing.assert_frame_equal(
-        ts.data, multiregion.data.drop(columns=[CommonFields.LOCATION_ID])
+        ts.data,
+        multiregion.data_with_fips.drop(columns=[CommonFields.LOCATION_ID]),
+        check_like=True,
     )
 
     ts_again = multiregion.to_timeseries()
-    pd.testing.assert_frame_equal(ts.data, ts_again.data.drop(columns=[CommonFields.LOCATION_ID]))
+    pd.testing.assert_frame_equal(
+        ts.data, ts_again.data.drop(columns=[CommonFields.LOCATION_ID]), check_like=True
+    )
 
 
 def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Path):
@@ -118,7 +122,6 @@ def test_multi_region_get_one_region():
         pd.to_datetime("2020-04-01"): {
             "m2": 10,
             "county": "Foo County",
-            "fips": "97222",
             "location_id": "iso1:us#fips:97222",
             "aggregate_level": "county",
         }
@@ -140,9 +143,9 @@ def test_multi_region_get_counties():
         )
     )
     counties_ts = ts.get_counties(after=pd.to_datetime("2020-04-01"))
-    assert to_dict(["fips", "date"], counties_ts.data[["fips", "date", "m1"]]) == {
-        ("97111", pd.to_datetime("2020-04-02")): {"m1": 2},
-        ("97111", pd.to_datetime("2020-04-03")): {"m1": 3},
+    assert to_dict(["location_id", "date"], counties_ts.data[["location_id", "date", "m1"]]) == {
+        ("iso1:us#fips:97111", pd.to_datetime("2020-04-02")): {"m1": 2},
+        ("iso1:us#fips:97111", pd.to_datetime("2020-04-03")): {"m1": 3},
     }
 
 
@@ -165,28 +168,33 @@ def test_multi_region_groupby():
 
 
 def test_one_region_dataset():
-    ts = timeseries.OneRegionTimeseriesDataset(
-        read_csv_and_index_fips_date(
-            "fips,county,aggregate_level,date,m1,m2\n" "97111,Bar County,county,2020-04-02,2,\n"
-        ).reset_index(),
-        {},
-    )
+    bar_county_row = {
+        "location_id": "iso1:us#fips:97111",
+        "county": "Bar County",
+        "aggregate_level": "county",
+        "date": "2020-04-02",
+        "m1": 2,
+        "m2": pd.NA,
+    }
+    ts = timeseries.OneRegionTimeseriesDataset(pd.DataFrame([bar_county_row]), {})
     assert ts.has_one_region() == True
 
+    foo_county_row = {
+        "location_id": "iso1:us#fips:97222",
+        "county": "Foo County",
+        "aggregate_level": "county",
+        "date": "2020-04-01",
+        "m1": pd.NA,
+        "m2": 10,
+    }
     with pytest.raises(ValueError):
         timeseries.OneRegionTimeseriesDataset(
-            read_csv_and_index_fips_date(
-                "fips,county,aggregate_level,date,m1,m2\n"
-                "97111,Bar County,county,2020-04-02,2,\n"
-                "97222,Foo County,county,2020-04-01,,10\n"
-            ).reset_index(),
-            {},
+            pd.DataFrame([bar_county_row, foo_county_row]), {},
         )
 
     with structlog.testing.capture_logs() as logs:
         ts = timeseries.OneRegionTimeseriesDataset(
-            read_csv_and_index_fips_date("fips,county,aggregate_level,date,m1,m2\n").reset_index(),
-            {},
+            pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()), {},
         )
     assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
     assert ts.empty
@@ -230,19 +238,26 @@ def test_multiregion_provenance():
     assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == "src21"
 
 
-def _combined_sorted_by_location_date(ts: timeseries.MultiRegionTimeseriesDataset) -> pd.DataFrame:
+def _combined_sorted_by_location_date(
+    ts: timeseries.MultiRegionTimeseriesDataset, drop_na_timeseries: bool
+) -> pd.DataFrame:
     """Returns the combined data, sorted by LOCATION_ID and DATE."""
-    return ts.combined_df.sort_values(
+    df = ts.combined_df.sort_values(
         [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
     )
+    if drop_na_timeseries:
+        df = df.dropna("columns", "all")
+    return df
 
 
 def assert_combined_like(
-    ts1: timeseries.MultiRegionTimeseriesDataset, ts2: timeseries.MultiRegionTimeseriesDataset
+    ts1: timeseries.MultiRegionTimeseriesDataset,
+    ts2: timeseries.MultiRegionTimeseriesDataset,
+    drop_na_timeseries=False,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
-    sorted1 = _combined_sorted_by_location_date(ts1)
-    sorted2 = _combined_sorted_by_location_date(ts2)
+    sorted1 = _combined_sorted_by_location_date(ts1, drop_na_timeseries=drop_na_timeseries)
+    sorted2 = _combined_sorted_by_location_date(ts2, drop_na_timeseries=drop_na_timeseries)
     pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
     if ts1.provenance is not None:
         assert (
