@@ -490,41 +490,23 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         )
 
     @staticmethod
-    def from_combined_dataframe(
-        combined_df: pd.DataFrame, provenance: Optional[pd.Series] = None
-    ) -> "MultiRegionTimeseriesDataset":
-        """Builds a new object from a DataFrame containing timeseries and latest data.
-
-        This method splits rows with DATE NaT into the latest values DataFrame, adds a FIPS column
-        derived from LOCATION_ID, drops columns without data and calls `from_timeseries_df` to finish
-        the construction.
-
-        TODO(tom): This method isn't really useful beyond from_csv. Stop calling it directly and
-        inline in from_csv.
-        """
-        assert combined_df.index.names == [None]
+    def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
+        combined_df = common_df.read_csv(path_or_buf, set_index=False)
         if CommonFields.LOCATION_ID not in combined_df.columns:
             raise ValueError("MultiRegionTimeseriesDataset.from_csv requires location_id column")
 
+        # Split rows with DATE NaT into latest_df and call `from_timeseries_df` to finish the
+        # construction.
         rows_with_date = combined_df[CommonFields.DATE].notna()
         timeseries_df = combined_df.loc[rows_with_date, :]
 
         # Extract rows of combined_df which don't have a date.
         latest_df = combined_df.loc[~rows_with_date, :]
 
-        multiregion_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
-            timeseries_df, provenance=provenance
-        )
+        dataset = MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
         if not latest_df.empty:
-            multiregion_timeseries = multiregion_timeseries.append_latest_df(latest_df)
+            dataset = dataset.append_latest_df(latest_df)
 
-        return multiregion_timeseries
-
-    @staticmethod
-    def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionTimeseriesDataset":
-        dataset = MultiRegionTimeseriesDataset.from_combined_dataframe(
-            common_df.read_csv(path_or_buf, set_index=False)
-        )
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.exists():
@@ -639,9 +621,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         # metrics which no longer have real values are excluded.
         latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
 
-        return MultiRegionTimeseriesDataset.from_combined_dataframe(
-            pd.concat([ts_df, latest_df], ignore_index=True), provenance=provenance
-        )
+        return MultiRegionTimeseriesDataset.from_timeseries_df(
+            ts_df, provenance=provenance
+        ).append_latest_df(latest_df)
 
     def _get_latest_and_provenance_for_locations(
         self, location_ids
