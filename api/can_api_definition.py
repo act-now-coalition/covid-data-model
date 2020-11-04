@@ -92,6 +92,14 @@ class NonCovidPatientsMethod(enum.Enum):
     ESTIMATED_FROM_TOTAL_ICU_ACTUAL = "estimated_from_total_icu_actual"
 
 
+class TestPositivityRatioDetails(base_model.APIBaseModel):
+    """Details about how the test positivity ratio was calculated."""
+
+    source: TestPositivityRatioMethod = pydantic.Field(
+        ..., description="Source data for test positivity ratio."
+    )
+
+
 class ICUHeadroomMetricDetails(base_model.APIBaseModel):
     """Details about how the ICU Headroom Metric was calculated."""
 
@@ -116,7 +124,7 @@ class Metrics(base_model.APIBaseModel):
         ...,
         description="Ratio of people who test positive calculated using a 7-day rolling average.",
     )
-    testPositivityRatioMethod: Optional[TestPositivityRatioMethod] = pydantic.Field(None)
+    testPositivityRatioDetails: Optional[TestPositivityRatioDetails] = pydantic.Field(None)
 
     caseDensity: Optional[float] = pydantic.Field(
         ...,
