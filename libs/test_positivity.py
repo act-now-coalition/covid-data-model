@@ -242,4 +242,6 @@ def run_and_maybe_join_columns(
         return mrts
     else:
         # We overwrite the test_positivity column if it exists.
-        return mrts.join_columns(test_positivity_results.test_positivity, replace=True)
+        return mrts.drop_column_if_present(CommonFields.TEST_POSITIVITY).join_columns(
+            test_positivity_results.test_positivity
+        )
