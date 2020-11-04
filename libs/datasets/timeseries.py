@@ -421,13 +421,6 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         _add_fips_if_missing(data_copy)
         return data_copy.set_index(CommonFields.LOCATION_ID)
 
-    @property
-    def combined_df(self) -> pd.DataFrame:
-        """"A DataFrame with timeseries data and latest data (with DATE=NaT) together."""
-        return pd.concat(
-            [self.data_with_fips, self.latest_data_with_fips.reset_index()], ignore_index=True
-        )
-
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         return MultiRegionTimeseriesDataset.from_csv(path_or_buf)
@@ -676,7 +669,10 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         Args:
             path: Path to write to.
         """
-        combined = self.combined_df
+        # A DataFrame with timeseries data and latest data (with DATE=NaT) together
+        combined = pd.concat(
+            [self.data_with_fips, self.latest_data_with_fips.reset_index()], ignore_index=True
+        )
         assert combined[CommonFields.LOCATION_ID].notna().all()
         common_df.write_csv(
             combined, path, structlog.get_logger(), [CommonFields.LOCATION_ID, CommonFields.DATE]
