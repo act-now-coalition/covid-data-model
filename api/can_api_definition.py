@@ -81,6 +81,7 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
 
     HHSTesting = "HHSTesting"
     VALORUM = "Valorum"
+    COVID_TRACKING = "covid_tracking"
     OTHER = "other"
 
 
