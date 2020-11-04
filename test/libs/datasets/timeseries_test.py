@@ -611,20 +611,23 @@ def _build_one_column_multiregion_dataset(
 ):
 
     dates = pd.date_range(start_date, periods=len(values), freq="D")
-    rows = []
+    ts_rows = []
 
     for i, value in enumerate(values):
-        rows.append({CommonFields.LOCATION_ID: location_id, "date": dates[i], column: value})
+        ts_rows.append({CommonFields.LOCATION_ID: location_id, "date": dates[i], column: value})
+    timeseries_df = pd.DataFrame(ts_rows)
 
     # Find last non nan value, which simulates building the latest value entry
     for value in reversed(values):
         if not pd.isna(value) and value is not None:
             break
+    latest_df = pd.DataFrame(
+        [{CommonFields.LOCATION_ID: location_id, "date": pd.NaT, column: value}]
+    )
 
-    rows.append({CommonFields.LOCATION_ID: location_id, "date": pd.NaT, column: value})
-
-    df = pd.DataFrame(rows)
-    return timeseries.MultiRegionTimeseriesDataset.from_combined_dataframe(df)
+    return timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(
+        timeseries_df
+    ).append_latest_df(latest_df)
 
 
 def test_remove_outliers():
