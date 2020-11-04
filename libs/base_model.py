@@ -12,6 +12,9 @@ class APIBaseModel(pydantic.BaseModel):
     class Config:
         json_dumps = _nan_safe_json_dumps
 
+        # TODO(tom): Try fix all the errors when this is extra is `forbid`
+        extra = pydantic.Extra.ignore
+
         @staticmethod
         def schema_extra(schema, model):
             # Updating json schema output to respect optional typed fields.
