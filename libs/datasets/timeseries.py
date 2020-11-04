@@ -589,22 +589,17 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def append_regions(
         self, other: "MultiRegionTimeseriesDataset"
     ) -> "MultiRegionTimeseriesDataset":
+        timeseries_df = pd.concat([self.data, other.data], ignore_index=True)
+        latest_df = pd.concat(
+            [self.latest_data.reset_index(), other.latest_data.reset_index()], ignore_index=True,
+        )
+        provenance_df = pd.concat(
+            [self.provenance.reset_index(), other.provenance.reset_index()], ignore_index=True,
+        )
         return (
-            MultiRegionTimeseriesDataset.from_timeseries_df(
-                pd.concat([self.data, other.data], ignore_index=True)
-            )
-            .append_latest_df(
-                pd.concat(
-                    [self.latest_data.reset_index(), other.latest_data.reset_index()],
-                    ignore_index=True,
-                )
-            )
-            .append_provenance_df(
-                pd.concat(
-                    [self.provenance.reset_index(), other.provenance.reset_index()],
-                    ignore_index=True,
-                )
-            )
+            MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
+            .append_latest_df(latest_df)
+            .append_provenance_df(provenance_df)
         )
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
