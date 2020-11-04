@@ -1,5 +1,7 @@
 from typing import List, Optional
 import enum
+
+from api.can_api_definition import TestPositivityRatioDetails
 from libs.datasets.dataset_utils import AggregationLevel
 from api import can_api_definition
 from libs import base_model
@@ -76,6 +78,7 @@ class Metrics(base_model.APIBaseModel):
         ...,
         description="Ratio of people who test positive calculated using a 7-day rolling average.",
     )
+    testPositivityRatioDetails: Optional[TestPositivityRatioDetails] = pydantic.Field(None)
 
     caseDensity: Optional[float] = pydantic.Field(
         ...,
