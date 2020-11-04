@@ -127,7 +127,7 @@ def generate_metrics_and_latest(
         return [], None
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, rt_data, icu_data
+        timeseries, rt_data, icu_data, structlog.get_logger()
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]

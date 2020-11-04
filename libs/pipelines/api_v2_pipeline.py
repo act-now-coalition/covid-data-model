@@ -114,6 +114,7 @@ def generate_metrics_and_latest(
     timeseries: OneRegionTimeseriesDataset,
     rt_data: Optional[OneRegionTimeseriesDataset],
     icu_data: Optional[OneRegionTimeseriesDataset],
+    log,
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
     Build metrics with timeseries.
@@ -131,7 +132,7 @@ def generate_metrics_and_latest(
         return [], Metrics.empty()
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, rt_data, icu_data
+        timeseries, rt_data, icu_data, log
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
@@ -149,12 +150,13 @@ def build_timeseries_for_region(
 
     Returns: Summary with timeseries for region.
     """
+    log = structlog.get_logger(location_id=regional_input.region.location_id)
     fips_latest = regional_input.latest
 
     try:
         fips_timeseries = regional_input.timeseries
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
-            fips_timeseries, regional_input.rt_data, regional_input.icu_data
+            fips_timeseries, regional_input.rt_data, regional_input.icu_data, log
         )
         risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
         region_summary = build_api_v2.build_region_summary(
@@ -164,7 +166,7 @@ def build_timeseries_for_region(
             region_summary, fips_timeseries, metrics_timeseries
         )
     except Exception:
-        logger.exception(f"Failed to build timeseries for fips.")
+        log.exception(f"Failed to build timeseries for fips.")
         return None
 
     return region_timeseries

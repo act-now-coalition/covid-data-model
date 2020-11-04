@@ -85,6 +85,12 @@ class StatePipeline:
         return StatePipeline(region=region, infer_df=infer_df, icu_data=icu_data)
 
 
+def _build_region_pipeline_input(region: pipeline.Region):
+    return SubStateRegionPipelineInput(
+        region=region, regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
+    )
+
+
 @dataclass
 class SubStateRegionPipelineInput:
     region: pipeline.Region
@@ -106,14 +112,8 @@ class SubStateRegionPipelineInput:
                     states=states,
                 )
             }
-        pipeline_inputs = [
-            SubStateRegionPipelineInput(
-                region=region,
-                regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
-            )
-            for region in regions
-        ]
-        return pipeline_inputs
+        pipeline_inputs = parallel_utils.parallel_map(_build_region_pipeline_input, regions)
+        return list(pipeline_inputs)
 
 
 @dataclass
