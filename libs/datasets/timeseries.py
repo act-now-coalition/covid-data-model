@@ -375,6 +375,7 @@ def _index_latest_df(
 # unrelated objects sharing common objects.
 _EMPTY_PROVENANCE_SERIES = pd.Series(
     [],
+    name=PdFields.PROVENANCE,
     dtype="str",
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
 )
@@ -548,6 +549,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
                 lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
             )
             provenance.index.rename([CommonFields.LOCATION_ID, PdFields.VARIABLE], inplace=True)
+            provenance.rename(PdFields.PROVENANCE, inplace=True)
         else:
             provenance = None
 
@@ -567,6 +569,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
         assert isinstance(self.provenance, pd.Series)
         assert self.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        assert self.provenance.name == PdFields.PROVENANCE
 
     def append_regions(
         self, other: "MultiRegionTimeseriesDataset"
