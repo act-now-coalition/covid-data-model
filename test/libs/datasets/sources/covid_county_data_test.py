@@ -14,9 +14,9 @@ pytestmark = pytest.mark.filterwarnings("error")
 
 def test_fix_tests_and_cases():
     df = read_csv_and_index_fips_date(
-        "fips,date,negative_tests,positive_tests,total_tests,cases\n"
-        "97123,2020-04-01,9,1,10,1\n"
-        "97123,2020-04-02,,,20,2\n"
+        "fips,state,date,negative_tests,positive_tests,total_tests,cases\n"
+        "97123,,2020-04-01,9,1,10,1\n"
+        "97123,,2020-04-02,,,20,2\n"
     ).reset_index()
 
     result_df, provenance = CovidCountyDataDataSource.synthesize_test_metrics(df)
@@ -43,9 +43,9 @@ def test_fix_tests_and_cases():
 
 def test_fix_missing_neg():
     df = read_csv_and_index_fips_date(
-        "fips,date,negative_tests,positive_tests,total_tests,cases\n"
-        "97123,2020-04-01,9,1,10,1\n"
-        "97123,2020-04-02,,3,20,2\n"
+        "fips,state,date,negative_tests,positive_tests,total_tests,cases\n"
+        "97123,,2020-04-01,9,1,10,1\n"
+        "97123,,2020-04-02,,3,20,2\n"
     ).reset_index()
 
     result_df, provenance = CovidCountyDataDataSource.synthesize_test_metrics(df)
@@ -72,10 +72,10 @@ def test_fix_missing_neg():
 
 def test_fix_missing_pos():
     df = read_csv_and_index_fips_date(
-        "fips,date,negative_tests,positive_tests,total_tests,cases\n"
-        "97123,2020-04-01,9,1,10,1\n"
-        "97123,2020-04-02,17,,20,2\n"
-        "97123,2020-04-03,26,4,30,4\n"
+        "fips,state,date,negative_tests,positive_tests,total_tests,cases\n"
+        "97123,,2020-04-01,9,1,10,1\n"
+        "97123,,2020-04-02,17,,20,2\n"
+        "97123,,2020-04-03,26,4,30,4\n"
     ).reset_index()
 
     result_df, provenance = CovidCountyDataDataSource.synthesize_test_metrics(df)

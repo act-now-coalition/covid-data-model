@@ -23,7 +23,8 @@ CONTACT_TRACERS_PER_CASE = 5
 RT_TRUNCATION_DAYS = 7
 
 
-MAX_METRIC_LOOKBACK_DAYS = 7
+# CMS and HHS testing data can both lag by more than 7 days. Let's use it unless it's 2 weeks old.
+MAX_METRIC_LOOKBACK_DAYS = 13
 
 
 EMPTY_TS = pd.Series([], dtype="float64")

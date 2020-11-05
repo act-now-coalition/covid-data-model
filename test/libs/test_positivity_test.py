@@ -7,7 +7,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets import timeseries
 from libs.test_positivity import AllMethods
-from libs.test_positivity import Method
+from libs.test_positivity import DivisionMethod
 from libs import test_positivity
 from test.libs.datasets.timeseries_test import assert_dataset_like
 
@@ -35,8 +35,8 @@ def test_basic():
         )
     )
     methods = [
-        Method("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
     all_methods = AllMethods.run(ts, methods, 3, 14)
 
@@ -88,8 +88,8 @@ def test_recent_days():
         )
     )
     methods = [
-        Method("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
     all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=2)
 
@@ -149,9 +149,11 @@ def test_missing_column_for_one_method():
         )
     )
     methods = [
-        Method("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
-        Method("method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL),
+        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod(
+            "method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL
+        ),
     ]
     assert (
         AllMethods.run(ts, methods, diff_days=1, recent_days=4)
@@ -172,9 +174,11 @@ def test_missing_columns_for_all_tests():
         )
     )
     methods = [
-        Method("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
-        Method("method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL),
+        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod(
+            "method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL
+        ),
     ]
     with pytest.raises(test_positivity.NoMethodsWithRelevantColumns):
         AllMethods.run(ts, methods, diff_days=1, recent_days=4)
@@ -195,7 +199,7 @@ def test_column_present_with_no_data():
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
     ts = timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(ts_df)
     methods = [
-        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
     with pytest.raises(test_positivity.NoColumnsWithDataException):
         AllMethods.run(ts, methods, diff_days=1, recent_days=1)
@@ -216,7 +220,7 @@ def test_all_columns_na():
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
     ts = timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(ts_df)
     methods = [
-        Method("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
     with pytest.raises(test_positivity.NoRealTimeseriesValuesException):
         AllMethods.run(ts, methods, diff_days=1, recent_days=1)
