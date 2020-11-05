@@ -15,7 +15,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 from pyseir import DATA_DIR
 
 logger = structlog.get_logger()
@@ -203,7 +202,9 @@ def _get_data_for_icu_calc(
         CommonFields.DEATHS,
         CommonFields.CURRENT_ICU,
         CommonFields.CURRENT_HOSPITALIZED,
-    ] + TimeseriesDataset.INDEX_FIELDS
+        CommonFields.DATE,
+        CommonFields.LOCATION_ID,
+    ]
 
     this_level_df = regional_combined_data.get_subset(
         after=lookback_date, columns=COLUMNS

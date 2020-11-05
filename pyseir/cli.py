@@ -17,7 +17,6 @@ from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir.rt import infer_rt
@@ -31,6 +30,7 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."
 
 root = logging.getLogger()
 
+DEFAULT_RUN_MODE = "can-inference-derived"
 ALL_STATES: List[str] = [state_obj.abbr for state_obj in us.STATES] + ["PR"]
 
 
@@ -57,35 +57,66 @@ def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeli
         return [pipeline.Region.from_state(s) for s in default]
 
 
+@dataclass
+class StatePipeline:
+    """Runs the pipeline for one state and stores the output."""
+
+    region: pipeline.Region
+    # infer_df provides support for the infection rate result.
+    # TODO(tom): Rename when not refactoring it.
+    infer_df: pd.DataFrame
+
+    icu_data: OneRegionTimeseriesDataset
+
+    @staticmethod
+    def run(region: pipeline.Region) -> "StatePipeline":
+        assert region.is_state()
+        infer_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
+
+        # Run ICU adjustment
+        icu_input = infer_icu.RegionalInput.from_regional_data(
+            combined_datasets.RegionalData.from_region(region)
+        )
+        icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+            icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+        )
+
+        return StatePipeline(region=region, infer_df=infer_df, icu_data=icu_data)
+
+
 def _build_region_pipeline_input(region: pipeline.Region):
-    return RegionPipelineInput(
+    return SubStateRegionPipelineInput(
         region=region, regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
     )
 
 
 @dataclass
-class RegionPipelineInput:
+class SubStateRegionPipelineInput:
     region: pipeline.Region
     regional_combined_dataset: combined_datasets.RegionalData
 
     @staticmethod
     def build_all(
-        fips: Optional[str] = None,
-        states: Optional[List[str]] = None,
-        level: AggregationLevel = None,
-    ) -> List["RegionPipelineInput"]:
+        fips: Optional[str] = None, states: Optional[List[str]] = None,
+    ) -> List["SubStateRegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        us_timeseries = combined_datasets.load_us_timeseries_dataset()
-        regions = us_timeseries.iter_regions(
-            fips=fips, level=level, exclude_county_999=True, states=states,
-        )
+        if fips:  # A single Fips string was passed as a flag. Just run for that fips.
+            regions = {pipeline.Region.from_fips(fips)}
+        else:  # Default to all counties
+            regions = {
+                *combined_datasets.get_subset_regions(
+                    aggregation_level=AggregationLevel.COUNTY,
+                    exclude_county_999=True,
+                    states=states,
+                )
+            }
         pipeline_inputs = parallel_utils.parallel_map(_build_region_pipeline_input, regions)
         return list(pipeline_inputs)
 
 
 @dataclass
-class RegionPipeline:
+class SubStatePipeline:
     """Runs the pipeline for one region smaller than a state and stores the output."""
 
     region: pipeline.Region
@@ -94,7 +125,8 @@ class RegionPipeline:
     _combined_data: combined_datasets.RegionalData
 
     @staticmethod
-    def run(input: RegionPipelineInput) -> "RegionPipeline":
+    def run(input: SubStateRegionPipelineInput) -> "SubStatePipeline":
+        assert not input.region.is_state()
         # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
         # infection_rate.
         infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
@@ -110,41 +142,38 @@ class RegionPipeline:
             icu_data = infer_icu.get_icu_timeseries_from_regional_input(
                 icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
             )
-        except Exception:
+        except KeyError:
             icu_data = None
             root.exception(f"Failed to run icu data for {input.region}")
 
-        return RegionPipeline(
+        return SubStatePipeline(
             region=input.region,
             infer_df=infer_df,
             icu_data=icu_data,
             _combined_data=input.regional_combined_dataset,
         )
 
-    @property
-    def fips(self) -> str:
-        return self.region.fips
-
     def population(self) -> float:
         return self._combined_data.latest[CommonFields.POPULATION]
 
 
-def _patch_nola_infection_rate_in_pipelines(
-    pipelines: List[RegionPipeline],
-) -> List[RegionPipeline]:
+def _patch_substatepipeline_nola_infection_rate(
+    pipelines: List[SubStatePipeline],
+) -> List[SubStatePipeline]:
     """Returns a new list of pipeline objects with New Orleans infection rate patched."""
-    pipeline_map = {p.fips: p for p in pipelines}
+    pipeline_map = {p.region: p for p in pipelines}
 
-    input_fips = set(pipeline_map.keys())
-    fips_to_patch = input_fips & set(NEW_ORLEANS_FIPS)
-    if fips_to_patch:
+    input_regions = set(pipeline_map.keys())
+    new_orleans_regions = set(pipeline.Region.from_fips(f) for f in NEW_ORLEANS_FIPS)
+    regions_to_patch = input_regions & new_orleans_regions
+    if regions_to_patch:
         root.info("Applying New Orleans Patch")
-        if len(fips_to_patch) != len(NEW_ORLEANS_FIPS):
+        if len(regions_to_patch) != len(new_orleans_regions):
             root.warning(
-                f"Missing New Orleans counties break patch: {set(NEW_ORLEANS_FIPS) - input_fips}"
+                f"Missing New Orleans counties break patch: {new_orleans_regions - input_regions}"
             )
 
-        nola_input_pipelines = [pipeline_map[fips] for fips in fips_to_patch]
+        nola_input_pipelines = [pipeline_map[fips] for fips in regions_to_patch]
         infection_rate_map = {p.region: p.infer_df for p in nola_input_pipelines}
         population_map = {p.region: p.population() for p in nola_input_pipelines}
 
@@ -153,66 +182,60 @@ def _patch_nola_infection_rate_in_pipelines(
             infection_rate_map, population_map
         )
 
-        for fips in fips_to_patch:
+        for region in regions_to_patch:
             this_fips_infection_rate = nola_infection_rate.copy()
-            this_fips_infection_rate.insert(0, CommonFields.FIPS, fips)
-            # Make a new RegionPipeline object with the new infer_df
-            pipeline_map[fips] = dataclasses.replace(
-                pipeline_map[fips], infer_df=this_fips_infection_rate,
+            this_fips_infection_rate.insert(0, CommonFields.LOCATION_ID, region.location_id)
+            # Make a new SubStatePipeline object with the new infer_df
+            pipeline_map[region] = dataclasses.replace(
+                pipeline_map[region], infer_df=this_fips_infection_rate,
             )
 
     return list(pipeline_map.values())
 
 
 def _write_pipeline_output(
-    pipelines: List[RegionPipeline], output_dir: str,
+    pipelines: List[Union[SubStatePipeline, StatePipeline]], output_dir: str,
 ):
     output_dir_path = pathlib.Path(output_dir)
     if not output_dir_path.exists():
         output_dir_path.mkdir()
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-    print(infection_rate_metric_df[infection_rate_metric_df.location_id.isna()])
-    infection_rate_metric_df = infection_rate_metric_df.loc[
-        infection_rate_metric_df.location_id.notna()
-    ]
-
-    timeseries_dataset = TimeseriesDataset(infection_rate_metric_df)
-    latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
-    multiregion_rt = MultiRegionTimeseriesDataset(infection_rate_metric_df, latest)
+    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_df(infection_rate_metric_df)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
     icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-    timeseries_dataset = TimeseriesDataset(icu_df)
-    latest = timeseries_dataset.latest_values_object().data.set_index(CommonFields.LOCATION_ID)
-    multiregion_icu = MultiRegionTimeseriesDataset(icu_df, latest)
-
+    multiregion_icu = MultiRegionTimeseriesDataset.from_timeseries_df(icu_df)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving ICU results to {output_path}")
 
 
-def _run_on_all_regions(
-    states: List[str] = None, states_only: bool = False, fips: Optional[str] = None,
-) -> List[RegionPipeline]:
+def _build_all_for_states(
+    states: List[str], states_only=False, fips: Optional[str] = None,
+) -> List[Union[StatePipeline, SubStatePipeline]]:
     # prepare data
     _cache_global_datasets()
 
-    level = None
+    # do everything for just states in parallel
+    states_regions = [pipeline.Region.from_state(s) for s in states]
+    state_pipelines: List[StatePipeline] = list(
+        parallel_utils.parallel_map(StatePipeline.run, states_regions)
+    )
 
     if states_only:
-        level = AggregationLevel.STATE
+        return state_pipelines
 
-    region_inputs = RegionPipelineInput.build_all(fips=fips, states=states, level=level)
+    substate_inputs = SubStateRegionPipelineInput.build_all(fips=fips, states=states)
 
-    root.info(f"Executing pipeline for {len(region_inputs)} regions")
-    region_pipelines = parallel_utils.parallel_map(RegionPipeline.run, region_inputs)
+    root.info(f"executing pipeline for {len(substate_inputs)} counties")
+    substate_pipelines = parallel_utils.parallel_map(SubStatePipeline.run, substate_inputs)
 
-    region_pipelines = _patch_nola_infection_rate_in_pipelines(region_pipelines)
+    substate_pipelines = _patch_substatepipeline_nola_infection_rate(substate_pipelines)
 
-    return region_pipelines
+    return state_pipelines + substate_pipelines
 
 
 @entry_point.command()
@@ -254,13 +277,13 @@ def build_all(states, output_dir, states_only, fips):
     states = [c.strip() for c in states]
     states = [us.states.lookup(state).abbr for state in states]
     states = [state for state in states if state in ALL_STATES]
-
-    if not states:
+    if not len(states):
         states = ALL_STATES
-    states = []
 
-    pipelines = _run_on_all_regions(states=states, states_only=states_only, fips=fips)
-    _write_pipeline_output(pipelines, output_dir)
+    pipelines = _build_all_for_states(states, states_only=states_only, fips=fips,)
+    _write_pipeline_output(
+        pipelines, output_dir,
+    )
 
 
 if __name__ == "__main__":

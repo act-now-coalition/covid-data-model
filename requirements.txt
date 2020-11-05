@@ -49,3 +49,6 @@ xlrd==1.2.0  # For panda's read_excel method
 # By default, installs from local directory, but when copying this
 # to binder/requirements.txt, uncomment the following line.
 # -e git://github.com/covid-projections/covid-data-public.git#egg=covidactnow
+
+# Dependencies recommended by pandas for better performance
+numexpr==2.7.1

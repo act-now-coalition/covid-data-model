@@ -43,7 +43,9 @@ def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
         )
     )
 
-    regional_data = regional_data.join_columns(empty_test_positivity)
+    regional_data = regional_data.drop_column_if_present(CommonFields.TEST_POSITIVITY).join_columns(
+        empty_test_positivity
+    )
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
         region, regional_data, rt_dataset, icu_dataset
     )
@@ -52,6 +54,8 @@ def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
 def test_build_timeseries_and_summary_outputs(nyc_regional_input):
     timeseries = api_v2_pipeline.build_timeseries_for_region(nyc_regional_input)
     assert timeseries
+    assert timeseries.riskLevels.testPositivityRatio
+    assert timeseries.metrics.testPositivityRatioDetails.source
 
 
 def test_build_timeseries_and_summary_outputs_for_il_state(il_regional_input):

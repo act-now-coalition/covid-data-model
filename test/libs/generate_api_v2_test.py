@@ -1,6 +1,7 @@
 import datetime
 
 import pytest
+import structlog
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import RegionSummary
@@ -14,7 +15,7 @@ from libs.pipelines import api_v2_pipeline
     "include_model_output,rt_null", [(True, True), (True, False), (False, False)]
 )
 def test_build_summary_for_fips(
-    include_model_output, rt_null, nyc_region, nyc_icu_dataset, nyc_rt_dataset
+    include_model_output: bool, rt_null: bool, nyc_region, nyc_icu_dataset, nyc_rt_dataset
 ):
     us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
@@ -31,7 +32,7 @@ def test_build_summary_for_fips(
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
 
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
-        fips_timeseries, nyc_rt_dataset, nyc_icu_dataset
+        fips_timeseries, nyc_rt_dataset, nyc_icu_dataset, structlog.get_logger()
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
@@ -81,7 +82,7 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
     nyc_latest = us_latest.get_record_for_fips(nyc_region.fips)
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
-        nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset
+        nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset, structlog.get_logger()
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
 

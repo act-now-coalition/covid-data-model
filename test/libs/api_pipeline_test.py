@@ -1,8 +1,11 @@
 import pytest
+from covidactnow.datapublic.common_fields import CommonFields
+
 from libs.enums import Intervention
 from libs.pipelines import api_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+import pandas as pd
 
 
 @pytest.mark.slow
@@ -59,8 +62,7 @@ def test_output_no_timeseries_rows(nyc_region, rt_dataset, icu_dataset):
     )
 
     # Creating a new regional input with an empty timeseries dataset
-    timeseries = regional_input.timeseries
-    timeseries_data = timeseries.data.loc[timeseries.data.fips.isna()]
+    timeseries_data = pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     regional_data = combined_datasets.RegionalData(
         regional_input.region, OneRegionTimeseriesDataset(timeseries_data, regional_input.latest),
     )

@@ -9,6 +9,7 @@ import numpy as np
 import numba
 import math
 import pandas as pd
+from covidactnow.datapublic.common_fields import CommonFields
 from scipy import stats as sps
 from matplotlib import pyplot as plt
 
@@ -195,7 +196,6 @@ def filter_and_smooth_input_data(
     plt.xticks(rotation=30)
     plt.xlim(min(dates[-len(cases) :]), max(dates) + timedelta(days=2))
 
-    return smoothed
     if not figure_collector:
         plot_path = pyseir.utils.get_run_artifact_path(region, RunArtifact.RT_SMOOTHING_REPORT)
         plt.savefig(plot_path, bbox_inches="tight")
@@ -350,9 +350,7 @@ class RtInferenceEngine:
 
         Parameters
         ----------
-        ----------
-        timeseries_type: TimeseriesType
-            New X per day (cases).
+        timeseries: New X per day (cases).
         plot: bool
             If True, plot a cool looking est of posteriors.
 
@@ -580,7 +578,7 @@ class RtInferenceEngine:
                 / np.power(suppression, self.tail_suppression_correction / 2)
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
-        if plot and False:
+        if plot:
             fig = plotting.plot_rt(df=df_all, display_name=self.display_name)
             if self.figure_collector is None:
                 output_path = pyseir.utils.get_run_artifact_path(
@@ -593,6 +591,5 @@ class RtInferenceEngine:
             self.log.warning("Inference not possible")
         else:
             df_all = df_all.reset_index(drop=False)  # Move date to column from index to column
-            df_all["fips"] = self.regional_input.region.fips
-            df_all["location_id"] = self.regional_input.region.location_id
+            df_all[CommonFields.LOCATION_ID] = self.regional_input.region.location_id
         return df_all
