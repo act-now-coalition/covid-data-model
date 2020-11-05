@@ -130,6 +130,30 @@
         "county"
       ]
     },
+    "TestPositivityRatioMethod": {
+      "title": "TestPositivityRatioMethod",
+      "description": "Method used to determine test positivity ratio.",
+      "enum": [
+        "CMSTesting",
+        "HHSTesting",
+        "Valorum",
+        "covid_tracking",
+        "other"
+      ]
+    },
+    "TestPositivityRatioDetails": {
+      "title": "TestPositivityRatioDetails",
+      "description": "Details about how the test positivity ratio was calculated.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/definitions/TestPositivityRatioMethod"
+        }
+      },
+      "required": [
+        "source"
+      ]
+    },
     "CovidPatientsMethod": {
       "title": "CovidPatientsMethod",
       "description": "Method used to determine number of current ICU patients with covid.",
@@ -192,6 +216,9 @@
               "type": "null"
             }
           ]
+        },
+        "testPositivityRatioDetails": {
+          "$ref": "#/definitions/TestPositivityRatioDetails"
         },
         "caseDensity": {
           "title": "Casedensity",
@@ -493,6 +520,9 @@
               "type": "null"
             }
           ]
+        },
+        "testPositivityRatioDetails": {
+          "$ref": "#/definitions/TestPositivityRatioDetails"
         },
         "caseDensity": {
           "title": "Casedensity",

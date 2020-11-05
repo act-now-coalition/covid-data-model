@@ -161,7 +161,7 @@ def calculate_new_case_data_by_region(
     assert region_timeseries.has_one_region()
     columns = [CommonFields.NEW_CASES, CommonFields.DEATHS]
     county_case_timeseries = region_timeseries.get_subset(
-        columns=([CommonFields.DATE] + columns)
+        columns=([CommonFields.LOCATION_ID, CommonFields.DATE] + columns)
     ).remove_padded_nans(columns)
     county_case_data = county_case_timeseries.data
 

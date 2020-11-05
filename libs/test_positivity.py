@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import dataclasses
 import pathlib
 from itertools import chain
@@ -21,35 +22,84 @@ from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 _log = structlog.get_logger()
 
 
-@dataclasses.dataclass
-class Method:
+class Method(ABC):
     """A method of calculating test positivity"""
 
-    name: str
-    numerator: FieldName
-    denominator: FieldName
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        pass
 
     @property
+    @abstractmethod
     def columns(self) -> Set[FieldName]:
-        return {self.numerator, self.denominator}
+        pass
 
-    def calculate(self, delta_df: pd.DataFrame) -> pd.DataFrame:
+    @abstractmethod
+    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> pd.DataFrame:
         """Calculate a DataFrame with LOCATION_ID index and DATE columns.
 
         Args:
-            delta_df: DataFrame with rows having MultiIndex of [VARIABLE, LOCATION_ID] and columns with DATE
+            df: DataFrame with rows having MultiIndex of [VARIABLE, LOCATION_ID] and columns with DATE
                 index. Must contain at least one real value for each of self.columns.
+            delta_df: DataFrame with rows having MultiIndex of [VARIABLE, LOCATION_ID] and columns with DATE
+                index. Values are 7-day deltas. Must contain at least one real value for each of self.columns.
         """
+        pass
+
+
+@dataclasses.dataclass
+class DivisionMethod(Method):
+    """A method of calculating test positivity by dividing a numerator by a denominator"""
+
+    _name: str
+    _numerator: FieldName
+    _denominator: FieldName
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def columns(self) -> Set[FieldName]:
+        return {self._numerator, self._denominator}
+
+    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> pd.DataFrame:
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
-        return delta_df.loc[self.numerator, :] / delta_df.loc[self.denominator, :]
+        return delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
+
+
+@dataclasses.dataclass
+class PassThruMethod(Method):
+    """A method of calculating test positivity by passing through a column directly"""
+
+    _name: str
+    _column: FieldName
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def columns(self) -> Set[FieldName]:
+        return {self._column}
+
+    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> pd.DataFrame:
+        assert df.columns.names == [CommonFields.DATE]
+        assert df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+        # df has the field name as the first level of the index. delta_df.loc[field, :] returns a
+        # DataFrame without the field label
+        return df.loc[self._column, :]
 
 
 TEST_POSITIVITY_METHODS = (
-    Method(
+    # HACK: For now we assume TEST_POSITIVITY came from CMS and use that as the name that gets plumbed into provenance.
+    PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY),
+    DivisionMethod(
         "positiveTestsViral_totalTestsViral",
         CommonFields.POSITIVE_TESTS_VIRAL,
         CommonFields.TOTAL_TESTS_VIRAL,
@@ -115,19 +165,23 @@ class AllMethods:
             .reindex(columns=input_date_range)
             .rename_axis(columns=CommonFields.DATE)
         )
-        # This calculates the difference only when the cumulative value is a real value `diff_days` apart.
-        # It looks like our input data has few or no holes so this works well enough.
-        diff_df = input_wide.diff(periods=diff_days, axis=1)
 
         methods_with_data = AllMethods._methods_with_columns_available(
-            methods, diff_df.index.get_level_values(PdFields.VARIABLE).unique()
+            methods, input_wide.index.get_level_values(PdFields.VARIABLE).unique()
         )
         if not methods_with_data:
             raise NoColumnsWithDataException()
 
+        # This calculates the difference only when the cumulative value is a real value `diff_days` apart.
+        # It looks like our input data has few or no holes so this works well enough.
+        diff_df = input_wide.diff(periods=diff_days, axis=1)
+
         all_wide = (
             pd.concat(
-                {method.name: method.calculate(diff_df) for method in methods_with_data},
+                {
+                    method.name: method.calculate(input_wide, diff_df)
+                    for method in methods_with_data
+                },
                 names=[PdFields.VARIABLE],
             )
             .reorder_levels([CommonFields.LOCATION_ID, PdFields.VARIABLE])
@@ -188,4 +242,7 @@ def run_and_maybe_join_columns(
         log.exception("test_positivity failed")
         return mrts
     else:
-        return mrts.join_columns(test_positivity_results.test_positivity)
+        # We overwrite the test_positivity column if it exists.
+        return mrts.drop_column_if_present(CommonFields.TEST_POSITIVITY).join_columns(
+            test_positivity_results.test_positivity
+        )

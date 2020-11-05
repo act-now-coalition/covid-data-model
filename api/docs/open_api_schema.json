@@ -667,6 +667,30 @@
         },
         "description": "Known actuals data."
       },
+      "TestPositivityRatioMethod": {
+        "title": "TestPositivityRatioMethod",
+        "enum": [
+          "CMSTesting",
+          "HHSTesting",
+          "Valorum",
+          "covid_tracking",
+          "other"
+        ],
+        "description": "Method used to determine test positivity ratio."
+      },
+      "TestPositivityRatioDetails": {
+        "title": "TestPositivityRatioDetails",
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/TestPositivityRatioMethod"
+          }
+        },
+        "description": "Details about how the test positivity ratio was calculated."
+      },
       "CovidPatientsMethod": {
         "title": "CovidPatientsMethod",
         "enum": [
@@ -736,6 +760,9 @@
               }
             ],
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
+          },
+          "testPositivityRatioDetails": {
+            "$ref": "#/components/schemas/TestPositivityRatioDetails"
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1086,6 +1113,9 @@
               }
             ],
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
+          },
+          "testPositivityRatioDetails": {
+            "$ref": "#/components/schemas/TestPositivityRatioDetails"
           },
           "caseDensity": {
             "title": "Casedensity",
