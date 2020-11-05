@@ -16,7 +16,7 @@ def test_pyseir_end_to_end_idaho(tmp_path):
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
         fips = "16001"
         region = Region.from_fips(fips)
-        pipelines = cli._build_all_for_states(states=["ID"], fips=fips)
+        pipelines = cli._run_on_all_regions(states=["ID"], fips=fips)
         cli._write_pipeline_output(pipelines, tmp_path)
 
         icu_data_path = tmp_path / SummaryArtifact.ICU_METRIC_COMBINED.value
@@ -35,7 +35,7 @@ def test_pyseir_end_to_end_dc(tmp_path):
     # a single fips.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
         region = Region.from_state("DC")
-        pipelines = cli._build_all_for_states(states=["DC"])
+        pipelines = cli._run_on_all_regions(states=["DC"])
         # Checking to make sure that build all for states properly filters and only
         # returns DC data
         assert len(pipelines) == 2
