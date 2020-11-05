@@ -255,7 +255,7 @@
           "200": {
             "description": "",
             "content": {
-              "application/json": {
+              "application/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
@@ -327,7 +327,7 @@
           "200": {
             "description": "",
             "content": {
-              "application/json": {
+              "application/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
                 }
@@ -399,7 +399,7 @@
           "200": {
             "description": "",
             "content": {
-              "application/json": {
+              "application/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
@@ -471,7 +471,7 @@
           "200": {
             "description": "",
             "content": {
-              "application/json": {
+              "application/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
                 }
@@ -569,7 +569,8 @@
           "negativeTests",
           "contactTracers",
           "hospitalBeds",
-          "icuBeds"
+          "icuBeds",
+          "newCases"
         ],
         "type": "object",
         "properties": {
@@ -650,9 +651,45 @@
               }
             ],
             "description": "Information about ICU bed utilization"
+          },
+          "newCases": {
+            "title": "Newcases",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n"
           }
         },
         "description": "Known actuals data."
+      },
+      "TestPositivityRatioMethod": {
+        "title": "TestPositivityRatioMethod",
+        "enum": [
+          "CMSTesting",
+          "HHSTesting",
+          "Valorum",
+          "covid_tracking",
+          "other"
+        ],
+        "description": "Method used to determine test positivity ratio."
+      },
+      "TestPositivityRatioDetails": {
+        "title": "TestPositivityRatioDetails",
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/TestPositivityRatioMethod"
+          }
+        },
+        "description": "Details about how the test positivity ratio was calculated."
       },
       "CovidPatientsMethod": {
         "title": "CovidPatientsMethod",
@@ -723,6 +760,9 @@
               }
             ],
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
+          },
+          "testPositivityRatioDetails": {
+            "$ref": "#/components/schemas/TestPositivityRatioDetails"
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -797,6 +837,7 @@
           "state",
           "county",
           "fips",
+          "locationId",
           "actuals",
           "metrics"
         ],
@@ -845,6 +886,11 @@
             "type": "number",
             "description": "Longitude of point within the state or county"
           },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
+          },
           "actuals": {
             "title": "Actuals",
             "allOf": [
@@ -883,6 +929,50 @@
         ],
         "description": "An enumeration."
       },
+      "RiskLevel": {
+        "title": "RiskLevel",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown"
+      },
+      "RiskLevels": {
+        "title": "RiskLevels",
+        "required": [
+          "overall",
+          "testPositivityRatio",
+          "caseDensity",
+          "contactTracerCapacityRatio",
+          "infectionRate",
+          "icuHeadroomRatio"
+        ],
+        "type": "object",
+        "properties": {
+          "overall": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "testPositivityRatio": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "caseDensity": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "contactTracerCapacityRatio": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "infectionRate": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "icuHeadroomRatio": {
+            "$ref": "#/components/schemas/RiskLevel"
+          }
+        },
+        "description": "COVID risk levels for a region."
+      },
       "RegionSummary": {
         "title": "RegionSummary",
         "required": [
@@ -892,9 +982,11 @@
           "county",
           "level",
           "lat",
+          "locationId",
           "long",
           "population",
           "metrics",
+          "riskLevels",
           "actuals",
           "lastUpdatedDate"
         ],
@@ -942,6 +1034,11 @@
             ],
             "description": "Latitude of point within the state or county"
           },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
+          },
           "long": {
             "title": "Long",
             "anyOf": [
@@ -961,14 +1058,16 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "anyOf": [
+            "$ref": "#/components/schemas/Metrics"
+          },
+          "riskLevels": {
+            "title": "Risklevels",
+            "allOf": [
               {
-                "$ref": "#/components/schemas/Metrics"
-              },
-              {
-                "type": "null"
+                "$ref": "#/components/schemas/RiskLevels"
               }
-            ]
+            ],
+            "description": "Risk levels for region."
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
@@ -1014,6 +1113,9 @@
               }
             ],
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
+          },
+          "testPositivityRatioDetails": {
+            "$ref": "#/components/schemas/TestPositivityRatioDetails"
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1096,6 +1198,7 @@
           "contactTracers",
           "hospitalBeds",
           "icuBeds",
+          "newCases",
           "date"
         ],
         "type": "object",
@@ -1178,6 +1281,18 @@
             ],
             "description": "Information about ICU bed utilization"
           },
+          "newCases": {
+            "title": "Newcases",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n"
+          },
           "date": {
             "title": "Date",
             "type": "string",
@@ -1196,9 +1311,11 @@
           "county",
           "level",
           "lat",
+          "locationId",
           "long",
           "population",
           "metrics",
+          "riskLevels",
           "actuals",
           "lastUpdatedDate",
           "actualsTimeseries"
@@ -1247,6 +1364,11 @@
             ],
             "description": "Latitude of point within the state or county"
           },
+          "locationId": {
+            "title": "Locationid",
+            "type": "string",
+            "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes"
+          },
           "long": {
             "title": "Long",
             "anyOf": [
@@ -1266,14 +1388,16 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "anyOf": [
+            "$ref": "#/components/schemas/Metrics"
+          },
+          "riskLevels": {
+            "title": "Risklevels",
+            "allOf": [
               {
-                "$ref": "#/components/schemas/Metrics"
-              },
-              {
-                "type": "null"
+                "$ref": "#/components/schemas/RiskLevels"
               }
-            ]
+            ],
+            "description": "Risk levels for region."
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"

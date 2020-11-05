@@ -21,10 +21,8 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 import pyseir.utils
 
-# from pyseir.utils import get_run_artifact_path, RunArtifact, ewma_smoothing
 
 log = logging.getLogger(__name__)
 
@@ -161,16 +159,18 @@ def calculate_new_case_data_by_region(
     """
     assert not region_timeseries.empty
     assert region_timeseries.has_one_region()
-    columns = [CommonFields.CASES, CommonFields.DEATHS]
+    columns = [CommonFields.NEW_CASES, CommonFields.DEATHS]
     county_case_timeseries = region_timeseries.get_subset(
-        columns=(TimeseriesDataset.INDEX_FIELDS + columns)
+        columns=([CommonFields.LOCATION_ID, CommonFields.DATE] + columns)
     ).remove_padded_nans(columns)
     county_case_data = county_case_timeseries.data
 
-    times_new = (county_case_data["date"] - t0).dt.days.iloc[1:]
-    observed_new_cases = (
-        county_case_data["cases"].values[1:] - county_case_data["cases"].values[:-1]
-    )
+    times_new = (county_case_data[CommonFields.DATE] - t0).dt.days.iloc[1:]
+
+    observed_new_cases = county_case_data[CommonFields.NEW_CASES]
+    # Converting to numpy and trimming off the first datapoint to match previous logic.
+    # TODO(chris): update logic to be a date indexed series so that this is not necesary.
+    observed_new_cases = observed_new_cases.to_numpy()[1:]
 
     if include_testing_correction:
         df_new_tests = calculate_new_test_data_by_region(
@@ -182,7 +182,8 @@ def calculate_new_case_data_by_region(
         observed_new_cases = df_cases["new_cases"].values
 
     observed_new_deaths = (
-        county_case_data["deaths"].values[1:] - county_case_data["deaths"].values[:-1]
+        county_case_data[CommonFields.DEATHS].values[1:]
+        - county_case_data[CommonFields.DEATHS].values[:-1]
     )
 
     # Clip because there are sometimes negatives either due to data reporting or

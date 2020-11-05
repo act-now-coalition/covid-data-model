@@ -41,6 +41,9 @@ env:
   # use a webhook to write to slack channel dev-alerts for QA
   SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
 
+  # Setting openblas threading to one to speed up numpy in multiprocessing.
+  OPENBLAS_NUM_THREADS: 1
+
 jobs:
   build-and-publish-snapshot:
     runs-on: self-hosted
@@ -103,7 +106,6 @@ jobs:
 
     - name: Build API (run.sh .. .. execute_api)
       run: |
-        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
         ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
 
     - name: make and copy to local tmp directory
@@ -114,7 +116,7 @@ jobs:
     - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
       uses: jakejarvis/s3-sync-action@master
       with:
-        args: --acl public-read --follow-symlinks --delete
+        args: --acl public-read --follow-symlinks
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -132,3 +134,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
+
+    - name: Trigger Label API if conditions are met (master branch, morning build, etc)
+      env:
+        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+      run: ./covid-data-model/tools/maybe-trigger-label-api.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}}

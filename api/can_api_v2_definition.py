@@ -1,4 +1,7 @@
 from typing import List, Optional
+import enum
+
+from api.can_api_definition import TestPositivityRatioDetails
 from libs.datasets.dataset_utils import AggregationLevel
 from api import can_api_definition
 from libs import base_model
@@ -45,6 +48,21 @@ class Actuals(base_model.APIBaseModel):
     icuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
         ..., description="Information about ICU bed utilization"
     )
+    newCases: Optional[int] = pydantic.Field(
+        ...,
+        description="""
+New confirmed or suspected cases.
+
+New cases are a processed timeseries of cases - summing new cases may not equal
+the cumulative case count.
+
+Notable exceptions:
+ 1. If a region does not report cases for a period of time, the first day
+    cases start reporting again will not be included. This day likely includes
+    multiple days worth of cases and can be misleading to the overall series.
+ 2. Any days with negative new cases are removed.
+""",
+    )
 
 
 class ActualsTimeseriesRow(Actuals):
@@ -60,6 +78,7 @@ class Metrics(base_model.APIBaseModel):
         ...,
         description="Ratio of people who test positive calculated using a 7-day rolling average.",
     )
+    testPositivityRatioDetails: Optional[TestPositivityRatioDetails] = pydantic.Field(None)
 
     caseDensity: Optional[float] = pydantic.Field(
         ...,
@@ -85,6 +104,56 @@ class Metrics(base_model.APIBaseModel):
     icuHeadroomRatio: Optional[float] = pydantic.Field(...)
     icuHeadroomDetails: can_api_definition.ICUHeadroomMetricDetails = pydantic.Field(None)
 
+    @staticmethod
+    def empty():
+        """Returns an empty Metrics object."""
+        return Metrics(
+            testPositivityRatio=None,
+            caseDensity=None,
+            contactTracerCapacityRatio=None,
+            infectionRate=None,
+            infectionRateCI90=None,
+            icuHeadroomRatio=None,
+        )
+
+
+@enum.unique
+class RiskLevel(enum.Enum):
+    """COVID Risk Level.
+
+## Risk Level Definitions
+ *Low* - On track to contain COVID
+ *Medium* - Slow disease growth
+ *High* - At risk of outbreak
+ *Critical* - Active or imminent outbreak
+ *Unknown* - Risk unknown
+"""
+
+    LOW = 0
+
+    MEDIUM = 1
+
+    HIGH = 2
+
+    CRITICAL = 3
+
+    UNKNOWN = 4
+
+
+class RiskLevels(base_model.APIBaseModel):
+    """COVID risk levels for a region."""
+
+    overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region.")
+    testPositivityRatio: RiskLevel = pydantic.Field(
+        ..., description="Test positivity ratio risk level."
+    )
+    caseDensity: RiskLevel = pydantic.Field(..., description="Case density risk level.")
+    contactTracerCapacityRatio: RiskLevel = pydantic.Field(
+        ..., description="Contact tracer capacity ratio risk level."
+    )
+    infectionRate: RiskLevel = pydantic.Field(..., description="Infection rate risk level.")
+    icuHeadroomRatio: RiskLevel = pydantic.Field(..., description="ICU headroom ratio risk level.")
+
 
 class MetricsTimeseriesRow(Metrics):
     """Metrics data for a specific day."""
@@ -107,6 +176,10 @@ class RegionSummary(base_model.APIBaseModel):
     lat: Optional[float] = pydantic.Field(
         ..., description="Latitude of point within the state or county"
     )
+    locationId: str = pydantic.Field(
+        ...,
+        description="Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
+    )
     long: Optional[float] = pydantic.Field(
         ..., description="Longitude of point within the state or county"
     )
@@ -114,7 +187,8 @@ class RegionSummary(base_model.APIBaseModel):
         ..., description="Total Population in geographic region.", gt=0
     )
 
-    metrics: Optional[Metrics] = pydantic.Field(...)
+    metrics: Metrics = pydantic.Field(...)
+    riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
     actuals: Actuals = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
@@ -165,6 +239,10 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     )
     lat: float = pydantic.Field(None, description="Latitude of point within the state or county")
     long: float = pydantic.Field(None, description="Longitude of point within the state or county")
+    locationId: str = pydantic.Field(
+        ...,
+        description="Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
+    )
     actuals: Optional[Actuals] = pydantic.Field(..., description="Actuals for given day")
     metrics: Optional[Metrics] = pydantic.Field(..., description="Metrics for given day")
 

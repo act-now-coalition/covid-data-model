@@ -1,22 +1,24 @@
 import logging
 import pathlib
-from typing import Optional
-
+import functools
 import click
+
 import us
 
 import pydantic
 import api
 from api import update_open_api_spec
-from api.can_api_definition import RegionSummaryWithTimeseries
-from api.can_api_definition import AggregateRegionSummaryWithTimeseries
+from libs import parallel_utils
+from libs import test_positivity
 from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.enums import Intervention
+from pyseir.utils import SummaryArtifact
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -119,6 +121,9 @@ def update_v2_schemas(api_output_path, schemas_output_dir):
 def generate_api(input_dir, output, summary_output, aggregation_level, state, fips):
     """The entry function for invocation"""
 
+    # Caching load of us timeseries dataset
+    combined_datasets.load_us_timeseries_dataset()
+
     active_states = [state.abbr for state in us.STATES]
     active_states = active_states + ["PR", "MP"]
     regions = combined_datasets.get_subset_regions(
@@ -129,12 +134,22 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
         states=active_states,
     )
 
+    icu_data_path = input_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
+    icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+    rt_data_path = input_dir / SummaryArtifact.RT_METRIC_COMBINED.value
+    rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
+
     for intervention in list(Intervention):
         _logger.info(f"Running intervention {intervention.name}")
-        regional_inputs = [
-            api_pipeline.RegionalInput.from_region_and_intervention(region, intervention, input_dir)
-            for region in regions
-        ]
+
+        _load_input = functools.partial(
+            api_pipeline.RegionalInput.from_region_and_intervention,
+            intervention=intervention,
+            rt_data=rt_data,
+            icu_data=icu_data,
+        )
+        regional_inputs = parallel_utils.parallel_map(_load_input, regions)
+
         _logger.info(f"Loaded {len(regional_inputs)} regions.")
         all_timeseries = api_pipeline.run_on_all_regional_inputs_for_intervention(regional_inputs)
         county_timeseries = [
@@ -145,6 +160,22 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
             output for output in all_timeseries if output.aggregate_level is AggregationLevel.STATE
         ]
         api_pipeline.deploy_single_level(intervention, state_timeseries, summary_output, output)
+
+
+@main.command()
+@click.option(
+    "--test-positivity-all-methods",
+    default="results/output/test-positivity.csv",
+    type=pathlib.Path,
+)
+def generate_test_positivity(test_positivity_all_methods: pathlib.Path):
+    active_states = [state.abbr for state in us.STATES]
+    active_states = active_states + ["PR", "MP"]
+    regions = combined_datasets.get_subset_regions(exclude_county_999=True, states=active_states,)
+
+    regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
+    test_positivity_results = test_positivity.AllMethods.run(regions_data)
+    test_positivity_results.write(test_positivity_all_methods)
 
 
 @main.command()
@@ -162,6 +193,9 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     """The entry function for invocation"""
 
+    # Caching load of us timeseries dataset
+    combined_datasets.load_us_timeseries_dataset()
+
     active_states = [state.abbr for state in us.STATES]
     active_states = active_states + ["PR", "MP"]
 
@@ -174,10 +208,30 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
         states=active_states,
     )
     _logger.info(f"Loading all regional inputs.")
+
+    icu_data_path = model_output_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
+    icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+    icu_data_map = dict(icu_data.iter_one_regions())
+
+    rt_data_path = model_output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
+    rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
+    rt_data_map = dict(rt_data.iter_one_regions())
+
+    # If calculating test positivity succeeds join it with the combined_datasets into one
+    # MultiRegionTimeseriesDataset
+    regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
+    regions_data = test_positivity.run_and_maybe_join_columns(regions_data, _logger)
+
     regional_inputs = [
-        api_v2_pipeline.RegionalInput.from_region_and_model_output(region, model_output_dir)
-        for region in regions
+        api_v2_pipeline.RegionalInput.from_one_regions(
+            region,
+            regional_data,
+            icu_data=icu_data_map.get(region),
+            rt_data=rt_data_map.get(region),
+        )
+        for region, regional_data in regions_data.iter_one_regions()
     ]
+
     _logger.info(f"Finished loading all regional inputs.")
 
     # Build all region timeseries API Output objects.
@@ -188,49 +242,3 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
 
     _logger.info("Finished API generation.")
-
-
-@main.command("generate-top-counties")
-@click.option(
-    "--disable-validation", "-dv", is_flag=True, help="Run the validation on the deploy command"
-)
-@click.option(
-    "--input-dir", "-i", default="results", help="Input directory of state/county projections"
-)
-@click.option(
-    "--output",
-    "-o",
-    default="results/top_counties",
-    help="Output directory for artifacts",
-    type=pathlib.Path,
-)
-@click.option("--state")
-@click.option("--fips")
-def generate_top_counties(disable_validation, input_dir, output, state, fips: Optional[str]):
-    """The entry function for invocation"""
-    intervention = Intervention.SELECTED_INTERVENTION
-    active_states = [state.abbr for state in us.STATES] + ["PR"]
-    regions = combined_datasets.get_subset_regions(
-        aggregation_level=AggregationLevel.COUNTY,
-        exclude_county_999=True,
-        states=active_states,
-        state=state,
-        fips=fips,
-    )
-    regional_inputs = [
-        api_pipeline.RegionalInput.from_region_and_intervention(region, intervention, input_dir)
-        for region in regions
-    ]
-
-    def sort_func(output: RegionSummaryWithTimeseries):
-        return -output.projections.totalHospitalBeds.peakShortfall
-
-    all_timeseries = api_pipeline.run_on_all_regional_inputs_for_intervention(
-        regional_inputs, sort_func=sort_func, limit=100,
-    )
-    bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
-
-    api_pipeline.deploy_json_api_output(
-        intervention, bulk_timeseries, output, filename_override="counties_top_100.json"
-    )
-    _logger.info("Finished top counties job")

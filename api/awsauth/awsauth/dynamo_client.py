@@ -3,10 +3,12 @@ from typing import Dict, List, Any, Optional
 import boto3
 from boto3.dynamodb.conditions import Key
 
+from awsauth.config import Config
+
 
 class DynamoDBClient:
     def __init__(self, client=None):
-        self._client = client or boto3.resource("dynamodb")
+        self._client = client or boto3.resource("dynamodb", region_name=Config.Constants.AWS_REGION)
 
     def get_item(self, table: str, key: Dict[str, Any]) -> Optional[Dict[Any, Any]]:
         """Get single item from table.
@@ -51,3 +53,13 @@ class DynamoDBClient:
         """
         table = self._client.Table(table)
         table.put_item(Item=item)
+
+    def update_item(self, table: str, key: dict, **updates):
+        table = self._client.Table(table)
+        update_expression = "set " + ", ".join(f"{column}=:{column}" for column in updates)
+        table.update_item(
+            Key=key,
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues={f":{column}": value for column, value in updates.items()},
+            ReturnValues="UPDATED_NEW",
+        )

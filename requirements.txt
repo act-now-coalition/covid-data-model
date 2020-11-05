@@ -1,5 +1,6 @@
 boto3==1.15.6
 scipy==1.4.1
+numba==0.51.2
 astroid==2.4.1
 certifi==2019.11.28
 chardet==3.0.4
@@ -36,7 +37,7 @@ fastparquet==0.3.3
 us==1.0.0
 adtk==0.6.0
 -e .
-pydantic==1.5.1
+pydantic==1.6.1
 dill
 dictdiffer==0.8.1
 structlog==20.1.0
@@ -48,3 +49,6 @@ xlrd==1.2.0  # For panda's read_excel method
 # By default, installs from local directory, but when copying this
 # to binder/requirements.txt, uncomment the following line.
 # -e git://github.com/covid-projections/covid-data-public.git#egg=covidactnow
+
+# Dependencies recommended by pandas for better performance
+numexpr==2.7.1

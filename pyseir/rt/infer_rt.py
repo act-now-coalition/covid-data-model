@@ -1,24 +1,56 @@
+from typing import Optional
 import math
 from dataclasses import dataclass
 from datetime import timedelta
 import structlog
-from typing import Optional
+
 
 import numpy as np
+import numba
+import math
 import pandas as pd
+from covidactnow.datapublic.common_fields import CommonFields
 from scipy import stats as sps
 from matplotlib import pyplot as plt
+
 
 from libs.datasets import combined_datasets
 from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import load_data
-from pyseir.utils import TimeseriesType, RunArtifact
+from pyseir.utils import RunArtifact
 import pyseir.utils
 from pyseir.rt.constants import InferRtConstants
 from pyseir.rt import plotting, utils
 
 rt_log = structlog.get_logger(__name__)
+
+
+SQRT2PI = math.sqrt(2.0 * math.pi)
+
+
+@numba.vectorize([numba.float64(numba.float64, numba.float64, numba.float64)], fastmath=True)
+def normal_pdf(x, mean, std_deviation):
+    """Probability density function at `x` of a normal distribution.
+
+    Args:
+        x: Value
+        mean: Mean of distribution
+        std_deviation: Standard deviation of distribution.
+    """
+    u = (x - mean) / std_deviation
+    return math.exp(-0.5 * u ** 2) / (SQRT2PI * std_deviation)
+
+
+@numba.njit(fastmath=True)
+def pdf_vector(x, loc, scale):
+    """Replacement for scipy pdf function."""
+    array = np.empty((x.size, loc.size))
+    for i, a in enumerate(x):
+        for j, b in enumerate(loc):
+            array[i, j] = normal_pdf(a, b, scale)
+
+    return array
 
 
 @dataclass(frozen=True)
@@ -48,7 +80,6 @@ class RegionalInput:
 
 def run_rt(
     regional_input: RegionalInput,
-    include_deaths: bool = False,
     include_testing_correction: bool = False,
     figure_collector: Optional[list] = None,
 ) -> pd.DataFrame:
@@ -58,13 +89,12 @@ def run_rt(
     """
 
     # Generate the Data Packet to Pass to RtInferenceEngine
-    input_df = _generate_input_data(
+    smoothed_cases = _generate_input_data(
         regional_input=regional_input,
         include_testing_correction=include_testing_correction,
-        include_deaths=include_deaths,
         figure_collector=figure_collector,
     )
-    if input_df.dropna().empty:
+    if smoothed_cases is None:
         rt_log.warning(
             event="Infer Rt Skipped. No Data Passed Filter Requirements:",
             region=regional_input.display_name,
@@ -74,10 +104,7 @@ def run_rt(
     # Save a reference to instantiated engine (eventually I want to pull out the figure
     # generation and saving so that I don't have to pass a display_name and fips into the class
     engine = RtInferenceEngine(
-        data=input_df,
-        display_name=regional_input.display_name,
-        regional_input=regional_input,
-        include_deaths=include_deaths,
+        smoothed_cases, display_name=regional_input.display_name, regional_input=regional_input,
     )
 
     # Generate the output DataFrame (consider renaming the function infer_all to be clearer)
@@ -89,9 +116,8 @@ def run_rt(
 def _generate_input_data(
     regional_input: RegionalInput,
     include_testing_correction: bool,
-    include_deaths: bool,
     figure_collector: Optional[list],
-) -> pd.DataFrame:
+) -> Optional[pd.Series]:
     """
     Allow the RtInferenceEngine to be agnostic to aggregation level by handling the loading first
 
@@ -100,11 +126,7 @@ def _generate_input_data(
     """
     # TODO: Outlier Removal Before Test Correction
     try:
-        (
-            times,
-            observed_new_cases,
-            observed_new_deaths,
-        ) = load_data.calculate_new_case_data_by_region(
+        times, observed_new_cases, _ = load_data.calculate_new_case_data_by_region(
             regional_input.timeseries,
             t0=InferRtConstants.REF_DATE,
             include_testing_correction=include_testing_correction,
@@ -115,95 +137,73 @@ def _generate_input_data(
             "the Infection Rate Metric",
             region=regional_input.display_name,
         )
-        return pd.DataFrame()
+        return None
 
     date = [InferRtConstants.REF_DATE + timedelta(days=int(t)) for t in times]
 
-    df = filter_and_smooth_input_data(
-        df=pd.DataFrame(dict(cases=observed_new_cases, deaths=observed_new_deaths), index=date),
-        include_deaths=include_deaths,
-        figure_collector=figure_collector,
-        region=regional_input.region,
-        log=rt_log.new(region=regional_input.display_name),
+    observed_new_cases = pd.Series(observed_new_cases, index=date)
+
+    observed_new_cases = filter_and_smooth_input_data(
+        observed_new_cases,
+        date,
+        regional_input.region,
+        figure_collector,
+        rt_log.new(region=regional_input.display_name),
     )
-    return df
+    return observed_new_cases
 
 
 def filter_and_smooth_input_data(
-    df: pd.DataFrame,
+    cases: pd.Series,
+    dates: list,
     region: pipeline.Region,
-    include_deaths: bool,
     figure_collector: Optional[list],
     log: structlog.BoundLoggerBase,
-) -> pd.DataFrame:
+) -> Optional[pd.Series]:
     """Do Filtering Here Before it Gets to the Inference Engine"""
-    MIN_CUMULATIVE_COUNTS = dict(cases=20, deaths=10)
-    MIN_INCIDENT_COUNTS = dict(cases=5, deaths=5)
+    MIN_CUMULATIVE_CASE_COUNT = 20
+    MIN_INCIDENT_CASE_COUNT = 5
 
-    dates = df.index
-    # Apply Business Logic To Filter Raw Data
-    for column in ["cases", "deaths"]:
-        requirements = [  # All Must Be True
-            df[column].count() > InferRtConstants.MIN_TIMESERIES_LENGTH,
-            df[column].sum() > MIN_CUMULATIVE_COUNTS[column],
-            df[column].max() > MIN_INCIDENT_COUNTS[column],
-        ]
-        # Now Apply Input Outlier Detection and Smoothing
+    requirements = [  # All Must Be True
+        cases.count() > InferRtConstants.MIN_TIMESERIES_LENGTH,
+        cases.sum() > MIN_CUMULATIVE_CASE_COUNT,
+        cases.max() > MIN_INCIDENT_CASE_COUNT,
+    ]
+    smoothed = cases.rolling(
+        InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
+        win_type="gaussian",
+        min_periods=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD,
+        center=True,
+    ).mean(std=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD)
+    # TODO: Only start once non-zero to maintain backwards compatibility?
 
-        filtered = utils.replace_outliers(df[column], log=rt_log.new(column=column))
-        # TODO find way to indicate which points filtered in figure below
+    # Check if the Post Smoothed Meets the Requirements
+    requirements.append(smoothed.max() > MIN_INCIDENT_CASE_COUNT)
 
-        assert len(filtered) == len(df[column])
-        smoothed = filtered.rolling(
-            InferRtConstants.COUNT_SMOOTHING_WINDOW_SIZE,
-            win_type="gaussian",
-            min_periods=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD,
-            center=True,
-        ).mean(std=InferRtConstants.COUNT_SMOOTHING_KERNEL_STD)
-        # TODO: Only start once non-zero to maintain backwards compatibility?
+    if not all(requirements):
+        return None
 
-        # Check if the Post Smoothed Meets the Requirements
-        requirements.append(smoothed.max() > MIN_INCIDENT_COUNTS[column])
+    fig = plt.figure(figsize=(10, 6))
+    ax = fig.add_subplot(111)  # plt.axes
+    ax.set_yscale("log")
+    chart_min = max(0.1, smoothed.min())
+    ax.set_ylim((chart_min, cases.max()))
+    plt.scatter(
+        dates[-len(cases) :], cases, alpha=0.3, label=f"Smoothing of: cases",
+    )
+    plt.plot(dates[-len(cases) :], smoothed)
+    plt.grid(True, which="both")
+    plt.xticks(rotation=30)
+    plt.xlim(min(dates[-len(cases) :]), max(dates) + timedelta(days=2))
 
-        # Check include_deaths Flag
-        if column == "deaths" and not include_deaths:
-            requirements.append(False)
-        else:
-            requirements.append(True)
+    if not figure_collector:
+        plot_path = pyseir.utils.get_run_artifact_path(region, RunArtifact.RT_SMOOTHING_REPORT)
+        plt.savefig(plot_path, bbox_inches="tight")
+        plt.close(fig)
+    else:
+        figure_collector["1_smoothed_cases"] = fig
 
-        if all(requirements):
-            if column == "cases":
-                fig = plt.figure(figsize=(10, 6))
-                ax = fig.add_subplot(111)  # plt.axes
-                ax.set_yscale("log")
-                chart_min = max(0.1, smoothed.min())
-                ax.set_ylim((chart_min, df[column].max()))
-                plt.scatter(
-                    dates[-len(df[column]) :],
-                    df[column],
-                    alpha=0.3,
-                    label=f"Smoothing of: {column}",
-                )
-                plt.plot(dates[-len(df[column]) :], smoothed)
-                plt.grid(True, which="both")
-                plt.xticks(rotation=30)
-                plt.xlim(min(dates[-len(df[column]) :]), max(dates) + timedelta(days=2))
-
-                if not figure_collector:
-                    plot_path = pyseir.utils.get_run_artifact_path(
-                        region, RunArtifact.RT_SMOOTHING_REPORT
-                    )
-                    plt.savefig(plot_path, bbox_inches="tight")
-                    plt.close(fig)
-                else:
-                    figure_collector["1_smoothed_cases"] = fig
-
-            df[column] = smoothed
-        else:
-            df = df.drop(columns=column, inplace=False)
-            log.info("Dropping:", columns=column, requirements=requirements)
-
-    return df
+    return smoothed
 
 
 class RtInferenceEngine:
@@ -215,8 +215,6 @@ class RtInferenceEngine:
     ----------
     data: DataFrame
         DataFrame with a Date index and at least one "cases" column.
-    include_deaths: bool
-        If True, include the deaths timeseries in the calculation. XCorrelated and Averaged
     display_name: str
         Needed for Figures. Should just return figures along with dataframe and then deal with title
         and save location somewhere downstream.
@@ -225,19 +223,12 @@ class RtInferenceEngine:
     """
 
     def __init__(
-        self,
-        data,
-        display_name,
-        regional_input: RegionalInput,
-        include_deaths=False,
-        figure_collector=None,
+        self, cases: pd.Series, display_name, regional_input: RegionalInput, figure_collector=None,
     ):
 
-        self.dates = data.index
-        self.cases = data.cases if "cases" in data else None
-        self.deaths = data.deaths if "deaths" in data else None
+        self.dates = cases.index
+        self.cases = cases
 
-        self.include_deaths = include_deaths
         self.display_name = display_name
         self.regional_input = regional_input
         self.figure_collector = figure_collector
@@ -250,7 +241,6 @@ class RtInferenceEngine:
         self.ref_date = InferRtConstants.REF_DATE
         self.confidence_intervals = InferRtConstants.CONFIDENCE_INTERVALS
         self.min_cases = InferRtConstants.MIN_COUNTS_TO_INFER
-        self.min_deaths = InferRtConstants.MIN_COUNTS_TO_INFER
         self.min_ts_length = InferRtConstants.MIN_TIMESERIES_LENGTH
         self.serial_period = InferRtConstants.SERIAL_PERIOD
         self.max_scaling_sigma = InferRtConstants.MAX_SCALING_OF_SIGMA
@@ -262,31 +252,6 @@ class RtInferenceEngine:
         self.log = structlog.getLogger(Rt_Inference_Target=self.display_name)
         self.log_likelihood = None  # TODO: Add this later. Not in init.
         self.log.info(event="Running:")
-
-    def get_timeseries(self, timeseries_type):
-        """
-        Given a timeseries type, return the dates, times, and requested values.
-
-        Parameters
-        ----------
-        timeseries_type: TimeseriesType
-            Which type of time-series to return.
-
-        Returns
-        -------
-        dates: list(datetime)
-            Dates for each observation
-        timeseries:
-            The requested timeseries.
-        """
-        timeseries_type = TimeseriesType(timeseries_type)
-
-        if timeseries_type is TimeseriesType.NEW_CASES:
-            return self.dates, self.cases
-        elif timeseries_type is TimeseriesType.NEW_DEATHS:
-            return self.dates, self.deaths
-        else:
-            raise ValueError
 
     def evaluate_head_tail_suppression(self):
         """
@@ -342,7 +307,10 @@ class RtInferenceEngine:
 
         use_sigma = min(a, b) * self.default_process_sigma
 
-        process_matrix = sps.norm(loc=self.r_list, scale=use_sigma).pdf(self.r_list[:, None])
+        # Build process matrix using optimized numba pdf function.
+        # This function is equivalent to the following call, but runs about 50% faster:
+        # process_matrix = sps.norm(loc=self.r_list, scale=use_sigma).pdf(self.r_list[:, None])
+        process_matrix = pdf_vector(self.r_list, self.r_list, use_sigma)
 
         # process_matrix applies gaussian smoothing to the previous posterior to make the prior.
         # But when the gaussian is wide much of its distribution function can be outside of the
@@ -376,15 +344,13 @@ class RtInferenceEngine:
 
         return use_sigma, process_matrix
 
-    def get_posteriors(self, timeseries_type, plot=False):
+    def get_posteriors(self, dates, timeseries, plot=False):
         """
         Generate posteriors for R_t.
 
         Parameters
         ----------
-        ----------
-        timeseries_type: TimeseriesType
-            New X per day (cases, deaths etc).
+        timeseries: New X per day (cases).
         plot: bool
             If True, plot a cool looking est of posteriors.
 
@@ -401,15 +367,11 @@ class RtInferenceEngine:
             #TODO figure out why this value sometimes truncates the series
 
         """
-        dates, timeseries = self.get_timeseries(timeseries_type=timeseries_type)
-
         if len(timeseries) == 0:
-            self.log.info("empty timeseries, skipping", timeseries_type=str(timeseries_type.value))
-            return None, None, None, None
+            self.log.info("empty timeseries, skipping")
+            return None, None, None
         else:
-            self.log.info(
-                "Analyzing posteriors for timeseries", timeseries_type=str(timeseries_type.value)
-            )
+            self.log.info("Analyzing posteriors for timeseries")
 
         # (1) Calculate Lambda (the Poisson likelihood given the data) based on
         # the observed increase from t-1 cases to t cases.
@@ -528,30 +490,7 @@ class RtInferenceEngine:
 
         return dates[start_idx:], posteriors, start_idx
 
-    def get_available_timeseries(self):
-        """
-        Determine available timeseries for Rt inference calculation
-        with constraints below.
-
-
-        Returns
-        -------
-        available_timeseries:
-          array of available timeseries saved as TimeseriesType
-        """
-        available_timeseries = []
-        _, cases = self.get_timeseries(TimeseriesType.NEW_CASES.value)
-        _, deaths = self.get_timeseries(TimeseriesType.NEW_DEATHS.value)
-
-        if np.sum(cases) > self.min_cases:
-            available_timeseries.append(TimeseriesType.NEW_CASES)
-
-        if np.sum(deaths) > self.min_deaths:
-            available_timeseries.append(TimeseriesType.NEW_DEATHS)
-
-        return available_timeseries
-
-    def infer_all(self, plot=True, shift_deaths=0) -> pd.DataFrame:
+    def infer_all(self, plot=True) -> pd.DataFrame:
         """
         Infer R_t from all available data sources.
 
@@ -559,9 +498,6 @@ class RtInferenceEngine:
         ----------
         plot: bool
             If True, generate a plot of the inference.
-        shift_deaths: int
-            Shift the death time series by this amount with respect to cases
-            (when plotting only, does not shift the returned result).
 
         Returns
         -------
@@ -569,113 +505,39 @@ class RtInferenceEngine:
             Columns containing MAP estimates and confidence intervals.
         """
         df_all = None
-        available_timeseries = []
-        if self.cases is not None:
-            available_timeseries.append(TimeseriesType.NEW_CASES)
-        if self.deaths is not None:  # We drop deaths in the data loader so don't need to check here
-            available_timeseries.append(TimeseriesType.NEW_DEATHS)
 
-        for timeseries_type in available_timeseries:
-            # Add Raw Data Output to Output DataFrame
-            dates_raw, timeseries_raw = self.get_timeseries(timeseries_type)
-            df_raw = pd.DataFrame()
-            df_raw["date"] = dates_raw
-            df_raw = df_raw.set_index("date")
-            df_raw[timeseries_type.value] = timeseries_raw
+        df = pd.DataFrame()
+        try:
+            dates, posteriors, start_idx = self.get_posteriors(self.dates, self.cases)
+        except Exception as e:
+            rt_log.exception(
+                event="Posterior Calculation Error", region=self.regional_input.display_name,
+            )
+            raise e
 
-            df = pd.DataFrame()
-            try:
-                dates, posteriors, start_idx = self.get_posteriors(timeseries_type)
-            except Exception as e:
-                rt_log.exception(
-                    event="Posterior Calculation Error", region=self.regional_input.display_name,
-                )
-                raise e
-
-            # Note that it is possible for the dates to be missing days
-            # This can cause problems when:
-            #   1) computing posteriors that assume continuous data (above),
-            #   2) when merging data with variable keys
-            if posteriors is None:
-                continue
-
-            df[f"Rt_MAP__{timeseries_type.value}"] = posteriors.idxmax()
-            for ci in self.confidence_intervals:
-                ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
-
-                low_val = 1 - ci
-                high_val = ci
-                df[f"Rt_ci{int(math.floor(100 * low_val))}__{timeseries_type.value}"] = ci_low
-                df[f"Rt_ci{int(math.floor(100 * high_val))}__{timeseries_type.value}"] = ci_high
-
-            df["date"] = dates
-            df = df.set_index("date")
-
-            if df_all is None:
-                df_all = df
-            else:
-                # To avoid any surprises merging the data, keep only the keys from the case data
-                # which will be the first added to df_all. So merge with how ="left" rather than
-                # "outer"
-                df_all = df_all.merge(df_raw, left_index=True, right_index=True, how="left")
-                df_all = df_all.merge(df, left_index=True, right_index=True, how="left")
-
-            # ------------------------------------------------
-            # Compute the indicator lag using the curvature
-            # alignment method.
-            # ------------------------------------------------
-            if (
-                timeseries_type in (TimeseriesType.NEW_DEATHS,)
-                and f"Rt_MAP__{TimeseriesType.NEW_CASES.value}" in df_all.columns
-            ):
-
-                # Go back up to 30 days or the max time series length we have if shorter.
-                last_idx = max(-21, -len(df))
-                series_a = df_all[f"Rt_MAP__{TimeseriesType.NEW_CASES.value}"].iloc[-last_idx:]
-                series_b = df_all[f"Rt_MAP__{timeseries_type.value}"].iloc[-last_idx:]
-
-                shift_in_days = utils.align_time_series(series_a=series_a, series_b=series_b)
-
-                df_all[f"lag_days__{timeseries_type.value}"] = shift_in_days
-                self.log.debug(
-                    "Using timeshift of: %s for timeseries type: %s ",
-                    shift_in_days,
-                    timeseries_type,
-                )
-                # Shift all the columns.
-                for col in df_all.columns:
-                    if timeseries_type.value in col:
-                        df_all[col] = df_all[col].shift(shift_in_days)
-                        # Extend death rt signals beyond
-                        # shift to avoid sudden jumps in composite metric.
-                        #
-                        # N.B interpolate() behaves differently depending on the location
-                        # of the missing values: For any nans appearing in between valid
-                        # elements of the series, an interpolated value is filled in.
-                        # For values at the end of the series, the last *valid* value is used.
-                        self.log.debug("Filling in %s missing values", shift_in_days)
-                        df_all[col] = df_all[col].interpolate(
-                            limit_direction="forward", method="linear"
-                        )
-
-        if df_all is None:
-            self.log.warning(f"Inference not possible for {self.regional_input.region.fips}")
+        # Note that it is possible for the dates to be missing days
+        # This can cause problems when:
+        #   1) computing posteriors that assume continuous data (above),
+        #   2) when merging data with variable keys
+        if posteriors is None:
             return pd.DataFrame()
 
-        if self.include_deaths and "Rt_MAP__new_deaths" in df_all and "Rt_MAP__new_cases" in df_all:
-            df_all["Rt_MAP_composite"] = np.nanmean(
-                df_all[["Rt_MAP__new_cases", "Rt_MAP__new_deaths"]], axis=1
-            )
-            # Just use the Stdev of cases. A correlated quadrature summed error
-            # would be better, but is also more confusing and difficult to fix
-            # discontinuities between death and case errors since deaths are
-            # only available for a subset. Systematic errors are much larger in
-            # any case.
-            df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
+        df[f"Rt_MAP__new_cases"] = posteriors.idxmax()
+        for ci in self.confidence_intervals:
+            ci_low, ci_high = self.highest_density_interval(posteriors, ci=ci)
 
-        elif "Rt_MAP__new_cases" in df_all:
-            df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
-            df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
+            low_val = 1 - ci
+            high_val = ci
+            df[f"Rt_ci{int(math.floor(100 * low_val))}__new_cases"] = ci_low
+            df[f"Rt_ci{int(math.floor(100 * high_val))}__new_cases"] = ci_high
+
+        df["date"] = dates
+        df = df.set_index("date")
+
+        df_all = df
+
+        df_all["Rt_MAP_composite"] = df_all["Rt_MAP__new_cases"]
+        df_all["Rt_ci95_composite"] = df_all["Rt_ci95__new_cases"]
 
         # Correct for tail suppression
         suppression = 1.0 * np.ones(len(df_all))
@@ -717,12 +579,7 @@ class RtInferenceEngine:
             ).apply(lambda v: max(v, self.min_conf_width)) + df_all["Rt_MAP_composite"]
 
         if plot:
-            fig = plotting.plot_rt(
-                df=df_all,
-                include_deaths=self.include_deaths,
-                shift_deaths=shift_deaths,
-                display_name=self.display_name,
-            )
+            fig = plotting.plot_rt(df=df_all, display_name=self.display_name)
             if self.figure_collector is None:
                 output_path = pyseir.utils.get_run_artifact_path(
                     self.regional_input.region, RunArtifact.RT_INFERENCE_REPORT
@@ -734,5 +591,5 @@ class RtInferenceEngine:
             self.log.warning("Inference not possible")
         else:
             df_all = df_all.reset_index(drop=False)  # Move date to column from index to column
-            df_all["fips"] = self.regional_input.region.fips
+            df_all[CommonFields.LOCATION_ID] = self.regional_input.region.location_id
         return df_all

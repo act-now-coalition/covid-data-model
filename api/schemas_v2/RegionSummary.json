@@ -45,6 +45,11 @@
         }
       ]
     },
+    "locationId": {
+      "title": "Locationid",
+      "description": "Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
+      "type": "string"
+    },
     "long": {
       "title": "Long",
       "description": "Longitude of point within the state or county",
@@ -64,12 +69,14 @@
       "type": "integer"
     },
     "metrics": {
-      "anyOf": [
+      "$ref": "#/definitions/Metrics"
+    },
+    "riskLevels": {
+      "title": "Risklevels",
+      "description": "Risk levels for region.",
+      "allOf": [
         {
-          "$ref": "#/definitions/Metrics"
-        },
-        {
-          "type": "null"
+          "$ref": "#/definitions/RiskLevels"
         }
       ]
     },
@@ -90,9 +97,11 @@
     "county",
     "level",
     "lat",
+    "locationId",
     "long",
     "population",
     "metrics",
+    "riskLevels",
     "actuals",
     "lastUpdatedDate"
   ],
@@ -104,6 +113,30 @@
         "country",
         "state",
         "county"
+      ]
+    },
+    "TestPositivityRatioMethod": {
+      "title": "TestPositivityRatioMethod",
+      "description": "Method used to determine test positivity ratio.",
+      "enum": [
+        "CMSTesting",
+        "HHSTesting",
+        "Valorum",
+        "covid_tracking",
+        "other"
+      ]
+    },
+    "TestPositivityRatioDetails": {
+      "title": "TestPositivityRatioDetails",
+      "description": "Details about how the test positivity ratio was calculated.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/definitions/TestPositivityRatioMethod"
+        }
+      },
+      "required": [
+        "source"
       ]
     },
     "CovidPatientsMethod": {
@@ -168,6 +201,9 @@
               "type": "null"
             }
           ]
+        },
+        "testPositivityRatioDetails": {
+          "$ref": "#/definitions/TestPositivityRatioDetails"
         },
         "caseDensity": {
           "title": "Casedensity",
@@ -238,6 +274,50 @@
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
+        "icuHeadroomRatio"
+      ]
+    },
+    "RiskLevel": {
+      "title": "RiskLevel",
+      "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "RiskLevels": {
+      "title": "RiskLevels",
+      "description": "COVID risk levels for a region.",
+      "type": "object",
+      "properties": {
+        "overall": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "testPositivityRatio": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "caseDensity": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "contactTracerCapacityRatio": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "infectionRate": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "icuHeadroomRatio": {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      },
+      "required": [
+        "overall",
+        "testPositivityRatio",
+        "caseDensity",
+        "contactTracerCapacityRatio",
+        "infectionRate",
         "icuHeadroomRatio"
       ]
     },
@@ -384,6 +464,18 @@
               "$ref": "#/definitions/HospitalResourceUtilization"
             }
           ]
+        },
+        "newCases": {
+          "title": "Newcases",
+          "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -393,7 +485,8 @@
         "negativeTests",
         "contactTracers",
         "hospitalBeds",
-        "icuBeds"
+        "icuBeds",
+        "newCases"
       ]
     }
   }

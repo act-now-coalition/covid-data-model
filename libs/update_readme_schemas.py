@@ -53,7 +53,18 @@ def _generate_property_list(properties, all_schemas):
 
             # Look for cases where data missing type data, but has one schema
             # that data matches and pull type from associated object.
-            if not obj_type and "allOf" in prop and len(prop["allOf"]) == 1:
+            if not obj_type and "anyOf" in prop and len(prop["anyOf"]) == 2:
+                # Filtering out null types and locating main object type.
+                obj_type = [obj for obj in prop["anyOf"] if obj.get("type") != "null"][0]
+
+                if "$ref" in obj_type:
+                    ref = obj_type["$ref"]
+                    ref_model = _model_from_ref(ref, all_schemas)
+                    obj_type = ref_model["title"]
+                    obj_type = f"[{obj_type}](#{obj_type})"
+                else:
+                    obj_type = obj_type["type"]
+            elif not obj_type and "allOf" in prop and len(prop["allOf"]) == 1:
                 ref = prop["allOf"][0].get("$ref")
                 if ref:
                     ref_model = _model_from_ref(ref, all_schemas)
@@ -89,6 +100,8 @@ def schema_to_md(schema, all_schemas) -> str:
             description=description,
             table_output=f"List of [{ref_model['title']}](#{ref_model['title']})",
         )
+    if schema.get("enum"):
+        return SCHEMA_DOC_TEMPLATE.format(title=title, description=description, table_output="")
 
     table_rows = _generate_property_list(schema["properties"], all_schemas)
     keys = {key: key for key in table_rows[0]}

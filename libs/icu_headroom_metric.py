@@ -39,6 +39,7 @@ ICU_DECOMP_OVERRIDE = {
     "NV": 0.25,
     "RI": 0,
     "NJ": NJ_CORRECTION,
+    "UT": 0,  # https://trello.com/c/u8surBE7/533-small-icu-headroom-update-update-utah-decompensation-factor-to-align-with-local-sources
 }
 
 
@@ -105,7 +106,7 @@ class ICUMetricData:
         if has_any_data and not self._require_recent_data:
             return timeseries.loc[timeseries.last_valid_index()]
 
-        return self._latest_values[CommonFields.ICU_BEDS]
+        return self._latest_values.get(CommonFields.ICU_BEDS)
 
     @property
     def total_icu_beds(self) -> Union[pd.Series, float]:
@@ -119,7 +120,7 @@ class ICUMetricData:
 
     @property
     def typical_usage_rate(self) -> float:
-        typical_occupancy = self._latest_values[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+        typical_occupancy = self._latest_values.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE)
         if typical_occupancy is None or np.isnan(typical_occupancy):
             return DEFAULT_ICU_UTILIZATION
 

@@ -6,16 +6,10 @@ from cli import data
 
 
 @pytest.mark.slow
-def test_summary_save(tmp_path):
-
+def test_population_filter(tmp_path):
     runner = CliRunner()
-
-    filename = "summary.csv"
+    output_path = tmp_path / "filtered.csv"
     runner.invoke(
-        data.save_summary,
-        ["--output-dir", str(tmp_path), "--filename", filename],
-        catch_exceptions=False,
+        data.run_population_filter, [str(output_path)], catch_exceptions=False,
     )
-
-    output_path = tmp_path / filename
     assert output_path.exists()

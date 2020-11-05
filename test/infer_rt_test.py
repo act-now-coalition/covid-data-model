@@ -10,7 +10,6 @@ from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import cli
 
-from pyseir.rt import utils
 from pyseir.rt import infer_rt
 from test.mocks.inference import load_data
 from test.mocks.inference.load_data import RateChange
@@ -18,15 +17,6 @@ from test.mocks.inference.load_data import RateChange
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
-
-
-def test_replace_outliers_on_last_day():
-    x = pd.Series([10, 10, 10, 500], [0, 1, 2, 3])
-
-    results = utils.replace_outliers(x, structlog.getLogger(), local_lookback_window=3)
-
-    expected = pd.Series([10, 10, 10, 10], [0, 1, 2, 3])
-    pd.testing.assert_series_equal(results, expected)
 
 
 """
@@ -56,21 +46,21 @@ def run_individual(
 
     # TODO fails below if deaths not present even if not using
     data_generator = load_data.DataGenerator(spec)
-    input_df = load_data.create_synthetic_df(data_generator)
+    cases = load_data.create_synthetic_cases(data_generator)
     regional_input = infer_rt.RegionalInput.from_fips(fips)
 
     # Now apply smoothing and filtering
     collector = {}
-    smoothed_df = infer_rt.filter_and_smooth_input_data(
-        df=input_df,
+    smoothed_cases = infer_rt.filter_and_smooth_input_data(
+        cases,
+        cases.index,
         region=regional_input.region,
-        include_deaths=False,
         figure_collector=collector,
         log=structlog.getLogger(),
     )
 
     engine = infer_rt.RtInferenceEngine(
-        data=smoothed_df,
+        smoothed_cases,
         display_name=display_name,
         regional_input=regional_input,
         figure_collector=collector,
@@ -214,41 +204,41 @@ def test_smoothing_and_causality(tmp_path):
 
 @pytest.mark.slow
 def test_generate_infection_rate_metric_one_empty():
-    FIPS = [
+    fips = [
         "51017",  # Bath County VA Almost No Cases. Will be filtered out under any thresholds.
         "51153",  # Prince William VA Lots of Cases
     ]
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    regions = [pipeline.Region.from_fips(f) for f in fips]
+    inputs = [infer_rt.RegionalInput.from_region(region) for region in regions]
 
-    df = pd.concat(infer_rt.run_rt(input) for input in regions)
-    returned_fips = df.fips.unique()
-    assert "51153" in returned_fips
-    assert "51017" not in returned_fips
+    df = pd.concat(infer_rt.run_rt(input) for input in inputs)
+    returned_location_ids = df[CommonFields.LOCATION_ID].unique()
+    assert pipeline.fips_to_location_id("51153") in returned_location_ids
+    assert pipeline.fips_to_location_id("51017") not in returned_location_ids
 
 
 @pytest.mark.slow
 def test_generate_infection_rate_metric_two_aggregate_levels():
-    FIPS = ["06", "06075"]  # CA  # San Francisco, CA
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    fips = ["06", "06075"]  # CA  # San Francisco, CA
+    regions = [pipeline.Region.from_fips(f) for f in fips]
+    inputs = [infer_rt.RegionalInput.from_region(region) for region in regions]
 
-    df = pd.concat(infer_rt.run_rt(input) for input in regions)
-    returned_fips = df.fips.unique()
-    assert "06" in returned_fips
-    assert "06075" in returned_fips
+    df = pd.concat(infer_rt.run_rt(input) for input in inputs)
+    returned_location_ids = df[CommonFields.LOCATION_ID].unique()
+    assert set(r.location_id for r in regions) == set(returned_location_ids)
 
 
 @pytest.mark.slow
 def test_generate_infection_rate_new_orleans_patch():
-    FIPS = ["22", "22051", "22071"]  # LA, Jefferson and Orleans
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
+    fips = ["22", "22051", "22071"]  # LA, Jefferson and Orleans
+    regions = [pipeline.Region.from_fips(f) for f in fips]
+    inputs = [infer_rt.RegionalInput.from_region(region) for region in regions]
 
-    df = pd.concat(infer_rt.run_rt(input) for input in regions)
-    returned_fips = df.fips.unique()
-    assert "22" in returned_fips
-    assert "22051" in returned_fips
-    assert "22071" in returned_fips
+    df = pd.concat(infer_rt.run_rt(input) for input in inputs)
     assert not df[CommonFields.DATE].isna().any()
-    assert not df[CommonFields.FIPS].isna().any()
+    assert not df[CommonFields.LOCATION_ID].isna().any()
+    returned_location_ids = df[CommonFields.LOCATION_ID].unique()
+    assert set(r.location_id for r in regions) == set(returned_location_ids)
 
 
 def test_generate_infection_rate_metric_fake_fips():
@@ -263,14 +253,14 @@ def test_generate_infection_rate_metric_fake_fips():
         infer_rt.RegionalInput.from_fips("48998")
 
 
-@pytest.mark.xfail(raises=ValueError)
+@pytest.mark.slow
 def test_generate_infection_rate_with_nans():
-    # Ma Counties is currently failing with a ValueError due to recent period of non-reporting
-    FIPS = ["25001"]  # MA lots of NaN
-    regions = [infer_rt.RegionalInput.from_fips(region) for region in FIPS]
-    df = pd.concat(infer_rt.run_rt(input) for input in regions)
-    returned_fips = df.fips.unique()
-    assert "25001" in returned_fips
+    # Check that MA counties are still working
+    region = pipeline.Region.from_fips("25001")
+    input = infer_rt.RegionalInput.from_region(region)
+    df = infer_rt.run_rt(input)
+    returned_location_ids = df[CommonFields.LOCATION_ID].unique()
+    assert {region.location_id} == set(returned_location_ids)
 
 
 @pytest.mark.slow
@@ -287,6 +277,7 @@ def test_patch_substatepipeline_nola_infection_rate():
             cli.SubStatePipeline(
                 region=region,
                 infer_df=infection_rate_df,
+                icu_data=None,
                 _combined_data=combined_datasets.RegionalData.from_region(region),
             )
         )
@@ -294,6 +285,6 @@ def test_patch_substatepipeline_nola_infection_rate():
     patched = cli._patch_substatepipeline_nola_infection_rate(pipelines)
 
     df = pd.concat(p.infer_df for p in patched)
-    returned_fips = df.fips.unique()
-    assert "22051" in returned_fips
-    assert "51017" not in returned_fips
+    returned_location_ids = df[CommonFields.LOCATION_ID].unique()
+    assert pipeline.fips_to_location_id("22051") in returned_location_ids
+    assert pipeline.fips_to_location_id("51017") not in returned_location_ids

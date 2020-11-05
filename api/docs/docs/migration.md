@@ -1,6 +1,7 @@
 ---
 id: migration
 title: Migrating to v2
+description: Migrating to v2 of the Covid Act Now API.
 ---
 
 

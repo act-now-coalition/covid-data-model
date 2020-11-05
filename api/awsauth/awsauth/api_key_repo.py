@@ -1,10 +1,8 @@
 from typing import Optional, Dict, Any
-import os
+import datetime
+from awsauth.config import Config
+from awsauth.the_registry import registry
 
-from awsauth import dynamo_client
-
-
-API_KEY_TABLE_NAME = os.environ["API_KEYS_TABLE"]
 API_KEY_INDEX_NAME = "apiKeys"
 
 
@@ -12,17 +10,25 @@ class APIKeyRepo:
     """Logic for handling API Key functionality."""
 
     @staticmethod
-    def add_api_key(email: str, api_key: str):
+    def add_api_key(email: str, api_key: str, is_crs_user: bool):
         """Adds an email and api_key to database.
 
         Args:
             email: Email Address.
             api_key: API Key to add.
+            is_crs_user: True if user is registering using the Covid Response
+                Simulator Google Sheet.
         """
         # TODO: Client should only be initialized once
-        client = dynamo_client.DynamoDBClient()
-        obj = {"email": email, "api_key": api_key}
-        client.put_item(API_KEY_TABLE_NAME, obj)
+        client = registry.dynamodb_client
+        now = datetime.datetime.utcnow().isoformat()
+        obj = {
+            "email": email,
+            "api_key": api_key,
+            "created_at": now,
+            "is_covid_response_simulator_user": is_crs_user,
+        }
+        client.put_item(Config.Constants.API_KEY_TABLE_NAME, obj)
 
     @staticmethod
     def get_api_key(email) -> Optional[str]:
@@ -34,10 +40,10 @@ class APIKeyRepo:
         Returns: API Key if exists, None if missing.
         """
         # TODO: Client should only be initialized once
-        client = dynamo_client.DynamoDBClient()
+        client = registry.dynamodb_client
 
         key = {"email": email}
-        api_key_item = client.get_item(API_KEY_TABLE_NAME, key)
+        api_key_item = client.get_item(Config.Constants.API_KEY_TABLE_NAME, key)
 
         if not api_key_item:
             return None
@@ -54,8 +60,10 @@ class APIKeyRepo:
         Returns: Dict if exists, None if not found.
         """
         # TODO: Client should only be initialized once
-        client = dynamo_client.DynamoDBClient()
-        items = client.query_index(API_KEY_TABLE_NAME, API_KEY_INDEX_NAME, "api_key", api_key)
+        client = registry.dynamodb_client
+        items = client.query_index(
+            Config.Constants.API_KEY_TABLE_NAME, API_KEY_INDEX_NAME, "api_key", api_key
+        )
         if not items:
             return None
 
@@ -63,3 +71,35 @@ class APIKeyRepo:
             raise Exception("Multiple emails found for API key")
 
         return items[0]
+
+    @staticmethod
+    def record_email_sent(email):
+        """Record time email successfully sent.
+
+        Args:
+            email: Email address of user.
+        """
+        client = registry.dynamodb_client
+        key = {
+            "email": email,
+        }
+        client.update_item(
+            Config.Constants.API_KEY_TABLE_NAME,
+            key,
+            welcome_email_sent_at=datetime.datetime.utcnow().isoformat(),
+        )
+
+    @staticmethod
+    def record_covid_response_simulator_user(email):
+        """Record if user is a covid response simulator user.
+
+        Args:
+            email: Email address of user.
+        """
+        client = registry.dynamodb_client
+        key = {
+            "email": email,
+        }
+        client.update_item(
+            Config.Constants.API_KEY_TABLE_NAME, key, is_covid_response_simulator_user=True
+        )

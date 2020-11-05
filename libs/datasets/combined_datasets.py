@@ -26,10 +26,11 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
-from libs.datasets.sources.cds_dataset import CDSDataset
+from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
+from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets import dataset_filter
 from libs import us_state_abbrev
 from libs.pipeline import Region
@@ -55,8 +56,8 @@ FeatureDataSourceMap = NewType(
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
 # support overlaying values. i.e. a row of
-# {CommonFields.POSITIVE_TESTS: [CDSDataset, CovidTrackingDataSource]}
-# will first get all values for positive tests in CDSDataset and then overlay any data
+# {CommonFields.POSITIVE_TESTS: [HHSTestingDataset, CovidTrackingDataSource]}
+# will first get all values for positive tests in HHSTestingDataset and then overlay any data
 # From CovidTracking.
 # This is just a start to this sort of definition - in the future, we may want more advanced
 # capabilities around what data to apply and how to apply it.
@@ -67,8 +68,8 @@ FeatureDataSourceMap = NewType(
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [NYTimesDataset],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
-    CommonFields.CUMULATIVE_HOSPITALIZED: [CDSDataset, CovidTrackingDataSource],
-    CommonFields.CUMULATIVE_ICU: [CDSDataset, CovidTrackingDataSource],
+    CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
+    CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
         CovidCountyDataDataSource,
         CovidTrackingDataSource,
@@ -84,9 +85,24 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.DEATHS: [NYTimesDataset],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
-    CommonFields.NEGATIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
-    CommonFields.POSITIVE_TESTS: [CDSDataset, CovidCountyDataDataSource, CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        HHSTestingDataset,
+    ],
+    CommonFields.POSITIVE_TESTS: [
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        HHSTestingDataset,
+    ],
+    CommonFields.TOTAL_TESTS: [CovidTrackingDataSource],
     CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
+    CommonFields.POSITIVE_TESTS_VIRAL: [CovidTrackingDataSource],
+    CommonFields.TOTAL_TESTS_VIRAL: [CovidTrackingDataSource],
+    CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],
+    CommonFields.TOTAL_TESTS_PEOPLE_VIRAL: [CovidTrackingDataSource],
+    CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
+    CommonFields.TEST_POSITIVITY: [CMSTestingDataset],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {

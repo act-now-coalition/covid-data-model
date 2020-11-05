@@ -7,7 +7,14 @@
       "title": "Population",
       "description": "Total population in geographic region [*deprecated*: refer to summary for this]",
       "exclusiveMinimum": 0,
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "intervention": {
       "title": "Intervention",
@@ -17,28 +24,70 @@
     "cumulativeConfirmedCases": {
       "title": "Cumulativeconfirmedcases",
       "description": "Number of confirmed cases so far",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "cumulativePositiveTests": {
       "title": "Cumulativepositivetests",
       "description": "Number of positive test results to date",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "cumulativeNegativeTests": {
       "title": "Cumulativenegativetests",
       "description": "Number of negative test results to date",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "cumulativeDeaths": {
       "title": "Cumulativedeaths",
       "description": "Number of deaths so far",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "hospitalBeds": {
-      "$ref": "#/definitions/ResourceUtilization"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ResourceUtilization"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "ICUBeds": {
-      "$ref": "#/definitions/ResourceUtilization"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ResourceUtilization"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "contactTracers": {
       "title": "Contacttracers",
@@ -72,27 +121,62 @@
         "capacity": {
           "title": "Capacity",
           "description": "*deprecated*: Capacity for resource. In the case of ICUs, this refers to total capacity. For hospitalization this refers to free capacity for COVID patients. This value is calculated by (1 - typicalUsageRate) * totalCapacity * 2.07",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "totalCapacity": {
           "title": "Totalcapacity",
           "description": "Total capacity for resource.",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentUsageCovid": {
           "title": "Currentusagecovid",
           "description": "Currently used capacity for resource by COVID ",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "currentUsageTotal": {
           "title": "Currentusagetotal",
           "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "typicalUsageRate": {
           "title": "Typicalusagerate",
           "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [

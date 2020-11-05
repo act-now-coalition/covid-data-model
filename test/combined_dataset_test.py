@@ -18,7 +18,6 @@ from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets import NYTimesDataset
 from libs.datasets import JHUDataset
-from libs.datasets import CDSDataset
 from libs.datasets import CovidTrackingDataSource
 from libs.datasets import NevadaHospitalAssociationData
 
@@ -37,16 +36,16 @@ import pytest
 @pytest.mark.slow
 def test_unique_index_values_us_timeseries():
     timeseries = combined_datasets.load_us_timeseries_dataset()
-    timeseries_data = timeseries.data.set_index(TimeseriesDataset.INDEX_FIELDS)
-    duplicates = timeseries_data.index.duplicated()
-    assert not sum(duplicates)
+    timeseries_data = timeseries.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+    duplicates = timeseries_data.index.duplicated(keep=False)
+    assert not duplicates.any(), timeseries_data.loc[duplicates, :]
 
 
 def test_unique_index_values_us_latest():
     latest = combined_datasets.load_us_latest_dataset()
-    latest_data = latest.data.set_index(latest.INDEX_FIELDS)
+    latest_data = latest.data.set_index(CommonFields.LOCATION_ID)
     duplicates = latest_data.index.duplicated()
-    assert not sum(duplicates)
+    assert not duplicates.any(), latest_data.loc[duplicates, :]
 
 
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
@@ -60,20 +59,18 @@ def test_combined_county_has_some_data(fips):
     assert latest.get_record_for_fips(fips=fips)[CommonFields.DEATHS] > 1
 
 
-# Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
-@pytest.mark.parametrize("fips", ["06075", "48201"])
+# Check some counties picked arbitrarily: (Orange County, CA)/06059 and (Harris County, TX)/48201
+@pytest.mark.parametrize("fips", ["06059", "48201"])
 def test_combined_county_has_some_timeseries_data(fips):
     region = Region.from_fips(fips)
     latest = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
     df = latest.data.set_index(CommonFields.DATE)
-    assert df.loc["2020-05-01", CommonFields.CASES] > 0
-    assert df.loc["2020-05-01", CommonFields.DEATHS] > 0
-    if fips.startswith(
-        "06"
-    ):  # TODO(tom): Remove this condition when we have county data in TX too.
-        assert df.loc["2020-05-01", CommonFields.POSITIVE_TESTS] > 0
-        assert df.loc["2020-05-01", CommonFields.NEGATIVE_TESTS] > 0
-        assert df.loc["2020-05-01", CommonFields.CURRENT_ICU] > 0
+    date = "2020-09-01"  # Arbitrary date that both FIPS have data for.
+    assert df.loc[date, CommonFields.CASES] > 0
+    assert df.loc[date, CommonFields.DEATHS] > 0
+    assert df.loc[date, CommonFields.POSITIVE_TESTS] > 0
+    assert df.loc[date, CommonFields.NEGATIVE_TESTS] > 0
+    assert df.loc[date, CommonFields.CURRENT_ICU] > 0
 
 
 @pytest.mark.slow
@@ -81,7 +78,6 @@ def test_combined_county_has_some_timeseries_data(fips):
     "data_source_cls",
     [
         JHUDataset,
-        CDSDataset,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
         CovidCountyDataDataSource,
@@ -105,7 +101,6 @@ def test_unique_timeseries(data_source_cls):
     "data_source_cls",
     [
         JHUDataset,
-        CDSDataset,
         CovidTrackingDataSource,
         NevadaHospitalAssociationData,
         CovidCountyDataDataSource,

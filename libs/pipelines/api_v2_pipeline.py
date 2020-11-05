@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
-import multiprocessing
 import pathlib
 import time
 
@@ -16,12 +15,14 @@ from api.can_api_v2_definition import MetricsTimeseriesRow
 from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from libs import dataset_deployer
 from libs import top_level_metrics
+from libs import top_level_metric_risk_levels
+from libs import parallel_utils
 from libs import pipeline
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
+from libs.datasets import timeseries
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import build_api_v2
-from libs.datasets import combined_datasets
 from libs.datasets import AggregationLevel
 
 logger = structlog.getLogger()
@@ -34,9 +35,11 @@ INTERVENTION = Intervention.OBSERVED_INTERVENTION
 class RegionalInput:
     region: pipeline.Region
 
-    model_output: Optional[CANPyseirLocationOutput]
+    _combined_data_with_test_positivity: OneRegionTimeseriesDataset
 
-    _combined_data: combined_datasets.RegionalData
+    rt_data: Optional[OneRegionTimeseriesDataset]
+
+    icu_data: Optional[OneRegionTimeseriesDataset]
 
     @property
     def fips(self) -> str:
@@ -44,34 +47,58 @@ class RegionalInput:
 
     @property
     def latest(self) -> Dict[str, Any]:
-        return self._combined_data.latest
+        return self._combined_data_with_test_positivity.latest
 
     @property
     def timeseries(self) -> OneRegionTimeseriesDataset:
-        return self._combined_data.timeseries
+        return self._combined_data_with_test_positivity
 
     @staticmethod
     def from_region_and_model_output(
-        region: pipeline.Region, model_output_dir: pathlib.Path
+        region: pipeline.Region,
+        combined_data_with_test_positivity: MultiRegionTimeseriesDataset,
+        rt_data: MultiRegionTimeseriesDataset,
+        icu_data: MultiRegionTimeseriesDataset,
     ) -> "RegionalInput":
-        combined_data = combined_datasets.RegionalData.from_region(region)
+        one_region_data = combined_data_with_test_positivity.get_one_region(region)
 
-        model_output = CANPyseirLocationOutput.load_from_model_output_if_exists(
-            region.fips, INTERVENTION, model_output_dir
+        # Not all regions have Rt or ICU data due to various filters in pyseir code.
+        try:
+            rt_data = rt_data.get_one_region(region)
+        except timeseries.RegionLatestNotFound:
+            rt_data = None
+
+        try:
+            icu_data = icu_data.get_one_region(region)
+        except timeseries.RegionLatestNotFound:
+            icu_data = None
+
+        return RegionalInput(
+            region=region,
+            _combined_data_with_test_positivity=one_region_data,
+            rt_data=rt_data,
+            icu_data=icu_data,
         )
-        return RegionalInput(region=region, model_output=model_output, _combined_data=combined_data)
+
+    @staticmethod
+    def from_one_regions(
+        region: pipeline.Region,
+        regional_data: OneRegionTimeseriesDataset,
+        rt_data: Optional[OneRegionTimeseriesDataset],
+        icu_data: Optional[OneRegionTimeseriesDataset],
+    ):
+        return RegionalInput(
+            region=region,
+            _combined_data_with_test_positivity=regional_data,
+            rt_data=rt_data,
+            icu_data=icu_data,
+        )
 
 
 def run_on_regions(
-    regional_inputs: List[RegionalInput],
-    pool: multiprocessing.Pool = None,
-    sort_func=None,
-    limit=None,
+    regional_inputs: List[RegionalInput], sort_func=None, limit=None,
 ) -> List[RegionSummaryWithTimeseries]:
-    # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
-    # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
-    pool = pool or multiprocessing.Pool(maxtasksperchild=1)
-    results = map(build_timeseries_for_region, regional_inputs)
+    results = parallel_utils.parallel_map(build_timeseries_for_region, regional_inputs)
     all_timeseries = [result for result in results if result]
 
     if sort_func:
@@ -84,24 +111,28 @@ def run_on_regions(
 
 
 def generate_metrics_and_latest(
-    timeseries: OneRegionTimeseriesDataset, model_output: Optional[CANPyseirLocationOutput],
+    timeseries: OneRegionTimeseriesDataset,
+    rt_data: Optional[OneRegionTimeseriesDataset],
+    icu_data: Optional[OneRegionTimeseriesDataset],
+    log,
 ) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
     """
     Build metrics with timeseries.
 
     Args:
-        timeseries: Timeseries for one region
-        latest: Dictionary of latest values for region
-        model_output: Optional model output for region.
+        timeseries: Timeseries for one region.
+        rt_data: Rt data.
+        icu_data: Estimated ICU usage data.
+
 
     Returns:
         Tuple of MetricsTimeseriesRows for all days and the metrics overview.
     """
     if timeseries.empty:
-        return [], None
+        return [], Metrics.empty()
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, model_output
+        timeseries, rt_data, icu_data, log
     )
     metrics_timeseries = metrics_results.to_dict(orient="records")
     metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
@@ -119,20 +150,23 @@ def build_timeseries_for_region(
 
     Returns: Summary with timeseries for region.
     """
+    log = structlog.get_logger(location_id=regional_input.region.location_id)
     fips_latest = regional_input.latest
-    model_output = regional_input.model_output
 
     try:
         fips_timeseries = regional_input.timeseries
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
-            fips_timeseries, model_output
+            fips_timeseries, regional_input.rt_data, regional_input.icu_data, log
         )
-        region_summary = build_api_v2.build_region_summary(fips_latest, metrics_latest)
+        risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
+        region_summary = build_api_v2.build_region_summary(
+            fips_latest, metrics_latest, risk_levels, regional_input.region
+        )
         region_timeseries = build_api_v2.build_region_timeseries(
             region_summary, fips_timeseries, metrics_timeseries
         )
     except Exception:
-        logger.exception(f"Failed to build timeseries for fips.")
+        log.exception(f"Failed to build timeseries for fips.")
         return None
 
     return region_timeseries

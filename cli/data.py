@@ -5,10 +5,12 @@ import pathlib
 import os
 import json
 import shutil
+import structlog
 
 import click
 
 from libs import google_sheet_helpers, wide_dates_df
+from libs import pipeline
 from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
@@ -17,14 +19,14 @@ from libs.datasets.combined_datasets import (
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.timeseries import MultiRegionTimeseriesDataset
-from libs.datasets.timeseries import add_new_cases
-from libs.qa import dataset_summary
+from libs.datasets import timeseries
 from libs.qa import data_availability
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.sources import forecast_hub
+from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 from pyseir import DATA_DIR
 import pyseir.icu.utils
 from pyseir.icu import infer_icu
@@ -40,16 +42,6 @@ def main():
     pass
 
 
-def _save_field_summary(
-    timeseries_dataset: MultiRegionTimeseriesDataset, output_path: pathlib.Path
-):
-
-    _logger.info("Starting dataset summary generation")
-    summary = dataset_summary.summarize_timeseries_fields(timeseries_dataset.data)
-    summary.to_csv(output_path)
-    _logger.info(f"Saved dataset summary to {output_path}")
-
-
 @main.command()
 @click.option("--filename", default="external_forecasts.csv")
 def update_forecasts(filename):
@@ -62,10 +54,14 @@ def update_forecasts(filename):
 
 
 @main.command()
-@click.option("--summary-filename", default="timeseries_summary.csv")
 @click.option("--wide-dates-filename", default="multiregion-wide-dates.csv")
-@click.option("--aggregate-to-msas", is_flag=True, help="Aggregate counties to MSAs")
-def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
+@click.option(
+    "--aggregate-to-msas/--no-aggregate-to-msas",
+    is_flag=True,
+    help="Aggregate counties to MSAs",
+    default=True,
+)
+def update(wide_dates_filename, aggregate_to_msas: bool):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -88,10 +84,14 @@ def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
     multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         timeseries_dataset, latest_dataset
     )
-    multiregion_dataset = add_new_cases(multiregion_dataset)
+    multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
+    multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
+
     if aggregate_to_msas:
         aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-        multiregion_dataset = multiregion_dataset.merge(aggregator.aggregate(multiregion_dataset))
+        multiregion_dataset = multiregion_dataset.append_regions(
+            aggregator.aggregate(multiregion_dataset)
+        )
 
     _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, multiregion_dataset,
@@ -113,17 +113,34 @@ def update(summary_filename, wide_dates_filename, aggregate_to_msas: bool):
             multiregion_pointer.path.with_name(wide_dates_filename),
         )
 
-    if summary_filename:
-        _save_field_summary(multiregion_dataset, path_prefix / summary_filename)
+
+KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
+    # Territories other than PR
+    "iso1:us#iso2:us-vi",
+    "iso1:us#iso2:us-as",
+    "iso1:us#iso2:us-gu",
+    # Subregion of AS
+    "iso1:us#iso2:us-vi#fips:78030",
+    "iso1:us#iso2:us-vi#fips:78020",
+    "iso1:us#iso2:us-vi#fips:78010",
+    # Retired FIPS
+    "iso1:us#iso2:us-sd#fips:46113",
+    "iso1:us#iso2:us-va#fips:51515",
+    # All the unknown county FIPS
+    *[pipeline.fips_to_location_id(f) for f in ABBREV_US_UNKNOWN_COUNTY_FIPS.values()],
+]
 
 
 @main.command()
-@click.option("--output-dir", type=pathlib.Path, required=True)
-@click.option("--filename", type=pathlib.Path, default="timeseries_field_summary.csv")
-def save_summary(output_dir: pathlib.Path, filename: str):
-    """Saves summary of timeseries dataset indexed by fips and variable name."""
+@click.argument("output_path", type=pathlib.Path)
+def run_population_filter(output_path: pathlib.Path):
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    _save_field_summary(us_timeseries, output_dir / filename)
+    log = structlog.get_logger()
+    log.info("starting filter")
+    ts_out = timeseries.drop_regions_without_population(
+        us_timeseries, KNOWN_LOCATION_ID_WITHOUT_POPULATION, log
+    )
+    ts_out.to_csv(output_path)
 
 
 @main.command()

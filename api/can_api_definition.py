@@ -9,6 +9,7 @@ from typing import List, Optional
 import enum
 import datetime
 import pydantic
+from covidactnow.datapublic.common_fields import GetByValueMixin
 
 from libs import base_model
 from libs import us_state_abbrev
@@ -75,12 +76,30 @@ class CovidPatientsMethod(enum.Enum):
     ESTIMATED = "estimated"
 
 
+class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
+    """Method used to determine test positivity ratio."""
+
+    CMSTesting = "CMSTesting"
+    HHSTesting = "HHSTesting"
+    VALORUM = "Valorum"
+    COVID_TRACKING = "covid_tracking"
+    OTHER = "other"
+
+
 class NonCovidPatientsMethod(enum.Enum):
     """Method used to determine number of current ICU patients without covid."""
 
     ACTUAL = "actual"
     ESTIMATED_FROM_TYPICAL_UTILIZATION = "estimated_from_typical_utilization"
     ESTIMATED_FROM_TOTAL_ICU_ACTUAL = "estimated_from_total_icu_actual"
+
+
+class TestPositivityRatioDetails(base_model.APIBaseModel):
+    """Details about how the test positivity ratio was calculated."""
+
+    source: TestPositivityRatioMethod = pydantic.Field(
+        ..., description="Source data for test positivity ratio."
+    )
 
 
 class ICUHeadroomMetricDetails(base_model.APIBaseModel):
@@ -107,6 +126,7 @@ class Metrics(base_model.APIBaseModel):
         ...,
         description="Ratio of people who test positive calculated using a 7-day rolling average.",
     )
+    testPositivityRatioDetails: Optional[TestPositivityRatioDetails] = pydantic.Field(None)
 
     caseDensity: Optional[float] = pydantic.Field(
         ...,

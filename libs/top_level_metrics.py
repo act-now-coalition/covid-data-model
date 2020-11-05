@@ -3,14 +3,14 @@ import enum
 from datetime import timedelta
 import pandas as pd
 import numpy as np
+from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_fields
 
 from api import can_api_definition
+from api.can_api_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
-from libs.datasets import can_model_output_schema as schema
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.sources.can_pyseir_location_output import CANPyseirLocationOutput
 from libs import icu_headroom_metric
 
 Metrics = can_api_definition.Metrics
@@ -23,7 +23,11 @@ CONTACT_TRACERS_PER_CASE = 5
 RT_TRUNCATION_DAYS = 7
 
 
-MAX_METRIC_LOOKBACK_DAYS = 7
+# CMS and HHS testing data can both lag by more than 7 days. Let's use it unless it's 2 weeks old.
+MAX_METRIC_LOOKBACK_DAYS = 13
+
+
+EMPTY_TS = pd.Series([], dtype="float64")
 
 
 class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
@@ -37,9 +41,15 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     ICU_HEADROOM_RATIO = "icuHeadroomRatio"
 
 
+def has_data_in_past_10_days(series: pd.Series) -> bool:
+    return series_utils.has_recent_data(series, days_back=10, required_non_null_datapoints=1)
+
+
 def calculate_metrics_for_timeseries(
     timeseries: OneRegionTimeseriesDataset,
-    model_output: Optional[CANPyseirLocationOutput],
+    rt_data: Optional[OneRegionTimeseriesDataset],
+    icu_data: Optional[OneRegionTimeseriesDataset],
+    log,
     require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
@@ -53,42 +63,22 @@ def calculate_metrics_for_timeseries(
     estimated_current_icu = None
     infection_rate = np.nan
     infection_rate_ci90 = np.nan
-    if model_output:
-        # TODO(chris): Currently merging model output data into the timeseries data to align model
-        # data with raw data.  However, if the index was properly set on both datasets to be DATE,
-        # this would not be necessary.  In the future, consider indexing data on date so that
-        # merges are not necessary.
+    if rt_data and not rt_data.empty:
+        rt_data = rt_data.date_indexed
+        infection_rate = rt_data["Rt_MAP_composite"]
+        infection_rate_ci90 = rt_data["Rt_ci95_composite"] - rt_data["Rt_MAP_composite"]
 
-        # Only merging date up to the most recent timeseries date (model data includes
-        # future projections for other values and we don't want to pad the end with NaNs).
-        up_to_latest_day = model_output.data[schema.DATE] <= data.index.max()
-        fields_to_include = [
-            schema.DATE,
-            schema.RT_INDICATOR,
-            schema.RT_INDICATOR_CI90,
-            schema.CURRENT_ICU,
-        ]
-        model_data = model_output.data.loc[up_to_latest_day, fields_to_include]
-        model_data = model_data.set_index(schema.DATE)
+    if icu_data and not icu_data.empty:
+        icu_data = icu_data.date_indexed
+        estimated_current_icu = icu_data[CommonFields.CURRENT_ICU]
 
-        infection_rate = model_data[schema.RT_INDICATOR]
-        infection_rate_ci90 = model_data[schema.RT_INDICATOR_CI90]
-        estimated_current_icu = model_data[schema.CURRENT_ICU]
+    new_cases = data[CommonFields.NEW_CASES]
+    case_density = calculate_case_density(new_cases, population)
 
-    cumulative_cases = data[CommonFields.CASES]
-    case_density = calculate_case_density(cumulative_cases, population)
+    test_positivity, test_positivity_details = calculate_or_copy_test_positivity(timeseries, log)
 
-    cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
-        data[CommonFields.POSITIVE_TESTS]
-    )
-    cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
-        data[CommonFields.NEGATIVE_TESTS]
-    )
-    test_positivity = calculate_test_positivity(
-        cumulative_positive_tests, cumulative_negative_tests
-    )
     contact_tracer_capacity = calculate_contact_tracers(
-        cumulative_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
+        new_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
     )
 
     # Caculate icu headroom
@@ -113,31 +103,84 @@ def calculate_metrics_for_timeseries(
 
     metric_summary = None
     if not metrics.empty:
-        metric_summary = calculate_latest_metrics(metrics, icu_metric_details)
+        metric_summary = calculate_latest_metrics(
+            metrics, icu_metric_details, test_positivity_details
+        )
 
     return metrics, metric_summary
 
 
-def _calculate_smoothed_daily_cases(cases: pd.Series, smooth: int = 7):
+def _lookup_test_positivity_method(
+    positive_tests_provenance: Optional[str], negative_tests_provenance: Optional[str], log
+) -> TestPositivityRatioMethod:
+    method = None
+    if positive_tests_provenance and positive_tests_provenance == negative_tests_provenance:
+        method = TestPositivityRatioMethod.get(positive_tests_provenance)
+    if method is None:
+        log.debug(
+            "Unable to find TestPositivityRatioMethod",
+            positive_tests_provenance=positive_tests_provenance,
+            negative_tests_provenance=negative_tests_provenance,
+        )
+        method = TestPositivityRatioMethod.OTHER
+    return method
 
-    if cases.first_valid_index() is None:
-        return cases
 
-    cases = cases.copy()
+def calculate_or_copy_test_positivity(
+    ts: OneRegionTimeseriesDataset, log,
+) -> Tuple[pd.Series, TestPositivityRatioDetails]:
+    # TODO(tom): Move all these calculations to test_positivity.AllMethods or something applied to each
+    # datasource with test metrics.
+    data = ts.date_indexed
+    # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
+    # for this region.
+    positive_negative_recent = has_data_in_past_10_days(
+        data[CommonFields.POSITIVE_TESTS]
+    ) and has_data_in_past_10_days(data[CommonFields.NEGATIVE_TESTS])
+    test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
+    if positive_negative_recent or not test_positivity.notna().any():
+        cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
+            data[CommonFields.POSITIVE_TESTS]
+        )
+        cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
+            data[CommonFields.NEGATIVE_TESTS]
+        )
+        method = _lookup_test_positivity_method(
+            ts.provenance.get(CommonFields.POSITIVE_TESTS),
+            ts.provenance.get(CommonFields.NEGATIVE_TESTS),
+            log,
+        )
+        test_positivity = calculate_test_positivity(
+            cumulative_positive_tests, cumulative_negative_tests
+        )
+    else:
+        provenance = ts.provenance.get(CommonFields.TEST_POSITIVITY)
+        method = TestPositivityRatioMethod.get(provenance)
+        if method is None:
+            log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
+            method = TestPositivityRatioMethod.OTHER
+    return test_positivity, TestPositivityRatioDetails(source=method)
+
+
+def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7):
+
+    if new_cases.first_valid_index() is None:
+        return new_cases
+
+    new_cases = new_cases.copy()
 
     # Front filling all cases with 0s.  We're assuming all regions are accurately
     # reporting the first day a new case occurs.  This will affect the first few cases
     # in a timeseries, because it's smoothing over a full period, rather than just the first
     # couple days of reported data.
-    cases[: cases.first_valid_index() - timedelta(days=1)] = 0
-    cases_daily = cases.diff()
-    smoothed = series_utils.smooth_with_rolling_average(cases_daily, window=smooth)
+    new_cases[: new_cases.first_valid_index() - timedelta(days=1)] = 0
+    smoothed = series_utils.smooth_with_rolling_average(new_cases, window=smooth)
 
     return smoothed
 
 
 def calculate_case_density(
-    cases: pd.Series, population: int, smooth: int = 7, normalize_by: int = 100_000
+    new_cases: pd.Series, population: int, smooth: int = 7, normalize_by: int = 100_000
 ) -> pd.Series:
     """Calculates normalized daily case density.
 
@@ -150,7 +193,7 @@ def calculate_case_density(
     Returns:
         Population cases density.
     """
-    smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=smooth)
+    smoothed_daily_cases = _calculate_smoothed_daily_cases(new_cases, smooth=smooth)
     return smoothed_daily_cases / (population / normalize_by)
 
 
@@ -182,7 +225,7 @@ def calculate_test_positivity(
 
 
 def calculate_contact_tracers(
-    cases: pd.Series,
+    new_cases: pd.Series,
     contact_tracers: pd.Series,
     contact_tracers_per_case: int = CONTACT_TRACERS_PER_CASE,
 ) -> pd.Series:
@@ -196,14 +239,16 @@ def calculate_contact_tracers(
 
     Returns: Series aligned on the same index as cases.
     """
-
-    smoothed_daily_cases = _calculate_smoothed_daily_cases(cases, smooth=7)
-    return contact_tracers / (smoothed_daily_cases * contact_tracers_per_case)
+    smoothed_daily_cases = _calculate_smoothed_daily_cases(new_cases, smooth=7)
+    contact_tracers_ratio = contact_tracers / (smoothed_daily_cases * contact_tracers_per_case)
+    contact_tracers_ratio = contact_tracers_ratio.replace([-np.inf, np.inf], np.nan)
+    return contact_tracers_ratio
 
 
 def calculate_latest_metrics(
     data: pd.DataFrame,
     icu_metric_details: Optional[ICUHeadroomMetricDetails],
+    test_positivity_method: Optional[TestPositivityRatioDetails],
     max_lookback_days: int = MAX_METRIC_LOOKBACK_DAYS,
 ) -> Metrics:
     """Calculate latest metrics from top level metrics data.
@@ -216,7 +261,10 @@ def calculate_latest_metrics(
     Returns: Metrics
     """
     data = data.set_index(CommonFields.DATE)
-    metrics = {}
+    metrics = {
+        "testPositivityRatioDetails": test_positivity_method,
+        "icuHeadroomDetails": icu_metric_details,
+    }
     latest_date = data.index[-1]
 
     # Get latest value from data where available.
@@ -247,4 +295,4 @@ def calculate_latest_metrics(
 
     metrics[MetricsFields.INFECTION_RATE] = data[MetricsFields.INFECTION_RATE][rt_index]
     metrics[MetricsFields.INFECTION_RATE_CI90] = data[MetricsFields.INFECTION_RATE_CI90][rt_index]
-    return Metrics(**metrics, icuHeadroomDetails=icu_metric_details)
+    return Metrics(**metrics)
