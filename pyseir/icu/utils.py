@@ -1,7 +1,8 @@
 import pandas as pd
 
-from libs.datasets import combined_datasets
+from libs.datasets import combined_datasets, timeseries
 from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 def _quantile_range(x: pd.Series) -> float:
@@ -17,6 +18,7 @@ def _quantile_range(x: pd.Series) -> float:
 
 def calculate_case_based_weights() -> dict:
     LOOKBACK_DAYS = 31
+    SUMMED_CASES_LABEL = "summed_cases"
     cutoff_date = pd.Timestamp.now() - pd.Timedelta(days=LOOKBACK_DAYS)
     region_groupby = (
         combined_datasets.load_us_timeseries_dataset()
@@ -25,13 +27,31 @@ def calculate_case_based_weights() -> dict:
     )
 
     last_month_cum_cases = region_groupby[CommonFields.CASES].apply(_quantile_range)
-    last_month_cum_cases.name = "summed_cases"
+    last_month_cum_cases.name = SUMMED_CASES_LABEL
 
     df = last_month_cum_cases.reset_index().dropna()
-    df["state_fips"] = df["fips"].str.slice(0, 2)  # Apply State Labels to Groupby
+    timeseries._add_fips_if_missing(df)
+    # Example location_id value = 'iso1:us#iso2:us-ak#fips:02013'
+    df["state_location_id"] = df[CommonFields.LOCATION_ID.value].str.split("#").str[1]
     # Normalize the cases based on the groupby total
-    df["weight"] = df.groupby("state_fips")["summed_cases"].transform(lambda x: x / x.sum())
-    df["weight"] = df["weight"].round(5)
+    df["weight"] = df.groupby("state_location_id")[SUMMED_CASES_LABEL].transform(
+        lambda x: x / x.sum()
+    )
+    df["weight"] = df["weight"].round(4)
     # Convert to dict mapping
-    output = df.set_index("fips")["weight"].to_dict()
+    output = df.set_index(CommonFields.FIPS.value)["weight"].to_dict()
+
+    # Set the default weight to 0 for the few counties with no cases in the window of interest
+    all_county_fips = (
+        combined_datasets.load_us_latest_dataset()
+        .get_subset(aggregation_level=AggregationLevel.COUNTY, exclude_county_999=True)
+        .data[CommonFields.FIPS]
+        .unique()
+        .tolist()
+    )
+
+    for fips in all_county_fips:
+        if fips not in output:
+            output[fips] = 0
+
     return output
