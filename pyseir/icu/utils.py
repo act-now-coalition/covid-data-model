@@ -2,6 +2,7 @@ import pandas as pd
 
 from libs.datasets import combined_datasets, timeseries
 from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 def _quantile_range(x: pd.Series) -> float:
@@ -39,4 +40,18 @@ def calculate_case_based_weights() -> dict:
     df["weight"] = df["weight"].round(4)
     # Convert to dict mapping
     output = df.set_index(CommonFields.FIPS.value)["weight"].to_dict()
+
+    # Set the default weight to 0 for the few counties with no cases in the window of interest
+    all_county_fips = (
+        combined_datasets.load_us_latest_dataset()
+        .get_subset(aggregation_level=AggregationLevel.COUNTY, exclude_county_999=True)
+        .data[CommonFields.FIPS]
+        .unique()
+        .tolist()
+    )
+
+    for fips in all_county_fips:
+        if fips not in output:
+            output[fips] = 0
+
     return output
