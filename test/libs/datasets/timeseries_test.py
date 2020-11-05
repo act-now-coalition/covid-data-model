@@ -280,8 +280,6 @@ def test_append_regions():
             "iso1:us#fips:97111,,Bar County,county,3,\n"
             "iso1:us#fips:97222,,Foo County,county,,11\n"
         )
-    ).append_provenance_csv(
-        io.StringIO("location_id,variable,provenance\n" "iso1:us#fips:97111,m1,prov97111m1\n")
     )
     ts_cbsa = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
@@ -292,8 +290,6 @@ def test_append_regions():
             "iso1:us#cbsa:10100,,3\n"
             "iso1:us#cbsa:20200,,4\n"
         )
-    ).append_provenance_csv(
-        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:20200,m1,prov20200m2\n")
     )
     # Check that merge is symmetric
     ts_merged_1 = ts_fips.append_regions(ts_cbsa)
@@ -313,12 +309,6 @@ def test_append_regions():
             "iso1:us#fips:97222,2020-04-04,Foo County,county,,11\n"
             "iso1:us#fips:97111,,Bar County,county,3,\n"
             "iso1:us#fips:97222,,Foo County,county,,11\n"
-        )
-    ).append_provenance_csv(
-        io.StringIO(
-            "location_id,variable,provenance\n"
-            "iso1:us#fips:97111,m1,prov97111m1\n"
-            "iso1:us#cbsa:20200,m1,prov20200m2\n"
         )
     )
     assert_combined_like(ts_merged_1, ts_expected)
@@ -465,8 +455,8 @@ def test_join_columns():
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#cbsa:10100,m1,ts110100prov\n"
-            "iso1:us#cbsa:10100,m2,ts110100prov\n"
             "iso1:us#fips:97111,m1,ts197111prov\n"
+            "iso1:us#cbsa:10100,m2,ts110100prov\n"
             "iso1:us#fips:97111,m2,ts197111prov\n"
         )
     )
