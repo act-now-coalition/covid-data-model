@@ -685,8 +685,26 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
 
+    def drop_column_if_present(self, column: str) -> "MultiRegionTimeseriesDataset":
+        """Drops the specified column from the timeseries if it exists"""
+        df = self.data_with_fips.drop(column, axis="columns", errors="ignore")
+        latest_data = self.latest_data_with_fips.drop(
+            column, axis="columns", errors="ignore"
+        ).reset_index()
+        provenance = self.provenance[
+            self.provenance.index.get_level_values(PdFields.VARIABLE) != column
+        ]
+        return MultiRegionTimeseriesDataset.from_timeseries_df(
+            df, provenance=provenance
+        ).append_latest_df(latest_data)
+
     def join_columns(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
-        """Joins the timeseries columns in `other` with those in `self`."""
+        """Joins the timeseries columns in `other` with those in `self`.
+
+        Args:
+            other: The timeseries dataset to join with `self`. all columns except the "geo" columns
+                   will be joined into `self`.
+        """
         if not other.latest_data.empty:
             raise NotImplementedError("No support for joining other with latest_data")
         other_df = other.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])

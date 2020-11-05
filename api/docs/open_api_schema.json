@@ -670,6 +670,7 @@
       "TestPositivityRatioMethod": {
         "title": "TestPositivityRatioMethod",
         "enum": [
+          "CMSTesting",
           "HHSTesting",
           "Valorum",
           "covid_tracking",
