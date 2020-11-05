@@ -106,7 +106,6 @@ jobs:
 
     - name: Build API (run.sh .. .. execute_api)
       run: |
-        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api
         ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
 
     - name: make and copy to local tmp directory
