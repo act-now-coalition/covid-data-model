@@ -87,7 +87,7 @@ class RegionPipelineInput:
 
 @dataclass
 class RegionPipeline:
-    """Runs the pipeline for one region smaller than a state and stores the output."""
+    """Runs the pipeline for one region stores the output."""
 
     region: pipeline.Region
     infer_df: pd.DataFrame
