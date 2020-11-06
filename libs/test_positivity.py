@@ -209,8 +209,7 @@ class AllMethods:
 
         test_positivity = MultiRegionTimeseriesDataset.from_timeseries_df(
             positivity.stack().rename(CommonFields.TEST_POSITIVITY).reset_index(),
-            provenance=provenance,
-        )
+        ).add_provenance_series(provenance)
 
         return AllMethods(all_methods_timeseries=all_wide, test_positivity=test_positivity)
 
