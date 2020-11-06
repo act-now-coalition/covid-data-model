@@ -631,9 +631,9 @@ def _build_one_column_multiregion_dataset(
         [{CommonFields.LOCATION_ID: location_id, "date": pd.NaT, column: value}]
     )
 
-    return timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(
-        timeseries_df
-    ).append_latest_df(latest_df)
+    return timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df).add_latest_df(
+        latest_df
+    )
 
 
 def test_remove_outliers():

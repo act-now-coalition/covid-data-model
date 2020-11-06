@@ -452,7 +452,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         provenance = _EMPTY_PROVENANCE_SERIES.copy()
         return MultiRegionTimeseriesDataset(timeseries_df, empty_latest_df, _provenance=provenance)
 
-    def append_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
+    def add_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
         assert latest_df.index.names == [None]
         assert CommonFields.LOCATION_ID in latest_df.columns
 
@@ -505,7 +505,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         dataset = MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
         if not latest_df.empty:
-            dataset = dataset.append_latest_df(latest_df)
+            dataset = dataset.add_latest_df(latest_df)
 
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
@@ -524,7 +524,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         latest_df = latest.data.copy()
         _add_location_id(latest_df)
-        dataset = dataset.append_latest_df(latest_df)
+        dataset = dataset.add_latest_df(latest_df)
 
         if ts.provenance is not None:
             # Check that current index is as expected. Names will be fixed after remapping, below.
@@ -563,7 +563,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         provenance = pd.concat([self._provenance, other._provenance])
         return (
             MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
-            .append_latest_df(latest_df)
+            .add_latest_df(latest_df)
             .add_provenance_series(provenance)
         )
 
@@ -604,7 +604,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
         return (
             MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
-            .append_latest_df(latest_df)
+            .add_latest_df(latest_df)
             .add_provenance_series(provenance)
         )
 
@@ -626,7 +626,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         return (
             MultiRegionTimeseriesDataset.from_timeseries_df(ts_df)
-            .append_latest_df(latest_df)
+            .add_latest_df(latest_df)
             .add_provenance_series(provenance)
         )
 
@@ -686,7 +686,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         ]
         return (
             MultiRegionTimeseriesDataset.from_timeseries_df(df)
-            .append_latest_df(latest_data)
+            .add_latest_df(latest_data)
             .add_provenance_series(provenance)
         )
 
@@ -730,7 +730,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         combined_provenance = pd.concat([self._provenance, other._provenance])
         return (
             MultiRegionTimeseriesDataset.from_timeseries_df(combined_df.reset_index())
-            .append_latest_df(self._latest_data.reset_index())
+            .add_latest_df(self._latest_data.reset_index())
             .add_provenance_series(combined_provenance)
         )
 
@@ -792,7 +792,7 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
 
     new_timeseries = (
         MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df=df_copy)
-        .append_latest_df(latest_values)
+        .add_latest_df(latest_values)
         .add_provenance_series(timeseries._provenance)
     )
 
@@ -852,7 +852,7 @@ def drop_new_case_outliers(
     latest_values = _add_new_cases_to_latest(df_copy, timeseries._latest_data)
     new_timeseries = (
         MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df=df_copy)
-        .append_latest_df(latest_values)
+        .add_latest_df(latest_values)
         .add_provenance_series(timeseries._provenance)
     )
 
