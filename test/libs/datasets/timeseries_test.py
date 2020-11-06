@@ -98,7 +98,9 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
     assert region_97111.date_indexed.at["2020-04-02", "m1"] == 2
     assert region_97111.latest["c1"] == 3
     assert multiregion_loaded.get_one_region(Region.from_fips("01")).latest["c2"] == 123.4
-    assert_combined_like(multiregion, multiregion_loaded)
+    assert_dataset_like(
+        multiregion, multiregion_loaded, drop_na_latest=True, drop_na_timeseries=True
+    )
 
 
 def test_multi_region_get_one_region():
@@ -238,36 +240,40 @@ def test_multiregion_provenance():
     assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == "src21"
 
 
-def _combined_sorted_by_location_date(
-    ts: timeseries.MultiRegionTimeseriesDataset, drop_na_timeseries: bool
+def _timeseries_sorted_by_location_date(
+    ts: timeseries.MultiRegionTimeseriesDataset, drop_na: bool
 ) -> pd.DataFrame:
-    """Returns the combined data, sorted by LOCATION_ID and DATE."""
-    df = ts.combined_df.sort_values(
-        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
-    )
-    if drop_na_timeseries:
+    """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
+    df = ts.data.sort_values([CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True)
+    if drop_na:
         df = df.dropna("columns", "all")
     return df
 
 
-def assert_combined_like(
-    ts1: timeseries.MultiRegionTimeseriesDataset,
-    ts2: timeseries.MultiRegionTimeseriesDataset,
+def _latest_sorted_by_location_date(
+    ts: timeseries.MultiRegionTimeseriesDataset, drop_na: bool
+) -> pd.DataFrame:
+    """Returns the latest data, sorted by LOCATION_ID."""
+    df = ts.latest_data.sort_values([CommonFields.LOCATION_ID], ignore_index=True)
+    if drop_na:
+        df = df.dropna("columns", "all")
+    return df
+
+
+def assert_dataset_like(
+    ds1: timeseries.MultiRegionTimeseriesDataset,
+    ds2: timeseries.MultiRegionTimeseriesDataset,
     drop_na_timeseries=False,
+    drop_na_latest=False,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
-    sorted1 = _combined_sorted_by_location_date(ts1, drop_na_timeseries=drop_na_timeseries)
-    sorted2 = _combined_sorted_by_location_date(ts2, drop_na_timeseries=drop_na_timeseries)
-    pd.testing.assert_frame_equal(sorted1, sorted2, check_like=True)
-    if ts1.provenance is not None:
-        assert (
-            ts2.provenance is not None
-        ), f"ts1.provenance is {ts1.provenance}, ts2.provenance is {ts2.provenance}"
-        pd.testing.assert_series_equal(ts1.provenance, ts2.provenance)
-    else:
-        assert (
-            ts2.provenance is None
-        ), f"ts1.provenance is {ts1.provenance}, ts2.provenance is {ts2.provenance}"
+    ts1 = _timeseries_sorted_by_location_date(ds1, drop_na=drop_na_timeseries)
+    ts2 = _timeseries_sorted_by_location_date(ds2, drop_na=drop_na_timeseries)
+    pd.testing.assert_frame_equal(ts1, ts2, check_like=True)
+    latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
+    latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
+    pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
+    pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
 
 
 def test_append_regions():
@@ -298,7 +304,7 @@ def test_append_regions():
     # Check that merge is symmetric
     ts_merged_1 = ts_fips.append_regions(ts_cbsa)
     ts_merged_2 = ts_cbsa.append_regions(ts_fips)
-    assert_combined_like(ts_merged_1, ts_merged_2)
+    assert_dataset_like(ts_merged_1, ts_merged_2)
 
     ts_expected = timeseries.MultiRegionTimeseriesDataset.from_csv(
         io.StringIO(
@@ -321,7 +327,7 @@ def test_append_regions():
             "iso1:us#cbsa:20200,m1,prov20200m2\n"
         )
     )
-    assert_combined_like(ts_merged_1, ts_expected)
+    assert_dataset_like(ts_merged_1, ts_expected)
 
 
 def test_calculate_new_cases():
@@ -360,7 +366,7 @@ def test_calculate_new_cases():
     )
 
     timeseries_after = timeseries.add_new_cases(mrts_before)
-    assert_combined_like(mrts_expected, timeseries_after)
+    assert_dataset_like(mrts_expected, timeseries_after)
 
 
 def test_new_cases_remove_negative():
@@ -385,7 +391,7 @@ def test_new_cases_remove_negative():
     )
 
     timeseries_after = timeseries.add_new_cases(mrts_before)
-    assert_combined_like(mrts_expected, timeseries_after)
+    assert_dataset_like(mrts_expected, timeseries_after)
 
 
 def test_timeseries_long():
@@ -471,7 +477,7 @@ def test_join_columns():
         )
     )
     ts_joined = ts_1.join_columns(ts_2)
-    assert_combined_like(ts_joined, ts_expected)
+    assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
     with pytest.raises(NotImplementedError):
         ts_2.join_columns(ts_1)
@@ -521,7 +527,7 @@ def test_join_columns_missing_regions():
         )
     )
     ts_joined = ts_1.join_columns(ts_2)
-    assert_combined_like(ts_joined, ts_expected)
+    assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
 
 def test_iter_one_region():
@@ -579,7 +585,7 @@ def test_drop_regions_without_population():
         ts_out = timeseries.drop_regions_without_population(
             ts_in, ["iso1:us#fips:97222"], structlog.get_logger()
         )
-    assert_combined_like(ts_out, ts_expected)
+    assert_dataset_like(ts_out, ts_expected)
 
     assert [l["event"] for l in logs] == ["Dropping unexpected regions without populaton"]
     assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20200"]]
@@ -638,7 +644,7 @@ def test_remove_outliers():
     # Expected result is the same series with the last value removed
     values = [10.0] * 7 + [None]
     expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
-    assert_combined_like(dataset, expected)
+    assert_dataset_like(dataset, expected)
 
 
 def test_remove_outliers_threshold():
@@ -647,14 +653,14 @@ def test_remove_outliers_threshold():
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
-    assert_combined_like(dataset, result)
+    assert_dataset_like(dataset, result)
 
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=29)
 
     # Expected result is the same series with the last value removed
     values = [1.0] * 7 + [None]
     expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
-    assert_combined_like(result, expected)
+    assert_dataset_like(result, expected)
 
 
 def test_not_removing_short_series():
@@ -663,4 +669,4 @@ def test_not_removing_short_series():
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
-    assert_combined_like(dataset, result)
+    assert_dataset_like(dataset, result)

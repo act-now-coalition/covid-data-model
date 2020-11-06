@@ -9,7 +9,7 @@ from libs.datasets import timeseries
 from libs.test_positivity import AllMethods
 from libs.test_positivity import DivisionMethod
 from libs import test_positivity
-from test.libs.datasets.timeseries_test import assert_combined_like
+from test.libs.datasets.timeseries_test import assert_dataset_like
 
 
 def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
@@ -61,7 +61,7 @@ def test_basic():
             "iso1:us#iso2:tx,test_positivity,method1\n"
         )
     )
-    assert_combined_like(all_methods.test_positivity, expected_positivity)
+    assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
     positivity_provenance = all_methods.test_positivity.provenance
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
@@ -118,7 +118,7 @@ def test_recent_days():
             "iso1:us#iso2:tx,test_positivity,method1\n"
         )
     )
-    assert_combined_like(all_methods.test_positivity, expected_positivity)
+    assert_dataset_like(all_methods.test_positivity, expected_positivity)
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     positivity_provenance = all_methods.test_positivity.provenance
     assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
