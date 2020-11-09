@@ -20,7 +20,7 @@ def test_build_summary_for_fips(
         fips_timeseries, nyc_rt_dataset, nyc_icu_dataset
     )
     assert latest_metric
-    summary = generate_api.generate_region_summary(nyc_latest, latest_metric)
+    summary = generate_api.generate_region_summary(nyc_region, nyc_latest, latest_metric)
     expected = RegionSummary(
         population=nyc_latest["population"],
         stateName="New York",
@@ -72,12 +72,12 @@ def test_generate_timeseries_for_fips(
         nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset
     )
 
-    region_summary = generate_api.generate_region_summary(nyc_latest, latest_metric)
+    region_summary = generate_api.generate_region_summary(nyc_region, nyc_latest, latest_metric)
     region_timeseries = generate_api.generate_region_timeseries(
         region_summary, nyc_timeseries, metrics_series
     )
 
-    summary = generate_api.generate_region_summary(nyc_latest, latest_metric)
+    summary = generate_api.generate_region_summary(nyc_region, nyc_latest, latest_metric)
 
     assert summary.dict() == region_timeseries.region_summary.dict()
     # Double checking that serialized json does not contain NaNs, all values should
