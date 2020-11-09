@@ -97,6 +97,7 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
     region_97111 = multiregion_loaded.get_one_region(Region.from_fips("97111"))
     assert region_97111.date_indexed.at["2020-04-02", "m1"] == 2
     assert region_97111.latest["c1"] == 3
+    assert region_97111.region.fips == "97111"
     assert multiregion_loaded.get_one_region(Region.from_fips("01")).latest["c2"] == 123.4
     assert_dataset_like(
         multiregion, multiregion_loaded, drop_na_latest=True, drop_na_timeseries=True
@@ -118,6 +119,7 @@ def test_multi_region_get_one_region():
         pd.to_datetime("2020-04-02"): {"m1": 2}
     }
     assert region_97111_ts.latest["m1"] == 3
+    assert region_97111_ts.region.fips == "97111"
 
     region_97222_ts = ts.get_one_region(Region.from_fips("97222"))
     assert to_dict(["date"], region_97222_ts.data) == {
@@ -559,6 +561,8 @@ def test_iter_one_region():
         assert (one_region.data.fillna("") == it_one_region.data.fillna("")).all(axis=None)
         assert one_region.latest == it_one_region.latest
         assert one_region.provenance == it_one_region.provenance
+        assert one_region.region == it_region
+        assert one_region.region == it_one_region.region
 
 
 def test_drop_regions_without_population():
