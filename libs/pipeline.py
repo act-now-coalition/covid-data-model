@@ -121,7 +121,7 @@ class Region:
 
     @property
     def country(self):
-        return "US"
+        return "USA"
 
     @property
     def level(self) -> AggregationLevel:

@@ -159,7 +159,7 @@ def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_agg
 
 
 def build_fips_data_frame():
-    from libs.datasets import FIPSPopulation
+    from libs.datasets.sources.fips_population import FIPSPopulation
 
     return FIPSPopulation.local().data
 
