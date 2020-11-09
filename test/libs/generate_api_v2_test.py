@@ -17,10 +17,7 @@ from libs.pipelines import api_v2_pipeline
 def test_build_summary_for_fips(
     include_model_output: bool, rt_null: bool, nyc_region, nyc_icu_dataset, nyc_rt_dataset
 ):
-    us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    nyc_latest = us_latest.get_record_for_fips(nyc_region.fips)
-    expected_projections = None
 
     if include_model_output:
         if rt_null:
@@ -30,6 +27,7 @@ def test_build_summary_for_fips(
         nyc_rt_dataset = None
 
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
+    nyc_latest = fips_timeseries.latest
 
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
         fips_timeseries, nyc_rt_dataset, nyc_icu_dataset, structlog.get_logger()
@@ -76,11 +74,10 @@ def test_build_summary_for_fips(
 
 
 def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_dataset):
-    us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
-    nyc_latest = us_latest.get_record_for_fips(nyc_region.fips)
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
+    nyc_latest = nyc_timeseries.latest
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
         nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset, structlog.get_logger()
     )

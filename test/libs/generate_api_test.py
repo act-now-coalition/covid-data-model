@@ -3,7 +3,6 @@ import datetime
 from api.can_api_definition import Actuals
 from api.can_api_definition import RegionSummary
 from libs.datasets import combined_datasets
-from libs.enums import Intervention
 from libs.functions import generate_api
 from libs.pipelines import api_pipeline
 
@@ -11,11 +10,10 @@ from libs.pipelines import api_pipeline
 def test_build_summary_for_fips(
     nyc_region, nyc_rt_dataset, nyc_icu_dataset,
 ):
-    us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    nyc_latest = us_latest.get_record_for_fips(nyc_region.fips)
 
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
+    nyc_latest = fips_timeseries.latest
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest(
         fips_timeseries, nyc_rt_dataset, nyc_icu_dataset
     )
@@ -62,19 +60,17 @@ def test_build_summary_for_fips(
 def test_generate_timeseries_for_fips(
     nyc_region, nyc_rt_dataset, nyc_icu_dataset,
 ):
-    us_latest = combined_datasets.load_us_latest_dataset()
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
-    nyc_latest = us_latest.get_record_for_fips(nyc_region.fips)
-    nyc_timeseries = us_timeseries.get_one_region(nyc_region)
-    intervention = Intervention.OBSERVED_INTERVENTION
+    nyc_dataset = us_timeseries.get_one_region(nyc_region)
+    nyc_latest = nyc_dataset.latest
     metrics_series, latest_metric = api_pipeline.generate_metrics_and_latest(
-        nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset
+        nyc_dataset, nyc_rt_dataset, nyc_icu_dataset
     )
 
     region_summary = generate_api.generate_region_summary(nyc_latest, latest_metric)
     region_timeseries = generate_api.generate_region_timeseries(
-        region_summary, nyc_timeseries, metrics_series
+        region_summary, nyc_dataset, metrics_series
     )
 
     summary = generate_api.generate_region_summary(nyc_latest, latest_metric)

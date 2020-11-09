@@ -83,7 +83,7 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
     )
     multiregion = timeseries.MultiRegionTimeseriesDataset.from_timeseries_and_latest(
         ts, latest_values
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO("location_id,variable,provenance\n" "iso1:us#fips:97111,m1,ts197111prov\n")
     )
     region_97111 = multiregion.get_one_region(Region.from_fips("97111"))
@@ -233,16 +233,16 @@ def test_multiregion_provenance():
         ts, ts.latest_values_object()
     )
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
-    assert out.provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
+    assert out._provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
     assert out.get_one_region(Region.from_fips("97111")).provenance["m1"] == "src11"
-    assert out.provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"
+    assert out._provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"
     assert out.get_one_region(Region.from_fips("97222")).provenance["m2"] == "src22"
-    assert out.provenance.loc["iso1:us#fips:03"].at["m2"] == "src32"
+    assert out._provenance.loc["iso1:us#fips:03"].at["m2"] == "src32"
     assert out.get_one_region(Region.from_fips("03")).provenance["m2"] == "src32"
 
     counties = out.get_counties(after=pd.to_datetime("2020-04-01"))
-    assert "iso1:us#fips:03" not in counties.provenance.index
-    assert counties.provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
+    assert "iso1:us#fips:03" not in counties._provenance.index
+    assert counties._provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
     assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == "src21"
 
 
@@ -260,7 +260,7 @@ def _latest_sorted_by_location_date(
     ts: timeseries.MultiRegionTimeseriesDataset, drop_na: bool
 ) -> pd.DataFrame:
     """Returns the latest data, sorted by LOCATION_ID."""
-    df = ts.latest_data.sort_values([CommonFields.LOCATION_ID], ignore_index=True)
+    df = ts._latest_data.sort_values([CommonFields.LOCATION_ID], ignore_index=True)
     if drop_na:
         df = df.dropna("columns", "all")
     return df
@@ -279,7 +279,7 @@ def assert_dataset_like(
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
     pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
-    pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
+    pd.testing.assert_series_equal(ds1._provenance, ds2._provenance)
 
 
 def test_append_regions():
@@ -292,7 +292,7 @@ def test_append_regions():
             "iso1:us#fips:97111,,Bar County,county,3,\n"
             "iso1:us#fips:97222,,Foo County,county,,11\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO("location_id,variable,provenance\n" "iso1:us#fips:97111,m1,prov97111m1\n")
     )
     ts_cbsa = timeseries.MultiRegionTimeseriesDataset.from_csv(
@@ -304,7 +304,7 @@ def test_append_regions():
             "iso1:us#cbsa:10100,,3\n"
             "iso1:us#cbsa:20200,,4\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:20200,m1,prov20200m2\n")
     )
     # Check that merge is symmetric
@@ -326,7 +326,7 @@ def test_append_regions():
             "iso1:us#fips:97111,,Bar County,county,3,\n"
             "iso1:us#fips:97222,,Foo County,county,,11\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#fips:97111,m1,prov97111m1\n"
@@ -441,7 +441,7 @@ def test_join_columns():
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
             "iso1:us#fips:97111,,Bar County,county,4\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#cbsa:10100,m1,ts110100prov\n"
@@ -456,7 +456,7 @@ def test_join_columns():
             "iso1:us#fips:97111,2020-04-02,Bar County,county,\n"
             "iso1:us#fips:97111,2020-04-04,Bar County,county,\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#cbsa:10100,m2,ts110100prov\n"
@@ -473,7 +473,7 @@ def test_join_columns():
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
             "iso1:us#fips:97111,,Bar County,county,4,\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#cbsa:10100,m1,ts110100prov\n"
@@ -610,12 +610,12 @@ def test_merge_provenance():
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
             "iso1:us#fips:97111,,Bar County,county,4\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
     )
 
     with pytest.raises(NotImplementedError):
-        ts.append_provenance_csv(
+        ts.add_provenance_csv(
             io.StringIO("location_id,variable,provenance\n" "iso1:us#fips:97111,m1,ts197111prov\n")
         )
 
@@ -639,9 +639,9 @@ def _build_one_column_multiregion_dataset(
         [{CommonFields.LOCATION_ID: location_id, "date": pd.NaT, column: value}]
     )
 
-    return timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(
-        timeseries_df
-    ).append_latest_df(latest_df)
+    return timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df).add_latest_df(
+        latest_df
+    )
 
 
 def test_remove_outliers():
