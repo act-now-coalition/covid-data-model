@@ -55,7 +55,7 @@ def calculate_metrics_for_timeseries(
     # Making sure that the timeseries object passed in is only for one fips.
     assert timeseries.has_one_region()
     latest = timeseries.latest
-    fips = latest[CommonFields.FIPS]
+    fips = timeseries.reg
     population = latest[CommonFields.POPULATION]
 
     data = timeseries.data.set_index(CommonFields.DATE)

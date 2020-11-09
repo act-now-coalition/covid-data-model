@@ -260,7 +260,7 @@ def _latest_sorted_by_location_date(
     ts: timeseries.MultiRegionTimeseriesDataset, drop_na: bool
 ) -> pd.DataFrame:
     """Returns the latest data, sorted by LOCATION_ID."""
-    df = ts._latest_data.sort_values([CommonFields.LOCATION_ID], ignore_index=True)
+    df = ts._regional_attributes.sort_values([CommonFields.LOCATION_ID], ignore_index=True)
     if drop_na:
         df = df.dropna("columns", "all")
     return df
