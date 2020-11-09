@@ -64,10 +64,10 @@ class RegionLatestNotFound(IndexError):
 class OneRegionTimeseriesDataset:
     """A set of timeseries with values from one region."""
 
+    region: Region
+
     # Do not make an assumptions about a FIPS or location_id column in the DataFrame.
     data: pd.DataFrame
-    # The region is not an attribute at this time because it simplifies making instances and
-    # code that needs the region of an instance already has it.
 
     latest: Dict[str, Any]
 
@@ -110,17 +110,13 @@ class OneRegionTimeseriesDataset:
     def get_subset(self, after=None, columns=tuple()):
         rows_key = dataset_utils.make_rows_key(self.data, after=after,)
         columns_key = list(columns) if columns else slice(None, None, None)
-        return OneRegionTimeseriesDataset(
-            self.data.loc[rows_key, columns_key].reset_index(drop=True),
-            latest=self.latest,
-            provenance=self.provenance,
+        return dataclasses.replace(
+            self, data=self.data.loc[rows_key, columns_key].reset_index(drop=True)
         )
 
     def remove_padded_nans(self, columns: List[str]):
         """Returns a copy of `self`, skipping rows at the start and end where `columns` are NA"""
-        return OneRegionTimeseriesDataset(
-            _remove_padded_nans(self.data, columns), latest=self.latest, provenance=self.provenance,
-        )
+        return dataclasses.replace(self, data=_remove_padded_nans(self.data, columns))
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -588,7 +584,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         provenance_dict = self._location_id_provenance_dict(region.location_id)
 
         return OneRegionTimeseriesDataset(
-            data=ts_df, latest=latest_dict, provenance=provenance_dict,
+            region=region, data=ts_df, latest=latest_dict, provenance=provenance_dict,
         )
 
     def _location_id_provenance_dict(self, location_id: str) -> dict:
@@ -744,8 +740,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         for location_id, data_group in self.data.groupby(CommonFields.LOCATION_ID):
             latest_dict = self._location_id_latest_dict(location_id)
             provenance_dict = self._location_id_provenance_dict(location_id)
-            yield Region(location_id=location_id, fips=None), OneRegionTimeseriesDataset(
-                data_group, latest_dict, provenance=provenance_dict,
+            region = Region(location_id=location_id, fips=None)
+            yield region, OneRegionTimeseriesDataset(
+                region, data_group, latest_dict, provenance=provenance_dict,
             )
 
 

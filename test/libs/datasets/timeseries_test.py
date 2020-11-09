@@ -178,7 +178,9 @@ def test_one_region_dataset():
         "m1": 2,
         "m2": pd.NA,
     }
-    ts = timeseries.OneRegionTimeseriesDataset(pd.DataFrame([bar_county_row]), {})
+    ts = timeseries.OneRegionTimeseriesDataset(
+        Region.from_fips("97111"), pd.DataFrame([bar_county_row]), {}
+    )
     assert ts.has_one_region() == True
 
     foo_county_row = {
@@ -191,12 +193,14 @@ def test_one_region_dataset():
     }
     with pytest.raises(ValueError):
         timeseries.OneRegionTimeseriesDataset(
-            pd.DataFrame([bar_county_row, foo_county_row]), {},
+            Region.from_fips("97222"), pd.DataFrame([bar_county_row, foo_county_row]), {},
         )
 
     with structlog.testing.capture_logs() as logs:
         ts = timeseries.OneRegionTimeseriesDataset(
-            pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()), {},
+            Region.from_fips("99999"),
+            pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()),
+            {},
         )
     assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
     assert ts.empty

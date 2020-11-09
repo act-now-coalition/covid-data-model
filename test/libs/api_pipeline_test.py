@@ -64,7 +64,8 @@ def test_output_no_timeseries_rows(nyc_region, rt_dataset, icu_dataset):
     # Creating a new regional input with an empty timeseries dataset
     timeseries_data = pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     regional_data = combined_datasets.RegionalData(
-        regional_input.region, OneRegionTimeseriesDataset(timeseries_data, regional_input.latest),
+        regional_input.region,
+        OneRegionTimeseriesDataset(regional_input.region, timeseries_data, regional_input.latest),
     )
     regional_input = api_pipeline.RegionalInput(
         regional_input.region, None, None, regional_input.intervention, regional_data,
