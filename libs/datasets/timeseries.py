@@ -64,10 +64,10 @@ class RegionLatestNotFound(IndexError):
 class OneRegionTimeseriesDataset:
     """A set of timeseries with values from one region."""
 
+    region: Region
+
     # Do not make an assumptions about a FIPS or location_id column in the DataFrame.
     data: pd.DataFrame
-    # The region is not an attribute at this time because it simplifies making instances and
-    # code that needs the region of an instance already has it.
 
     latest: Dict[str, Any]
 
@@ -110,17 +110,13 @@ class OneRegionTimeseriesDataset:
     def get_subset(self, after=None, columns=tuple()):
         rows_key = dataset_utils.make_rows_key(self.data, after=after,)
         columns_key = list(columns) if columns else slice(None, None, None)
-        return OneRegionTimeseriesDataset(
-            self.data.loc[rows_key, columns_key].reset_index(drop=True),
-            latest=self.latest,
-            provenance=self.provenance,
+        return dataclasses.replace(
+            self, data=self.data.loc[rows_key, columns_key].reset_index(drop=True)
         )
 
     def remove_padded_nans(self, columns: List[str]):
         """Returns a copy of `self`, skipping rows at the start and end where `columns` are NA"""
-        return OneRegionTimeseriesDataset(
-            _remove_padded_nans(self.data, columns), latest=self.latest, provenance=self.provenance,
-        )
+        return dataclasses.replace(self, data=_remove_padded_nans(self.data, columns))
 
 
 class TimeseriesDataset(dataset_base.DatasetBase):
@@ -384,7 +380,12 @@ _EMPTY_PROVENANCE_SERIES = pd.Series(
 @final
 @dataclass(frozen=True)
 class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
-    """A set of timeseries and constant values from any number of regions."""
+    """A set of timeseries and constant values from any number of regions.
+
+    Methods named `append_...` return a new object with more regions of data. Methods named `add_...` and
+    `join_...` return a new object with more data about the same regions, such as new metrics and provenance
+    information.
+    """
 
     # TODO(tom): rename to MultiRegionDataset
 
@@ -396,13 +397,13 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     # be non-null in every row.
     data: pd.DataFrame
 
-    # `latest_data` contains columns from CommonFields and a LOCATION_ID index.
+    # `_latest_data` contains columns from CommonFields and a LOCATION_ID index.
     # If you need FIPS read from `latest_data_with_fips` so we can easily find code that depends on
     # the column.
-    latest_data: pd.DataFrame
+    _latest_data: pd.DataFrame
 
     # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
-    provenance: pd.Series
+    _provenance: pd.Series
 
     @property
     def regions(self) -> Iterable[Region]:
@@ -422,17 +423,14 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     @property
     def latest_data_with_fips(self) -> pd.DataFrame:
-        """latest_data with FIPS column and LOCATION_ID index, use `latest_data` when FIPS is not need."""
-        data_copy = self.latest_data.reset_index()
+        """_latest_data with FIPS column and LOCATION_ID index.
+
+        TODO(tom): This data is usually accessed via OneRegionTimeseriesDataset. Retire this
+        property.
+        """
+        data_copy = self._latest_data.reset_index()
         _add_fips_if_missing(data_copy)
         return data_copy.set_index(CommonFields.LOCATION_ID)
-
-    @property
-    def combined_df(self) -> pd.DataFrame:
-        """"A DataFrame with timeseries data and latest data (with DATE=NaT) together."""
-        return pd.concat(
-            [self.data_with_fips, self.latest_data_with_fips.reset_index()], ignore_index=True
-        )
 
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
@@ -455,21 +453,16 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         return long
 
     @staticmethod
-    def from_timeseries_df(
-        timeseries_df: pd.DataFrame, provenance: Optional[pd.Series] = None
-    ) -> "MultiRegionTimeseriesDataset":
+    def from_timeseries_df(timeseries_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
         assert timeseries_df.index.names == [None]
         assert CommonFields.LOCATION_ID in timeseries_df.columns
         empty_latest_df = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
         if CommonFields.FIPS in timeseries_df.columns:
             timeseries_df = timeseries_df.drop(columns=[CommonFields.FIPS])
-        if provenance is None:
-            provenance = _EMPTY_PROVENANCE_SERIES.copy()
-        return MultiRegionTimeseriesDataset(
-            timeseries_df, empty_latest_df, provenance=provenance.sort_index()
-        )
+        provenance = _EMPTY_PROVENANCE_SERIES.copy()
+        return MultiRegionTimeseriesDataset(timeseries_df, empty_latest_df, _provenance=provenance)
 
-    def append_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
+    def add_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
         assert latest_df.index.names == [None]
         assert CommonFields.LOCATION_ID in latest_df.columns
 
@@ -478,37 +471,32 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         ts_locations = self.data[CommonFields.LOCATION_ID].unique()
         ts_locations.sort()
         latest_df = _index_latest_df(latest_df, ts_locations)
-        common_columns = set(latest_df.columns) & set(self.latest_data.columns)
+        common_columns = set(latest_df.columns) & set(self._latest_data.columns)
         if common_columns:
             warnings.warn(f"Common columns {common_columns}")
-        latest_df = pd.concat([self.latest_data, latest_df], axis=1)
+        latest_df = pd.concat([self._latest_data, latest_df], axis=1)
 
-        return MultiRegionTimeseriesDataset(self.data, latest_df, provenance=self.provenance)
+        return MultiRegionTimeseriesDataset(self.data, latest_df, _provenance=self._provenance)
 
-    def append_provenance_csv(
+    def add_provenance_csv(
         self, path_or_buf: Union[pathlib.Path, TextIO]
     ) -> "MultiRegionTimeseriesDataset":
         df = pd.read_csv(path_or_buf)
         if PdFields.VALUE in df.columns:
             # Handle older CSV files that used 'value' header for provenance.
             df = df.rename(columns={PdFields.VALUE: PdFields.PROVENANCE})
-        return self.append_provenance_df(df)
+        series = df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[PdFields.PROVENANCE]
+        return self.add_provenance_series(series)
 
-    def append_provenance_df(self, provenance_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
+    def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionTimeseriesDataset":
         """Returns a new object containing data in self and given provenance information."""
-        if not self.provenance.empty:
+        if not self._provenance.empty:
             raise NotImplementedError("TODO(tom): add support for merging provenance data")
-        assert provenance_df.index.names == [None]
-        assert CommonFields.LOCATION_ID in provenance_df.columns
-        assert PdFields.VARIABLE in provenance_df.columns
-        assert PdFields.PROVENANCE in provenance_df.columns
+
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
         # what is represented, not the order it appears in the input.
-        provenance_series = provenance_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[
-            PdFields.PROVENANCE
-        ].sort_index()
         return MultiRegionTimeseriesDataset(
-            self.data, latest_data=self.latest_data, provenance=provenance_series
+            self.data, _latest_data=self._latest_data, _provenance=provenance.sort_index()
         )
 
     @staticmethod
@@ -527,12 +515,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         dataset = MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
         if not latest_df.empty:
-            dataset = dataset.append_latest_df(latest_df)
+            dataset = dataset.add_latest_df(latest_df)
 
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.exists():
-                dataset = dataset.append_provenance_csv(provenance_path)
+                dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
 
     @staticmethod
@@ -542,9 +530,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         """Converts legacy FIPS to new LOCATION_ID and calls `from_timeseries_df` to finish construction."""
         timeseries_df = ts.data.copy()
         _add_location_id(timeseries_df)
+        dataset = MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
 
         latest_df = latest.data.copy()
         _add_location_id(latest_df)
+        dataset = dataset.add_latest_df(latest_df)
 
         if ts.provenance is not None:
             # Check that current index is as expected. Names will be fixed after remapping, below.
@@ -555,15 +545,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             )
             provenance.index.rename([CommonFields.LOCATION_ID, PdFields.VARIABLE], inplace=True)
             provenance.rename(PdFields.PROVENANCE, inplace=True)
-        else:
-            provenance = None
+            dataset = dataset.add_provenance_series(provenance)
 
         # TODO(tom): Either copy latest.provenance to its own series, blend with the timeseries
         # provenance (though some variable names are the same), or retire latest as a separate thing upstream.
 
-        return MultiRegionTimeseriesDataset.from_timeseries_df(
-            timeseries_df, provenance=provenance
-        ).append_latest_df(latest_df)
+        return dataset
 
     def __post_init__(self):
         # Some integrity checks
@@ -571,25 +558,23 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         assert self.data[CommonFields.LOCATION_ID].notna().all()
         assert self.data.index.is_unique
         assert self.data.index.is_monotonic_increasing
-        assert self.latest_data.index.names == [CommonFields.LOCATION_ID]
-        assert isinstance(self.provenance, pd.Series)
-        assert self.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-        assert self.provenance.name == PdFields.PROVENANCE
+        assert self._latest_data.index.names == [CommonFields.LOCATION_ID]
+        assert isinstance(self._provenance, pd.Series)
+        assert self._provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        assert self._provenance.name == PdFields.PROVENANCE
 
     def append_regions(
         self, other: "MultiRegionTimeseriesDataset"
     ) -> "MultiRegionTimeseriesDataset":
         timeseries_df = pd.concat([self.data, other.data], ignore_index=True)
         latest_df = pd.concat(
-            [self.latest_data.reset_index(), other.latest_data.reset_index()], ignore_index=True,
+            [self._latest_data.reset_index(), other._latest_data.reset_index()], ignore_index=True,
         )
-        provenance_df = pd.concat(
-            [self.provenance.reset_index(), other.provenance.reset_index()], ignore_index=True,
-        )
+        provenance = pd.concat([self._provenance, other._provenance])
         return (
             MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
-            .append_latest_df(latest_df)
-            .append_provenance_df(provenance_df)
+            .add_latest_df(latest_df)
+            .add_provenance_series(provenance)
         )
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
@@ -600,13 +585,13 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         provenance_dict = self._location_id_provenance_dict(region.location_id)
 
         return OneRegionTimeseriesDataset(
-            data=ts_df, latest=latest_dict, provenance=provenance_dict,
+            region=region, data=ts_df, latest=latest_dict, provenance=provenance_dict,
         )
 
     def _location_id_provenance_dict(self, location_id: str) -> dict:
         """Returns the provenance dict of a location_id."""
         try:
-            provenance_series = self.provenance.loc[location_id]
+            provenance_series = self._provenance.loc[location_id]
         except KeyError:
             return {}
         else:
@@ -615,7 +600,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
         try:
-            latest_row = self.latest_data.loc[location_id, :]
+            latest_row = self._latest_data.loc[location_id, :]
         except KeyError:
             latest_row = pd.Series([], dtype=object)
         return latest_row.where(pd.notnull(latest_row), None).to_dict()
@@ -627,9 +612,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def get_locations_subset(self, location_ids: Sequence[str]) -> "MultiRegionTimeseriesDataset":
         timeseries_df = self.data.loc[self.data[CommonFields.LOCATION_ID].isin(location_ids), :]
         latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
-        return MultiRegionTimeseriesDataset.from_timeseries_df(
-            timeseries_df, provenance=provenance
-        ).append_latest_df(latest_df)
+        return (
+            MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
+            .add_latest_df(latest_df)
+            .add_provenance_series(provenance)
+        )
 
     def get_counties(
         self, after: Optional[datetime.datetime] = None
@@ -647,18 +634,20 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         # metrics which no longer have real values are excluded.
         latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
 
-        return MultiRegionTimeseriesDataset.from_timeseries_df(
-            ts_df, provenance=provenance
-        ).append_latest_df(latest_df)
+        return (
+            MultiRegionTimeseriesDataset.from_timeseries_df(ts_df)
+            .add_latest_df(latest_df)
+            .add_provenance_series(provenance)
+        )
 
     def _get_latest_and_provenance_for_locations(
         self, location_ids
     ) -> Tuple[pd.DataFrame, Optional[pd.Series]]:
-        latest_df = self.latest_data.loc[
-            self.latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids), :
+        latest_df = self._latest_data.loc[
+            self._latest_data.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids), :
         ].reset_index()
-        provenance = self.provenance[
-            self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
+        provenance = self._provenance[
+            self._provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
         ]
         return latest_df, provenance
 
@@ -675,7 +664,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         This method exists for interim use when calling code that doesn't use MultiRegionTimeseriesDataset.
         """
         return TimeseriesDataset(
-            self.data_with_fips, provenance=None if self.provenance.empty else self.provenance
+            self.data_with_fips, provenance=None if self._provenance.empty else self._provenance
         )
 
     def to_csv(self, path: pathlib.Path):
@@ -684,27 +673,30 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         Args:
             path: Path to write to.
         """
-        combined = self.combined_df
+        # A DataFrame with timeseries data and latest data (with DATE=NaT) together
+        combined = pd.concat(
+            [self.data_with_fips, self.latest_data_with_fips.reset_index()], ignore_index=True
+        )
         assert combined[CommonFields.LOCATION_ID].notna().all()
         common_df.write_csv(
             combined, path, structlog.get_logger(), [CommonFields.LOCATION_ID, CommonFields.DATE]
         )
-        if not self.provenance.empty:
+        if not self._provenance.empty:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
-            self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
+            self._provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
 
     def drop_column_if_present(self, column: str) -> "MultiRegionTimeseriesDataset":
         """Drops the specified column from the timeseries if it exists"""
         df = self.data_with_fips.drop(column, axis="columns", errors="ignore")
-        latest_data = self.latest_data_with_fips.drop(
-            column, axis="columns", errors="ignore"
-        ).reset_index()
-        provenance = self.provenance[
-            self.provenance.index.get_level_values(PdFields.VARIABLE) != column
+        latest_data = self._latest_data.drop(column, axis="columns", errors="ignore").reset_index()
+        provenance = self._provenance[
+            self._provenance.index.get_level_values(PdFields.VARIABLE) != column
         ]
-        return MultiRegionTimeseriesDataset.from_timeseries_df(
-            df, provenance=provenance
-        ).append_latest_df(latest_data)
+        return (
+            MultiRegionTimeseriesDataset.from_timeseries_df(df)
+            .add_latest_df(latest_data)
+            .add_provenance_series(provenance)
+        )
 
     def join_columns(self, other: "MultiRegionTimeseriesDataset") -> "MultiRegionTimeseriesDataset":
         """Joins the timeseries columns in `other` with those in `self`.
@@ -713,8 +705,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
             other: The timeseries dataset to join with `self`. all columns except the "geo" columns
                    will be joined into `self`.
         """
-        if not other.latest_data.empty:
-            raise NotImplementedError("No support for joining other with latest_data")
+        if not other._latest_data.empty:
+            raise NotImplementedError("No support for joining other with _latest_data")
         other_df = other.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
         self_df = self.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
         other_geo_columns = set(other_df.columns) & set(GEO_DATA_COLUMNS)
@@ -743,10 +735,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         #    _log.exception(f"Comparing df {self_common_geo_columns} to {other_common_geo_columns}")
         #    raise
         combined_df = pd.concat([self_df, other_df[list(other_ts_columns)]], axis=1)
-        combined_provenance = pd.concat([self.provenance, other.provenance])
-        return MultiRegionTimeseriesDataset.from_timeseries_df(
-            combined_df.reset_index(), provenance=combined_provenance,
-        ).append_latest_df(self.latest_data.reset_index())
+        combined_provenance = pd.concat([self._provenance, other._provenance])
+        return (
+            MultiRegionTimeseriesDataset.from_timeseries_df(combined_df.reset_index())
+            .add_latest_df(self._latest_data.reset_index())
+            .add_provenance_series(combined_provenance)
+        )
 
     def iter_regions(
         self, level=None, exclude_county_999=False, state=None, fips=None, states=None
@@ -775,8 +769,9 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         for location_id, data_group in self.data.groupby(CommonFields.LOCATION_ID):
             latest_dict = self._location_id_latest_dict(location_id)
             provenance_dict = self._location_id_provenance_dict(location_id)
-            yield Region.from_location_id(location_id), OneRegionTimeseriesDataset(
-                data_group, latest_dict, provenance=provenance_dict,
+            region = Region.from_location_id(location_id)
+            yield region, OneRegionTimeseriesDataset(
+                region, data_group, latest_dict, provenance=provenance_dict,
             )
 
 
@@ -824,11 +819,13 @@ def add_new_cases(timeseries: MultiRegionTimeseriesDataset) -> MultiRegionTimese
     new_cases[new_cases < 0] = pd.NA
 
     df_copy[CommonFields.NEW_CASES] = new_cases
-    latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
+    latest_values = _add_new_cases_to_latest(df_copy, timeseries._latest_data)
 
-    new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
-        timeseries_df=df_copy, provenance=timeseries.provenance
-    ).append_latest_df(latest_values)
+    new_timeseries = (
+        MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df=df_copy)
+        .add_latest_df(latest_values)
+        .add_provenance_series(timeseries._provenance)
+    )
 
     return new_timeseries
 
@@ -883,11 +880,12 @@ def drop_new_case_outliers(
     to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
 
-    latest_values = _add_new_cases_to_latest(df_copy, timeseries.latest_data)
-
-    new_timeseries = MultiRegionTimeseriesDataset.from_timeseries_df(
-        timeseries_df=df_copy, provenance=timeseries.provenance
-    ).append_latest_df(latest_values)
+    latest_values = _add_new_cases_to_latest(df_copy, timeseries._latest_data)
+    new_timeseries = (
+        MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df=df_copy)
+        .add_latest_df(latest_values)
+        .add_provenance_series(timeseries._provenance)
+    )
 
     return new_timeseries
 
@@ -898,9 +896,9 @@ def drop_regions_without_population(
     log: Union[structlog.BoundLoggerBase, structlog._config.BoundLoggerLazyProxy],
 ) -> MultiRegionTimeseriesDataset:
     # latest_population is a Series with location_id index
-    latest_population = mrts.latest_data[CommonFields.POPULATION]
-    locations_with_population = mrts.latest_data.loc[latest_population.notna()].index
-    locations_without_population = mrts.latest_data.loc[latest_population.isna()].index
+    latest_population = mrts._latest_data[CommonFields.POPULATION]
+    locations_with_population = mrts._latest_data.loc[latest_population.notna()].index
+    locations_without_population = mrts._latest_data.loc[latest_population.isna()].index
     unexpected_drops = set(locations_without_population) - set(known_location_id_to_drop)
     if unexpected_drops:
         log.warning(

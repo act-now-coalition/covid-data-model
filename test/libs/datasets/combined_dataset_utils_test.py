@@ -7,7 +7,7 @@ from libs.datasets import combined_datasets
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 from libs.qa.common_df_diff import DatasetDiff
-from test.libs.datasets.timeseries_test import assert_combined_like
+from test.libs.datasets.timeseries_test import assert_dataset_like
 
 
 def test_persist_and_load_dataset(tmp_path, nyc_fips):
@@ -42,4 +42,4 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
     timeseries_loaded = combined_datasets.load_us_timeseries_dataset(pointer_directory=tmp_path)
     latest_loaded = combined_datasets.load_us_latest_dataset(pointer_directory=tmp_path)
     assert latest_loaded.get_record_for_fips(nyc_fips) == latest_nyc_record
-    assert_combined_like(timeseries_loaded, multiregion_timeseries_nyc, drop_na_timeseries=True)
+    assert_dataset_like(timeseries_loaded, multiregion_timeseries_nyc, drop_na_timeseries=True)
