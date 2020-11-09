@@ -384,7 +384,12 @@ _EMPTY_PROVENANCE_SERIES = pd.Series(
 @final
 @dataclass(frozen=True)
 class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
-    """A set of timeseries and constant values from any number of regions."""
+    """A set of timeseries and constant values from any number of regions.
+
+    Methods named `append_...` return a new object with more regions of data. Methods named `add_...` and
+    `join_...` return a new object with more data about the same regions, such as new metrics and provenance
+    information.
+    """
 
     # TODO(tom): rename to MultiRegionDataset
 
@@ -417,7 +422,11 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     @property
     def latest_data_with_fips(self) -> pd.DataFrame:
-        """_latest_data with FIPS column and LOCATION_ID index, use `_latest_data` when FIPS is not need."""
+        """_latest_data with FIPS column and LOCATION_ID index.
+
+        TODO(tom): This data is usually accessed via OneRegionTimeseriesDataset. Retire this
+        property.
+        """
         data_copy = self._latest_data.reset_index()
         _add_fips_if_missing(data_copy)
         return data_copy.set_index(CommonFields.LOCATION_ID)
@@ -468,7 +477,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         return MultiRegionTimeseriesDataset(self.data, latest_df, _provenance=self._provenance)
 
-    def append_provenance_csv(
+    def add_provenance_csv(
         self, path_or_buf: Union[pathlib.Path, TextIO]
     ) -> "MultiRegionTimeseriesDataset":
         df = pd.read_csv(path_or_buf)
@@ -510,7 +519,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.exists():
-                dataset = dataset.append_provenance_csv(provenance_path)
+                dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
 
     @staticmethod

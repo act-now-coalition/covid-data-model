@@ -55,7 +55,7 @@ def test_basic():
             "iso1:us#iso2:as,2020-04-04,0.02\n"
             "iso1:us#iso2:tx,2020-04-04,0.1\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#iso2:as,test_positivity,method2\n"
@@ -112,7 +112,7 @@ def test_recent_days():
             "iso1:us#iso2:us-tx,2020-04-03,0.1\n"
             "iso1:us#iso2:us-tx,2020-04-04,0.1\n"
         )
-    ).append_provenance_csv(
+    ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#iso2:us-as,test_positivity,method2\n"
