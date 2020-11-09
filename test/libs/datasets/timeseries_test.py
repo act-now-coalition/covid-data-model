@@ -97,6 +97,7 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
     region_97111 = multiregion_loaded.get_one_region(Region.from_fips("97111"))
     assert region_97111.date_indexed.at["2020-04-02", "m1"] == 2
     assert region_97111.latest["c1"] == 3
+    assert region_97111.region.fips == "97111"
     assert multiregion_loaded.get_one_region(Region.from_fips("01")).latest["c2"] == 123.4
     assert_dataset_like(
         multiregion, multiregion_loaded, drop_na_latest=True, drop_na_timeseries=True
@@ -118,6 +119,7 @@ def test_multi_region_get_one_region():
         pd.to_datetime("2020-04-02"): {"m1": 2}
     }
     assert region_97111_ts.latest["m1"] == 3
+    assert region_97111_ts.region.fips == "97111"
 
     region_97222_ts = ts.get_one_region(Region.from_fips("97222"))
     assert to_dict(["date"], region_97222_ts.data) == {
@@ -178,7 +180,9 @@ def test_one_region_dataset():
         "m1": 2,
         "m2": pd.NA,
     }
-    ts = timeseries.OneRegionTimeseriesDataset(pd.DataFrame([bar_county_row]), {})
+    ts = timeseries.OneRegionTimeseriesDataset(
+        Region.from_fips("97111"), pd.DataFrame([bar_county_row]), {}
+    )
     assert ts.has_one_region() == True
 
     foo_county_row = {
@@ -191,12 +195,14 @@ def test_one_region_dataset():
     }
     with pytest.raises(ValueError):
         timeseries.OneRegionTimeseriesDataset(
-            pd.DataFrame([bar_county_row, foo_county_row]), {},
+            Region.from_fips("97222"), pd.DataFrame([bar_county_row, foo_county_row]), {},
         )
 
     with structlog.testing.capture_logs() as logs:
         ts = timeseries.OneRegionTimeseriesDataset(
-            pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()), {},
+            Region.from_fips("99999"),
+            pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()),
+            {},
         )
     assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
     assert ts.empty
@@ -555,6 +561,8 @@ def test_iter_one_region():
         assert (one_region.data.fillna("") == it_one_region.data.fillna("")).all(axis=None)
         assert one_region.latest == it_one_region.latest
         assert one_region.provenance == it_one_region.provenance
+        assert one_region.region == it_region
+        assert one_region.region == it_one_region.region
 
 
 def test_drop_regions_without_population():

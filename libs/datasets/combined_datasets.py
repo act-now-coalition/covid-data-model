@@ -307,6 +307,9 @@ def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
 class RegionalData:
     """Identifies a geographical area and wraps access to `combined_datasets` of it."""
 
+    # TODO(tom): Now that OneRegionTimeseriesDataset contains `region` consider replacing
+    # uses of this class with it.
+
     region: Region
 
     timeseries: OneRegionTimeseriesDataset
