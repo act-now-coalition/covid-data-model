@@ -687,9 +687,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def drop_column_if_present(self, column: str) -> "MultiRegionTimeseriesDataset":
         """Drops the specified column from the timeseries if it exists"""
         df = self.data_with_fips.drop(column, axis="columns", errors="ignore")
-        latest_data = self.latest_data_with_fips.drop(
-            column, axis="columns", errors="ignore"
-        ).reset_index()
+        latest_data = self._latest_data.drop(column, axis="columns", errors="ignore").reset_index()
         provenance = self._provenance[
             self._provenance.index.get_level_values(PdFields.VARIABLE) != column
         ]
