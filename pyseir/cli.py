@@ -104,9 +104,9 @@ class RegionPipeline:
             raise
 
         icu_data = None
-        # TODO: Re-enable for CBSAs
+
+        # TODO: Re-enable for CBSAs once typical utilization number aggregation fixed.
         if input.region.level is not AggregationLevel.CBSA:
-            # Run ICU adjustment only on non-cbsa locations.
             icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
             try:
                 icu_data = infer_icu.get_icu_timeseries_from_regional_input(
@@ -243,10 +243,6 @@ def build_all(states, output_dir, states_only, fips):
     states = [us.states.lookup(state).abbr for state in states]
     states = [state for state in states if state in ALL_STATES]
 
-    if not len(states):
-        states = ALL_STATES
-
-    states = []
     pipelines = _run_on_all_regions(states=states, states_only=states_only, fips=fips)
     _write_pipeline_output(pipelines, output_dir)
 
