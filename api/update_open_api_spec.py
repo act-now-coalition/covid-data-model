@@ -11,7 +11,7 @@ from openapi_schema_pydantic.util import construct_open_api_with_schema_class
 
 COUNTY_TAG = "County Data"
 STATE_TAG = "State Data"
-CBSA_TAG = "CBSA (metro) Data"
+CBSA_TAG = "CBSA (Metro) Data"
 
 
 fips_parameter = {
@@ -22,10 +22,16 @@ fips_parameter = {
     "schema": {"type": "string"},
 }
 cbsa_parameter = {
-    "name": "cbsa_id",
+    "name": "cbsa_code",
     "in": "path",
     "required": True,
-    "description": "5 Letter CBSA ID",
+    "description": """
+5 Letter core-based statistical area (CBSA) Code.
+
+For a list of all CBSA codes, refer to the
+[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)
+provided by the USPTO.  This list includes the CBSA code and corresponding counties.
+""",
     "schema": {"type": "string"},
 }
 state_parameter = {
@@ -184,7 +190,7 @@ ALL_STATE_TIMESERIES_CSV = APIEndpoint(
 )
 
 CBSA_SUMMARY = APIEndpoint(
-    endpoint="/cbsa/{cbsa_id}.json",
+    endpoint="/cbsa/{cbsa_code}.json",
     parameters=[cbsa_parameter],
     tags=[CBSA_TAG],
     description="Region Summary object for a single CBSA.",
@@ -192,7 +198,7 @@ CBSA_SUMMARY = APIEndpoint(
     schema_cls=can_api_v2_definition.RegionSummary,
 )
 CBSA_TIMESERIES = APIEndpoint(
-    endpoint="/cbsa/{cbsa_id}.timeseries.json",
+    endpoint="/cbsa/{cbsa_code}.timeseries.json",
     parameters=[cbsa_parameter],
     tags=[CBSA_TAG],
     description="Region Summary with Timeseries for a single CBSA.",
@@ -255,6 +261,19 @@ ALL_ENDPOINTS = [
 ]
 
 
+CBSA_DESCRIPTION = """
+Aggregated data for all [core-based statistical areas (CBSA)](https://en.wikipedia.org/wiki/Core-based_statistical_area).
+
+CBSAs represent collections of counties that are socioeconomically linked.
+
+They are used to represent metropolitan and micropolitan (at least 10,000 people and fewer than 50,000 people) areas.
+
+For example, the Seattle-Tacoma-Bellevue, WA CBSA is an aggregation of King County, Pierce County, and Snohomish County.
+
+CBSAs are currently in beta and may not contain all metrics or data.
+"""
+
+
 def construct_open_api_spec() -> OpenAPI:
     api_description = """
 The Covid Act Now API provides historical covid projections updated daily.
@@ -278,6 +297,7 @@ Register for an API key [here](/access).
                     "name": STATE_TAG,
                     "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands.",
                 },
+                {"name": CBSA_TAG, "description": CBSA_DESCRIPTION,},
             ],
             "servers": [
                 {"url": "https://api.covidactnow.org/v2", "description": "Latest available data",}
