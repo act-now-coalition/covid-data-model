@@ -196,15 +196,9 @@ def generate_api_v2(model_output_dir, output, level, state, fips):
     # Caching load of us timeseries dataset
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
-    active_states = [state.abbr for state in us.STATES]
-    active_states = active_states + ["PR", "MP"]
-    active_states = []
-
     # Load all API Regions
     regions = list(
-        us_timeseries.iter_regions(
-            level=level, exclude_county_999=True, state=state, fips=fips, states=active_states,
-        )
+        us_timeseries.iter_regions(level=level, exclude_county_999=True, state=state, fips=fips)
     )
     _logger.info(f"Loading all {len(regions)} regional inputs.")
 
