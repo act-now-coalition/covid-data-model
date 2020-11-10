@@ -274,7 +274,7 @@ def test_build_latest_for_column_unsorted():
             "iso1:us#fips:1,2020-10-27,6\n"
         ),
         low_memory=False,
-    )
+    ).set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
     result = dataset_utils.build_latest_for_column(df, CommonFields.CASES)
     expected = pd.Series([10], index=["iso1:us#fips:1"], name="cases")
     expected.index.name = "location_id"
@@ -290,7 +290,7 @@ def test_build_latest_for_column_missing_last_value():
             "iso1:us#fips:1,2020-10-29,\n"
         ),
         low_memory=False,
-    )
+    ).set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
     result = dataset_utils.build_latest_for_column(df, CommonFields.CASES)
     expected = pd.Series([11.0], index=["iso1:us#fips:1"], name="cases")
     expected.index.name = "location_id"

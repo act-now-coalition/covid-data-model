@@ -713,7 +713,6 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         if common_ts_columns:
             # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
-        common_geo_columns = list(set(self.data.columns) & other_geo_columns)
         # TODO(tom): fix geo columns check, no later than when self.data is changed to contain only
         # timeseries
         # self_common_geo_columns = self_df.loc[:, common_geo_columns].fillna("")
