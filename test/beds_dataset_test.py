@@ -1,10 +1,10 @@
 import pytest
 import pandas as pd
 from libs.datasets import custom_aggregations
-from libs.datasets import beds
-from libs.datasets import DHBeds
-from libs.datasets import CovidCareMapBeds
 from libs.datasets import dataset_utils
+from libs.datasets import beds
+from libs.datasets.sources.dh_beds import DHBeds
+from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 
 
 def generate_state_bed_row(**updates):

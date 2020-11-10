@@ -89,9 +89,8 @@ def update(wide_dates_filename, aggregate_to_msas: bool):
 
     if aggregate_to_msas:
         aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-        multiregion_dataset = multiregion_dataset.append_regions(
-            aggregator.aggregate(multiregion_dataset)
-        )
+        cbsa_dataset = aggregator.aggregate(multiregion_dataset)
+        multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
 
     _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, multiregion_dataset,

@@ -187,27 +187,20 @@ def generate_test_positivity(test_positivity_all_methods: pathlib.Path):
     help="Output directory for artifacts",
     type=pathlib.Path,
 )
-@click.option("--aggregation-level", "-l", type=AggregationLevel)
+@click.option("--level", "-l", type=AggregationLevel)
 @click.option("--state")
 @click.option("--fips")
-def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
+def generate_api_v2(model_output_dir, output, level, state, fips):
     """The entry function for invocation"""
 
     # Caching load of us timeseries dataset
-    combined_datasets.load_us_timeseries_dataset()
-
-    active_states = [state.abbr for state in us.STATES]
-    active_states = active_states + ["PR", "MP"]
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     # Load all API Regions
-    regions = combined_datasets.get_subset_regions(
-        aggregation_level=aggregation_level,
-        exclude_county_999=True,
-        state=state,
-        fips=fips,
-        states=active_states,
+    regions = list(
+        us_timeseries.iter_regions(level=level, exclude_county_999=True, state=state, fips=fips)
     )
-    _logger.info(f"Loading all regional inputs.")
+    _logger.info(f"Loading all {len(regions)} regional inputs.")
 
     icu_data_path = model_output_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
     icu_data = MultiRegionDataset.from_csv(icu_data_path)
@@ -240,5 +233,6 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
 
     api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.COUNTY, output)
     api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
+    api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.CBSA, output)
 
     _logger.info("Finished API generation.")
