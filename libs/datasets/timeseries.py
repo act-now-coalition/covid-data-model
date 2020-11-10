@@ -342,13 +342,8 @@ def _add_fips_if_missing(df: pd.DataFrame):
 
 
 def _geodata_df_to_regional_attributes_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
-    assert geodata_df.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    deduped_values = (
-        geodata_df.droplevel(CommonFields.DATE)
-        .reset_index()
-        .drop_duplicates()
-        .set_index(CommonFields.LOCATION_ID)
-    )
+    assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
+    deduped_values = geodata_df.drop_duplicates().set_index(CommonFields.LOCATION_ID)
     duplicates = deduped_values.index.duplicated(keep=False)
     if duplicates.any():
         _log.warning("Conflicting geo data", duplicates=deduped_values.loc[duplicates, :])
@@ -400,6 +395,12 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
     def _regional_geo_data(self) -> pd.DataFrame:
         return self._regional_attributes.loc[
             :, self._regional_attributes.columns.isin(GEO_DATA_COLUMNS)
+        ]
+
+    @property
+    def _regional_non_geo_data(self) -> pd.DataFrame:
+        return self._regional_attributes.loc[
+            :, ~self._regional_attributes.columns.isin(GEO_DATA_COLUMNS)
         ]
 
     @property
@@ -458,6 +459,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         )
         regional_attribute_df = _geodata_df_to_regional_attributes_df(
             timeseries_df.loc[:, geodata_column_mask]
+            .reset_index()
+            .drop(columns=[CommonFields.DATE])
         )
 
         timeseries_df = timeseries_df.loc[:, ~geodata_column_mask].sort_index()
@@ -468,14 +471,28 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def add_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
         assert latest_df.index.names == [None]
-        latest_df = latest_df.set_index([CommonFields.LOCATION_ID])
-        latest_df = latest_df.drop(columns=GEO_DATA_COLUMNS, errors="ignore")
-        common_columns = set(latest_df.columns) & set(self._regional_attributes.columns)
+        latest_df.set_index(CommonFields.LOCATION_ID, inplace=True)
+        geodata_column_mask = latest_df.columns.isin(
+            set(TimeseriesDataset.INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
+        )
+        latest_values_df = latest_df.loc[:, ~geodata_column_mask]
+
+        geodata = _geodata_df_to_regional_attributes_df(
+            pd.concat(
+                [
+                    self._regional_geo_data.reset_index(),
+                    latest_df.loc[:, geodata_column_mask].reset_index(),
+                ]
+            )
+        )
+        existing_non_geodata = self._regional_non_geo_data
+
+        common_columns = set(latest_values_df.columns) & set(existing_non_geodata.columns)
         if common_columns:
             # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_columns}")
         combined = (
-            pd.concat([self._regional_attributes, latest_df], axis=1)
+            pd.concat([geodata, existing_non_geodata, latest_values_df], axis=1)
             .rename_axis(index=[CommonFields.LOCATION_ID])
             .sort_index()
         )
