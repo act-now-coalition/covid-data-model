@@ -22,7 +22,7 @@ def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
 
 
 def test_basic():
-    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+    ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,positive_tests,positive_tests_viral,total_tests,\n"
             "iso1:us#iso2:as,2020-04-01,0,,100\n"
@@ -49,7 +49,7 @@ def test_basic():
     )
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
 
-    expected_positivity = timeseries.MultiRegionTimeseriesDataset.from_csv(
+    expected_positivity = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,test_positivity\n"
             "iso1:us#iso2:as,2020-04-04,0.02\n"
@@ -75,7 +75,7 @@ def test_basic():
 
 
 def test_recent_days():
-    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+    ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,positive_tests,positive_tests_viral,total_tests,\n"
             "iso1:us#iso2:us-as,2020-04-01,0,0,100\n"
@@ -102,7 +102,7 @@ def test_recent_days():
         "iso1:us#iso2:us-tx,method2,,0.01,0.01,0.01\n"
     )
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_all, check_like=True)
-    expected_positivity = timeseries.MultiRegionTimeseriesDataset.from_csv(
+    expected_positivity = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,test_positivity\n"
             "iso1:us#iso2:us-as,2020-04-02,0.02\n"
@@ -138,7 +138,7 @@ def test_recent_days():
 
 
 def test_missing_column_for_one_method():
-    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+    ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,positive_tests,positive_tests_viral,total_tests\n"
             "iso1:us#iso2:tx,2020-04-01,1,10,100\n"
@@ -163,7 +163,7 @@ def test_missing_column_for_one_method():
 
 
 def test_missing_columns_for_all_tests():
-    ts = timeseries.MultiRegionTimeseriesDataset.from_csv(
+    ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,m1,m2,m3\n"
             "iso1:us#iso2:tx,2020-04-01,1,10,100\n"
@@ -184,7 +184,7 @@ def test_missing_columns_for_all_tests():
 
 
 def test_column_present_with_no_data():
-    # MultiRegionTimeseriesDataset.from_csv drops columns with no real values so make a DataFrame
+    # MultiRegionDataset.from_csv drops columns with no real values so make a DataFrame
     # to pass to from_timeseries_df.
     ts_df = common_df.read_csv(
         io.StringIO(
@@ -196,7 +196,7 @@ def test_column_present_with_no_data():
         set_index=False,
     )
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
-    ts = timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(ts_df)
+    ts = timeseries.MultiRegionDataset.from_timeseries_df(ts_df)
     methods = [
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
@@ -205,7 +205,7 @@ def test_column_present_with_no_data():
 
 
 def test_all_columns_na():
-    # MultiRegionTimeseriesDataset.from_csv drops columns with no real values so make a DataFrame
+    # MultiRegionDataset.from_csv drops columns with no real values so make a DataFrame
     # to pass to from_timeseries_df.
     ts_df = common_df.read_csv(
         io.StringIO(
@@ -217,7 +217,7 @@ def test_all_columns_na():
         set_index=False,
     )
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
-    ts = timeseries.MultiRegionTimeseriesDataset.from_timeseries_df(ts_df)
+    ts = timeseries.MultiRegionDataset.from_timeseries_df(ts_df)
     methods = [
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]

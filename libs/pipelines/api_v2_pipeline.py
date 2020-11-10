@@ -20,7 +20,7 @@ from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import timeseries
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.enums import Intervention
 from libs.functions import build_api_v2
 from libs.datasets import AggregationLevel
@@ -56,9 +56,9 @@ class RegionalInput:
     @staticmethod
     def from_region_and_model_output(
         region: pipeline.Region,
-        combined_data_with_test_positivity: MultiRegionTimeseriesDataset,
-        rt_data: MultiRegionTimeseriesDataset,
-        icu_data: MultiRegionTimeseriesDataset,
+        combined_data_with_test_positivity: MultiRegionDataset,
+        rt_data: MultiRegionDataset,
+        icu_data: MultiRegionDataset,
     ) -> "RegionalInput":
         one_region_data = combined_data_with_test_positivity.get_one_region(region)
 

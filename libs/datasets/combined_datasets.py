@@ -21,7 +21,7 @@ from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
@@ -128,7 +128,7 @@ def load_us_timeseries_dataset(
     before=None,
     previous_commit=False,
     commit: str = None,
-) -> MultiRegionTimeseriesDataset:
+) -> MultiRegionDataset:
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
@@ -181,7 +181,7 @@ def build_from_sources(
             datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
 
     data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    # TODO(tom): When LatestValuesDataset is retired return only a MultiRegionTimeseriesDataset
+    # TODO(tom): When LatestValuesDataset is retired return only a MultiRegionDataset
     return target_dataset_cls(
         data.reset_index(), provenance=provenance_wide_metrics_to_series(provenance, _log)
     )

@@ -17,7 +17,7 @@ from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir.rt import infer_rt
 from pyseir.icu import infer_icu
@@ -169,13 +169,13 @@ def _write_pipeline_output(
         output_dir_path.mkdir()
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_df(infection_rate_metric_df)
+    multiregion_rt = MultiRegionDataset.from_timeseries_df(infection_rate_metric_df)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
     icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-    multiregion_icu = MultiRegionTimeseriesDataset.from_timeseries_df(icu_df)
+    multiregion_icu = MultiRegionDataset.from_timeseries_df(icu_df)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving ICU results to {output_path}")

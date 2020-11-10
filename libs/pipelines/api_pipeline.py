@@ -22,7 +22,7 @@ from libs import top_level_metrics
 from libs.datasets import timeseries
 from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
@@ -64,8 +64,8 @@ class RegionalInput:
     def from_region_and_intervention(
         region: pipeline.Region,
         intervention: Intervention,
-        rt_data: MultiRegionTimeseriesDataset,
-        icu_data: MultiRegionTimeseriesDataset,
+        rt_data: MultiRegionDataset,
+        icu_data: MultiRegionDataset,
     ) -> "RegionalInput":
         combined_data = combined_datasets.RegionalData.from_region(region)
 
