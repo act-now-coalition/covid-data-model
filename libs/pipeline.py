@@ -104,7 +104,9 @@ class Region:
 
     @staticmethod
     def from_cbsa_code(cbsa_code: str) -> "Region":
-        return Region(location_id=cbsa_to_location_id(cbsa_code), fips=None)
+        # cbsa_code is a valid fips code, setting it to fips code
+        fips = cbsa_code
+        return Region(location_id=cbsa_to_location_id(cbsa_code), fips=fips)
 
     @staticmethod
     def from_location_id(location_id: str) -> "Region":

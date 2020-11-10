@@ -407,7 +407,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     @property
     def regions(self) -> Iterable[Region]:
-        for location_id in self.latest_data.index:
+        location_ids = self.data[CommonFields.LOCATION_ID].unique()
+        for location_id in location_ids:
             yield Region.from_location_id(location_id)
 
     @property

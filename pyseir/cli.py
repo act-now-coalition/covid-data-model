@@ -75,11 +75,10 @@ class RegionPipelineInput:
     ) -> List["RegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
         # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        regions = {
-            *combined_datasets.get_subset_regions(
-                fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
-            )
-        }
+        us_timeseries = combined_datasets.load_us_timeseries_dataset()
+        regions = us_timeseries.iter_regions(
+            fips=fips, level=level, exclude_county_999=True, states=states,
+        )
         pipeline_inputs = parallel_utils.parallel_map(_build_region_pipeline_input, regions)
         return list(pipeline_inputs)
 
@@ -104,15 +103,17 @@ class RegionPipeline:
             root.exception(f"run_rt failed for {input.region}")
             raise
 
-        # Run ICU adjustment
-        icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
-        try:
-            icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-                icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-            )
-        except KeyError:
-            icu_data = None
-            root.exception(f"Failed to run icu data for {input.region}")
+        icu_data = None
+        # TODO: Re-enable for CBSAs
+        if input.region.level is not AggregationLevel.CBSA:
+            # Run ICU adjustment only on non-cbsa locations.
+            icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
+            try:
+                icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+                    icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+                )
+            except KeyError:
+                root.exception(f"Failed to run icu data for {input.region}")
 
         return RegionPipeline(
             region=input.region,
@@ -245,6 +246,7 @@ def build_all(states, output_dir, states_only, fips):
     if not len(states):
         states = ALL_STATES
 
+    states = []
     pipelines = _run_on_all_regions(states=states, states_only=states_only, fips=fips)
     _write_pipeline_output(pipelines, output_dir)
 
