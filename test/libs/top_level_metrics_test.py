@@ -9,7 +9,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from api import can_api_definition
 from libs import top_level_metrics
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
@@ -34,7 +34,7 @@ def _fips_csv_to_one_region(csv_str: str, region: Region) -> OneRegionTimeseries
     # Make a Timeseries first because it can have a FIPS column without location_id
     ts = TimeseriesDataset.load_csv(io.StringIO(csv_str))
     # from_timeseries_and_latest adds the location_id column needed by get_one_region
-    return MultiRegionTimeseriesDataset.from_timeseries_and_latest(
+    return MultiRegionDataset.from_timeseries_and_latest(
         ts, ts.latest_values_object()
     ).get_one_region(region)
 

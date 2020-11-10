@@ -18,7 +18,7 @@ from libs.datasets.combined_datasets import (
     ALL_FIELDS_FEATURE_DEFINITION,
 )
 from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import timeseries
 from libs.qa import data_availability
 from libs.datasets.timeseries import TimeseriesDataset
@@ -81,7 +81,7 @@ def update(wide_dates_filename, aggregate_to_msas: bool):
     latest_dataset: LatestValuesDataset = combined_datasets.build_from_sources(
         LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
-    multiregion_dataset = MultiRegionTimeseriesDataset.from_timeseries_and_latest(
+    multiregion_dataset = MultiRegionDataset.from_timeseries_and_latest(
         timeseries_dataset, latest_dataset
     )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)

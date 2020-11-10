@@ -66,7 +66,7 @@ class DatasetType(enum.Enum):
         elif self is DatasetType.LATEST:
             return latest_values_dataset.LatestValuesDataset
         elif self is DatasetType.MULTI_REGION:
-            return timeseries.MultiRegionTimeseriesDataset
+            return timeseries.MultiRegionDataset
 
 
 class DuplicateValuesForIndex(Exception):
