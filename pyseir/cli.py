@@ -13,6 +13,8 @@ import click
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
+
+from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
@@ -95,15 +97,17 @@ class RegionPipeline:
             root.exception(f"run_rt failed for {input.region}")
             raise
 
-        # Run ICU adjustment
-        icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
-        try:
-            icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-                icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-            )
-        except KeyError:
-            icu_data = None
-            root.exception(f"Failed to run icu data for {input.region}")
+        icu_data = None
+
+        # TODO: Re-enable for CBSAs once typical utilization number aggregation fixed.
+        if input.region.level is not AggregationLevel.CBSA:
+            icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
+            try:
+                icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+                    icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+                )
+            except KeyError:
+                root.exception(f"Failed to run icu data for {input.region}")
 
         return RegionPipeline(
             region=input.region,
@@ -186,7 +190,7 @@ def _run_on_all_regions(
     region_inputs = RegionPipelineInput.build_all(fips=fips, states=states, level=level)
 
     root.info(f"Executing pipeline for {len(region_inputs)} regions")
-    region_pipelines = map(RegionPipeline.run, region_inputs)
+    region_pipelines = parallel_utils.parallel_map(RegionPipeline.run, region_inputs)
 
     region_pipelines = _patch_nola_infection_rate_in_pipelines(region_pipelines)
 
@@ -232,9 +236,6 @@ def build_all(states, output_dir, states_only, fips):
     states = [c.strip() for c in states]
     states = [us.states.lookup(state).abbr for state in states]
     states = [state for state in states if state in ALL_STATES]
-
-    if not len(states):
-        states = ALL_STATES
 
     pipelines = _run_on_all_regions(states=states, states_only=states_only, fips=fips)
     _write_pipeline_output(pipelines, output_dir)

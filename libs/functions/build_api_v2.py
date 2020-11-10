@@ -55,11 +55,11 @@ def build_region_summary(
 ) -> RegionSummary:
     actuals = _build_actuals(latest_values)
     return RegionSummary(
-        fips=latest_values[CommonFields.FIPS],
-        country=latest_values.get(CommonFields.COUNTRY),
-        state=latest_values[CommonFields.STATE],
+        fips=region.fips,
+        country=region.country,
+        state=region.state,
         county=latest_values.get(CommonFields.COUNTY),
-        level=latest_values[CommonFields.AGGREGATE_LEVEL],
+        level=region.level,
         lat=latest_values.get(CommonFields.LATITUDE),
         long=latest_values.get(CommonFields.LONGITUDE),
         population=latest_values[CommonFields.POPULATION],

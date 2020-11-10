@@ -169,7 +169,7 @@ class RegionSummary(base_model.APIBaseModel):
         description="Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
     )
     country: str = pydantic.Field(..., description="2-letter ISO-3166 Country code.")
-    state: str = pydantic.Field(..., description="2-letter ANSI state code.")
+    state: Optional[str] = pydantic.Field(..., description="2-letter ANSI state code.")
     county: Optional[str] = pydantic.Field(..., description="County name")
 
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
@@ -231,7 +231,7 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
 
     date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
     country: str = pydantic.Field(..., description="2-letter ISO-3166 Country code.")
-    state: str = pydantic.Field(..., description="2-letter ANSI state code.")
+    state: Optional[str] = pydantic.Field(..., description="2-letter ANSI state code.")
     county: Optional[str] = pydantic.Field(..., description="County name")
     fips: str = pydantic.Field(
         ...,
