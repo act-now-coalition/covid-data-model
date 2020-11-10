@@ -147,7 +147,9 @@ def build_timeseries_for_region(
         metrics_timeseries, metrics_latest = generate_metrics_and_latest(
             regional_input.timeseries, regional_input.rt_data, regional_input.icu_data,
         )
-        region_summary = api.generate_region_summary(regional_input.latest, metrics_latest)
+        region_summary = api.generate_region_summary(
+            regional_input.region, regional_input.latest, metrics_latest
+        )
         region_timeseries = api.generate_region_timeseries(
             region_summary, regional_input.timeseries, metrics_timeseries
         )

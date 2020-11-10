@@ -16,6 +16,7 @@ from libs import us_state_abbrev
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import get_can_projection
+from libs.pipeline import Region
 
 
 def _generate_actuals(actual_data: dict, intervention: Intervention) -> Actuals:
@@ -63,9 +64,9 @@ def _generate_actuals(actual_data: dict, intervention: Intervention) -> Actuals:
 
 
 def generate_region_summary(
-    latest_values: dict, latest_metrics: Optional[Metrics],
+    region: Region, latest_values: dict, latest_metrics: Optional[Metrics],
 ) -> RegionSummary:
-    fips = latest_values[CommonFields.FIPS]
+    fips = region.fips
     state = latest_values[CommonFields.STATE]
     state_intervention = get_can_projection.get_intervention_for_state(state)
 
