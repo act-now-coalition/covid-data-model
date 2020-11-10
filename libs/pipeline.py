@@ -12,6 +12,7 @@ from typing import Optional
 
 import us
 from typing_extensions import final
+from libs.datasets.dataset_utils import AggregationLevel
 
 
 class BadFipsWarning(UserWarning):
@@ -40,6 +41,31 @@ def location_id_to_fips(location_id: str) -> Optional[str]:
     match = re.fullmatch(r"iso1:us#iso2:us-(..)", location_id)
     if match:
         return us.states.lookup(match.group(1).upper(), field="abbr").fips
+
+    match = re.fullmatch(r"iso1:us#cbsa:(\d+)", location_id)
+    if match:
+        return match.group(1)
+
+    return None
+
+
+def location_id_to_level(location_id: str) -> Optional[AggregationLevel]:
+    """Converts a location_id to a FIPS code"""
+    match = re.fullmatch(r"iso1:us#.*fips:(\d+)", location_id)
+    if match:
+        fips = match.group(1)
+        if len(fips) == 2:
+            return AggregationLevel.STATE
+        if len(fips) == 5:
+            return AggregationLevel.COUNTY
+
+    match = re.fullmatch(r"iso1:us#iso2:us-(..)", location_id)
+    if match:
+        return AggregationLevel.STATE
+
+    match = re.fullmatch(r"iso1:us#cbsa:(\d+)", location_id)
+    if match:
+        return AggregationLevel.CBSA
 
     return None
 
@@ -78,21 +104,49 @@ class Region:
 
     @staticmethod
     def from_cbsa_code(cbsa_code: str) -> "Region":
-        return Region(location_id=cbsa_to_location_id(cbsa_code), fips=None)
+        # cbsa_code is a valid fips code, setting it to fips code
+        fips = cbsa_code
+        return Region(location_id=cbsa_to_location_id(cbsa_code), fips=fips)
+
+    @staticmethod
+    def from_location_id(location_id: str) -> "Region":
+        fips = location_id_to_fips(location_id)
+        return Region(location_id=location_id, fips=fips)
+
+    @property
+    def state(self) -> Optional[str]:
+        state_obj = self.state_obj()
+        if state_obj:
+            return state_obj.abbr
+
+        return None
+
+    @property
+    def country(self):
+        return "USA"
+
+    @property
+    def level(self) -> AggregationLevel:
+        level = location_id_to_level(self.location_id)
+
+        if level:
+            return level
+
+        raise NotImplementedError("Unknown Aggregation Level")
 
     def is_county(self):
-        return len(self.fips) == 5
+        return self.level is AggregationLevel.COUNTY
 
     def is_state(self):
-        return len(self.fips) == 2
+        return self.level is AggregationLevel.STATE
 
     def state_obj(self):
         if self.is_state():
             return us.states.lookup(self.fips)
         elif self.is_county():
             return us.states.lookup(self.fips[:2])
-        else:
-            raise ValueError(f"No state_obj for {self}")
+
+        return None
 
     def get_state_region(self) -> "Region":
         """Returns a Region object for the state of a county, otherwise raises a ValueError."""

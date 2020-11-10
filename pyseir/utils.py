@@ -83,16 +83,21 @@ def get_run_artifact_path(region: Region, artifact, output_dir=None) -> str:
         Location of the artifact.
     """
 
-    if region.is_county():
+    if region.level is AggregationLevel.COUNTY:
         agg_level = AggregationLevel.COUNTY
-        state_obj = region.get_state_region().state_obj()
+        state_name = region.get_state_region().state_obj().name
         county = combined_datasets.get_county_name(region)
-    elif region.is_state():
+    elif region.level is AggregationLevel.STATE:
         agg_level = AggregationLevel.STATE
-        state_obj = region.state_obj()
+        state_name = region.state_obj().name
+        county = None
+    elif region.level is AggregationLevel.CBSA:
+        agg_level = AggregationLevel.CBSA
+        state_name = "CBSA"
         county = None
     else:
-        raise AssertionError(f"No state_obj for {region}")
+        raise AssertionError(f"Unsupported aggregation level {region.level}")
+
     fips = region.fips
 
     artifact = RunArtifact(artifact)
@@ -102,46 +107,46 @@ def get_run_artifact_path(region: Region, artifact, output_dir=None) -> str:
     if artifact is RunArtifact.RT_INFERENCE_REPORT:
         if agg_level is AggregationLevel.COUNTY:
             path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_obj.name),
-                f"Rt_results__{state_obj.name}__{county}__{fips}.pdf",
+                REPORTS_FOLDER(output_dir, state_name),
+                f"Rt_results__{state_name}__{county}__{fips}.pdf",
             )
         else:
             path = os.path.join(
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
-                f"Rt_results__{state_obj.name}__{fips}.pdf",
+                f"Rt_results__{state_name}__{fips}.pdf",
             )
 
     elif artifact is RunArtifact.RT_SMOOTHING_REPORT:
         if agg_level is AggregationLevel.COUNTY:
             path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_obj.name),
-                f"Rt_smoothing__{state_obj.name}__{county}__{fips}.pdf",
+                REPORTS_FOLDER(output_dir, state_name),
+                f"Rt_smoothing__{state_name}__{county}__{fips}.pdf",
             )
         elif agg_level is AggregationLevel.STATE:
             path = os.path.join(
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
-                f"Rt_smoothing__{state_obj.name}__{fips}.pdf",
-            )
-        else:  # For tests
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "reports",
-                f"Rt_smoothing__{state_obj.name}__{fips}.pdf",
-            )
-
-    elif artifact is RunArtifact.MLE_FIT_REPORT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_obj.name),
-                f"mle_fit_results__{state_obj.name}__{county}__{fips}.pdf",
+                f"Rt_smoothing__{state_name}__{fips}.pdf",
             )
         else:
             path = os.path.join(
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
-                f"mle_fit_results__{state_obj.name}__{fips}.pdf",
+                f"Rt_smoothing__{state_name}__{fips}.pdf",
+            )
+
+    elif artifact is RunArtifact.MLE_FIT_REPORT:
+        if agg_level is AggregationLevel.COUNTY:
+            path = os.path.join(
+                REPORTS_FOLDER(output_dir, state_name),
+                f"mle_fit_results__{state_name}__{county}__{fips}.pdf",
+            )
+        else:
+            path = os.path.join(
+                STATE_SUMMARY_FOLDER(output_dir),
+                "reports",
+                f"mle_fit_results__{state_name}__{fips}.pdf",
             )
 
     elif artifact is RunArtifact.WEB_UI_RESULT:
@@ -150,14 +155,14 @@ def get_run_artifact_path(region: Region, artifact, output_dir=None) -> str:
     elif artifact is RunArtifact.BACKTEST_RESULT:
         if agg_level is AggregationLevel.COUNTY:
             path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_obj.name),
-                f"backtest_results__{state_obj.name}__{county}__{fips}.pdf",
+                REPORTS_FOLDER(output_dir, state_name),
+                f"backtest_results__{state_name}__{county}__{fips}.pdf",
             )
         else:
             path = os.path.join(
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
-                f"backtest_results__{state_obj.name}__{fips}.pdf",
+                f"backtest_results__{state_name}__{fips}.pdf",
             )
 
     else:
