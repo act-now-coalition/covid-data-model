@@ -16,7 +16,14 @@
     "state": {
       "title": "State",
       "description": "2-letter ANSI state code.",
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "county": {
       "title": "County",
@@ -112,7 +119,8 @@
       "enum": [
         "country",
         "state",
-        "county"
+        "county",
+        "cbsa"
       ]
     },
     "TestPositivityRatioMethod": {

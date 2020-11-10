@@ -208,6 +208,104 @@
         }
       ]
     },
+    "/cbsa/{cbsa_id}.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA (metro) Data"
+        ],
+        "summary": "Single CBSA Summary",
+        "description": "Region Summary object for a single CBSA.",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "cbsa_id",
+          "in": "path",
+          "description": "5 Letter CBSA ID",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsa/{cbsa_id}.timeseries.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA (metro) Data"
+        ],
+        "summary": "Single CBSA Timeseries",
+        "description": "Region Summary with Timeseries for a single CBSA.",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "cbsa_id",
+          "in": "path",
+          "description": "5 Letter CBSA ID",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
     "/states.json?apiKey={apiKey}": {
       "get": {
         "tags": [
@@ -467,6 +565,150 @@
         ],
         "summary": "All counties timeseries (csv)",
         "description": "Region summaries with timeseries for all counties",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsas.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA (metro) Data"
+        ],
+        "summary": "All CBSAs summary (json)",
+        "description": "Region Summaries for all CBSAs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsas.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA (metro) Data"
+        ],
+        "summary": "All CBSAs summary (csv)",
+        "description": "Region Summaries for all CBSAs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsas.timeseries.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA (metro) Data"
+        ],
+        "summary": "All CBSAs timeseries",
+        "description": "Region summaries with timeseries for all CBSAs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsas.timeseries.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA (metro) Data"
+        ],
+        "summary": "All CBSAs timeseries (csv)",
+        "description": "Region summaries with timeseries for all CBSAs",
         "responses": {
           "200": {
             "description": "",
@@ -856,7 +1098,14 @@
           },
           "state": {
             "title": "State",
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "2-letter ANSI state code."
           },
           "county": {
@@ -925,7 +1174,8 @@
         "enum": [
           "country",
           "state",
-          "county"
+          "county",
+          "cbsa"
         ],
         "description": "An enumeration."
       },
@@ -1004,7 +1254,14 @@
           },
           "state": {
             "title": "State",
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "2-letter ANSI state code."
           },
           "county": {
@@ -1334,7 +1591,14 @@
           },
           "state": {
             "title": "State",
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "2-letter ANSI state code."
           },
           "county": {
