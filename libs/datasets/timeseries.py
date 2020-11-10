@@ -498,6 +498,8 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
         if missing_columns:
             _log.warning(f"Re-adding empty columns: {missing_columns}")
             wide = wide.reindex(columns=[*wide.columns, *missing_columns])
+        numeric_columns = list(all_columns - set(GEO_DATA_COLUMNS))
+        wide[numeric_columns] = wide[numeric_columns].apply(pd.to_numeric, axis=0)
 
         return dataclasses.replace(self, _regional_attributes=wide)
 
