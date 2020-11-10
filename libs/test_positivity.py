@@ -16,7 +16,7 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
 
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 
 
 _log = structlog.get_logger()
@@ -130,13 +130,13 @@ class AllMethods:
     # Test positivity calculated in all valid methods for each region
     all_methods_timeseries: pd.DataFrame
 
-    # A MultiRegionTimeseriesDataset with exactly one column, TEST_POSITIVITY, the best available
+    # A MultiRegionDataset with exactly one column, TEST_POSITIVITY, the best available
     # method for each region.
-    test_positivity: MultiRegionTimeseriesDataset
+    test_positivity: MultiRegionDataset
 
     @staticmethod
     def run(
-        dataset_in: MultiRegionTimeseriesDataset,
+        dataset_in: MultiRegionDataset,
         methods: Sequence[Method] = TEST_POSITIVITY_METHODS,
         diff_days: int = 7,
         recent_days: int = 14,
@@ -207,7 +207,7 @@ class AllMethods:
         )
         positivity = first.drop(columns=[PdFields.VARIABLE])
 
-        test_positivity = MultiRegionTimeseriesDataset.from_timeseries_df(
+        test_positivity = MultiRegionDataset.from_timeseries_df(
             positivity.stack().rename(CommonFields.TEST_POSITIVITY).reset_index(),
         ).add_provenance_series(provenance)
 
@@ -232,8 +232,8 @@ class AllMethods:
 
 
 def run_and_maybe_join_columns(
-    mrts: timeseries.MultiRegionTimeseriesDataset, log
-) -> timeseries.MultiRegionTimeseriesDataset:
+    mrts: timeseries.MultiRegionDataset, log
+) -> timeseries.MultiRegionDataset:
     """Calculates test positivity and joins it with the input, if successful."""
     try:
         test_positivity_results = AllMethods.run(mrts)

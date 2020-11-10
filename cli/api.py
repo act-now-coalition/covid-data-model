@@ -14,7 +14,7 @@ from libs import update_readme_schemas
 from libs.pipelines import api_pipeline
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.enums import Intervention
@@ -135,9 +135,9 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
     )
 
     icu_data_path = input_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
-    icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+    icu_data = MultiRegionDataset.from_csv(icu_data_path)
     rt_data_path = input_dir / SummaryArtifact.RT_METRIC_COMBINED.value
-    rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
+    rt_data = MultiRegionDataset.from_csv(rt_data_path)
 
     for intervention in list(Intervention):
         _logger.info(f"Running intervention {intervention.name}")
@@ -210,15 +210,15 @@ def generate_api_v2(model_output_dir, output, aggregation_level, state, fips):
     _logger.info(f"Loading all regional inputs.")
 
     icu_data_path = model_output_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
-    icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+    icu_data = MultiRegionDataset.from_csv(icu_data_path)
     icu_data_map = dict(icu_data.iter_one_regions())
 
     rt_data_path = model_output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
-    rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
+    rt_data = MultiRegionDataset.from_csv(rt_data_path)
     rt_data_map = dict(rt_data.iter_one_regions())
 
     # If calculating test positivity succeeds join it with the combined_datasets into one
-    # MultiRegionTimeseriesDataset
+    # MultiRegionDataset
     regions_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset(regions)
     regions_data = test_positivity.run_and_maybe_join_columns(regions_data, _logger)
 
