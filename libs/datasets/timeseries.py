@@ -1,7 +1,6 @@
 import dataclasses
 import datetime
 import pathlib
-import warnings
 from dataclasses import dataclass
 from typing import Any
 from typing import Dict
@@ -15,7 +14,6 @@ from covidactnow.datapublic.common_fields import PdFields
 from typing_extensions import final
 
 import pandas as pd
-import numpy as np
 import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
@@ -471,32 +469,37 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
     def add_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionTimeseriesDataset":
         assert latest_df.index.names == [None]
-        latest_df.set_index(CommonFields.LOCATION_ID, inplace=True)
-        geodata_column_mask = latest_df.columns.isin(
-            set(TimeseriesDataset.INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
+        all_locations = (
+            self._regional_attributes.index.union(latest_df[CommonFields.LOCATION_ID])
+            .unique()
+            .sort_values()
         )
-        latest_values_df = latest_df.loc[:, ~geodata_column_mask]
-
-        geodata = _geodata_df_to_regional_attributes_df(
-            pd.concat(
-                [
-                    self._regional_geo_data.reset_index(),
-                    latest_df.loc[:, geodata_column_mask].reset_index(),
-                ]
-            )
+        all_columns = set(self._regional_attributes.columns.union(latest_df.columns)) - {
+            CommonFields.LOCATION_ID
+        }
+        long = pd.melt(
+            pd.concat([latest_df, self._regional_attributes.reset_index()]),
+            id_vars=[CommonFields.LOCATION_ID],
         )
-        existing_non_geodata = self._regional_non_geo_data
-
-        common_columns = set(latest_values_df.columns) & set(existing_non_geodata.columns)
-        if common_columns:
-            # columns to be joined need to be disjoint
-            raise ValueError(f"Columns are in both dataset: {common_columns}")
-        combined = (
-            pd.concat([geodata, existing_non_geodata, latest_values_df], axis=1)
-            .rename_axis(index=[CommonFields.LOCATION_ID])
+        long_deduped = long.drop_duplicates()
+        long_deduped = (
+            long_deduped.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[PdFields.VALUE]
+            .dropna()
             .sort_index()
         )
-        return dataclasses.replace(self, _regional_attributes=combined)
+        dups = long_deduped.index.duplicated(keep=False)
+        if dups.any():
+            _log.warning(f"Duplicates:\n{long_deduped.loc[dups, :]}")
+            long_deduped = long_deduped.loc[long_deduped.index.duplicated(keep="first"), :]
+        wide = long_deduped.unstack()
+
+        wide = wide.reindex(index=all_locations)
+        missing_columns = all_columns - set(wide.columns)
+        if missing_columns:
+            _log.warning(f"Re-adding empty columns: {missing_columns}")
+            wide = wide.reindex(columns=[*wide.columns, *missing_columns])
+
+        return dataclasses.replace(self, _regional_attributes=wide)
 
     def add_provenance_csv(
         self, path_or_buf: Union[pathlib.Path, TextIO]
@@ -533,7 +536,7 @@ class MultiRegionTimeseriesDataset(SaveableDatasetInterface):
 
         dataset = MultiRegionTimeseriesDataset.from_timeseries_df(timeseries_df)
         if not latest_df.empty:
-            dataset = dataset.add_latest_df(latest_df)
+            dataset = dataset.add_latest_df(latest_df.drop(columns=[CommonFields.DATE]))
 
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
