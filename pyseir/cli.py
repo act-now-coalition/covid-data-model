@@ -13,7 +13,6 @@ import click
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
-from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
@@ -56,16 +55,10 @@ def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeli
         return [pipeline.Region.from_state(s) for s in default]
 
 
-def _build_region_pipeline_input(region: pipeline.Region):
-    return RegionPipelineInput(
-        region=region, regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
-    )
-
-
 @dataclass
 class RegionPipelineInput:
     region: pipeline.Region
-    regional_combined_dataset: combined_datasets.RegionalData
+    regional_combined_dataset: OneRegionTimeseriesDataset
 
     @staticmethod
     def build_all(
@@ -74,14 +67,12 @@ class RegionPipelineInput:
         level: AggregationLevel = None,
     ) -> List["RegionPipelineInput"]:
         """For each region smaller than a state, build the input object used to run the pipeline."""
-        # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        regions = {
-            *combined_datasets.get_subset_regions(
-                fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
-            )
-        }
-        pipeline_inputs = parallel_utils.parallel_map(_build_region_pipeline_input, regions)
-        return list(pipeline_inputs)
+        regions = combined_datasets.load_us_timeseries_dataset().get_subset(
+            fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
+        )
+        return [
+            RegionPipelineInput(region, dataset) for region, dataset in regions.iter_one_regions()
+        ]
 
 
 @dataclass
@@ -91,7 +82,7 @@ class RegionPipeline:
     region: pipeline.Region
     infer_df: pd.DataFrame
     icu_data: Optional[OneRegionTimeseriesDataset]
-    _combined_data: combined_datasets.RegionalData
+    _combined_data: OneRegionTimeseriesDataset
 
     @staticmethod
     def run(input: RegionPipelineInput) -> "RegionPipeline":
@@ -195,7 +186,7 @@ def _run_on_all_regions(
     region_inputs = RegionPipelineInput.build_all(fips=fips, states=states, level=level)
 
     root.info(f"Executing pipeline for {len(region_inputs)} regions")
-    region_pipelines = parallel_utils.parallel_map(RegionPipeline.run, region_inputs)
+    region_pipelines = map(RegionPipeline.run, region_inputs)
 
     region_pipelines = _patch_nola_infection_rate_in_pipelines(region_pipelines)
 

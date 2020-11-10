@@ -66,6 +66,10 @@ class Region:
     fips: Optional[str]
 
     @staticmethod
+    def from_location_id(location_id: str) -> "Region":
+        return Region(location_id=location_id, fips=location_id_to_fips(location_id))
+
+    @staticmethod
     def from_fips(fips: str) -> "Region":
         return Region(location_id=fips_to_location_id(fips), fips=fips)
 

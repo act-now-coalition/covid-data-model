@@ -4,6 +4,7 @@ import pathlib
 import warnings
 from dataclasses import dataclass
 from typing import Any
+from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
@@ -594,11 +595,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
             latest_row = pd.Series([], dtype=object)
         return latest_row.where(pd.notnull(latest_row), None).to_dict()
 
-    def get_regions_subset(self, regions: Sequence[Region]) -> "MultiRegionDataset":
+    def get_regions_subset(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
         return self.get_locations_subset(location_ids)
 
-    def get_locations_subset(self, location_ids: Sequence[str]) -> "MultiRegionDataset":
+    def get_locations_subset(self, location_ids: Collection[str]) -> "MultiRegionDataset":
         timeseries_df = self.data.loc[self.data[CommonFields.LOCATION_ID].isin(location_ids), :]
         latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
         return (
@@ -607,25 +608,43 @@ class MultiRegionDataset(SaveableDatasetInterface):
             .add_provenance_series(provenance)
         )
 
-    def get_counties(self, after: Optional[datetime.datetime] = None) -> "MultiRegionDataset":
-        ts_rows_key = dataset_utils.make_rows_key(
-            self.data, aggregation_level=AggregationLevel.COUNTY, after=after
+    def get_subset(
+        self,
+        aggregation_level: Optional[AggregationLevel] = None,
+        fips: Optional[str] = None,
+        state: Optional[str] = None,
+        states: Optional[List[str]] = None,
+        exclude_county_999: bool = False,
+    ) -> "MultiRegionDataset":
+        """Returns a new object containing data for a subset of the regions in `self`."""
+        # Currently this searches the entire timeseries to make a set of location_ids. A near-future
+        # change will replace this with searching a DataFrame that contains only one row per region. I'm
+        # adding this now to reduce the number of places latest values are used outside of this module.
+        data = self.data_with_fips
+        rows_key = dataset_utils.make_rows_key(
+            data,
+            aggregation_level=aggregation_level,
+            fips=fips,
+            state=state,
+            states=states,
+            exclude_county_999=exclude_county_999,
         )
-        ts_df = self.data.loc[ts_rows_key, :].reset_index(drop=True)
+        location_ids = set(data.loc[rows_key, CommonFields.LOCATION_ID])
+        return self.get_locations_subset(location_ids)
 
-        location_ids = ts_df[CommonFields.LOCATION_ID].unique()
+    def get_counties(self, after: Optional[datetime.datetime] = None) -> "MultiRegionDataset":
+        return self.get_subset(aggregation_level=AggregationLevel.COUNTY)._trim_timeseries(
+            after=after
+        )
 
+    def _trim_timeseries(self, *, after: datetime.datetime) -> "MultiRegionDataset":
+        """Returns a new object containing only timeseries data after given date."""
+        ts_rows_mask = self.data[CommonFields.DATE] > after
         # `after` doesn't make sense for latest because it doesn't contain date information.
         # Keep latest data for regions that are in the new timeseries DataFrame.
         # TODO(tom): Replace this with re-calculating latest data from the new timeseries so that
         # metrics which no longer have real values are excluded.
-        latest_df, provenance = self._get_latest_and_provenance_for_locations(location_ids)
-
-        return (
-            MultiRegionDataset.from_timeseries_df(ts_df)
-            .add_latest_df(latest_df)
-            .add_provenance_series(provenance)
-        )
+        return dataclasses.replace(self, data=self.data.loc[ts_rows_mask, :])
 
     def _get_latest_and_provenance_for_locations(
         self, location_ids
@@ -734,7 +753,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         for location_id, data_group in self.data.groupby(CommonFields.LOCATION_ID):
             latest_dict = self._location_id_latest_dict(location_id)
             provenance_dict = self._location_id_provenance_dict(location_id)
-            region = Region(location_id=location_id, fips=None)
+            region = Region.from_location_id(location_id)
             yield region, OneRegionTimeseriesDataset(
                 region, data_group, latest_dict, provenance=provenance_dict,
             )
