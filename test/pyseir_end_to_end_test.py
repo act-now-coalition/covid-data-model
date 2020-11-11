@@ -3,7 +3,7 @@ import unittest
 from libs.pipeline import Region
 from pyseir import cli
 from pyseir.utils import SummaryArtifact
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 import pytest
 
 # turns all warnings into errors for this module
@@ -20,11 +20,11 @@ def test_pyseir_end_to_end_idaho(tmp_path):
         cli._write_pipeline_output(pipelines, tmp_path)
 
         icu_data_path = tmp_path / SummaryArtifact.ICU_METRIC_COMBINED.value
-        icu_data = MultiRegionTimeseriesDataset.from_csv(icu_data_path)
+        icu_data = MultiRegionDataset.from_csv(icu_data_path)
         assert icu_data.get_one_region(region)
 
         rt_data_path = tmp_path / SummaryArtifact.RT_METRIC_COMBINED.value
-        rt_data = MultiRegionTimeseriesDataset.from_csv(rt_data_path)
+        rt_data = MultiRegionDataset.from_csv(rt_data_path)
         assert rt_data.get_one_region(region)
 
 

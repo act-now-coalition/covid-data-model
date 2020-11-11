@@ -1,7 +1,7 @@
 import io
 
 from libs.datasets import statistical_areas
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 import pandas as pd
 
 from libs.datasets.timeseries import TimeseriesDataset
@@ -17,11 +17,11 @@ def test_load_from_local_public_data():
     ts = TimeseriesDataset.load_csv(
         io.StringIO(
             "fips,state,aggregate_level,county,m1,date,foo\n"
-            "48059,ZZ,county,North County,3,2020-05-03,ef\n"
-            "48253,ZZ,county,South County,4,2020-05-03,ef\n"
+            "48059,ZZ,county,North County,3,2020-05-03,33\n"
+            "48253,ZZ,county,South County,4,2020-05-03,77\n"
         )
     )
-    ts_in = MultiRegionTimeseriesDataset.from_timeseries_and_latest(ts, ts.latest_values_object())
+    ts_in = MultiRegionDataset.from_timeseries_and_latest(ts, ts.latest_values_object())
     ts_out = agg.aggregate(ts_in)
     ts_cbsa = ts_out.get_one_region(Region.from_cbsa_code("10180"))
     assert ts_cbsa.date_indexed["m1"].to_dict() == {
@@ -33,16 +33,16 @@ def test_aggregate():
     ts = TimeseriesDataset.load_csv(
         io.StringIO(
             "fips,state,aggregate_level,county,m1,date,foo\n"
-            "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-            "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-            "55005,ZZ,county,North County,3,2020-05-03,ef\n"
-            "55006,ZZ,county,South County,3,2020-05-03,ef\n"
-            "55006,ZZ,county,South County,4,2020-05-04,gh\n"
-            "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
-            "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
+            "55005,ZZ,county,North County,1,2020-05-01,11\n"
+            "55005,ZZ,county,North County,2,2020-05-02,22\n"
+            "55005,ZZ,county,North County,3,2020-05-03,33\n"
+            "55006,ZZ,county,South County,3,2020-05-03,44\n"
+            "55006,ZZ,county,South County,4,2020-05-04,55\n"
+            "55,ZZ,state,Grand State,41,2020-05-01,66\n"
+            "55,ZZ,state,Grand State,43,2020-05-03,77\n"
         )
     )
-    ts_in = MultiRegionTimeseriesDataset.from_timeseries_and_latest(ts, ts.latest_values_object())
+    ts_in = MultiRegionDataset.from_timeseries_and_latest(ts, ts.latest_values_object())
     agg = statistical_areas.CountyToCBSAAggregator(
         county_map={"55005": "10001", "55006": "10001"}, cbsa_title_map={"10001": "Stat Area 1"}
     )

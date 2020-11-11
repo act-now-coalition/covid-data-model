@@ -3,7 +3,7 @@ from typing import Mapping
 import pandas as pd
 
 from libs import pipeline
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 
@@ -22,9 +22,9 @@ class CountyToCBSAAggregator:
     # Map from 5 digit CBSA code to CBSA title
     cbsa_title_map: Mapping[str, str]
 
-    def aggregate(self, dataset_in: MultiRegionTimeseriesDataset) -> MultiRegionTimeseriesDataset:
+    def aggregate(self, dataset_in: MultiRegionDataset) -> MultiRegionDataset:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
-        return MultiRegionTimeseriesDataset.from_timeseries_df(
+        return MultiRegionDataset.from_timeseries_df(
             self._aggregate_fips_df(dataset_in.data_with_fips, groupby_date=True)
         ).add_latest_df(
             # No need to reset latest_data_with_fips LOCATION_ID index because FIPS is used.

@@ -43,6 +43,9 @@ class AggregationLevel(enum.Enum):
     STATE = "state"
     COUNTY = "county"
 
+    # Core Base Statistical Area
+    CBSA = "cbsa"
+
 
 class DatasetType(enum.Enum):
 
@@ -63,7 +66,7 @@ class DatasetType(enum.Enum):
         elif self is DatasetType.LATEST:
             return latest_values_dataset.LatestValuesDataset
         elif self is DatasetType.MULTI_REGION:
-            return timeseries.MultiRegionTimeseriesDataset
+            return timeseries.MultiRegionDataset
 
 
 class DuplicateValuesForIndex(Exception):
@@ -156,7 +159,7 @@ def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_agg
 
 
 def build_fips_data_frame():
-    from libs.datasets import FIPSPopulation
+    from libs.datasets.sources.fips_population import FIPSPopulation
 
     return FIPSPopulation.local().data
 

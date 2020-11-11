@@ -1,5 +1,4 @@
 from typing import Optional
-import math
 from dataclasses import dataclass
 from datetime import timedelta
 import structlog
@@ -13,10 +12,9 @@ from covidactnow.datapublic.common_fields import CommonFields
 from scipy import stats as sps
 from matplotlib import pyplot as plt
 
-
 from libs.datasets import combined_datasets
 from libs import pipeline
-from libs.datasets import timeseries
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir import load_data
 from pyseir.utils import RunArtifact
 import pyseir.utils
@@ -57,20 +55,25 @@ def pdf_vector(x, loc, scale):
 class RegionalInput:
     region: pipeline.Region
 
-    _combined_data: combined_datasets.RegionalData
+    _combined_data: OneRegionTimeseriesDataset
 
     @property
     def display_name(self) -> str:
         return str(self.region)
 
     @property
-    def timeseries(self) -> timeseries.OneRegionTimeseriesDataset:
-        return self._combined_data.timeseries
+    def timeseries(self) -> OneRegionTimeseriesDataset:
+        return self._combined_data
+
+    @staticmethod
+    def from_regional_data(dataset: OneRegionTimeseriesDataset) -> "RegionalInput":
+        return RegionalInput(region=dataset.region, _combined_data=dataset)
 
     @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
-            region=region, _combined_data=combined_datasets.RegionalData.from_region(region),
+            region=region,
+            _combined_data=combined_datasets.RegionalData.from_region(region).timeseries,
         )
 
     @staticmethod

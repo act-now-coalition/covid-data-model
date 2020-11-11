@@ -22,7 +22,7 @@ from libs import top_level_metrics
 from libs.datasets import timeseries
 from libs.datasets import CommonFields
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.enums import Intervention
 from libs.functions import generate_api as api
@@ -42,7 +42,7 @@ class RegionalInput:
 
     intervention: Intervention
 
-    _combined_data: combined_datasets.RegionalData
+    _combined_data: OneRegionTimeseriesDataset
 
     @property
     def fips(self) -> str:
@@ -58,16 +58,31 @@ class RegionalInput:
 
     @property
     def timeseries(self) -> OneRegionTimeseriesDataset:
-        return self._combined_data.timeseries
+        return self._combined_data
+
+    @staticmethod
+    def from_one_region_and_intervention(
+        combined_data: OneRegionTimeseriesDataset,
+        intervention: Intervention,
+        rt_data: Optional[OneRegionTimeseriesDataset],
+        icu_data: Optional[OneRegionTimeseriesDataset],
+    ) -> "RegionalInput":
+        return RegionalInput(
+            region=combined_data.region,
+            intervention=intervention,
+            _combined_data=combined_data,
+            rt_data=rt_data,
+            icu_data=icu_data,
+        )
 
     @staticmethod
     def from_region_and_intervention(
         region: pipeline.Region,
         intervention: Intervention,
-        rt_data: MultiRegionTimeseriesDataset,
-        icu_data: MultiRegionTimeseriesDataset,
+        rt_data: MultiRegionDataset,
+        icu_data: MultiRegionDataset,
     ) -> "RegionalInput":
-        combined_data = combined_datasets.RegionalData.from_region(region)
+        combined_data = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
 
         try:
             rt_data = rt_data.get_one_region(region)

@@ -18,14 +18,14 @@ def nyc_region(nyc_fips):
 def rt_dataset():
     test_root = pathlib.Path(__file__).parent
     path = test_root / "data" / "pyseir" / "rt_combined_metric.csv"
-    return timeseries.MultiRegionTimeseriesDataset.from_csv(path)
+    return timeseries.MultiRegionDataset.from_csv(path)
 
 
 @pytest.fixture
 def icu_dataset():
     test_root = pathlib.Path(__file__).parent
     path = test_root / "data" / "pyseir" / "icu_combined_metric.csv"
-    return timeseries.MultiRegionTimeseriesDataset.from_csv(path)
+    return timeseries.MultiRegionDataset.from_csv(path)
 
 
 @pytest.fixture

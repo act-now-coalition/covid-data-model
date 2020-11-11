@@ -13,11 +13,12 @@ import click
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
+
 from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import MultiRegionTimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir.rt import infer_rt
 from pyseir.icu import infer_icu
@@ -56,16 +57,10 @@ def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeli
         return [pipeline.Region.from_state(s) for s in default]
 
 
-def _build_region_pipeline_input(region: pipeline.Region):
-    return RegionPipelineInput(
-        region=region, regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
-    )
-
-
 @dataclass
 class RegionPipelineInput:
     region: pipeline.Region
-    regional_combined_dataset: combined_datasets.RegionalData
+    regional_combined_dataset: OneRegionTimeseriesDataset
 
     @staticmethod
     def build_all(
@@ -73,15 +68,13 @@ class RegionPipelineInput:
         states: Optional[List[str]] = None,
         level: AggregationLevel = None,
     ) -> List["RegionPipelineInput"]:
-        """For each region smaller than a state, build the input object used to run the pipeline."""
-        # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        regions = {
-            *combined_datasets.get_subset_regions(
-                fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
-            )
-        }
-        pipeline_inputs = parallel_utils.parallel_map(_build_region_pipeline_input, regions)
-        return list(pipeline_inputs)
+        """Builds the input objects used to run the pipeline."""
+        regions = combined_datasets.load_us_timeseries_dataset().get_subset(
+            fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
+        )
+        return [
+            RegionPipelineInput(region, dataset) for region, dataset in regions.iter_one_regions()
+        ]
 
 
 @dataclass
@@ -91,28 +84,30 @@ class RegionPipeline:
     region: pipeline.Region
     infer_df: pd.DataFrame
     icu_data: Optional[OneRegionTimeseriesDataset]
-    _combined_data: combined_datasets.RegionalData
+    _combined_data: OneRegionTimeseriesDataset
 
     @staticmethod
     def run(input: RegionPipelineInput) -> "RegionPipeline":
         # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
         # infection_rate.
-        infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
+        infer_rt_input = infer_rt.RegionalInput.from_regional_data(input.regional_combined_dataset)
         try:
             infer_df = infer_rt.run_rt(infer_rt_input)
         except Exception:
             root.exception(f"run_rt failed for {input.region}")
             raise
 
-        # Run ICU adjustment
-        icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
-        try:
-            icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-                icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-            )
-        except KeyError:
-            icu_data = None
-            root.exception(f"Failed to run icu data for {input.region}")
+        icu_data = None
+
+        # TODO: Re-enable for CBSAs once typical utilization number aggregation fixed.
+        if input.region.level is not AggregationLevel.CBSA:
+            icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
+            try:
+                icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+                    icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+                )
+            except KeyError:
+                root.exception(f"Failed to run icu data for {input.region}")
 
         return RegionPipeline(
             region=input.region,
@@ -169,13 +164,13 @@ def _write_pipeline_output(
         output_dir_path.mkdir()
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-    multiregion_rt = MultiRegionTimeseriesDataset.from_timeseries_df(infection_rate_metric_df)
+    multiregion_rt = MultiRegionDataset.from_timeseries_df(infection_rate_metric_df)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
     icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-    multiregion_icu = MultiRegionTimeseriesDataset.from_timeseries_df(icu_df)
+    multiregion_icu = MultiRegionDataset.from_timeseries_df(icu_df)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving ICU results to {output_path}")
@@ -241,9 +236,6 @@ def build_all(states, output_dir, states_only, fips):
     states = [c.strip() for c in states]
     states = [us.states.lookup(state).abbr for state in states]
     states = [state for state in states if state in ALL_STATES]
-
-    if not len(states):
-        states = ALL_STATES
 
     pipelines = _run_on_all_regions(states=states, states_only=states_only, fips=fips)
     _write_pipeline_output(pipelines, output_dir)
