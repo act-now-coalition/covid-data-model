@@ -52,5 +52,5 @@ greater flexibility as we add more aggregation levels (such as country).
 ### Add `riskLevels`
 _Added on 2020-10-15_
 
-We added the risk levels seen on [covidactnow.org](covidactnow.org) to
+Added risk levels as seen on [covidactnow.org](https://covidactnow.org) to
 the API.
