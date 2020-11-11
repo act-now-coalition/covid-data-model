@@ -7,7 +7,7 @@ import pytest
 import structlog
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
-from api import can_api_definition
+from api import can_api_v2_definition
 from libs import top_level_metrics
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -381,7 +381,7 @@ def test_calculate_latest_different_latest_days():
         f"2020-08-13,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
         "2020-08-20,36,,0.20,0.08,2.01,0.2\n"
     )
-    expected_metrics = can_api_definition.Metrics(
+    expected_metrics = can_api_v2_definition.Metrics(
         testPositivityRatio=0.2,
         caseDensity=10,
         contactTracerCapacityRatio=0.08,

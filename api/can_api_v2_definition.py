@@ -1,12 +1,61 @@
 from typing import List, Optional
 import enum
 
-from api.can_api_definition import TestPositivityRatioDetails
 from libs.datasets.dataset_utils import AggregationLevel
-from api import can_api_definition
 from libs import base_model
 import pydantic
 import datetime
+from covidactnow.datapublic.common_fields import GetByValueMixin
+
+
+class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
+    """Method used to determine test positivity ratio."""
+
+    CMSTesting = "CMSTesting"
+    HHSTesting = "HHSTesting"
+    VALORUM = "Valorum"
+    COVID_TRACKING = "covid_tracking"
+    OTHER = "other"
+
+
+class TestPositivityRatioDetails(base_model.APIBaseModel):
+    """Details about how the test positivity ratio was calculated."""
+
+    source: TestPositivityRatioMethod = pydantic.Field(
+        ..., description="Source data for test positivity ratio."
+    )
+
+
+class CovidPatientsMethod(enum.Enum):
+    """Method used to determine number of current ICU patients with covid."""
+
+    ACTUAL = "actual"
+    ESTIMATED = "estimated"
+
+
+class NonCovidPatientsMethod(enum.Enum):
+    """Method used to determine number of current ICU patients without covid."""
+
+    ACTUAL = "actual"
+    ESTIMATED_FROM_TYPICAL_UTILIZATION = "estimated_from_typical_utilization"
+    ESTIMATED_FROM_TOTAL_ICU_ACTUAL = "estimated_from_total_icu_actual"
+
+
+class ICUHeadroomMetricDetails(base_model.APIBaseModel):
+    """Details about how the ICU Headroom Metric was calculated."""
+
+    currentIcuCovid: int = pydantic.Field(
+        ..., description="Current number of covid patients in icu."
+    )
+    currentIcuCovidMethod: CovidPatientsMethod = pydantic.Field(
+        ..., description="Method used to determine number of current ICU patients with covid."
+    )
+    currentIcuNonCovid: int = pydantic.Field(
+        ..., description="Current number of covid patients in icu."
+    )
+    currentIcuNonCovidMethod: NonCovidPatientsMethod = pydantic.Field(
+        ..., description="Method used to determine number of current ICU patients without covid."
+    )
 
 
 class HospitalResourceUtilization(base_model.APIBaseModel):
@@ -102,7 +151,7 @@ class Metrics(base_model.APIBaseModel):
         description="90th percentile confidence interval upper endpoint of the infection rate.",
     )
     icuHeadroomRatio: Optional[float] = pydantic.Field(...)
-    icuHeadroomDetails: can_api_definition.ICUHeadroomMetricDetails = pydantic.Field(None)
+    icuHeadroomDetails: ICUHeadroomMetricDetails = pydantic.Field(None)
 
     @staticmethod
     def empty():
