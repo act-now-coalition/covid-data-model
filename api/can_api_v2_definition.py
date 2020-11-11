@@ -166,10 +166,15 @@ class RegionSummary(base_model.APIBaseModel):
 
     fips: str = pydantic.Field(
         ...,
-        description="Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+        description=(
+            "FIPS Code. FIPS codes are either 2-digit state codes, "
+            "5-digit county codes, or 5-digit CBSA codes."
+        ),
     )
     country: str = pydantic.Field(..., description="2-letter ISO-3166 Country code.")
-    state: Optional[str] = pydantic.Field(..., description="2-letter ANSI state code.")
+    state: Optional[str] = pydantic.Field(
+        ..., description="2-letter ANSI state code. For CBSA regions, state is omitted."
+    )
     county: Optional[str] = pydantic.Field(..., description="County name")
 
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")

@@ -18,7 +18,7 @@
           "County Data"
         ],
         "summary": "Single County Summary",
-        "description": "\nRegion Summary object for a single county.\n\nLots happening with region summaries.\n    ",
+        "description": "\nRegion Summary object for a single county.\n    ",
         "responses": {
           "200": {
             "description": "",
@@ -185,6 +185,104 @@
           "name": "state",
           "in": "path",
           "description": "2 Letter State Cocde",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsa/{cbsa_code}.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA Data"
+        ],
+        "summary": "Single CBSA Summary",
+        "description": "Region Summary object for a single CBSA.",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "cbsa_code",
+          "in": "path",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsa/{cbsa_code}.timeseries.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA Data"
+        ],
+        "summary": "Single CBSA Timeseries",
+        "description": "Region Summary with Timeseries for a single CBSA.",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "cbsa_code",
+          "in": "path",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -467,6 +565,150 @@
         ],
         "summary": "All counties timeseries (csv)",
         "description": "Region summaries with timeseries for all counties",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsas.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA Data"
+        ],
+        "summary": "All CBSAs summary (json)",
+        "description": "Region Summaries for all CBSAs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsas.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA Data"
+        ],
+        "summary": "All CBSAs summary (csv)",
+        "description": "Region Summaries for all CBSAs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsas.timeseries.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA Data"
+        ],
+        "summary": "All CBSAs timeseries",
+        "description": "Region summaries with timeseries for all CBSAs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/cbsas.timeseries.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "CBSA Data"
+        ],
+        "summary": "All CBSAs timeseries (csv)",
+        "description": "Region summaries with timeseries for all CBSAs",
         "responses": {
           "200": {
             "description": "",
@@ -856,7 +1098,14 @@
           },
           "state": {
             "title": "State",
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "2-letter ANSI state code."
           },
           "county": {
@@ -925,7 +1174,8 @@
         "enum": [
           "country",
           "state",
-          "county"
+          "county",
+          "cbsa"
         ],
         "description": "An enumeration."
       },
@@ -995,7 +1245,7 @@
           "fips": {
             "title": "Fips",
             "type": "string",
-            "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters."
+            "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, or 5-digit CBSA codes."
           },
           "country": {
             "title": "Country",
@@ -1004,8 +1254,15 @@
           },
           "state": {
             "title": "State",
-            "type": "string",
-            "description": "2-letter ANSI state code."
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "2-letter ANSI state code. For CBSA regions, state is omitted."
           },
           "county": {
             "title": "County",
@@ -1325,7 +1582,7 @@
           "fips": {
             "title": "Fips",
             "type": "string",
-            "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters."
+            "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, or 5-digit CBSA codes."
           },
           "country": {
             "title": "Country",
@@ -1334,8 +1591,15 @@
           },
           "state": {
             "title": "State",
-            "type": "string",
-            "description": "2-letter ANSI state code."
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "2-letter ANSI state code. For CBSA regions, state is omitted."
           },
           "county": {
             "title": "County",
@@ -1451,6 +1715,50 @@
     {
       "name": "State Data",
       "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands."
+    },
+    {
+      "name": "CBSA Data",
+      "description": "\nAggregated data for all [core-based statistical areas\n(CBSA)](https://en.wikipedia.org/wiki/Core-based_statistical_area).\n\nCBSAs represent collections of counties that are socioeconomically linked.\n\nThey are used to represent metropolitan and micropolitan (at least 10,000 people\nand fewer than 50,000 people) areas.\n\nFor example, the Seattle-Tacoma-Bellevue, WA CBSA is an aggregation of King County,\nPierce County, and Snohomish County.\n\nCBSAs are currently in beta and may not contain all metrics or data.\n"
+    },
+    {
+      "name": "Actuals",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/Actuals\" showReadOnly={true} showWriteOnly={true} />"
+    },
+    {
+      "name": "Metrics",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/Metrics\" showReadOnly={true} showWriteOnly={true} />"
+    },
+    {
+      "name": "RiskLevels",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/RiskLevels\" showReadOnly={true} showWriteOnly={true} />"
+    },
+    {
+      "name": "RegionSummary",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/RegionSummary\" showReadOnly={true} showWriteOnly={true} />"
+    },
+    {
+      "name": "RegionSummaryWithTimeseries",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/RegionSummaryWithTimeseries\" showReadOnly={true} showWriteOnly={true} />"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Endpoints",
+      "tags": [
+        "State Data",
+        "County Data",
+        "CBSA Data"
+      ]
+    },
+    {
+      "name": "Models",
+      "tags": [
+        "Actuals",
+        "Metrics",
+        "RiskLevels",
+        "RegionSummary",
+        "RegionSummaryWithTimeseries"
+      ]
     }
   ]
 }

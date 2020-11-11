@@ -109,6 +109,7 @@ function Redocusaurus(props) {
         options={{
           scrollYOffset: 'nav',
           theme,
+          showExtensions: true,
           ...props.options
         }}
       />
