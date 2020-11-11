@@ -45,7 +45,6 @@ const SignupForm = () => {
 
   return (
     <GettingStartedBox>
-      <h2>Getting Started</h2>
       <p>There are just two fast and simple steps before using our API.</p>
 
       <div>

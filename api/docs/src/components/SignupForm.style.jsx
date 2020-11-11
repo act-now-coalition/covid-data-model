@@ -79,7 +79,6 @@ export const StyledNewsletter = styled.div`
 export const GettingStartedBox = styled.div`
   background-color: rgba(242, 242, 242, 0.25);
   border: 1px solid rgb(242, 242, 242);
-  padding: 24px;
   margin-bottom: 32px;
 
   p {
