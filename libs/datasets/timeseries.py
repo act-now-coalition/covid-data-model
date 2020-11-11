@@ -401,12 +401,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
         ]
 
     @property
-    def regions(self) -> Iterable[Region]:
-        location_ids = self.data[CommonFields.LOCATION_ID].unique()
-        for location_id in location_ids:
-            yield Region.from_location_id(location_id)
-
-    @property
     def dataset_type(self) -> DatasetType:
         return DatasetType.MULTI_REGION
 
@@ -781,28 +775,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
             _regional_attributes=self._regional_attributes,
             _provenance=combined_provenance,
         )
-
-    def iter_regions(
-        self, level=None, exclude_county_999=False, state=None, fips=None, states=None
-    ):
-
-        for region in set(self.regions):
-            if level and region.level is not level:
-                continue
-
-            if exclude_county_999 and region.fips.endswith("999"):
-                continue
-
-            if state and region.state != state:
-                continue
-
-            if fips and region.fips != fips:
-                continue
-
-            if states and region.state not in states:
-                continue
-
-            yield region
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
