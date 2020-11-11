@@ -433,24 +433,39 @@ def test_timeseries_latest_values():
         io.StringIO(
             "location_id,date,county,aggregate_level,m1,m2\n"
             "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
-            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
-            "iso1:us#cbsa:10100,2020-04-04,,,10,1\n"
-            "iso1:us#cbsa:10100,,,,,3\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,10,3\n"
+            "iso1:us#cbsa:10100,2020-04-04,,,,1\n"
+            "iso1:us#cbsa:10100,,,,,4\n"
             "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
-            "iso1:us#fips:97111,,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,5,\n"
         )
     )
 
+    # Check bulk access via _timeseries_latest_values
     expected = pd.read_csv(
         io.StringIO("location_id,m1,m2\n" "iso1:us#cbsa:10100,10,1\n" "iso1:us#fips:97111,4,\n")
     )
-
-    latest_from_timeseries = dataset.timeseries_latest_values().reset_index()
-
+    latest_from_timeseries = dataset._timeseries_latest_values().reset_index()
     pd.testing.assert_frame_equal(
         latest_from_timeseries, expected, check_like=True, check_dtype=False
     )
+
+    region_10100 = dataset.get_one_region(Region.from_cbsa_code("10100"))
+    assert region_10100.latest == {
+        "aggregate_level": None,
+        "county": None,
+        "m1": 10,  # Derived from timeseries
+        "m2": 4,  # Explicitly in recent values
+    }
+
+    region_97111 = dataset.get_one_region(Region.from_fips("97111"))
+    assert region_97111.latest == {
+        "aggregate_level": "county",
+        "county": "Bar County",
+        "m1": 5,
+        "m2": None,
+    }
 
 
 def test_join_columns():

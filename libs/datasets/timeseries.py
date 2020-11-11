@@ -442,7 +442,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
         long[PdFields.VALUE].apply(pd.to_numeric)
         return long
 
-    def timeseries_latest_values(self) -> pd.DataFrame:
+    def _timeseries_latest_values(self) -> pd.DataFrame:
+        """Returns the latest value for every region and metric, derived from _timeseries."""
         # _timeseries is already sorted by DATE with the latest at the bottom.
         long = self._timeseries.stack().droplevel(CommonFields.DATE)
         # `long` has MultiIndex with LOCATION_ID and VARIABLE (added by stack). Keep only the last
@@ -591,7 +592,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         """Checks that attributes of this object meet certain expectations."""
         # These asserts provide runtime-checking and a single place for humans reading the code to
         # check what is expected of the attributes, beyond type.
-        # _timeseries.index order is important for timeseries_latest_values correctness.
+        # _timeseries.index order is important for _timeseries_latest_values correctness.
         assert self._timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
         assert self._timeseries.index.is_unique
         assert self._timeseries.index.is_monotonic_increasing
@@ -639,10 +640,27 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
         try:
-            latest_row = self._regional_attributes.loc[location_id, :]
+            attributes_series = self._regional_attributes.loc[location_id, :]
         except KeyError:
-            latest_row = pd.Series([], dtype=object)
-        return latest_row.where(pd.notnull(latest_row), None).to_dict()
+            attributes_series = pd.Series([], dtype=object)
+        # Split attributes_series into a dict with NA values and dict of not-NA values
+        attributes_none_dict = {
+            key: None for key in attributes_series.loc[attributes_series.isna()].index
+        }
+        attributes_notna_dict = attributes_series.dropna().to_dict()
+
+        try:
+            timeseries_latest_series = self._timeseries_latest_values().loc[location_id]
+        except KeyError:
+            timeseries_latest_series = pd.Series([], dtype=object)
+
+        # Start with NA values from attributes_series
+        result_dict = attributes_none_dict
+        # override them with latest values from _timeseries_latest_values
+        result_dict.update(timeseries_latest_series.dropna().to_dict())
+        # and override them with not-NA value from attributes_series
+        result_dict.update(attributes_notna_dict)
+        return result_dict
 
     def get_regions_subset(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
