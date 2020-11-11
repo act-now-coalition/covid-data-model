@@ -18,7 +18,7 @@
           "County Data"
         ],
         "summary": "Single County Summary",
-        "description": "\nRegion Summary object for a single county.\n\nLots happening with region summaries.\n    ",
+        "description": "\nRegion Summary object for a single county.\n    ",
         "responses": {
           "200": {
             "description": "",

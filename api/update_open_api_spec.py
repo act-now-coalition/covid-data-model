@@ -92,8 +92,6 @@ COUNTY_SUMMARY = APIEndpoint(
     tags=[COUNTY_TAG],
     description="""
 Region Summary object for a single county.
-
-Lots happening with region summaries.
     """,
     summary="Single County Summary",
     schema_cls=can_api_v2_definition.RegionSummary,
