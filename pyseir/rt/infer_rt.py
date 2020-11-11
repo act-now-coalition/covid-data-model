@@ -16,7 +16,9 @@ from matplotlib import pyplot as plt
 
 from libs.datasets import combined_datasets
 from libs import pipeline
-from libs.datasets import timeseries
+
+# `timeseries` is used as a local name in this file, complicating importing it as a module name.
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir import load_data
 from pyseir.utils import RunArtifact
 import pyseir.utils
@@ -64,11 +66,11 @@ class RegionalInput:
         return str(self.region)
 
     @property
-    def timeseries(self) -> timeseries.OneRegionTimeseriesDataset:
+    def timeseries(self) -> OneRegionTimeseriesDataset:
         return self._combined_data.timeseries
 
     @staticmethod
-    def from_regional_data(dataset: timeseries.OneRegionTimeseriesDataset) -> "RegionalInput":
+    def from_regional_data(dataset: OneRegionTimeseriesDataset) -> "RegionalInput":
         return RegionalInput(region=dataset.region, _combined_data=dataset,)
 
     @staticmethod
