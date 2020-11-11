@@ -5,17 +5,21 @@ description: Register for the Covid Act Now API.
 ---
 import SignupForm from '@site/src/components/SignupForm';
 
+## Getting Started
+
 <SignupForm />
 
 
 ## Examples
+
+In the examples below, replace `YOUR_KEY_HERE` with the API key from Step 1 above.
 
 ### State summary data CSV
 
 A CSV file containing the latest data and metrics for all states.
 
 ```
-https://api.covidactnow.org/v2/states.csv?apiKey={apiKey}
+https://api.covidactnow.org/v2/states.csv?apiKey=YOUR_KEY_HERE
 ```
 
 [More details](/api#tag/State-Data/paths/~1states.csv?apiKey={apiKey}/get)
@@ -25,7 +29,7 @@ https://api.covidactnow.org/v2/states.csv?apiKey={apiKey}
 A CSV file containing the latest data and metrics for all counties.
 
 ```
-https://api.covidactnow.org/v2/counties.csv?apiKey={apiKey}
+https://api.covidactnow.org/v2/counties.csv?apiKey=YOUR_KEY_HERE
 ```
 
 [More details](/api#tag/County-Data/paths/~1counties.csv?apiKey={apiKey}/get)
@@ -35,7 +39,7 @@ https://api.covidactnow.org/v2/counties.csv?apiKey={apiKey}
 A CSV file containing the latest data and metrics for all states.
 
 ```
-https://api.covidactnow.org/v2/states.timeseries.csv?apiKey={apiKey}
+https://api.covidactnow.org/v2/states.timeseries.csv?apiKey=YOUR_KEY_HERE
 ```
 
 [More details](/api#tag/State-Data/paths/~1states.timeseries.csv?apiKey={apiKey}/get)
@@ -45,7 +49,7 @@ https://api.covidactnow.org/v2/states.timeseries.csv?apiKey={apiKey}
 A CSV file containing historical data and metrics for all counties.
 
 ```
-https://api.covidactnow.org/v2/counties.timeseries.csv?apiKey={apiKey}
+https://api.covidactnow.org/v2/counties.timeseries.csv?apiKey=YOUR_KEY_HERE
 ```
 
 [More details](/api#tag/County-Data/paths/~1counties.timeseries.csv?apiKey={apiKey}/get)
@@ -55,7 +59,7 @@ https://api.covidactnow.org/v2/counties.timeseries.csv?apiKey={apiKey}
 A json file containing timeseries data for all states.
 
 ```bash
-https://api.covidactnow.org/v2/states.timeseries.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/states.timeseries.json?apiKey=YOUR_KEY_HERE
 ```
 
 [More details](/api#tag/State-Data/paths/~1states.timeseries.json?apiKey={apiKey}/get)
@@ -65,7 +69,7 @@ https://api.covidactnow.org/v2/states.timeseries.json?apiKey={apiKey}
 A json file containing timeseries data for all counties.
 
 ```bash
-https://api.covidactnow.org/v2/counties.timeseries.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/counties.timeseries.json?apiKey=YOUR_KEY_HERE
 ```
 
 [More details](/api#tag/County-Data/paths/~1counties.timeseries.json?apiKey={apiKey}/get)
@@ -77,16 +81,16 @@ You can also query data for a specific state or county.
 
 ```bash
 # Historical county data
-https://api.covidactnow.org/v2/county/{fips}.timeseries.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/county/{fips}.timeseries.json?apiKey=YOUR_KEY_HERE
 
 # Summary of latest county data
-https://api.covidactnow.org/v2/county/{fips}.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/county/{fips}.json?apiKey=YOUR_KEY_HERE
 
 # Historical state data
-https://api.covidactnow.org/v2/state/{state}.timeseries.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/state/{state}.timeseries.json?apiKey=YOUR_KEY_HERE
 
 # Summary of latest state data
-https://api.covidactnow.org/v2/state/{state}.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/state/{state}.json?apiKey=YOUR_KEY_HERE
 ```
 
 

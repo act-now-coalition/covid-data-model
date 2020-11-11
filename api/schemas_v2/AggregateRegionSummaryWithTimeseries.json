@@ -12,7 +12,8 @@
       "enum": [
         "country",
         "state",
-        "county"
+        "county",
+        "cbsa"
       ]
     },
     "TestPositivityRatioMethod": {
@@ -609,7 +610,7 @@
       "properties": {
         "fips": {
           "title": "Fips",
-          "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+          "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, or 5-digit CBSA codes.",
           "type": "string"
         },
         "country": {
@@ -619,8 +620,15 @@
         },
         "state": {
           "title": "State",
-          "description": "2-letter ANSI state code.",
-          "type": "string"
+          "description": "2-letter ANSI state code. For CBSA regions, state is omitted.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "county": {
           "title": "County",
