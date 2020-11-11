@@ -1,4 +1,5 @@
 import logging
+import json
 import pathlib
 import click
 
@@ -82,8 +83,7 @@ def update_schemas(output_dir, update_readme):
 def update_v2_schemas(api_output_path, schemas_output_dir):
     """Updates all public facing API schemas."""
     spec = update_open_api_spec.construct_open_api_spec()
-    schema_out = spec.json(by_alias=True, exclude_none=True, indent=2)
-    api_output_path.write_text(schema_out)
+    api_output_path.write_text(json.dumps(spec, indent=2))
 
     schemas = api.find_public_model_classes(api_v2=True)
     for schema in schemas:
