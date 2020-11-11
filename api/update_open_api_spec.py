@@ -262,19 +262,39 @@ ALL_ENDPOINTS = [
 
 
 CBSA_DESCRIPTION = """
-Aggregated data for all [core-based statistical areas (CBSA)](https://en.wikipedia.org/wiki/Core-based_statistical_area).
+Aggregated data for all [core-based statistical areas
+(CBSA)](https://en.wikipedia.org/wiki/Core-based_statistical_area).
 
 CBSAs represent collections of counties that are socioeconomically linked.
 
-They are used to represent metropolitan and micropolitan (at least 10,000 people and fewer than 50,000 people) areas.
+They are used to represent metropolitan and micropolitan (at least 10,000 people
+and fewer than 50,000 people) areas.
 
-For example, the Seattle-Tacoma-Bellevue, WA CBSA is an aggregation of King County, Pierce County, and Snohomish County.
+For example, the Seattle-Tacoma-Bellevue, WA CBSA is an aggregation of King County,
+Pierce County, and Snohomish County.
 
 CBSAs are currently in beta and may not contain all metrics or data.
 """
 
 
-def construct_open_api_spec() -> OpenAPI:
+def build_model_tag(schema):
+    schema_name = schema.__name__
+    return {
+        "name": schema_name,
+        "description": f'<SchemaDefinition schemaRef="#/components/schemas/{schema_name}" showReadOnly={{true}} showWriteOnly={{true}} />',
+    }
+
+
+MODEL_TAGS = [
+    build_model_tag(can_api_v2_definition.Actuals),
+    build_model_tag(can_api_v2_definition.Metrics),
+    build_model_tag(can_api_v2_definition.RiskLevels),
+    build_model_tag(can_api_v2_definition.RegionSummary),
+    build_model_tag(can_api_v2_definition.RegionSummaryWithTimeseries),
+]
+
+
+def construct_open_api_spec() -> dict:
     api_description = """
 The Covid Act Now API provides historical covid projections updated daily.
 """
@@ -297,7 +317,8 @@ Register for an API key [here](/access).
                     "name": STATE_TAG,
                     "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands.",
                 },
-                {"name": CBSA_TAG, "description": CBSA_DESCRIPTION,},
+                {"name": CBSA_TAG, "description": CBSA_DESCRIPTION},
+                # *MODEL_TAGS,
             ],
             "servers": [
                 {"url": "https://api.covidactnow.org/v2", "description": "Latest available data",}
@@ -317,4 +338,15 @@ Register for an API key [here](/access).
             },
         }
     )
-    return construct_open_api_with_schema_class(spec)
+    open_api_schema = construct_open_api_with_schema_class(spec)
+    spec = open_api_schema.json(exclude_none=True)
+    import json
+
+    spec = json.loads(spec)
+    # x-tagGroups are not in the `openapi_schema_pydantic` pydantic classes,
+    # so they have to be manually added after the schema is built.
+    # spec["x-tagGroups"] = [
+    #     {"name": "Endpoints", "tags": [STATE_TAG, COUNTY_TAG, CBSA_TAG]},
+    #     {"name": "Models", "tags": [tag["name"] for tag in MODEL_TAGS]},
+    # ]
+    return spec
