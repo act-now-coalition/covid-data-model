@@ -13,6 +13,7 @@ import click
 from covidactnow.datapublic.common_fields import CommonFields
 
 from covidactnow.datapublic import common_init
+
 from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
@@ -56,16 +57,10 @@ def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeli
         return [pipeline.Region.from_state(s) for s in default]
 
 
-def _build_region_pipeline_input(region: pipeline.Region):
-    return RegionPipelineInput(
-        region=region, regional_combined_dataset=combined_datasets.RegionalData.from_region(region),
-    )
-
-
 @dataclass
 class RegionPipelineInput:
     region: pipeline.Region
-    regional_combined_dataset: combined_datasets.RegionalData
+    regional_combined_dataset: OneRegionTimeseriesDataset
 
     @staticmethod
     def build_all(
@@ -73,14 +68,13 @@ class RegionPipelineInput:
         states: Optional[List[str]] = None,
         level: AggregationLevel = None,
     ) -> List["RegionPipelineInput"]:
-        """For each region smaller than a state, build the input object used to run the pipeline."""
-        # TODO(tom): Pass in the combined dataset instead of reading it from a global location.
-        us_timeseries = combined_datasets.load_us_timeseries_dataset()
-        regions = us_timeseries.iter_regions(
-            fips=fips, level=level, exclude_county_999=True, states=states,
+        """Builds the input objects used to run the pipeline."""
+        regions = combined_datasets.load_us_timeseries_dataset().get_subset(
+            fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
         )
-        pipeline_inputs = parallel_utils.parallel_map(_build_region_pipeline_input, regions)
-        return list(pipeline_inputs)
+        return [
+            RegionPipelineInput(region, dataset) for region, dataset in regions.iter_one_regions()
+        ]
 
 
 @dataclass
@@ -90,13 +84,13 @@ class RegionPipeline:
     region: pipeline.Region
     infer_df: pd.DataFrame
     icu_data: Optional[OneRegionTimeseriesDataset]
-    _combined_data: combined_datasets.RegionalData
+    _combined_data: OneRegionTimeseriesDataset
 
     @staticmethod
     def run(input: RegionPipelineInput) -> "RegionPipeline":
         # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
         # infection_rate.
-        infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
+        infer_rt_input = infer_rt.RegionalInput.from_regional_data(input.regional_combined_dataset)
         try:
             infer_df = infer_rt.run_rt(infer_rt_input)
         except Exception:

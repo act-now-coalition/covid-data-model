@@ -41,18 +41,18 @@ class LinearRegressionCoefficients:
 @dataclass
 class RegionalInput:
 
-    regional_data: combined_datasets.RegionalData
+    _regional_data: OneRegionTimeseriesDataset
 
     _state_combined_data: Optional[combined_datasets.RegionalData]
 
     @property
     def region(self) -> pipeline.Region:
-        return self.regional_data.region
+        return self._regional_data.region
 
     @property
     def timeseries(self) -> OneRegionTimeseriesDataset:
         """Get the TimeseriesDataset"""
-        return self.regional_data.timeseries
+        return self._regional_data
 
     @property
     def state_timeseries(self) -> Optional[OneRegionTimeseriesDataset]:
@@ -63,14 +63,14 @@ class RegionalInput:
             return None
 
     @staticmethod
-    def from_regional_data(regional_data: combined_datasets.RegionalData):
+    def from_regional_data(regional_data: OneRegionTimeseriesDataset):
         region = regional_data.region
         state_combined_data = (
             combined_datasets.RegionalData.from_region(region.get_state_region())
             if region.is_county()
             else None
         )
-        return RegionalInput(regional_data=regional_data, _state_combined_data=state_combined_data)
+        return RegionalInput(_regional_data=regional_data, _state_combined_data=state_combined_data)
 
 
 def get_icu_timeseries(
