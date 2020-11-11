@@ -467,7 +467,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
         )
 
     def add_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new object with not NA values in `latest_df` added as regional attributes."""
         assert latest_df.index.names == [None]
+        # Get the union of all location_id and columns in the input
         all_locations = (
             self._regional_attributes.index.union(latest_df[CommonFields.LOCATION_ID])
             .unique()
@@ -476,20 +478,24 @@ class MultiRegionDataset(SaveableDatasetInterface):
         all_columns = set(self._regional_attributes.columns.union(latest_df.columns)) - {
             CommonFields.LOCATION_ID
         }
+        # Transform from a column for each metric to a row for every value. Put latest_df first so
+        # the duplicate dropping keeps it.
         long = pd.melt(
             pd.concat([latest_df, self._regional_attributes.reset_index()]),
             id_vars=[CommonFields.LOCATION_ID],
         )
+        # Drop duplicate values for the same LOCATION_ID, VARIABLE
         long_deduped = long.drop_duplicates()
-        long_deduped = (
-            long_deduped.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[PdFields.VALUE]
-            .dropna()
-            .sort_index()
-        )
+        long_deduped = long_deduped.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[
+            PdFields.VALUE
+        ].dropna()
+        # If the LOCATION_ID, VARIABLE index contains duplicates then latest_df is changing a value.
+        # This is not expected so log a warning before dropping the old value.
         dups = long_deduped.index.duplicated(keep=False)
         if dups.any():
             _log.warning(f"Duplicates:\n{long_deduped.loc[dups, :]}")
             long_deduped = long_deduped.loc[long_deduped.index.duplicated(keep="first"), :]
+        # Transform back to a column for each metric.
         wide = long_deduped.unstack()
 
         wide = wide.reindex(index=all_locations)
@@ -497,6 +503,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         if missing_columns:
             _log.warning(f"Re-adding empty columns: {missing_columns}")
             wide = wide.reindex(columns=[*wide.columns, *missing_columns])
+        # Make all non-GEO_DATA_COLUMNS numeric so that aggregation functions work on them.
         numeric_columns = list(all_columns - set(GEO_DATA_COLUMNS))
         wide[numeric_columns] = wide[numeric_columns].apply(pd.to_numeric, axis=0)
 
@@ -658,19 +665,15 @@ class MultiRegionDataset(SaveableDatasetInterface):
         exclude_county_999: bool = False,
     ) -> "MultiRegionDataset":
         """Returns a new object containing data for a subset of the regions in `self`."""
-        # Currently this searches the entire timeseries to make a set of location_ids. A near-future
-        # change will replace this with searching a DataFrame that contains only one row per region. I'm
-        # adding this now to reduce the number of places latest values are used outside of this module.
-        data = self.data_with_fips
         rows_key = dataset_utils.make_rows_key(
-            data,
+            self._regional_attributes,
             aggregation_level=aggregation_level,
             fips=fips,
             state=state,
             states=states,
             exclude_county_999=exclude_county_999,
         )
-        location_ids = set(data.loc[rows_key, CommonFields.LOCATION_ID])
+        location_ids = self._regional_attributes.loc[rows_key, :].index
         return self.get_locations_subset(location_ids)
 
     def get_counties(self, after: Optional[datetime.datetime] = None) -> "MultiRegionDataset":
