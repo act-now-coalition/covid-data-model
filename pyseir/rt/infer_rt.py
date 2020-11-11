@@ -1,4 +1,5 @@
 from typing import Optional
+import math
 from dataclasses import dataclass
 from datetime import timedelta
 import structlog
@@ -14,6 +15,8 @@ from matplotlib import pyplot as plt
 
 from libs.datasets import combined_datasets
 from libs import pipeline
+
+# `timeseries` is used as a local name in this file, complicating importing it as a module name.
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir import load_data
 from pyseir.utils import RunArtifact
