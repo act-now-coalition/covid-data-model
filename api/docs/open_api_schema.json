@@ -24,8 +24,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/RegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummary"
                 }
               }
             }
@@ -36,26 +36,26 @@
       "parameters": [
         {
           "name": "fips",
-          "param_in": "path",
+          "in": "path",
           "description": "5 Letter County FIPS code",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         },
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -73,8 +73,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/RegionSummaryWithTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
                 }
               }
             }
@@ -85,26 +85,26 @@
       "parameters": [
         {
           "name": "fips",
-          "param_in": "path",
+          "in": "path",
           "description": "5 Letter County FIPS code",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         },
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -122,8 +122,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/RegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummary"
                 }
               }
             }
@@ -134,26 +134,26 @@
       "parameters": [
         {
           "name": "state",
-          "param_in": "path",
+          "in": "path",
           "description": "2 Letter State Cocde",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         },
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -171,8 +171,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/RegionSummaryWithTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
                 }
               }
             }
@@ -183,26 +183,26 @@
       "parameters": [
         {
           "name": "state",
-          "param_in": "path",
+          "in": "path",
           "description": "2 Letter State Cocde",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         },
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -211,7 +211,7 @@
     "/cbsa/{cbsa_code}.json?apiKey={apiKey}": {
       "get": {
         "tags": [
-          "CBSA (Metro) Data"
+          "CBSA Data"
         ],
         "summary": "Single CBSA Summary",
         "description": "Region Summary object for a single CBSA.",
@@ -220,8 +220,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/RegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummary"
                 }
               }
             }
@@ -232,26 +232,26 @@
       "parameters": [
         {
           "name": "cbsa_code",
-          "param_in": "path",
+          "in": "path",
           "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         },
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -260,7 +260,7 @@
     "/cbsa/{cbsa_code}.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
-          "CBSA (Metro) Data"
+          "CBSA Data"
         ],
         "summary": "Single CBSA Timeseries",
         "description": "Region Summary with Timeseries for a single CBSA.",
@@ -269,8 +269,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/RegionSummaryWithTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
                 }
               }
             }
@@ -281,26 +281,26 @@
       "parameters": [
         {
           "name": "cbsa_code",
-          "param_in": "path",
+          "in": "path",
           "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         },
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -318,8 +318,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
               }
             }
@@ -330,13 +330,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -354,8 +354,8 @@
             "description": "",
             "content": {
               "application/csv": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
               }
             }
@@ -366,13 +366,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -390,8 +390,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
                 }
               }
             }
@@ -402,13 +402,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -426,8 +426,8 @@
             "description": "",
             "content": {
               "application/csv": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
                 }
               }
             }
@@ -438,13 +438,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -462,8 +462,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
               }
             }
@@ -474,13 +474,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -498,8 +498,8 @@
             "description": "",
             "content": {
               "application/csv": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
               }
             }
@@ -510,13 +510,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -534,8 +534,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
                 }
               }
             }
@@ -546,13 +546,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -570,8 +570,8 @@
             "description": "",
             "content": {
               "application/csv": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
                 }
               }
             }
@@ -582,13 +582,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -597,7 +597,7 @@
     "/cbsas.json?apiKey={apiKey}": {
       "get": {
         "tags": [
-          "CBSA (Metro) Data"
+          "CBSA Data"
         ],
         "summary": "All CBSAs summary (json)",
         "description": "Region Summaries for all CBSAs",
@@ -606,8 +606,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
               }
             }
@@ -618,13 +618,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -633,7 +633,7 @@
     "/cbsas.csv?apiKey={apiKey}": {
       "get": {
         "tags": [
-          "CBSA (Metro) Data"
+          "CBSA Data"
         ],
         "summary": "All CBSAs summary (csv)",
         "description": "Region Summaries for all CBSAs",
@@ -642,8 +642,8 @@
             "description": "",
             "content": {
               "application/csv": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummary"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
                 }
               }
             }
@@ -654,13 +654,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -669,7 +669,7 @@
     "/cbsas.timeseries.json?apiKey={apiKey}": {
       "get": {
         "tags": [
-          "CBSA (Metro) Data"
+          "CBSA Data"
         ],
         "summary": "All CBSAs timeseries",
         "description": "Region summaries with timeseries for all CBSAs",
@@ -678,8 +678,8 @@
             "description": "",
             "content": {
               "application/json": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
                 }
               }
             }
@@ -690,13 +690,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -705,7 +705,7 @@
     "/cbsas.timeseries.csv?apiKey={apiKey}": {
       "get": {
         "tags": [
-          "CBSA (Metro) Data"
+          "CBSA Data"
         ],
         "summary": "All CBSAs timeseries (csv)",
         "description": "Region summaries with timeseries for all CBSAs",
@@ -714,8 +714,8 @@
             "description": "",
             "content": {
               "application/csv": {
-                "media_type_schema": {
-                  "ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
                 }
               }
             }
@@ -726,13 +726,13 @@
       "parameters": [
         {
           "name": "apiKey",
-          "param_in": "query",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
           "explode": false,
           "allowReserved": false,
-          "param_schema": {
+          "schema": {
             "type": "string"
           }
         }
@@ -880,7 +880,7 @@
             "title": "Hospitalbeds",
             "allOf": [
               {
-                "ref": "#/components/schemas/HospitalResourceUtilization"
+                "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
             "description": "Information about hospital bed utilization"
@@ -889,7 +889,7 @@
             "title": "Icubeds",
             "allOf": [
               {
-                "ref": "#/components/schemas/HospitalResourceUtilization"
+                "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
             "description": "Information about ICU bed utilization"
@@ -928,7 +928,7 @@
         "type": "object",
         "properties": {
           "source": {
-            "ref": "#/components/schemas/TestPositivityRatioMethod"
+            "$ref": "#/components/schemas/TestPositivityRatioMethod"
           }
         },
         "description": "Details about how the test positivity ratio was calculated."
@@ -966,7 +966,7 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuCovidMethod": {
-            "ref": "#/components/schemas/CovidPatientsMethod"
+            "$ref": "#/components/schemas/CovidPatientsMethod"
           },
           "currentIcuNonCovid": {
             "title": "Currenticunoncovid",
@@ -974,7 +974,7 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuNonCovidMethod": {
-            "ref": "#/components/schemas/NonCovidPatientsMethod"
+            "$ref": "#/components/schemas/NonCovidPatientsMethod"
           }
         },
         "description": "Details about how the ICU Headroom Metric was calculated."
@@ -1004,7 +1004,7 @@
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "testPositivityRatioDetails": {
-            "ref": "#/components/schemas/TestPositivityRatioDetails"
+            "$ref": "#/components/schemas/TestPositivityRatioDetails"
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1066,7 +1066,7 @@
             ]
           },
           "icuHeadroomDetails": {
-            "ref": "#/components/schemas/ICUHeadroomMetricDetails"
+            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
           }
         },
         "description": "Calculated metrics data based on known actuals."
@@ -1089,7 +1089,7 @@
             "title": "Date",
             "type": "string",
             "description": "Date of timeseries data point",
-            "schema_format": "date"
+            "format": "date"
           },
           "country": {
             "title": "Country",
@@ -1144,7 +1144,7 @@
             "title": "Actuals",
             "allOf": [
               {
-                "ref": "#/components/schemas/Actuals"
+                "$ref": "#/components/schemas/Actuals"
               }
             ],
             "description": "Actuals for given day"
@@ -1153,7 +1153,7 @@
             "title": "Metrics",
             "allOf": [
               {
-                "ref": "#/components/schemas/Metrics"
+                "$ref": "#/components/schemas/Metrics"
               }
             ],
             "description": "Metrics for given day"
@@ -1165,7 +1165,7 @@
         "title": "AggregateFlattenedTimeseries",
         "type": "array",
         "items": {
-          "ref": "#/components/schemas/RegionTimeseriesRowWithHeader"
+          "$ref": "#/components/schemas/RegionTimeseriesRowWithHeader"
         },
         "description": "Flattened timeseries data for multiple regions."
       },
@@ -1203,22 +1203,22 @@
         "type": "object",
         "properties": {
           "overall": {
-            "ref": "#/components/schemas/RiskLevel"
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "testPositivityRatio": {
-            "ref": "#/components/schemas/RiskLevel"
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "caseDensity": {
-            "ref": "#/components/schemas/RiskLevel"
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "contactTracerCapacityRatio": {
-            "ref": "#/components/schemas/RiskLevel"
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "infectionRate": {
-            "ref": "#/components/schemas/RiskLevel"
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "icuHeadroomRatio": {
-            "ref": "#/components/schemas/RiskLevel"
+            "$ref": "#/components/schemas/RiskLevel"
           }
         },
         "description": "COVID risk levels for a region."
@@ -1277,7 +1277,7 @@
             "description": "County name"
           },
           "level": {
-            "ref": "#/components/schemas/AggregationLevel"
+            "$ref": "#/components/schemas/AggregationLevel"
           },
           "lat": {
             "title": "Lat",
@@ -1315,25 +1315,25 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "ref": "#/components/schemas/Metrics"
+            "$ref": "#/components/schemas/Metrics"
           },
           "riskLevels": {
             "title": "Risklevels",
             "allOf": [
               {
-                "ref": "#/components/schemas/RiskLevels"
+                "$ref": "#/components/schemas/RiskLevels"
               }
             ],
             "description": "Risk levels for region."
           },
           "actuals": {
-            "ref": "#/components/schemas/Actuals"
+            "$ref": "#/components/schemas/Actuals"
           },
           "lastUpdatedDate": {
             "title": "Lastupdateddate",
             "type": "string",
             "description": "Date of latest data",
-            "schema_format": "date"
+            "format": "date"
           }
         },
         "description": "Summary of actual and prediction data for a single region."
@@ -1342,7 +1342,7 @@
         "title": "AggregateRegionSummary",
         "type": "array",
         "items": {
-          "ref": "#/components/schemas/RegionSummary"
+          "$ref": "#/components/schemas/RegionSummary"
         },
         "description": "Summary data for multiple regions."
       },
@@ -1372,7 +1372,7 @@
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "testPositivityRatioDetails": {
-            "ref": "#/components/schemas/TestPositivityRatioDetails"
+            "$ref": "#/components/schemas/TestPositivityRatioDetails"
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1434,13 +1434,13 @@
             ]
           },
           "icuHeadroomDetails": {
-            "ref": "#/components/schemas/ICUHeadroomMetricDetails"
+            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
           },
           "date": {
             "title": "Date",
             "type": "string",
             "description": "Date of timeseries data point",
-            "schema_format": "date"
+            "format": "date"
           }
         },
         "description": "Metrics data for a specific day."
@@ -1524,7 +1524,7 @@
             "title": "Hospitalbeds",
             "allOf": [
               {
-                "ref": "#/components/schemas/HospitalResourceUtilization"
+                "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
             "description": "Information about hospital bed utilization"
@@ -1533,7 +1533,7 @@
             "title": "Icubeds",
             "allOf": [
               {
-                "ref": "#/components/schemas/HospitalResourceUtilization"
+                "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
             "description": "Information about ICU bed utilization"
@@ -1554,7 +1554,7 @@
             "title": "Date",
             "type": "string",
             "description": "Date of timeseries data point",
-            "schema_format": "date"
+            "format": "date"
           }
         },
         "description": "Actual data for a specific day."
@@ -1614,7 +1614,7 @@
             "description": "County name"
           },
           "level": {
-            "ref": "#/components/schemas/AggregationLevel"
+            "$ref": "#/components/schemas/AggregationLevel"
           },
           "lat": {
             "title": "Lat",
@@ -1652,38 +1652,38 @@
             "description": "Total Population in geographic region."
           },
           "metrics": {
-            "ref": "#/components/schemas/Metrics"
+            "$ref": "#/components/schemas/Metrics"
           },
           "riskLevels": {
             "title": "Risklevels",
             "allOf": [
               {
-                "ref": "#/components/schemas/RiskLevels"
+                "$ref": "#/components/schemas/RiskLevels"
               }
             ],
             "description": "Risk levels for region."
           },
           "actuals": {
-            "ref": "#/components/schemas/Actuals"
+            "$ref": "#/components/schemas/Actuals"
           },
           "lastUpdatedDate": {
             "title": "Lastupdateddate",
             "type": "string",
             "description": "Date of latest data",
-            "schema_format": "date"
+            "format": "date"
           },
           "metricsTimeseries": {
             "title": "Metricstimeseries",
             "type": "array",
             "items": {
-              "ref": "#/components/schemas/MetricsTimeseriesRow"
+              "$ref": "#/components/schemas/MetricsTimeseriesRow"
             }
           },
           "actualsTimeseries": {
             "title": "Actualstimeseries",
             "type": "array",
             "items": {
-              "ref": "#/components/schemas/ActualsTimeseriesRow"
+              "$ref": "#/components/schemas/ActualsTimeseriesRow"
             }
           }
         },
@@ -1693,7 +1693,7 @@
         "title": "AggregateRegionSummaryWithTimeseries",
         "type": "array",
         "items": {
-          "ref": "#/components/schemas/RegionSummaryWithTimeseries"
+          "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
         },
         "description": "Timeseries and summary data for multiple regions."
       }
@@ -1703,7 +1703,7 @@
         "type": "apiKey",
         "description": "\nAn API key is required.\n\nRegister for an API key [here](/access).\n    ",
         "name": "apiKey",
-        "security_scheme_in": "query"
+        "in": "query"
       }
     }
   },
@@ -1717,8 +1717,48 @@
       "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands."
     },
     {
-      "name": "CBSA (Metro) Data",
+      "name": "CBSA Data",
       "description": "\nAggregated data for all [core-based statistical areas\n(CBSA)](https://en.wikipedia.org/wiki/Core-based_statistical_area).\n\nCBSAs represent collections of counties that are socioeconomically linked.\n\nThey are used to represent metropolitan and micropolitan (at least 10,000 people\nand fewer than 50,000 people) areas.\n\nFor example, the Seattle-Tacoma-Bellevue, WA CBSA is an aggregation of King County,\nPierce County, and Snohomish County.\n\nCBSAs are currently in beta and may not contain all metrics or data.\n"
+    },
+    {
+      "name": "Actuals",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/Actuals\" showReadOnly={true} showWriteOnly={true} />"
+    },
+    {
+      "name": "Metrics",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/Metrics\" showReadOnly={true} showWriteOnly={true} />"
+    },
+    {
+      "name": "RiskLevels",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/RiskLevels\" showReadOnly={true} showWriteOnly={true} />"
+    },
+    {
+      "name": "RegionSummary",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/RegionSummary\" showReadOnly={true} showWriteOnly={true} />"
+    },
+    {
+      "name": "RegionSummaryWithTimeseries",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/RegionSummaryWithTimeseries\" showReadOnly={true} showWriteOnly={true} />"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Endpoints",
+      "tags": [
+        "State Data",
+        "County Data",
+        "CBSA Data"
+      ]
+    },
+    {
+      "name": "Models",
+      "tags": [
+        "Actuals",
+        "Metrics",
+        "RiskLevels",
+        "RegionSummary",
+        "RegionSummaryWithTimeseries"
+      ]
     }
   ]
 }

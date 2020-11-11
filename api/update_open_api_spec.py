@@ -11,7 +11,7 @@ from openapi_schema_pydantic.util import construct_open_api_with_schema_class
 
 COUNTY_TAG = "County Data"
 STATE_TAG = "State Data"
-CBSA_TAG = "CBSA (Metro) Data"
+CBSA_TAG = "CBSA Data"
 
 
 fips_parameter = {
@@ -318,7 +318,7 @@ Register for an API key [here](/access).
                     "description": "State level data for all US states + Puerto Rico and Northern Mariana Islands.",
                 },
                 {"name": CBSA_TAG, "description": CBSA_DESCRIPTION},
-                # *MODEL_TAGS,
+                *MODEL_TAGS,
             ],
             "servers": [
                 {"url": "https://api.covidactnow.org/v2", "description": "Latest available data",}
@@ -339,14 +339,13 @@ Register for an API key [here](/access).
         }
     )
     open_api_schema = construct_open_api_with_schema_class(spec)
-    spec = open_api_schema.json(exclude_none=True)
-    import json
+    spec = open_api_schema.dict(by_alias=True, exclude_none=True)
 
-    spec = json.loads(spec)
-    # x-tagGroups are not in the `openapi_schema_pydantic` pydantic classes,
-    # so they have to be manually added after the schema is built.
-    # spec["x-tagGroups"] = [
-    #     {"name": "Endpoints", "tags": [STATE_TAG, COUNTY_TAG, CBSA_TAG]},
-    #     {"name": "Models", "tags": [tag["name"] for tag in MODEL_TAGS]},
-    # ]
+    # x-tagGroups are a vendored extension for redocly and are not in the
+    # `openapi_schema_pydantic` pydantic classes, so they have to be manually
+    # added after the schema is built.
+    spec["x-tagGroups"] = [
+        {"name": "Endpoints", "tags": [STATE_TAG, COUNTY_TAG, CBSA_TAG]},
+        {"name": "Models", "tags": [tag["name"] for tag in MODEL_TAGS]},
+    ]
     return spec
