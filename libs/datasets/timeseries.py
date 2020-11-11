@@ -366,7 +366,9 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     all_columns = set(df1.columns.union(df2.columns)) - {CommonFields.LOCATION_ID}
     # Transform from a column for each metric to a row for every value. Put df2 first so
     # the duplicate dropping keeps it.
-    long = pd.melt(pd.concat([df2, df1]), id_vars=[CommonFields.LOCATION_ID])
+    long = pd.concat(
+        [df2.melt(id_vars=[CommonFields.LOCATION_ID]), df1.melt(id_vars=[CommonFields.LOCATION_ID])]
+    )
     # Drop duplicate values for the same LOCATION_ID, VARIABLE
     long_deduped = long.drop_duplicates()
     long_deduped = long_deduped.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[
@@ -376,8 +378,8 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     # This is not expected so log a warning before dropping the old value.
     dups = long_deduped.index.duplicated(keep=False)
     if dups.any():
-        _log.warning(f"Duplicates:\n{long_deduped.loc[dups, :]}")
-        long_deduped = long_deduped.loc[long_deduped.index.duplicated(keep="first"), :]
+        _log.warning(f"Duplicates:\n{long_deduped.loc[dups, :].sort_index()}")
+        long_deduped = long_deduped.loc[~long_deduped.index.duplicated(keep="first"), :]
     # Transform back to a column for each metric.
     wide = long_deduped.unstack()
 
@@ -429,9 +431,10 @@ class MultiRegionDataset(SaveableDatasetInterface):
     # be non-null in every row.
     @property
     def data(self) -> pd.DataFrame:
-        cc = self._regional_geo_data.join(self._timeseries)
-        # cc = pd.concat([self._regional_geo_data, self._timeseries], axis=1)
-        return cc.reset_index()
+        df = self._regional_geo_data.join(self._timeseries).drop(
+            columns=[CommonFields.FIPS], errors="ignore"
+        )
+        return df.reset_index()
 
     @property
     def _regional_geo_data(self) -> pd.DataFrame:
@@ -498,28 +501,28 @@ class MultiRegionDataset(SaveableDatasetInterface):
         long = self._timeseries.stack().droplevel(CommonFields.DATE)
         # `long` has MultiIndex with LOCATION_ID and VARIABLE (added by stack). Keep only the last
         # row with each index to get the last value for each date.
-        last_mask = ~long.index.duplicated(keep="last")
-        return long.loc[last_mask, :].unstack()
+        unduplicated_and_last_mask = ~long.index.duplicated(keep="last")
+        return long.loc[unduplicated_and_last_mask, :].unstack()
 
     @staticmethod
-    def from_timeseries_df(timeseries_df: pd.DataFrame) -> "MultiRegionDataset":
+    def from_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame containing timeseries (real-valued metrics) and
         geo data (county name etc)."""
-        assert timeseries_df.index.names == [None]
-        if CommonFields.FIPS in timeseries_df.columns:
-            timeseries_df = timeseries_df.drop(columns=[CommonFields.FIPS])
-        timeseries_df = timeseries_df.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+        assert timeseries_and_geodata_df.index.names == [None]
 
-        geodata_column_mask = timeseries_df.columns.isin(
+        timeseries_and_geodata_df = timeseries_and_geodata_df.set_index(
+            [CommonFields.LOCATION_ID, CommonFields.DATE]
+        )
+
+        geodata_column_mask = timeseries_and_geodata_df.columns.isin(
             set(TimeseriesDataset.INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
         )
-        regional_attribute_df = _geodata_df_to_regional_attributes_df(
-            timeseries_df.loc[:, geodata_column_mask]
-            .reset_index()
-            .drop(columns=[CommonFields.DATE])
-        )
+        timeseries_df = timeseries_and_geodata_df.loc[:, ~geodata_column_mask].sort_index()
+        geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
 
-        timeseries_df = timeseries_df.loc[:, ~geodata_column_mask].sort_index()
+        regional_attribute_df = _geodata_df_to_regional_attributes_df(
+            geodata_df.reset_index().drop(columns=[CommonFields.DATE])
+        )
 
         return MultiRegionDataset(
             _timeseries=timeseries_df, _regional_attributes=regional_attribute_df
@@ -617,6 +620,17 @@ class MultiRegionDataset(SaveableDatasetInterface):
         assert self._provenance.index.is_unique
         assert self._provenance.index.is_monotonic_increasing
         assert self._provenance.name == PdFields.PROVENANCE
+        self._check_fips()
+
+    def _check_fips(self):
+        """Logs a message if FIPS is present for a subset of regions, a bit of a mysterious problem."""
+        if CommonFields.FIPS in self._regional_attributes:
+            missing_fips = self._regional_attributes[CommonFields.FIPS].isna()
+            if missing_fips.any():
+                columns = self._regional_attributes.columns.intersection(GEO_DATA_COLUMNS)
+                _log.info(
+                    f"Missing fips for some regions:\n{self._regional_attributes.loc[missing_fips, columns]}"
+                )
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         timeseries_df = pd.concat([self._timeseries, other._timeseries]).sort_index()
@@ -653,27 +667,12 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
         try:
-            attributes_series = self._regional_attributes.loc[location_id, :]
+            attributes_series = self._regional_attributes_and_timeseries_latest_with_fips().loc[
+                location_id, :
+            ]
         except KeyError:
             attributes_series = pd.Series([], dtype=object)
-        # Split attributes_series into a dict with NA values and dict of not-NA values
-        attributes_none_dict = {
-            key: None for key in attributes_series.loc[attributes_series.isna()].index
-        }
-        attributes_notna_dict = attributes_series.dropna().to_dict()
-
-        try:
-            timeseries_latest_series = self._timeseries_latest_values().loc[location_id]
-        except KeyError:
-            timeseries_latest_series = pd.Series([], dtype=object)
-
-        # Start with NA values from attributes_series
-        result_dict = attributes_none_dict
-        # override them with latest values from _timeseries_latest_values
-        result_dict.update(timeseries_latest_series.dropna().to_dict())
-        # and override them with not-NA value from attributes_series
-        result_dict.update(attributes_notna_dict)
-        return result_dict
+        return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
 
     def get_regions_subset(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))

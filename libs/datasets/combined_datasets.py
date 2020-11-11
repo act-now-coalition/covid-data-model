@@ -106,7 +106,6 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    **ALL_TIMESERIES_FEATURE_DEFINITION,
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
