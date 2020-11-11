@@ -350,6 +350,45 @@ def _geodata_df_to_regional_attributes_df(geodata_df: pd.DataFrame) -> pd.DataFr
     return deduped_values.sort_index()
 
 
+def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+    """Merges the values in two DataFrame objects, with not-NA values in df2 merged into df1."""
+    assert df1.index.names == [None]
+    assert df2.index.names == [None]
+
+    # Get the union of all location_id and columns in the input
+    all_locations = sorted(set(df1[CommonFields.LOCATION_ID]) | set(df2[CommonFields.LOCATION_ID]))
+    all_columns = set(df1.columns.union(df2.columns)) - {CommonFields.LOCATION_ID}
+    # Transform from a column for each metric to a row for every value. Put df2 first so
+    # the duplicate dropping keeps it.
+    long = pd.melt(pd.concat([df2, df1]), id_vars=[CommonFields.LOCATION_ID])
+    # Drop duplicate values for the same LOCATION_ID, VARIABLE
+    long_deduped = long.drop_duplicates()
+    long_deduped = long_deduped.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[
+        PdFields.VALUE
+    ].dropna()
+    # If the LOCATION_ID, VARIABLE index contains duplicates then df2 is changing a value.
+    # This is not expected so log a warning before dropping the old value.
+    dups = long_deduped.index.duplicated(keep=False)
+    if dups.any():
+        _log.warning(f"Duplicates:\n{long_deduped.loc[dups, :]}")
+        long_deduped = long_deduped.loc[long_deduped.index.duplicated(keep="first"), :]
+    # Transform back to a column for each metric.
+    wide = long_deduped.unstack()
+
+    wide = wide.reindex(index=all_locations)
+    missing_columns = all_columns - set(wide.columns)
+    if missing_columns:
+        _log.warning(f"Re-adding empty columns: {missing_columns}")
+        wide = wide.reindex(columns=[*wide.columns, *missing_columns])
+    # Make all non-GEO_DATA_COLUMNS numeric so that aggregation functions work on them.
+    numeric_columns = list(all_columns - set(GEO_DATA_COLUMNS))
+    wide[numeric_columns] = wide[numeric_columns].apply(pd.to_numeric, axis=0)
+
+    assert wide.index.names == [CommonFields.LOCATION_ID]
+
+    return wide
+
+
 # An empty pd.Series with the structure expected for the provenance series. Use this when a dataset
 # does not have provenance information. Make a copy for an extra level of protection against
 # unrelated objects sharing common objects.
@@ -477,46 +516,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def add_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new object with not NA values in `latest_df` added as regional attributes."""
-        assert latest_df.index.names == [None]
-        # Get the union of all location_id and columns in the input
-        all_locations = (
-            self._regional_attributes.index.union(latest_df[CommonFields.LOCATION_ID])
-            .unique()
-            .sort_values()
-        )
-        all_columns = set(self._regional_attributes.columns.union(latest_df.columns)) - {
-            CommonFields.LOCATION_ID
-        }
-        # Transform from a column for each metric to a row for every value. Put latest_df first so
-        # the duplicate dropping keeps it.
-        long = pd.melt(
-            pd.concat([latest_df, self._regional_attributes.reset_index()]),
-            id_vars=[CommonFields.LOCATION_ID],
-        )
-        # Drop duplicate values for the same LOCATION_ID, VARIABLE
-        long_deduped = long.drop_duplicates()
-        long_deduped = long_deduped.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[
-            PdFields.VALUE
-        ].dropna()
-        # If the LOCATION_ID, VARIABLE index contains duplicates then latest_df is changing a value.
-        # This is not expected so log a warning before dropping the old value.
-        dups = long_deduped.index.duplicated(keep=False)
-        if dups.any():
-            _log.warning(f"Duplicates:\n{long_deduped.loc[dups, :]}")
-            long_deduped = long_deduped.loc[long_deduped.index.duplicated(keep="first"), :]
-        # Transform back to a column for each metric.
-        wide = long_deduped.unstack()
-
-        wide = wide.reindex(index=all_locations)
-        missing_columns = all_columns - set(wide.columns)
-        if missing_columns:
-            _log.warning(f"Re-adding empty columns: {missing_columns}")
-            wide = wide.reindex(columns=[*wide.columns, *missing_columns])
-        # Make all non-GEO_DATA_COLUMNS numeric so that aggregation functions work on them.
-        numeric_columns = list(all_columns - set(GEO_DATA_COLUMNS))
-        wide[numeric_columns] = wide[numeric_columns].apply(pd.to_numeric, axis=0)
-
-        return dataclasses.replace(self, _regional_attributes=wide)
+        combined_attributes = _merge_attributes(self._regional_attributes.reset_index(), latest_df)
+        assert combined_attributes.index.names == [CommonFields.LOCATION_ID]
+        return dataclasses.replace(self, _regional_attributes=combined_attributes)
 
     def add_provenance_csv(self, path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
         df = pd.read_csv(path_or_buf)
