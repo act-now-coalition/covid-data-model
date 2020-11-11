@@ -351,9 +351,15 @@ def _geodata_df_to_regional_attributes_df(geodata_df: pd.DataFrame) -> pd.DataFr
 
 
 def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """Merges the values in two DataFrame objects, with not-NA values in df2 merged into df1."""
+    """Merges the values in two DataFrame objects. Not-NA values in df2 override values from df1.
+
+    The returned DataFrame has an index with the union of the LOCATION_ID column of the inputs and
+    columns with the union of the other columns of the inputs.
+    """
     assert df1.index.names == [None]
     assert df2.index.names == [None]
+    assert CommonFields.DATE not in df1.columns
+    assert CommonFields.DATE not in df2.columns
 
     # Get the union of all location_id and columns in the input
     all_locations = sorted(set(df1[CommonFields.LOCATION_ID]) | set(df2[CommonFields.LOCATION_ID]))
@@ -460,6 +466,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
         data_copy = self._regional_attributes.reset_index()
         _add_fips_if_missing(data_copy)
         return data_copy.set_index(CommonFields.LOCATION_ID)
+
+    def _regional_attributes_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
+        return _merge_attributes(
+            self._timeseries_latest_values().reset_index(), self._regional_attributes.reset_index()
+        )
 
     @classmethod
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
@@ -737,16 +748,18 @@ class MultiRegionDataset(SaveableDatasetInterface):
             self.data_with_fips, provenance=None if self._provenance.empty else self._provenance
         )
 
-    def to_csv(self, path: pathlib.Path):
+    def to_csv(self, path: pathlib.Path, write_timeseries_latest_values=False):
         """Persists timeseries to CSV.
 
         Args:
             path: Path to write to.
         """
+        if write_timeseries_latest_values:
+            latest_data = self._regional_attributes_and_timeseries_latest_with_fips().reset_index()
+        else:
+            latest_data = self.latest_data_with_fips.reset_index()
         # A DataFrame with timeseries data and latest data (with DATE=NaT) together
-        combined = pd.concat(
-            [self.data_with_fips, self.latest_data_with_fips.reset_index()], ignore_index=True
-        )
+        combined = pd.concat([self.data_with_fips, latest_data], ignore_index=True)
         assert combined[CommonFields.LOCATION_ID].notna().all()
         common_df.write_csv(
             combined, path, structlog.get_logger(), [CommonFields.LOCATION_ID, CommonFields.DATE]

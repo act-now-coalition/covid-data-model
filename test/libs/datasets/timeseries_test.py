@@ -673,9 +673,7 @@ def _build_one_column_multiregion_dataset(
     for value in reversed(values):
         if not pd.isna(value) and value is not None:
             break
-    latest_df = pd.DataFrame(
-        [{CommonFields.LOCATION_ID: location_id, "date": pd.NaT, column: value}]
-    )
+    latest_df = pd.DataFrame([{CommonFields.LOCATION_ID: location_id, column: value}])
 
     return timeseries.MultiRegionDataset.from_timeseries_df(timeseries_df).add_latest_df(latest_df)
 
