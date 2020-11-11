@@ -68,7 +68,7 @@ class RegionPipelineInput:
         states: Optional[List[str]] = None,
         level: AggregationLevel = None,
     ) -> List["RegionPipelineInput"]:
-        """For each region smaller than a state, build the input object used to run the pipeline."""
+        """Builds the input objects used to run the pipeline."""
         regions = combined_datasets.load_us_timeseries_dataset().get_subset(
             fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
         )
@@ -90,7 +90,7 @@ class RegionPipeline:
     def run(input: RegionPipelineInput) -> "RegionPipeline":
         # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
         # infection_rate.
-        infer_rt_input = infer_rt.RegionalInput.from_region(input.region)
+        infer_rt_input = infer_rt.RegionalInput.from_regional_data(input.regional_combined_dataset)
         try:
             infer_df = infer_rt.run_rt(infer_rt_input)
         except Exception:

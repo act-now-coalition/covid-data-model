@@ -125,7 +125,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
     active_states = [state.abbr for state in us.STATES]
     active_states = active_states + ["PR", "MP"]
 
-    all_region_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(
+    selected_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(
         aggregation_level=aggregation_level,
         exclude_county_999=True,
         state=state,
@@ -147,7 +147,7 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
             api_pipeline.RegionalInput.from_one_region_and_intervention(
                 combined_dataset, intervention, rt_data_map.get(region), icu_data_map.get(region)
             )
-            for region, combined_dataset in all_region_dataset.iter_one_regions()
+            for region, combined_dataset in selected_dataset.iter_one_regions()
         ]
 
         _logger.info(f"Loaded {len(regional_inputs)} regions.")
@@ -171,10 +171,10 @@ def generate_api(input_dir, output, summary_output, aggregation_level, state, fi
 def generate_test_positivity(test_positivity_all_methods: pathlib.Path):
     active_states = [state.abbr for state in us.STATES]
     active_states = active_states + ["PR", "MP"]
-    regions_data = combined_datasets.load_us_timeseries_dataset().get_subset(
+    selected_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(
         exclude_county_999=True, states=active_states
     )
-    test_positivity_results = test_positivity.AllMethods.run(regions_data)
+    test_positivity_results = test_positivity.AllMethods.run(selected_dataset)
     test_positivity_results.write(test_positivity_all_methods)
 
 
@@ -197,7 +197,7 @@ def generate_api_v2(model_output_dir, output, level, state, fips):
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
 
     # Load all API Regions
-    all_regions_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(
+    selected_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(
         aggregation_level=level, exclude_county_999=True, state=state, fips=fips,
     )
     _logger.info(f"Loading all regional inputs.")
@@ -212,7 +212,7 @@ def generate_api_v2(model_output_dir, output, level, state, fips):
 
     # If calculating test positivity succeeds join it with the combined_datasets into one
     # MultiRegionDataset
-    regions_data = test_positivity.run_and_maybe_join_columns(all_regions_dataset, _logger)
+    regions_data = test_positivity.run_and_maybe_join_columns(selected_dataset, _logger)
 
     regional_inputs = [
         api_v2_pipeline.RegionalInput.from_one_regions(

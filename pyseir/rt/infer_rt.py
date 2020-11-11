@@ -68,6 +68,10 @@ class RegionalInput:
         return self._combined_data.timeseries
 
     @staticmethod
+    def from_regional_data(dataset: timeseries.OneRegionTimeseriesDataset) -> "RegionalInput":
+        return RegionalInput(region=dataset.region, _combined_data=dataset,)
+
+    @staticmethod
     def from_region(region: pipeline.Region) -> "RegionalInput":
         return RegionalInput(
             region=region, _combined_data=combined_datasets.RegionalData.from_region(region),
