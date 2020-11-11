@@ -442,6 +442,14 @@ class MultiRegionDataset(SaveableDatasetInterface):
         long[PdFields.VALUE].apply(pd.to_numeric)
         return long
 
+    def timeseries_latest_values(self) -> pd.DataFrame:
+        # _timeseries is already sorted by DATE with the latest at the bottom.
+        long = self._timeseries.stack().droplevel(CommonFields.DATE)
+        # `long` has MultiIndex with LOCATION_ID and VARIABLE (added by stack). Keep only the last
+        # row with each index to get the last value for each date.
+        last_mask = ~long.index.duplicated(keep="last")
+        return long.loc[last_mask, :].unstack()
+
     @staticmethod
     def from_timeseries_df(timeseries_df: pd.DataFrame) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame containing timeseries (real-valued metrics) and
@@ -580,7 +588,10 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return dataset
 
     def __post_init__(self):
-        # Some integrity checks
+        """Checks that attributes of this object meet certain expectations."""
+        # These asserts provide runtime-checking and a single place for humans reading the code to
+        # check what is expected of the attributes, beyond type.
+        # _timeseries.index order is important for timeseries_latest_values correctness.
         assert self._timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
         assert self._timeseries.index.is_unique
         assert self._timeseries.index.is_monotonic_increasing

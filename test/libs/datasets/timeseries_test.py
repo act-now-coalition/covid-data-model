@@ -428,6 +428,31 @@ def test_timeseries_long():
     pd.testing.assert_frame_equal(long, expected, check_like=True)
 
 
+def test_timeseries_latest_values():
+    dataset = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
+            "iso1:us#cbsa:10100,2020-04-04,,,10,1\n"
+            "iso1:us#cbsa:10100,,,,,3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+
+    expected = pd.read_csv(
+        io.StringIO("location_id,m1,m2\n" "iso1:us#cbsa:10100,10,1\n" "iso1:us#fips:97111,4,\n")
+    )
+
+    latest_from_timeseries = dataset.timeseries_latest_values().reset_index()
+
+    pd.testing.assert_frame_equal(
+        latest_from_timeseries, expected, check_like=True, check_dtype=False
+    )
+
+
 def test_join_columns():
     ts_1 = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
