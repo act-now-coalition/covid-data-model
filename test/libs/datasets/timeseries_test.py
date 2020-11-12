@@ -296,7 +296,9 @@ def _latest_sorted_by_location_date(
     ts: timeseries.MultiRegionDataset, drop_na: bool
 ) -> pd.DataFrame:
     """Returns the latest data, sorted by LOCATION_ID."""
-    df = ts._regional_attributes.sort_values([CommonFields.LOCATION_ID], ignore_index=True)
+    df = ts._regional_attributes_and_timeseries_latest_with_fips().sort_values(
+        [CommonFields.LOCATION_ID], ignore_index=True
+    )
     if drop_na:
         df = df.dropna("columns", "all")
     return df
@@ -707,13 +709,7 @@ def _build_one_column_multiregion_dataset(
         ts_rows.append({CommonFields.LOCATION_ID: location_id, "date": dates[i], column: value})
     timeseries_df = pd.DataFrame(ts_rows)
 
-    # Find last non nan value, which simulates building the latest value entry
-    for value in reversed(values):
-        if not pd.isna(value) and value is not None:
-            break
-    latest_df = pd.DataFrame([{CommonFields.LOCATION_ID: location_id, column: value}])
-
-    return timeseries.MultiRegionDataset.from_timeseries_df(timeseries_df).add_latest_df(latest_df)
+    return timeseries.MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
 
 
 def test_remove_outliers():

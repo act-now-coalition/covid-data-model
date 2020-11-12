@@ -351,7 +351,7 @@ def _geodata_df_to_regional_attributes_df(geodata_df: pd.DataFrame) -> pd.DataFr
 
 
 def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """Merges the values in two DataFrame objects. Not-NA values in df2 override values from df1.
+    """Merges the values in two DataFrame objects. Non-NA values in df2 override values from df1.
 
     The returned DataFrame has an index with the union of the LOCATION_ID column of the inputs and
     columns with the union of the other columns of the inputs.
@@ -421,14 +421,17 @@ class MultiRegionDataset(SaveableDatasetInterface):
     information.
     """
 
+    # Timeseries metrics with float values
     _timeseries: pd.DataFrame
 
+    # Attributes associated with each region. This includes county name, state etc (GEO_DATA_COLUMNS) and
+    # metrics that change so slowly they can be considered constant such as population and hospital beds.
     _regional_attributes: pd.DataFrame = _EMPTY_REGIONAL_ATTRIBUTES_DF
 
     # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
     _provenance: pd.Series = _EMPTY_PROVENANCE_SERIES
 
-    # `data` contains columns from CommonFields and simple integer index. DATE and LOCATION_ID must
+    # `data` has a simple integer index and columns from CommonFields. DATE and LOCATION_ID must
     # be non-null in every row.
     @property
     def data(self) -> pd.DataFrame:
@@ -441,12 +444,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def _regional_geo_data(self) -> pd.DataFrame:
         return self._regional_attributes.loc[
             :, self._regional_attributes.columns.isin(GEO_DATA_COLUMNS)
-        ]
-
-    @property
-    def _regional_non_geo_data(self) -> pd.DataFrame:
-        return self._regional_attributes.loc[
-            :, ~self._regional_attributes.columns.isin(GEO_DATA_COLUMNS)
         ]
 
     @property
@@ -472,6 +469,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return data_copy.set_index(CommonFields.LOCATION_ID)
 
     def _regional_attributes_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
+        """Regional attributes merged with the latest timeseries values."""
         return _merge_attributes(
             self._timeseries_latest_values().reset_index(), self._regional_attributes.reset_index()
         )
@@ -506,7 +504,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return long.loc[unduplicated_and_last_mask, :].unstack()
 
     @staticmethod
-    def from_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
+    def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame containing timeseries (real-valued metrics) and
         geo data (county name etc)."""
         assert timeseries_and_geodata_df.index.names == [None]
@@ -529,9 +527,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
             _timeseries=timeseries_df, _regional_attributes=regional_attribute_df
         )
 
-    def add_latest_df(self, latest_df: pd.DataFrame) -> "MultiRegionDataset":
-        """Returns a new object with not NA values in `latest_df` added as regional attributes."""
-        combined_attributes = _merge_attributes(self._regional_attributes.reset_index(), latest_df)
+    def add_regional_attributes(self, attributes_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new object with non-NA values in `latest_df` added as regional attributes."""
+        combined_attributes = _merge_attributes(
+            self._regional_attributes.reset_index(), attributes_df
+        )
         assert combined_attributes.index.names == [CommonFields.LOCATION_ID]
         return dataclasses.replace(self, _regional_attributes=combined_attributes)
 
@@ -566,9 +566,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
         # Extract rows of combined_df which don't have a date.
         latest_df = combined_df.loc[~rows_with_date, :]
 
-        dataset = MultiRegionDataset.from_timeseries_df(timeseries_df)
+        dataset = MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
         if not latest_df.empty:
-            dataset = dataset.add_latest_df(latest_df.drop(columns=[CommonFields.DATE]))
+            dataset = dataset.add_regional_attributes(latest_df.drop(columns=[CommonFields.DATE]))
 
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
@@ -583,11 +583,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
         """Converts legacy FIPS to new LOCATION_ID and calls `from_timeseries_df` to finish construction."""
         timeseries_df = ts.data.copy()
         _add_location_id(timeseries_df)
-        dataset = MultiRegionDataset.from_timeseries_df(timeseries_df)
+        dataset = MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
 
         latest_df = latest.data.copy()
         _add_location_id(latest_df)
-        dataset = dataset.add_latest_df(latest_df)
+        dataset = dataset.add_regional_attributes(latest_df)
 
         if ts.provenance is not None:
             # Check that current index is as expected. Names will be fixed after remapping, below.
@@ -799,22 +799,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
         if common_ts_columns:
             # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
-        # TODO(tom): fix geo columns check, no later than when self.data is changed to contain only
-        # timeseries
-        # self_common_geo_columns = self_df.loc[:, common_geo_columns].fillna("")
-        # other_common_geo_columns = other_df.loc[:, common_geo_columns].fillna("")
-        # try:
-        #    if (self_common_geo_columns != other_common_geo_columns).any(axis=None):
-        #        unequal_rows = (self_common_geo_columns != other_common_geo_columns).any(axis=1)
-        #        _log.info(
-        #            "Geo data unexpectedly varies",
-        #            self_rows=self_df.loc[unequal_rows, common_geo_columns],
-        #            other_rows=other_df.loc[unequal_rows, common_geo_columns],
-        #        )
-        #        raise ValueError("Geo data unexpectedly varies")
-        # except Exception:
-        #    _log.exception(f"Comparing df {self_common_geo_columns} to {other_common_geo_columns}")
-        #    raise
         combined_df = pd.concat([self._timeseries, other._timeseries], axis=1)
         combined_provenance = pd.concat([self._provenance, other._provenance]).sort_index()
         return MultiRegionDataset(
@@ -855,15 +839,6 @@ def _diff_preserving_first_value(series):
     return series_diff
 
 
-def _add_new_cases_to_latest(timeseries_df: pd.DataFrame, latest_df: pd.DataFrame) -> pd.DataFrame:
-    assert latest_df.index.names == [CommonFields.LOCATION_ID]
-    latest_new_cases = dataset_utils.build_latest_for_column(timeseries_df, CommonFields.NEW_CASES)
-
-    latest_copy = latest_df.copy()
-    latest_copy[CommonFields.NEW_CASES] = latest_new_cases
-    return latest_copy
-
-
 def add_new_cases(timeseries: MultiRegionDataset) -> MultiRegionDataset:
     """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
     df_copy = timeseries._timeseries.copy()
@@ -878,13 +853,8 @@ def add_new_cases(timeseries: MultiRegionDataset) -> MultiRegionDataset:
     new_cases[new_cases < 0] = pd.NA
 
     df_copy[CommonFields.NEW_CASES] = new_cases
-    regional_attributes = _add_new_cases_to_latest(df_copy, timeseries._regional_attributes)
 
-    new_timeseries = MultiRegionDataset(
-        _timeseries=df_copy,
-        _regional_attributes=regional_attributes,
-        _provenance=timeseries._provenance,
-    )
+    new_timeseries = dataclasses.replace(timeseries, _timeseries=df_copy)
 
     return new_timeseries
 
@@ -937,10 +907,7 @@ def drop_new_case_outliers(
     to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
 
-    latest_values = _add_new_cases_to_latest(df_copy, timeseries._regional_attributes)
-    new_timeseries = dataclasses.replace(
-        timeseries, _timeseries=df_copy, _regional_attributes=latest_values
-    )
+    new_timeseries = dataclasses.replace(timeseries, _timeseries=df_copy)
 
     return new_timeseries
 

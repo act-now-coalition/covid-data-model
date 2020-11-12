@@ -196,7 +196,7 @@ def test_column_present_with_no_data():
         set_index=False,
     )
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
-    ts = timeseries.MultiRegionDataset.from_timeseries_df(ts_df)
+    ts = timeseries.MultiRegionDataset.from_geodata_timeseries_df(ts_df)
     methods = [
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
@@ -217,7 +217,7 @@ def test_all_columns_na():
         set_index=False,
     )
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
-    ts = timeseries.MultiRegionDataset.from_timeseries_df(ts_df)
+    ts = timeseries.MultiRegionDataset.from_geodata_timeseries_df(ts_df)
     methods = [
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
