@@ -753,6 +753,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
         Args:
             path: Path to write to.
+            write_timeseries_latest_values: write both explicit set regional attributes and timeseries
+              values derived from timeseries. Mostly exists to compare to old files created when latest
+              values were calculated upstream.
         """
         if write_timeseries_latest_values:
             latest_data = self._regional_attributes_and_timeseries_latest_with_fips().reset_index()
