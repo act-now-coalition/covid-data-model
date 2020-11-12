@@ -12,7 +12,7 @@ from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 _logger = logging.getLogger(__name__)
 
 # Fips code chosen for all unknown fips values.
-# TODO: This should maybe be unique per state.
+# Use libs.us_state_abbrev.ABBREV_US_UNKNOWN_COUNTY_FIPS when state is known.
 UNKNOWN_FIPS = "99999"
 
 
