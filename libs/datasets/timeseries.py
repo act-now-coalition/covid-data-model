@@ -341,6 +341,7 @@ def _add_fips_if_missing(df: pd.DataFrame):
 
 
 def _geodata_df_to_regional_attributes_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
+    """Creates a DataFrame to use as _regional_attributes from geo data taken from timeseries CSV."""
     assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
     deduped_values = geodata_df.drop_duplicates().set_index(CommonFields.LOCATION_ID)
     duplicates = deduped_values.index.duplicated(keep=False)
@@ -351,7 +352,8 @@ def _geodata_df_to_regional_attributes_df(geodata_df: pd.DataFrame) -> pd.DataFr
 
 
 def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """Merges the values in two DataFrame objects. Non-NA values in df2 override values from df1.
+    """Merges the regional attributes in two DataFrame objects. Non-NA values in df2 override values
+    from df1.
 
     The returned DataFrame has an index with the union of the LOCATION_ID column of the inputs and
     columns with the union of the other columns of the inputs.
@@ -399,8 +401,7 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
 
 
 # An empty pd.Series with the structure expected for the provenance series. Use this when a dataset
-# does not have provenance information. Make a copy for an extra level of protection against
-# unrelated objects sharing common objects.
+# does not have provenance information.
 _EMPTY_PROVENANCE_SERIES = pd.Series(
     [],
     name=PdFields.PROVENANCE,
@@ -408,6 +409,8 @@ _EMPTY_PROVENANCE_SERIES = pd.Series(
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
 )
 
+# An empty pd.DataFrame with the structure expected for the regional attributes series. Use this when
+# a dataset does not have regional attributes.
 _EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
 
 
@@ -634,6 +637,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
                 )
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
+        common_location_id = self._regional_attributes.index.intersection(
+            other._regional_attributes.index
+        )
+        if not common_location_id.empty:
+            raise ValueError("Do not use append_regions with duplicate location_id")
         timeseries_df = pd.concat([self._timeseries, other._timeseries]).sort_index()
         regional_attributes = pd.concat(
             [self._regional_attributes, other._regional_attributes]
@@ -734,10 +742,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self._timeseries.groupby(CommonFields.LOCATION_ID)
-
-    @property
-    def empty(self) -> bool:
-        return self.data.empty
 
     def to_timeseries(self) -> TimeseriesDataset:
         """Returns a `TimeseriesDataset` of this data.

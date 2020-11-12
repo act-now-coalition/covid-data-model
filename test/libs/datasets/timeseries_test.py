@@ -374,6 +374,23 @@ def test_append_regions():
     assert_dataset_like(ts_merged_1, ts_expected)
 
 
+def test_append_regions_duplicate_region_raises():
+    ts1 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+        )
+    )
+    ts2 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#fips:97111,2020-04-03,Bar County,county,2,\n"
+        )
+    )
+    with pytest.raises(ValueError):
+        ts1.append_regions(ts2)
+
+
 def test_calculate_new_cases():
     mrts_before = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
