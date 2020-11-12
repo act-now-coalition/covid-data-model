@@ -2,7 +2,6 @@ import logging
 from collections import defaultdict
 
 from covidactnow.datapublic.common_fields import CommonFields
-from libs import enums
 import pandas as pd
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
@@ -11,6 +10,10 @@ from libs.datasets.common_fields import CommonIndexFields
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 
 _logger = logging.getLogger(__name__)
+
+# Fips code chosen for all unknown fips values.
+# Use libs.us_state_abbrev.ABBREV_US_UNKNOWN_COUNTY_FIPS when state is known.
+UNKNOWN_FIPS = "99999"
 
 
 def match_county_to_fips(data, fips_data, county_key="county", state_key="state"):
@@ -152,7 +155,7 @@ class DHBeds(data_source.DataSource):
         # Backfilling FIPS data based on county names.
         fips_data = dataset_utils.build_fips_data_frame()
         fips_data = fips_data[fips_data.aggregate_level == AggregationLevel.COUNTY.value]
-        fips_data = fips_data[fips_data.fips != enums.UNKNOWN_FIPS]
+        fips_data = fips_data[fips_data.fips != UNKNOWN_FIPS]
         data = match_county_to_fips(data, fips_data)
 
         data[cls.Fields.MAX_BED_COUNT] = data[

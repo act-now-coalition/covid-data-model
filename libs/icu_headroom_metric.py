@@ -4,11 +4,11 @@ import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import series_utils
-from api import can_api_definition
+from api import can_api_v2_definition
 
 
-NonCovidPatientsMethod = can_api_definition.NonCovidPatientsMethod
-CovidPatientsMethod = can_api_definition.CovidPatientsMethod
+NonCovidPatientsMethod = can_api_v2_definition.NonCovidPatientsMethod
+CovidPatientsMethod = can_api_v2_definition.CovidPatientsMethod
 
 
 # Default utilization to use (before decomp) if there isn't a location-specific
@@ -164,7 +164,7 @@ class ICUMetricData:
 
 def calculate_icu_utilization_metric(
     icu_data: ICUMetricData,
-) -> Tuple[Optional[pd.Series], Optional[can_api_definition.ICUHeadroomMetricDetails]]:
+) -> Tuple[Optional[pd.Series], Optional[can_api_v2_definition.ICUHeadroomMetricDetails]]:
     """
 
              covid icu patients
@@ -220,7 +220,7 @@ def calculate_icu_utilization_metric(
     # available date from the metrics timeseries to pull current values from.
     latest_metric_date = metric.last_valid_index()
 
-    details = can_api_definition.ICUHeadroomMetricDetails(
+    details = can_api_v2_definition.ICUHeadroomMetricDetails(
         currentIcuCovidMethod=covid_source,
         currentIcuCovid=current_covid_patients[latest_metric_date],
         currentIcuNonCovidMethod=non_covid_source,

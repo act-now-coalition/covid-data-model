@@ -1,4 +1,4 @@
-from api.can_api_definition import AggregateRegionSummaryWithTimeseries
+from api.can_api_v2_definition import AggregateRegionSummaryWithTimeseries
 
 from libs import dataset_deployer
 

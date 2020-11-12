@@ -18,17 +18,14 @@ from libs import top_level_metrics
 from libs import top_level_metric_risk_levels
 from libs import parallel_utils
 from libs import pipeline
+from libs import build_api_v2
 from libs.datasets import timeseries
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import MultiRegionDataset
-from libs.enums import Intervention
-from libs.functions import build_api_v2
 from libs.datasets import AggregationLevel
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
-
-INTERVENTION = Intervention.OBSERVED_INTERVENTION
 
 
 @dataclass(frozen=True)
