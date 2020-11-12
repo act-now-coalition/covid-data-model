@@ -5,7 +5,6 @@ import click
 
 import us
 
-import pydantic
 import api
 from api import update_open_api_spec
 from libs import test_positivity

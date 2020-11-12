@@ -10,7 +10,6 @@ from pandarallel import pandarallel
 
 from cli import api
 from cli import data
-from cli import compare_snapshots
 from cli import utils
 
 
@@ -24,8 +23,6 @@ def entry_point(ctx):  # pylint: disable=no-value-for-parameter
     pandarallel.initialize(progress_bar=False)
 
 
-# adding the QA command
-entry_point.add_command(compare_snapshots.compare_snapshots)
 entry_point.add_command(api.main)
 entry_point.add_command(utils.main)
 entry_point.add_command(data.main)
