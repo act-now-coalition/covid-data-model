@@ -953,3 +953,24 @@ def drop_regions_without_population(
             "Dropping unexpected regions without populaton", location_ids=sorted(unexpected_drops)
         )
     return mrts.get_locations_subset(locations_with_population)
+
+
+def aggregate_states_to_country(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
+    US_COUNTRY = "iso1:us"
+    dataset_states = dataset_in.get_subset(aggregation_level=AggregationLevel.STATE)
+    assert dataset_states._timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    timeseries = dataset_states._timeseries.groupby([CommonFields.DATE]).sum().reset_index()
+    timeseries[CommonFields.LOCATION_ID.value] = US_COUNTRY
+    timeseries = timeseries.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+    us_attributes = pd.DataFrame(
+        [
+            {
+                CommonFields.LOCATION_ID: US_COUNTRY,
+                CommonFields.POPULATION: dataset_states._regional_attributes[
+                    CommonFields.POPULATION
+                ].sum(),
+                CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTRY.value,
+            }
+        ]
+    ).set_index([CommonFields.LOCATION_ID])
+    return MultiRegionDataset(_timeseries=timeseries, _regional_attributes=us_attributes)
