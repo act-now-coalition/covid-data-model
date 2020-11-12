@@ -7,14 +7,14 @@ from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_fields
 
-from api import can_api_definition
-from api.can_api_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
+from api import can_api_v2_definition
+from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs import icu_headroom_metric
 
-Metrics = can_api_definition.Metrics
-ICUHeadroomMetricDetails = can_api_definition.ICUHeadroomMetricDetails
+Metrics = can_api_v2_definition.Metrics
+ICUHeadroomMetricDetails = can_api_v2_definition.ICUHeadroomMetricDetails
 # We will assume roughly 5 tracers are needed to trace a case within 48h.
 # The range we give here could be between 5-15 contact tracers per case.
 CONTACT_TRACERS_PER_CASE = 5
@@ -32,7 +32,7 @@ EMPTY_TS = pd.Series([], dtype="float64")
 
 class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     # Note that the values of these fields must match the field names of the `Metrics`
-    # class in `can_api_definition`
+    # class in `can_api_v2_definition`
     CASE_DENSITY_RATIO = "caseDensity"
     TEST_POSITIVITY = "testPositivityRatio"
     CONTACT_TRACER_CAPACITY_RATIO = "contactTracerCapacityRatio"

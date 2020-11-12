@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
-from api import can_api_definition
+from api import can_api_v2_definition
 from libs import icu_headroom_metric
 
 ICUMetricData = icu_headroom_metric.ICUMetricData
@@ -117,7 +117,7 @@ def test_icu_utilization_metric():
 
     expected_metric = pd.Series([1.0, 0.6, np.nan], index=data.index)
 
-    expected_details = can_api_definition.ICUHeadroomMetricDetails(
+    expected_details = can_api_v2_definition.ICUHeadroomMetricDetails(
         currentIcuCovidMethod=icu_headroom_metric.CovidPatientsMethod.ACTUAL,
         currentIcuCovid=15,
         currentIcuNonCovidMethod=icu_headroom_metric.NonCovidPatientsMethod.ACTUAL,
