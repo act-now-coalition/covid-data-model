@@ -8,6 +8,7 @@ import shutil
 import structlog
 
 import click
+from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import google_sheet_helpers, wide_dates_df
 from libs import pipeline
@@ -56,12 +57,12 @@ def update_forecasts(filename):
 @main.command()
 @click.option("--wide-dates-filename", default="multiregion-wide-dates.csv")
 @click.option(
-    "--aggregate-to-msas/--no-aggregate-to-msas",
+    "--aggregate-to-country/--no-aggregate-to-country",
     is_flag=True,
-    help="Aggregate counties to MSAs",
+    help="Aggregate states to one USA country region",
     default=True,
 )
-def update(wide_dates_filename, aggregate_to_msas: bool):
+def update(wide_dates_filename, aggregate_to_country: bool):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -87,10 +88,13 @@ def update(wide_dates_filename, aggregate_to_msas: bool):
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
 
-    if aggregate_to_msas:
-        aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-        cbsa_dataset = aggregator.aggregate(multiregion_dataset)
-        multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    cbsa_dataset = aggregator.aggregate(multiregion_dataset)
+    multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+
+    if aggregate_to_country:
+        country_dataset = timeseries.aggregate_states_to_country(multiregion_dataset)
+        multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
     _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
         path_prefix, latest_dataset, multiregion_dataset,
@@ -111,6 +115,14 @@ def update(wide_dates_filename, aggregate_to_msas: bool):
             timeseries_dataset.get_date_columns(),
             multiregion_pointer.path.with_name(wide_dates_filename),
         )
+
+
+@main.command()
+@click.argument("output_path", type=pathlib.Path)
+def aggregate_states_to_country(output_path: pathlib.Path):
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    country_dataset = timeseries.aggregate_states_to_country(us_timeseries)
+    country_dataset.to_csv(output_path)
 
 
 KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
