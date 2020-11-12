@@ -957,9 +957,38 @@ def drop_regions_without_population(
 
 def aggregate_states_to_country(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     US_COUNTRY = "iso1:us"
-    dataset_states = dataset_in.get_subset(aggregation_level=AggregationLevel.STATE)
+    # Sorry territories, only including 50 states and DC for now.
+    regions_50 = [pipeline.Region.from_state(state) for state in us_state_abbrev.STATES_50.values()]
+    dataset_states = dataset_in.get_regions_subset(regions_50)
+    # columns_to_keep = {
+    #     CommonFields.CASES,
+    #     CommonFields.DEATHS,
+    #     CommonFields.TOTAL_TESTS,
+    #     CommonFields.POPULATION,
+    # }
+    # for col in list(c for c in dataset_states._timeseries.columns if c not in columns_to_keep):
+    #     dataset_states = dataset_states.drop_column_if_present(col)
+
     assert dataset_states._timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    timeseries = dataset_states._timeseries.groupby([CommonFields.DATE]).sum().reset_index()
+    long_locdatevar = dataset_states._timeseries.rename_axis(columns=PdFields.VARIABLE).stack(
+        dropna=False
+    )
+    long_locdatevar_isna = long_locdatevar.isna()
+    long_datevar_isna_count = long_locdatevar_isna.groupby(
+        [CommonFields.DATE, PdFields.VARIABLE]
+    ).sum()
+    long_missing_some = long_datevar_isna_count.loc[
+        (long_datevar_isna_count > 0) & (long_datevar_isna_count < 4)
+    ]
+    print(
+        long_locdatevar_isna.loc[long_locdatevar_isna]
+        .reset_index(CommonFields.LOCATION_ID)
+        .loc[long_missing_some.index]
+    )
+
+    timeseries = (
+        dataset_states._timeseries.groupby([CommonFields.DATE]).sum(min_count=50).reset_index()
+    )
     timeseries[CommonFields.LOCATION_ID.value] = US_COUNTRY
     timeseries = timeseries.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
     us_attributes = pd.DataFrame(
