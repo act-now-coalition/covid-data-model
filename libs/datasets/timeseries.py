@@ -378,7 +378,8 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     # This is not expected so log a warning before dropping the old value.
     dups = long_deduped.index.duplicated(keep=False)
     if dups.any():
-        _log.warning(f"Duplicates:\n{long_deduped.loc[dups, :].sort_index()}")
+        # Is this worth logging?
+        # _log.info(f"Regional attributes changed", changes=long_deduped.loc[dups, :].sort_index())
         long_deduped = long_deduped.loc[~long_deduped.index.duplicated(keep="first"), :]
     # Transform back to a column for each metric.
     wide = long_deduped.unstack()
