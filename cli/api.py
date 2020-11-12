@@ -9,7 +9,6 @@ import pydantic
 import api
 from api import update_open_api_spec
 from libs import test_positivity
-from libs import update_readme_schemas
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionDataset
