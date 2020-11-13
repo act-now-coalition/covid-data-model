@@ -269,16 +269,16 @@ def test_multiregion_provenance():
     ts = timeseries.TimeseriesDataset(input_df.reset_index(), provenance=provenance)
     out = timeseries.MultiRegionDataset.from_timeseries_and_latest(ts, ts.latest_values_object())
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
-    assert out._provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
+    assert out.provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
     assert out.get_one_region(Region.from_fips("97111")).provenance["m1"] == "src11"
-    assert out._provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"
+    assert out.provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"
     assert out.get_one_region(Region.from_fips("97222")).provenance["m2"] == "src22"
-    assert out._provenance.loc["iso1:us#fips:03"].at["m2"] == "src32"
+    assert out.provenance.loc["iso1:us#fips:03"].at["m2"] == "src32"
     assert out.get_one_region(Region.from_fips("03")).provenance["m2"] == "src32"
 
     counties = out.get_counties(after=pd.to_datetime("2020-04-01"))
-    assert "iso1:us#fips:03" not in counties._provenance.index
-    assert counties._provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
+    assert "iso1:us#fips:03" not in counties.provenance.index
+    assert counties.provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
     assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == "src21"
 
 
@@ -317,7 +317,7 @@ def assert_dataset_like(
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
     pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
-    pd.testing.assert_series_equal(ds1._provenance, ds2._provenance)
+    pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
 
 
 def test_append_regions():
