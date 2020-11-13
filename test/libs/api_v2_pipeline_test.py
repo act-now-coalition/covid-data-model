@@ -38,14 +38,8 @@ def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
     region = Region.from_state("IL")
     regional_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset([region])
     empty_test_positivity = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
-        # Create with explicit dtypes because to_numeric in from_geodata_timeseries_df doesn't work with
-        # empty DataFrames.
         pd.DataFrame(
-            {
-                CommonFields.LOCATION_ID: pd.Series([], dtype="str"),
-                CommonFields.DATE: pd.Series([], dtype="datetime64[ns]"),
-                CommonFields.TEST_POSITIVITY: pd.Series([], dtype="float"),
-            }
+            [], columns=[CommonFields.LOCATION_ID, CommonFields.DATE, CommonFields.TEST_POSITIVITY]
         )
     )
 

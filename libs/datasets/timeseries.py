@@ -531,6 +531,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
             .apply(pd.to_numeric)
             .sort_index()
         )
+        if timeseries_df.empty:
+            # If the df is empty to_numeric won't change a column with object type, causing the
+            # assert in __post_init__ to fail. Use astype to force a change. Don't use astype
+            # on non-empty DataFrame because it changes int to float.
+            timeseries_df = timeseries_df.astype(float)
         geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
 
         regional_attribute_df = _geodata_df_to_regional_attributes_df(
