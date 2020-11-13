@@ -35,6 +35,7 @@ from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 import pandas.core.groupby.generic
+from backports.cached_property import cached_property
 
 
 _log = structlog.get_logger()
@@ -138,11 +139,11 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
-    @property
+    @cached_property
     def dataset_type(self) -> DatasetType:
         return DatasetType.TIMESERIES
 
-    @property
+    @cached_property
     def empty(self):
         return self.data.empty
 
@@ -443,28 +444,28 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     # `data` has a simple integer index and columns from CommonFields. DATE and LOCATION_ID must
     # be non-null in every row.
-    @property
+    @cached_property
     def data(self) -> pd.DataFrame:
         # TODO(tom): Remove this attribute. There are only a few users of it.
         df = self._geo_data.join(self.timeseries).drop(columns=[CommonFields.FIPS], errors="ignore")
         return df.reset_index()
 
-    @property
+    @cached_property
     def _geo_data(self) -> pd.DataFrame:
         return self.static.loc[:, self.static.columns.isin(GEO_DATA_COLUMNS)]
 
-    @property
+    @cached_property
     def dataset_type(self) -> DatasetType:
         return DatasetType.MULTI_REGION
 
-    @property
+    @cached_property
     def data_with_fips(self) -> pd.DataFrame:
         """data with FIPS column, use `data` when FIPS is not need."""
         data_copy = self.data.copy()
         _add_fips_if_missing(data_copy)
         return data_copy
 
-    @property
+    @cached_property
     def static_data_with_fips(self) -> pd.DataFrame:
         """_latest_data with FIPS column and LOCATION_ID index.
 
