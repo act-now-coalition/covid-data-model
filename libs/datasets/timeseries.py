@@ -342,7 +342,7 @@ def _add_fips_if_missing(df: pd.DataFrame):
         df[CommonFields.FIPS] = df[CommonFields.LOCATION_ID].apply(pipeline.location_id_to_fips)
 
 
-def _geodata_df_to_regional_attributes_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
+def _geodata_df_to_static_attribute_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
     """Creates a DataFrame to use as static from geo data taken from timeseries CSV."""
     assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
     deduped_values = geodata_df.drop_duplicates().set_index(CommonFields.LOCATION_ID)
@@ -354,7 +354,7 @@ def _geodata_df_to_regional_attributes_df(geodata_df: pd.DataFrame) -> pd.DataFr
 
 
 def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """Merges the regional attributes in two DataFrame objects. Non-NA values in df2 override values
+    """Merges the static attributes in two DataFrame objects. Non-NA values in df2 override values
     from df1.
 
     The returned DataFrame has an index with the union of the LOCATION_ID column of the inputs and
@@ -402,7 +402,7 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     return wide
 
 
-# An empty pd.Series with the structure expected for the provenance series. Use this when a dataset
+# An empty pd.Series with the structure expected for the provenance attribute. Use this when a dataset
 # does not have provenance information.
 _EMPTY_PROVENANCE_SERIES = pd.Series(
     [],
@@ -411,8 +411,8 @@ _EMPTY_PROVENANCE_SERIES = pd.Series(
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
 )
 
-# An empty pd.DataFrame with the structure expected for the regional attributes series. Use this when
-# a dataset does not have regional attributes.
+# An empty pd.DataFrame with the structure expected for the static attribute. Use this when
+# a dataset does not have any static values.
 _EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
 
 
@@ -446,13 +446,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
     @property
     def data(self) -> pd.DataFrame:
         # TODO(tom): Remove this attribute. There are only a few users of it.
-        df = self._regional_geo_data.join(self.timeseries).drop(
-            columns=[CommonFields.FIPS], errors="ignore"
-        )
+        df = self._geo_data.join(self.timeseries).drop(columns=[CommonFields.FIPS], errors="ignore")
         return df.reset_index()
 
     @property
-    def _regional_geo_data(self) -> pd.DataFrame:
+    def _geo_data(self) -> pd.DataFrame:
         return self.static.loc[:, self.static.columns.isin(GEO_DATA_COLUMNS)]
 
     @property
@@ -467,7 +465,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return data_copy
 
     @property
-    def latest_data_with_fips(self) -> pd.DataFrame:
+    def static_data_with_fips(self) -> pd.DataFrame:
         """_latest_data with FIPS column and LOCATION_ID index.
 
         TODO(tom): This data is usually accessed via OneRegionTimeseriesDataset. Retire this
@@ -477,8 +475,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
         _add_fips_if_missing(data_copy)
         return data_copy.set_index(CommonFields.LOCATION_ID)
 
-    def _regional_attributes_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
-        """Regional attributes merged with the latest timeseries values."""
+    def _static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
+        """Static values merged with the latest timeseries values."""
         return _merge_attributes(
             self._timeseries_latest_values().reset_index(), self.static.reset_index()
         )
@@ -517,7 +515,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
         """Make a new dataset from a DataFrame containing timeseries (real-valued metrics) and
         static geo data (county name etc)."""
         assert timeseries_and_geodata_df.index.names == [None]
-
         timeseries_and_geodata_df = timeseries_and_geodata_df.set_index(
             [CommonFields.LOCATION_ID, CommonFields.DATE]
         )
@@ -525,27 +522,27 @@ class MultiRegionDataset(SaveableDatasetInterface):
         geodata_column_mask = timeseries_and_geodata_df.columns.isin(
             set(TimeseriesDataset.INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
         )
-        timeseries_df = (
-            timeseries_and_geodata_df.loc[:, ~geodata_column_mask]
-            .fillna(np.nan)
-            .apply(pd.to_numeric)
-            .sort_index()
-        )
+        timeseries_df = timeseries_and_geodata_df.loc[:, ~geodata_column_mask]
+        # Change all columns in timeseries_df to have a numeric dtype, as checked in __post_init__
         if timeseries_df.empty:
-            # If the df is empty to_numeric won't change a column with object type, causing the
-            # assert in __post_init__ to fail. Use astype to force a change. Don't use astype
-            # on non-empty DataFrame because it changes int to float.
+            # Use astype to force columns in an empty DataFrame to numeric dtypes.
+            # to_numeric won't modify an empty column with dtype=object.
             timeseries_df = timeseries_df.astype(float)
+        else:
+            # Modify various kinds of NA (which will keep the column dtype as object) to
+            # NaN, which is a valid float. Apply to_numeric to columns so that int columns
+            # are not modified.
+            timeseries_df = timeseries_df.fillna(np.nan).apply(pd.to_numeric).sort_index()
         geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
 
-        regional_attribute_df = _geodata_df_to_regional_attributes_df(
+        static_df = _geodata_df_to_static_attribute_df(
             geodata_df.reset_index().drop(columns=[CommonFields.DATE])
         )
 
-        return MultiRegionDataset(timeseries=timeseries_df, static=regional_attribute_df)
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df)
 
-    def add_regional_attributes(self, attributes_df: pd.DataFrame) -> "MultiRegionDataset":
-        """Returns a new object with non-NA values in `latest_df` added as regional attributes."""
+    def add_static_values(self, attributes_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new object with non-NA values in `latest_df` added to the static attribute."""
         combined_attributes = _merge_attributes(self.static.reset_index(), attributes_df)
         assert combined_attributes.index.names == [CommonFields.LOCATION_ID]
         return dataclasses.replace(self, static=combined_attributes)
@@ -583,7 +580,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
         dataset = MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
         if not latest_df.empty:
-            dataset = dataset.add_regional_attributes(latest_df.drop(columns=[CommonFields.DATE]))
+            dataset = dataset.add_static_values(latest_df.drop(columns=[CommonFields.DATE]))
 
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
@@ -602,7 +599,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
         latest_df = latest.data.copy()
         _add_location_id(latest_df)
-        dataset = dataset.add_regional_attributes(latest_df)
+        dataset = dataset.add_static_values(latest_df)
 
         if ts.provenance is not None:
             # Check that current index is as expected. Names will be fixed after remapping, below.
@@ -655,10 +652,10 @@ class MultiRegionDataset(SaveableDatasetInterface):
         if not common_location_id.empty:
             raise ValueError("Do not use append_regions with duplicate location_id")
         timeseries_df = pd.concat([self.timeseries, other.timeseries]).sort_index()
-        regional_attributes = pd.concat([self.static, other.static]).sort_index()
+        static_df = pd.concat([self.static, other.static]).sort_index()
         provenance = pd.concat([self.provenance, other.provenance]).sort_index()
         return MultiRegionDataset(
-            timeseries=timeseries_df, static=regional_attributes, provenance=provenance,
+            timeseries=timeseries_df, static=static_df, provenance=provenance,
         )
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
@@ -684,9 +681,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
         try:
-            attributes_series = self._regional_attributes_and_timeseries_latest_with_fips().loc[
-                location_id, :
-            ]
+            attributes_series = self._static_and_timeseries_latest_with_fips().loc[location_id, :]
         except KeyError:
             attributes_series = pd.Series([], dtype=object)
         return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
@@ -700,16 +695,16 @@ class MultiRegionDataset(SaveableDatasetInterface):
             location_ids
         )
         timeseries_df = self.timeseries.loc[timeseries_mask, :]
-        regional_attributes_mask = self.static.index.get_level_values(
-            CommonFields.LOCATION_ID
-        ).isin(location_ids)
-        regional_attributes = self.static.loc[regional_attributes_mask, :]
+        static_mask = self.static.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        static_df = self.static.loc[static_mask, :]
         provenance_mask = self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(
             location_ids
         )
         provenance = self.provenance.loc[provenance_mask, :]
         return MultiRegionDataset(
-            timeseries=timeseries_df, static=regional_attributes, provenance=provenance,
+            timeseries=timeseries_df, static=static_df, provenance=provenance,
         )
 
     def get_subset(
@@ -763,14 +758,14 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
         Args:
             path: Path to write to.
-            write_timeseries_latest_values: write both explicit set regional attributes and timeseries
+            write_timeseries_latest_values: write both explicit set static attributes and timeseries
               values derived from timeseries. Mostly exists to compare to old files created when latest
               values were calculated upstream.
         """
         if write_timeseries_latest_values:
-            latest_data = self._regional_attributes_and_timeseries_latest_with_fips().reset_index()
+            latest_data = self._static_and_timeseries_latest_with_fips().reset_index()
         else:
-            latest_data = self.latest_data_with_fips.reset_index()
+            latest_data = self.static_data_with_fips.reset_index()
         # A DataFrame with timeseries data and latest data (with DATE=NaT) together
         combined = pd.concat([self.data_with_fips, latest_data], ignore_index=True)
         assert combined[CommonFields.LOCATION_ID].notna().all()
@@ -784,12 +779,12 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def drop_column_if_present(self, column: str) -> "MultiRegionDataset":
         """Drops the specified column from the timeseries if it exists"""
         timeseries_df = self.timeseries.drop(column, axis="columns", errors="ignore")
-        regional_attributes = self.static.drop(column, axis="columns", errors="ignore")
+        static_df = self.static.drop(column, axis="columns", errors="ignore")
         provenance = self.provenance[
             self.provenance.index.get_level_values(PdFields.VARIABLE) != column
         ]
         return MultiRegionDataset(
-            timeseries=timeseries_df, static=regional_attributes, provenance=provenance,
+            timeseries=timeseries_df, static=static_df, provenance=provenance,
         )
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":

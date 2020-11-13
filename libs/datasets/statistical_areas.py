@@ -26,8 +26,8 @@ class CountyToCBSAAggregator:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
         return MultiRegionDataset.from_geodata_timeseries_df(
             self._aggregate_fips_df(dataset_in.data_with_fips, groupby_date=True)
-        ).add_regional_attributes(
-            self._aggregate_fips_df(dataset_in.latest_data_with_fips, groupby_date=False)
+        ).add_static_values(
+            self._aggregate_fips_df(dataset_in.static_data_with_fips, groupby_date=False)
         )
 
     @staticmethod

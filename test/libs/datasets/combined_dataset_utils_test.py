@@ -30,7 +30,7 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
     multiregion_timeseries_nyc = combined_datasets.load_us_timeseries_dataset().get_regions_subset(
         [nyc_region]
     )
-    latest_nyc = LatestValuesDataset(multiregion_timeseries_nyc.latest_data_with_fips.reset_index())
+    latest_nyc = LatestValuesDataset(multiregion_timeseries_nyc.static_data_with_fips.reset_index())
     latest_nyc_record = latest_nyc.get_record_for_fips(nyc_fips)
     assert latest_nyc_record[CommonFields.POPULATION] > 1_000_000
     assert latest_nyc_record[CommonFields.LOCATION_ID]

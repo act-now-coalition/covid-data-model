@@ -207,6 +207,8 @@ class AllMethods:
         )
         positivity = first.drop(columns=[PdFields.VARIABLE])
 
+        # Use from_geodata_timeseries_df to build the MultiRegionDataset because it cleans
+        # up the dtypes.
         test_positivity = MultiRegionDataset.from_geodata_timeseries_df(
             positivity.stack().rename(CommonFields.TEST_POSITIVITY).reset_index()
         ).add_provenance_series(provenance)
