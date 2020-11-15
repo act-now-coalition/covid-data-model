@@ -12,7 +12,7 @@ from libs.datasets.timeseries import TimeseriesDataset
 # 2020/11/01: By manual comparison of test positivity calculated via Covid County Data vs CMS
 # and local dashboards where available, these states have data that seems less credible than
 # our CMS data source.
-DISABLED_TEST_POSITIVITY_STATES = ["AL", "DE", "FL", "IN", "IA", "MD", "ND", "PA", "WI"]
+DISABLED_TEST_POSITIVITY_STATES = ["AL", "DE", "FL", "IN", "IA", "MD", "ND", "PA", "WI", "RI"]
 
 
 class CovidCountyDataDataSource(data_source.DataSource):
