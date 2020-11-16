@@ -660,7 +660,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
         )
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
-        ts_df = self.data.loc[self.data[CommonFields.LOCATION_ID] == region.location_id, :]
+        ts_df = self.timeseries.xs(
+            region.location_id, level=CommonFields.LOCATION_ID, drop_level=False
+        ).reset_index()
         latest_dict = self._location_id_latest_dict(region.location_id)
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
@@ -812,12 +814,14 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
-        for location_id, data_group in self.data.groupby(CommonFields.LOCATION_ID):
+        for location_id, timeseries_group in self.timeseries.groupby(
+            CommonFields.LOCATION_ID, as_index=True
+        ):
             latest_dict = self._location_id_latest_dict(location_id)
             provenance_dict = self._location_id_provenance_dict(location_id)
             region = Region.from_location_id(location_id)
             yield region, OneRegionTimeseriesDataset(
-                region, data_group, latest_dict, provenance=provenance_dict,
+                region, timeseries_group.reset_index(), latest_dict, provenance=provenance_dict,
             )
 
 

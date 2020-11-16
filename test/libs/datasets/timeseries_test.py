@@ -161,12 +161,7 @@ def test_multi_region_get_one_region():
 
     region_97222_ts = ts.get_one_region(Region.from_fips("97222"))
     assert to_dict(["date"], region_97222_ts.data) == {
-        pd.to_datetime("2020-04-01"): {
-            "m2": 10,
-            "county": "Foo County",
-            "location_id": "iso1:us#fips:97222",
-            "aggregate_level": "county",
-        }
+        pd.to_datetime("2020-04-01"): {"m2": 10, "location_id": "iso1:us#fips:97222",}
     }
     assert region_97222_ts.latest["m2"] == 11
 
