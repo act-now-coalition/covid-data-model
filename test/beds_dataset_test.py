@@ -2,7 +2,6 @@ import pytest
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 
-from libs.datasets import custom_aggregations
 from libs import pipeline
 from libs.datasets import dataset_utils
 from libs.datasets import beds
