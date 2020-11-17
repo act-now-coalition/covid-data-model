@@ -15,6 +15,7 @@ on:
         description: 'Sentry environment of build. Should be "production" on master build and "staging" for other branches.'
         required: true
 
+    push:
 env:
   COVID_DATA_MODEL_REF: ${GITHUB_REF##*/}
 
@@ -39,7 +40,7 @@ env:
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
   # Sets the sentry environment, controlling how alerts are reported.
-  SENTRY_ENVIRONMENT: ${{ github.event.inputs.sentry_environment }}
+  SENTRY_ENVIRONMENT: 'staging'  # ${{ github.event.inputs.sentry_environment }}
 
   # use a webhook to write to slack channel dev-alerts for QA
   SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
