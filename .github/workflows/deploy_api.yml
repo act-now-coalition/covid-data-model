@@ -16,7 +16,7 @@ on:
         required: true
 
 env:
-  COVID_DATA_MODEL_REF: ${{ GITHUB_REF }}
+  COVID_DATA_MODEL_REF: ${GITHUB_REF##*/}
 
   # TODO: This may no longer be used for anything anymore. Remove?
   COVID_DATA_PUBLIC_REF: 'master'
