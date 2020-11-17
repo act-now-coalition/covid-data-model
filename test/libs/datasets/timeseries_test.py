@@ -781,3 +781,11 @@ def test_timeseries_empty():
     )
     with pytest.raises(timeseries.RegionLatestNotFound):
         dataset.get_one_region(Region.from_fips("01001"))
+
+
+def test_timeseries_empty_static_not_empty():
+    # Check that empty timeseries does not prevent static data working as expected.
+    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+        pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
+    ).add_static_values(pd.DataFrame([{"location_id": "iso1:us#fips:97111", "m1": 1234}]))
+    assert dataset.get_one_region(Region.from_fips("97111")).latest["m1"] == 1234
