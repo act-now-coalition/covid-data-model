@@ -131,21 +131,16 @@ def load_us_timeseries_dataset(
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    dataset: MultiRegionDataset = pointer.load_dataset(
-        before=before, previous_commit=previous_commit, commit=commit
-    )
-    # Access data here so it is cached when this function is first called, which happens
-    # before parallel processing forks happen.
-    return dataset
+    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
 
 
 @functools.lru_cache(None)
 def load_us_latest_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
 ) -> latest_values_dataset.LatestValuesDataset:
-    us_timeseries = load_us_timeseries_dataset()
+    us_timeseries = load_us_timeseries_dataset(pointer_directory=pointer_directory)
     # Returned object contains a DataFrame with a LOCATION_ID column
-    return LatestValuesDataset(us_timeseries.static_data_with_fips.reset_index())
+    return LatestValuesDataset(us_timeseries.latest_data_with_fips.reset_index())
 
 
 def get_county_name(region: Region) -> Optional[str]:
