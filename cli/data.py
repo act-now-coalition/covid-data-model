@@ -180,4 +180,4 @@ def update_case_based_icu_utilization_weights():
     output = pyseir.icu.utils.calculate_case_based_weights()
     _logger.info(f"Saved case-based ICU Utilization weights to {output_path}")
     with open(output_path, "w") as f:
-        json.dump(output, f)
+        json.dump(output, f, indent=2, sort_keys=True)
