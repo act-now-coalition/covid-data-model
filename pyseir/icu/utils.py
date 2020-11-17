@@ -45,7 +45,11 @@ def calculate_case_based_weights() -> dict:
     all_county_fips = {
         region.fips
         for region, _ in combined_datasets.load_us_timeseries_dataset()
-        .get_subset(aggregation_level=AggregationLevel.COUNTY, exclude_county_999=True)
+        .get_subset(
+            aggregation_level=AggregationLevel.COUNTY,
+            exclude_county_999=True,
+            require_timeseries=True,
+        )
         .iter_one_regions()
     }
 
