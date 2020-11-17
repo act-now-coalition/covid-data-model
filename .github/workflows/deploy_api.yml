@@ -9,11 +9,14 @@ name: Build & Publish API snapshot to data.covidactnow.org
 #######################################################################################
 
 on:
-  repository_dispatch:
-    types: publish-api
+  workflow_dispatch:
+    inputs:
+      sentry_environment:
+        description: 'Sentry environment of build'
+        required: true
 
 env:
-  COVID_DATA_MODEL_REF: ${{ github.event.client_payload.branch }}
+  COVID_DATA_MODEL_REF: ${{ GITHUB_REF }}
 
   # TODO: This may no longer be used for anything anymore. Remove?
   COVID_DATA_PUBLIC_REF: 'master'
@@ -36,7 +39,7 @@ env:
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
   # Sets the sentry environment, controlling how alerts are reported.
-  SENTRY_ENVIRONMENT: ${{ github.event.client_payload.sentry_environment }}
+  SENTRY_ENVIRONMENT: ${{ github.event.inputs.sentry_environment }}
 
   # use a webhook to write to slack channel dev-alerts for QA
   SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
@@ -82,9 +85,6 @@ jobs:
     - name: Install Dependencies
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
-
-    # - name: run raw data QA
-    #   run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_raw_data_qa
 
     - name: Pull git lfs
       working-directory: ./covid-data-model
