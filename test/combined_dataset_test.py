@@ -21,7 +21,6 @@ from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.nha_hospitalization import NevadaHospitalAssociationData
 
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date, to_dict
