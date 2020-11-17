@@ -96,7 +96,7 @@ class RegionPipeline:
             infer_df = infer_rt.run_rt(infer_rt_input)
         except Exception:
             root.exception(f"run_rt failed for {input.region}")
-            raise
+            infer_df = pd.DataFrame()
 
         icu_data = None
 
