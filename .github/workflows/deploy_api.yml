@@ -49,7 +49,7 @@ jobs:
   build-and-publish-snapshot:
     runs-on: self-hosted
     steps:
-    - name: Parse covid data model branch name and set ref
+    - name: Parse covid data model branch name and set env variable
       run: |
         echo "COVID_DATA_MODEL_REF=${GITHUB_REF##*/}" >> $GITHUB_ENV
     - name: Checkout covid-data-model (${{ env.COVID_DATA_MODEL_REF }})
