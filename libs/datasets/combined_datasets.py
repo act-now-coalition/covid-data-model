@@ -136,7 +136,6 @@ def load_us_timeseries_dataset(
     )
     # Access data here so it is cached when this function is first called, which happens
     # before parallel processing forks happen.
-    dataset.data
     return dataset
 
 
@@ -150,7 +149,7 @@ def load_us_latest_dataset(
 
 
 def get_county_name(region: Region) -> Optional[str]:
-    return load_us_timeseries_dataset().get_one_region(region).latest[CommonFields.COUNTY]
+    return load_us_timeseries_dataset().get_county_name(region=region)
 
 
 def build_from_sources(
@@ -320,6 +319,7 @@ class RegionalData:
     timeseries: OneRegionTimeseriesDataset
 
     @staticmethod
+    @functools.lru_cache(maxsize=None)
     def from_region(region: Region) -> "RegionalData":
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)

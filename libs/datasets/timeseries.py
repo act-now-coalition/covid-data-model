@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import pathlib
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 from typing import Collection
 from typing import Dict
@@ -418,7 +419,7 @@ _EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonF
 
 
 @final
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class MultiRegionDataset(SaveableDatasetInterface):
     """A set of timeseries and static values from any number of regions.
 
@@ -476,6 +477,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         _add_fips_if_missing(data_copy)
         return data_copy.set_index(CommonFields.LOCATION_ID)
 
+    @lru_cache(maxsize=None)
     def _static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
         """Static values merged with the latest timeseries values."""
         return _merge_attributes(
@@ -660,9 +662,12 @@ class MultiRegionDataset(SaveableDatasetInterface):
         )
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
-        ts_df = self.timeseries.xs(
-            region.location_id, level=CommonFields.LOCATION_ID, drop_level=False
-        ).reset_index()
+        try:
+            ts_df = self.timeseries.xs(
+                region.location_id, level=CommonFields.LOCATION_ID, drop_level=False
+            ).reset_index()
+        except KeyError:
+            ts_df = pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
         latest_dict = self._location_id_latest_dict(region.location_id)
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
@@ -823,6 +828,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
             yield region, OneRegionTimeseriesDataset(
                 region, timeseries_group.reset_index(), latest_dict, provenance=provenance_dict,
             )
+
+    def get_county_name(self, *, region: pipeline.Region) -> str:
+        return self.static.at[region.location_id, CommonFields.COUNTY]
 
 
 def _remove_padded_nans(df, columns):

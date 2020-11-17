@@ -39,7 +39,8 @@ def _cache_global_datasets():
     # will make sure cache is populated for subprocesses.  Return value
     # is not needed as the only goal is to populate the cache.
     combined_datasets.load_us_latest_dataset()
-    combined_datasets.load_us_timeseries_dataset()
+    combined_datasets.load_us_timeseries_dataset().data
+    combined_datasets.load_us_timeseries_dataset().data_with_fips
     infer_icu.get_region_weight_map()
 
 
