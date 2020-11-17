@@ -15,7 +15,6 @@ on:
         description: 'Sentry environment of build. Should be "production" on master build and "staging" for other branches.'
         required: true
 
-    push:
 env:
   COVID_DATA_MODEL_REF: ${{ github.ref }}
 
