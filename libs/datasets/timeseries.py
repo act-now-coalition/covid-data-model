@@ -722,7 +722,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
         state: Optional[str] = None,
         states: Optional[List[str]] = None,
         exclude_county_999: bool = False,
-        require_timeseries: bool = False,
     ) -> "MultiRegionDataset":
         """Returns a new object containing data for a subset of the regions in `self`."""
         rows_key = dataset_utils.make_rows_key(
@@ -734,10 +733,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
             exclude_county_999=exclude_county_999,
         )
         location_ids = self.static.loc[rows_key, :].index
-        if require_timeseries:
-            location_ids = location_ids.intersection(
-                self.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
-            )
         return self.get_locations_subset(location_ids)
 
     def get_counties(self, after: Optional[datetime.datetime] = None) -> "MultiRegionDataset":
