@@ -1,11 +1,14 @@
 name: Update combined datasets
 
 on:
-  # This hook is automatically triggered by
+  # This workflow is automatically triggered by
   # https://github.com/covid-projections/covid-data-public/blob/master/.github/workflows/update_data.yml
   # after covid-data-public datasets have been updated.
-  repository_dispatch:
-    types: update-dataset-snapshot
+  workflow_dispatch:
+    inputs:
+      trigger_api_build:
+        description: 'If "true" API Build will be triggered after dataset update.'
+        default: 'false'
 
 env:
   # !!! Change this to your BRANCH if you want to test it
@@ -26,7 +29,7 @@ env:
 
   GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA }}
 
-  TRIGGER_API_BUILD: ${{ github.event.client_payload.trigger_api_build }}
+  TRIGGER_API_BUILD: ${{ github.event.inputs.trigger_api_build }}
 
 jobs:
   update-and-promote-datasets:
@@ -82,14 +85,14 @@ jobs:
       run: ./tools/push-data-update.sh
 
     - name: Maybe Trigger API build
-      if: ${{ env.TRIGGER_API_BUILD }}
+      if: env.TRIGGER_API_BUILD == 'true'
       working-directory: ./covid-data-model
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: |
         ./tools/build-snapshot.sh master
     - name: Slack notification
-      if: ${{ env.TRIGGER_API_BUILD }}
+      if: env.TRIGGER_API_BUILD == 'true'
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
       uses: Ilshidur/action-slack@fb92a78
