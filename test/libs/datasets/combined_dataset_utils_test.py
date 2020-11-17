@@ -31,15 +31,15 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
         [nyc_region]
     )
     latest_nyc = LatestValuesDataset(multiregion_timeseries_nyc.static_data_with_fips.reset_index())
-    latest_nyc_record = latest_nyc.get_record_for_fips(nyc_fips)
-    assert latest_nyc_record[CommonFields.POPULATION] > 1_000_000
-    assert latest_nyc_record[CommonFields.LOCATION_ID]
+    one_region_nyc = multiregion_timeseries_nyc.get_one_region(nyc_region)
+    assert one_region_nyc.latest[CommonFields.POPULATION] > 1_000_000
+    assert one_region_nyc.region.location_id
 
     combined_dataset_utils.update_data_public_head(
         tmp_path, latest_dataset=latest_nyc, timeseries_dataset=multiregion_timeseries_nyc,
     )
 
     timeseries_loaded = combined_datasets.load_us_timeseries_dataset(pointer_directory=tmp_path)
-    latest_loaded = combined_datasets.load_us_latest_dataset(pointer_directory=tmp_path)
-    assert latest_loaded.get_record_for_fips(nyc_fips) == latest_nyc_record
+    one_region_loaded = timeseries_loaded.get_one_region(nyc_region)
+    assert one_region_nyc.latest == one_region_loaded.latest
     assert_dataset_like(timeseries_loaded, multiregion_timeseries_nyc, drop_na_timeseries=True)
