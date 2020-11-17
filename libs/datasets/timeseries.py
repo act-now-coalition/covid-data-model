@@ -506,6 +506,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
+        if self.timeseries.columns.empty:
+            return pd.DataFrame([])
         # timeseries is already sorted by DATE with the latest at the bottom.
         long = self.timeseries.stack().droplevel(CommonFields.DATE)
         # `long` has MultiIndex with LOCATION_ID and VARIABLE (added by stack). Keep only the last

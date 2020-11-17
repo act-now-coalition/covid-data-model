@@ -38,9 +38,10 @@ exit_with_usage () {
 
 execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
+       -H "Accept: application/vnd.github.v3+json" \
       --request POST \
-      --data "{\"event_type\": \"publish-api\", \"client_payload\": { \"branch\": \"${BRANCH}\", \"sentry_environment\": \"${SENTRY_ENVIRONMENT}\" } }" \
-      https://api.github.com/repos/covid-projections/covid-data-model/dispatches
+      --data "{ \"ref\": \"${BRANCH}\", \"inputs\": { \"sentry_environment\": \"${SENTRY_ENVIRONMENT}\" } }" \
+      https://api.github.com/repos/covid-projections/covid-data-model/actions/workflows/deploy_api_workflow.yml/dispatches
 
   echo "Publish requested. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."
 }
