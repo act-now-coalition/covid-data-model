@@ -38,8 +38,10 @@ def _cache_global_datasets():
     # Populate cache for combined latest and timeseries.  Caching pre-fork
     # will make sure cache is populated for subprocesses.  Return value
     # is not needed as the only goal is to populate the cache.
-    combined_datasets.load_us_latest_dataset()
-    combined_datasets.load_us_timeseries_dataset()
+    combined_datasets.load_us_latest_dataset().data
+    # Access data here to populate the property cache.
+    combined_datasets.load_us_timeseries_dataset().data
+    combined_datasets.load_us_timeseries_dataset().data_with_fips
     infer_icu.get_region_weight_map()
 
 
@@ -164,13 +166,13 @@ def _write_pipeline_output(
         output_dir_path.mkdir()
 
     infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-    multiregion_rt = MultiRegionDataset.from_timeseries_df(infection_rate_metric_df)
+    multiregion_rt = MultiRegionDataset.from_geodata_timeseries_df(infection_rate_metric_df)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.RT_METRIC_COMBINED.value
     multiregion_rt.to_csv(output_path)
     root.info(f"Saving Rt results to {output_path}")
 
     icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-    multiregion_icu = MultiRegionDataset.from_timeseries_df(icu_df)
+    multiregion_icu = MultiRegionDataset.from_geodata_timeseries_df(icu_df)
     output_path = output_dir_path / pyseir.utils.SummaryArtifact.ICU_METRIC_COMBINED.value
     multiregion_icu.to_csv(output_path)
     root.info(f"Saving ICU results to {output_path}")

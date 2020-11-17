@@ -24,11 +24,10 @@ class CountyToCBSAAggregator:
 
     def aggregate(self, dataset_in: MultiRegionDataset) -> MultiRegionDataset:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
-        return MultiRegionDataset.from_timeseries_df(
+        return MultiRegionDataset.from_geodata_timeseries_df(
             self._aggregate_fips_df(dataset_in.data_with_fips, groupby_date=True)
-        ).add_latest_df(
-            # No need to reset latest_data_with_fips LOCATION_ID index because FIPS is used.
-            self._aggregate_fips_df(dataset_in.latest_data_with_fips, groupby_date=False),
+        ).add_static_values(
+            self._aggregate_fips_df(dataset_in.static_data_with_fips, groupby_date=False)
         )
 
     @staticmethod
@@ -70,6 +69,7 @@ class CountyToCBSAAggregator:
         groupby_columns = [CBSA_COLUMN, CommonFields.DATE] if groupby_date else [CBSA_COLUMN]
         df_cbsa = df.groupby(groupby_columns, as_index=False).sum()
         df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
+        df_cbsa[CommonFields.FIPS] = df_cbsa[CBSA_COLUMN]
         df_cbsa = df_cbsa.drop(columns=[CBSA_COLUMN])
 
         return df_cbsa

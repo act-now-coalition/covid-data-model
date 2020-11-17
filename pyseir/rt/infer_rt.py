@@ -13,7 +13,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from scipy import stats as sps
 from matplotlib import pyplot as plt
 
-
 from libs.datasets import combined_datasets
 from libs import pipeline
 

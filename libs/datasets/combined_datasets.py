@@ -106,7 +106,6 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    **ALL_TIMESERIES_FEATURE_DEFINITION,
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
@@ -141,11 +140,11 @@ def load_us_latest_dataset(
 ) -> latest_values_dataset.LatestValuesDataset:
     us_timeseries = load_us_timeseries_dataset(pointer_directory=pointer_directory)
     # Returned object contains a DataFrame with a LOCATION_ID column
-    return LatestValuesDataset(us_timeseries.latest_data_with_fips.reset_index())
+    return LatestValuesDataset(us_timeseries.static_data_with_fips.reset_index())
 
 
 def get_county_name(region: Region) -> Optional[str]:
-    return load_us_timeseries_dataset().get_one_region(region).latest[CommonFields.COUNTY]
+    return load_us_timeseries_dataset().get_county_name(region=region)
 
 
 def build_from_sources(
@@ -315,6 +314,7 @@ class RegionalData:
     timeseries: OneRegionTimeseriesDataset
 
     @staticmethod
+    @functools.lru_cache(maxsize=None)
     def from_region(region: Region) -> "RegionalData":
         us_timeseries = load_us_timeseries_dataset()
         region_timeseries = us_timeseries.get_one_region(region)

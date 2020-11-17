@@ -73,6 +73,11 @@ def test_combined_county_has_some_timeseries_data(fips):
     assert df.loc[date, CommonFields.CURRENT_ICU] > 0
 
 
+def test_get_county_name():
+    assert combined_datasets.get_county_name(Region.from_fips("06059")) == "Orange County"
+    assert combined_datasets.get_county_name(Region.from_fips("48201")) == "Harris County"
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "data_source_cls",

@@ -64,7 +64,7 @@ def test_basic():
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
-    positivity_provenance = all_methods.test_positivity._provenance
+    positivity_provenance = all_methods.test_positivity.provenance
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
         CommonFields.TEST_POSITIVITY: "method2"
@@ -128,7 +128,7 @@ def test_recent_days():
     }
 
     all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=4)
-    positivity_provenance = all_methods.test_positivity._provenance
+    positivity_provenance = all_methods.test_positivity.provenance
     assert positivity_provenance.loc["iso1:us#iso2:us-as"].to_dict() == {
         CommonFields.TEST_POSITIVITY: "method1"
     }
@@ -156,7 +156,7 @@ def test_missing_column_for_one_method():
     ]
     assert (
         AllMethods.run(ts, methods, diff_days=1, recent_days=4)
-        .test_positivity._provenance.loc["iso1:us#iso2:tx"]
+        .test_positivity.provenance.loc["iso1:us#iso2:tx"]
         .at[CommonFields.TEST_POSITIVITY]
         == "method1"
     )
@@ -196,7 +196,7 @@ def test_column_present_with_no_data():
         set_index=False,
     )
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
-    ts = timeseries.MultiRegionDataset.from_timeseries_df(ts_df)
+    ts = timeseries.MultiRegionDataset.from_geodata_timeseries_df(ts_df)
     methods = [
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
@@ -217,7 +217,7 @@ def test_all_columns_na():
         set_index=False,
     )
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
-    ts = timeseries.MultiRegionDataset.from_timeseries_df(ts_df)
+    ts = timeseries.MultiRegionDataset.from_geodata_timeseries_df(ts_df)
     methods = [
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]

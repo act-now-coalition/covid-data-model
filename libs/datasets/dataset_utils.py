@@ -325,8 +325,7 @@ def build_latest_for_column(timeseries_df: pd.DataFrame, column: CommonFields) -
 
     Returns: Series indexed by location_id with the latest value for `column`.
     """
-    assert CommonFields.LOCATION_ID in timeseries_df.columns
-    assert CommonFields.DATE in timeseries_df.columns
+    assert timeseries_df.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
 
-    data = timeseries_df.set_index([CommonFields.LOCATION_ID, CommonFields.DATE]).sort_index()
+    data = timeseries_df.sort_index()
     return data[column].groupby([CommonFields.LOCATION_ID], sort=False).last()
