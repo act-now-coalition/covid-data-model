@@ -351,7 +351,7 @@ def test_lookback_days():
     data = _build_metrics_df(
         f"2020-08-12,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
         f"2020-08-13,36,10,0.1,0.06,,\n"
-        "2020-08-26,,,,,,\n"
+        "2020-08-28,,,,,,\n"
     )
     metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert not metrics.caseDensity
