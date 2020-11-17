@@ -758,3 +758,34 @@ def test_not_removing_short_series():
 
     # Should not modify becasue not higher than threshold
     assert_dataset_like(dataset, result)
+
+
+def test_timeseries_empty_timeseries_and_latest():
+    # Check that empty TimeseriesDataset and LatestValuesDataset create a MultiRegionDataset
+    # and that get_one_region raises expected exception.
+    ts = timeseries.TimeseriesDataset(
+        pd.DataFrame([], columns=[CommonFields.FIPS, CommonFields.DATE])
+    )
+    dataset = timeseries.MultiRegionDataset.from_timeseries_and_latest(
+        ts, ts.latest_values_object()
+    )
+    with pytest.raises(timeseries.RegionLatestNotFound):
+        dataset.get_one_region(Region.from_fips("01001"))
+
+
+def test_timeseries_empty():
+    # Check that empty geodata_timeseries_df creates a MultiRegionDataset
+    # and that get_one_region raises expected exception.
+    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+        pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
+    )
+    with pytest.raises(timeseries.RegionLatestNotFound):
+        dataset.get_one_region(Region.from_fips("01001"))
+
+
+def test_timeseries_empty_static_not_empty():
+    # Check that empty timeseries does not prevent static data working as expected.
+    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+        pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
+    ).add_static_values(pd.DataFrame([{"location_id": "iso1:us#fips:97111", "m1": 1234}]))
+    assert dataset.get_one_region(Region.from_fips("97111")).latest["m1"] == 1234

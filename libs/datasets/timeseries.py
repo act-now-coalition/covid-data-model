@@ -506,6 +506,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
+        if self.timeseries.columns.empty:
+            return pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
         # timeseries is already sorted by DATE with the latest at the bottom.
         long = self.timeseries.stack().droplevel(CommonFields.DATE)
         # `long` has MultiIndex with LOCATION_ID and VARIABLE (added by stack). Keep only the last
@@ -619,6 +621,14 @@ class MultiRegionDataset(SaveableDatasetInterface):
         # provenance (though some variable names are the same), or retire latest as a separate thing upstream.
 
         return dataset
+
+    @staticmethod
+    def from_latest(latest: LatestValuesDataset) -> "MultiRegionDataset":
+        """Creates a new MultiRegionDataset with static data from latest and no timeseries data."""
+        return MultiRegionDataset.from_timeseries_and_latest(
+            TimeseriesDataset(pd.DataFrame([], columns=[CommonFields.FIPS, CommonFields.DATE])),
+            latest,
+        )
 
     def __post_init__(self):
         """Checks that attributes of this object meet certain expectations."""

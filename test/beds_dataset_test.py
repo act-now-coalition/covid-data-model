@@ -1,8 +1,11 @@
 import pytest
 import pandas as pd
-from libs.datasets import custom_aggregations
+from covidactnow.datapublic.common_fields import CommonFields
+
+from libs import pipeline
 from libs.datasets import dataset_utils
 from libs.datasets import beds
+from libs.datasets import timeseries
 from libs.datasets.sources.dh_beds import DHBeds
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 
@@ -102,29 +105,17 @@ def test_dh_beds_loading():
     assert beds_data
 
 
-def test_get_data():
-    beds_data = CovidCareMapBeds.local().beds()
-    data = beds_data.get_record_for_fips("25")
-    assert data
-
-    data = beds_data.get_record_for_fips("NOTSTATE")
-    assert not data
-
-    data = beds_data.get_record_for_fips("99")
-    assert not data
-
-
 def test_pr_aggregation():
-    beds_data = CovidCareMapBeds.local().beds()
-    data = beds_data.get_record_for_fips("72")
+    dataset = timeseries.MultiRegionDataset.from_latest(CovidCareMapBeds.local().beds())
+    data = dataset.get_one_region(pipeline.Region.from_fips("72")).latest
     assert data
     assert data["all_beds_occupancy_rate"] < 1
     assert data["icu_occupancy_rate"] < 1
 
 
-def test_nyc_aggregation():
-    beds_data = CovidCareMapBeds.local().beds()
-    data = beds_data.get_record_for_fips(custom_aggregations.NEW_YORK_COUNTY_FIPS)
+def test_nyc_aggregation(nyc_region):
+    dataset = timeseries.MultiRegionDataset.from_latest(CovidCareMapBeds.local().beds(),)
+    data = dataset.get_one_region(nyc_region).latest
     # Check to make sure that beds occupancy rates are below 1,
     # signaling that it is properly combining occupancy rates.
     assert data["all_beds_occupancy_rate"] < 1
