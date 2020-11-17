@@ -18,9 +18,6 @@ FORCE_MULTIPROCESSING = str(os.environ.get("FORCE_MULTIPROCESSING")).lower() in 
 # In theory, using "spawn" start_method would work, but that triggers a bug in pandarallel
 # (https://github.com/nalepae/pandarallel/issues/72).
 USE_MULTIPROCESSING = FORCE_MULTIPROCESSING or platform.system() != "Darwin"
-if str(os.environ.get("USE_MULTIPROCESSING")).lower() in ("false", "0"):
-    USE_MULTIPROCESSING = False
-
 if not USE_MULTIPROCESSING:
     _log.info(
         "Parallel code via multiprocessing disabled on macOS. Set FORCE_MULTIPROCESSING env var to override."
