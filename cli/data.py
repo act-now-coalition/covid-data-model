@@ -92,7 +92,9 @@ def update(wide_dates_filename, aggregate_to_country: bool):
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
 
     if aggregate_to_country:
-        country_dataset = timeseries.aggregate_states_to_country(multiregion_dataset)
+        country_dataset = timeseries.aggregate_regions(
+            multiregion_dataset, pipeline.us_states_to_country_map()
+        )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
     _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
@@ -120,7 +122,9 @@ def update(wide_dates_filename, aggregate_to_country: bool):
 @click.argument("output_path", type=pathlib.Path)
 def aggregate_states_to_country(output_path: pathlib.Path):
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    country_dataset = timeseries.aggregate_states_to_country(us_timeseries)
+    country_dataset = timeseries.aggregate_regions(
+        us_timeseries, pipeline.us_states_to_country_map()
+    )
     country_dataset.to_csv(output_path)
 
 

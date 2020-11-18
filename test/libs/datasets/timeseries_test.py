@@ -797,17 +797,22 @@ def test_aggregate_states_to_country():
             "location_id,county,aggregate_level,date,m1,m2,population\n"
             "iso1:us#fips:97111,Bar County,county,2020-04-03,3,,\n"
             "iso1:us#fips:97222,Foo County,county,2020-04-01,,10,\n"
-            "iso1:us#fips:97,Great State,state,2020-04-01,1,2,\n"
-            "iso1:us#fips:97,Great State,state,,,,1000\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,1,2,\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-02,3,4,\n"
+            "iso1:us#iso2:us-tx,Texas,state,,,,1000\n"
             "iso1:us#iso2:us-az,Arizona,state,2020-04-01,1,2,\n"
             "iso1:us#iso2:us-az,Arizona,state,,,,2000\n"
         )
     )
-    country = timeseries.aggregate_states_to_country(ts)
+    region_us = Region.from_iso1("us")
+    country = timeseries.aggregate_regions(
+        ts, {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us}
+    )
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,aggregate_level,date,m1,m2,population\n"
             "iso1:us,country,2020-04-01,2,4,\n"
+            "iso1:us,country,2020-04-02,3,4,\n"
             "iso1:us,country,,,,3000\n"
         )
     )

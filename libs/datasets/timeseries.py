@@ -8,6 +8,7 @@ from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
+from typing import Mapping
 from typing import Sequence
 from typing import Tuple
 
@@ -954,11 +955,11 @@ def drop_regions_without_population(
     return mrts.get_locations_subset(locations_with_population)
 
 
-def aggregate_states_to_country(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
-    US_COUNTRY = "iso1:us"
-    # Sorry territories, only including 50 states and DC for now.
-    regions_50 = [pipeline.Region.from_state(state) for state in us_state_abbrev.STATES_50.values()]
-    dataset_states = dataset_in.get_regions_subset(regions_50)
+def aggregate_regions(
+    dataset_in: MultiRegionDataset, aggregate_map: Mapping[Region, Region]
+) -> MultiRegionDataset:
+    dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
+    location_id_map = {key.location_id: value.location_id for key, value in aggregate_map.items()}
     # columns_to_keep = {
     #     CommonFields.CASES,
     #     CommonFields.DEATHS,
@@ -968,35 +969,49 @@ def aggregate_states_to_country(dataset_in: MultiRegionDataset) -> MultiRegionDa
     # for col in list(c for c in dataset_states._timeseries.columns if c not in columns_to_keep):
     #     dataset_states = dataset_states.drop_column_if_present(col)
 
-    assert dataset_states.timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    long_locdatevar = dataset_states.timeseries.rename_axis(columns=PdFields.VARIABLE).stack(
-        dropna=False
-    )
-    long_locdatevar_isna = long_locdatevar.isna()
-    long_datevar_isna_count = long_locdatevar_isna.groupby(
-        [CommonFields.DATE, PdFields.VARIABLE]
-    ).sum()
-    long_missing_some = long_datevar_isna_count.loc[
-        (long_datevar_isna_count > 0) & (long_datevar_isna_count < 4)
-    ]
-    print(
-        long_locdatevar_isna.loc[long_locdatevar_isna]
-        .reset_index(CommonFields.LOCATION_ID)
-        .loc[long_missing_some.index]
-    )
+    ts = dataset_in.timeseries.copy()  # Copy because the index is modified below
+    assert ts.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    # From https://stackoverflow.com/a/56278736
+    old_idx = ts.index.to_frame().rename(columns={CommonFields.LOCATION_ID: "location_id_in"})
+    old_idx.insert(1, CommonFields.LOCATION_ID, old_idx["location_id_in"].map(location_id_map))
+    ts.index = pd.MultiIndex.from_frame(old_idx)
 
-    timeseries = (
-        dataset_states.timeseries.groupby([CommonFields.DATE]).sum(min_count=50).reset_index()
+    long_locdatevar = ts.rename_axis(columns=PdFields.VARIABLE).stack(dropna=False)
+    assert long_locdatevar.index.names == [
+        "location_id_in",
+        CommonFields.LOCATION_ID,
+        CommonFields.DATE,
+        PdFields.VARIABLE,
+    ]
+    long_all_values = pd.concat(
+        {
+            PdFields.VALUE: long_locdatevar,
+            "isna": long_locdatevar.isna().astype(int),
+            "notna": long_locdatevar.notna().astype(int),
+        },
+        axis=1,
     )
-    timeseries[CommonFields.LOCATION_ID.value] = US_COUNTRY
-    timeseries = timeseries.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+    long_all_values["count"] = long_all_values["isna"] + long_all_values["notna"]
+    assert (long_all_values["count"] == 1).all()
+    long_agg = long_all_values.groupby(
+        [CommonFields.LOCATION_ID, CommonFields.DATE, PdFields.VARIABLE]
+    ).sum()
+    long_missing_some = long_agg.loc[(long_agg["isna"] > 0) & (long_agg["isna"] < 4)]
+    long_agg_missing_zero_mask = long_agg["isna"] == 0
+    print(long_all_values.reset_index("location_id_in").loc[long_missing_some.index])
+
+    timeseries_out = (
+        long_agg.loc[long_agg_missing_zero_mask][PdFields.VALUE]
+        .unstack()
+        .reindex(columns=dataset_in.timeseries.columns)
+    )
     us_attributes = pd.DataFrame(
         [
             {
-                CommonFields.LOCATION_ID: US_COUNTRY,
-                CommonFields.POPULATION: dataset_states.static[CommonFields.POPULATION].sum(),
+                CommonFields.LOCATION_ID: Region.from_iso1("us").location_id,
+                # CommonFields.POPULATION: dataset_states.static[CommonFields.POPULATION].sum(),
                 CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTRY.value,
             }
         ]
     ).set_index([CommonFields.LOCATION_ID])
-    return MultiRegionDataset(timeseries=timeseries, static=us_attributes)
+    return MultiRegionDataset(timeseries=timeseries_out, static=us_attributes)
