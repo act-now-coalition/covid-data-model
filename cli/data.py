@@ -8,7 +8,6 @@ import shutil
 import structlog
 
 import click
-from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import google_sheet_helpers, wide_dates_df
 from libs import pipeline

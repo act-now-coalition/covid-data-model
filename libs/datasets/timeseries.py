@@ -1,7 +1,6 @@
 import dataclasses
 import datetime
 import pathlib
-import warnings
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -969,8 +968,8 @@ def aggregate_states_to_country(dataset_in: MultiRegionDataset) -> MultiRegionDa
     # for col in list(c for c in dataset_states._timeseries.columns if c not in columns_to_keep):
     #     dataset_states = dataset_states.drop_column_if_present(col)
 
-    assert dataset_states._timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    long_locdatevar = dataset_states._timeseries.rename_axis(columns=PdFields.VARIABLE).stack(
+    assert dataset_states.timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    long_locdatevar = dataset_states.timeseries.rename_axis(columns=PdFields.VARIABLE).stack(
         dropna=False
     )
     long_locdatevar_isna = long_locdatevar.isna()
@@ -987,7 +986,7 @@ def aggregate_states_to_country(dataset_in: MultiRegionDataset) -> MultiRegionDa
     )
 
     timeseries = (
-        dataset_states._timeseries.groupby([CommonFields.DATE]).sum(min_count=50).reset_index()
+        dataset_states.timeseries.groupby([CommonFields.DATE]).sum(min_count=50).reset_index()
     )
     timeseries[CommonFields.LOCATION_ID.value] = US_COUNTRY
     timeseries = timeseries.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
@@ -995,11 +994,9 @@ def aggregate_states_to_country(dataset_in: MultiRegionDataset) -> MultiRegionDa
         [
             {
                 CommonFields.LOCATION_ID: US_COUNTRY,
-                CommonFields.POPULATION: dataset_states._regional_attributes[
-                    CommonFields.POPULATION
-                ].sum(),
+                CommonFields.POPULATION: dataset_states.static[CommonFields.POPULATION].sum(),
                 CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTRY.value,
             }
         ]
     ).set_index([CommonFields.LOCATION_ID])
-    return MultiRegionDataset(_timeseries=timeseries, _regional_attributes=us_attributes)
+    return MultiRegionDataset(timeseries=timeseries, static=us_attributes)

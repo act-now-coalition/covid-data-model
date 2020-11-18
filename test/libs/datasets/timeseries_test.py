@@ -798,9 +798,9 @@ def test_aggregate_states_to_country():
             "iso1:us#fips:97111,Bar County,county,2020-04-03,3,,\n"
             "iso1:us#fips:97222,Foo County,county,2020-04-01,,10,\n"
             "iso1:us#fips:97,Great State,state,2020-04-01,1,2,\n"
-            "iso1:us#fips:97,Great State,state,,1,2,1000\n"
+            "iso1:us#fips:97,Great State,state,,,,1000\n"
             "iso1:us#iso2:us-az,Arizona,state,2020-04-01,1,2,\n"
-            "iso1:us#iso2:us-az,Arizona,state,,1,2,2000\n"
+            "iso1:us#iso2:us-az,Arizona,state,,,,2000\n"
         )
     )
     country = timeseries.aggregate_states_to_country(ts)
