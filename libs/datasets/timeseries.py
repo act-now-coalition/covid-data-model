@@ -955,6 +955,69 @@ def drop_regions_without_population(
     return mrts.get_locations_subset(locations_with_population)
 
 
+LOCATION_ID_AGG = "location_id_agg"
+
+
+def _aggregate_dataframe_by_region(
+    df_in: pd.DataFrame, location_id_map: Mapping[str, str]
+) -> pd.DataFrame:
+    """Aggregates a DataFrame using given region map. The output contains dates iff the input does."""
+    df = df_in.copy()  # Copy because the index is modified below
+
+    if CommonFields.DATE in df.index.names:
+        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
+    else:
+        groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
+
+    # Add a new level in the MultiIndex with the new location_id_agg
+    # From https://stackoverflow.com/a/56278735
+    old_idx = df.index.to_frame()
+    # Add location_id_agg so that when location_id is removed the remaining MultiIndex levels
+    # match the levels of groupby_columns.
+    old_idx.insert(1, LOCATION_ID_AGG, old_idx[CommonFields.LOCATION_ID].map(location_id_map))
+    df.index = pd.MultiIndex.from_frame(old_idx)
+
+    # Stack into a Series with several levels in the index. dropna=False likely makes this quite a bit
+    # slower but I'm not trying to optimize the performance yet.
+    long_all_values = df.rename_axis(columns=PdFields.VARIABLE).stack(dropna=False)
+    assert long_all_values.index.names == [CommonFields.LOCATION_ID] + groupby_columns
+
+    # Add columns, that when aggregated, will be useful for selecting values to return.
+    long_all_with_counts = pd.concat(
+        {
+            PdFields.VALUE: long_all_values,
+            "isna": long_all_values.isna().astype(int),
+            "notna": long_all_values.notna().astype(int),
+        },
+        axis=1,
+    )
+    long_all_with_counts["count"] = long_all_with_counts["isna"] + long_all_with_counts["notna"]
+    assert (long_all_with_counts["count"] == 1).all()
+
+    long_agg = long_all_with_counts.groupby(groupby_columns).sum()
+
+    # Find aggregated values that have only a few NaN inputs. These are holes in the
+    # returned timeseries caused by a few missing inputs.
+    long_agg_missing_some = (long_agg["isna"] > 0) & (long_agg["isna"] < 2)
+    if not long_agg_missing_some.empty:
+        # TODO(tom): Do something more useful with these.
+        print(
+            long_all_with_counts.reset_index(CommonFields.LOCATION_ID).loc[
+                long_agg_missing_some.index
+            ]
+        )
+
+    # Only keep aggregated values that have zero isna inputs.
+    long_agg_missing_zero_mask = long_agg["isna"] == 0
+
+    return (
+        long_agg.loc[long_agg_missing_zero_mask][PdFields.VALUE]
+        .unstack()
+        .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
+        .reindex(columns=df_in.columns)
+    )
+
+
 def aggregate_regions(
     dataset_in: MultiRegionDataset, aggregate_map: Mapping[Region, Region]
 ) -> MultiRegionDataset:
@@ -968,50 +1031,11 @@ def aggregate_regions(
     # }
     # for col in list(c for c in dataset_states._timeseries.columns if c not in columns_to_keep):
     #     dataset_states = dataset_states.drop_column_if_present(col)
+    timeseries_out = _aggregate_dataframe_by_region(dataset_in.timeseries, location_id_map)
 
-    ts = dataset_in.timeseries.copy()  # Copy because the index is modified below
-    assert ts.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    # From https://stackoverflow.com/a/56278736
-    old_idx = ts.index.to_frame().rename(columns={CommonFields.LOCATION_ID: "location_id_in"})
-    old_idx.insert(1, CommonFields.LOCATION_ID, old_idx["location_id_in"].map(location_id_map))
-    ts.index = pd.MultiIndex.from_frame(old_idx)
-
-    long_locdatevar = ts.rename_axis(columns=PdFields.VARIABLE).stack(dropna=False)
-    assert long_locdatevar.index.names == [
-        "location_id_in",
-        CommonFields.LOCATION_ID,
-        CommonFields.DATE,
-        PdFields.VARIABLE,
-    ]
-    long_all_values = pd.concat(
-        {
-            PdFields.VALUE: long_locdatevar,
-            "isna": long_locdatevar.isna().astype(int),
-            "notna": long_locdatevar.notna().astype(int),
-        },
-        axis=1,
+    static_out = _aggregate_dataframe_by_region(
+        dataset_in.static[[CommonFields.POPULATION]], location_id_map
     )
-    long_all_values["count"] = long_all_values["isna"] + long_all_values["notna"]
-    assert (long_all_values["count"] == 1).all()
-    long_agg = long_all_values.groupby(
-        [CommonFields.LOCATION_ID, CommonFields.DATE, PdFields.VARIABLE]
-    ).sum()
-    long_missing_some = long_agg.loc[(long_agg["isna"] > 0) & (long_agg["isna"] < 4)]
-    long_agg_missing_zero_mask = long_agg["isna"] == 0
-    print(long_all_values.reset_index("location_id_in").loc[long_missing_some.index])
+    static_out[CommonFields.AGGREGATE_LEVEL] = AggregationLevel.COUNTRY.value
 
-    timeseries_out = (
-        long_agg.loc[long_agg_missing_zero_mask][PdFields.VALUE]
-        .unstack()
-        .reindex(columns=dataset_in.timeseries.columns)
-    )
-    us_attributes = pd.DataFrame(
-        [
-            {
-                CommonFields.LOCATION_ID: Region.from_iso1("us").location_id,
-                # CommonFields.POPULATION: dataset_states.static[CommonFields.POPULATION].sum(),
-                CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTRY.value,
-            }
-        ]
-    ).set_index([CommonFields.LOCATION_ID])
-    return MultiRegionDataset(timeseries=timeseries_out, static=us_attributes)
+    return MultiRegionDataset(timeseries=timeseries_out, static=static_out)
