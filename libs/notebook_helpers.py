@@ -9,7 +9,6 @@ from libs.datasets.sources import covid_county_data
 from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
 from libs.datasets.sources import jhu_dataset
-from libs.datasets.sources import nha_hospitalization
 from libs.datasets.sources import texas_hospitalizations
 from libs.datasets.combined_datasets import US_STATES_FILTER
 
@@ -38,7 +37,6 @@ def load_data_sources_by_name() -> Dict[str, TimeseriesDataset]:
     sources = [
         covid_county_data.CovidCountyDataDataSource,
         jhu_dataset.JHUDataset,
-        nha_hospitalization.NevadaHospitalAssociationData,
         texas_hospitalizations.TexasHospitalizations,
         covid_tracking_source.CovidTrackingDataSource,
         nytimes_dataset.NYTimesDataset,
