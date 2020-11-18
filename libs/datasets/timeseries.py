@@ -1033,8 +1033,10 @@ def aggregate_regions(
     #     dataset_states = dataset_states.drop_column_if_present(col)
     timeseries_out = _aggregate_dataframe_by_region(dataset_in.timeseries, location_id_map)
 
+    # TODO(tom): Do something smarter with non-number columns in static. Currently they are
+    #  silently dropped.
     static_out = _aggregate_dataframe_by_region(
-        dataset_in.static[[CommonFields.POPULATION]], location_id_map
+        dataset_in.static.select_dtypes(include="number"), location_id_map
     )
     static_out[CommonFields.AGGREGATE_LEVEL] = AggregationLevel.COUNTRY.value
 

@@ -3,6 +3,7 @@ from typing import Mapping
 import pandas as pd
 
 from libs import pipeline
+from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionDataset
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
@@ -24,11 +25,12 @@ class CountyToCBSAAggregator:
 
     def aggregate(self, dataset_in: MultiRegionDataset) -> MultiRegionDataset:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
-        return MultiRegionDataset.from_geodata_timeseries_df(
-            self._aggregate_fips_df(dataset_in.data_with_fips, groupby_date=True)
-        ).add_static_values(
-            self._aggregate_fips_df(dataset_in.static_data_with_fips, groupby_date=False)
-        )
+        region_map = {
+            pipeline.Region.from_fips(fips): pipeline.Region.from_cbsa_code(cbsa_code)
+            for fips, cbsa_code in self.county_map.items()
+        }
+
+        return timeseries.aggregate_regions(dataset_in, region_map)
 
     @staticmethod
     def from_local_public_data() -> "CountyToCBSAAggregator":
@@ -56,20 +58,3 @@ class CountyToCBSAAggregator:
         )
 
         return CountyToCBSAAggregator(county_map=county_map, cbsa_title_map=cbsa_title_map)
-
-    def _aggregate_fips_df(self, df: pd.DataFrame, groupby_date: bool) -> pd.DataFrame:
-        # Make a copy to avoid modifying the input. DataFrame.assign is an alternative but the API
-        # doesn't work well here.
-        df = df.copy()
-        df[CBSA_COLUMN] = df[CommonFields.FIPS].map(self.county_map)
-
-        # TODO(tom): Put the title in the data when it is clear where it goes in the returned value
-        # TODO(tom): Handle dates with a subset of counties reporting.
-        # TODO(tom): Handle data columns that don't make sense aggregated with sum.
-        groupby_columns = [CBSA_COLUMN, CommonFields.DATE] if groupby_date else [CBSA_COLUMN]
-        df_cbsa = df.groupby(groupby_columns, as_index=False).sum()
-        df_cbsa[CommonFields.LOCATION_ID] = df_cbsa[CBSA_COLUMN].apply(pipeline.cbsa_to_location_id)
-        df_cbsa[CommonFields.FIPS] = df_cbsa[CBSA_COLUMN]
-        df_cbsa = df_cbsa.drop(columns=[CBSA_COLUMN])
-
-        return df_cbsa
