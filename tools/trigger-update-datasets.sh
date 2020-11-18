@@ -18,9 +18,10 @@ prepare () {
 
 execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
+       -H "Accept: application/vnd.github.v3+json" \
       --request POST \
-      --data "{\"event_type\": \"update-dataset-snapshot\" }" \
-      https://api.github.com/repos/covid-projections/covid-data-model/dispatches
+      --data "{ \"ref\": \"master\" }" \
+      https://api.github.com/repos/covid-projections/covid-data-model/actions/workflows/update_repo_datasets.yml/dispatches
 
   echo "Updating combined datasets. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."
 }
