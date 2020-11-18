@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       trigger_api_build:
-        description: 'If "true" API Build will be triggered after dataset update.'
+        description: 'If "true" API snapshot build will be triggered after dataset update.'
         default: 'false'
 
 env:
