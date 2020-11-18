@@ -8,6 +8,8 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
+
+from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
@@ -806,7 +808,9 @@ def test_aggregate_states_to_country():
     )
     region_us = Region.from_iso1("us")
     country = timeseries.aggregate_regions(
-        ts, {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us}
+        ts,
+        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
+        AggregationLevel.COUNTRY,
     )
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(

@@ -11,6 +11,7 @@ import click
 
 from libs import google_sheet_helpers, wide_dates_df
 from libs import pipeline
+from libs.datasets import AggregationLevel
 from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
@@ -93,7 +94,7 @@ def update(wide_dates_filename, aggregate_to_country: bool):
 
     if aggregate_to_country:
         country_dataset = timeseries.aggregate_regions(
-            multiregion_dataset, pipeline.us_states_to_country_map()
+            multiregion_dataset, pipeline.us_states_to_country_map(), AggregationLevel.COUNTRY
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
@@ -120,10 +121,19 @@ def update(wide_dates_filename, aggregate_to_country: bool):
 
 @main.command()
 @click.argument("output_path", type=pathlib.Path)
+def aggregate_cbsa(output_path: pathlib.Path):
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    cbsa_dataset = aggregator.aggregate(us_timeseries)
+    cbsa_dataset.to_csv(output_path)
+
+
+@main.command()
+@click.argument("output_path", type=pathlib.Path)
 def aggregate_states_to_country(output_path: pathlib.Path):
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
     country_dataset = timeseries.aggregate_regions(
-        us_timeseries, pipeline.us_states_to_country_map()
+        us_timeseries, pipeline.us_states_to_country_map(), AggregationLevel.COUNTRY
     )
     country_dataset.to_csv(output_path)
 

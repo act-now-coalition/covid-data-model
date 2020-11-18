@@ -994,32 +994,38 @@ def _aggregate_dataframe_by_region(
     long_all_with_counts["count"] = long_all_with_counts["isna"] + long_all_with_counts["notna"]
     assert (long_all_with_counts["count"] == 1).all()
 
-    long_agg = long_all_with_counts.groupby(groupby_columns).sum()
+    long_agg = long_all_with_counts.groupby(groupby_columns, sort=False).sum()
 
     # Find aggregated values that have only a few NaN inputs. These are holes in the
     # returned timeseries caused by a few missing inputs.
     long_agg_missing_some = (long_agg["isna"] > 0) & (long_agg["isna"] < 2)
     if not long_agg_missing_some.empty:
-        # TODO(tom): Do something more useful with these.
-        print(
-            long_all_with_counts.reset_index(CommonFields.LOCATION_ID).loc[
-                long_agg_missing_some.index
-            ]
-        )
+        print(f"Of {len(long_agg)} values, {long_agg_missing_some.sum()} make little holes.")
+        # TODO(tom): Do something more useful with these. The following is really slow:
+        # print(
+        #     long_all_with_counts.reset_index(CommonFields.LOCATION_ID).loc[
+        #         long_agg_missing_some.index
+        #     ]
+        # )
 
     # Only keep aggregated values that have zero isna inputs.
     long_agg_missing_zero_mask = long_agg["isna"] == 0
 
-    return (
+    df_out = (
         long_agg.loc[long_agg_missing_zero_mask][PdFields.VALUE]
         .unstack()
         .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
+        .sort_index()
         .reindex(columns=df_in.columns)
     )
+    assert df_in.index.names == df_out.index.names
+    return df_out
 
 
 def aggregate_regions(
-    dataset_in: MultiRegionDataset, aggregate_map: Mapping[Region, Region]
+    dataset_in: MultiRegionDataset,
+    aggregate_map: Mapping[Region, Region],
+    aggregate_level: AggregationLevel,
 ) -> MultiRegionDataset:
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
     location_id_map = {key.location_id: value.location_id for key, value in aggregate_map.items()}
@@ -1038,6 +1044,6 @@ def aggregate_regions(
     static_out = _aggregate_dataframe_by_region(
         dataset_in.static.select_dtypes(include="number"), location_id_map
     )
-    static_out[CommonFields.AGGREGATE_LEVEL] = AggregationLevel.COUNTRY.value
+    static_out[CommonFields.AGGREGATE_LEVEL] = aggregate_level.value
 
     return MultiRegionDataset(timeseries=timeseries_out, static=static_out)

@@ -3,6 +3,7 @@ from typing import Mapping
 import pandas as pd
 
 from libs import pipeline
+from libs.datasets import AggregationLevel
 from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionDataset
 from covidactnow.datapublic.common_fields import CommonFields
@@ -30,7 +31,7 @@ class CountyToCBSAAggregator:
             for fips, cbsa_code in self.county_map.items()
         }
 
-        return timeseries.aggregate_regions(dataset_in, region_map)
+        return timeseries.aggregate_regions(dataset_in, region_map, AggregationLevel.CBSA)
 
     @staticmethod
     def from_local_public_data() -> "CountyToCBSAAggregator":
