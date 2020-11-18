@@ -955,6 +955,7 @@ def drop_regions_without_population(
     return mrts.get_locations_subset(locations_with_population)
 
 
+# Column for the aggregated location_id
 LOCATION_ID_AGG = "location_id_agg"
 
 
@@ -1028,19 +1029,14 @@ def aggregate_regions(
     aggregate_level: AggregationLevel,
 ) -> MultiRegionDataset:
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
-    location_id_map = {key.location_id: value.location_id for key, value in aggregate_map.items()}
-    # columns_to_keep = {
-    #     CommonFields.CASES,
-    #     CommonFields.DEATHS,
-    #     CommonFields.TOTAL_TESTS,
-    #     CommonFields.POPULATION,
-    # }
-    # for col in list(c for c in dataset_states._timeseries.columns if c not in columns_to_keep):
-    #     dataset_states = dataset_states.drop_column_if_present(col)
+    location_id_map = {
+        region_in.location_id: region_agg.location_id
+        for region_in, region_agg in aggregate_map.items()
+    }
     timeseries_out = _aggregate_dataframe_by_region(dataset_in.timeseries, location_id_map)
 
     # TODO(tom): Do something smarter with non-number columns in static. Currently they are
-    #  silently dropped.
+    # silently dropped.
     static_out = _aggregate_dataframe_by_region(
         dataset_in.static.select_dtypes(include="number"), location_id_map
     )
