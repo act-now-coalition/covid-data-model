@@ -959,6 +959,10 @@ def drop_regions_without_population(
 LOCATION_ID_AGG = "location_id_agg"
 
 
+def sum_no_nan(series):
+    return series.sum(min_count=len(series))
+
+
 def _aggregate_dataframe_by_region(
     df_in: pd.DataFrame, location_id_map: Mapping[str, str]
 ) -> pd.DataFrame:
@@ -966,9 +970,9 @@ def _aggregate_dataframe_by_region(
     df = df_in.copy()  # Copy because the index is modified below
 
     if CommonFields.DATE in df.index.names:
-        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
+        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE]
     else:
-        groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
+        groupby_columns = [LOCATION_ID_AGG]
 
     # Add a new level in the MultiIndex with the new location_id_agg
     # From https://stackoverflow.com/a/56278735
@@ -978,47 +982,8 @@ def _aggregate_dataframe_by_region(
     old_idx.insert(1, LOCATION_ID_AGG, old_idx[CommonFields.LOCATION_ID].map(location_id_map))
     df.index = pd.MultiIndex.from_frame(old_idx)
 
-    # Stack into a Series with several levels in the index. dropna=False likely makes this quite a bit
-    # slower but I'm not trying to optimize the performance yet.
-    long_all_values = df.rename_axis(columns=PdFields.VARIABLE).stack(dropna=False)
-    assert long_all_values.index.names == [CommonFields.LOCATION_ID] + groupby_columns
-
-    # Add columns, that when aggregated, will be useful for selecting values to return.
-    long_all_with_counts = pd.concat(
-        {
-            PdFields.VALUE: long_all_values,
-            "isna": long_all_values.isna().astype(int),
-            "notna": long_all_values.notna().astype(int),
-        },
-        axis=1,
-    )
-    long_all_with_counts["count"] = long_all_with_counts["isna"] + long_all_with_counts["notna"]
-    assert (long_all_with_counts["count"] == 1).all()
-
-    long_agg = long_all_with_counts.groupby(groupby_columns, sort=False).sum()
-
-    # Find aggregated values that have only a few NaN inputs. These are holes in the
-    # returned timeseries caused by a few missing inputs.
-    long_agg_missing_some = (long_agg["isna"] > 0) & (long_agg["isna"] < 2)
-    if not long_agg_missing_some.empty:
-        print(f"Of {len(long_agg)} values, {long_agg_missing_some.sum()} make little holes.")
-        # TODO(tom): Do something more useful with these. The following is really slow:
-        # print(
-        #     long_all_with_counts.reset_index(CommonFields.LOCATION_ID).loc[
-        #         long_agg_missing_some.index
-        #     ]
-        # )
-
-    # Only keep aggregated values that have zero isna inputs.
-    long_agg_missing_zero_mask = long_agg["isna"] == 0
-
-    df_out = (
-        long_agg.loc[long_agg_missing_zero_mask][PdFields.VALUE]
-        .unstack()
-        .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
-        .sort_index()
-        .reindex(columns=df_in.columns)
-    )
+    df_out = df.groupby(groupby_columns, sort=False).agg({col: sum_no_nan for col in df.columns})
+    df_out = df_out.rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID}).sort_index()
     assert df_in.index.names == df_out.index.names
     return df_out
 
