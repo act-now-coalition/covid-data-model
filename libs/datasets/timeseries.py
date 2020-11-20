@@ -13,6 +13,7 @@ from typing import Sequence
 from typing import Tuple
 
 from covidactnow.datapublic import common_fields
+from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
@@ -959,6 +960,67 @@ def drop_regions_without_population(
 LOCATION_ID_AGG = "location_id_agg"
 
 
+@dataclass(frozen=True)
+class AverageStaticWeightAggregation:
+    """Information about a timeseries field which is aggregated using a weighted average."""
+
+    # timeseries field that gets aggregated using a weighted average
+    field: FieldName
+    # static field that used to produce the weights
+    scale_factor: FieldName
+
+
+AGGREGATIONS = (
+    AverageStaticWeightAggregation(CommonFields.TEST_POSITIVITY, CommonFields.POPULATION),
+    AverageStaticWeightAggregation(CommonFields.CUMULATIVE_HOSPITALIZED, CommonFields.ICU_BEDS),
+)
+
+
+def _apply_scaling_factor(
+    timeseries: pd.DataFrame,
+    static_in: pd.DataFrame,
+    static_agg: pd.DataFrame,
+    location_id_map: Mapping[str, str],
+    aggregations: Sequence[AverageStaticWeightAggregation],
+) -> pd.DataFrame:
+    """Returns a copy of timeseries with some fields scaled according to `aggregations`.
+
+    Args:
+        timeseries: Input un-aggregated timeseries
+        static_in: Input un-aggregated static data, used to find scaling factor
+        static_agg: Aggregated static data
+        location_id_map: Maps from un-aggregated location_id to aggregated location_id
+        aggregations: Describes the fields to be scaled
+        """
+    assert timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    assert static_in.index.names == [CommonFields.LOCATION_ID]
+    assert static_agg.index.names == [CommonFields.LOCATION_ID]
+
+    # Scaled fields are modified in-place
+    timeseries_out = timeseries.copy()
+
+    # For each location in the timeseries, calculate the scaling factor from the static data.
+    scale_factors = pd.DataFrame(
+        [], index=timeseries.index.get_level_values(CommonFields.LOCATION_ID).unique().sort_values()
+    )
+    for scale_factor_field in {agg.scale_factor for agg in aggregations}:
+        if scale_factor_field in static_in.columns and scale_factor_field in static_agg.columns:
+            # Make a series with index of the un-aggregated location_ids that has values of the
+            # corresponding aggregated field value.
+            agg_values = (
+                static_in.index.to_series(index=static_in.index)
+                .map(location_id_map)  # Maps from un-aggregated to aggregated location_id
+                .map(static_agg[scale_factor_field])  # Gets the aggregated value
+            )
+            scale_factors[scale_factor_field] = static_in[scale_factor_field] / agg_values
+
+    for agg in aggregations:
+        if agg.field in timeseries.columns and agg.scale_factor in scale_factors.columns:
+            timeseries_out[agg.field] = timeseries_out[agg.field] * scale_factors[agg.scale_factor]
+
+    return timeseries_out
+
+
 def _aggregate_dataframe_by_region(
     df_in: pd.DataFrame, location_id_map: Mapping[str, str]
 ) -> pd.DataFrame:
@@ -1016,13 +1078,13 @@ def aggregate_regions(
     dataset_in: MultiRegionDataset,
     aggregate_map: Mapping[Region, Region],
     aggregate_level: AggregationLevel,
+    aggregations: Sequence[AverageStaticWeightAggregation] = AGGREGATIONS,
 ) -> MultiRegionDataset:
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
     location_id_map = {
         region_in.location_id: region_agg.location_id
         for region_in, region_agg in aggregate_map.items()
     }
-    timeseries_out = _aggregate_dataframe_by_region(dataset_in.timeseries, location_id_map)
 
     # TODO(tom): Do something smarter with non-number columns in static. Currently they are
     # silently dropped.
@@ -1030,5 +1092,11 @@ def aggregate_regions(
         dataset_in.static.select_dtypes(include="number"), location_id_map
     )
     static_out[CommonFields.AGGREGATE_LEVEL] = aggregate_level.value
+
+    timeseries_scaled = _apply_scaling_factor(
+        dataset_in.timeseries, dataset_in.static, static_out, location_id_map, aggregations
+    )
+
+    timeseries_out = _aggregate_dataframe_by_region(timeseries_scaled, location_id_map)
 
     return MultiRegionDataset(timeseries=timeseries_out, static=static_out)

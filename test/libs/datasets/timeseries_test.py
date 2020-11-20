@@ -820,3 +820,36 @@ def test_aggregate_states_to_country():
         )
     )
     assert_dataset_like(country, expected)
+
+
+def test_aggregate_states_to_country_scale():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,county,aggregate_level,date,m1,m2,population\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,4,2,\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-02,4,4,\n"
+            "iso1:us#iso2:us-tx,Texas,state,,,,2500\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,8,20,\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-02,12,40,\n"
+            "iso1:us#iso2:us-az,Arizona,state,,,,7500\n"
+        )
+    )
+    region_us = Region.from_iso1("us")
+    country = timeseries.aggregate_regions(
+        ts,
+        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
+        AggregationLevel.COUNTRY,
+        [timeseries.AverageStaticWeightAggregation("m1", CommonFields.POPULATION),],
+    )
+    # The column m1 is scaled by population.
+    # On 2020-04-01: 4 * 0.25 + 8 * 0.75 = 7
+    # On 2020-04-02: 4 * 0.25 + 12 * 0.75 = 10
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,aggregate_level,date,m1,m2,population\n"
+            "iso1:us,country,2020-04-01,7,22,\n"
+            "iso1:us,country,2020-04-02,10,44,\n"
+            "iso1:us,country,,,,10000\n"
+        )
+    )
+    assert_dataset_like(country, expected)
