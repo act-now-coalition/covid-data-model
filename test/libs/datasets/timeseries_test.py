@@ -816,7 +816,6 @@ def test_aggregate_states_to_country():
         io.StringIO(
             "location_id,aggregate_level,date,m1,m2,population\n"
             "iso1:us,country,2020-04-01,2,4,\n"
-            "iso1:us,country,2020-04-02,3,4,\n"
             "iso1:us,country,,,,3000\n"
         )
     )

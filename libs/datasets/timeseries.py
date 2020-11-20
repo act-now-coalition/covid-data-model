@@ -978,42 +978,31 @@ def _aggregate_dataframe_by_region(
     old_idx.insert(1, LOCATION_ID_AGG, old_idx[CommonFields.LOCATION_ID].map(location_id_map))
     df.index = pd.MultiIndex.from_frame(old_idx)
 
-    # Stack into a Series with several levels in the index. dropna=False likely makes this quite a bit
-    # slower but I'm not trying to optimize the performance yet.
-    long_all_values = df.rename_axis(columns=PdFields.VARIABLE).stack(dropna=False)
+    # Stack into a Series with several levels in the index.
+    long_all_values = df.rename_axis(columns=PdFields.VARIABLE).stack(dropna=True)
     assert long_all_values.index.names == [CommonFields.LOCATION_ID] + groupby_columns
 
-    # Add columns, that when aggregated, will be useful for selecting values to return.
-    long_all_with_counts = pd.concat(
-        {
-            PdFields.VALUE: long_all_values,
-            "isna": long_all_values.isna().astype(int),
-            "notna": long_all_values.notna().astype(int),
-        },
-        axis=1,
+    # Make a Series with index `location_id_agg` containing the count of regions to be
+    # aggregated for that region.
+    location_id_agg_count = (
+        pd.Series(list(location_id_map.values()))
+        .value_counts()
+        .rename_axis(LOCATION_ID_AGG)
+        .rename("location_id_agg_count")
     )
-    long_all_with_counts["count"] = long_all_with_counts["isna"] + long_all_with_counts["notna"]
-    assert (long_all_with_counts["count"] == 1).all()
 
-    long_agg = long_all_with_counts.groupby(groupby_columns, sort=False).sum()
+    # Aggregate by location_id_agg, optional date and variable. Keep the sum and count of
+    # input values.
+    long_agg = long_all_values.groupby(groupby_columns, sort=False).agg(["sum", "count"])
+    # Join the count of regions in each location_id_agg
+    long_agg = long_agg.join(location_id_agg_count, on=LOCATION_ID_AGG)
 
-    # Find aggregated values that have only a few NaN inputs. These are holes in the
-    # returned timeseries caused by a few missing inputs.
-    long_agg_missing_some = (long_agg["isna"] > 0) & (long_agg["isna"] < 2)
-    if not long_agg_missing_some.empty:
-        print(f"Of {len(long_agg)} values, {long_agg_missing_some.sum()} make little holes.")
-        # TODO(tom): Do something more useful with these. The following is really slow:
-        # print(
-        #     long_all_with_counts.reset_index(CommonFields.LOCATION_ID).loc[
-        #         long_agg_missing_some.index
-        #     ]
-        # )
-
-    # Only keep aggregated values that have zero isna inputs.
-    long_agg_missing_zero_mask = long_agg["isna"] == 0
+    # Only keep aggregated values where the count of aggregated values is the same as the
+    # count of input regions.
+    long_agg_all_present = long_agg.loc[long_agg["count"] == long_agg["location_id_agg_count"]]
 
     df_out = (
-        long_agg.loc[long_agg_missing_zero_mask][PdFields.VALUE]
+        long_agg_all_present["sum"]
         .unstack()
         .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
         .sort_index()
