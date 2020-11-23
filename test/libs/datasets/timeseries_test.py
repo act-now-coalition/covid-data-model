@@ -11,6 +11,7 @@ from covidactnow.datapublic.common_test_helpers import to_dict
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
+from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips
 from test.dataset_utils_test import read_csv_and_index_fips_date
@@ -281,7 +282,9 @@ def _timeseries_sorted_by_location_date(
     ts: timeseries.MultiRegionDataset, drop_na: bool
 ) -> pd.DataFrame:
     """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
-    df = ts.data.sort_values([CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True)
+    df = ts.timeseries.reset_index().sort_values(
+        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+    )
     if drop_na:
         df = df.dropna("columns", "all")
     return df
@@ -789,3 +792,47 @@ def test_timeseries_empty_static_not_empty():
         pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     ).add_static_values(pd.DataFrame([{"location_id": "iso1:us#fips:97111", "m1": 1234}]))
     assert dataset.get_one_region(Region.from_fips("97111")).latest["m1"] == 1234
+
+
+def test_combined():
+    ts1 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,2.2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,3.3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+        )
+    ).add_provenance_csv(
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+    )
+    ts2 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,333\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,333\n"
+            "iso1:us#fips:97222,2020-04-03,Foo County,county,30\n"
+            "iso1:us#fips:97222,2020-04-04,Foo County,county,40\n"
+        )
+    ).add_provenance_csv(
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+    )
+    combined = timeseries.combined_datasets(
+        {DatasetName("ts1"): ts1, DatasetName("ts2"): ts2},
+        {"m1": [DatasetName("ts1"), DatasetName("ts2")]},
+    )
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,2.2\n"
+            "iso1:us#cbsa:10100,2020-04-03,3.3\n"
+            "iso1:us#fips:97111,2020-04-02,2\n"
+            "iso1:us#fips:97111,2020-04-04,4\n"
+            "iso1:us#fips:97222,2020-04-03,30\n"
+            "iso1:us#fips:97222,2020-04-04,40\n"
+        )
+    )  # .add_provenance_csv(
+    #   io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+    #   )
+
+    assert_dataset_like(expected, combined)

@@ -8,10 +8,12 @@ from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
+from typing import Mapping
 from typing import Sequence
 from typing import Tuple
 
 from covidactnow.datapublic import common_fields
+from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
@@ -952,3 +954,60 @@ def drop_regions_without_population(
             "Dropping unexpected regions without populaton", location_ids=sorted(unexpected_drops)
         )
     return mrts.get_locations_subset(locations_with_population)
+
+
+class DatasetName(str):
+    """Human readable name for a dataset, providing some type safety."""
+
+    pass
+
+
+def combined_datasets(
+    datasets: Mapping[DatasetName, MultiRegionDataset],
+    field_dataset_source: Mapping[FieldName, List[DatasetName]],
+) -> MultiRegionDataset:
+    relevant_columns = list(field_dataset_source.keys())
+
+    datasets_long = {
+        name: ds.timeseries_long(relevant_columns).set_index(
+            [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
+        )[PdFields.VALUE]
+        for name, ds in datasets.items()
+    }
+    dates = pd.DatetimeIndex(
+        np.unique(
+            np.hstack(
+                list(df.index.get_level_values(CommonFields.DATE) for df in datasets_long.values())
+            )
+        )
+    )
+    start_date = dates.min()
+    end_date = dates.max()
+    input_date_range = pd.date_range(start=start_date, end=end_date)
+    datasets_wide = {
+        name: df_long.unstack(CommonFields.DATE)
+        .reindex(columns=input_date_range)
+        .rename_axis(columns=CommonFields.DATE)
+        .dropna("index", "all")
+        for name, df_long in datasets_long.items()
+    }
+    fields_to_concat = {}
+    for field, datasets_list in field_dataset_source.items():
+        location_id_so_far = None
+        to_concat = []
+        for dataset_name in datasets_list:
+            wide_df = datasets_wide[dataset_name].loc[field, :]
+            assert wide_df.index.names == [CommonFields.LOCATION_ID]
+            if location_id_so_far is None:
+                to_concat.append(wide_df)
+                location_id_so_far = wide_df.index
+            else:
+                selected_location_id = wide_df.index.difference(location_id_so_far)
+                to_concat.append(wide_df.loc[selected_location_id, :])
+                location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
+        # XXX Do something about provenance
+        fields_to_concat[field] = pd.concat(to_concat)
+    output_wide = pd.concat(fields_to_concat, names=[PdFields.VARIABLE, CommonFields.LOCATION_ID])
+    assert output_wide.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+    assert output_wide.columns.names == [CommonFields.DATE]
+    return MultiRegionDataset(timeseries=output_wide.stack().unstack(PdFields.VARIABLE))
