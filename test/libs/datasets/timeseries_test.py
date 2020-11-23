@@ -831,8 +831,8 @@ def test_combined():
             "iso1:us#fips:97222,2020-04-03,30\n"
             "iso1:us#fips:97222,2020-04-04,40\n"
         )
-    )  # .add_provenance_csv(
-    #   io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
-    #   )
+    ).add_provenance_csv(
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+    )
 
     assert_dataset_like(expected, combined)

@@ -962,23 +962,19 @@ class DatasetName(str):
     pass
 
 
-def combined_datasets(
-    datasets: Mapping[DatasetName, MultiRegionDataset],
-    field_dataset_source: Mapping[FieldName, List[DatasetName]],
-) -> MultiRegionDataset:
-    relevant_columns = list(field_dataset_source.keys())
-
+def _to_datasets_wide_dates_map(
+    datasets: Mapping[DatasetName, MultiRegionDataset], relevant_columns: List[FieldName]
+) -> Mapping[DatasetName, pd.DataFrame]:
     datasets_long = {
         name: ds.timeseries_long(relevant_columns).set_index(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
         )[PdFields.VALUE]
         for name, ds in datasets.items()
     }
+    # Find the earliest and latest dates to make a range covering all timeseries.
     dates = pd.DatetimeIndex(
-        np.unique(
-            np.hstack(
-                list(df.index.get_level_values(CommonFields.DATE) for df in datasets_long.values())
-            )
+        np.hstack(
+            list(df.index.get_level_values(CommonFields.DATE) for df in datasets_long.values())
         )
     )
     start_date = dates.min()
@@ -991,23 +987,42 @@ def combined_datasets(
         .dropna("index", "all")
         for name, df_long in datasets_long.items()
     }
-    fields_to_concat = {}
+    return datasets_wide
+
+
+def combined_datasets(
+    datasets: Mapping[DatasetName, MultiRegionDataset],
+    field_dataset_source: Mapping[FieldName, List[DatasetName]],
+) -> MultiRegionDataset:
+    relevant_columns = list(field_dataset_source.keys())
+
+    datasets_wide = _to_datasets_wide_dates_map(datasets, relevant_columns)
+    field_values_map = {}
+    provenance_to_concat = []
     for field, datasets_list in field_dataset_source.items():
         location_id_so_far = None
-        to_concat = []
+        values_to_concat = []
         for dataset_name in datasets_list:
-            wide_df = datasets_wide[dataset_name].loc[field, :]
-            assert wide_df.index.names == [CommonFields.LOCATION_ID]
+            field_wide_df = datasets_wide[dataset_name].loc[field, :]
+            assert field_wide_df.index.names == [CommonFields.LOCATION_ID]
             if location_id_so_far is None:
-                to_concat.append(wide_df)
-                location_id_so_far = wide_df.index
+                values_to_concat.append(field_wide_df)
+                location_id_so_far = field_wide_df.index
+                provenance_to_concat.append(
+                    datasets[dataset_name].provenance.loc[slice(None), slice(field)]
+                )
             else:
-                selected_location_id = wide_df.index.difference(location_id_so_far)
-                to_concat.append(wide_df.loc[selected_location_id, :])
+                selected_location_id = field_wide_df.index.difference(location_id_so_far)
+                values_to_concat.append(field_wide_df.loc[selected_location_id, :])
                 location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-        # XXX Do something about provenance
-        fields_to_concat[field] = pd.concat(to_concat)
-    output_wide = pd.concat(fields_to_concat, names=[PdFields.VARIABLE, CommonFields.LOCATION_ID])
+                provenance_to_concat.append(
+                    datasets[dataset_name].provenance.loc[selected_location_id, slice(field)]
+                )
+        field_values_map[field] = pd.concat(values_to_concat)
+    output_wide = pd.concat(field_values_map, names=[PdFields.VARIABLE, CommonFields.LOCATION_ID])
+    output_provenance = pd.concat(provenance_to_concat, verify_integrity=True)
     assert output_wide.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
     assert output_wide.columns.names == [CommonFields.DATE]
-    return MultiRegionDataset(timeseries=output_wide.stack().unstack(PdFields.VARIABLE))
+    return MultiRegionDataset(
+        timeseries=output_wide.stack().unstack(PdFields.VARIABLE), provenance=output_provenance
+    )
