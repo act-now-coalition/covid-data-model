@@ -8,6 +8,7 @@ import structlog
 
 import us
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import PdFields
 
 import api
 
@@ -98,14 +99,20 @@ def generate_test_positivity(
     ).join_columns(test_positivity_results.test_positivity)
 
     log = structlog.get_logger()
-    records = []
+    positivity_time_series = {}
+    source_map = {}
     for region, regional_data in joined_dataset.iter_one_regions():
         pos_series, details = top_level_metrics.calculate_or_copy_test_positivity(
             regional_data, log
         )
-        records.append({"pos_series": pos_series, "location_id": region.location_id})
-    df = pd.concat({r["location_id"]: r["pos_series"] for r in records}, axis=1).T
-    df.to_csv(final_result, date_format="%Y-%m-%d", index=True, float_format="%.05g")
+        positivity_time_series[region.location_id] = pos_series
+        source_map[region.location_id] = details.source.value
+    positivity_wide_date_df = pd.DataFrame.from_dict(positivity_time_series, orient="index")
+    source_df = pd.DataFrame.from_dict(source_map, orient="index", columns=[PdFields.PROVENANCE])
+    df = pd.concat([source_df, positivity_wide_date_df], axis=1)
+    # The column headers are output as yyyy-mm-dd 00:00:00; I haven't found an easy way to write
+    # only the date.
+    df.to_csv(final_result, index=True, float_format="%.05g")
 
 
 @main.command()
