@@ -1,19 +1,26 @@
 import logging
 import json
 import pathlib
+from typing import Optional
+
 import click
+import structlog
 
 import us
+from covidactnow.datapublic.common_fields import CommonFields
 
 import api
+
 from api import update_open_api_spec
 from libs import test_positivity
+from libs import top_level_metrics
 from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
 from pyseir.utils import SummaryArtifact
+import pandas as pd
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -59,17 +66,46 @@ def update_v2_schemas(api_output_path, schemas_output_dir):
 @main.command()
 @click.option(
     "--test-positivity-all-methods",
-    default="results/output/test-positivity.csv",
+    default="results/output/test-positivity-all.csv",
     type=pathlib.Path,
 )
-def generate_test_positivity(test_positivity_all_methods: pathlib.Path):
-    active_states = [state.abbr for state in us.STATES]
-    active_states = active_states + ["PR", "MP"]
+@click.option(
+    "--final_result", default="results/output/test-positivity-output.csv", type=pathlib.Path,
+)
+@click.option("--state", type=str)
+@click.option("--fips", type=str)
+def generate_test_positivity(
+    test_positivity_all_methods: pathlib.Path,
+    final_result: pathlib.Path,
+    state: Optional[str],
+    fips: Optional[str],
+):
+    if state:
+        active_states = [state]
+    else:
+        active_states = [state.abbr for state in us.STATES]
+        active_states = active_states + ["PR", "MP"]
+
     selected_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(
-        exclude_county_999=True, states=active_states
+        exclude_county_999=True, states=active_states, fips=fips,
     )
     test_positivity_results = test_positivity.AllMethods.run(selected_dataset)
     test_positivity_results.write(test_positivity_all_methods)
+
+    # Similar to test_positivity.run_and_maybe_join_columns
+    joined_dataset = selected_dataset.drop_column_if_present(
+        CommonFields.TEST_POSITIVITY
+    ).join_columns(test_positivity_results.test_positivity)
+
+    log = structlog.get_logger()
+    records = []
+    for region, regional_data in joined_dataset.iter_one_regions():
+        pos_series, details = top_level_metrics.calculate_or_copy_test_positivity(
+            regional_data, log
+        )
+        records.append({"pos_series": pos_series, "location_id": region.location_id})
+    df = pd.concat({r["location_id"]: r["pos_series"] for r in records}, axis=1).T
+    df.to_csv(final_result, date_format="%Y-%m-%d", index=True, float_format="%.05g")
 
 
 @main.command()
