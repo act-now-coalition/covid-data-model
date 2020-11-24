@@ -219,7 +219,7 @@ class AllMethods:
         return list(set(chain.from_iterable(method.columns for method in methods)))
 
     def write(self, csv_path: pathlib.Path):
-        self.all_methods_timeseries.dropna("columns", "all").to_csv(
+        self.all_methods_timeseries.dropna("columns", "all").sort_index().to_csv(
             csv_path, date_format="%Y-%m-%d", index=True, float_format="%.05g",
         )
 

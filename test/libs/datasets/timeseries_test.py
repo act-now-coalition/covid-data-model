@@ -283,7 +283,9 @@ def _timeseries_sorted_by_location_date(
     ts: timeseries.MultiRegionDataset, drop_na: bool
 ) -> pd.DataFrame:
     """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
-    df = ts.data.sort_values([CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True)
+    df = ts.timeseries.reset_index().sort_values(
+        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+    )
     if drop_na:
         df = df.dropna("columns", "all")
     return df

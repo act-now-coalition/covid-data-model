@@ -542,7 +542,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
         timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
             timeseries_wide_dates.columns
         )
-        timeseries_wide_variables = timeseries_wide_dates.stack().unstack(PdFields.VARIABLE)
+        timeseries_wide_variables = (
+            timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
+        )
         return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
     @staticmethod
@@ -671,7 +673,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         if self.timeseries.columns.names == [None]:
             # TODO(tom): Ideally __post_init__ doesn't modify any values but tracking
             # down all the places that create a DataFrame to add a column name seems like
-            # a PITA. I'll do it another day and hack it for now.
+            # a PITA. After that is done remove this branch, leaving only the assert check.
             self.timeseries.rename_axis(columns=PdFields.VARIABLE, inplace=True)
         else:
             assert self.timeseries.columns.names == [PdFields.VARIABLE]
@@ -685,6 +687,12 @@ class MultiRegionDataset(SaveableDatasetInterface):
         assert self.provenance.index.is_unique
         assert self.provenance.index.is_monotonic_increasing
         assert self.provenance.name == PdFields.PROVENANCE
+        # Check that all provenance location_id are in timeseries location_id
+        assert (
+            self.provenance.index.get_level_values(CommonFields.LOCATION_ID)
+            .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
+            .empty
+        )
         self._check_fips()
 
     def _check_fips(self):
@@ -817,8 +825,15 @@ class MultiRegionDataset(SaveableDatasetInterface):
             timeseries_wide_dates.stack()
             .unstack(PdFields.VARIABLE)
             .reindex(columns=self.timeseries.columns)
+            .sort_index()
         )
-        return dataclasses.replace(self, timeseries=timeseries_wide_variables)
+        # Only keep provenance information for timeseries in the new timeseries_wide_dates.
+        provenance = self.provenance.reindex(
+            self.provenance.index.intersection(timeseries_wide_dates.index)
+        ).sort_index()
+        return dataclasses.replace(
+            self, timeseries=timeseries_wide_variables, provenance=provenance
+        )
 
     def to_csv(self, path: pathlib.Path, write_timeseries_latest_values=False):
         """Persists timeseries to CSV.
