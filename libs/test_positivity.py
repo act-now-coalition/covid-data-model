@@ -214,16 +214,16 @@ class AllMethods:
         )
         # For debugging create a DataFrame with the calculated timeseries of all methods, including
         # timeseries that are not recent.
-        all_methods = pd.concat(
-            {
-                name: ds.timeseries_wide_dates().droplevel(PdFields.VARIABLE)
-                for name, ds in calculated_dataset_map.items()
-            },
-            names=[PdFields.DATASET, CommonFields.LOCATION_ID],
-            sort=True,
-        ).dropna("columns", "all")
-        all_methods = all_methods.reorder_levels([CommonFields.LOCATION_ID, PdFields.DATASET])
-
+        all_datasets_df = pd.concat(
+            {name: ds.timeseries_wide_dates() for name, ds in calculated_dataset_map.items()},
+            names=[PdFields.DATASET, CommonFields.LOCATION_ID, PdFields.VARIABLE],
+        )
+        all_methods = (
+            all_datasets_df.xs(CommonFields.TEST_POSITIVITY, level=PdFields.VARIABLE)
+            .sort_index()
+            .reindex(columns=dates)
+            .reorder_levels([CommonFields.LOCATION_ID, PdFields.DATASET])
+        )
         return AllMethods(all_methods_timeseries=all_methods, test_positivity=test_positivity)
 
     @staticmethod
