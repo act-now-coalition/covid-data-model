@@ -8,10 +8,13 @@ represents a geographical area (state, county, metro area, etc).
 import re
 import warnings
 from dataclasses import dataclass
+from typing import Mapping
 from typing import Optional
 
 import us
 from typing_extensions import final
+
+from libs import us_state_abbrev
 from libs.datasets.dataset_utils import AggregationLevel
 
 
@@ -113,6 +116,12 @@ class Region:
         fips = location_id_to_fips(location_id)
         return Region(location_id=location_id, fips=fips)
 
+    @staticmethod
+    def from_iso1(iso1: str) -> "Region":
+        assert len(iso1) == 2
+        assert iso1 == "us"  # Remove when we start supporting other countries :-)
+        return Region(location_id=f"iso1:{iso1}", fips=None)
+
     @property
     def state(self) -> Optional[str]:
         state_obj = self.state_obj()
@@ -153,3 +162,11 @@ class Region:
         if len(self.fips) != 5:
             raise ValueError(f"No state for {self}")
         return Region.from_fips(self.fips[:2])
+
+
+def us_states_to_country_map() -> Mapping[Region, Region]:
+    us_country_region = Region.from_location_id("iso1:us")
+    # Sorry US Territories, only including 50 states and DC for now.
+    return {
+        Region.from_state(state): us_country_region for state in us_state_abbrev.STATES_50.values()
+    }
