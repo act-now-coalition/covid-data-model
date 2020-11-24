@@ -35,13 +35,6 @@ prepare () {
     exit 0
   fi
 
-  # We have daily jobs scheduled at 00:30 and 12:30 GMT. We want to run after the 12:30 one.
-  currenttime=$(date -u +%H:%M)
-  if [[ "$currenttime" < "12:00" ]]; then
-    echo "Not triggering covid-projections update-snapshot since time (${currenttime}) is before 12:00 GMT."
-    exit 0
-  fi
-
   if [[ -z ${GITHUB_TOKEN:-} ]]; then
     echo "Error: GITHUB_TOKEN must be set to a personal access token. See:"
     echo "https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line"
