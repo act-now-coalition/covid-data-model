@@ -66,18 +66,20 @@ def update_v2_schemas(api_output_path, schemas_output_dir):
 
 @main.command()
 @click.option(
-    "--test-positivity-all-methods",
-    default="results/output/test-positivity-all.csv",
-    type=pathlib.Path,
+    "--test-positivity-all-methods", default="test-positivity-all.csv", type=pathlib.Path,
 )
 @click.option(
-    "--final_result", default="results/output/test-positivity-output.csv", type=pathlib.Path,
+    "--final-result", default="test-positivity-output.csv", type=pathlib.Path,
+)
+@click.option(
+    "--output-dir", default="results/output", type=pathlib.Path,
 )
 @click.option("--state", type=str)
 @click.option("--fips", type=str)
 def generate_test_positivity(
     test_positivity_all_methods: pathlib.Path,
     final_result: pathlib.Path,
+    output_dir: pathlib.Path,
     state: Optional[str],
     fips: Optional[str],
 ):
@@ -91,7 +93,7 @@ def generate_test_positivity(
         exclude_county_999=True, states=active_states, fips=fips,
     )
     test_positivity_results = test_positivity.AllMethods.run(selected_dataset)
-    test_positivity_results.write(test_positivity_all_methods)
+    test_positivity_results.write(output_dir / test_positivity_all_methods)
 
     # Similar to test_positivity.run_and_maybe_join_columns
     joined_dataset = selected_dataset.drop_column_if_present(
@@ -112,7 +114,7 @@ def generate_test_positivity(
     df = pd.concat([source_df, positivity_wide_date_df], axis=1, sort=True)
     # The column headers are output as yyyy-mm-dd 00:00:00; I haven't found an easy way to write
     # only the date.
-    df.to_csv(final_result, index=True, float_format="%.05g")
+    df.to_csv(output_dir / final_result, index=True, float_format="%.05g")
 
 
 @main.command()
