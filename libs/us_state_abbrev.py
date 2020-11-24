@@ -68,6 +68,7 @@ US_STATE_ABBREV = {
     "Wyoming": "WY",
 }
 
+# The 50 states and DC
 STATES_50 = {
     "Alabama": "AL",
     "Alaska": "AK",
