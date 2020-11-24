@@ -8,6 +8,7 @@ from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
+from typing import Mapping
 from typing import Sequence
 from typing import Tuple
 
@@ -952,3 +953,82 @@ def drop_regions_without_population(
             "Dropping unexpected regions without populaton", location_ids=sorted(unexpected_drops)
         )
     return mrts.get_locations_subset(locations_with_population)
+
+
+# Column for the aggregated location_id
+LOCATION_ID_AGG = "location_id_agg"
+
+
+def _aggregate_dataframe_by_region(
+    df_in: pd.DataFrame, location_id_map: Mapping[str, str]
+) -> pd.DataFrame:
+    """Aggregates a DataFrame using given region map. The output contains dates iff the input does."""
+    df = df_in.copy()  # Copy because the index is modified below
+
+    if CommonFields.DATE in df.index.names:
+        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
+    else:
+        groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
+
+    # Add a new level in the MultiIndex with the new location_id_agg
+    # From https://stackoverflow.com/a/56278735
+    old_idx = df.index.to_frame()
+    # Add location_id_agg so that when location_id is removed the remaining MultiIndex levels
+    # match the levels of groupby_columns.
+    old_idx.insert(1, LOCATION_ID_AGG, old_idx[CommonFields.LOCATION_ID].map(location_id_map))
+    df.index = pd.MultiIndex.from_frame(old_idx)
+
+    # Stack into a Series with several levels in the index.
+    long_all_values = df.rename_axis(columns=PdFields.VARIABLE).stack(dropna=True)
+    assert long_all_values.index.names == [CommonFields.LOCATION_ID] + groupby_columns
+
+    # Make a Series with index `location_id_agg` containing the count of regions to be
+    # aggregated for that region.
+    location_id_agg_count = (
+        pd.Series(list(location_id_map.values()))
+        .value_counts()
+        .rename_axis(LOCATION_ID_AGG)
+        .rename("location_id_agg_count")
+    )
+
+    # Aggregate by location_id_agg, optional date and variable. Keep the sum and count of
+    # input values.
+    long_agg = long_all_values.groupby(groupby_columns, sort=False).agg(["sum", "count"])
+    # Join the count of regions in each location_id_agg
+    long_agg = long_agg.join(location_id_agg_count, on=LOCATION_ID_AGG)
+
+    # Only keep aggregated values where the count of aggregated values is the same as the
+    # count of input regions.
+    long_agg_all_present = long_agg.loc[long_agg["count"] == long_agg["location_id_agg_count"]]
+
+    df_out = (
+        long_agg_all_present["sum"]
+        .unstack()
+        .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
+        .sort_index()
+        .reindex(columns=df_in.columns)
+    )
+    assert df_in.index.names == df_out.index.names
+    return df_out
+
+
+def aggregate_regions(
+    dataset_in: MultiRegionDataset,
+    aggregate_map: Mapping[Region, Region],
+    aggregate_level: AggregationLevel,
+) -> MultiRegionDataset:
+    dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
+    location_id_map = {
+        region_in.location_id: region_agg.location_id
+        for region_in, region_agg in aggregate_map.items()
+    }
+    timeseries_out = _aggregate_dataframe_by_region(dataset_in.timeseries, location_id_map)
+
+    # TODO(tom): Do something smarter with non-number columns in static. Currently they are
+    # silently dropped.
+    static_out = _aggregate_dataframe_by_region(
+        dataset_in.static.select_dtypes(include="number"), location_id_map
+    )
+    static_out[CommonFields.AGGREGATE_LEVEL] = aggregate_level.value
+
+    return MultiRegionDataset(timeseries=timeseries_out, static=static_out)

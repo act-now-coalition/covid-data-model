@@ -8,6 +8,8 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
+
+from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
@@ -308,7 +310,7 @@ def assert_dataset_like(
     """Asserts that two datasets contain similar date, ignoring order."""
     ts1 = _timeseries_sorted_by_location_date(ds1, drop_na=drop_na_timeseries)
     ts2 = _timeseries_sorted_by_location_date(ds2, drop_na=drop_na_timeseries)
-    pd.testing.assert_frame_equal(ts1, ts2, check_like=True)
+    pd.testing.assert_frame_equal(ts1, ts2, check_like=True, check_dtype=False)
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
     pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
@@ -789,3 +791,32 @@ def test_timeseries_empty_static_not_empty():
         pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     ).add_static_values(pd.DataFrame([{"location_id": "iso1:us#fips:97111", "m1": 1234}]))
     assert dataset.get_one_region(Region.from_fips("97111")).latest["m1"] == 1234
+
+
+def test_aggregate_states_to_country():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,county,aggregate_level,date,m1,m2,population\n"
+            "iso1:us#fips:97111,Bar County,county,2020-04-03,3,,\n"
+            "iso1:us#fips:97222,Foo County,county,2020-04-01,,10,\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,1,2,\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-02,3,4,\n"
+            "iso1:us#iso2:us-tx,Texas,state,,,,1000\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,1,2,\n"
+            "iso1:us#iso2:us-az,Arizona,state,,,,2000\n"
+        )
+    )
+    region_us = Region.from_iso1("us")
+    country = timeseries.aggregate_regions(
+        ts,
+        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
+        AggregationLevel.COUNTRY,
+    )
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,aggregate_level,date,m1,m2,population\n"
+            "iso1:us,country,2020-04-01,2,4,\n"
+            "iso1:us,country,,,,3000\n"
+        )
+    )
+    assert_dataset_like(country, expected)

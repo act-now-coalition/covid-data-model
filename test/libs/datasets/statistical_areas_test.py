@@ -19,13 +19,14 @@ def test_load_from_local_public_data():
             "fips,state,aggregate_level,county,m1,date,foo\n"
             "48059,ZZ,county,North County,3,2020-05-03,33\n"
             "48253,ZZ,county,South County,4,2020-05-03,77\n"
+            "48441,ZZ,county,Other County,2,2020-05-03,41\n"
         )
     )
     ts_in = MultiRegionDataset.from_timeseries_and_latest(ts, ts.latest_values_object())
     ts_out = agg.aggregate(ts_in)
     ts_cbsa = ts_out.get_one_region(Region.from_cbsa_code("10180"))
     assert ts_cbsa.date_indexed["m1"].to_dict() == {
-        pd.to_datetime("2020-05-03"): 7,
+        pd.to_datetime("2020-05-03"): 9,
     }
 
 
@@ -36,6 +37,9 @@ def test_aggregate():
             "55005,ZZ,county,North County,1,2020-05-01,11\n"
             "55005,ZZ,county,North County,2,2020-05-02,22\n"
             "55005,ZZ,county,North County,3,2020-05-03,33\n"
+            "55005,ZZ,county,North County,0,2020-05-04,0\n"
+            "55006,ZZ,county,South County,0,2020-05-01,0\n"
+            "55006,ZZ,county,South County,0,2020-05-02,0\n"
             "55006,ZZ,county,South County,3,2020-05-03,44\n"
             "55006,ZZ,county,South County,4,2020-05-04,55\n"
             "55,ZZ,state,Grand State,41,2020-05-01,66\n"

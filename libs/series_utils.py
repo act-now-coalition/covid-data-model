@@ -57,9 +57,7 @@ def smooth_with_rolling_average(
         return series
 
 
-def interpolate_stalled_and_missing_values(
-    series: pd.Series, interpolate_stalled: bool = True
-) -> pd.Series:
+def interpolate_stalled_and_missing_values(series: pd.Series) -> pd.Series:
     """Interpolates periods where values have stopped increasing or have gaps.
 
     Args:
@@ -69,8 +67,7 @@ def interpolate_stalled_and_missing_values(
     start, end = series.first_valid_index(), series.last_valid_index()
     series_with_values = series.loc[start:end]
 
-    if interpolate_stalled:
-        series_with_values[(series_with_values.diff() == 0)] = None
+    series_with_values[series_with_values.diff() == 0] = None
     # Use the index to determine breaks between data (so
     # missing data is not improperly interpolated)
     series.loc[start:end] = series_with_values.interpolate(method="time").apply(np.floor)
