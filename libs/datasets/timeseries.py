@@ -12,7 +12,6 @@ from typing import Mapping
 from typing import Sequence
 from typing import Tuple
 
-from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from pandas.core.dtypes.common import is_numeric_dtype
@@ -592,6 +591,13 @@ class MultiRegionDataset(SaveableDatasetInterface):
         series = df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])[PdFields.PROVENANCE]
         return self.add_provenance_series(series)
 
+    def add_provenance_all(self, provenance: str) -> "MultiRegionDataset":
+        return self.add_provenance_series(
+            pd.Series([], dtype=str, name=PdFields.PROVENANCE).reindex(
+                self.timeseries_wide_dates().index, fill_value=provenance
+            )
+        )
+
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
         """Returns a new object containing data in self and given provenance information."""
         if not self.provenance.empty:
@@ -673,7 +679,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         if self.timeseries.columns.names == [None]:
             # TODO(tom): Ideally __post_init__ doesn't modify any values but tracking
             # down all the places that create a DataFrame to add a column name seems like
-            # a PITA. I'll do it another day and hack it for now.
+            # a PITA. After that is done remove this branch, leaving only the assert check.
             self.timeseries.rename_axis(columns=PdFields.VARIABLE, inplace=True)
         else:
             assert self.timeseries.columns.names == [PdFields.VARIABLE]
@@ -687,6 +693,12 @@ class MultiRegionDataset(SaveableDatasetInterface):
         assert self.provenance.index.is_unique
         assert self.provenance.index.is_monotonic_increasing
         assert self.provenance.name == PdFields.PROVENANCE
+        # Check that all provenance location_id are in timeseries location_id
+        assert (
+            self.provenance.index.get_level_values(CommonFields.LOCATION_ID)
+            .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
+            .empty
+        )
         self._check_fips()
 
     def _check_fips(self):
@@ -820,7 +832,13 @@ class MultiRegionDataset(SaveableDatasetInterface):
             .unstack(PdFields.VARIABLE)
             .reindex(columns=self.timeseries.columns)
         )
-        return dataclasses.replace(self, timeseries=timeseries_wide_variables)
+        # Only keep provenance information for timeseries in the new timeseries_wide_dates.
+        provenance = self.provenance.reindex(
+            self.provenance.index.intersection(timeseries_wide_dates.index)
+        ).sort_index()
+        return dataclasses.replace(
+            self, timeseries=timeseries_wide_variables, provenance=provenance
+        )
 
     def to_csv(self, path: pathlib.Path, write_timeseries_latest_values=False):
         """Persists timeseries to CSV.
@@ -1012,31 +1030,25 @@ class DatasetName(str):
 
 
 def _to_datasets_wide_dates_map(
-    datasets: Mapping[DatasetName, MultiRegionDataset], relevant_columns: List[FieldName]
+    datasets: Mapping[DatasetName, MultiRegionDataset]
 ) -> Mapping[DatasetName, pd.DataFrame]:
-    datasets_long = {
-        name: ds.timeseries_long(relevant_columns).set_index(
-            [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
-        )[PdFields.VALUE]
-        for name, ds in datasets.items()
-    }
+    datasets_wide = {name: ds.timeseries_wide_dates() for name, ds in datasets.items()}
     # Find the earliest and latest dates to make a range covering all timeseries.
     dates = pd.DatetimeIndex(
         np.hstack(
-            list(df.index.get_level_values(CommonFields.DATE) for df in datasets_long.values())
+            list(df.columns.get_level_values(CommonFields.DATE) for df in datasets_wide.values())
         )
     )
     start_date = dates.min()
     end_date = dates.max()
-    input_date_range = pd.date_range(start=start_date, end=end_date)
-    datasets_wide = {
-        name: df_long.unstack(CommonFields.DATE)
-        .reindex(columns=input_date_range)
-        .rename_axis(columns=CommonFields.DATE)
-        .dropna("index", "all")
-        for name, df_long in datasets_long.items()
+    input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
+    datasets_wide_reindexed = {
+        name: df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID]).reindex(
+            columns=input_date_range
+        )
+        for name, df in datasets_wide.items()
     }
-    return datasets_wide
+    return datasets_wide_reindexed
 
 
 def combined_datasets(
@@ -1045,7 +1057,7 @@ def combined_datasets(
 ) -> MultiRegionDataset:
     relevant_columns = list(field_dataset_source.keys())
 
-    datasets_wide = _to_datasets_wide_dates_map(datasets, relevant_columns)
+    datasets_wide = _to_datasets_wide_dates_map(datasets)
     field_values_map = {}
     provenance_to_concat = []
     for field, datasets_list in field_dataset_source.items():
@@ -1069,9 +1081,10 @@ def combined_datasets(
                 )
         field_values_map[field] = pd.concat(values_to_concat)
     output_wide = pd.concat(field_values_map, names=[PdFields.VARIABLE, CommonFields.LOCATION_ID])
-    output_provenance = pd.concat(provenance_to_concat, verify_integrity=True)
+    output_provenance = pd.concat(provenance_to_concat, verify_integrity=True).sort_index()
     assert output_wide.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
     assert output_wide.columns.names == [CommonFields.DATE]
     return MultiRegionDataset(
-        timeseries=output_wide.stack().unstack(PdFields.VARIABLE), provenance=output_provenance
+        timeseries=output_wide.stack().unstack(PdFields.VARIABLE).sort_index(),
+        provenance=output_provenance,
     )

@@ -48,6 +48,14 @@ class Method(ABC):
         pass
 
 
+def _append_variable_index_level(df: pd.DataFrame, field_name: FieldName) -> None:
+    """Add a level to df.index with a constant value, in-place"""
+    assert df.index.names == [CommonFields.LOCATION_ID]
+    df.index = pd.MultiIndex.from_product(
+        [df.index, [field_name]], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+    )
+
+
 @dataclasses.dataclass
 class DivisionMethod(Method):
     """A method of calculating test positivity by dividing a numerator by a denominator"""
@@ -71,7 +79,10 @@ class DivisionMethod(Method):
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
-        return MultiRegionDataset.from_wide_date_df(wide_date_df, default_provenance=self._name)
+        _append_variable_index_level(wide_date_df, CommonFields.TEST_POSITIVITY)
+        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_all(
+            self._name
+        )
 
 
 @dataclasses.dataclass
@@ -95,7 +106,12 @@ class PassThruMethod(Method):
         # df has the field name as the first level of the index. delta_df.loc[field, :] returns a
         # DataFrame without the field label
         wide_date_df = df.loc[self._column, :]
-        return MultiRegionDataset.from_wide_date_df(wide_date_df, default_provenance=self._name)
+        # Optional optimization: The following likely adds the variable/field/column name back in
+        # to the index which was just taken out. Consider skipping reindexing.
+        _append_variable_index_level(wide_date_df, CommonFields.TEST_POSITIVITY)
+        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_all(
+            self._name
+        )
 
 
 TEST_POSITIVITY_METHODS = (
@@ -156,8 +172,10 @@ class AllMethods:
         if input_wide.empty:
             raise NoRealTimeseriesValuesException()
         dates = input_wide.columns.get_level_values(CommonFields.DATE)
-        end_date = dates.max()
-        recent_date_range = pd.date_range(end=end_date, periods=recent_days).intersection(dates)
+        # The oldest date that is considered recent/not-stale. If recent_days is 1 then this is
+        # the most recent day in the input.
+        assert recent_days >= 1
+        recent_date_cutoff = dates.max() + pd.to_timedelta(1 - recent_days, "D")
 
         methods_with_data = AllMethods._methods_with_columns_available(
             methods, input_wide.index.get_level_values(PdFields.VARIABLE).unique()
@@ -173,32 +191,29 @@ class AllMethods:
             timeseries.DatasetName(method.name): method.calculate(input_wide, diff_df)
             for method in methods_with_data
         }
-        timeseries.combined_datasets(
-            calculated_dataset_map,
+        calculated_dataset_recent_map = {
+            name: ds.drop_stale_timeseries(recent_date_cutoff)
+            for name, ds in calculated_dataset_map.items()
+        }
+        test_positivity = timeseries.combined_datasets(
+            calculated_dataset_recent_map,
             {CommonFields.TEST_POSITIVITY: list(calculated_dataset_map.keys())},
         )
-
-        # Drop stale ts
-        has_recent_data = all_wide.loc[:, recent_date_range].notna().any(axis=1)
-        all_recent_data = all_wide.loc[has_recent_data, :].reset_index()
-        all_recent_data[PdFields.VARIABLE] = all_recent_data[PdFields.VARIABLE].astype(
-            method_cat_type
+        # For debugging create a DataFrame with the calculated timeseries of all methods, including
+        # timeseries that are not recent.
+        all_methods = (
+            pd.concat(
+                {
+                    name: ds.timeseries_wide_dates().droplevel(PdFields.VARIABLE)
+                    for name, ds in calculated_dataset_map.items()
+                },
+                names=["dataset", CommonFields.LOCATION_ID],
+            )
+            .reorder_levels([CommonFields.LOCATION_ID, "dataset"])
+            .reindex(columns=dates)
         )
-        first = all_recent_data.groupby(CommonFields.LOCATION_ID).first()
-        provenance = first[PdFields.VARIABLE].astype(str).rename(PdFields.PROVENANCE)
-        provenance.index = pd.MultiIndex.from_product(
-            [provenance.index, [CommonFields.TEST_POSITIVITY]],
-            names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
-        )
-        positivity = first.drop(columns=[PdFields.VARIABLE])
 
-        # Use from_geodata_timeseries_df to build the MultiRegionDataset because it cleans
-        # up the dtypes.
-        test_positivity = MultiRegionDataset.from_geodata_timeseries_df(
-            positivity.stack().rename(CommonFields.TEST_POSITIVITY).reset_index()
-        ).add_provenance_series(provenance)
-
-        return AllMethods(all_methods_timeseries=all_wide, test_positivity=test_positivity)
+        return AllMethods(all_methods_timeseries=all_methods, test_positivity=test_positivity)
 
     @staticmethod
     def _methods_with_columns_available(
