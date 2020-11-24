@@ -150,23 +150,14 @@ class AllMethods:
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
 
-        input_long = dataset_in._timeseries_long(relevant_columns).reorder_levels(
-            [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
+        input_wide = dataset_in.timeseries_wide_dates().reorder_levels(
+            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         )
-        dates = input_long.index.get_level_values(CommonFields.DATE)
-        if dates.empty:
+        if input_wide.empty:
             raise NoRealTimeseriesValuesException()
-        start_date = dates.min()
+        dates = input_wide.columns.get_level_values(CommonFields.DATE)
         end_date = dates.max()
-        input_date_range = pd.date_range(start=start_date, end=end_date)
-        recent_date_range = pd.date_range(end=end_date, periods=recent_days).intersection(
-            input_date_range
-        )
-        input_wide = (
-            input_long.unstack(CommonFields.DATE)
-            .reindex(columns=input_date_range)
-            .rename_axis(columns=CommonFields.DATE)
-        )
+        recent_date_range = pd.date_range(end=end_date, periods=recent_days).intersection(dates)
 
         methods_with_data = AllMethods._methods_with_columns_available(
             methods, input_wide.index.get_level_values(PdFields.VARIABLE).unique()

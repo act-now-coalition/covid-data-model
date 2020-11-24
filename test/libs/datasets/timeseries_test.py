@@ -477,7 +477,7 @@ def test_timeseries_long():
         parse_dates=[CommonFields.DATE],
         dtype={"value": float},
     )
-    long_series = ts._timeseries_long(["m1", "m2"])
+    long_series = ts._timeseries_long()
     assert long_series.index.names == [
         CommonFields.LOCATION_ID,
         CommonFields.DATE,
@@ -486,6 +486,55 @@ def test_timeseries_long():
     assert long_series.name == PdFields.VALUE
     long_df = long_series.reset_index()
     pd.testing.assert_frame_equal(long_df, expected, check_like=True)
+
+
+def test_timeseries_wide_dates():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
+            "iso1:us#cbsa:10100,,,,,3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+
+    timeseries_wide = ts.timeseries_wide_dates()
+    assert timeseries_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    assert timeseries_wide.columns.names == [CommonFields.DATE]
+
+    expected = (
+        pd.read_csv(
+            io.StringIO(
+                "location_id,variable,2020-04-02,2020-04-03,2020-04-04\n"
+                "iso1:us#cbsa:10100,m2,2,3,\n"
+                "iso1:us#fips:97111,m1,2,,4\n"
+            ),
+        )
+        .set_index(timeseries_wide.index.names)
+        .rename_axis(columns="date")
+        .astype(float)
+    )
+    expected.columns = pd.to_datetime(expected.columns)
+
+    pd.testing.assert_frame_equal(timeseries_wide, expected)
+
+
+def test_timeseries_wide_dates_empty():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,,,,,3\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+
+    timeseries_wide = ts.timeseries_wide_dates()
+    assert timeseries_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    assert timeseries_wide.columns.names == [CommonFields.DATE]
+    assert timeseries_wide.empty
 
 
 def test_timeseries_latest_values():
