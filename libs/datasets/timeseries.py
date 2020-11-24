@@ -789,10 +789,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def _trim_timeseries(self, *, after: datetime.datetime) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries data after given date."""
         ts_rows_mask = self.timeseries.index.get_level_values(CommonFields.DATE) > after
-        # `after` doesn't make sense for latest because it doesn't contain date information.
-        # Keep latest data for regions that are in the new timeseries DataFrame.
-        # TODO(tom): Replace this with re-calculating latest data from the new timeseries so that
-        # metrics which no longer have real values are excluded.
         return dataclasses.replace(self, timeseries=self.timeseries.loc[ts_rows_mask, :])
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
@@ -806,6 +802,22 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return TimeseriesDataset(
             self.data_with_fips, provenance=None if self.provenance.empty else self.provenance
         )
+
+    def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
+        """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
+        ts = self.timeseries_wide_dates()
+        recent_columns_mask = ts.columns >= cutoff_date
+        recent_rows_mask = ts.loc[:, recent_columns_mask].notna().any(axis=1)
+        timeseries_wide_dates = ts.loc[recent_rows_mask, :]
+
+        # Change DataFrame with date columns to DataFrame with variable columns, similar
+        # to a line in from_timeseries_wide_dates_df.
+        timeseries_wide_variables = (
+            timeseries_wide_dates.stack()
+            .unstack(PdFields.VARIABLE)
+            .reindex(columns=self.timeseries.columns)
+        )
+        return dataclasses.replace(self, timeseries=timeseries_wide_variables)
 
     def to_csv(self, path: pathlib.Path, write_timeseries_latest_values=False):
         """Persists timeseries to CSV.

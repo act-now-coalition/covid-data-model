@@ -1,3 +1,4 @@
+import datetime
 import io
 import pathlib
 import pytest
@@ -538,6 +539,53 @@ def test_timeseries_wide_dates_empty():
     assert timeseries_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
     assert timeseries_wide.columns.names == [CommonFields.DATE]
     assert timeseries_wide.empty
+
+
+def test_timeseries_drop_stale_timeseries_entire_region():
+    ds_in = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
+            "iso1:us#cbsa:10100,,,,,3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+
+    ds_out = ds_in.drop_stale_timeseries(pd.to_datetime("2020-04-04"))
+
+    ds_expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1,m2\n"
+            "iso1:us#cbsa:10100,,,,,3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,4,\n"
+        )
+    )
+    assert_dataset_like(ds_out, ds_expected)
+
+
+def test_timeseries_drop_stale_timeseries_one_metric():
+    csv_in = (
+        "location_id,date,county,aggregate_level,m1,m2\n"
+        "iso1:us#cbsa:10100,2020-04-02,,,11,2\n"
+        "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
+        "iso1:us#cbsa:10100,,,,,3\n"
+        "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+        "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+        "iso1:us#fips:97111,,Bar County,county,4,\n"
+    )
+    ds_in = timeseries.MultiRegionDataset.from_csv(io.StringIO(csv_in))
+
+    ds_out = ds_in.drop_stale_timeseries(pd.to_datetime("2020-04-03"))
+
+    # The only timeseries that is stale with cutoff of 4/3 is the CBSA m1. The expected
+    # dataset is the same as the input with "11" removed.
+    ds_expected = timeseries.MultiRegionDataset.from_csv(io.StringIO(csv_in.replace(",11,", ",,")))
+    assert_dataset_like(ds_out, ds_expected)
 
 
 def test_timeseries_latest_values():
