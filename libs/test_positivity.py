@@ -150,9 +150,9 @@ class AllMethods:
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
 
-        input_long = dataset_in.timeseries_long(relevant_columns).set_index(
+        input_long = dataset_in._timeseries_long(relevant_columns).reorder_levels(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID, CommonFields.DATE]
-        )[PdFields.VALUE]
+        )
         dates = input_long.index.get_level_values(CommonFields.DATE)
         if dates.empty:
             raise NoRealTimeseriesValuesException()

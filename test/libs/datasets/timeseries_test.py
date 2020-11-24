@@ -477,10 +477,15 @@ def test_timeseries_long():
         parse_dates=[CommonFields.DATE],
         dtype={"value": float},
     )
-    long = ts.timeseries_long(["m1", "m2"]).sort_values(
-        [CommonFields.LOCATION_ID, PdFields.VARIABLE, CommonFields.DATE], ignore_index=True
-    )
-    pd.testing.assert_frame_equal(long, expected, check_like=True)
+    long_series = ts._timeseries_long(["m1", "m2"])
+    assert long_series.index.names == [
+        CommonFields.LOCATION_ID,
+        CommonFields.DATE,
+        PdFields.VARIABLE,
+    ]
+    assert long_series.name == PdFields.VALUE
+    long_df = long_series.reset_index()
+    pd.testing.assert_frame_equal(long_df, expected, check_like=True)
 
 
 def test_timeseries_latest_values():
