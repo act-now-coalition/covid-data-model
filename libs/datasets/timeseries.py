@@ -488,21 +488,17 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         return MultiRegionDataset.from_csv(path_or_buf)
 
-    def timeseries_long(self, columns: List[common_fields.FieldName]) -> pd.DataFrame:
+    def _timeseries_long(self, columns: List[common_fields.FieldName]) -> pd.Series:
         """Returns a subset of the data in a long format DataFrame, where all values are in a single column.
 
         Returns: a DataFrame with columns LOCATION_ID, DATE, VARIABLE, VALUE
         """
-
-        key_cols = [CommonFields.LOCATION_ID, CommonFields.DATE]
-        long = (
-            self.data.loc[:, key_cols + columns]
-            .melt(id_vars=key_cols, value_vars=columns)
-            .dropna()
-            .reset_index(drop=True)
+        return (
+            self.timeseries.rename_axis(PdFields.VARIABLE, axis=1)
+            .stack(dropna=True)
+            .rename(PdFields.VALUE)
+            .sort_index()
         )
-        long[PdFields.VALUE].apply(pd.to_numeric)
-        return long
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
