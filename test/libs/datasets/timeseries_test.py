@@ -5,9 +5,12 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
+
+from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
@@ -990,11 +993,11 @@ def test_combined_missing_field():
         )
     )
     dataset_map = {DatasetName("ts1"): ts1, DatasetName("ts2"): ts2}
-    # Check that combining in either order finishes and produces the expected result.
-    combined_1 = timeseries.combined_datasets(dataset_map, {"m1": list(dataset_map.keys())},)
-    combined_2 = timeseries.combined_datasets(
-        dataset_map, {"m1": list(reversed(dataset_map.keys()))},
-    )
+    # m1 is output, m2 is dropped.
+    field_source_map = {FieldName("m1"): list(dataset_map.keys())}
+
+    # Check that combining finishes and produces the expected result.
+    combined_1 = timeseries.combined_datasets(dataset_map, field_source_map)
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,m1\n"
@@ -1002,6 +1005,12 @@ def test_combined_missing_field():
             "iso1:us#fips:97111,2020-04-04,4\n"
         )
     )
-
     assert_dataset_like(expected, combined_1)
+
+    # Because there is only one source for the output timeseries reversing the source list
+    # produces the same output.
+    combined_2 = timeseries.combined_datasets(
+        dataset_map,
+        {name: reversed(source_list) for name, source_list in field_source_map.items()},
+    )
     assert_dataset_like(expected, combined_2)

@@ -1134,32 +1134,22 @@ def combined_datasets(
     datasets: Mapping[DatasetName, MultiRegionDataset],
     field_dataset_source: Mapping[FieldName, List[DatasetName]],
 ) -> MultiRegionDataset:
-    relevant_columns = list(field_dataset_source.keys())
-
     datasets_wide = _to_datasets_wide_dates_map(datasets)
-    field_values_map = {}
     provenance_to_concat = []
+    timeseries_rows = []
     for field, datasets_list in field_dataset_source.items():
-        location_id_so_far = None
-        values_to_concat = []
+        location_id_so_far = pd.Index([])
         for dataset_name in datasets_list:
-            field_wide_df = datasets_wide[dataset_name].loc[field, :]
-            assert field_wide_df.index.names == [CommonFields.LOCATION_ID]
-            if location_id_so_far is None:
-                values_to_concat.append(field_wide_df)
-                location_id_so_far = field_wide_df.index
-                provenance_to_concat.append(
-                    datasets[dataset_name].provenance.loc[slice(None), slice(field)]
-                )
-            else:
-                selected_location_id = field_wide_df.index.difference(location_id_so_far)
-                values_to_concat.append(field_wide_df.loc[selected_location_id, :])
-                location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-                provenance_to_concat.append(
-                    datasets[dataset_name].provenance.loc[selected_location_id, slice(field)]
-                )
-        field_values_map[field] = pd.concat(values_to_concat)
-    output_wide = pd.concat(field_values_map, names=[PdFields.VARIABLE, CommonFields.LOCATION_ID])
+            field_wide_df = datasets_wide[dataset_name].loc[[field], :]
+            assert field_wide_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+            location_ids = field_wide_df.index.get_level_values(CommonFields.LOCATION_ID)
+            selected_location_id = location_ids.difference(location_id_so_far)
+            timeseries_rows.append(field_wide_df.loc[(slice(None), selected_location_id), :])
+            location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
+            provenance_to_concat.append(
+                datasets[dataset_name].provenance.loc[selected_location_id, slice(field)]
+            )
+    output_wide = pd.concat(timeseries_rows)
     output_provenance = pd.concat(provenance_to_concat, verify_integrity=True).sort_index()
     assert output_wide.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
     assert output_wide.columns.names == [CommonFields.DATE]
