@@ -537,6 +537,17 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return long.loc[unduplicated_and_last_mask, :].unstack()
 
     @staticmethod
+    def from_timeseries_wide_dates_df(timeseries_wide_dates: pd.DataFrame) -> "MultiRegionDataset":
+        """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
+        assert timeseries_wide_dates.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
+        timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
+            timeseries_wide_dates.columns
+        )
+        timeseries_wide_variables = timeseries_wide_dates.stack().unstack(PdFields.VARIABLE)
+        return MultiRegionDataset(timeseries=timeseries_wide_variables)
+
+    @staticmethod
     def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame containing timeseries (real-valued metrics) and
         static geo data (county name etc)."""
@@ -659,6 +670,13 @@ class MultiRegionDataset(SaveableDatasetInterface):
         assert self.timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
         assert self.timeseries.index.is_unique
         assert self.timeseries.index.is_monotonic_increasing
+        if self.timeseries.columns.names == [None]:
+            # TODO(tom): Ideally __post_init__ doesn't modify any values but tracking
+            # down all the places that create a DataFrame to add a column name seems like
+            # a PITA. I'll do it another day and hack it for now.
+            self.timeseries.rename_axis(columns=PdFields.VARIABLE, inplace=True)
+        else:
+            assert self.timeseries.columns.names == [PdFields.VARIABLE]
         numeric_columns = self.timeseries.dtypes.apply(is_numeric_dtype)
         assert numeric_columns.all()
         assert self.static.index.names == [CommonFields.LOCATION_ID]

@@ -489,7 +489,7 @@ def test_timeseries_long():
 
 
 def test_timeseries_wide_dates():
-    ts = timeseries.MultiRegionDataset.from_csv(
+    ds = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,county,aggregate_level,m1,m2\n"
             "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
@@ -501,9 +501,9 @@ def test_timeseries_wide_dates():
         )
     )
 
-    timeseries_wide = ts.timeseries_wide_dates()
-    assert timeseries_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-    assert timeseries_wide.columns.names == [CommonFields.DATE]
+    ds_wide = ds.timeseries_wide_dates()
+    assert ds_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    assert ds_wide.columns.names == [CommonFields.DATE]
 
     expected = (
         pd.read_csv(
@@ -513,13 +513,19 @@ def test_timeseries_wide_dates():
                 "iso1:us#fips:97111,m1,2,,4\n"
             ),
         )
-        .set_index(timeseries_wide.index.names)
+        .set_index(ds_wide.index.names)
         .rename_axis(columns="date")
         .astype(float)
     )
     expected.columns = pd.to_datetime(expected.columns)
 
-    pd.testing.assert_frame_equal(timeseries_wide, expected)
+    pd.testing.assert_frame_equal(ds_wide, expected)
+
+    # Recreate the dataset using `from_timeseries_wide_dates_df`.
+    ds_recreated = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(
+        ds_wide
+    ).add_static_values(ds.static.reset_index())
+    assert_dataset_like(ds, ds_recreated)
 
 
 def test_timeseries_wide_dates_empty():
