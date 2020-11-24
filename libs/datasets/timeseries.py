@@ -543,7 +543,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
         timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
             timeseries_wide_dates.columns
         )
-        timeseries_wide_variables = timeseries_wide_dates.stack().unstack(PdFields.VARIABLE)
+        timeseries_wide_variables = (
+            timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
+        )
         return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
     @staticmethod
@@ -831,6 +833,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
             timeseries_wide_dates.stack()
             .unstack(PdFields.VARIABLE)
             .reindex(columns=self.timeseries.columns)
+            .sort_index()
         )
         # Only keep provenance information for timeseries in the new timeseries_wide_dates.
         provenance = self.provenance.reindex(

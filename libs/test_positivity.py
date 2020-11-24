@@ -221,6 +221,7 @@ class AllMethods:
                     for name, ds in calculated_dataset_map.items()
                 },
                 names=["dataset", CommonFields.LOCATION_ID],
+                sort=True,
             )
             .reorder_levels([CommonFields.LOCATION_ID, "dataset"])
             .reindex(columns=dates)
