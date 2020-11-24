@@ -36,7 +36,7 @@ class Method(ABC):
         pass
 
     @abstractmethod
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> pd.DataFrame:
+    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
         """Calculate a DataFrame with LOCATION_ID index and DATE columns.
 
         Args:
@@ -64,13 +64,14 @@ class DivisionMethod(Method):
     def columns(self) -> Set[FieldName]:
         return {self._numerator, self._denominator}
 
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> pd.DataFrame:
+    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
-        return delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
+        wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
+        return MultiRegionDataset.from_wide_date_df(wide_date_df, default_provenance=self._name)
 
 
 @dataclasses.dataclass
@@ -88,12 +89,13 @@ class PassThruMethod(Method):
     def columns(self) -> Set[FieldName]:
         return {self._column}
 
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> pd.DataFrame:
+    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
         assert df.columns.names == [CommonFields.DATE]
         assert df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # df has the field name as the first level of the index. delta_df.loc[field, :] returns a
         # DataFrame without the field label
-        return df.loc[self._column, :]
+        wide_date_df = df.loc[self._column, :]
+        return MultiRegionDataset.from_wide_date_df(wide_date_df, default_provenance=self._name)
 
 
 TEST_POSITIVITY_METHODS = (
@@ -176,24 +178,16 @@ class AllMethods:
         # It looks like our input data has few or no holes so this works well enough.
         diff_df = input_wide.diff(periods=diff_days, axis=1)
 
-        all_wide = (
-            pd.concat(
-                {
-                    method.name: method.calculate(input_wide, diff_df)
-                    for method in methods_with_data
-                },
-                names=[PdFields.VARIABLE],
-            )
-            .reorder_levels([CommonFields.LOCATION_ID, PdFields.VARIABLE])
-            # Drop empty timeseries
-            .dropna("index", "all")
-            .sort_index()
+        calculated_dataset_map = {
+            timeseries.DatasetName(method.name): method.calculate(input_wide, diff_df)
+            for method in methods_with_data
+        }
+        timeseries.combined_datasets(
+            calculated_dataset_map,
+            {CommonFields.TEST_POSITIVITY: list(calculated_dataset_map.keys())},
         )
 
-        method_cat_type = pd.CategoricalDtype(
-            categories=[method.name for method in methods], ordered=True
-        )
-
+        # Drop stale ts
         has_recent_data = all_wide.loc[:, recent_date_range].notna().any(axis=1)
         all_recent_data = all_wide.loc[has_recent_data, :].reset_index()
         all_recent_data[PdFields.VARIABLE] = all_recent_data[PdFields.VARIABLE].astype(
