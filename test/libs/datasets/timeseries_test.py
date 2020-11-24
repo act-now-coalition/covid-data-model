@@ -943,3 +943,36 @@ def test_combined():
     )
 
     assert_dataset_like(expected, combined)
+
+
+def test_combined_missing_field():
+    ts1 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+        )
+    )
+    ts2 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m2\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,111\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,111\n"
+        )
+    )
+    dataset_map = {DatasetName("ts1"): ts1, DatasetName("ts2"): ts2}
+    # Check that combining in either order finishes and produces the expected result.
+    combined_1 = timeseries.combined_datasets(dataset_map, {"m1": list(dataset_map.keys())},)
+    combined_2 = timeseries.combined_datasets(
+        dataset_map, {"m1": list(reversed(dataset_map.keys()))},
+    )
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,m1\n"
+            "iso1:us#fips:97111,2020-04-02,2\n"
+            "iso1:us#fips:97111,2020-04-04,4\n"
+        )
+    )
+
+    assert_dataset_like(expected, combined_1)
+    assert_dataset_like(expected, combined_2)
