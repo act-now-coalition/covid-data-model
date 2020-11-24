@@ -191,10 +191,23 @@ class AllMethods:
             timeseries.DatasetName(method.name): method.calculate(input_wide, diff_df)
             for method in methods_with_data
         }
+        for name, ds in calculated_dataset_map.items():
+            if CommonFields.TEST_POSITIVITY not in ds.timeseries.columns:
+                print(f"Problem with all ts {name}\n{ds}\n")
+                ds.info()
+
         calculated_dataset_recent_map = {
             name: ds.drop_stale_timeseries(recent_date_cutoff)
             for name, ds in calculated_dataset_map.items()
         }
+        for name, ds in calculated_dataset_recent_map.items():
+            if CommonFields.TEST_POSITIVITY not in ds.timeseries.columns:
+                print(f"Problem with recent ts {name}\n{ds}\n")
+                ds.timeseries.info()
+            wide = ds.timeseries_wide_dates()
+            if CommonFields.TEST_POSITIVITY not in wide.index.get_level_values(PdFields.VARIABLE):
+                print(f"Problem with recent ts wide {name}\n{ds}\n{wide}\n")
+                ds.timeseries.info()
         test_positivity = timeseries.combined_datasets(
             calculated_dataset_recent_map,
             {CommonFields.TEST_POSITIVITY: list(calculated_dataset_map.keys())},
