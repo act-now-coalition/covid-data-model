@@ -1106,7 +1106,8 @@ def aggregate_regions(
 
 
 class DatasetName(str):
-    """Human readable name for a dataset, providing some type safety."""
+    """Human readable name for a dataset. In the future this may be an enum, for now it
+    provides some type safety."""
 
     pass
 
@@ -1114,6 +1115,7 @@ class DatasetName(str):
 def _to_datasets_wide_dates_map(
     datasets: Mapping[DatasetName, MultiRegionDataset]
 ) -> Mapping[DatasetName, pd.DataFrame]:
+    """Turns a mapping of datasets to a mapping of DataFrame with identical date columns."""
     datasets_wide = {name: ds.timeseries_wide_dates() for name, ds in datasets.items()}
     # Find the earliest and latest dates to make a range covering all timeseries.
     dates = pd.DatetimeIndex(
@@ -1137,26 +1139,38 @@ def combined_datasets(
     datasets: Mapping[DatasetName, MultiRegionDataset],
     field_dataset_source: Mapping[FieldName, List[DatasetName]],
 ) -> MultiRegionDataset:
+    """Creates a dataset that contains the given fields copied from `datasets`.
+
+    For each region, the timeseries from the first dataset in the list with a real value is returned.
+
+    TODO(tom): Replace the similar logic in libs.datasets.combined_datasets with a call to
+    this function.
+    """
     datasets_wide = _to_datasets_wide_dates_map(datasets)
-    provenance_to_concat = []
-    timeseries_rows = []
+    # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and DATE columns) that
+    # will be concat-ed.
+    timeseries_dfs = []
+    # A list of Series that will be concat-ed
+    provenance_series = []
     for field, datasets_list in field_dataset_source.items():
         location_id_so_far = pd.Index([])
         for dataset_name in datasets_list:
             field_wide_df = datasets_wide[dataset_name].loc[[field], :]
             assert field_wide_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
             location_ids = field_wide_df.index.get_level_values(CommonFields.LOCATION_ID)
+            # Select the locations in `dataset_name` that have a timeseries for `field` and are
+            # not in `location_id_so_far`.
             selected_location_id = location_ids.difference(location_id_so_far)
-            timeseries_rows.append(field_wide_df.loc[(slice(None), selected_location_id), :])
+            timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
             location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-            provenance_to_concat.append(
+            provenance_series.append(
                 datasets[dataset_name].provenance.loc[selected_location_id, slice(field)]
             )
-    output_wide = pd.concat(timeseries_rows)
-    output_provenance = pd.concat(provenance_to_concat, verify_integrity=True).sort_index()
+    output_wide = pd.concat(timeseries_dfs, verify_integrity=True)
+    output_provenance = pd.concat(provenance_series, verify_integrity=True)
     assert output_wide.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
     assert output_wide.columns.names == [CommonFields.DATE]
     return MultiRegionDataset(
         timeseries=output_wide.stack().unstack(PdFields.VARIABLE).sort_index(),
-        provenance=output_provenance,
+        provenance=output_provenance.sort_index(),
     )
