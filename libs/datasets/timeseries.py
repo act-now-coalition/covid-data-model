@@ -11,7 +11,6 @@ from typing import List, Optional, Union, TextIO
 from typing import Sequence
 from typing import Tuple
 
-from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import PdFields
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
@@ -37,7 +36,6 @@ from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
-
 
 _log = structlog.get_logger()
 
@@ -418,6 +416,14 @@ _EMPTY_PROVENANCE_SERIES = pd.Series(
 _EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
 
 
+_EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
+    [],
+    dtype=float,
+    index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
+    columns=pd.Index([], name=CommonFields.DATE),
+)
+
+
 @final
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class MultiRegionDataset(SaveableDatasetInterface):
@@ -488,17 +494,33 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
         return MultiRegionDataset.from_csv(path_or_buf)
 
-    def _timeseries_long(self, columns: List[common_fields.FieldName]) -> pd.Series:
-        """Returns a subset of the data in a long format DataFrame, where all values are in a single column.
+    def _timeseries_long(self) -> pd.Series:
+        """Returns the timeseries data in long format Series, where all values are in a single column.
 
-        Returns: a DataFrame with columns LOCATION_ID, DATE, VARIABLE, VALUE
+        Returns: a Series with MultiIndex LOCATION_ID, DATE, VARIABLE
         """
         return (
-            self.timeseries.rename_axis(PdFields.VARIABLE, axis=1)
+            self.timeseries.rename_axis(columns=PdFields.VARIABLE)
             .stack(dropna=True)
             .rename(PdFields.VALUE)
             .sort_index()
         )
+
+    def timeseries_wide_dates(self) -> pd.DataFrame:
+        """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
+        timeseries_long = self._timeseries_long()
+        dates = timeseries_long.index.get_level_values(CommonFields.DATE)
+        if dates.empty:
+            return _EMPTY_TIMESERIES_WIDE_DATES_DF
+        start_date = dates.min()
+        end_date = dates.max()
+        date_range = pd.date_range(start=start_date, end=end_date)
+        timeseries_wide = (
+            timeseries_long.unstack(CommonFields.DATE)
+            .reindex(columns=date_range)
+            .rename_axis(columns=CommonFields.DATE)
+        )
+        return timeseries_wide
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
