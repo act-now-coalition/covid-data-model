@@ -1,4 +1,3 @@
-import datetime
 import io
 import pathlib
 import pytest
