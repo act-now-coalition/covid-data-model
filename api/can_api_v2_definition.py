@@ -188,6 +188,8 @@ class RiskLevel(enum.Enum):
 
     UNKNOWN = 4
 
+    EXTREME = 5
+
 
 class RiskLevels(base_model.APIBaseModel):
     """COVID risk levels for a region."""
