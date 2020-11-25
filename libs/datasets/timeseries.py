@@ -594,6 +594,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return self.add_provenance_series(series)
 
     def add_provenance_all(self, provenance: str) -> "MultiRegionDataset":
+        """Returns a new object with given provenance string for every timeseries."""
         return self.add_provenance_series(
             pd.Series([], dtype=str, name=PdFields.PROVENANCE).reindex(
                 self.timeseries_wide_dates().index, fill_value=provenance
