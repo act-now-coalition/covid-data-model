@@ -73,7 +73,7 @@ jobs:
     - name: Update and Promote dataset.
       working-directory: ./covid-data-model
       run: |
-        ./run.py data update
+        ./run.py data update --no-aggregate-to-country
 
     - name: Update External Forecasts
       working-directory: ./covid-data-model
