@@ -283,7 +283,9 @@ def _timeseries_sorted_by_location_date(
     ts: timeseries.MultiRegionDataset, drop_na: bool
 ) -> pd.DataFrame:
     """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
-    df = ts.data.sort_values([CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True)
+    df = ts.timeseries.reset_index().sort_values(
+        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+    )
     if drop_na:
         df = df.dropna("columns", "all")
     return df
@@ -579,13 +581,29 @@ def test_timeseries_drop_stale_timeseries_one_metric():
         "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
         "iso1:us#fips:97111,,Bar County,county,4,\n"
     )
-    ds_in = timeseries.MultiRegionDataset.from_csv(io.StringIO(csv_in))
+    ds_in = timeseries.MultiRegionDataset.from_csv(io.StringIO(csv_in)).add_provenance_csv(
+        io.StringIO(
+            "location_id,variable,provenance\n"
+            "iso1:us#cbsa:10100,m1,m1-10100prov\n"
+            "iso1:us#cbsa:10100,m2,m2-10100prov\n"
+            "iso1:us#fips:97111,m1,m1-97111prov\n"
+        )
+    )
 
     ds_out = ds_in.drop_stale_timeseries(pd.to_datetime("2020-04-03"))
 
     # The only timeseries that is stale with cutoff of 4/3 is the CBSA m1. The expected
-    # dataset is the same as the input with "11" removed.
-    ds_expected = timeseries.MultiRegionDataset.from_csv(io.StringIO(csv_in.replace(",11,", ",,")))
+    # dataset is the same as the input with "11" removed from the timeseries and
+    # corresponding provenance removed.
+    ds_expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(csv_in.replace(",11,", ",,"))
+    ).add_provenance_csv(
+        io.StringIO(
+            "location_id,variable,provenance\n"
+            "iso1:us#cbsa:10100,m2,m2-10100prov\n"
+            "iso1:us#fips:97111,m1,m1-97111prov\n"
+        )
+    )
     assert_dataset_like(ds_out, ds_expected)
 
 

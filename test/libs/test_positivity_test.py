@@ -127,7 +127,7 @@ def test_recent_days():
         CommonFields.TEST_POSITIVITY: "method1"
     }
 
-    all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=4)
+    all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=3)
     positivity_provenance = all_methods.test_positivity.provenance
     assert positivity_provenance.loc["iso1:us#iso2:us-as"].to_dict() == {
         CommonFields.TEST_POSITIVITY: "method1"
