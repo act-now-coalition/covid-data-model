@@ -70,6 +70,10 @@ def location_id_to_level(location_id: str) -> Optional[AggregationLevel]:
     if match:
         return AggregationLevel.CBSA
 
+    match = re.fullmatch(r"iso1:\w\w", location_id)
+    if match:
+        return AggregationLevel.COUNTRY
+
     return None
 
 
