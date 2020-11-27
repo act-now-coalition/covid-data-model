@@ -1049,9 +1049,7 @@ AGGREGATIONS = (
 
 def _apply_scaling_factor(
     timeseries: pd.DataFrame,
-    static_in: pd.DataFrame,
-    static_agg: pd.DataFrame,
-    location_id_map: Mapping[str, str],
+    scale_factors: pd.DataFrame,
     aggregations: Sequence[AverageStaticWeightAggregation],
 ) -> pd.DataFrame:
     """Returns a copy of timeseries with some fields scaled according to `aggregations`.
@@ -1064,16 +1062,25 @@ def _apply_scaling_factor(
         aggregations: Describes the fields to be scaled
         """
     assert timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    assert static_in.index.names == [CommonFields.LOCATION_ID]
-    assert static_agg.index.names == [CommonFields.LOCATION_ID]
 
     # Scaled fields are modified in-place
     timeseries_out = timeseries.copy()
 
-    # For each location in the timeseries, calculate the scaling factor from the static data.
-    scale_factors = pd.DataFrame(
-        [], index=timeseries.index.get_level_values(CommonFields.LOCATION_ID).unique().sort_values()
-    )
+    for agg in aggregations:
+        if agg.field in timeseries.columns and agg.scale_factor in scale_factors.columns:
+            timeseries_out[agg.field] = timeseries_out[agg.field] * scale_factors[agg.scale_factor]
+
+    return timeseries_out
+
+
+def _find_scale_factors(
+    aggregations, location_id_map, static_agg, static_in, location_ids
+) -> pd.DataFrame:
+    assert static_in.index.names == [CommonFields.LOCATION_ID]
+    assert static_agg.index.names == [CommonFields.LOCATION_ID]
+
+    # For each location_id, calculate the scaling factor from the static data.
+    scale_factors = pd.DataFrame([], index=pd.Index(location_ids).unique().sort_values())
     for scale_factor_field in {agg.scale_factor for agg in aggregations}:
         if scale_factor_field in static_in.columns and scale_factor_field in static_agg.columns:
             # Make a series with index of the un-aggregated location_ids that has values of the
@@ -1084,18 +1091,18 @@ def _apply_scaling_factor(
                 .map(static_agg[scale_factor_field])  # Gets the aggregated value
             )
             scale_factors[scale_factor_field] = static_in[scale_factor_field] / agg_values
-
-    for agg in aggregations:
-        if agg.field in timeseries.columns and agg.scale_factor in scale_factors.columns:
-            timeseries_out[agg.field] = timeseries_out[agg.field] * scale_factors[agg.scale_factor]
-
-    return timeseries_out
+    return scale_factors
 
 
 def _aggregate_dataframe_by_region(
     df_in: pd.DataFrame, location_id_map: Mapping[str, str]
 ) -> pd.DataFrame:
     """Aggregates a DataFrame using given region map. The output contains dates iff the input does."""
+    # df_in is sometimes empty in unittests. Return a DataFrame that is also empty and
+    # has enough of an index that the test passes.
+    if df_in.empty:
+        return pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
+
     df = df_in.copy()  # Copy because the index is modified below
 
     if CommonFields.DATE in df.index.names:
@@ -1157,20 +1164,48 @@ def aggregate_regions(
         for region_in, region_agg in aggregate_map.items()
     }
 
+    scale_fields = {agg.scale_factor for agg in aggregations}
+    scaled_fields = {agg.field for agg in aggregations}
+    agg_common_fields = scale_fields.intersection(scaled_fields)
+    if agg_common_fields:
+        # While a scale field could be scaled by another field, currently there is only
+        # support for aggregating scale fields using a raw sum. Therefore a field can not
+        # be both in AverageStaticWeightAggregation.scale_factor and field.
+        raise ValueError("field and scale_factor have values in common")
     # TODO(tom): Do something smarter with non-number columns in static. Currently they are
     # silently dropped.
-    static_out = _aggregate_dataframe_by_region(
-        dataset_in.static.select_dtypes(include="number"), location_id_map
+    static_in = dataset_in.static.select_dtypes(include="number")
+    agg_missing_scale_field = scale_fields.difference(static_in.columns)
+    if agg_missing_scale_field:
+        raise ValueError("Unable to do scaling due to missing column")
+    # Split static_in into two DataFrames, by column
+    scale_fields_mask = static_in.columns.isin(scale_fields)
+    static_in_scale_fields = static_in.loc[:, scale_fields_mask]
+    static_in_other_fields = static_in.loc[:, ~scale_fields_mask]
+
+    static_agg_scale_fields = _aggregate_dataframe_by_region(
+        static_in_scale_fields, location_id_map
     )
-    static_out[CommonFields.AGGREGATE_LEVEL] = aggregate_level.value
-
-    timeseries_scaled = _apply_scaling_factor(
-        dataset_in.timeseries, dataset_in.static, static_out, location_id_map, aggregations
+    location_ids = dataset_in.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
+    scale_factors = _find_scale_factors(
+        aggregations,
+        location_id_map,
+        static_agg_scale_fields,
+        static_in_scale_fields,
+        location_ids,
     )
 
-    timeseries_out = _aggregate_dataframe_by_region(timeseries_scaled, location_id_map)
+    # TODO(tom): static_other_fields_scaled = _apply_scaling_factor(static_in_other_fields, scale_factors, aggregations)
+    timeseries_scaled = _apply_scaling_factor(dataset_in.timeseries, scale_factors, aggregations)
 
-    return MultiRegionDataset(timeseries=timeseries_out, static=static_out)
+    static_agg_other_fields = _aggregate_dataframe_by_region(
+        static_in_other_fields, location_id_map
+    )
+    timeseries_agg = _aggregate_dataframe_by_region(timeseries_scaled, location_id_map)
+    static_agg = pd.concat([static_agg_scale_fields, static_agg_other_fields])
+    static_agg[CommonFields.AGGREGATE_LEVEL] = aggregate_level.value
+
+    return MultiRegionDataset(timeseries=timeseries_agg, static=static_agg)
 
 
 class DatasetName(str):

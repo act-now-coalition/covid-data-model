@@ -938,6 +938,7 @@ def test_aggregate_states_to_country():
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
         AggregationLevel.COUNTRY,
+        [],
     )
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
