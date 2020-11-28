@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List
 from typing import Mapping
 import pandas as pd
 
@@ -24,6 +25,8 @@ class CountyToCBSAAggregator:
     # Map from 5 digit CBSA code to CBSA title
     cbsa_title_map: Mapping[str, str]
 
+    aggregations: List[timeseries.AverageStaticWeightAggregation] = timeseries.AGGREGATIONS
+
     def aggregate(self, dataset_in: MultiRegionDataset) -> MultiRegionDataset:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
         region_map = {
@@ -31,7 +34,9 @@ class CountyToCBSAAggregator:
             for fips, cbsa_code in self.county_map.items()
         }
 
-        return timeseries.aggregate_regions(dataset_in, region_map, AggregationLevel.CBSA)
+        return timeseries.aggregate_regions(
+            dataset_in, region_map, AggregationLevel.CBSA, self.aggregations
+        )
 
     @staticmethod
     def from_local_public_data() -> "CountyToCBSAAggregator":

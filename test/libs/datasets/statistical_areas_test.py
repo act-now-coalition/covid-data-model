@@ -1,3 +1,4 @@
+import dataclasses
 import io
 
 from libs.datasets import statistical_areas
@@ -10,6 +11,7 @@ from libs.pipeline import Region
 
 def test_load_from_local_public_data():
     agg = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    agg = dataclasses.replace(agg, aggregations=[])  # Disable scaled aggregations
 
     assert agg.cbsa_title_map["43580"] == "Sioux City, IA-NE-SD"
     assert agg.county_map["48187"] == "41700"
@@ -48,7 +50,9 @@ def test_aggregate():
     )
     ts_in = MultiRegionDataset.from_timeseries_and_latest(ts, ts.latest_values_object())
     agg = statistical_areas.CountyToCBSAAggregator(
-        county_map={"55005": "10001", "55006": "10001"}, cbsa_title_map={"10001": "Stat Area 1"}
+        county_map={"55005": "10001", "55006": "10001"},
+        cbsa_title_map={"10001": "Stat Area 1"},
+        aggregations=[],
     )
     ts_out = agg.aggregate(ts_in)
 
