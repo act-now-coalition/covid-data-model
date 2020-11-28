@@ -1064,3 +1064,35 @@ def test_aggregate_states_to_country_scale():
         )
     )
     assert_dataset_like(country, expected)
+
+
+def test_aggregate_states_to_country_scale_static():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,county,aggregate_level,date,m1,s1,population\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,4,,\n"
+            "iso1:us#iso2:us-tx,Texas,state,,,4,2500\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,8,,\n"
+            "iso1:us#iso2:us-az,Arizona,state,,,12,7500\n"
+        )
+    )
+    region_us = Region.from_iso1("us")
+    country = timeseries.aggregate_regions(
+        ts,
+        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
+        AggregationLevel.COUNTRY,
+        [
+            timeseries.AverageStaticWeightAggregation(FieldName("m1"), CommonFields.POPULATION),
+            timeseries.AverageStaticWeightAggregation(FieldName("s1"), CommonFields.POPULATION),
+        ],
+    )
+    # The column m1 is scaled by population.
+    # 4 * 0.25 + 12 * 0.75 = 10
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,aggregate_level,date,m1,s1,population\n"
+            "iso1:us,country,2020-04-01,7,,\n"
+            "iso1:us,country,,,10,10000\n"
+        )
+    )
+    assert_dataset_like(country, expected)

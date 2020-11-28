@@ -1048,29 +1048,32 @@ AGGREGATIONS = (
 
 
 def _apply_scaling_factor(
-    timeseries: pd.DataFrame,
+    df_in: pd.DataFrame,
     scale_factors: pd.DataFrame,
     aggregations: Sequence[AverageStaticWeightAggregation],
 ) -> pd.DataFrame:
     """Returns a copy of timeseries with some fields scaled according to `aggregations`.
 
     Args:
-        timeseries: Input un-aggregated timeseries
+        df_in: Input un-aggregated timeseries or static data
         static_in: Input un-aggregated static data, used to find scaling factor
         static_agg: Aggregated static data
         location_id_map: Maps from un-aggregated location_id to aggregated location_id
         aggregations: Describes the fields to be scaled
         """
-    assert timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    assert df_in.index.names in (
+        [CommonFields.LOCATION_ID, CommonFields.DATE],
+        [CommonFields.LOCATION_ID],
+    )
 
     # Scaled fields are modified in-place
-    timeseries_out = timeseries.copy()
+    df_out = df_in.copy()
 
     for agg in aggregations:
-        if agg.field in timeseries.columns and agg.scale_factor in scale_factors.columns:
-            timeseries_out[agg.field] = timeseries_out[agg.field] * scale_factors[agg.scale_factor]
+        if agg.field in df_in.columns and agg.scale_factor in scale_factors.columns:
+            df_out[agg.field] = df_out[agg.field] * scale_factors[agg.scale_factor]
 
-    return timeseries_out
+    return df_out
 
 
 def _find_scale_factors(
@@ -1195,14 +1198,20 @@ def aggregate_regions(
         location_ids,
     )
 
-    # TODO(tom): static_other_fields_scaled = _apply_scaling_factor(static_in_other_fields, scale_factors, aggregations)
+    static_other_fields_scaled = _apply_scaling_factor(
+        static_in_other_fields, scale_factors, aggregations
+    )
     timeseries_scaled = _apply_scaling_factor(dataset_in.timeseries, scale_factors, aggregations)
 
     static_agg_other_fields = _aggregate_dataframe_by_region(
-        static_in_other_fields, location_id_map
+        static_other_fields_scaled, location_id_map
     )
     timeseries_agg = _aggregate_dataframe_by_region(timeseries_scaled, location_id_map)
-    static_agg = pd.concat([static_agg_scale_fields, static_agg_other_fields])
+    static_agg = pd.concat([static_agg_scale_fields, static_agg_other_fields], axis=1)
+    if static_agg.index.name != CommonFields.LOCATION_ID:
+        # It looks like concat doesn't always set the index name, but haven't worked out
+        # the pattern of when the fix is needed.
+        static_agg = static_agg.rename_axis(index=CommonFields.LOCATION_ID)
     static_agg[CommonFields.AGGREGATE_LEVEL] = aggregate_level.value
 
     return MultiRegionDataset(timeseries=timeseries_agg, static=static_agg)
