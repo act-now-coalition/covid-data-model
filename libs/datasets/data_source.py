@@ -4,6 +4,8 @@ from typing import Type, Optional
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
+
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.dataset_utils import AggregationLevel
@@ -67,6 +69,11 @@ class DataSource(object):
     def population(self) -> LatestValuesDataset:
         """Builds generic beds dataset"""
         return self.latest_values()
+
+    @lru_cache(None)
+    def multi_region_dataset(self) -> MultiRegionDataset:
+        if set(self.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
+            return MultiRegionDataset.from_geodata_timeseries_df(self.data)
 
     @lru_cache(None)
     def timeseries(self) -> TimeseriesDataset:
