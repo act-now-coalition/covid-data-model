@@ -112,7 +112,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POPULATION: [FIPSPopulation],
-    CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
+    # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
 }
 
 
