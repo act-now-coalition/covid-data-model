@@ -8,7 +8,6 @@ from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.sources import covid_county_data
 from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
-from libs.datasets.sources import jhu_dataset
 from libs.datasets.sources import texas_hospitalizations
 from libs.datasets.combined_datasets import US_STATES_FILTER
 
