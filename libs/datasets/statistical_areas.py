@@ -25,7 +25,9 @@ class CountyToCBSAAggregator:
     # Map from 5 digit CBSA code to CBSA title
     cbsa_title_map: Mapping[str, str]
 
-    aggregations: List[timeseries.AverageStaticWeightAggregation] = timeseries.AGGREGATIONS
+    aggregations: List[
+        timeseries.StaticWeightedAverageAggregation
+    ] = timeseries.WEIGHTED_AGGREGATIONS
 
     def aggregate(self, dataset_in: MultiRegionDataset) -> MultiRegionDataset:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
