@@ -36,7 +36,6 @@ def load_data_sources_by_name() -> Dict[str, TimeseriesDataset]:
 
     sources = [
         covid_county_data.CovidCountyDataDataSource,
-        jhu_dataset.JHUDataset,
         texas_hospitalizations.TexasHospitalizations,
         covid_tracking_source.CovidTrackingDataSource,
         nytimes_dataset.NYTimesDataset,
