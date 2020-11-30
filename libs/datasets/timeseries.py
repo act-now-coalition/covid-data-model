@@ -1043,7 +1043,10 @@ class AverageStaticWeightAggregation:
 
 AGGREGATIONS = (
     AverageStaticWeightAggregation(CommonFields.TEST_POSITIVITY, CommonFields.POPULATION),
-    AverageStaticWeightAggregation(CommonFields.CUMULATIVE_HOSPITALIZED, CommonFields.ICU_BEDS),
+    AverageStaticWeightAggregation(
+        CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE, CommonFields.MAX_BED_COUNT
+    ),
+    AverageStaticWeightAggregation(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE, CommonFields.ICU_BEDS),
 )
 
 
