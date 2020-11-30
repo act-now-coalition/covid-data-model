@@ -60,7 +60,7 @@ def update_forecasts(filename):
     "--aggregate-to-country/--no-aggregate-to-country",
     is_flag=True,
     help="Aggregate states to one USA country region",
-    default=True,
+    default=False,
 )
 def update(wide_dates_filename, aggregate_to_country: bool):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
