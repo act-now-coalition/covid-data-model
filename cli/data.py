@@ -76,15 +76,13 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         data_source_cls.SOURCE_NAME: data_source_cls.local()
         for data_source_cls in data_source_classes
     }
-    timeseries_dataset: TimeseriesDataset = combined_datasets.build_from_sources(
-        TimeseriesDataset, data_sources, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER
+    timeseries_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
+        data_sources, ALL_TIMESERIES_FEATURE_DEFINITION
     )
-    latest_dataset: LatestValuesDataset = combined_datasets.build_from_sources(
-        LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
+    latest_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
+        data_sources, ALL_FIELDS_FEATURE_DEFINITION
     )
-    multiregion_dataset = MultiRegionDataset.from_timeseries_and_latest(
-        timeseries_dataset, latest_dataset
-    )
+    multiregion_dataset = timeseries_dataset.join_columns(latest_dataset)
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
 

@@ -18,13 +18,13 @@ from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import DatasetType
+from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
+from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
+from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
-from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
-from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
@@ -49,7 +49,7 @@ class RegionLatestNotFound(IndexError):
 
 
 FeatureDataSourceMap = NewType(
-    "FeatureDataSourceMap", Dict[str, List[Type[data_source.DataSource]]]
+    "FeatureDataSourceMap", Dict[FieldName, List[Type[data_source.DataSource]]]
 )
 
 
@@ -148,11 +148,9 @@ def get_county_name(region: Region) -> Optional[str]:
 
 
 def build_from_sources(
-    target_dataset_cls: Type[dataset_base.DatasetBase],
-    loaded_data_sources: Mapping[str, DataSource],
+    loaded_data_sources: Mapping[DatasetName, DataSource],
     feature_definition_config: FeatureDataSourceMap,
-    filter: dataset_filter.DatasetFilter,
-):
+) -> MultiRegionDataset:
     """Builds a combined dataset from a feature definition.
 
     Args:
@@ -165,25 +163,17 @@ def build_from_sources(
     """
 
     feature_definition = {
-        field_name: [cls.SOURCE_NAME for cls in classes]
+        field_name: [DatasetName(cls.SOURCE_NAME) for cls in classes]
         for field_name, classes in feature_definition_config.items()
         if classes
     }
 
-    datasets: MutableMapping[str, pd.DataFrame] = {}
+    datasets: MutableMapping[DatasetName, MultiRegionDataset] = {}
     for source_name in chain.from_iterable(feature_definition.values()):
         source = loaded_data_sources[source_name]
-        if target_dataset_cls == TimeseriesDataset:
-            datasets[source_name] = filter.apply(source.timeseries()).indexed_data()
-        else:
-            assert target_dataset_cls == LatestValuesDataset
-            datasets[source_name] = filter.apply(source.latest_values()).indexed_data()
+        datasets[source_name] = source.multi_region_dataset()
 
-    data, provenance = _build_data_and_provenance(feature_definition, datasets)
-    # TODO(tom): When LatestValuesDataset is retired return only a MultiRegionDataset
-    return target_dataset_cls(
-        data.reset_index(), provenance=provenance_wide_metrics_to_series(provenance, _log)
-    )
+    return timeseries.combined_datasets(datasets, feature_definition)
 
 
 def _build_data_and_provenance(

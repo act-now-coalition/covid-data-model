@@ -73,7 +73,15 @@ class DataSource(object):
     @lru_cache(None)
     def multi_region_dataset(self) -> MultiRegionDataset:
         if set(self.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
-            return MultiRegionDataset.from_geodata_timeseries_df(self.data)
+            dataset = MultiRegionDataset.from_fips_timeseries_df(self.data)
+            if self.provenance is not None:
+                dataset.add_fips_provenance(self.provenance)
+            return dataset
+
+        if set(self.INDEX_FIELD_MAP.keys()) == set(LatestValuesDataset.INDEX_FIELDS):
+            return MultiRegionDataset.new_without_timeseries().add_fips_static_df(self.data)
+
+        raise ValueError("Unexpected index fields")
 
     @lru_cache(None)
     def timeseries(self) -> TimeseriesDataset:

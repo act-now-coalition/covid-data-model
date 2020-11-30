@@ -39,6 +39,8 @@ from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
 
+from libs.us_state_abbrev import ABBREV_US_FIPS
+
 _log = structlog.get_logger()
 
 
@@ -331,11 +333,36 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return cls(df)
 
 
-def _add_location_id(df: pd.DataFrame):
-    """Adds the location_id column derived from FIPS, inplace."""
+def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds the location_id column derived from FIPS"""
     if CommonFields.LOCATION_ID in df.columns:
         raise ValueError("location_id already in DataFrame")
-    df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
+    if df[CommonFields.AGGREGATE_LEVEL].isna().any():
+        raise ValueError("aggregate_level must be set for all")
+
+    to_concat = []
+    for level, group in df.groupby(CommonFields.AGGREGATE_LEVEL, sort=False, as_index=False):
+        if level == AggregationLevel.STATE.value:
+            if group[CommonFields.STATE].isna().any():
+                raise ValueError("state rows must have state set for all")
+            state_df = group.copy()
+            state_df[CommonFields.FIPS] = state_df[CommonFields.STATE].map(ABBREV_US_FIPS)
+            to_concat.append(state_df)
+        elif level == AggregationLevel.COUNTY.value:
+            if group[CommonFields.FIPS].isna().any():
+                raise ValueError("county rows must have fips set for all")
+            county_df = group.copy()
+            county_df[CommonFields.FIPS] = county_df[CommonFields.FIPS].str.zfill(5)
+            to_concat.append(county_df)
+        else:
+            _log.info(
+                f"Dropping data with unexpected level", aggregation_level=level, rows=str(group)
+            )
+
+    all_df = pd.concat(to_concat)
+
+    all_df[CommonFields.LOCATION_ID] = all_df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
+    return all_df
 
 
 def _add_fips_if_missing(df: pd.DataFrame):
@@ -580,8 +607,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df)
 
     def add_fips_static_df(self, latest_df: pd.DataFrame) -> "MultiRegionDataset":
-        latest_df = latest_df.copy()
-        _add_location_id(latest_df)
+        latest_df = _add_location_id(latest_df)
         return self.add_static_values(latest_df)
 
     def add_static_values(self, attributes_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -641,8 +667,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
-        ts_df = ts_df.copy()
-        _add_location_id(ts_df)
+        ts_df = _add_location_id(ts_df)
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
     @staticmethod
@@ -654,12 +679,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
         dataset = dataset.add_fips_static_df(latest.data)
 
         if ts.provenance is not None:
-            dataset = MultiRegionDataset.add_fips_provenance(dataset, ts.provenance)
+            dataset = dataset.add_fips_provenance(ts.provenance)
 
         return dataset
 
-    @staticmethod
-    def add_fips_provenance(dataset, provenance):
+    def add_fips_provenance(self, provenance):
         # Check that current index is as expected. Names will be fixed after remapping, below.
         assert provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
         provenance = provenance.copy()
@@ -668,8 +692,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         )
         provenance.index.rename([CommonFields.LOCATION_ID, PdFields.VARIABLE], inplace=True)
         provenance.rename(PdFields.PROVENANCE, inplace=True)
-        dataset = dataset.add_provenance_series(provenance)
-        return dataset
+        return self.add_provenance_series(provenance)
 
     @staticmethod
     def new_without_timeseries() -> "MultiRegionDataset":
