@@ -17,7 +17,6 @@ from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
-from libs.datasets.sources.jhu_dataset import JHUDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 
 from libs.datasets.timeseries import TimeseriesDataset
@@ -79,13 +78,7 @@ def test_get_county_name():
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "data_source_cls",
-    [
-        JHUDataset,
-        CovidTrackingDataSource,
-        CovidCountyDataDataSource,
-        NYTimesDataset,
-        TexasHospitalizations,
-    ],
+    [CovidTrackingDataSource, CovidCountyDataDataSource, NYTimesDataset, TexasHospitalizations,],
 )
 def test_unique_timeseries(data_source_cls):
     data_source = data_source_cls.local()
@@ -100,7 +93,7 @@ def test_unique_timeseries(data_source_cls):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "data_source_cls", [JHUDataset, CovidTrackingDataSource, CovidCountyDataDataSource,],
+    "data_source_cls", [CovidTrackingDataSource, CovidCountyDataDataSource],
 )
 def test_expected_field_in_sources(data_source_cls):
     data_source = data_source_cls.local()
