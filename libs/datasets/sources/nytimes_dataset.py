@@ -2,6 +2,7 @@ from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.datasets.timeseries import TimeseriesDataset
 
 
 class NYTimesDataset(data_source.DataSource):
@@ -11,13 +12,7 @@ class NYTimesDataset(data_source.DataSource):
 
     HAS_AGGREGATED_NYC_BOROUGH = True
 
-    INDEX_FIELD_MAP = {
-        CommonFields.DATE: CommonFields.DATE,
-        CommonFields.AGGREGATE_LEVEL: CommonFields.AGGREGATE_LEVEL,
-        CommonFields.COUNTRY: CommonFields.COUNTRY,
-        CommonFields.STATE: CommonFields.STATE,
-        CommonFields.FIPS: CommonFields.FIPS,
-    }
+    INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
 
     COMMON_FIELD_MAP = {f: f for f in {CommonFields.CASES, CommonFields.DEATHS,}}
 
