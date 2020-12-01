@@ -2,12 +2,17 @@
 
 import pathlib
 import csv
-
+import structlog
+import time
 import click
 
 from awsauth import auth_app
 from awsauth import ses_client
 from awsauth.email_repo import EmailRepo
+
+
+_logger = structlog.get_logger()
+
 
 RISK_LEVEL_UPDATE_PATH = pathlib.Path(__file__).parent / "risk_level_update_email.html"
 
@@ -29,7 +34,7 @@ def _build_email(to_email: str) -> ses_client.EmailData:
         reply_to="api@covidactnow.org",
         to_email=to_email,
         html=email_html,
-        configuration_set="api-risk-level-update-emails",
+        configuration_set="api-risk-level-update-emails-booo",
     )
 
 
@@ -38,12 +43,19 @@ def _build_email(to_email: str) -> ses_client.EmailData:
 @click.option("--dry-run", is_flag=True)
 def send_emails(emails_path: pathlib.Path, dry_run=False):
     auth_app.init()
-    email = "michael@covidactnow.org"
-    email = _build_email(email)
-    EmailRepo.send_email(email)
-    # for email in _load_emails(emails_path):
-    #     print(email)
-    #     break
+
+    emails = _load_emails(emails_path)
+
+    for email in emails:
+        risk_email = _build_email(email)
+
+        email_send_result = EmailRepo.send_email(risk_email)
+        if not email_send_result:
+            _logger.warning(f"Failed to send email to {email}")
+
+        # SES rate limit is 14 messages a second, pause after email sends to not
+        # trigger rate limit.
+        time.sleep(1.0 / 14)
 
 
 if __name__ == "__main__":
