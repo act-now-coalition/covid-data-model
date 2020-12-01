@@ -1042,6 +1042,8 @@ class StaticWeightedAverageAggregation:
 
 
 WEIGHTED_AGGREGATIONS = (
+    # Maybe test_positivity is better averaged using time-varying total tests, but it isn't
+    # implemented. See TODO next to call to _find_scale_factors.
     StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY, CommonFields.POPULATION),
     StaticWeightedAverageAggregation(
         CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE, CommonFields.MAX_BED_COUNT
@@ -1199,8 +1201,8 @@ def aggregate_regions(
         static_in_scale_fields, location_id_map
     )
     location_ids = dataset_in.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
-    # TODO(tom): Add support for time-varying scale factors, for example to scale test
-    # positivity by number of tests.
+    # TODO(tom): Add support for time-varying scale factors, for example to scale
+    # test_positivity by number of tests.
     scale_factors = _find_scale_factors(
         aggregations,
         location_id_map,
