@@ -5,6 +5,7 @@ from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.common_fields import CommonIndexFields
+from libs.datasets.timeseries import TimeseriesDataset
 
 
 class TestAndTraceData(data_source.DataSource):
@@ -21,17 +22,9 @@ class TestAndTraceData(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    INDEX_FIELD_MAP = {
-        CommonIndexFields.COUNTRY: Fields.COUNTRY,
-        CommonIndexFields.STATE: Fields.STATE,
-        CommonIndexFields.FIPS: Fields.FIPS,
-        CommonIndexFields.DATE: Fields.DATE,
-        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-    }
+    INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
 
-    COMMON_FIELD_MAP = {
-        CommonFields.CONTACT_TRACERS_COUNT: Fields.CONTACT_TRACERS,
-    }
+    COMMON_FIELD_MAP = {f: f for f in [CommonFields.CONTACT_TRACERS_COUNT]}
 
     @classmethod
     def standardize_data(cls, data):
