@@ -31,7 +31,7 @@ RiskLevel:
 ```
 
 If you would like to include the new risk level right now to reflect what
-is currently on [covidactnow.org](covidactnow.org), you can do so by
+is currently on [covidactnow.org](https://covidactnow.org), you can do so by
 classifying both `overall` and `caseDensity` risk as extreme for any location
 where `actuals.casesDensity > 75`.
 
