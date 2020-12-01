@@ -337,32 +337,11 @@ def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
     """Adds the location_id column derived from FIPS"""
     if CommonFields.LOCATION_ID in df.columns:
         raise ValueError("location_id already in DataFrame")
-    if df[CommonFields.AGGREGATE_LEVEL].isna().any():
-        raise ValueError("aggregate_level must be set for all")
 
-    to_concat = []
-    for level, group in df.groupby(CommonFields.AGGREGATE_LEVEL, sort=False, as_index=False):
-        if level == AggregationLevel.STATE.value:
-            if group[CommonFields.STATE].isna().any():
-                raise ValueError("state rows must have state set for all")
-            state_df = group.copy()
-            state_df[CommonFields.FIPS] = state_df[CommonFields.STATE].map(ABBREV_US_FIPS)
-            to_concat.append(state_df)
-        elif level == AggregationLevel.COUNTY.value:
-            if group[CommonFields.FIPS].isna().any():
-                raise ValueError("county rows must have fips set for all")
-            county_df = group.copy()
-            county_df[CommonFields.FIPS] = county_df[CommonFields.FIPS].str.zfill(5)
-            to_concat.append(county_df)
-        else:
-            _log.info(
-                f"Dropping data with unexpected level", aggregation_level=level, rows=str(group)
-            )
+    df = df.copy()
 
-    all_df = pd.concat(to_concat)
-
-    all_df[CommonFields.LOCATION_ID] = all_df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
-    return all_df
+    df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
+    return df
 
 
 def _add_fips_if_missing(df: pd.DataFrame):
