@@ -2,8 +2,9 @@
 
 import pathlib
 import csv
-import structlog
 import time
+
+import structlog
 import click
 
 from awsauth import auth_app
@@ -40,8 +41,8 @@ def _build_email(to_email: str) -> ses_client.EmailData:
 
 @click.command()
 @click.argument("emails-path", type=pathlib.Path)
-@click.option("--dry-run", is_flag=True)
-def send_emails(emails_path: pathlib.Path, dry_run=False):
+def send_emails(emails_path: pathlib.Path):  # pylint: disable=no-value-for-parameter
+
     auth_app.init()
 
     emails = _load_emails(emails_path)
@@ -59,4 +60,4 @@ def send_emails(emails_path: pathlib.Path, dry_run=False):
 
 
 if __name__ == "__main__":
-    send_emails()
+    send_emails()  # pylint: disable=no-value-for-parameter

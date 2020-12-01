@@ -1,4 +1,3 @@
-import sentry_sdk
 import structlog
 from awsauth import ses_client
 from awsauth.the_registry import registry
