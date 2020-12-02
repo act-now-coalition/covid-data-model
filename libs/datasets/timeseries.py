@@ -396,7 +396,9 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
         _log.warning(f"Re-adding empty columns: {missing_columns}")
         wide = wide.reindex(columns=[*wide.columns, *missing_columns])
     # Make all non-GEO_DATA_COLUMNS numeric so that aggregation functions work on them.
-    numeric_columns = list(all_columns - set(GEO_DATA_COLUMNS))
+    numeric_columns = list(
+        all_columns - set(GEO_DATA_COLUMNS) - set([CommonFields.CAN_LOCATION_PAGE_URL])
+    )
     wide[numeric_columns] = wide[numeric_columns].apply(pd.to_numeric, axis=0)
 
     assert wide.index.names == [CommonFields.LOCATION_ID]

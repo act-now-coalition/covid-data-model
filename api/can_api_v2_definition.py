@@ -240,12 +240,15 @@ class RegionSummary(base_model.APIBaseModel):
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
     )
-
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
     actuals: Actuals = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
+
+    locationPageUrl: Optional[str] = pydantic.Field(
+        ..., description="URL linking to Covid Act Now location page."
+    )
 
 
 class RegionSummaryWithTimeseries(RegionSummary):
