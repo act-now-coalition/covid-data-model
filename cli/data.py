@@ -112,7 +112,7 @@ def update(wide_dates_filename, aggregate_to_country: bool):
 
     if wide_dates_filename:
         wide_dates_df.write_csv(
-            multiregion_dataset.timeseries_wide_dates(), wide_dates_filename,
+            multiregion_dataset.timeseries_rows(), wide_dates_filename,
         )
 
 

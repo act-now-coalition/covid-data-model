@@ -834,6 +834,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
             self.data_with_fips, provenance=None if self.provenance.empty else self.provenance
         )
 
+    def timeseries_rows(self) -> pd.DataFrame:
+        wide_dates = self.timeseries_wide_dates()
+        wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
+        return wide_dates.join(self.provenance)
+
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
         ts = self.timeseries_wide_dates()
