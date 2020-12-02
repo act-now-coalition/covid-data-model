@@ -79,16 +79,16 @@ def update(wide_dates_filename, aggregate_to_country: bool):
     timeseries_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
         data_sources, ALL_TIMESERIES_FEATURE_DEFINITION
     )
-    latest_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
-        data_sources, ALL_FIELDS_FEATURE_DEFINITION
-    )
-    multiregion_dataset = timeseries_dataset.join_columns(latest_dataset)
+    # latest_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
+    #    data_sources, ALL_FIELDS_FEATURE_DEFINITION
+    # )
+    multiregion_dataset = timeseries_dataset  # .join_columns(latest_dataset)
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
 
-    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-    cbsa_dataset = aggregator.aggregate(multiregion_dataset)
-    multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    # cbsa_dataset = aggregator.aggregate(multiregion_dataset)
+    # multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
 
     if aggregate_to_country:
         country_dataset = timeseries.aggregate_regions(
@@ -96,9 +96,9 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
-    _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
-        path_prefix, latest_dataset, multiregion_dataset,
-    )
+    # _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
+    #    path_prefix, latest_dataset, multiregion_dataset,
+    # )
 
     # Write DataSource objects that have provenance information, which is only set when significant
     # processing of the source data is done in this repo before it is combined. The output is not
@@ -112,8 +112,7 @@ def update(wide_dates_filename, aggregate_to_country: bool):
 
     if wide_dates_filename:
         wide_dates_df.write_csv(
-            timeseries_dataset.get_date_columns(),
-            multiregion_pointer.path.with_name(wide_dates_filename),
+            multiregion_dataset.timeseries_wide_dates(), wide_dates_filename,
         )
 
 
