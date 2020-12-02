@@ -1096,3 +1096,29 @@ def test_aggregate_states_to_country_scale_static():
         )
     )
     assert_dataset_like(country, expected)
+
+
+def test_timeseries_rows():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,county,aggregate_level,date,m1,m2,population\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,4,2,\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-02,4,4,\n"
+            "iso1:us#iso2:us-tx,Texas,state,,,,2500\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,8,20,\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-02,12,40,\n"
+            "iso1:us#iso2:us-az,Arizona,state,,,,7500\n"
+        )
+    )
+
+    rows = ts.timeseries_rows()
+    expected = pd.read_csv(
+        io.StringIO(
+            "location_id,variable,provenance,2020-04-01,2020-04-02\n"
+            "iso1:us#iso2:us-az,m1,,8,12\n"
+            "iso1:us#iso2:us-az,m2,,20,40\n"
+            "iso1:us#iso2:us-tx,m1,,4,4\n"
+            "iso1:us#iso2:us-tx,m2,,2,4\n"
+        )
+    ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+    pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)
