@@ -62,7 +62,8 @@ def update_forecasts(filename):
     help="Aggregate states to one USA country region",
     default=False,
 )
-def update(wide_dates_filename, aggregate_to_country: bool):
+@click.option("--state", type=str, help="For testing, a two letter state abbr")
+def update(wide_dates_filename, aggregate_to_country: bool, state: Optional[str]):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -76,18 +77,18 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         data_source_cls.SOURCE_NAME: data_source_cls.local().multi_region_dataset()
         for data_source_cls in data_source_classes
     }
-    if False:
+    if state:
         data_sources = {
-            name: dataset.get_subset(state="AK", aggregation_level=AggregationLevel.STATE)
+            name: dataset.get_subset(state=state, aggregation_level=AggregationLevel.STATE)
             for name, dataset in data_sources.items()
         }
     timeseries_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
         data_sources, ALL_TIMESERIES_FEATURE_DEFINITION
     )
-    # latest_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
-    #    data_sources, ALL_FIELDS_FEATURE_DEFINITION
-    # )
-    multiregion_dataset = timeseries_dataset  # .join_columns(latest_dataset)
+    latest_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
+        data_sources, ALL_FIELDS_FEATURE_DEFINITION
+    )
+    multiregion_dataset = timeseries_dataset.join_columns(latest_dataset)
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
 
@@ -118,6 +119,7 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         wide_dates_df.write_csv(
             multiregion_dataset.timeseries_rows(), wide_dates_filename,
         )
+        multiregion_dataset.static.to_csv("multiregion-static.csv")
 
 
 @main.command()
