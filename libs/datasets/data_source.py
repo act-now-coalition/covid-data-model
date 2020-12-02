@@ -73,9 +73,14 @@ class DataSource(object):
     @lru_cache(None)
     def multi_region_dataset(self) -> MultiRegionDataset:
         if set(self.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
-            dataset = MultiRegionDataset.from_fips_timeseries_df(self.data)
-            if self.provenance is not None:
-                dataset.add_fips_provenance(self.provenance)
+            dataset = MultiRegionDataset.from_fips_timeseries_df(self.data).add_provenance_all(
+                self.SOURCE_NAME
+            )
+            # TODO(tom): DataSource.provenance is only set by
+            # CovidCountyDataDataSource.synthesize_test_metrics. Factor it out into something
+            # that reads and creates a MultiRegionDataset.
+            # if self.provenance is not None:
+            #     dataset.add_fips_provenance(self.provenance)
             return dataset
 
         if set(self.INDEX_FIELD_MAP.keys()) == set(LatestValuesDataset.INDEX_FIELDS):

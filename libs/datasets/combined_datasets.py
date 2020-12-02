@@ -152,30 +152,23 @@ def get_county_name(region: Region) -> Optional[str]:
 
 
 def build_from_sources(
-    loaded_data_sources: Mapping[DatasetName, DataSource],
+    datasets: Mapping[DatasetName, MultiRegionDataset],
     feature_definition_config: FeatureDataSourceMap,
 ) -> MultiRegionDataset:
     """Builds a combined dataset from a feature definition.
 
     Args:
-        target_dataset_cls: Type of the returned combined dataset.
-        loaded_data_sources: Dictionary mapping source name to a DataSource object
         feature_definition_config: Dictionary mapping an output field to the
             data source classes that will be used to pull values from.
-        filter: A dataset filters applied to the datasets before
-            assembling features.
     """
 
     feature_definition = {
-        field_name: [DatasetName(cls.SOURCE_NAME) for cls in classes]
+        # timeseries.combined_datasets has the highest priority first.
+        # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
+        field_name: list(reversed(list(DatasetName(cls.SOURCE_NAME) for cls in classes)))
         for field_name, classes in feature_definition_config.items()
         if classes
     }
-
-    datasets: MutableMapping[DatasetName, MultiRegionDataset] = {}
-    for source_name in chain.from_iterable(feature_definition.values()):
-        source = loaded_data_sources[source_name]
-        datasets[source_name] = source.multi_region_dataset()
 
     return timeseries.combined_datasets(datasets, feature_definition)
 

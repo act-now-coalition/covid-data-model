@@ -73,9 +73,14 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         )
     )
     data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.local()
+        data_source_cls.SOURCE_NAME: data_source_cls.local().multi_region_dataset()
         for data_source_cls in data_source_classes
     }
+    if False:
+        data_sources = {
+            name: dataset.get_subset(state="AK", aggregation_level=AggregationLevel.STATE)
+            for name, dataset in data_sources.items()
+        }
     timeseries_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
         data_sources, ALL_TIMESERIES_FEATURE_DEFINITION
     )
@@ -103,11 +108,10 @@ def update(wide_dates_filename, aggregate_to_country: bool):
     # Write DataSource objects that have provenance information, which is only set when significant
     # processing of the source data is done in this repo before it is combined. The output is not
     # used downstream, it is for debugging only.
-    for data_source in data_sources.values():
-        if data_source.provenance is not None:
+    for name, source_dataset in data_sources.items():
+        if not source_dataset.provenance.empty:
             wide_dates_df.write_csv(
-                data_source.timeseries().get_date_columns(),
-                path_prefix / f"{data_source.SOURCE_NAME}-wide-dates.csv",
+                source_dataset.timeseries_rows(), path_prefix / f"{name}-wide-dates.csv",
             )
 
     if wide_dates_filename:
