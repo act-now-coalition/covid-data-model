@@ -516,6 +516,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def timeseries_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
+        if self.timeseries.empty:
+            return _EMPTY_TIMESERIES_WIDE_DATES_DF
         timeseries_long = self._timeseries_long()
         dates = timeseries_long.index.get_level_values(CommonFields.DATE)
         if dates.empty:
@@ -1309,7 +1311,7 @@ def combined_datasets(
             timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
             location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
             provenance_series.append(
-                datasets[dataset_name].provenance.loc[selected_location_id, slice(field)]
+                datasets[dataset_name].provenance.loc[selected_location_id, field]
             )
     output_wide = pd.concat(timeseries_dfs, verify_integrity=True)
     output_provenance = pd.concat(provenance_series, verify_integrity=True)
