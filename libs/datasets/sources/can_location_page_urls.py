@@ -20,5 +20,4 @@ class CANLocationPageURLS(data_source.DataSource):
         input_path = data_root / cls.STATIC_CSV
         # Can't use common_df.read_csv because it expects a date column
         data = pd.read_csv(input_path, dtype={CommonFields.FIPS: str})
-        print(data)
         return cls(cls._rename_to_common_fields(data))

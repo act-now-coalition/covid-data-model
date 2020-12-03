@@ -18,6 +18,8 @@ GEO_DATA_COLUMNS = [
     CommonFields.COUNTY,
 ]
 
+NON_NUMERIC_COLUMNS = GEO_DATA_COLUMNS + [CommonFields.CAN_LOCATION_PAGE_URL]
+
 
 def _get_public_data_path():
     """Sets global path to covid-data-public directory."""
