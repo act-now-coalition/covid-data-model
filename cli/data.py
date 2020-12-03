@@ -9,6 +9,7 @@ import structlog
 import pandas as pd
 
 import click
+from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import google_sheet_helpers, wide_dates_df
@@ -85,7 +86,7 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
     )
     multiregion_dataset = MultiRegionDataset.from_timeseries_and_latest(
-        timeseries_dataset, LatestValuesDataset(pd.DataFrame([], columns=[CommonFields.FIPS]))
+        timeseries_dataset, latest_dataset
     )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
@@ -118,7 +119,12 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         wide_dates_df.write_csv(
             multiregion_dataset.timeseries_rows(), wide_dates_filename,
         )
-        multiregion_dataset.static.to_csv(wide_dates_filename.replace("wide-dates", "static"))
+        static_sorted = common_df.index_and_sort(
+            multiregion_dataset.static,
+            index_names=[CommonFields.LOCATION_ID],
+            log=structlog.get_logger(),
+        )
+        static_sorted.to_csv(wide_dates_filename.replace("wide-dates", "static"))
 
 
 @main.command()
