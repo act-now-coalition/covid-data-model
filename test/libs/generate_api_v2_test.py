@@ -69,6 +69,7 @@ def test_build_summary_for_fips(
             newCases=nyc_latest["new_cases"],
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
+        url="https://covidactnow.org/us/new_york-ny/county/bronx_county",
     )
     assert expected.dict() == summary.dict()
 

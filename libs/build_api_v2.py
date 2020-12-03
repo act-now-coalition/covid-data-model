@@ -53,6 +53,7 @@ def build_region_summary(
     risk_levels: RiskLevels,
     region: pipeline.Region,
 ) -> RegionSummary:
+
     actuals = _build_actuals(latest_values)
     return RegionSummary(
         fips=region.fips,
@@ -68,6 +69,7 @@ def build_region_summary(
         riskLevels=risk_levels,
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
+        url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
     )
 
 
