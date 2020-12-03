@@ -7,6 +7,34 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### Upcoming risk level update
+_Added on 2020-12-01_
+
+We modified our risk levels to include a 5th level on
+[covidactnow.org](https://covidactnow.org) for locations experiencing a
+severe outbreak. On **Monday, December 7th** we will be updating the risk levels
+in the API to reflect this.
+
+If you have any code depending on 4 risk levels, you will need to update
+it to include the fifth risk level.
+
+This change directly affects the fields `riskLevels.overall` and `riskLevels.caseDensity`.
+
+```diff
+RiskLevel:
+    LOW = 0
+    MEDIUM = 1
+    HIGH = 2
+    CRITICAL = 3
+    UNKNOWN = 4
++   EXTREME = 5
+```
+
+If you would like to include the new risk level right now to reflect what
+is currently on [covidactnow.org](https://covidactnow.org), you can do so by
+classifying both `overall` and `caseDensity` risk as extreme for any location
+where `actuals.casesDensity > 75`.
+
 ### Query by CBSA
 _Added on 2020-11-09_
 
