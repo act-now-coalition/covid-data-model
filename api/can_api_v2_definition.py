@@ -246,7 +246,7 @@ class RegionSummary(base_model.APIBaseModel):
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 
-    locationPageUrl: Optional[str] = pydantic.Field(
+    url: Optional[str] = pydantic.Field(
         ..., description="URL linking to Covid Act Now location page."
     )
 

@@ -69,7 +69,7 @@ def build_region_summary(
         riskLevels=risk_levels,
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
-        locationPageUrl=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
+        url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
     )
 
 
