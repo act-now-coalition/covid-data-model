@@ -4,7 +4,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.timeseries import TimeseriesDataset
 
 
