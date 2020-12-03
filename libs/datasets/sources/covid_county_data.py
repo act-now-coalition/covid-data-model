@@ -1,3 +1,5 @@
+import dataclasses
+from functools import lru_cache
 from typing import Tuple
 
 import pandas as pd
@@ -7,6 +9,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import TimeseriesDataset
 
 # 2020/11/01: By manual comparison of test positivity calculated via Covid County Data vs CMS
@@ -153,3 +156,21 @@ class CovidCountyDataDataSource(data_source.DataSource):
         data, provenance = cls.synthesize_test_metrics(data)
         # Column names are already CommonFields so don't need to rename
         return cls(data, provenance=provenance)
+
+    @lru_cache(None)
+    def multi_region_dataset(self) -> MultiRegionDataset:
+        dataset = MultiRegionDataset.from_fips_timeseries_df(self.data).add_provenance_all(
+            self.SOURCE_NAME
+        )
+
+        # Hacked out of _timeseries_latest_values
+        # timeseries is already sorted by DATE with the latest at the bottom.
+        long = dataset.timeseries[CommonFields.ICU_BEDS].droplevel(CommonFields.DATE).dropna()
+        # `long` Index with LOCATION_ID. Keep only the last
+        # row with each index to get the last value for each date.
+        unduplicated_and_last_mask = ~long.index.duplicated(keep="last")
+        latest_icu_beds = long.loc[unduplicated_and_last_mask]
+        static_df = dataset.static.copy()
+        static_df.insert(len(static_df.columns), CommonFields.ICU_BEDS, latest_icu_beds)
+
+        return dataclasses.replace(dataset, static=static_df)

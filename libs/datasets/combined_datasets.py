@@ -106,17 +106,19 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.AGGREGATE_LEVEL: [CovidCountyDataDataSource],
-    CommonFields.COUNTRY: [CovidCountyDataDataSource],
-    CommonFields.COUNTY: [CovidCountyDataDataSource],
-    CommonFields.FIPS: [CovidCountyDataDataSource],
-    CommonFields.STATE: [CovidCountyDataDataSource],
+    CommonFields.AGGREGATE_LEVEL: [FIPSPopulation, CovidCountyDataDataSource],
+    CommonFields.COUNTRY: [FIPSPopulation, CovidCountyDataDataSource],
+    CommonFields.COUNTY: [FIPSPopulation, CovidCountyDataDataSource],
+    CommonFields.FIPS: [FIPSPopulation, CovidCountyDataDataSource],
+    CommonFields.STATE: [FIPSPopulation, CovidCountyDataDataSource],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
+    CommonFields.POPULATION: [FIPSPopulation],
+    # STAFFED_BEDS isn't used right now. Disable to ease refactoring.
     # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
 }
 
