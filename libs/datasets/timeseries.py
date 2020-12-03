@@ -396,7 +396,8 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     if missing_columns:
         _log.warning(f"Re-adding empty columns: {missing_columns}")
         wide = wide.reindex(columns=[*wide.columns, *missing_columns])
-    # Make all numeric columns numeric so that aggregation functions work on them.
+    # Make columns expected to be numeric have a numeric dtype so that aggregation functions
+    # work on them.
     numeric_columns = list(all_columns - set(NON_NUMERIC_COLUMNS))
     wide[numeric_columns] = wide[numeric_columns].apply(pd.to_numeric, axis=0)
 
