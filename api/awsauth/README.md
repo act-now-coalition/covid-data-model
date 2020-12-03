@@ -43,9 +43,18 @@ FIREHOSE_TABLE_NAME=
 HUBSPOT_API_KEY=
 HUBSPOT_ENABLED=
 
-# Emails added to the blocklist will be blocked from successful API requests
+# Emails added to the blocklist will be blocked from successful API requests.
+# Accepts JSON encoded lists, i.e.: ["email@domain.com"]
 EMAIL_BLOCKLIST=[]
 ```
+
+
+`pydantic` uses the `python-dotenv` package to instantiate an
+[EnvConstants](https://github.com/covid-projections/covid-data-model/blob/master/api/awsauth/awsauth/config.py#L4)
+object with the contents of the .env file.  Refer to the class for the most up to
+date variables.
+
+
 
 ```
 sls deploy --stage {dev,prod}

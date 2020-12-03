@@ -25,7 +25,7 @@ def test_api_flow():
 
 def test_blocked_email():
     # Should be set in .env file for local environment
-    test_email = f"blocked@covidactnow.org"
+    test_email = "blocked@covidactnow.org"
     response = requests.post(DEV_API_URL + "/register", json={"email": test_email})
     assert response.ok
     data = response.json()
