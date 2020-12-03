@@ -15,16 +15,12 @@ from libs.datasets import AggregationLevel
 from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
-    US_STATES_FILTER,
     ALL_FIELDS_FEATURE_DEFINITION,
 )
-from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.timeseries import MultiRegionDataset
+from libs.datasets.timeseries import DatasetName
 from libs.datasets import timeseries
 from libs.qa import data_availability
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
-from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.sources import forecast_hub
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
@@ -79,16 +75,14 @@ def update(wide_dates_filename, aggregate_to_country: bool, state: Optional[str]
     }
     if state:
         data_sources = {
-            name: dataset.get_subset(state=state, aggregation_level=AggregationLevel.STATE)
+            name: dataset.get_subset(state=state)  # , aggregation_level=AggregationLevel.STATE)
             for name, dataset in data_sources.items()
         }
-    timeseries_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
-        data_sources, ALL_TIMESERIES_FEATURE_DEFINITION
+    multiregion_dataset = timeseries.combined_datasets(
+        data_sources,
+        build_field_dataset_source(ALL_TIMESERIES_FEATURE_DEFINITION),
+        build_field_dataset_source(ALL_FIELDS_FEATURE_DEFINITION),
     )
-    latest_dataset: MultiRegionDataset = combined_datasets.build_from_sources(
-        data_sources, ALL_FIELDS_FEATURE_DEFINITION
-    )
-    multiregion_dataset = timeseries_dataset.join_columns(latest_dataset)
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
 
@@ -209,3 +203,14 @@ def update_case_based_icu_utilization_weights():
     _logger.info(f"Saved case-based ICU Utilization weights to {output_path}")
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2, sort_keys=True)
+
+
+def build_field_dataset_source(feature_definition_config):
+    feature_definition = {
+        # timeseries.combined_datasets has the highest priority first.
+        # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
+        field_name: list(reversed(list(DatasetName(cls.SOURCE_NAME) for cls in classes)))
+        for field_name, classes in feature_definition_config.items()
+        if classes
+    }
+    return feature_definition

@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from itertools import chain
 from typing import Any
-from typing import Dict, Type, List, NewType, Mapping, MutableMapping, Tuple
+from typing import Dict, Type, List, NewType, Mapping, Tuple
 import functools
 import pathlib
 from typing import Optional
@@ -13,11 +12,9 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 
 from libs.datasets import dataset_utils
-from libs.datasets import dataset_base
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
 from libs.datasets import timeseries
-from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import DatasetType
@@ -27,7 +24,6 @@ from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import DatasetName
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
@@ -110,12 +106,17 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
+    CommonFields.AGGREGATE_LEVEL: [CovidCountyDataDataSource],
+    CommonFields.COUNTRY: [CovidCountyDataDataSource],
+    CommonFields.COUNTY: [CovidCountyDataDataSource],
+    CommonFields.FIPS: [CovidCountyDataDataSource],
+    CommonFields.STATE: [CovidCountyDataDataSource],
+    CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
-    CommonFields.POPULATION: [FIPSPopulation],
     # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
 }
 
@@ -149,28 +150,6 @@ def load_us_latest_dataset(
 
 def get_county_name(region: Region) -> Optional[str]:
     return load_us_timeseries_dataset().get_county_name(region=region)
-
-
-def build_from_sources(
-    datasets: Mapping[DatasetName, MultiRegionDataset],
-    feature_definition_config: FeatureDataSourceMap,
-) -> MultiRegionDataset:
-    """Builds a combined dataset from a feature definition.
-
-    Args:
-        feature_definition_config: Dictionary mapping an output field to the
-            data source classes that will be used to pull values from.
-    """
-
-    feature_definition = {
-        # timeseries.combined_datasets has the highest priority first.
-        # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
-        field_name: list(reversed(list(DatasetName(cls.SOURCE_NAME) for cls in classes)))
-        for field_name, classes in feature_definition_config.items()
-        if classes
-    }
-
-    return timeseries.combined_datasets(datasets, feature_definition)
 
 
 def _build_data_and_provenance(

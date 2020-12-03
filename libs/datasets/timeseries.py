@@ -419,6 +419,7 @@ _EMPTY_PROVENANCE_SERIES = pd.Series(
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
 )
 
+
 # An empty pd.DataFrame with the structure expected for the static attribute. Use this when
 # a dataset does not have any static values.
 _EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
@@ -1295,14 +1296,12 @@ def _to_datasets_wide_dates_map(
 
 def combined_datasets(
     datasets: Mapping[DatasetName, MultiRegionDataset],
-    field_dataset_source: Mapping[FieldName, List[DatasetName]],
+    timeseries_field_dataset_source: Mapping[FieldName, List[DatasetName]],
+    static_field_dataset_source: Mapping[FieldName, List[DatasetName]],
 ) -> MultiRegionDataset:
     """Creates a dataset that contains the given fields copied from `datasets`.
 
     For each region, the timeseries from the first dataset in the list with a real value is returned.
-
-    TODO(tom): Replace the similar logic in libs.datasets.combined_datasets with a call to
-    this function.
     """
     datasets_wide = _to_datasets_wide_dates_map(datasets)
     # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and DATE columns) that
@@ -1311,7 +1310,7 @@ def combined_datasets(
     # A list of Series that will be concat-ed
     provenance_series = []
     static_series = []
-    for field, datasets_list in field_dataset_source.items():
+    for field, datasets_list in timeseries_field_dataset_source.items():
         location_id_so_far = pd.Index([])
         for dataset_name in datasets_list:
             field_wide_df = datasets_wide[dataset_name].loc[[field], :]
@@ -1326,9 +1325,13 @@ def combined_datasets(
                 datasets[dataset_name].provenance.loc[selected_location_id, field]
             )
 
+    for field, datasets_list in static_field_dataset_source.items():
         static_column_so_far = None
         for dataset_name in datasets_list:
-            dataset_column = datasets[dataset_name].static.loc[:, field].dropna()
+            dataset_column = datasets[dataset_name].static.get(field)
+            if dataset_column is None:
+                continue
+            dataset_column = dataset_column.dropna()
             assert dataset_column.index.names == [CommonFields.LOCATION_ID]
             if static_column_so_far is None:
                 static_column_so_far = dataset_column
@@ -1349,7 +1352,9 @@ def combined_datasets(
         output_timeseries_wide_variables = (
             output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
         )
-    output_static_df = pd.concat(static_series, axis=1, sort=True, verify_integrity=True)
+    output_static_df = pd.concat(
+        static_series, axis=1, sort=True, verify_integrity=True
+    ).rename_axis(index=CommonFields.LOCATION_ID)
 
     output_provenance = pd.concat(provenance_series, verify_integrity=True)
     return MultiRegionDataset(
