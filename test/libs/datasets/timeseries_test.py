@@ -950,7 +950,7 @@ def test_aggregate_states_to_country():
     assert_dataset_like(country, expected)
 
 
-def test_combined():
+def test_combined_timeseries():
     ts1 = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,county,aggregate_level,m1\n"
@@ -1031,6 +1031,32 @@ def test_combined_missing_field():
         {name: reversed(source_list) for name, source_list in field_source_map.items()},
     )
     assert_dataset_like(expected, combined_2)
+
+
+def test_combined_static():
+    ds1 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,s1\n"
+            "iso1:us#cbsa:10100,,,,\n"
+            "iso1:us#fips:97222,,Foo County,county,22\n"
+        )
+    )
+    ds2 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,s1\n"
+            "iso1:us#cbsa:10100,,,,111\n"
+            "iso1:us#fips:97222,,Foo County,county,222\n"
+        )
+    )
+    combined = timeseries.combined_datasets(
+        {DatasetName("ds1"): ds1, DatasetName("ds2"): ds2},
+        {FieldName("s1"): [DatasetName("ds1"), DatasetName("ds2")]},
+    )
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO("location_id,date,s1\n" "iso1:us#cbsa:10100,,111\n" "iso1:us#fips:97222,,22\n")
+    )
+
+    assert_dataset_like(expected, combined, drop_na_timeseries=True)
 
 
 def test_aggregate_states_to_country_scale():

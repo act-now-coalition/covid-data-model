@@ -432,6 +432,14 @@ _EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
 )
 
 
+_EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
+    [],
+    dtype=float,
+    index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, CommonFields.DATE]),
+    columns=pd.Index([], name=PdFields.VARIABLE),
+)
+
+
 @final
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class MultiRegionDataset(SaveableDatasetInterface):
@@ -1270,9 +1278,12 @@ def _to_datasets_wide_dates_map(
             list(df.columns.get_level_values(CommonFields.DATE) for df in datasets_wide.values())
         )
     )
-    start_date = dates.min()
-    end_date = dates.max()
-    input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
+    if dates.empty:
+        input_date_range = pd.DatetimeIndex([], name=CommonFields.DATE)
+    else:
+        start_date = dates.min()
+        end_date = dates.max()
+        input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
     datasets_wide_reindexed = {
         name: df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID]).reindex(
             columns=input_date_range
@@ -1299,6 +1310,7 @@ def combined_datasets(
     timeseries_dfs = []
     # A list of Series that will be concat-ed
     provenance_series = []
+    static_series = []
     for field, datasets_list in field_dataset_source.items():
         location_id_so_far = pd.Index([])
         for dataset_name in datasets_list:
@@ -1313,11 +1325,35 @@ def combined_datasets(
             provenance_series.append(
                 datasets[dataset_name].provenance.loc[selected_location_id, field]
             )
-    output_wide = pd.concat(timeseries_dfs, verify_integrity=True)
+
+        static_column_so_far = None
+        for dataset_name in datasets_list:
+            dataset_column = datasets[dataset_name].static.loc[:, field].dropna()
+            assert dataset_column.index.names == [CommonFields.LOCATION_ID]
+            if static_column_so_far is None:
+                static_column_so_far = dataset_column
+            else:
+                selected_location_id = dataset_column.index.difference(static_column_so_far.index)
+                static_column_so_far = pd.concat(
+                    [static_column_so_far, dataset_column.loc[selected_location_id]],
+                    sort=True,
+                    verify_integrity=True,
+                )
+        static_series.append(static_column_so_far)
+    output_timeseries_wide_dates = pd.concat(timeseries_dfs, verify_integrity=True)
+    assert output_timeseries_wide_dates.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+    assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
+    if output_timeseries_wide_dates.empty:
+        output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+    else:
+        output_timeseries_wide_variables = (
+            output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
+        )
+    output_static_df = pd.concat(static_series, axis=1, sort=True, verify_integrity=True)
+
     output_provenance = pd.concat(provenance_series, verify_integrity=True)
-    assert output_wide.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-    assert output_wide.columns.names == [CommonFields.DATE]
     return MultiRegionDataset(
-        timeseries=output_wide.stack().unstack(PdFields.VARIABLE).sort_index(),
+        timeseries=output_timeseries_wide_variables,
         provenance=output_provenance.sort_index(),
+        static=output_static_df,
     )
