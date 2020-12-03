@@ -118,6 +118,7 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         wide_dates_df.write_csv(
             multiregion_dataset.timeseries_rows(), wide_dates_filename,
         )
+        multiregion_dataset.static.to_csv(wide_dates_filename.replace("wide-dates", "static"))
 
 
 @main.command()
