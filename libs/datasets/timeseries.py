@@ -14,6 +14,7 @@ from typing import Tuple
 
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
+from more_itertools import one
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
 
@@ -803,6 +804,27 @@ class MultiRegionDataset(SaveableDatasetInterface):
             timeseries=timeseries_df, static=static_df, provenance=provenance,
         )
 
+    def remove_regions(self, regions: Collection[Region]) -> "MultiRegionDataset":
+        location_ids = pd.Index(sorted(r.location_id for r in regions))
+        return self.remove_locations(location_ids)
+
+    def remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
+        timeseries_mask = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        timeseries_df = self.timeseries.loc[~timeseries_mask, :]
+        static_mask = self.static.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        static_df = self.static.loc[~static_mask, :]
+        provenance_mask = self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        provenance = self.provenance.loc[~provenance_mask, :]
+        return MultiRegionDataset(
+            timeseries=timeseries_df, static=static_df, provenance=provenance,
+        )
+
     def get_subset(
         self,
         aggregation_level: Optional[AggregationLevel] = None,
@@ -1362,3 +1384,34 @@ def combined_datasets(
         provenance=output_provenance.sort_index(),
         static=output_static_df,
     )
+
+
+def calculate_puerto_rico_bed_occupancy_rate(dataset: MultiRegionDataset) -> MultiRegionDataset:
+    """Returns a dataset with the state PR occupancy rate calculated using county rates."""
+    # Create a map from each PR county with occupancy data to the PR state
+    occupancy_fields = [
+        CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE,
+    ]
+    pr_county_mask = (dataset.static[CommonFields.STATE] == "PR") & (
+        dataset.static[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+    )
+    for field in occupancy_fields:
+        pr_county_mask = pr_county_mask & dataset.static[field].notna()
+    pr_counties = [
+        pipeline.Region.from_location_id(loc_id) for loc_id in dataset.static.index[pr_county_mask]
+    ]
+    pr_state = pipeline.Region.from_state("PR")
+    pr_region_map = {county: pr_state for county in pr_counties}
+
+    pr_state_agg = aggregate_regions(dataset, pr_region_map, AggregationLevel.STATE).get_one_region(
+        pr_state
+    )
+    if pr_state_agg.latest[CommonFields.POPULATION] < 1_000_000:
+        raise ValueError("Not enough counties with occupancy rate")
+
+    # Make a new dataset with occupancy_fields copied from pr_state_agg
+    patched_static = dataset.static.copy()
+    for field in occupancy_fields:
+        patched_static.loc[pr_state.location_id, field] = pr_state_agg.latest[field]
+    return dataclasses.replace(dataset, static=patched_static)

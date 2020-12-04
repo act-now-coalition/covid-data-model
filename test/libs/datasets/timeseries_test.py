@@ -1148,3 +1148,22 @@ def test_timeseries_rows():
         )
     ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)
+
+
+def test_calculate_puerto_rico_bed_occupancy_rate():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,county,aggregate_level,date,m1,s1,population\n"
+            "iso1:us#iso2:us-pr,Texas,state,2020-04-01,4,,\n"
+            "iso1:us#iso2:us-pr,Texas,state,,,4,2500\n"
+        )
+    )
+
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,aggregate_level,date,m1,s1,population\n"
+            "iso1:us,country,2020-04-01,7,,\n"
+            "iso1:us,country,,,10,10000\n"
+        )
+    )
+    assert_dataset_like(country, expected)
