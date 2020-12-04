@@ -1390,30 +1390,31 @@ def combined_datasets(
 
 def calculate_puerto_rico_bed_occupancy_rate(dataset: MultiRegionDataset) -> MultiRegionDataset:
     """Returns a dataset with the state PR occupancy rate calculated using county rates."""
-    # Create a map from each PR county with occupancy data to the PR state
-    occupancy_fields = [
-        CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
-        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE,
-    ]
     pr_county_mask = (dataset.static[CommonFields.STATE] == "PR") & (
         dataset.static[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
     )
-    for field in occupancy_fields:
-        pr_county_mask = pr_county_mask & dataset.static[field].notna()
-    pr_counties = [
-        pipeline.Region.from_location_id(loc_id) for loc_id in dataset.static.index[pr_county_mask]
-    ]
-    pr_state = pipeline.Region.from_state("PR")
-    pr_region_map = {county: pr_state for county in pr_counties}
+    pr_data = dataset.static.loc[pr_county_mask]
 
-    pr_state_agg = aggregate_regions(dataset, pr_region_map, AggregationLevel.STATE).get_one_region(
-        pr_state
-    )
-    if pr_state_agg.latest[CommonFields.POPULATION] < 1_000_000:
-        raise ValueError("Not enough counties with occupancy rate")
+    weighted_icu_occupancy = None
+    weighted_all_bed_occupancy = None
 
-    # Make a new dataset with occupancy_fields copied from pr_state_agg
+    if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+        licensed_beds = pr_data[CommonFields.LICENSED_BEDS]
+        occupancy_rates = pr_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+        weighted_all_bed_occupancy = (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
+
+    if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
+        icu_beds = pr_data[CommonFields.ICU_BEDS]
+        occupancy_rates = pr_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+        weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
+
+    pr_region = pipeline.Region.from_state("PR")
     patched_static = dataset.static.copy()
-    for field in occupancy_fields:
-        patched_static.loc[pr_state.location_id, field] = pr_state_agg.latest[field]
+    patched_static.at[
+        pr_region.location_id, CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
+    ] = weighted_all_bed_occupancy
+    patched_static.at[
+        pr_region.location_id, CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
+    ] = weighted_icu_occupancy
+
     return dataclasses.replace(dataset, static=patched_static)
