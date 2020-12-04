@@ -7,6 +7,12 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### Link to Covid Act Now website
+_Added on 2020-12-03_
+
+Each region now includes a field `url` that points to the Covid Act Now location page
+for that region.
+
 ### Upcoming risk level update
 _Added on 2020-12-01_
 

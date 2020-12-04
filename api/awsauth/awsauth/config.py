@@ -1,3 +1,4 @@
+from typing import List
 import pydantic
 
 
@@ -23,6 +24,8 @@ class EnvConstants(pydantic.BaseSettings):
     HUBSPOT_API_KEY: str
 
     HUBSPOT_ENABLED: bool
+
+    EMAIL_BLOCKLIST: List[str]
 
     class Config:
         env_file = ".env"
