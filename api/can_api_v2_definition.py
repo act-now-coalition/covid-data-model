@@ -12,6 +12,7 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
     """Method used to determine test positivity ratio."""
 
     CMSTesting = "CMSTesting"
+    CDCTesting = "CDCTesting"
     HHSTesting = "HHSTesting"
     VALORUM = "Valorum"
     COVID_TRACKING = "covid_tracking"
