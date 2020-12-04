@@ -90,7 +90,7 @@ def update(wide_dates_filename, aggregate_to_country: bool, state: Optional[str]
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
-    multiregion_dataset = timeseries.calculate_puerto_rico_bed_occupancy_rate(multiregion_dataset)
+    multiregion_dataset = timeseries.aggregate_puerto_rico_from_counties(multiregion_dataset)
 
     # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     # cbsa_dataset = aggregator.aggregate(multiregion_dataset)

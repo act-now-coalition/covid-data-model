@@ -1388,33 +1388,34 @@ def combined_datasets(
     )
 
 
-def calculate_puerto_rico_bed_occupancy_rate(dataset: MultiRegionDataset) -> MultiRegionDataset:
-    """Returns a dataset with the state PR occupancy rate calculated using county rates."""
+def _aggregate_ignoring_nas(df_in: pd.DataFrame) -> Mapping:
+    aggregated = {}
+    for field in df_in.columns:
+        if field == CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE:
+            licensed_beds = df_in[CommonFields.LICENSED_BEDS]
+            occupancy_rates = df_in[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+            aggregated[field] = (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
+        elif field == CommonFields.ICU_TYPICAL_OCCUPANCY_RATE:
+            icu_beds = df_in[CommonFields.ICU_BEDS]
+            occupancy_rates = df_in[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+            aggregated[field] = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
+        else:
+            aggregated[field] = df_in[field].sum()
+    return aggregated
+
+
+def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiRegionDataset:
+    """Returns a dataset with NA static values for the state PR aggregated from counties."""
     pr_county_mask = (dataset.static[CommonFields.STATE] == "PR") & (
         dataset.static[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
     )
-    pr_data = dataset.static.loc[pr_county_mask]
+    pr_counties = dataset.static.loc[pr_county_mask]
+    aggregated = _aggregate_ignoring_nas(pr_counties.select_dtypes(include="number"))
+    pr_location_id = pipeline.Region.from_state("PR").location_id
 
-    weighted_icu_occupancy = None
-    weighted_all_bed_occupancy = None
-
-    if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
-        licensed_beds = pr_data[CommonFields.LICENSED_BEDS]
-        occupancy_rates = pr_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
-        weighted_all_bed_occupancy = (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
-
-    if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in pr_data.columns:
-        icu_beds = pr_data[CommonFields.ICU_BEDS]
-        occupancy_rates = pr_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
-        weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
-
-    pr_region = pipeline.Region.from_state("PR")
     patched_static = dataset.static.copy()
-    patched_static.at[
-        pr_region.location_id, CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
-    ] = weighted_all_bed_occupancy
-    patched_static.at[
-        pr_region.location_id, CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
-    ] = weighted_icu_occupancy
+    for field, aggregated_value in aggregated.items():
+        if pd.isna(patched_static.at[pr_location_id, field]):
+            patched_static.at[pr_location_id, field] = aggregated_value
 
     return dataclasses.replace(dataset, static=patched_static)
