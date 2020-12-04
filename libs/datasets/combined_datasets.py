@@ -31,6 +31,7 @@ from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
+from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
 from libs.datasets import dataset_filter
 from libs import us_state_abbrev
 from libs.pipeline import Region
@@ -114,6 +115,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
     # STAFFED_BEDS isn't used right now. Disable to ease refactoring.
     # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
+    CommonFields.CAN_LOCATION_PAGE_URL: [CANLocationPageURLS],
 }
 
 

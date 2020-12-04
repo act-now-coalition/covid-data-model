@@ -18,6 +18,8 @@ GEO_DATA_COLUMNS = [
     CommonFields.COUNTY,
 ]
 
+NON_NUMERIC_COLUMNS = GEO_DATA_COLUMNS + [CommonFields.CAN_LOCATION_PAGE_URL]
+
 
 def _get_public_data_path():
     """Sets global path to covid-data-public directory."""
@@ -307,9 +309,11 @@ def fips_index_geo_data(df: pd.DataFrame) -> pd.DataFrame:
     # Make a list of the GEO_DATA_COLUMNS in df, in GEO_DATA_COLUMNS order. The intersection method returns
     # values in a different order, which makes comparing the wide dates CSV harder.
     present_columns = [column for column in GEO_DATA_COLUMNS if column in df.columns]
+
     # The GEO_DATA_COLUMNS are expected to have a single value for each FIPS. Get the columns
     # from every row of each data source and then keep one of each unique row.
     all_identifiers = df.loc[:, present_columns].drop_duplicates()
+
     # Make a DataFrame with a unique FIPS index. If multiple rows are found with the same FIPS then there
     # are rows in the input data sources that have different values for county name, state etc.
     fips_indexed = all_identifiers.set_index(CommonFields.FIPS, verify_integrity=True)

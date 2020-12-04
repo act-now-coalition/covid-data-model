@@ -150,6 +150,20 @@ def check_api_key_edge(event, context):
     if not record:
         return {"status": 403, "statusDescription": "Unauthorized"}
 
+    if record["email"] in Config.Constants.EMAIL_BLOCKLIST:
+        error_message = {
+            "error": "Unauthorized. Please contact api@covidactnow.org to restore access."
+        }
+        return {
+            "status": 403,
+            "body": json.dumps(error_message),
+            "headers": {"content-type": [{"value": "application/json"}]},
+            "bodyEncoding": "text",
+            "statusDescription": (
+                "Unauthorized. Please contact api@covidactnow.org to restore access."
+            ),
+        }
+
     _record_successful_request(request, record)
 
     # Return request, which forwards to S3 backend.
