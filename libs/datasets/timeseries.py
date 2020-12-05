@@ -1239,7 +1239,8 @@ def aggregate_regions(
     if agg_common_fields:
         raise ValueError("field and scale_factor have values in common")
     # TODO(tom): Do something smarter with non-number columns in static. Currently they are
-    # silently dropped.
+    # silently dropped. Functions such as aggregate_to_new_york_city manually copy non-number
+    # columns.
     static_in = dataset_in.static.select_dtypes(include="number")
     scale_field_missing = scale_fields.difference(static_in.columns)
     if scale_field_missing:
@@ -1334,7 +1335,6 @@ def combined_datasets(
     timeseries_dfs = []
     # A list of Series that will be concat-ed
     provenance_series = []
-    static_series = []
     for field, datasets_list in timeseries_field_dataset_source.items():
         location_id_so_far = pd.Index([])
         for dataset_name in datasets_list:
@@ -1350,6 +1350,7 @@ def combined_datasets(
                 datasets[dataset_name].provenance.loc[selected_location_id, field]
             )
 
+    static_series = []
     for field, datasets_list in static_field_dataset_source.items():
         static_column_so_far = None
         for dataset_name in datasets_list:
@@ -1368,20 +1369,30 @@ def combined_datasets(
                     verify_integrity=True,
                 )
         static_series.append(static_column_so_far)
-    output_timeseries_wide_dates = pd.concat(timeseries_dfs, verify_integrity=True)
-    assert output_timeseries_wide_dates.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-    assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
-    if output_timeseries_wide_dates.empty:
-        output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+    if timeseries_dfs:
+        output_timeseries_wide_dates = pd.concat(timeseries_dfs, verify_integrity=True)
+        assert output_timeseries_wide_dates.index.names == [
+            PdFields.VARIABLE,
+            CommonFields.LOCATION_ID,
+        ]
+        assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
+        if output_timeseries_wide_dates.empty:
+            output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        else:
+            output_timeseries_wide_variables = (
+                output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
+            )
+        output_provenance = pd.concat(provenance_series, verify_integrity=True)
     else:
-        output_timeseries_wide_variables = (
-            output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
-        )
-    output_static_df = pd.concat(
-        static_series, axis=1, sort=True, verify_integrity=True
-    ).rename_axis(index=CommonFields.LOCATION_ID)
+        output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        output_provenance = _EMPTY_PROVENANCE_SERIES
+    if static_series:
+        output_static_df = pd.concat(
+            static_series, axis=1, sort=True, verify_integrity=True
+        ).rename_axis(index=CommonFields.LOCATION_ID)
+    else:
+        output_static_df = _EMPTY_REGIONAL_ATTRIBUTES_DF
 
-    output_provenance = pd.concat(provenance_series, verify_integrity=True)
     return MultiRegionDataset(
         timeseries=output_timeseries_wide_variables,
         provenance=output_provenance.sort_index(),

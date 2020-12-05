@@ -1,3 +1,5 @@
+from covidactnow.datapublic.common_fields import CommonFields
+
 from libs import pipeline
 from libs.datasets import timeseries
 from libs.datasets.dataset_utils import AggregationLevel
@@ -22,9 +24,14 @@ def aggregate_to_new_york_city(
     all_nyc_regions = [pipeline.Region.from_fips(fips) for fips in ALL_NYC_FIPS]
     nyc_map = {borough_region: nyc_region for borough_region in all_nyc_regions}
 
+    # aggregate_regions only copies number columns. Extract them and re-add to the aggregated
+    # dataset.
+    static_excluding_numbers = ds_in.get_regions_subset([nyc_region]).static.select_dtypes(
+        exclude="number"
+    )
     nyc_dataset = timeseries.aggregate_regions(
         ds_in, nyc_map, AggregationLevel.COUNTY, ignore_na=True
-    )
+    ).add_static_values(static_excluding_numbers.reset_index())
 
     return ds_in.remove_regions(all_nyc_regions).append_regions(nyc_dataset)
 

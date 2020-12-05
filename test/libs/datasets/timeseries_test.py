@@ -975,7 +975,8 @@ def test_combined_timeseries():
     )
     combined = timeseries.combined_datasets(
         {DatasetName("ts1"): ts1, DatasetName("ts2"): ts2},
-        {"m1": [DatasetName("ts1"), DatasetName("ts2")]},
+        {FieldName("m1"): [DatasetName("ts1"), DatasetName("ts2")]},
+        {},
     )
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1014,7 +1015,7 @@ def test_combined_missing_field():
     field_source_map = {FieldName("m1"): list(dataset_map.keys())}
 
     # Check that combining finishes and produces the expected result.
-    combined_1 = timeseries.combined_datasets(dataset_map, field_source_map)
+    combined_1 = timeseries.combined_datasets(dataset_map, field_source_map, {})
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,m1\n"
@@ -1029,6 +1030,7 @@ def test_combined_missing_field():
     combined_2 = timeseries.combined_datasets(
         dataset_map,
         {name: reversed(source_list) for name, source_list in field_source_map.items()},
+        {},
     )
     assert_dataset_like(expected, combined_2)
 
@@ -1050,6 +1052,7 @@ def test_combined_static():
     )
     combined = timeseries.combined_datasets(
         {DatasetName("ds1"): ds1, DatasetName("ds2"): ds2},
+        {},
         {FieldName("s1"): [DatasetName("ds1"), DatasetName("ds2")]},
     )
     expected = timeseries.MultiRegionDataset.from_csv(
@@ -1076,7 +1079,7 @@ def test_aggregate_states_to_country_scale():
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
         AggregationLevel.COUNTRY,
-        [timeseries.StaticWeightedAverageAggregation("m1", CommonFields.POPULATION),],
+        [timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),],
     )
     # The column m1 is scaled by population.
     # On 2020-04-01: 4 * 0.25 + 8 * 0.75 = 7
@@ -1150,14 +1153,17 @@ def test_timeseries_rows():
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)
 
 
+@pytest.mark.skip(reason="test not written, needs proper columns")
 def test_calculate_puerto_rico_bed_occupancy_rate():
-    ts = timeseries.MultiRegionDataset.from_csv(
+    ds = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
-            "location_id,county,aggregate_level,date,m1,s1,population\n"
+            "location_id,county,aggregate_level,date,population\n"
             "iso1:us#iso2:us-pr,Texas,state,2020-04-01,4,,\n"
             "iso1:us#iso2:us-pr,Texas,state,,,4,2500\n"
         )
     )
+
+    actual = timeseries.aggregate_puerto_rico_from_counties(ds)
 
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1166,4 +1172,4 @@ def test_calculate_puerto_rico_bed_occupancy_rate():
             "iso1:us,country,,,10,10000\n"
         )
     )
-    assert_dataset_like(country, expected)
+    assert_dataset_like(actual, expected)
