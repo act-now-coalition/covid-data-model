@@ -7,7 +7,6 @@ from libs import us_state_abbrev
 import pandas as pd
 from libs.datasets.dataset_utils import AggregationLevel, make_rows_key
 from libs.datasets import dataset_utils
-from libs.datasets import custom_aggregations
 from libs.datasets import dataset_base
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
@@ -50,7 +49,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
 
         data = source.data
 
-        data = cls._aggregate_new_york_data(data)
         if fill_missing_state:
             non_matching = dataset_utils.aggregate_and_get_nonmatching(
                 data, cls.STATE_GROUP_KEY, AggregationLevel.COUNTY, AggregationLevel.STATE
@@ -95,44 +93,6 @@ class LatestValuesDataset(dataset_base.DatasetBase):
         data.loc[
             data[CommonFields.FIPS] == "72", CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
         ] = weighted_icu_occupancy
-
-        return data
-
-    @classmethod
-    def _aggregate_new_york_data(cls, data):
-        # When grouping nyc data, we don't want to the sum to include invalid FIPS.
-        nyc_data = data[data[CommonFields.FIPS].isin(custom_aggregations.ALL_NYC_FIPS)]
-        if not len(nyc_data):
-            return data
-        group = cls.STATE_GROUP_KEY
-        weighted_all_bed_occupancy = None
-
-        if CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE in data.columns:
-            licensed_beds = nyc_data[CommonFields.LICENSED_BEDS]
-            occupancy_rates = nyc_data[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
-            weighted_all_bed_occupancy = (
-                licensed_beds * occupancy_rates
-            ).sum() / licensed_beds.sum()
-        weighted_icu_occupancy = None
-        if CommonFields.ICU_TYPICAL_OCCUPANCY_RATE in data.columns:
-            icu_beds = nyc_data[CommonFields.ICU_BEDS]
-            occupancy_rates = nyc_data[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
-            weighted_icu_occupancy = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
-
-        data = custom_aggregations.update_with_combined_new_york_counties(
-            data, group, are_boroughs_zero=False
-        )
-
-        nyc_fips = custom_aggregations.NEW_YORK_COUNTY_FIPS
-        if weighted_all_bed_occupancy:
-            data.loc[
-                data[CommonFields.FIPS] == nyc_fips, CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE
-            ] = weighted_all_bed_occupancy
-
-        if weighted_icu_occupancy:
-            data.loc[
-                data[CommonFields.FIPS] == nyc_fips, CommonFields.ICU_TYPICAL_OCCUPANCY_RATE
-            ] = weighted_icu_occupancy
 
         return data
 

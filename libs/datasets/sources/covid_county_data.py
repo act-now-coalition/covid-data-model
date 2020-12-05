@@ -7,6 +7,8 @@ import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
+
+from libs.datasets import custom_aggregations
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.timeseries import MultiRegionDataset
@@ -159,10 +161,9 @@ class CovidCountyDataDataSource(data_source.DataSource):
 
     @lru_cache(None)
     def multi_region_dataset(self) -> MultiRegionDataset:
-        dataset = MultiRegionDataset.from_fips_timeseries_df(self.data).add_provenance_all(
-            self.SOURCE_NAME
-        )
+        dataset = super().multi_region_dataset()
 
+        # Add latest ICU_BEDS from timeseries to static.
         # Hacked out of _timeseries_latest_values
         # timeseries is already sorted by DATE with the latest at the bottom.
         long = dataset.timeseries[CommonFields.ICU_BEDS].droplevel(CommonFields.DATE).dropna()

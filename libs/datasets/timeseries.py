@@ -27,7 +27,6 @@ from libs import pipeline
 from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
-from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_base import SaveableDatasetInterface
@@ -276,9 +275,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
             CommonFields.AGGREGATE_LEVEL,
             CommonFields.STATE,
         ]
-        data = custom_aggregations.update_with_combined_new_york_counties(
-            data, group, are_boroughs_zero=source.HAS_AGGREGATED_NYC_BOROUGH
-        )
 
         if fill_missing_state:
             state_groupby_fields = [

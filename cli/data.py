@@ -14,6 +14,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import google_sheet_helpers, wide_dates_df
 from libs import pipeline
 from libs.datasets import AggregationLevel
+from libs.datasets import custom_aggregations
 from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
@@ -91,6 +92,7 @@ def update(wide_dates_filename, aggregate_to_country: bool, state: Optional[str]
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
     multiregion_dataset = timeseries.aggregate_puerto_rico_from_counties(multiregion_dataset)
+    multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
 
     # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     # cbsa_dataset = aggregator.aggregate(multiregion_dataset)

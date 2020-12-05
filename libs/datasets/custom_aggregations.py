@@ -1,3 +1,5 @@
+from libs import pipeline
+from libs.datasets import timeseries
 from libs.datasets.dataset_utils import AggregationLevel
 import pandas as pd
 
@@ -11,6 +13,18 @@ NYC_BOROUGH_FIPS = [
     "36085",  # Richmond
 ]
 ALL_NYC_FIPS = NYC_BOROUGH_FIPS + [NEW_YORK_COUNTY_FIPS]
+
+
+def aggregate_to_new_york_city(
+    ds_in: timeseries.MultiRegionDataset,
+) -> timeseries.MultiRegionDataset:
+    nyc_region = pipeline.Region.from_fips(NEW_YORK_COUNTY_FIPS)
+    all_nyc_regions = [pipeline.Region.from_fips(fips) for fips in ALL_NYC_FIPS]
+    nyc_map = {borough_region: nyc_region for borough_region in all_nyc_regions}
+
+    nyc_dataset = timeseries.aggregate_regions(ds_in, nyc_map, AggregationLevel.COUNTY)
+
+    return ds_in.remove_regions(all_nyc_regions).append_regions(nyc_dataset)
 
 
 def calculate_combined_new_york_counties(data, group, are_boroughs_zero=False):
