@@ -24,14 +24,12 @@ import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs import pipeline
-from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
-import libs.qa.dataset_summary_gen
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import NON_NUMERIC_COLUMNS
@@ -40,7 +38,6 @@ from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
 
-from libs.us_state_abbrev import ABBREV_US_FIPS
 
 _log = structlog.get_logger()
 
@@ -142,193 +139,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
     ]
 
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
-
-    @cached_property
-    def dataset_type(self) -> DatasetType:
-        return DatasetType.TIMESERIES
-
-    @cached_property
-    def empty(self):
-        return self.data.empty
-
-    def latest_values(self) -> pd.DataFrame:
-        """Gets the most recent values.
-
-        Return: DataFrame
-        """
-        columns_to_ffill = list(set(self.data.columns) - set(TimeseriesDataset.INDEX_FIELDS))
-        data_copy = self.data.set_index([CommonFields.FIPS, CommonFields.DATE]).sort_index()
-        # Groupby preserves the order of rows within a group so ffill will fill forwards by DATE.
-        groups_to_fill = data_copy.groupby([CommonFields.FIPS], sort=False)
-        # Consider using ffill(limit=...) to constrain how far in the past the latest values go. Currently, because
-        # there may be dates missing in the index an integer limit does not provide a consistent
-        # limit on the number of days in the past that may be used.
-        data_copy[columns_to_ffill] = groups_to_fill[columns_to_ffill].ffill()
-        return (
-            data_copy.groupby([CommonFields.FIPS], sort=False)
-            .last()
-            # Reset FIPS back to a regular column and drop the DATE index.
-            .reset_index(CommonFields.FIPS)
-            .reset_index(drop=True)
-        )
-
-    def latest_values_object(self) -> LatestValuesDataset:
-        return LatestValuesDataset(self.latest_values())
-
-    def get_date_columns(self) -> pd.DataFrame:
-        """Create a DataFrame with a row for each FIPS-variable timeseries and hierarchical columns.
-
-        Returns:
-            A DataFrame with a row index of COMMON_FIELDS_TIMESERIES_KEYS and columns hierarchy separating
-            GEO_DATA_COLUMNS, provenance information, the timeseries summary and the complete timeseries.
-        """
-        ts_value_columns = (
-            set(self.data.columns)
-            - set(COMMON_FIELDS_TIMESERIES_KEYS)
-            - set(dataset_utils.GEO_DATA_COLUMNS)
-        )
-        # Melt all the ts_value_columns into a single "value" column
-        long = (
-            self.data.loc[:, COMMON_FIELDS_TIMESERIES_KEYS + list(ts_value_columns)]
-            .melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS, value_vars=ts_value_columns,)
-            .dropna()
-            .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
-            .apply(pd.to_numeric)
-        )
-        # Unstack by DATE, creating a row for each FIPS-variable timeseries and a column for each DATE.
-        wide_dates = long.unstack(CommonFields.DATE)
-        # Drop any rows without a real value for any date.
-        wide_dates = wide_dates.loc[wide_dates.loc[:, "value"].notna().any(axis=1), :]
-
-        summary = wide_dates.loc[:, "value"].apply(
-            libs.qa.dataset_summary_gen.generate_field_summary, axis=1
-        )
-
-        geo_data_per_fips = dataset_utils.fips_index_geo_data(self.data)
-        # Make a DataFrame with a row for each summary.index element
-        assert summary.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
-        geo_data = pd.merge(
-            pd.DataFrame(data=[], index=summary.index),
-            geo_data_per_fips,
-            how="left",
-            left_on=CommonFields.FIPS,  # FIPS is in the left MultiIndex
-            right_index=True,
-            suffixes=(False, False),
-        )
-
-        return pd.concat(
-            {
-                "geo_data": geo_data,
-                "provenance": self.provenance,
-                "summary": summary,
-                "value": wide_dates["value"],
-            },
-            axis=1,
-        )
-
-    def get_subset(
-        self,
-        aggregation_level=None,
-        country=None,
-        fips: Optional[str] = None,
-        state: Optional[str] = None,
-        states: Optional[List[str]] = None,
-        on: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-        columns: Sequence[str] = tuple(),
-    ) -> "TimeseriesDataset":
-        """Fetch a new TimeseriesDataset with a subset of the data in `self`.
-
-        Some parameters are only used in ipython notebooks."""
-        rows_key = dataset_utils.make_rows_key(
-            self.data,
-            aggregation_level=aggregation_level,
-            country=country,
-            fips=fips,
-            state=state,
-            states=states,
-            on=on,
-            after=after,
-            before=before,
-        )
-        columns_key = list(columns) if columns else slice(None, None, None)
-        return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
-
-    @classmethod
-    def from_source(
-        cls, source: "DataSource", fill_missing_state: bool = True
-    ) -> "TimeseriesDataset":
-        """Loads data from a specific datasource.
-
-        Args:
-            source: DataSource to standardize for timeseries dataset
-            fill_missing_state: If True, backfills missing state data by
-                calculating county level aggregates.
-
-        Returns: Timeseries object.
-        """
-        data = source.data
-        group = [
-            CommonFields.DATE,
-            CommonFields.COUNTRY,
-            CommonFields.AGGREGATE_LEVEL,
-            CommonFields.STATE,
-        ]
-
-        if fill_missing_state:
-            state_groupby_fields = [
-                CommonFields.DATE,
-                CommonFields.COUNTRY,
-                CommonFields.STATE,
-            ]
-            non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data, state_groupby_fields, AggregationLevel.COUNTY, AggregationLevel.STATE,
-            ).reset_index()
-            data = pd.concat([data, non_matching])
-
-        fips_data = dataset_utils.build_fips_data_frame()
-        data = dataset_utils.add_county_using_fips(data, fips_data)
-        is_state = data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
-        data.loc[is_state, CommonFields.FIPS] = state_fips
-
-        no_fips = data[CommonFields.FIPS].isnull()
-        if no_fips.any():
-            _log.warning(
-                "Dropping rows without FIPS", source=str(source), rows=repr(data.loc[no_fips])
-            )
-            data = data.loc[~no_fips]
-
-        dups = data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS, keep=False)
-        if dups.any():
-            raise DuplicateDataException(f"Duplicates in {source}", data.loc[dups])
-
-        # Choosing to sort by date
-        data = data.sort_values(CommonFields.DATE)
-        return cls(data, provenance=source.provenance)
-
-    def summarize(self):
-        dataset_utils.summarize(
-            self.data,
-            AggregationLevel.COUNTY,
-            [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS,],
-        )
-
-        dataset_utils.summarize(
-            self.data,
-            AggregationLevel.STATE,
-            [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE],
-        )
-
-    @classmethod
-    def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
-        df = common_df.read_csv(path_or_buf)
-        # TODO: common_df.read_csv sets the index of the dataframe to be fips, date, however
-        # most of the calling code expects fips and date to not be in an index.
-        # In the future, it would be good to standardize around index fields.
-        df = df.reset_index()
-        return cls(df)
 
 
 def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
@@ -659,19 +469,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
         ts_df = _add_location_id(ts_df)
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
-    @staticmethod
-    def from_timeseries_and_latest(
-        ts: TimeseriesDataset, latest: LatestValuesDataset
-    ) -> "MultiRegionDataset":
-        """Converts legacy FIPS to new LOCATION_ID and calls `from_timeseries_df` to finish construction."""
-        dataset = MultiRegionDataset.from_fips_timeseries_df(ts.data)
-        dataset = dataset.add_fips_static_df(latest.data)
-
-        if ts.provenance is not None:
-            dataset = dataset.add_fips_provenance(ts.provenance)
-
-        return dataset
-
     def add_fips_provenance(self, provenance):
         # Check that current index is as expected. Names will be fixed after remapping, below.
         assert provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
@@ -855,15 +652,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self.timeseries.groupby(CommonFields.LOCATION_ID)
-
-    def to_timeseries(self) -> TimeseriesDataset:
-        """Returns a `TimeseriesDataset` of this data.
-
-        This method exists for interim use when calling code that doesn't use MultiRegionDataset.
-        """
-        return TimeseriesDataset(
-            self.data_with_fips, provenance=None if self.provenance.empty else self.provenance
-        )
 
     def timeseries_rows(self) -> pd.DataFrame:
         wide_dates = self.timeseries_wide_dates()

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
-from typing import Dict, Type, List, NewType, Mapping, Tuple
+from typing import Dict, Type, List, NewType
 import functools
 import pathlib
 from typing import Optional
@@ -14,7 +14,6 @@ from covidactnow.datapublic.common_fields import FieldName
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
-from libs.datasets import timeseries
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import DatasetType
@@ -32,8 +31,6 @@ from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
-from libs.datasets import dataset_filter
-from libs import us_state_abbrev
 from libs.pipeline import Region
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
@@ -125,11 +122,6 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 
-US_STATES_FILTER = dataset_filter.DatasetFilter(
-    country="USA", states=list(us_state_abbrev.ABBREV_US_STATE.keys())
-)
-
-
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
@@ -154,93 +146,6 @@ def load_us_latest_dataset(
 
 def get_county_name(region: Region) -> Optional[str]:
     return load_us_timeseries_dataset().get_county_name(region=region)
-
-
-def _build_data_and_provenance(
-    feature_definitions: Mapping[str, List[str]], datasource_dataframes: Mapping[str, pd.DataFrame]
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    fips_indexed = dataset_utils.fips_index_geo_data(pd.concat(datasource_dataframes.values()))
-
-    # Inspired by pd.Series.combine_first(). Create a new index which is a union of all the input dataframe
-    # index.
-    dataframes = list(datasource_dataframes.values())
-    new_index = dataframes[0].index
-    index_names = dataframes[0].index.names
-    for df in dataframes[1:]:
-        assert index_names == df.index.names
-        new_index = new_index.union(df.index)
-    new_index = new_index.unique().sort_values()
-    assert new_index.is_unique
-    assert new_index.is_monotonic_increasing
-    # The following is a failed attempt at a performance optimization. The merge operation spends most of its
-    # time boxing datetime values, something that in theory doesn't need to happen for an DatetimeIndex but
-    # I've been unable to make that happen when the datetimes are part of a MultiIndex.
-    # if index_names == ["fips", "date"]:
-    #     arrays = [new_index.get_level_values(0), pd.to_datetime(new_index.get_level_values(1))]
-    #     new_index = MultiIndex.from_arrays(arrays=arrays, names=index_names)
-    # elif index_names == ["fips"]:
-    #     pass
-    # else:
-    #     raise ValueError("bad new_index.names")
-
-    data, provenance = _merge_data(datasource_dataframes, feature_definitions, _log, new_index)
-
-    if not fips_indexed.empty:
-        # See https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html#joining-with-two-multiindexes
-        data = data.join(fips_indexed, on=["fips"], how="left")
-
-    return data, provenance
-
-
-def _merge_data(datasource_dataframes, feature_definitions, log, new_index):
-    # For each <fips, variable>, use the entire timeseries of the highest priority datasource
-    # with at least one real (not NaN) value.
-
-    # Reindex the inputs now to avoid reindexing for each field below.
-    datasource_dataframes = {
-        name: df.reindex(new_index, copy=False) for name, df in datasource_dataframes.items()
-    }
-    # Build feature columns from feature_definitions.
-    data = pd.DataFrame(index=new_index)
-    provenance = pd.DataFrame(index=new_index)
-    for field_name, data_source_names in feature_definitions.items():
-        datasource_series = [
-            (name, datasource_dataframes[name][field_name]) for name in data_source_names
-        ]
-        field_out, field_provenance = _merge_field(
-            datasource_series, new_index, log.bind(field=field_name),
-        )
-        data.loc[:, field_name] = field_out
-        provenance.loc[:, field_name] = field_provenance
-    return data, provenance
-
-
-def _merge_field(
-    datasource_series: List[Tuple[str, pd.Series]], new_index, log: structlog.BoundLoggerBase
-):
-    log.info("Working field")
-    field_out = None
-    field_provenance = pd.Series(index=new_index, dtype="object")
-    # Go through the data sources, starting with the highest priority.
-    for datasource_name, datasource_field_in in reversed(datasource_series):
-        log_datasource = log.bind(dataset_name=datasource_name)
-        if field_out is None:
-            # Copy all values from the highest priority input to the output
-            field_provenance.loc[pd.notna(datasource_field_in)] = datasource_name
-            field_out = datasource_field_in
-        else:
-            field_out_has_ts = field_out.groupby(level=[CommonFields.FIPS], sort=False).transform(
-                lambda x: x.notna().any()
-            )
-            copy_field_in = (~field_out_has_ts) & pd.notna(datasource_field_in)
-            # Copy from datasource_field_in only on rows where all rows of field_out with that FIPS are NaN.
-            field_provenance.loc[copy_field_in] = datasource_name
-            field_out = field_out.where(~copy_field_in, datasource_field_in)
-        dups = field_out.index.duplicated(keep=False)
-        if dups.any():
-            log_datasource.error("Found duplicates in index")
-            raise ValueError()  # This is bad, somehow the input /still/ has duplicates
-    return field_out, field_provenance
 
 
 def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:

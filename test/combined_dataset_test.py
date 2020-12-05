@@ -1,18 +1,13 @@
 import logging
 import re
-from itertools import chain
 
 import structlog
 
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets.combined_datasets import (
     _build_data_and_provenance,
-    build_from_sources,
-    US_STATES_FILTER,
-    FeatureDataSourceMap,
     provenance_wide_metrics_to_series,
 )
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
@@ -54,6 +49,23 @@ def test_combined_county_has_some_data(fips):
     assert region_data.data[CommonFields.POSITIVE_TESTS].all()
     assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
     assert region_data.latest[CommonFields.DEATHS] > 1
+
+
+def test_pr_aggregation():
+    dataset = combined_datasets.load_us_timeseries_dataset()
+    data = dataset.get_one_region(Region.from_fips("72")).latest
+    assert data
+    assert data["all_beds_occupancy_rate"] < 1
+    assert data["icu_occupancy_rate"] < 1
+
+
+def test_nyc_aggregation(nyc_region):
+    dataset = combined_datasets.load_us_timeseries_dataset()
+    data = dataset.get_one_region(nyc_region).latest
+    # Check to make sure that beds occupancy rates are below 1,
+    # signaling that it is properly combining occupancy rates.
+    assert data["all_beds_occupancy_rate"] < 1
+    assert data["icu_occupancy_rate"] < 1
 
 
 # Check some counties picked arbitrarily: (Orange County, CA)/06059 and (Harris County, TX)/48201
@@ -206,31 +218,6 @@ def test_build_and_and_provenance_missing_fips():
     assert provenance.loc["97444", "m1"].dropna().tolist() == ["source_b"]
     assert combined.loc["97444", "m2"].dropna().tolist() == []
     assert provenance.loc["97444", "m2"].dropna().tolist() == []
-
-
-@pytest.mark.slow
-def test_build_from_sources_smoke_test():
-    # Quickly make sure build_from_sources doesn't crash when run with a small
-    # number of features.
-
-    # feature_definition = ALL_FIELDS_FEATURE_DEFINITION
-    feature_definition: FeatureDataSourceMap = {
-        CommonFields.CURRENT_ICU: [CovidCountyDataDataSource, CovidTrackingDataSource],
-        CommonFields.CASES: [NYTimesDataset],
-    }
-
-    loaded_data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.local()
-        for data_source_cls in chain.from_iterable(feature_definition.values())
-    }
-
-    build_from_sources(
-        TimeseriesDataset, loaded_data_sources, feature_definition, filter=US_STATES_FILTER,
-    )
-
-    build_from_sources(
-        LatestValuesDataset, loaded_data_sources, feature_definition, filter=US_STATES_FILTER,
-    )
 
 
 def test_melt_provenance():

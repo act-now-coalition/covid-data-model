@@ -96,20 +96,3 @@ def test_duplicate_index_fails(is_county):
 
     with pytest.raises(dataset_utils.DuplicateValuesForIndex):
         build_beds_dataset(rows)
-
-
-def test_pr_aggregation():
-    dataset = timeseries.MultiRegionDataset.from_latest(CovidCareMapBeds.local().beds())
-    data = dataset.get_one_region(pipeline.Region.from_fips("72")).latest
-    assert data
-    assert data["all_beds_occupancy_rate"] < 1
-    assert data["icu_occupancy_rate"] < 1
-
-
-def test_nyc_aggregation(nyc_region):
-    dataset = timeseries.MultiRegionDataset.from_latest(CovidCareMapBeds.local().beds(),)
-    data = dataset.get_one_region(nyc_region).latest
-    # Check to make sure that beds occupancy rates are below 1,
-    # signaling that it is properly combining occupancy rates.
-    assert data["all_beds_occupancy_rate"] < 1
-    assert data["icu_occupancy_rate"] < 1
