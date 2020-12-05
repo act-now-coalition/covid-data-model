@@ -22,7 +22,9 @@ def aggregate_to_new_york_city(
     all_nyc_regions = [pipeline.Region.from_fips(fips) for fips in ALL_NYC_FIPS]
     nyc_map = {borough_region: nyc_region for borough_region in all_nyc_regions}
 
-    nyc_dataset = timeseries.aggregate_regions(ds_in, nyc_map, AggregationLevel.COUNTY)
+    nyc_dataset = timeseries.aggregate_regions(
+        ds_in, nyc_map, AggregationLevel.COUNTY, ignore_na=True
+    )
 
     return ds_in.remove_regions(all_nyc_regions).append_regions(nyc_dataset)
 

@@ -1158,7 +1158,7 @@ def _find_scale_factors(
 
 
 def _aggregate_dataframe_by_region(
-    df_in: pd.DataFrame, location_id_map: Mapping[str, str]
+    df_in: pd.DataFrame, location_id_map: Mapping[str, str], *, ignore_na: bool
 ) -> pd.DataFrame:
     """Aggregates a DataFrame using given region map. The output contains dates iff the input does."""
     # df_in is sometimes empty in unittests. Return a DataFrame that is also empty and
@@ -1200,12 +1200,13 @@ def _aggregate_dataframe_by_region(
     # Join the count of regions in each location_id_agg
     long_agg = long_agg.join(location_id_agg_count, on=LOCATION_ID_AGG)
 
-    # Only keep aggregated values where the count of aggregated values is the same as the
-    # count of input regions.
-    long_agg_all_present = long_agg.loc[long_agg["count"] == long_agg["location_id_agg_count"]]
+    if not ignore_na:
+        # Only keep aggregated values where the count of aggregated values is the same as the
+        # count of input regions.
+        long_agg = long_agg.loc[long_agg["count"] == long_agg["location_id_agg_count"]]
 
     df_out = (
-        long_agg_all_present["sum"]
+        long_agg["sum"]
         .unstack()
         .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
         .sort_index()
@@ -1220,6 +1221,8 @@ def aggregate_regions(
     aggregate_map: Mapping[Region, Region],
     aggregate_level: AggregationLevel,
     aggregations: Sequence[StaticWeightedAverageAggregation] = WEIGHTED_AGGREGATIONS,
+    *,
+    ignore_na: bool = False,
 ) -> MultiRegionDataset:
     """Produces a dataset with dataset_in aggregated using sum or weighted aggregation."""
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
@@ -1249,7 +1252,7 @@ def aggregate_regions(
     static_in_other_fields = static_in.loc[:, ~scale_fields_mask]
 
     static_agg_scale_fields = _aggregate_dataframe_by_region(
-        static_in_scale_fields, location_id_map
+        static_in_scale_fields, location_id_map, ignore_na=ignore_na
     )
     location_ids = dataset_in.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
     # TODO(tom): Add support for time-varying scale factors, for example to scale
@@ -1268,9 +1271,11 @@ def aggregate_regions(
     timeseries_scaled = _apply_scaling_factor(dataset_in.timeseries, scale_factors, aggregations)
 
     static_agg_other_fields = _aggregate_dataframe_by_region(
-        static_other_fields_scaled, location_id_map
+        static_other_fields_scaled, location_id_map, ignore_na=ignore_na
     )
-    timeseries_agg = _aggregate_dataframe_by_region(timeseries_scaled, location_id_map)
+    timeseries_agg = _aggregate_dataframe_by_region(
+        timeseries_scaled, location_id_map, ignore_na=ignore_na
+    )
     static_agg = pd.concat([static_agg_scale_fields, static_agg_other_fields], axis=1)
     if static_agg.index.name != CommonFields.LOCATION_ID:
         # It looks like concat doesn't always set the index name, but haven't worked out
