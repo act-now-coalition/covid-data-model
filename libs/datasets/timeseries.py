@@ -949,17 +949,20 @@ def _aggregate_dataframe_by_region(
     df_in: pd.DataFrame, location_id_map: Mapping[str, str], *, ignore_na: bool
 ) -> pd.DataFrame:
     """Aggregates a DataFrame using given region map. The output contains dates iff the input does."""
+
+    if CommonFields.DATE in df_in.index.names:
+        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
+        empty_result = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+    else:
+        groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
+        empty_result = _EMPTY_REGIONAL_ATTRIBUTES_DF
+
     # df_in is sometimes empty in unittests. Return a DataFrame that is also empty and
     # has enough of an index that the test passes.
     if df_in.empty:
-        return pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
+        return empty_result
 
     df = df_in.copy()  # Copy because the index is modified below
-
-    if CommonFields.DATE in df.index.names:
-        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
-    else:
-        groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
 
     # Add a new level in the MultiIndex with the new location_id_agg
     # From https://stackoverflow.com/a/56278735
@@ -1209,6 +1212,8 @@ def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiReg
     pr_county_mask = (dataset.static[CommonFields.STATE] == "PR") & (
         dataset.static[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
     )
+    if not pr_county_mask.any():
+        return dataset
     pr_counties = dataset.static.loc[pr_county_mask]
     aggregated = _aggregate_ignoring_nas(pr_counties.select_dtypes(include="number"))
     pr_location_id = pipeline.Region.from_state("PR").location_id

@@ -4,12 +4,11 @@ import os
 import pandas as pd
 
 from libs.datasets import dataset_utils
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.sources import covid_county_data
 from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
 from libs.datasets.sources import texas_hospitalizations
-from libs.datasets.combined_datasets import US_STATES_FILTER
 
 _logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ def set_covid_data_public():
     raise Exception("Could not find covid-data-public")
 
 
-def load_data_sources_by_name() -> Dict[str, TimeseriesDataset]:
+def load_data_sources_by_name() -> Dict[str, MultiRegionDataset]:
 
     sources = [
         covid_county_data.CovidCountyDataDataSource,
@@ -41,21 +40,8 @@ def load_data_sources_by_name() -> Dict[str, TimeseriesDataset]:
     ]
     source_map = {}
     for source_cls in sources:
-        dataset = source_cls.local().timeseries()
-        dataset = US_STATES_FILTER.apply(dataset)
+        dataset = source_cls.local().multi_region_dataset()
         dataset.data["source"] = source_cls.__name__
         source_map[source_cls.__name__] = dataset
 
     return source_map
-
-
-def load_combined_timeseries(
-    sources: Dict[str, TimeseriesDataset], timeseries: TimeseriesDataset
-) -> TimeseriesDataset:
-    timeseries_data = timeseries.data.copy()
-    timeseries_data["source"] = "Combined Data"
-
-    combined_timeseries = TimeseriesDataset(
-        pd.concat([timeseries_data] + [source.data for source in sources.values()])
-    )
-    return combined_timeseries

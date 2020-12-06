@@ -22,7 +22,6 @@ from libs.datasets.combined_datasets import (
 )
 from libs.datasets.timeseries import DatasetName
 from libs.datasets import timeseries
-from libs.qa import data_availability
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.sources import forecast_hub
@@ -62,7 +61,10 @@ def update_forecasts(filename):
     default=False,
 )
 @click.option("--state", type=str, help="For testing, a two letter state abbr")
-def update(wide_dates_filename, aggregate_to_country: bool, state: Optional[str]):
+@click.option("--fips", type=str, help="For testing, a 5 digit county fips")
+def update(
+    wide_dates_filename, aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
+):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -76,9 +78,10 @@ def update(wide_dates_filename, aggregate_to_country: bool, state: Optional[str]
         data_source_cls.SOURCE_NAME: data_source_cls.local().multi_region_dataset()
         for data_source_cls in data_source_classes
     }
-    if state:
+    if state or fips:
         data_sources = {
-            name: dataset.get_subset(state=state)  # , aggregation_level=AggregationLevel.STATE)
+            name: dataset.get_subset(state=state, fips=fips)
+            # aggregation_level=AggregationLevel.STATE)
             for name, dataset in data_sources.items()
         }
     multiregion_dataset = timeseries.combined_datasets(
@@ -181,6 +184,8 @@ def run_population_filter(output_path: pathlib.Path):
 @click.option("--name", envvar="DATA_AVAILABILITY_SHEET_NAME", default="Data Availability - Dev")
 @click.option("--share-email")
 def update_availability_report(name: str, share_email: Optional[str]):
+    from libs.qa import data_availability
+
     sheet = google_sheet_helpers.open_or_create_spreadsheet(name, share_email=share_email)
     info_worksheet = google_sheet_helpers.update_info_sheet(sheet)
     data_sources_by_source_name = data_availability.load_all_latest_sources()
