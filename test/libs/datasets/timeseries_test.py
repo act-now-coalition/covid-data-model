@@ -1159,6 +1159,33 @@ def test_timeseries_rows():
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)
 
 
+def test_multi_region_dataset_get_subset():
+    ds = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,aggregate_level,state,fips,date,m1,m2,population\n"
+            "iso1:us,country,,,2020-04-01,100,200,\n"
+            "iso1:us,country,,,,,,10000\n"
+            "iso1:us#iso2:us-tx,state,TX,,2020-04-01,4,2,\n"
+            "iso1:us#iso2:us-tx,state,TX,,,,5000\n"
+            "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
+            "iso1:us#fips:97222,county,,97222,,,,1000\n"
+        )
+    )
+
+    assert (
+        ds.get_subset(aggregation_level=AggregationLevel.COUNTRY).static.at[
+            "iso1:us", CommonFields.POPULATION
+        ]
+        == 10000
+    )
+    assert (
+        ds.get_subset(fips="97222").timeseries.at[("iso1:us#fips:97222", "2020-04-01"), "m2"] == 2
+    )
+    assert (
+        ds.get_subset(state="TX").static.at["iso1:us#iso2:us-tx", CommonFields.POPULATION] == 5000
+    )
+
+
 @pytest.mark.skip(reason="test not written, needs proper columns")
 def test_calculate_puerto_rico_bed_occupancy_rate():
     ds = timeseries.MultiRegionDataset.from_csv(

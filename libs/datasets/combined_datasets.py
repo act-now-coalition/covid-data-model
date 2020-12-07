@@ -94,7 +94,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSTestingDataset,
     ],
     CommonFields.TOTAL_TESTS: [CovidTrackingDataSource],
-    CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
+    # STAFFED_BEDS isn't used right now. Disable to ease refactoring.
+    # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
     CommonFields.POSITIVE_TESTS_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TESTS_VIRAL: [CovidTrackingDataSource],
     CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],

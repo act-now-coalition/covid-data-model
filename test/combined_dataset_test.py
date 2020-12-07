@@ -4,20 +4,16 @@ import re
 import structlog
 
 from libs.datasets import combined_datasets, CommonFields
-from libs.datasets.combined_datasets import (
-    _build_data_and_provenance,
-    provenance_wide_metrics_to_series,
-)
+from libs.datasets import timeseries
+from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
-from test.dataset_utils_test import read_csv_and_index_fips, read_csv_and_index_fips_date, to_dict
-import numpy as np
+from test.dataset_utils_test import read_csv_and_index_fips_date
 import pytest
 
 # Tests to make sure that combined datasets are building data with unique indexes
@@ -127,99 +123,6 @@ def test_expected_field_in_sources(data_source_cls):
         assert len(good_state) >= 48
 
 
-def test_build_timeseries():
-    data_a = read_csv_and_index_fips_date(
-        "county,state,fips,country,aggregate_level,date,cases\n"
-        "Jones County,ZZ,97123,USA,county,2020-04-01,1\n"
-    )
-    data_b = read_csv_and_index_fips_date(
-        "county,state,fips,country,aggregate_level,date,cases\n"
-        "Jones County,ZZ,97123,USA,county,2020-04-01,2\n"
-    )
-    datasets = {"source_a": data_a, "source_b": data_b}
-
-    combined, provenance = _build_data_and_provenance({"cases": ["source_a", "source_b"]}, datasets)
-    assert combined.at[("97123", "2020-04-01"), "cases"] == 2
-    assert provenance.at[("97123", "2020-04-01"), "cases"] == "source_b"
-
-    combined, provenance = _build_data_and_provenance({"cases": ["source_b", "source_a"]}, datasets)
-    assert combined.at[("97123", "2020-04-01"), "cases"] == 1
-    assert provenance.at[("97123", "2020-04-01"), "cases"] == "source_a"
-
-
-def test_build_latest():
-    data_a = read_csv_and_index_fips(
-        "county,state,fips,country,aggregate_level,date,cases\n"
-        "Jones County,ZZ,97123,USA,county,2020-04-01,1\n"
-        "Three County,XY,97333,USA,county,2020-04-01,3\n"
-    )
-    data_b = read_csv_and_index_fips(
-        "county,state,fips,country,aggregate_level,date,cases\n"
-        "Jones County,ZZ,97123,USA,county,2020-04-01,2\n"
-    )
-    datasets = {"source_a": data_a, "source_b": data_b}
-
-    combined, provenance = _build_data_and_provenance({"cases": ["source_a", "source_b"]}, datasets)
-    assert combined.at["97123", "cases"] == 2
-    assert provenance.at["97123", "cases"] == "source_b"
-    assert combined.at["97333", "cases"] == 3
-    assert provenance.at["97333", "cases"] == "source_a"
-
-    combined, provenance = _build_data_and_provenance({"cases": ["source_b", "source_a"]}, datasets)
-    assert combined.at["97123", "cases"] == 1
-    assert provenance.at["97123", "cases"] == "source_a"
-    assert combined.at["97333", "cases"] == 3
-    assert provenance.at["97333", "cases"] == "source_a"
-
-
-def test_build_timeseries_override():
-    data_a = read_csv_and_index_fips_date(
-        "fips,date,m1,m2\n" "97123,2020-04-01,1,\n" "97123,2020-04-02,,\n" "97123,2020-04-03,3,3"
-    )
-    data_b = read_csv_and_index_fips_date(
-        "fips,date,m1,m2\n" "97123,2020-04-01,,\n" "97123,2020-04-02,2,\n"
-    )
-    datasets = {"source_a": data_a, "source_b": data_b}
-
-    # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
-    combined, provenance = _build_data_and_provenance({"m1": ["source_a", "source_b"]}, datasets,)
-    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [None, 2, None]
-    assert provenance.loc["97123", "m1"].replace({np.nan: None}).tolist() == [
-        None,
-        "source_b",
-        None,
-    ]
-
-    # The combined m1 timeseries is the highest priority value for each date; source_b is higher priority for
-    # both 2020-04-01 and 2020-04-02.
-    combined, provenance = _build_data_and_provenance({"m1": ["source_b", "source_a"]}, datasets)
-    assert combined.loc["97123", "m1"].replace({np.nan: None}).tolist() == [1, None, 3]
-    assert provenance.loc["97123", "m1"].replace({np.nan: None}).tolist() == [
-        "source_a",
-        None,
-        "source_a",
-    ]
-
-
-def test_build_and_and_provenance_missing_fips():
-    data_a = read_csv_and_index_fips_date(
-        "fips,date,m1,m2\n" "97111,2020-04-01,1,\n" "97111,2020-04-02,,\n" "97111,2020-04-03,3,3\n"
-    )
-    data_b = read_csv_and_index_fips_date(
-        "fips,date,m1,m2\n" "97111,2020-04-01,,\n" "97111,2020-04-02,2,\n" "97444,2020-04-04,4,\n"
-    )
-    datasets = {"source_a": data_a, "source_b": data_b}
-
-    # The combined m1 timeseries is copied from the timeseries in source_b; source_a is not used for m1
-    combined, provenance = _build_data_and_provenance(
-        {"m1": ["source_a", "source_b"], "m2": ["source_a", "source_b"]}, datasets
-    )
-    assert combined.loc["97444", "m1"].dropna().tolist() == [4]
-    assert provenance.loc["97444", "m1"].dropna().tolist() == ["source_b"]
-    assert combined.loc["97444", "m2"].dropna().tolist() == []
-    assert provenance.loc["97444", "m2"].dropna().tolist() == []
-
-
 def test_melt_provenance():
     wide = read_csv_and_index_fips_date(
         "fips,date,cases,recovered\n"
@@ -264,10 +167,9 @@ def test_make_latest_from_timeseries_simple():
         "97123,Smith County,ZZ,USA,2020-04-01,county,1,\n"
         "97123,Smith County,ZZ,USA,2020-04-02,county,,2\n"
     ).reset_index()
-    ts = TimeseriesDataset(data)
-    assert to_dict(["fips"], ts.latest_values()[["fips", "m1", "m2"]]) == {
-        "97123": {"m1": 1, "m2": 2}
-    }
+    ds = timeseries.MultiRegionDataset.from_fips_timeseries_df(data)
+    region = ds.get_one_region(Region.from_fips("97123"))
+    assert region.latest == {"m1": 1, "m2": 2}
 
 
 def test_make_latest_from_timeseries_dont_touch_county():
@@ -275,11 +177,15 @@ def test_make_latest_from_timeseries_dont_touch_county():
         "fips,county,state,country,date,aggregate_level,m1,m2\n"
         "95123,Smith Countyy,YY,USA,2020-04-01,county,1,\n"
         "97123,Smith Countzz,ZZ,USA,2020-04-01,county,2,\n"
-        "97,,ZZ,USA,2020-04-01,state,3,\n"
+        "56,,WY,USA,2020-04-01,state,3,\n"
     ).reset_index()
-    ts = TimeseriesDataset(data)
-    assert to_dict(["fips"], ts.latest_values()[["fips", "county", "m1", "m2"]]) == {
-        "95123": {"m1": 1, "county": "Smith Countyy"},
-        "97123": {"m1": 2, "county": "Smith Countzz"},
-        "97": {"m1": 3},
+    ds = timeseries.MultiRegionDataset.from_fips_timeseries_df(data)
+    assert ds.get_one_region(Region.from_fips("95123")).latest == {
+        "m1": 1,
+        "county": "Smith Countyy",
     }
+    assert ds.get_one_region(Region.from_fips("97123")).latest == {
+        "m1": 2,
+        "county": "Smith Countzz",
+    }
+    assert ds.get_one_region(Region.from_state("WY")).latest == {"m1": 3}

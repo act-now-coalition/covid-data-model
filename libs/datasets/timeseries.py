@@ -14,7 +14,6 @@ from typing import Tuple
 
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
-from more_itertools import one
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
 
@@ -37,7 +36,6 @@ from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
-
 
 _log = structlog.get_logger()
 
@@ -654,7 +652,10 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return self.timeseries.groupby(CommonFields.LOCATION_ID)
 
     def timeseries_rows(self) -> pd.DataFrame:
+        """Returns a DataFrame containing timeseries values and provenance, suitable for writing
+        to a CSV."""
         wide_dates = self.timeseries_wide_dates()
+        # Format as a string here because to_csv includes a full timestamp.
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         wide_dates = wide_dates.rename_axis(None, axis="columns")
         wide_dates.insert(0, PdFields.PROVENANCE, self.provenance)
@@ -779,14 +780,19 @@ def _diff_preserving_first_value(series):
 
 def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
+    # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
+    # every date, even those with NA cases. This keeps the output identical when empty rows are
+    # dropped or added.
     cases_wide_dates = dataset_in.timeseries_wide_dates().loc[(slice(None), CommonFields.CASES), :]
-    new_cases = cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False).apply(
-        _diff_preserving_first_value
-    )
     # Calculating new cases using diff will remove the first detected value from the case series.
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating
-    # The first days as appropriate new case data.
+    # the first day as appropriate new case data.
+    # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
+    # has the location_id added as an index before being concat-ed.
+    new_cases = cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False).apply(
+        _diff_preserving_first_value
+    )
 
     # Remove the occasional negative case adjustments.
     new_cases[new_cases < 0] = pd.NA

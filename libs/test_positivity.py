@@ -200,6 +200,7 @@ class AllMethods:
         test_positivity = timeseries.combined_datasets(
             calculated_dataset_recent_map,
             {CommonFields.TEST_POSITIVITY: list(calculated_dataset_map.keys())},
+            {},
         )
         # For debugging create a DataFrame with the calculated timeseries of all methods, including
         # timeseries that are not recent.

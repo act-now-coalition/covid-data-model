@@ -21,6 +21,7 @@ from libs.datasets.combined_datasets import (
     ALL_FIELDS_FEATURE_DEFINITION,
 )
 from libs.datasets.timeseries import DatasetName
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import timeseries
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
@@ -97,9 +98,9 @@ def update(
     multiregion_dataset = timeseries.aggregate_puerto_rico_from_counties(multiregion_dataset)
     multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
 
-    # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-    # cbsa_dataset = aggregator.aggregate(multiregion_dataset)
-    # multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    cbsa_dataset = aggregator.aggregate(multiregion_dataset)
+    multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
 
     if aggregate_to_country:
         country_dataset = timeseries.aggregate_regions(
@@ -107,9 +108,9 @@ def update(
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
-    # _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
-    #    path_prefix, latest_dataset, multiregion_dataset,
-    # )
+    _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
+        path_prefix, latest_dataset, multiregion_dataset,
+    )
 
     # Write DataSource objects that have provenance information, which is only set when significant
     # processing of the source data is done in this repo before it is combined. The output is not
@@ -122,14 +123,14 @@ def update(
 
     if wide_dates_filename:
         wide_dates_df.write_csv(
-            multiregion_dataset.timeseries_rows(), wide_dates_filename,
+            multiregion_dataset.timeseries_rows(), path_prefix / wide_dates_filename,
         )
         static_sorted = common_df.index_and_sort(
             multiregion_dataset.static,
             index_names=[CommonFields.LOCATION_ID],
             log=structlog.get_logger(),
         )
-        static_sorted.to_csv(wide_dates_filename.replace("wide-dates", "static"))
+        static_sorted.to_csv(path_prefix / wide_dates_filename.replace("wide-dates", "static"))
 
 
 @main.command()
