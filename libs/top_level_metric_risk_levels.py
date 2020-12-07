@@ -21,7 +21,7 @@ def calc_risk_level(value: Optional[float], thresholds: List[float]) -> RiskLeve
     assert len(thresholds) in [3, 4], "Must pass low, med and high thresholds."
     if len(thresholds) == 3:
         level_low, level_med, level_high = thresholds
-        level_extreme = math.inf
+        level_critical = math.inf
     else:
         level_low, level_med, level_high, level_critical = thresholds
     if value is None:

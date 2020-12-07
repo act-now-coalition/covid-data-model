@@ -10,6 +10,10 @@ def test_calc_risk_level_below_limit():
     assert top_level_metric_risk_levels.calc_risk_level(2, [1, 3, 4]) == RiskLevel.MEDIUM
 
 
+def test_calc_risk_level_critical():
+    assert top_level_metric_risk_levels.calc_risk_level(5, [1, 3, 4]) == RiskLevel.CRITICAL
+
+
 def test_calc_risk_level_at_limit():
     """
     Value at upper limit of a risk level should equal that risk level.
