@@ -981,10 +981,11 @@ def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     # Remove the occasional negative case adjustments.
     new_cases[new_cases < 0] = pd.NA
 
-    timeseries_copy = dataset_in.timeseries.copy()
+    new_cases = new_cases.dropna()
 
-    timeseries_copy[CommonFields.NEW_CASES] = new_cases
-    dataset_out = dataclasses.replace(dataset_in, timeseries=timeseries_copy)
+    new_cases_dataset = MultiRegionDataset(timeseries=new_cases)
+
+    dataset_out = dataset_in.join_columns(new_cases_dataset)
     return dataset_out
 
 
