@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "b114d01e91f0869bc976bca0521e1316ae8bb19d",
-    "branch": "master",
-    "is_dirty": false
+    "sha": "7ad8644ac5612c21e96645cb5c689cd2483f8d98",
+    "branch": "tgb-multiregion-write-wide-dates",
+    "is_dirty": true
   },
-  "updated_at": "2020-12-07T19:21:57.666725"
+  "updated_at": "2020-12-07T20:32:14.782127"
 }
