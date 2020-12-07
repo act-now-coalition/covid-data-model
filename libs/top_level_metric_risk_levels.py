@@ -98,7 +98,9 @@ def top_level_risk_level(
         case_density_level,
     ]
 
-    if RiskLevel.CRITICAL in level_list:
+    if RiskLevel.EXTREME in level_list:
+        return RiskLevel.EXTREME
+    elif RiskLevel.CRITICAL in level_list:
         return RiskLevel.CRITICAL
     elif RiskLevel.HIGH in level_list:
         return RiskLevel.HIGH
@@ -106,10 +108,8 @@ def top_level_risk_level(
         return RiskLevel.MEDIUM
     elif RiskLevel.UNKNOWN in level_list:
         return RiskLevel.UNKNOWN
-    else:
-        return RiskLevel.LOW
 
-    return RiskLevel.UNKNOWN
+    return RiskLevel.LOW
 
 
 def calculate_risk_level_from_metrics(
