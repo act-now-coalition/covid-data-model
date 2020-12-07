@@ -949,34 +949,36 @@ def _remove_padded_nans(df, columns):
 
 
 def _diff_preserving_first_value(series):
-
-    series_diff = series.diff()
-    first_valid_index = series.first_valid_index()
-    if first_valid_index is None:
-        return series_diff
-
-    series_diff[first_valid_index] = series[series.first_valid_index()]
-    return series_diff
+    cases = series.reset_index(CommonFields.LOCATION_ID, drop=True).loc[CommonFields.CASES, :]
+    # cases is a pd.Series (a 1-D vector) with DATE index
+    assert cases.index.names == [CommonFields.DATE]
+    new_cases = cases.diff()
+    first_date = cases.notna().idxmax()
+    if pd.notna(first_date):
+        new_cases[first_date] = cases[first_date]
+    # Return a DataFrame so NEW_CASES is a column with DATE index.
+    return pd.DataFrame({CommonFields.NEW_CASES: new_cases})
 
 
 def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
-    df_copy = dataset_in.timeseries.copy()
-    grouped_df = dataset_in.groupby_region()
+    cases_wide_dates = dataset_in.timeseries_wide_dates().loc[(slice(None), CommonFields.CASES), :]
+    new_cases = cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False).apply(
+        _diff_preserving_first_value
+    )
     # Calculating new cases using diff will remove the first detected value from the case series.
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating
     # The first days as appropriate new case data.
-    new_cases = grouped_df[CommonFields.CASES].apply(_diff_preserving_first_value)
 
     # Remove the occasional negative case adjustments.
     new_cases[new_cases < 0] = pd.NA
 
-    df_copy[CommonFields.NEW_CASES] = new_cases
+    timeseries_copy = dataset_in.timeseries.copy()
 
-    new_timeseries = dataclasses.replace(dataset_in, timeseries=df_copy)
-
-    return new_timeseries
+    timeseries_copy[CommonFields.NEW_CASES] = new_cases
+    dataset_out = dataclasses.replace(dataset_in, timeseries=timeseries_copy)
+    return dataset_out
 
 
 def _calculate_modified_zscore(series: pd.Series, window: int = 10, min_periods=3) -> pd.Series:
