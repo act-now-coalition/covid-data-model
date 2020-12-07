@@ -176,6 +176,7 @@ class RiskLevel(enum.Enum):
  *High* - At risk of outbreak
  *Critical* - Active or imminent outbreak
  *Unknown* - Risk unknown
+ *Extreme* - Severe outbreak
 """
 
     LOW = 0

@@ -23,7 +23,7 @@ def calc_risk_level(value: Optional[float], thresholds: List[float]) -> RiskLeve
         level_low, level_med, level_high = thresholds
         level_extreme = math.inf
     else:
-        level_low, level_med, level_high, level_extreme = thresholds
+        level_low, level_med, level_high, level_critical = thresholds
     if value is None:
         return RiskLevel.UNKNOWN
 
@@ -36,7 +36,7 @@ def calc_risk_level(value: Optional[float], thresholds: List[float]) -> RiskLeve
         return RiskLevel.MEDIUM
     elif value <= level_high:
         return RiskLevel.HIGH
-    elif value <= level_extreme:
+    elif value <= level_critical:
         return RiskLevel.CRITICAL
 
     return RiskLevel.EXTREME
