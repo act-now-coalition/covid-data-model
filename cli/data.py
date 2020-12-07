@@ -8,6 +8,8 @@ import shutil
 import structlog
 
 import click
+from covidactnow.datapublic import common_df
+from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import google_sheet_helpers, wide_dates_df
 from libs import pipeline
@@ -87,6 +89,9 @@ def update(wide_dates_filename, aggregate_to_country: bool):
     )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
+    multiregion_dataset = timeseries.drop_regions_without_population(
+        multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
+    )
 
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     cbsa_dataset = aggregator.aggregate(multiregion_dataset)
@@ -114,9 +119,14 @@ def update(wide_dates_filename, aggregate_to_country: bool):
 
     if wide_dates_filename:
         wide_dates_df.write_csv(
-            timeseries_dataset.get_date_columns(),
-            multiregion_pointer.path.with_name(wide_dates_filename),
+            multiregion_dataset.timeseries_rows(), path_prefix / wide_dates_filename,
         )
+        static_sorted = common_df.index_and_sort(
+            multiregion_dataset.static,
+            index_names=[CommonFields.LOCATION_ID],
+            log=structlog.get_logger(),
+        )
+        static_sorted.to_csv(path_prefix / wide_dates_filename.replace("wide-dates", "static"))
 
 
 @main.command()

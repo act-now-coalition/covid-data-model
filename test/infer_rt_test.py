@@ -241,16 +241,11 @@ def test_generate_infection_rate_new_orleans_patch():
     assert set(r.location_id for r in regions) == set(returned_location_ids)
 
 
-def test_generate_infection_rate_metric_fake_fips():
-    with structlog.testing.capture_logs() as logs:
-        # TX Misc Fips Holder timeseries not found in combined data
-        infer_input = infer_rt.RegionalInput.from_fips("48999")
-    assert [l["event"] for l in logs] == ["Creating OneRegionTimeseriesDataset with zero regions"]
-    assert infer_input.timeseries.empty
-
+@pytest.mark.parametrize("fips", ["48999", "48998"])
+def test_generate_infection_rate_metric_fake_fips(fips):
     with pytest.raises(timeseries.RegionLatestNotFound):
-        # Totally bogus FIPS not even in latest data raises an exception
-        infer_rt.RegionalInput.from_fips("48998")
+        # timeseries and latest not found in combined data causes an exception to be raised.
+        infer_rt.RegionalInput.from_fips(fips)
 
 
 @pytest.mark.slow

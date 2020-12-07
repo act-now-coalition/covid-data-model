@@ -97,7 +97,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSTestingDataset,
     ],
     CommonFields.TOTAL_TESTS: [CovidTrackingDataSource],
-    CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
+    # STAFFED_BEDS isn't used right now. Disable to ease refactoring.
+    # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
     CommonFields.POSITIVE_TESTS_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TESTS_VIRAL: [CovidTrackingDataSource],
     CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],
@@ -113,7 +114,8 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POPULATION: [FIPSPopulation],
-    CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
+    # STAFFED_BEDS isn't used right now. Disable to ease refactoring.
+    # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.CAN_LOCATION_PAGE_URL: [CANLocationPageURLS],
 }
 

@@ -40,6 +40,7 @@ from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
 
+
 _log = structlog.get_logger()
 
 
@@ -332,11 +333,15 @@ class TimeseriesDataset(dataset_base.DatasetBase):
         return cls(df)
 
 
-def _add_location_id(df: pd.DataFrame):
-    """Adds the location_id column derived from FIPS, inplace."""
+def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds the location_id column derived from FIPS"""
     if CommonFields.LOCATION_ID in df.columns:
         raise ValueError("location_id already in DataFrame")
+
+    df = df.copy()
+
     df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
+    return df
 
 
 def _add_fips_if_missing(df: pd.DataFrame):
@@ -581,6 +586,10 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df)
 
+    def add_fips_static_df(self, latest_df: pd.DataFrame) -> "MultiRegionDataset":
+        latest_df = _add_location_id(latest_df)
+        return self.add_static_values(latest_df)
+
     def add_static_values(self, attributes_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new object with non-NA values in `latest_df` added to the static attribute."""
         combined_attributes = _merge_attributes(self.static.reset_index(), attributes_df)
@@ -637,41 +646,44 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return dataset
 
     @staticmethod
+    def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
+        ts_df = _add_location_id(ts_df)
+        return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
+
+    @staticmethod
     def from_timeseries_and_latest(
         ts: TimeseriesDataset, latest: LatestValuesDataset
     ) -> "MultiRegionDataset":
         """Converts legacy FIPS to new LOCATION_ID and calls `from_timeseries_df` to finish construction."""
-        timeseries_df = ts.data.copy()
-        _add_location_id(timeseries_df)
-        dataset = MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
-
-        latest_df = latest.data.copy()
-        _add_location_id(latest_df)
-        dataset = dataset.add_static_values(latest_df)
+        dataset = MultiRegionDataset.from_fips_timeseries_df(ts.data)
+        dataset = dataset.add_fips_static_df(latest.data)
 
         if ts.provenance is not None:
-            # Check that current index is as expected. Names will be fixed after remapping, below.
-            assert ts.provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
-            provenance = ts.provenance.copy()
-            provenance.index = provenance.index.map(
-                lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
-            )
-            provenance.index.rename([CommonFields.LOCATION_ID, PdFields.VARIABLE], inplace=True)
-            provenance.rename(PdFields.PROVENANCE, inplace=True)
-            dataset = dataset.add_provenance_series(provenance)
-
-        # TODO(tom): Either copy latest.provenance to its own series, blend with the timeseries
-        # provenance (though some variable names are the same), or retire latest as a separate thing upstream.
+            dataset = dataset.add_fips_provenance(ts.provenance)
 
         return dataset
+
+    def add_fips_provenance(self, provenance):
+        # Check that current index is as expected. Names will be fixed after remapping, below.
+        assert provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
+        provenance = provenance.copy()
+        provenance.index = provenance.index.map(
+            lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
+        )
+        provenance.index.rename([CommonFields.LOCATION_ID, PdFields.VARIABLE], inplace=True)
+        provenance.rename(PdFields.PROVENANCE, inplace=True)
+        return self.add_provenance_series(provenance)
+
+    @staticmethod
+    def new_without_timeseries() -> "MultiRegionDataset":
+        return MultiRegionDataset.from_fips_timeseries_df(
+            pd.DataFrame([], columns=[CommonFields.FIPS, CommonFields.DATE])
+        )
 
     @staticmethod
     def from_latest(latest: LatestValuesDataset) -> "MultiRegionDataset":
         """Creates a new MultiRegionDataset with static data from latest and no timeseries data."""
-        return MultiRegionDataset.from_timeseries_and_latest(
-            TimeseriesDataset(pd.DataFrame([], columns=[CommonFields.FIPS, CommonFields.DATE])),
-            latest,
-        )
+        return MultiRegionDataset.new_without_timeseries().add_fips_static_df(latest.data)
 
     def __post_init__(self):
         """Checks that attributes of this object meet certain expectations."""
@@ -823,6 +835,16 @@ class MultiRegionDataset(SaveableDatasetInterface):
             self.data_with_fips, provenance=None if self.provenance.empty else self.provenance
         )
 
+    def timeseries_rows(self) -> pd.DataFrame:
+        """Returns a DataFrame containing timeseries values and provenance, suitable for writing
+        to a CSV."""
+        wide_dates = self.timeseries_wide_dates()
+        # Format as a string here because to_csv includes a full timestamp.
+        wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
+        wide_dates = wide_dates.rename_axis(None, axis="columns")
+        wide_dates.insert(0, PdFields.PROVENANCE, self.provenance)
+        return wide_dates
+
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
         ts = self.timeseries_wide_dates()
@@ -929,34 +951,42 @@ def _remove_padded_nans(df, columns):
 
 
 def _diff_preserving_first_value(series):
-
-    series_diff = series.diff()
-    first_valid_index = series.first_valid_index()
-    if first_valid_index is None:
-        return series_diff
-
-    series_diff[first_valid_index] = series[series.first_valid_index()]
-    return series_diff
+    cases = series.reset_index(CommonFields.LOCATION_ID, drop=True).loc[CommonFields.CASES, :]
+    # cases is a pd.Series (a 1-D vector) with DATE index
+    assert cases.index.names == [CommonFields.DATE]
+    new_cases = cases.diff()
+    first_date = cases.notna().idxmax()
+    if pd.notna(first_date):
+        new_cases[first_date] = cases[first_date]
+    # Return a DataFrame so NEW_CASES is a column with DATE index.
+    return pd.DataFrame({CommonFields.NEW_CASES: new_cases})
 
 
 def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
-    df_copy = dataset_in.timeseries.copy()
-    grouped_df = dataset_in.groupby_region()
+    # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
+    # every date, even those with NA cases. This keeps the output identical when empty rows are
+    # dropped or added.
+    cases_wide_dates = dataset_in.timeseries_wide_dates().loc[(slice(None), CommonFields.CASES), :]
     # Calculating new cases using diff will remove the first detected value from the case series.
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating
-    # The first days as appropriate new case data.
-    new_cases = grouped_df[CommonFields.CASES].apply(_diff_preserving_first_value)
+    # the first day as appropriate new case data.
+    # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
+    # has the location_id added as an index before being concat-ed.
+    new_cases = cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False).apply(
+        _diff_preserving_first_value
+    )
 
     # Remove the occasional negative case adjustments.
     new_cases[new_cases < 0] = pd.NA
 
-    df_copy[CommonFields.NEW_CASES] = new_cases
+    new_cases = new_cases.dropna()
 
-    new_timeseries = dataclasses.replace(dataset_in, timeseries=df_copy)
+    new_cases_dataset = MultiRegionDataset(timeseries=new_cases)
 
-    return new_timeseries
+    dataset_out = dataset_in.join_columns(new_cases_dataset)
+    return dataset_out
 
 
 def _calculate_modified_zscore(series: pd.Series, window: int = 10, min_periods=3) -> pd.Series:
