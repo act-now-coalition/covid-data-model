@@ -17,6 +17,10 @@ def test_calc_risk_level_at_limit():
     assert top_level_metric_risk_levels.calc_risk_level(1, [1, 3, 4]) == RiskLevel.LOW
 
 
+def test_calc_risk_level_extreme():
+    assert top_level_metric_risk_levels.calc_risk_level(6, [1, 3, 4, 5]) == RiskLevel.EXTREME
+
+
 @pytest.mark.parametrize(
     "value,expected_level", [(1.0, RiskLevel.LOW), (0.9, RiskLevel.MEDIUM), (0.0, RiskLevel.HIGH)],
 )
@@ -26,7 +30,11 @@ def test_contact_tracing_levels(value, expected_level):
 
 @pytest.mark.parametrize(
     "case_density_level,expected",
-    [(RiskLevel.LOW, RiskLevel.LOW), (RiskLevel.MEDIUM, RiskLevel.CRITICAL)],
+    [
+        (RiskLevel.LOW, RiskLevel.LOW),
+        (RiskLevel.MEDIUM, RiskLevel.CRITICAL),
+        (RiskLevel.EXTREME, RiskLevel.EXTREME),
+    ],
 )
 def test_top_level_risk_level_case_density_override(case_density_level, expected):
     top_level_risk = top_level_metric_risk_levels.top_level_risk_level(
