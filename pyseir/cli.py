@@ -101,15 +101,13 @@ class RegionPipeline:
 
         icu_data = None
 
-        # TODO: Re-enable for CBSAs once typical utilization number aggregation fixed.
-        if input.region.level is not AggregationLevel.CBSA:
-            icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
-            try:
-                icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-                    icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-                )
-            except KeyError:
-                root.exception(f"Failed to run icu data for {input.region}")
+        icu_input = infer_icu.RegionalInput.from_regional_data(input.regional_combined_dataset)
+        try:
+            icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+                icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+            )
+        except KeyError:
+            root.exception(f"Failed to run icu data for {input.region}")
 
         return RegionPipeline(
             region=input.region,
