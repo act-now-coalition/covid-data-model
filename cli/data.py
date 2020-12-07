@@ -94,9 +94,9 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
 
-    # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-    # cbsa_dataset = aggregator.aggregate(multiregion_dataset)
-    # multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    cbsa_dataset = aggregator.aggregate(multiregion_dataset)
+    multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
 
     if aggregate_to_country:
         country_dataset = timeseries.aggregate_regions(
@@ -104,9 +104,9 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
-    # _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
-    #    path_prefix, latest_dataset, multiregion_dataset,
-    # )
+    _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
+        path_prefix, latest_dataset, multiregion_dataset,
+    )
 
     # Write DataSource objects that have provenance information, which is only set when significant
     # processing of the source data is done in this repo before it is combined. The output is not
@@ -120,14 +120,14 @@ def update(wide_dates_filename, aggregate_to_country: bool):
 
     if wide_dates_filename:
         wide_dates_df.write_csv(
-            multiregion_dataset.timeseries_rows(), wide_dates_filename,
+            multiregion_dataset.timeseries_rows(), path_prefix / wide_dates_filename,
         )
         static_sorted = common_df.index_and_sort(
             multiregion_dataset.static,
             index_names=[CommonFields.LOCATION_ID],
             log=structlog.get_logger(),
         )
-        static_sorted.to_csv(wide_dates_filename.replace("wide-dates", "static"))
+        static_sorted.to_csv(path_prefix / wide_dates_filename.replace("wide-dates", "static"))
 
 
 @main.command()
