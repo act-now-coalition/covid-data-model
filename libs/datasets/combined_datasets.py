@@ -18,19 +18,20 @@ from libs.datasets.data_source import DataSource
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import DatasetType
-from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
-from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
-from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
+from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
+from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
+from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
 from libs.datasets import dataset_filter
 from libs import us_state_abbrev
 from libs.pipeline import Region
@@ -113,6 +114,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
+    CommonFields.CAN_LOCATION_PAGE_URL: [CANLocationPageURLS],
 }
 
 

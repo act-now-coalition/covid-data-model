@@ -42,7 +42,7 @@ def test_basic():
     all_methods = AllMethods.run(ts, methods, 3, 14)
 
     expected_df = _parse_wide_dates(
-        "location_id,variable,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
+        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
         "iso1:us#iso2:as,method2,,,,0.02\n"
         "iso1:us#iso2:tx,method1,,,,0.1\n"
         "iso1:us#iso2:tx,method2,,,,0.01\n"
@@ -95,7 +95,7 @@ def test_recent_days():
     all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=2)
 
     expected_all = _parse_wide_dates(
-        "location_id,variable,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
+        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
         "iso1:us#iso2:us-as,method1,,0.2,,\n"
         "iso1:us#iso2:us-as,method2,,0.02,0.02,0.02\n"
         "iso1:us#iso2:us-tx,method1,,0.1,0.1,0.1\n"
@@ -127,7 +127,7 @@ def test_recent_days():
         CommonFields.TEST_POSITIVITY: "method1"
     }
 
-    all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=4)
+    all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=3)
     positivity_provenance = all_methods.test_positivity.provenance
     assert positivity_provenance.loc["iso1:us#iso2:us-as"].to_dict() == {
         CommonFields.TEST_POSITIVITY: "method1"

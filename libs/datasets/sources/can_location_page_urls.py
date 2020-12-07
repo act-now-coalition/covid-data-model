@@ -5,24 +5,14 @@ from libs.datasets import data_source
 from libs.datasets.timeseries import LatestValuesDataset
 
 
-class CovidCareMapBeds(data_source.DataSource):
-    STATIC_CSV = "data/covid-care-map/static.csv"
+class CANLocationPageURLS(data_source.DataSource):
+    STATIC_CSV = "data/misc/can_location_page_urls.csv"
 
-    SOURCE_NAME = "CCM"
+    SOURCE_NAME = "can_urls"
 
     INDEX_FIELD_MAP = {f: f for f in LatestValuesDataset.INDEX_FIELDS}
 
-    COMMON_FIELD_MAP = {
-        f: f
-        for f in {
-            CommonFields.STAFFED_BEDS,
-            CommonFields.LICENSED_BEDS,
-            CommonFields.ICU_BEDS,
-            CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
-            CommonFields.ICU_TYPICAL_OCCUPANCY_RATE,
-            CommonFields.MAX_BED_COUNT,
-        }
-    }
+    COMMON_FIELD_MAP = {f: f for f in {CommonFields.CAN_LOCATION_PAGE_URL,}}
 
     @classmethod
     def local(cls):

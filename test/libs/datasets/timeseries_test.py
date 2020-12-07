@@ -5,6 +5,7 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
@@ -13,6 +14,7 @@ from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
+from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips
 from test.dataset_utils_test import read_csv_and_index_fips_date
@@ -283,7 +285,9 @@ def _timeseries_sorted_by_location_date(
     ts: timeseries.MultiRegionDataset, drop_na: bool
 ) -> pd.DataFrame:
     """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
-    df = ts.data.sort_values([CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True)
+    df = ts.timeseries.reset_index().sort_values(
+        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+    )
     if drop_na:
         df = df.dropna("columns", "all")
     return df
@@ -579,13 +583,29 @@ def test_timeseries_drop_stale_timeseries_one_metric():
         "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
         "iso1:us#fips:97111,,Bar County,county,4,\n"
     )
-    ds_in = timeseries.MultiRegionDataset.from_csv(io.StringIO(csv_in))
+    ds_in = timeseries.MultiRegionDataset.from_csv(io.StringIO(csv_in)).add_provenance_csv(
+        io.StringIO(
+            "location_id,variable,provenance\n"
+            "iso1:us#cbsa:10100,m1,m1-10100prov\n"
+            "iso1:us#cbsa:10100,m2,m2-10100prov\n"
+            "iso1:us#fips:97111,m1,m1-97111prov\n"
+        )
+    )
 
     ds_out = ds_in.drop_stale_timeseries(pd.to_datetime("2020-04-03"))
 
     # The only timeseries that is stale with cutoff of 4/3 is the CBSA m1. The expected
-    # dataset is the same as the input with "11" removed.
-    ds_expected = timeseries.MultiRegionDataset.from_csv(io.StringIO(csv_in.replace(",11,", ",,")))
+    # dataset is the same as the input with "11" removed from the timeseries and
+    # corresponding provenance removed.
+    ds_expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(csv_in.replace(",11,", ",,"))
+    ).add_provenance_csv(
+        io.StringIO(
+            "location_id,variable,provenance\n"
+            "iso1:us#cbsa:10100,m2,m2-10100prov\n"
+            "iso1:us#fips:97111,m1,m1-97111prov\n"
+        )
+    )
     assert_dataset_like(ds_out, ds_expected)
 
 
@@ -918,12 +938,161 @@ def test_aggregate_states_to_country():
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
         AggregationLevel.COUNTRY,
+        [],
     )
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,aggregate_level,date,m1,m2,population\n"
             "iso1:us,country,2020-04-01,2,4,\n"
             "iso1:us,country,,,,3000\n"
+        )
+    )
+    assert_dataset_like(country, expected)
+
+
+def test_combined():
+    ts1 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,2.2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,3.3\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+        )
+    ).add_provenance_csv(
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+    )
+    ts2 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,333\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,333\n"
+            "iso1:us#fips:97222,2020-04-03,Foo County,county,30\n"
+            "iso1:us#fips:97222,2020-04-04,Foo County,county,40\n"
+        )
+    ).add_provenance_csv(
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+    )
+    combined = timeseries.combined_datasets(
+        {DatasetName("ts1"): ts1, DatasetName("ts2"): ts2},
+        {"m1": [DatasetName("ts1"), DatasetName("ts2")]},
+    )
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,m1\n"
+            "iso1:us#cbsa:10100,2020-04-02,2.2\n"
+            "iso1:us#cbsa:10100,2020-04-03,3.3\n"
+            "iso1:us#fips:97111,2020-04-02,2\n"
+            "iso1:us#fips:97111,2020-04-04,4\n"
+            "iso1:us#fips:97222,2020-04-03,30\n"
+            "iso1:us#fips:97222,2020-04-04,40\n"
+        )
+    ).add_provenance_csv(
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+    )
+
+    assert_dataset_like(expected, combined)
+
+
+def test_combined_missing_field():
+    ts1 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m1\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
+        )
+    )
+    ts2 = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,m2\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,111\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,111\n"
+        )
+    )
+    dataset_map = {DatasetName("ts1"): ts1, DatasetName("ts2"): ts2}
+    # m1 is output, m2 is dropped.
+    field_source_map = {FieldName("m1"): list(dataset_map.keys())}
+
+    # Check that combining finishes and produces the expected result.
+    combined_1 = timeseries.combined_datasets(dataset_map, field_source_map)
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,m1\n"
+            "iso1:us#fips:97111,2020-04-02,2\n"
+            "iso1:us#fips:97111,2020-04-04,4\n"
+        )
+    )
+    assert_dataset_like(expected, combined_1)
+
+    # Because there is only one source for the output timeseries reversing the source list
+    # produces the same output.
+    combined_2 = timeseries.combined_datasets(
+        dataset_map,
+        {name: reversed(source_list) for name, source_list in field_source_map.items()},
+    )
+    assert_dataset_like(expected, combined_2)
+
+
+def test_aggregate_states_to_country_scale():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,county,aggregate_level,date,m1,m2,population\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,4,2,\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-02,4,4,\n"
+            "iso1:us#iso2:us-tx,Texas,state,,,,2500\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,8,20,\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-02,12,40,\n"
+            "iso1:us#iso2:us-az,Arizona,state,,,,7500\n"
+        )
+    )
+    region_us = Region.from_iso1("us")
+    country = timeseries.aggregate_regions(
+        ts,
+        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
+        AggregationLevel.COUNTRY,
+        [timeseries.StaticWeightedAverageAggregation("m1", CommonFields.POPULATION),],
+    )
+    # The column m1 is scaled by population.
+    # On 2020-04-01: 4 * 0.25 + 8 * 0.75 = 7
+    # On 2020-04-02: 4 * 0.25 + 12 * 0.75 = 10
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,aggregate_level,date,m1,m2,population\n"
+            "iso1:us,country,2020-04-01,7,22,\n"
+            "iso1:us,country,2020-04-02,10,44,\n"
+            "iso1:us,country,,,,10000\n"
+        )
+    )
+    assert_dataset_like(country, expected)
+
+
+def test_aggregate_states_to_country_scale_static():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,county,aggregate_level,date,m1,s1,population\n"
+            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,4,,\n"
+            "iso1:us#iso2:us-tx,Texas,state,,,4,2500\n"
+            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,8,,\n"
+            "iso1:us#iso2:us-az,Arizona,state,,,12,7500\n"
+        )
+    )
+    region_us = Region.from_iso1("us")
+    country = timeseries.aggregate_regions(
+        ts,
+        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
+        AggregationLevel.COUNTRY,
+        [
+            timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),
+            timeseries.StaticWeightedAverageAggregation(FieldName("s1"), CommonFields.POPULATION),
+        ],
+    )
+    # The column m1 is scaled by population.
+    # 4 * 0.25 + 12 * 0.75 = 10
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,aggregate_level,date,m1,s1,population\n"
+            "iso1:us,country,2020-04-01,7,,\n"
+            "iso1:us,country,,,10,10000\n"
         )
     )
     assert_dataset_like(country, expected)

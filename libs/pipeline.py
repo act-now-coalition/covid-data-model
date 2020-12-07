@@ -31,6 +31,9 @@ def fips_to_location_id(fips: str) -> str:
         elif len(fips) == 5:
             return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
 
+    # This happens mostly (entirely?) in unittest data where the first two digits
+    # are not a valid state FIPS. See
+    # https://trello.com/c/QEbSwjSQ/631-remove-support-for-county-locationid-without-state
     warnings.warn(BadFipsWarning(f"Fallback location_id for fips {fips}"), stacklevel=2)
     return f"iso1:us#fips:{fips}"
 
@@ -69,6 +72,10 @@ def location_id_to_level(location_id: str) -> Optional[AggregationLevel]:
     match = re.fullmatch(r"iso1:us#cbsa:(\d+)", location_id)
     if match:
         return AggregationLevel.CBSA
+
+    match = re.fullmatch(r"iso1:\w\w", location_id)
+    if match:
+        return AggregationLevel.COUNTRY
 
     return None
 
