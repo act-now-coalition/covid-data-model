@@ -7,6 +7,7 @@ import numpy as np
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
 from libs.datasets import dataset_utils
+from libs.datasets.combined_datasets import _build_data_and_provenance
 from libs.datasets.dataset_utils import AggregationLevel
 import pytest
 
