@@ -6,7 +6,6 @@ import os
 import json
 import shutil
 import structlog
-import pandas as pd
 
 import click
 from covidactnow.datapublic import common_df

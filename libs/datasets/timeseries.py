@@ -40,7 +40,6 @@ from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
 
-from libs.us_state_abbrev import ABBREV_US_FIPS
 
 _log = structlog.get_logger()
 
@@ -837,7 +836,10 @@ class MultiRegionDataset(SaveableDatasetInterface):
         )
 
     def timeseries_rows(self) -> pd.DataFrame:
+        """Returns a DataFrame containing timeseries values and provenance, suitable for writing
+        to a CSV."""
         wide_dates = self.timeseries_wide_dates()
+        # Format as a string here because to_csv includes a full timestamp.
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         wide_dates = wide_dates.rename_axis(None, axis="columns")
         wide_dates.insert(0, PdFields.PROVENANCE, self.provenance)
