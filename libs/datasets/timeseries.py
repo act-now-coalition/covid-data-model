@@ -964,14 +964,19 @@ def _diff_preserving_first_value(series):
 
 def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
+    # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
+    # every date, even those with NA cases. This keeps the output identical when empty rows are
+    # dropped or added.
     cases_wide_dates = dataset_in.timeseries_wide_dates().loc[(slice(None), CommonFields.CASES), :]
-    new_cases = cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False).apply(
-        _diff_preserving_first_value
-    )
     # Calculating new cases using diff will remove the first detected value from the case series.
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating
-    # The first days as appropriate new case data.
+    # the first day as appropriate new case data.
+    # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
+    # has the location_id added as an index before being concat-ed.
+    new_cases = cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False).apply(
+        _diff_preserving_first_value
+    )
 
     # Remove the occasional negative case adjustments.
     new_cases[new_cases < 0] = pd.NA
