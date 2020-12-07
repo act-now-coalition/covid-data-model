@@ -176,6 +176,7 @@ class RiskLevel(enum.Enum):
  *High* - At risk of outbreak
  *Critical* - Active or imminent outbreak
  *Unknown* - Risk unknown
+ *Extreme* - Severe outbreak
 """
 
     LOW = 0
@@ -187,6 +188,8 @@ class RiskLevel(enum.Enum):
     CRITICAL = 3
 
     UNKNOWN = 4
+
+    EXTREME = 5
 
 
 class RiskLevels(base_model.APIBaseModel):
