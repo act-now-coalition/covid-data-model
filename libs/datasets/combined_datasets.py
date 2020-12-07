@@ -142,7 +142,7 @@ def load_us_latest_dataset(
 ) -> latest_values_dataset.LatestValuesDataset:
     us_timeseries = load_us_timeseries_dataset(pointer_directory=pointer_directory)
     # Returned object contains a DataFrame with a LOCATION_ID column
-    return LatestValuesDataset(us_timeseries.static_data_with_fips.reset_index())
+    return LatestValuesDataset(us_timeseries.static_and_timeseries_latest_with_fips().reset_index())
 
 
 def get_county_name(region: Region) -> Optional[str]:

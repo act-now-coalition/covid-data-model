@@ -488,7 +488,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return data_copy.set_index(CommonFields.LOCATION_ID)
 
     @lru_cache(maxsize=None)
-    def _static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
+    def static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
         """Static values merged with the latest timeseries values."""
         return _merge_attributes(
             self._timeseries_latest_values().reset_index(), self.static.reset_index()
@@ -755,7 +755,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
         try:
-            attributes_series = self._static_and_timeseries_latest_with_fips().loc[location_id, :]
+            attributes_series = self.static_and_timeseries_latest_with_fips().loc[location_id, :]
         except KeyError:
             attributes_series = pd.Series([], dtype=object)
         return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
@@ -856,7 +856,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
               values were calculated upstream.
         """
         if write_timeseries_latest_values:
-            latest_data = self._static_and_timeseries_latest_with_fips().reset_index()
+            latest_data = self.static_and_timeseries_latest_with_fips().reset_index()
         else:
             latest_data = self.static_data_with_fips.reset_index()
         # A DataFrame with timeseries data and latest data (with DATE=NaT) together
