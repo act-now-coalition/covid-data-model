@@ -14,6 +14,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import google_sheet_helpers, wide_dates_df
 from libs import pipeline
 from libs.datasets import AggregationLevel
+from libs.datasets import combined_dataset_utils
 from libs.datasets import custom_aggregations
 from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
@@ -108,9 +109,7 @@ def update(
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
-    _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
-        path_prefix, latest_dataset, multiregion_dataset,
-    )
+    combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
 
     # Write DataSource objects that have provenance information, which is only set when significant
     # processing of the source data is done in this repo before it is combined. The output is not

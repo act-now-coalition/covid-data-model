@@ -1166,7 +1166,7 @@ def test_multi_region_dataset_get_subset():
             "iso1:us,country,,,2020-04-01,100,200,\n"
             "iso1:us,country,,,,,,10000\n"
             "iso1:us#iso2:us-tx,state,TX,,2020-04-01,4,2,\n"
-            "iso1:us#iso2:us-tx,state,TX,,,,5000\n"
+            "iso1:us#iso2:us-tx,state,TX,,,,,5000\n"
             "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
             "iso1:us#fips:97222,county,,97222,,,,1000\n"
         )
@@ -1183,6 +1183,10 @@ def test_multi_region_dataset_get_subset():
     )
     assert (
         ds.get_subset(state="TX").static.at["iso1:us#iso2:us-tx", CommonFields.POPULATION] == 5000
+    )
+    assert (
+        ds.get_subset(states=["TX"]).static.at["iso1:us#iso2:us-tx", CommonFields.POPULATION]
+        == 5000
     )
 
 

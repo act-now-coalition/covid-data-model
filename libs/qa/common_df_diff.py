@@ -1,11 +1,12 @@
 """
 Compare two dataframes loaded from CSV files. The files must have a single key column, currently
-named `fips` and a single time column named `date`. All other columns are treated as timeseries
+named `location_id` and a single time column named `date`. All other columns are treated as
+timeseries
 points to be compared. The column name of timeseries points is pivoted/stacked/melted to the
 `variable` column. A timeseries is the sequence of points from the same original column, with the
-same fips and is identified by the <fips, variable> pair. A file is said to contain a timeseries
-with identity <fips, variable> if the melted representation contains it contains at least one
-row for the <fips, variable> and a real (not NaN) value.
+same location_id and is identified by the <location_id, variable> pair. A file is said to contain a
+timeseries with identity <location_id, variable> if the melted representation contains it
+contains at least one row for the <location_id, variable> and a real (not NaN) value.
 
 This tool helps us find differences between files by aggregating the sets of timeseries in the files
 and outputting the differences.
@@ -51,7 +52,10 @@ import pandas as pd
 import numpy as np
 from pydantic import BaseModel
 
-from covidactnow.datapublic.common_fields import CommonFields, COMMON_FIELDS_TIMESERIES_KEYS
+from covidactnow.datapublic.common_fields import CommonFields, PdFields
+
+
+TIMESERIES_KEYS = [CommonFields.LOCATION_ID, CommonFields.DATE]
 
 
 class DatasetDiff(BaseModel):
@@ -60,13 +64,14 @@ class DatasetDiff(BaseModel):
     # The non-duplicated values pivoted/stacked/melted with new column 'value' and new index level
     # 'variable'
     melt: pd.DataFrame
-    # MultiIndex with levels 'variable' and 'fips'. Since a timeseries in a dataset is identified
-    # by a <variable, fips> pair this is usable as the set of all timeseries in this dataset.
-    all_variable_fips: pd.MultiIndex
-    # The subset of all_variable_fips that appears in this dataset but not the other one
+    # MultiIndex with levels 'variable' and 'location_id'. Since a timeseries in a dataset is
+    # identified
+    # by a <variable, location_id> pair this is usable as the set of all timeseries in this dataset.
+    all_variable_location_id: pd.MultiIndex
+    # The subset of all_variable_location_id that appears in this dataset but not the other one
     my_ts: Optional[pd.MultiIndex] = None
     # The timeseries that appear in both this dataset and the other one
-    common_fips: Optional[pd.DataFrame] = None
+    common_location_id: Optional[pd.DataFrame] = None
     # Timeseries points that appear in this dataset but not the other one
     my_ts_points: Optional[pd.DataFrame] = None
     # Diffs of overlapping parts of the timeseries, only set on the left dataset
@@ -91,7 +96,7 @@ class DatasetDiff(BaseModel):
 TS diffs by variable and has_overlap:\n{most_diff_variables}
 """
 
-        return f"""Duplicate rows in this file: {self.duplicates_dropped.index.unique(level='fips')}
+        return f"""Duplicate rows in this file: {self.duplicates_dropped.index.unique(level='location_id')}
 {self.duplicates_dropped}
 TS only in this file: {self.my_ts}
 TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()}
@@ -115,41 +120,47 @@ TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()
         }.intersection(df.columns)
         # Drop string columns because timeseries_diff can't handle them yet.
         for col in df.select_dtypes(include={"object", "string"}):
-            if col != "fips":
+            if col != CommonFields.LOCATION_ID:
                 print(f"Dropping field '{col}' based on type")
                 columns_to_drop.add(col)
         if columns_to_drop:
             df = df.drop(columns=columns_to_drop)
 
         melt = (
-            df.melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS)
-            .set_index(["variable"] + COMMON_FIELDS_TIMESERIES_KEYS)
+            df.melt(id_vars=TIMESERIES_KEYS)
+            .set_index([PdFields.VARIABLE] + TIMESERIES_KEYS)
             .dropna()
         )
         # When Int64 and float64 columns are merged into one by melt the 'object' dtype is used, which
         # is not supported by timeseries_diff. Force 'value' back to a numeric dtype.
         melt["value"] = pd.to_numeric(melt["value"])
 
-        all_variable_fips = melt.groupby("variable fips".split()).first().index
-        return DatasetDiff(duplicates_dropped=dups, melt=melt, all_variable_fips=all_variable_fips)
+        all_variable_locations = (
+            melt.groupby([PdFields.VARIABLE, CommonFields.LOCATION_ID]).first().index
+        )
+        return DatasetDiff(
+            duplicates_dropped=dups, melt=melt, all_variable_location_id=all_variable_locations
+        )
 
     def compare(self, other: "DatasetDiff"):
-        self.my_ts = self.all_variable_fips.difference(other.all_variable_fips)
-        other.my_ts = other.all_variable_fips.difference(self.all_variable_fips)
+        self.my_ts = self.all_variable_location_id.difference(other.all_variable_location_id)
+        other.my_ts = other.all_variable_location_id.difference(self.all_variable_location_id)
 
         # The rest of this function works with timeseries that have at least one real value in both
         # original dataframes.
-        common_variable_fips = self.all_variable_fips.intersection(other.all_variable_fips)
-        self.common_fips = self.melt.loc[
-            self.melt.reset_index(CommonFields.DATE).index.isin(common_variable_fips)
+        common_variable_location_id = self.all_variable_location_id.intersection(
+            other.all_variable_location_id
+        )
+        self.common_location_id = self.melt.loc[
+            self.melt.reset_index(CommonFields.DATE).index.isin(common_variable_location_id)
         ]
-        other.common_fips = other.melt.loc[
-            other.melt.reset_index(CommonFields.DATE).index.isin(common_variable_fips)
+        other.common_location_id = other.melt.loc[
+            other.melt.reset_index(CommonFields.DATE).index.isin(common_variable_location_id)
         ]
 
         joined_ts = pd.merge(
-            self.common_fips["value"],
-            other.common_fips["value"],
+            self.common_location_id["value"],
+            other.common_location_id["value"],
             how="outer",
             left_index=True,
             right_index=True,
@@ -164,12 +175,14 @@ TS points only in this file: {self.my_ts_points.groupby('date').size().to_dict()
             joined_ts_notna["value_r"] & ~joined_ts_notna["value_l"], "value_r"
         ]
         # Find some kind of measure of difference between each common timeseries.
-        self.ts_diffs = joined_ts.groupby("variable fips".split()).apply(timeseries_diff)
+        self.ts_diffs = joined_ts.groupby([PdFields.VARIABLE, CommonFields.LOCATION_ID]).apply(
+            timeseries_diff
+        )
 
 
 def timeseries_diff(group_subframe: pd.DataFrame) -> pd.Series:
     try:
-        ts = group_subframe.droplevel(["variable", CommonFields.FIPS])
+        ts = group_subframe.droplevel([PdFields.VARIABLE, CommonFields.LOCATION_ID])
         right = ts["value_r"]
         left = ts["value_l"]
         # Ignoring gaps of NaN between real values, find the longest range of dates where the right

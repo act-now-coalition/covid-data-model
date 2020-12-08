@@ -169,7 +169,10 @@ def test_make_latest_from_timeseries_simple():
     ).reset_index()
     ds = timeseries.MultiRegionDataset.from_fips_timeseries_df(data)
     region = ds.get_one_region(Region.from_fips("97123"))
-    assert region.latest == {"m1": 1, "m2": 2}
+    # Compare 2 values in region.latest
+    expected = {"m1": 1, "m2": 2}
+    actual = {key: region.latest[key] for key in expected.keys()}
+    assert actual == expected
 
 
 def test_make_latest_from_timeseries_dont_touch_county():
@@ -180,12 +183,18 @@ def test_make_latest_from_timeseries_dont_touch_county():
         "56,,WY,USA,2020-04-01,state,3,\n"
     ).reset_index()
     ds = timeseries.MultiRegionDataset.from_fips_timeseries_df(data)
-    assert ds.get_one_region(Region.from_fips("95123")).latest == {
+
+    def get_latest(region) -> dict:
+        """Returns an interesting subset of latest for given region"""
+        latest = ds.get_one_region(region).latest
+        return {key: latest[key] for key in ["county", "m1", "m2"] if latest.get(key) is not None}
+
+    assert get_latest(Region.from_fips("95123")) == {
         "m1": 1,
         "county": "Smith Countyy",
     }
-    assert ds.get_one_region(Region.from_fips("97123")).latest == {
+    assert get_latest(Region.from_fips("97123")) == {
         "m1": 2,
         "county": "Smith Countzz",
     }
-    assert ds.get_one_region(Region.from_state("WY")).latest == {"m1": 3}
+    assert get_latest(Region.from_state("WY")) == {"m1": 3}
