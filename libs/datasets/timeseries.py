@@ -1135,9 +1135,9 @@ def combined_datasets(
     timeseries_dfs = []
     # A list of Series that will be concat-ed
     provenance_series = []
-    for field, datasets_list in timeseries_field_dataset_source.items():
+    for field, dataset_names in timeseries_field_dataset_source.items():
         location_id_so_far = pd.Index([])
-        for dataset_name in datasets_list:
+        for dataset_name in dataset_names:
             field_wide_df = datasets_wide[dataset_name].loc[[field], :]
             assert field_wide_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
             location_ids = field_wide_df.index.get_level_values(CommonFields.LOCATION_ID)
@@ -1151,9 +1151,9 @@ def combined_datasets(
             )
 
     static_series = []
-    for field, datasets_list in static_field_dataset_source.items():
+    for field, dataset_names in static_field_dataset_source.items():
         static_column_so_far = None
-        for dataset_name in datasets_list:
+        for dataset_name in dataset_names:
             dataset_column = datasets[dataset_name].static.get(field)
             if dataset_column is None:
                 continue
