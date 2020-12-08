@@ -232,6 +232,8 @@ _EMPTY_PROVENANCE_SERIES = pd.Series(
 _EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
 
 
+# An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
+# variable> and column labels <date>.
 _EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
     [],
     dtype=float,
@@ -240,6 +242,9 @@ _EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
 )
 
 
+# An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
+# date> and column labels <variable>. This is the structure of most CSV files in this repo as of
+# Nov 2020.
 _EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
     [],
     dtype=float,
@@ -1186,6 +1191,8 @@ def combined_datasets(
             CommonFields.LOCATION_ID,
         ]
         assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
+        # Transform from a column for each date to a column for each variable (with rows for dates).
+        # stack and unstack does the transform quickly but does not handle an empty DataFrame.
         if output_timeseries_wide_dates.empty:
             output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         else:
