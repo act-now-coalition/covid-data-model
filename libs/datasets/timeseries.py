@@ -1130,12 +1130,17 @@ def combined_datasets(
     For each region, the timeseries from the first dataset in the list with a real value is returned.
     """
     datasets_wide = _to_datasets_wide_dates_map(datasets)
+    # TODO(tom): Consider how to factor out the timeseries and static processing. For example,
+    #  create rows with the entire timeseries and provenance then use groupby(location_id).first().
+    #  Or maybe do something with groupby(location_id).apply if it is fast enough.
     # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and DATE columns) that
     # will be concat-ed.
     timeseries_dfs = []
     # A list of Series that will be concat-ed
     provenance_series = []
     for field, dataset_names in timeseries_field_dataset_source.items():
+        # Iterate through the datasets for this field. For each dataset add location_id with data
+        # in field to location_id_so_far iff the location_id is not already there.
         location_id_so_far = pd.Index([])
         for dataset_name in dataset_names:
             field_wide_df = datasets_wide[dataset_name].loc[[field], :]
@@ -1160,8 +1165,13 @@ def combined_datasets(
             dataset_column = dataset_column.dropna()
             assert dataset_column.index.names == [CommonFields.LOCATION_ID]
             if static_column_so_far is None:
+                # This is the first dataset. Copy all not-NA values of field and the location_id
+                # index to static_column_so_far.
                 static_column_so_far = dataset_column
             else:
+                # Add to static_column_so_far values that have index labels not already in the
+                # static_column_so_far.index. Thus for each location, the first dataset with a
+                # value is copied and values in later dataset are not copied.
                 selected_location_id = dataset_column.index.difference(static_column_so_far.index)
                 static_column_so_far = pd.concat(
                     [static_column_so_far, dataset_column.loc[selected_location_id]],
