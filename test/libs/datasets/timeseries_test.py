@@ -304,7 +304,11 @@ def assert_dataset_like(
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
     pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
-    pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
+    # Somehow test/libs/datasets/combined_dataset_utils_test.py::test_update_and_load has
+    # two provenance Series that are empty but assert_series_equal fails with message
+    # 'Attribute "inferred_type" are different'. Don't call it when both series are empty.
+    if not (ds1.provenance.empty and ds2.provenance.empty):
+        pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
 
 
 def test_append_regions():
