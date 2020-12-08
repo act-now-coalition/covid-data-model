@@ -1186,9 +1186,10 @@
           1,
           2,
           3,
-          4
+          4,
+          5
         ],
-        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown"
+        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown\n *Extreme* - Severe outbreak"
       },
       "RiskLevels": {
         "title": "RiskLevels",
@@ -1238,7 +1239,8 @@
           "metrics",
           "riskLevels",
           "actuals",
-          "lastUpdatedDate"
+          "lastUpdatedDate",
+          "url"
         ],
         "type": "object",
         "properties": {
@@ -1334,6 +1336,18 @@
             "type": "string",
             "description": "Date of latest data",
             "format": "date"
+          },
+          "url": {
+            "title": "Url",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URL linking to Covid Act Now location page."
           }
         },
         "description": "Summary of actual and prediction data for a single region."
@@ -1575,6 +1589,7 @@
           "riskLevels",
           "actuals",
           "lastUpdatedDate",
+          "url",
           "actualsTimeseries"
         ],
         "type": "object",
@@ -1671,6 +1686,18 @@
             "type": "string",
             "description": "Date of latest data",
             "format": "date"
+          },
+          "url": {
+            "title": "Url",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URL linking to Covid Act Now location page."
           },
           "metricsTimeseries": {
             "title": "Metricstimeseries",
