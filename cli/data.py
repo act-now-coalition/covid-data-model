@@ -96,7 +96,6 @@ def update(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
     multiregion_dataset = timeseries.aggregate_puerto_rico_from_counties(multiregion_dataset)
-    multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
 
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     cbsa_dataset = aggregator.aggregate(multiregion_dataset)

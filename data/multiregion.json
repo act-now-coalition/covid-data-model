@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "e661cbe1b9384a425e8583cd06ec7ca4035aa7ea",
-    "branch": "master",
-    "is_dirty": false
+    "sha": "c5abe9a0b6dc517ed8d4e335da64eccdfc6770a7",
+    "branch": "tgb-nyc-no-agg",
+    "is_dirty": true
   },
-  "updated_at": "2020-12-08T12:50:22.440104"
+  "updated_at": "2020-12-08T19:31:07.476235"
 }
