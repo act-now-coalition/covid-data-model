@@ -115,7 +115,6 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
-    CommonFields.POPULATION: [FIPSPopulation],
     # STAFFED_BEDS isn't used right now. Disable to ease refactoring.
     # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.CAN_LOCATION_PAGE_URL: [CANLocationPageURLS],
