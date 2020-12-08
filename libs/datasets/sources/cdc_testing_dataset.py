@@ -13,7 +13,7 @@ class CDCTestingDataset(data_source.DataSource):
 
     INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
 
-    COMMON_FIELD_MAP = {f: f for f in {CommonFields.TEST_POSITIVITY}}
+    COMMON_FIELD_MAP = {f: f for f in {CommonFields.TEST_POSITIVITY_7D}}
 
     @classmethod
     def local(cls):

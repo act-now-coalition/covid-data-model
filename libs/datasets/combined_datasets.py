@@ -104,7 +104,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TESTS_PEOPLE_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
-    CommonFields.TEST_POSITIVITY: [CDCTestingDataset],
+    CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
+    CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {

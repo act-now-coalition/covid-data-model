@@ -115,9 +115,10 @@ class PassThruMethod(Method):
 
 
 TEST_POSITIVITY_METHODS = (
-    # HACK: For now we assume TEST_POSITIVITY came from CMS and use that as the name that gets plumbed into provenance.
-    # PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY),
-    PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY),
+    # HACK: For now we assume TEST_POSITIVITY_7D came from CDC numbers while
+    # TEST_POSITIVITY_14D came from CMS.
+    PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
+    PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
     DivisionMethod(
         "positiveTestsViral_totalTestsViral",
         CommonFields.POSITIVE_TESTS_VIRAL,
@@ -243,8 +244,6 @@ def run_and_maybe_join_columns(
     except TestPositivityException:
         log.exception("test_positivity failed")
         return mrts
-    else:
-        # We overwrite the test_positivity column if it exists.
-        return mrts.drop_column_if_present(CommonFields.TEST_POSITIVITY).join_columns(
-            test_positivity_results.test_positivity
-        )
+
+    # We overwrite the test_positivity column if it exists.
+    return mrts.join_columns(test_positivity_results.test_positivity)

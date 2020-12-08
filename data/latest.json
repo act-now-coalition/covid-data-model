@@ -2,14 +2,14 @@
   "dataset_type": "latest",
   "path": "data/latest.csv",
   "data_git_info": {
-    "sha": "17bd41d113a5ac8f166256f96ac0a6fcedfc5908",
-    "branch": "master",
+    "sha": "9e27502423b238c69030a8d7d0a445813a371d7f",
+    "branch": "scrape-cdc-test-data",
     "is_dirty": true
   },
   "model_git_info": {
-    "sha": "2a18952d97c5c310c2e42e44a9341db6b4b8aa28",
-    "branch": "master",
+    "sha": "8333ad248821b79fd892153e7ec8547f4c49eb9b",
+    "branch": "cdc-testing-data",
     "is_dirty": true
   },
-  "updated_at": "2020-12-04T22:00:46.410682"
+  "updated_at": "2020-12-07T22:46:33.050465"
 }
