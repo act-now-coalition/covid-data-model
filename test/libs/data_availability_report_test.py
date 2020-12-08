@@ -1,6 +1,5 @@
 import io
 import pandas as pd
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.qa import data_availability
 
 
@@ -16,7 +15,7 @@ def test_build_availability_report():
     ]
     input_csv = "\n".join(input_csv)
 
-    dataset = LatestValuesDataset.load_csv(io.StringIO(input_csv))
+    dataset = pd.read_csv(io.StringIO(input_csv))
 
     report = data_availability.build_data_availability_report(dataset)
 

@@ -5,7 +5,6 @@ from covidactnow.datapublic.common_fields import FieldName
 from libs import pipeline
 from libs.qa import common_df_diff
 from libs.qa.common_df_diff import DatasetDiff
-from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 
 def test_compare():

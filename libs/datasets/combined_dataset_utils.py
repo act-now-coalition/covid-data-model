@@ -1,12 +1,8 @@
-from typing import Tuple
 import pathlib
 import datetime
-
 import structlog
 
 from libs.datasets import dataset_base
-from libs.datasets import timeseries
-from libs.datasets import latest_values_dataset
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.github_utils import GitSummary
@@ -44,18 +40,3 @@ def persist_dataset(
     dataset_pointer.save_dataset(dataset)
     dataset_pointer.save(data_directory)
     return dataset_pointer
-
-
-def update_data_public_head(
-    data_directory: pathlib.Path, timeseries_dataset: timeseries.MultiRegionDataset,
-) -> DatasetPointer:
-    """Persists US latest and timeseries dataset and saves dataset pointers for Latest tag.
-
-    Args:
-        data_directory: Directory to save dataset and pointer.
-        timeseries_dataset: The dataset to persist.
-
-    Returns: Tuple of DatasetPointers to latest and timeseries datasets.
-    """
-    timeseries_pointer = persist_dataset(timeseries_dataset, data_directory)
-    return latest_pointer, timeseries_pointer

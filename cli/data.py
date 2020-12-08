@@ -22,7 +22,6 @@ from libs.datasets.combined_datasets import (
     ALL_FIELDS_FEATURE_DEFINITION,
 )
 from libs.datasets.timeseries import DatasetName
-from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import timeseries
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets

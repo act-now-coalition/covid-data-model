@@ -4,7 +4,6 @@ import os
 import pandas as pd
 
 from libs.datasets import dataset_utils
-from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.sources import covid_county_data
 from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
@@ -30,7 +29,7 @@ def set_covid_data_public():
     raise Exception("Could not find covid-data-public")
 
 
-def load_data_sources_by_name() -> Dict[str, MultiRegionDataset]:
+def load_data_sources_by_name() -> Dict[str, pd.DataFrame]:
 
     sources = [
         covid_county_data.CovidCountyDataDataSource,
@@ -40,7 +39,8 @@ def load_data_sources_by_name() -> Dict[str, MultiRegionDataset]:
     ]
     source_map = {}
     for source_cls in sources:
-        dataset = source_cls.local().multi_region_dataset()
+        dataset = source_cls.local().multi_region_dataset().static_and_timeseries_latest_with_fips()
+
         dataset.data["source"] = source_cls.__name__
         source_map[source_cls.__name__] = dataset
 

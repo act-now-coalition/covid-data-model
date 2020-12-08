@@ -56,15 +56,3 @@ class DatasetBase(SaveableDatasetInterface):
         if self.provenance is not None:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().to_csv(provenance_path)
-
-    def indexed_data(self) -> pd.DataFrame:
-        """Returns all the data in a DataFrame with FIPS or (FIPS, DATE) as the row index."""
-        data_with_index = self.data.set_index(self.COMMON_INDEX_FIELDS)
-        if data_with_index.index.duplicated(keep=False).any():
-            raise ValueError(f"Duplicate found in index")
-        # If any duplicates slip in the following code may help you debug them:
-        # https://stackoverflow.com/a/34297689
-        # datasets[name] = data_with_index.loc[~data_with_index.duplicated(keep="first"), :]
-        # datasets[key] = dataset_obj.data.groupby(target_dataset_cls.COMMON_INDEX_FIELDS).first() fails
-        # due to <NA>s: cannot convert to 'float64'-dtype NumPy array with missing values. Specify an appropriate 'na_value' for this dtype.
-        return data_with_index

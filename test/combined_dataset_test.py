@@ -23,10 +23,10 @@ import pytest
 
 @pytest.mark.slow
 def test_unique_index_values_us_timeseries():
-    timeseries = combined_datasets.load_us_timeseries_dataset()
-    timeseries_data = timeseries.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
-    duplicates = timeseries_data.index.duplicated(keep=False)
-    assert not duplicates.any(), timeseries_data.loc[duplicates, :]
+    us_dataset = combined_datasets.load_us_timeseries_dataset()
+    us_df = us_dataset.data.set_index([CommonFields.LOCATION_ID, CommonFields.DATE])
+    duplicates = us_df.index.duplicated(keep=False)
+    assert not duplicates.any(), us_df.loc[duplicates, :]
 
 
 def test_unique_index_values_us_latest():
@@ -89,14 +89,13 @@ def test_get_county_name():
     [CovidTrackingDataSource, CovidCountyDataDataSource, NYTimesDataset, TexasHospitalizations,],
 )
 def test_unique_timeseries(data_source_cls):
-    data_source = data_source_cls.local()
-    timeseries = data_source.timeseries()
-    timeseries = combined_datasets.US_STATES_FILTER.apply(timeseries)
+    dataset = data_source_cls.local().multi_region_dataset()
     # Check for duplicate rows with the same INDEX_FIELDS. Sort by index so duplicates are next to
     # each other in the message if the assert fails.
-    timeseries_data = timeseries.data.set_index(timeseries.INDEX_FIELDS).sort_index()
+    timeseries_data = dataset.timeseries.sort_index()
+    assert timeseries_data.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     duplicates = timeseries_data.index.duplicated(keep=False)
-    assert not sum(duplicates), str(timeseries_data.loc[duplicates])
+    assert not duplicates.any(), str(timeseries_data.loc[duplicates])
 
 
 @pytest.mark.slow
@@ -104,23 +103,20 @@ def test_unique_timeseries(data_source_cls):
     "data_source_cls", [CovidTrackingDataSource, CovidCountyDataDataSource],
 )
 def test_expected_field_in_sources(data_source_cls):
-    data_source = data_source_cls.local()
-    ts = data_source.timeseries().get_subset(country="USA")
+    dataset = data_source_cls.local().multi_region_dataset()
 
-    assert not ts.empty
+    assert not dataset.timeseries.empty
+    assert not dataset.static.empty
 
-    states = set(ts.data["state"])
+    states = set(dataset.static["state"])
 
-    if data_source.SOURCE_NAME == "NHA":
-        assert states == {"NV"}
-    else:
-        good_state = set()
-        for state in states:
-            if re.fullmatch(r"[A-Z]{2}", state):
-                good_state.add(state)
-            else:
-                logging.info(f"Ignoring {state} in {data_source.SOURCE_NAME}")
-        assert len(good_state) >= 48
+    good_state = set()
+    for state in states:
+        if re.fullmatch(r"[A-Z]{2}", state):
+            good_state.add(state)
+        else:
+            logging.info(f"Ignoring {state} in {data_source_cls.__name__}")
+    assert len(good_state) >= 48
 
 
 def test_melt_provenance():

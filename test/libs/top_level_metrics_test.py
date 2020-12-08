@@ -11,7 +11,6 @@ from api import can_api_v2_definition
 from libs import top_level_metrics
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.pipeline import Region
 from freezegun import freeze_time
 
