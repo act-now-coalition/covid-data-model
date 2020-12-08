@@ -1,0 +1,48 @@
+{
+  "title": "ICUHeadroomMetricDetails",
+  "description": "Details about how the ICU Headroom Metric was calculated.",
+  "type": "object",
+  "properties": {
+    "currentIcuCovid": {
+      "title": "Currenticucovid",
+      "description": "Current number of covid patients in icu.",
+      "type": "integer"
+    },
+    "currentIcuCovidMethod": {
+      "$ref": "#/definitions/CovidPatientsMethod"
+    },
+    "currentIcuNonCovid": {
+      "title": "Currenticunoncovid",
+      "description": "Current number of covid patients in icu.",
+      "type": "integer"
+    },
+    "currentIcuNonCovidMethod": {
+      "$ref": "#/definitions/NonCovidPatientsMethod"
+    }
+  },
+  "required": [
+    "currentIcuCovid",
+    "currentIcuCovidMethod",
+    "currentIcuNonCovid",
+    "currentIcuNonCovidMethod"
+  ],
+  "definitions": {
+    "CovidPatientsMethod": {
+      "title": "CovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients with covid.",
+      "enum": [
+        "actual",
+        "estimated"
+      ]
+    },
+    "NonCovidPatientsMethod": {
+      "title": "NonCovidPatientsMethod",
+      "description": "Method used to determine number of current ICU patients without covid.",
+      "enum": [
+        "actual",
+        "estimated_from_typical_utilization",
+        "estimated_from_total_icu_actual"
+      ]
+    }
+  }
+}

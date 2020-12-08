@@ -1,0 +1,26 @@
+{
+  "title": "TestPositivityRatioDetails",
+  "description": "Details about how the test positivity ratio was calculated.",
+  "type": "object",
+  "properties": {
+    "source": {
+      "$ref": "#/definitions/TestPositivityRatioMethod"
+    }
+  },
+  "required": [
+    "source"
+  ],
+  "definitions": {
+    "TestPositivityRatioMethod": {
+      "title": "TestPositivityRatioMethod",
+      "description": "Method used to determine test positivity ratio.",
+      "enum": [
+        "CMSTesting",
+        "HHSTesting",
+        "Valorum",
+        "covid_tracking",
+        "other"
+      ]
+    }
+  }
+}

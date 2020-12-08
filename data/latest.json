@@ -1,6 +1,6 @@
 {
-  "dataset_type": "multiregion",
-  "path": "data/multiregion.csv",
+  "dataset_type": "latest",
+  "path": "data/latest.csv",
   "data_git_info": {
     "sha": "57cee027452eed26c62af959e50bb74d76c9c1cf",
     "branch": "master",
@@ -9,7 +9,7 @@
   "model_git_info": {
     "sha": "d80553ff25f82860a71f6a186ff6334e0a0e749c",
     "branch": "master",
-    "is_dirty": true
+    "is_dirty": false
   },
-  "updated_at": "2020-12-08T01:40:30.528056"
+  "updated_at": "2020-12-08T01:40:27.799303"
 }
