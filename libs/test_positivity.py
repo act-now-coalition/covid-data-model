@@ -116,7 +116,7 @@ class PassThruMethod(Method):
 
 TEST_POSITIVITY_METHODS = (
     # HACK: For now we assume TEST_POSITIVITY came from CMS and use that as the name that gets plumbed into provenance.
-    PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY),
+    PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
     DivisionMethod(
         "positiveTestsViral_totalTestsViral",
         CommonFields.POSITIVE_TESTS_VIRAL,
