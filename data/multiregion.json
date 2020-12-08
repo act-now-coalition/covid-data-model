@@ -3,13 +3,13 @@
   "path": "data/multiregion.csv",
   "data_git_info": {
     "sha": "4ae45d0ec38662acc892ef30e9e3b23315c9de19",
-    "branch": "master",
+    "branch": "detached",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "7ad8644ac5612c21e96645cb5c689cd2483f8d98",
-    "branch": "tgb-multiregion-write-wide-dates",
+    "sha": "889d2a4b3ad4a70e297e0576e8fded07a716ac61",
+    "branch": "tgb-combined-using-multiregion",
     "is_dirty": true
   },
-  "updated_at": "2020-12-07T20:32:15.523230"
+  "updated_at": "2020-12-08T01:34:37.924248"
 }
