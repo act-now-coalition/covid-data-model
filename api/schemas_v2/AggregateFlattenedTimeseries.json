@@ -179,6 +179,7 @@
       "description": "Method used to determine test positivity ratio.",
       "enum": [
         "CMSTesting",
+        "CDCTesting",
         "HHSTesting",
         "Valorum",
         "covid_tracking",
