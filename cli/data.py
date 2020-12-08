@@ -14,19 +14,16 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import google_sheet_helpers, wide_dates_df
 from libs import pipeline
 from libs.datasets import AggregationLevel
+from libs.datasets import combined_dataset_utils
+from libs.datasets import custom_aggregations
 from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
-    US_STATES_FILTER,
     ALL_FIELDS_FEATURE_DEFINITION,
 )
-from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.timeseries import MultiRegionDataset
+from libs.datasets.timeseries import DatasetName
 from libs.datasets import timeseries
-from libs.qa import data_availability
-from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets import dataset_utils
-from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.sources import forecast_hub
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
@@ -64,7 +61,11 @@ def update_forecasts(filename):
     help="Aggregate states to one USA country region",
     default=False,
 )
-def update(wide_dates_filename, aggregate_to_country: bool):
+@click.option("--state", type=str, help="For testing, a two letter state abbr")
+@click.option("--fips", type=str, help="For testing, a 5 digit county fips")
+def update(
+    wide_dates_filename, aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
+):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -75,23 +76,27 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         )
     )
     data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.local()
+        data_source_cls.SOURCE_NAME: data_source_cls.local().multi_region_dataset()
         for data_source_cls in data_source_classes
     }
-    timeseries_dataset: TimeseriesDataset = combined_datasets.build_from_sources(
-        TimeseriesDataset, data_sources, ALL_TIMESERIES_FEATURE_DEFINITION, filter=US_STATES_FILTER
-    )
-    latest_dataset: LatestValuesDataset = combined_datasets.build_from_sources(
-        LatestValuesDataset, data_sources, ALL_FIELDS_FEATURE_DEFINITION, filter=US_STATES_FILTER,
-    )
-    multiregion_dataset = MultiRegionDataset.from_timeseries_and_latest(
-        timeseries_dataset, latest_dataset
+    if state or fips:
+        data_sources = {
+            name: dataset.get_subset(state=state, fips=fips)
+            # aggregation_level=AggregationLevel.STATE)
+            for name, dataset in data_sources.items()
+        }
+    multiregion_dataset = timeseries.combined_datasets(
+        data_sources,
+        build_field_dataset_source(ALL_TIMESERIES_FEATURE_DEFINITION),
+        build_field_dataset_source(ALL_FIELDS_FEATURE_DEFINITION),
     )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
+    multiregion_dataset = timeseries.aggregate_puerto_rico_from_counties(multiregion_dataset)
+    multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
 
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     cbsa_dataset = aggregator.aggregate(multiregion_dataset)
@@ -103,18 +108,15 @@ def update(wide_dates_filename, aggregate_to_country: bool):
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
-    _, multiregion_pointer = combined_dataset_utils.update_data_public_head(
-        path_prefix, latest_dataset, multiregion_dataset,
-    )
+    combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
 
     # Write DataSource objects that have provenance information, which is only set when significant
     # processing of the source data is done in this repo before it is combined. The output is not
     # used downstream, it is for debugging only.
-    for data_source in data_sources.values():
-        if data_source.provenance is not None:
+    for name, source_dataset in data_sources.items():
+        if not source_dataset.provenance.empty:
             wide_dates_df.write_csv(
-                data_source.timeseries().get_date_columns(),
-                path_prefix / f"{data_source.SOURCE_NAME}-wide-dates.csv",
+                source_dataset.timeseries_rows(), path_prefix / f"{name}-wide-dates.csv",
             )
 
     if wide_dates_filename:
@@ -181,6 +183,8 @@ def run_population_filter(output_path: pathlib.Path):
 @click.option("--name", envvar="DATA_AVAILABILITY_SHEET_NAME", default="Data Availability - Dev")
 @click.option("--share-email")
 def update_availability_report(name: str, share_email: Optional[str]):
+    from libs.qa import data_availability
+
     sheet = google_sheet_helpers.open_or_create_spreadsheet(name, share_email=share_email)
     info_worksheet = google_sheet_helpers.update_info_sheet(sheet)
     data_sources_by_source_name = data_availability.load_all_latest_sources()
@@ -216,3 +220,14 @@ def update_case_based_icu_utilization_weights():
     _logger.info(f"Saved case-based ICU Utilization weights to {output_path}")
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2, sort_keys=True)
+
+
+def build_field_dataset_source(feature_definition_config):
+    feature_definition = {
+        # timeseries.combined_datasets has the highest priority first.
+        # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
+        field_name: list(reversed(list(DatasetName(cls.SOURCE_NAME) for cls in classes)))
+        for field_name, classes in feature_definition_config.items()
+        if classes
+    }
+    return feature_definition

@@ -1,12 +1,10 @@
-from itertools import chain
 from typing import Type, Optional
 
 import pandas as pd
 
-from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import TimeseriesDataset
 from libs.datasets.latest_values_dataset import LatestValuesDataset
-from libs.datasets.dataset_utils import AggregationLevel
 from functools import lru_cache
 
 
@@ -38,18 +36,6 @@ class DataSource(object):
         self.data = data
         self.provenance = provenance
 
-    @property
-    def state_data(self) -> pd.DataFrame:
-        """Returns a new BedsDataset containing only state data."""
-        is_state = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        return self.data[is_state]
-
-    @property
-    def county_data(self) -> pd.DataFrame:
-        """Returns a new BedsDataset containing only county data."""
-        is_county = self.data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-        return self.data[is_county]
-
     @classmethod
     def local(cls) -> "DataSource":
         """Builds data from local covid-public-data github repo.
@@ -59,36 +45,22 @@ class DataSource(object):
         raise NotImplementedError("Subclass must implement")
 
     @lru_cache(None)
-    def beds(self) -> LatestValuesDataset:
-        """Builds generic beds dataset"""
-        return self.latest_values()
-
-    @lru_cache(None)
-    def population(self) -> LatestValuesDataset:
-        """Builds generic beds dataset"""
-        return self.latest_values()
-
-    @lru_cache(None)
-    def timeseries(self) -> TimeseriesDataset:
-        """Build TimeseriesDataset from this data source."""
-        if set(self.INDEX_FIELD_MAP.keys()) != set(TimeseriesDataset.INDEX_FIELDS):
-            raise ValueError("Index fields must match")
-
-        return TimeseriesDataset.from_source(
-            self, fill_missing_state=self.FILL_MISSING_STATE_LEVEL_DATA
-        )
-
-    @lru_cache(None)
-    def latest_values(self) -> LatestValuesDataset:
+    def multi_region_dataset(self) -> MultiRegionDataset:
         if set(self.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
-            return self.timeseries().latest_values_object()
+            dataset = MultiRegionDataset.from_fips_timeseries_df(self.data).add_provenance_all(
+                self.SOURCE_NAME
+            )
+            # TODO(tom): DataSource.provenance is only set by
+            # CovidCountyDataDataSource.synthesize_test_metrics. Factor it out into something
+            # that reads and creates a MultiRegionDataset.
+            # if self.provenance is not None:
+            #     dataset.add_fips_provenance(self.provenance)
+            return dataset
 
-        if set(self.INDEX_FIELD_MAP.keys()) != set(LatestValuesDataset.INDEX_FIELDS):
-            raise ValueError("Index fields must match")
+        if set(self.INDEX_FIELD_MAP.keys()) == set(LatestValuesDataset.INDEX_FIELDS):
+            return MultiRegionDataset.new_without_timeseries().add_fips_static_df(self.data)
 
-        return LatestValuesDataset.from_source(
-            self, fill_missing_state=self.FILL_MISSING_STATE_LEVEL_DATA
-        )
+        raise ValueError("Unexpected index fields")
 
     @classmethod
     def _rename_to_common_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
@@ -97,10 +69,3 @@ class DataSource(object):
         to_common_fields = {value: key for key, value in all_fields_map.items()}
         final_columns = to_common_fields.values()
         return df.rename(columns=to_common_fields)[final_columns]
-
-    @classmethod
-    def _drop_unlisted_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
-        """Returns a copy of the DataFrame with columns not in the class field maps dropped."""
-        # Use pd.unique to preserve order, unlike making a set.
-        all_keys = pd.unique(list(chain(cls.INDEX_FIELD_MAP.keys(), cls.COMMON_FIELD_MAP.keys())))
-        return df[all_keys]

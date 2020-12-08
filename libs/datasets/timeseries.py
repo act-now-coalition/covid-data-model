@@ -23,15 +23,12 @@ import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs import pipeline
-from libs import us_state_abbrev
 from libs.datasets import dataset_utils
 from libs.datasets import dataset_base
-from libs.datasets import custom_aggregations
 from libs.datasets.common_fields import CommonIndexFields
 from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
-import libs.qa.dataset_summary_gen
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import NON_NUMERIC_COLUMNS
@@ -39,7 +36,6 @@ from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
-
 
 _log = structlog.get_logger()
 
@@ -142,196 +138,6 @@ class TimeseriesDataset(dataset_base.DatasetBase):
 
     COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
-    @cached_property
-    def dataset_type(self) -> DatasetType:
-        return DatasetType.TIMESERIES
-
-    @cached_property
-    def empty(self):
-        return self.data.empty
-
-    def latest_values(self) -> pd.DataFrame:
-        """Gets the most recent values.
-
-        Return: DataFrame
-        """
-        columns_to_ffill = list(set(self.data.columns) - set(TimeseriesDataset.INDEX_FIELDS))
-        data_copy = self.data.set_index([CommonFields.FIPS, CommonFields.DATE]).sort_index()
-        # Groupby preserves the order of rows within a group so ffill will fill forwards by DATE.
-        groups_to_fill = data_copy.groupby([CommonFields.FIPS], sort=False)
-        # Consider using ffill(limit=...) to constrain how far in the past the latest values go. Currently, because
-        # there may be dates missing in the index an integer limit does not provide a consistent
-        # limit on the number of days in the past that may be used.
-        data_copy[columns_to_ffill] = groups_to_fill[columns_to_ffill].ffill()
-        return (
-            data_copy.groupby([CommonFields.FIPS], sort=False)
-            .last()
-            # Reset FIPS back to a regular column and drop the DATE index.
-            .reset_index(CommonFields.FIPS)
-            .reset_index(drop=True)
-        )
-
-    def latest_values_object(self) -> LatestValuesDataset:
-        return LatestValuesDataset(self.latest_values())
-
-    def get_date_columns(self) -> pd.DataFrame:
-        """Create a DataFrame with a row for each FIPS-variable timeseries and hierarchical columns.
-
-        Returns:
-            A DataFrame with a row index of COMMON_FIELDS_TIMESERIES_KEYS and columns hierarchy separating
-            GEO_DATA_COLUMNS, provenance information, the timeseries summary and the complete timeseries.
-        """
-        ts_value_columns = (
-            set(self.data.columns)
-            - set(COMMON_FIELDS_TIMESERIES_KEYS)
-            - set(dataset_utils.GEO_DATA_COLUMNS)
-        )
-        # Melt all the ts_value_columns into a single "value" column
-        long = (
-            self.data.loc[:, COMMON_FIELDS_TIMESERIES_KEYS + list(ts_value_columns)]
-            .melt(id_vars=COMMON_FIELDS_TIMESERIES_KEYS, value_vars=ts_value_columns,)
-            .dropna()
-            .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
-            .apply(pd.to_numeric)
-        )
-        # Unstack by DATE, creating a row for each FIPS-variable timeseries and a column for each DATE.
-        wide_dates = long.unstack(CommonFields.DATE)
-        # Drop any rows without a real value for any date.
-        wide_dates = wide_dates.loc[wide_dates.loc[:, "value"].notna().any(axis=1), :]
-
-        summary = wide_dates.loc[:, "value"].apply(
-            libs.qa.dataset_summary_gen.generate_field_summary, axis=1
-        )
-
-        geo_data_per_fips = dataset_utils.fips_index_geo_data(self.data)
-        # Make a DataFrame with a row for each summary.index element
-        assert summary.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
-        geo_data = pd.merge(
-            pd.DataFrame(data=[], index=summary.index),
-            geo_data_per_fips,
-            how="left",
-            left_on=CommonFields.FIPS,  # FIPS is in the left MultiIndex
-            right_index=True,
-            suffixes=(False, False),
-        )
-
-        return pd.concat(
-            {
-                "geo_data": geo_data,
-                "provenance": self.provenance,
-                "summary": summary,
-                "value": wide_dates["value"],
-            },
-            axis=1,
-        )
-
-    def get_subset(
-        self,
-        aggregation_level=None,
-        country=None,
-        fips: Optional[str] = None,
-        state: Optional[str] = None,
-        states: Optional[List[str]] = None,
-        on: Optional[str] = None,
-        after: Optional[str] = None,
-        before: Optional[str] = None,
-        columns: Sequence[str] = tuple(),
-    ) -> "TimeseriesDataset":
-        """Fetch a new TimeseriesDataset with a subset of the data in `self`.
-
-        Some parameters are only used in ipython notebooks."""
-        rows_key = dataset_utils.make_rows_key(
-            self.data,
-            aggregation_level=aggregation_level,
-            country=country,
-            fips=fips,
-            state=state,
-            states=states,
-            on=on,
-            after=after,
-            before=before,
-        )
-        columns_key = list(columns) if columns else slice(None, None, None)
-        return self.__class__(self.data.loc[rows_key, columns_key].reset_index(drop=True))
-
-    @classmethod
-    def from_source(
-        cls, source: "DataSource", fill_missing_state: bool = True
-    ) -> "TimeseriesDataset":
-        """Loads data from a specific datasource.
-
-        Args:
-            source: DataSource to standardize for timeseries dataset
-            fill_missing_state: If True, backfills missing state data by
-                calculating county level aggregates.
-
-        Returns: Timeseries object.
-        """
-        data = source.data
-        group = [
-            CommonFields.DATE,
-            CommonFields.COUNTRY,
-            CommonFields.AGGREGATE_LEVEL,
-            CommonFields.STATE,
-        ]
-        data = custom_aggregations.update_with_combined_new_york_counties(
-            data, group, are_boroughs_zero=source.HAS_AGGREGATED_NYC_BOROUGH
-        )
-
-        if fill_missing_state:
-            state_groupby_fields = [
-                CommonFields.DATE,
-                CommonFields.COUNTRY,
-                CommonFields.STATE,
-            ]
-            non_matching = dataset_utils.aggregate_and_get_nonmatching(
-                data, state_groupby_fields, AggregationLevel.COUNTY, AggregationLevel.STATE,
-            ).reset_index()
-            data = pd.concat([data, non_matching])
-
-        fips_data = dataset_utils.build_fips_data_frame()
-        data = dataset_utils.add_county_using_fips(data, fips_data)
-        is_state = data[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.STATE.value
-        state_fips = data.loc[is_state, CommonFields.STATE].map(us_state_abbrev.ABBREV_US_FIPS)
-        data.loc[is_state, CommonFields.FIPS] = state_fips
-
-        no_fips = data[CommonFields.FIPS].isnull()
-        if no_fips.any():
-            _log.warning(
-                "Dropping rows without FIPS", source=str(source), rows=repr(data.loc[no_fips])
-            )
-            data = data.loc[~no_fips]
-
-        dups = data.duplicated(COMMON_FIELDS_TIMESERIES_KEYS, keep=False)
-        if dups.any():
-            raise DuplicateDataException(f"Duplicates in {source}", data.loc[dups])
-
-        # Choosing to sort by date
-        data = data.sort_values(CommonFields.DATE)
-        return cls(data, provenance=source.provenance)
-
-    def summarize(self):
-        dataset_utils.summarize(
-            self.data,
-            AggregationLevel.COUNTY,
-            [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE, CommonFields.FIPS,],
-        )
-
-        dataset_utils.summarize(
-            self.data,
-            AggregationLevel.STATE,
-            [CommonFields.DATE, CommonFields.COUNTRY, CommonFields.STATE],
-        )
-
-    @classmethod
-    def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
-        df = common_df.read_csv(path_or_buf)
-        # TODO: common_df.read_csv sets the index of the dataframe to be fips, date, however
-        # most of the calling code expects fips and date to not be in an index.
-        # In the future, it would be good to standardize around index fields.
-        df = df.reset_index()
-        return cls(df)
-
 
 def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
     """Adds the location_id column derived from FIPS"""
@@ -420,16 +226,30 @@ _EMPTY_PROVENANCE_SERIES = pd.Series(
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
 )
 
+
 # An empty pd.DataFrame with the structure expected for the static attribute. Use this when
 # a dataset does not have any static values.
 _EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
 
 
+# An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
+# variable> and column labels <date>.
 _EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
     [],
     dtype=float,
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
     columns=pd.Index([], name=CommonFields.DATE),
+)
+
+
+# An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
+# date> and column labels <variable>. This is the structure of most CSV files in this repo as of
+# Nov 2020.
+_EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
+    [],
+    dtype=float,
+    index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, CommonFields.DATE]),
+    columns=pd.Index([], name=PdFields.VARIABLE),
 )
 
 
@@ -517,6 +337,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def timeseries_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
+        if self.timeseries.empty:
+            return _EMPTY_TIMESERIES_WIDE_DATES_DF
         timeseries_long = self._timeseries_long()
         dates = timeseries_long.index.get_level_values(CommonFields.DATE)
         if dates.empty:
@@ -650,19 +472,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
         ts_df = _add_location_id(ts_df)
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
-    @staticmethod
-    def from_timeseries_and_latest(
-        ts: TimeseriesDataset, latest: LatestValuesDataset
-    ) -> "MultiRegionDataset":
-        """Converts legacy FIPS to new LOCATION_ID and calls `from_timeseries_df` to finish construction."""
-        dataset = MultiRegionDataset.from_fips_timeseries_df(ts.data)
-        dataset = dataset.add_fips_static_df(latest.data)
-
-        if ts.provenance is not None:
-            dataset = dataset.add_fips_provenance(ts.provenance)
-
-        return dataset
-
     def add_fips_provenance(self, provenance):
         # Check that current index is as expected. Names will be fixed after remapping, below.
         assert provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
@@ -793,6 +602,27 @@ class MultiRegionDataset(SaveableDatasetInterface):
             timeseries=timeseries_df, static=static_df, provenance=provenance,
         )
 
+    def remove_regions(self, regions: Collection[Region]) -> "MultiRegionDataset":
+        location_ids = pd.Index(sorted(r.location_id for r in regions))
+        return self.remove_locations(location_ids)
+
+    def remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
+        timeseries_mask = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        timeseries_df = self.timeseries.loc[~timeseries_mask, :]
+        static_mask = self.static.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        static_df = self.static.loc[~static_mask, :]
+        provenance_mask = self.provenance.index.get_level_values(CommonFields.LOCATION_ID).isin(
+            location_ids
+        )
+        provenance = self.provenance.loc[~provenance_mask, :]
+        return MultiRegionDataset(
+            timeseries=timeseries_df, static=static_df, provenance=provenance,
+        )
+
     def get_subset(
         self,
         aggregation_level: Optional[AggregationLevel] = None,
@@ -825,15 +655,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self.timeseries.groupby(CommonFields.LOCATION_ID)
-
-    def to_timeseries(self) -> TimeseriesDataset:
-        """Returns a `TimeseriesDataset` of this data.
-
-        This method exists for interim use when calling code that doesn't use MultiRegionDataset.
-        """
-        return TimeseriesDataset(
-            self.data_with_fips, provenance=None if self.provenance.empty else self.provenance
-        )
 
     def timeseries_rows(self) -> pd.DataFrame:
         """Returns a DataFrame containing timeseries values and provenance, suitable for writing
@@ -1139,20 +960,23 @@ def _find_scale_factors(
 
 
 def _aggregate_dataframe_by_region(
-    df_in: pd.DataFrame, location_id_map: Mapping[str, str]
+    df_in: pd.DataFrame, location_id_map: Mapping[str, str], *, ignore_na: bool
 ) -> pd.DataFrame:
     """Aggregates a DataFrame using given region map. The output contains dates iff the input does."""
+
+    if CommonFields.DATE in df_in.index.names:
+        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
+        empty_result = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+    else:
+        groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
+        empty_result = _EMPTY_REGIONAL_ATTRIBUTES_DF
+
     # df_in is sometimes empty in unittests. Return a DataFrame that is also empty and
     # has enough of an index that the test passes.
     if df_in.empty:
-        return pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
+        return empty_result
 
     df = df_in.copy()  # Copy because the index is modified below
-
-    if CommonFields.DATE in df.index.names:
-        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
-    else:
-        groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
 
     # Add a new level in the MultiIndex with the new location_id_agg
     # From https://stackoverflow.com/a/56278735
@@ -1181,12 +1005,13 @@ def _aggregate_dataframe_by_region(
     # Join the count of regions in each location_id_agg
     long_agg = long_agg.join(location_id_agg_count, on=LOCATION_ID_AGG)
 
-    # Only keep aggregated values where the count of aggregated values is the same as the
-    # count of input regions.
-    long_agg_all_present = long_agg.loc[long_agg["count"] == long_agg["location_id_agg_count"]]
+    if not ignore_na:
+        # Only keep aggregated values where the count of aggregated values is the same as the
+        # count of input regions.
+        long_agg = long_agg.loc[long_agg["count"] == long_agg["location_id_agg_count"]]
 
     df_out = (
-        long_agg_all_present["sum"]
+        long_agg["sum"]
         .unstack()
         .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
         .sort_index()
@@ -1201,6 +1026,8 @@ def aggregate_regions(
     aggregate_map: Mapping[Region, Region],
     aggregate_level: AggregationLevel,
     aggregations: Sequence[StaticWeightedAverageAggregation] = WEIGHTED_AGGREGATIONS,
+    *,
+    ignore_na: bool = False,
 ) -> MultiRegionDataset:
     """Produces a dataset with dataset_in aggregated using sum or weighted aggregation."""
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
@@ -1217,7 +1044,8 @@ def aggregate_regions(
     if agg_common_fields:
         raise ValueError("field and scale_factor have values in common")
     # TODO(tom): Do something smarter with non-number columns in static. Currently they are
-    # silently dropped.
+    # silently dropped. Functions such as aggregate_to_new_york_city manually copy non-number
+    # columns.
     static_in = dataset_in.static.select_dtypes(include="number")
     scale_field_missing = scale_fields.difference(static_in.columns)
     if scale_field_missing:
@@ -1230,7 +1058,7 @@ def aggregate_regions(
     static_in_other_fields = static_in.loc[:, ~scale_fields_mask]
 
     static_agg_scale_fields = _aggregate_dataframe_by_region(
-        static_in_scale_fields, location_id_map
+        static_in_scale_fields, location_id_map, ignore_na=ignore_na
     )
     location_ids = dataset_in.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
     # TODO(tom): Add support for time-varying scale factors, for example to scale
@@ -1249,9 +1077,11 @@ def aggregate_regions(
     timeseries_scaled = _apply_scaling_factor(dataset_in.timeseries, scale_factors, aggregations)
 
     static_agg_other_fields = _aggregate_dataframe_by_region(
-        static_other_fields_scaled, location_id_map
+        static_other_fields_scaled, location_id_map, ignore_na=ignore_na
     )
-    timeseries_agg = _aggregate_dataframe_by_region(timeseries_scaled, location_id_map)
+    timeseries_agg = _aggregate_dataframe_by_region(
+        timeseries_scaled, location_id_map, ignore_na=ignore_na
+    )
     static_agg = pd.concat([static_agg_scale_fields, static_agg_other_fields], axis=1)
     if static_agg.index.name != CommonFields.LOCATION_ID:
         # It looks like concat doesn't always set the index name, but haven't worked out
@@ -1280,9 +1110,12 @@ def _to_datasets_wide_dates_map(
             list(df.columns.get_level_values(CommonFields.DATE) for df in datasets_wide.values())
         )
     )
-    start_date = dates.min()
-    end_date = dates.max()
-    input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
+    if dates.empty:
+        input_date_range = pd.DatetimeIndex([], name=CommonFields.DATE)
+    else:
+        start_date = dates.min()
+        end_date = dates.max()
+        input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
     datasets_wide_reindexed = {
         name: df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID]).reindex(
             columns=input_date_range
@@ -1294,24 +1127,27 @@ def _to_datasets_wide_dates_map(
 
 def combined_datasets(
     datasets: Mapping[DatasetName, MultiRegionDataset],
-    field_dataset_source: Mapping[FieldName, List[DatasetName]],
+    timeseries_field_dataset_source: Mapping[FieldName, List[DatasetName]],
+    static_field_dataset_source: Mapping[FieldName, List[DatasetName]],
 ) -> MultiRegionDataset:
     """Creates a dataset that contains the given fields copied from `datasets`.
 
     For each region, the timeseries from the first dataset in the list with a real value is returned.
-
-    TODO(tom): Replace the similar logic in libs.datasets.combined_datasets with a call to
-    this function.
     """
     datasets_wide = _to_datasets_wide_dates_map(datasets)
+    # TODO(tom): Consider how to factor out the timeseries and static processing. For example,
+    #  create rows with the entire timeseries and provenance then use groupby(location_id).first().
+    #  Or maybe do something with groupby(location_id).apply if it is fast enough.
     # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and DATE columns) that
     # will be concat-ed.
     timeseries_dfs = []
     # A list of Series that will be concat-ed
     provenance_series = []
-    for field, datasets_list in field_dataset_source.items():
+    for field, dataset_names in timeseries_field_dataset_source.items():
+        # Iterate through the datasets for this field. For each dataset add location_id with data
+        # in field to location_id_so_far iff the location_id is not already there.
         location_id_so_far = pd.Index([])
-        for dataset_name in datasets_list:
+        for dataset_name in dataset_names:
             field_wide_df = datasets_wide[dataset_name].loc[[field], :]
             assert field_wide_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
             location_ids = field_wide_df.index.get_level_values(CommonFields.LOCATION_ID)
@@ -1321,13 +1157,96 @@ def combined_datasets(
             timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
             location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
             provenance_series.append(
-                datasets[dataset_name].provenance.loc[selected_location_id, slice(field)]
+                datasets[dataset_name].provenance.loc[selected_location_id, field]
             )
-    output_wide = pd.concat(timeseries_dfs, verify_integrity=True)
-    output_provenance = pd.concat(provenance_series, verify_integrity=True)
-    assert output_wide.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-    assert output_wide.columns.names == [CommonFields.DATE]
+
+    static_series = []
+    for field, dataset_names in static_field_dataset_source.items():
+        static_column_so_far = None
+        for dataset_name in dataset_names:
+            dataset_column = datasets[dataset_name].static.get(field)
+            if dataset_column is None:
+                continue
+            dataset_column = dataset_column.dropna()
+            assert dataset_column.index.names == [CommonFields.LOCATION_ID]
+            if static_column_so_far is None:
+                # This is the first dataset. Copy all not-NA values of field and the location_id
+                # index to static_column_so_far.
+                static_column_so_far = dataset_column
+            else:
+                # Add to static_column_so_far values that have index labels not already in the
+                # static_column_so_far.index. Thus for each location, the first dataset with a
+                # value is copied and values in later dataset are not copied.
+                selected_location_id = dataset_column.index.difference(static_column_so_far.index)
+                static_column_so_far = pd.concat(
+                    [static_column_so_far, dataset_column.loc[selected_location_id]],
+                    sort=True,
+                    verify_integrity=True,
+                )
+        static_series.append(static_column_so_far)
+    if timeseries_dfs:
+        output_timeseries_wide_dates = pd.concat(timeseries_dfs, verify_integrity=True)
+        assert output_timeseries_wide_dates.index.names == [
+            PdFields.VARIABLE,
+            CommonFields.LOCATION_ID,
+        ]
+        assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
+        # Transform from a column for each date to a column for each variable (with rows for dates).
+        # stack and unstack does the transform quickly but does not handle an empty DataFrame.
+        if output_timeseries_wide_dates.empty:
+            output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        else:
+            output_timeseries_wide_variables = (
+                output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
+            )
+        output_provenance = pd.concat(provenance_series, verify_integrity=True)
+    else:
+        output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        output_provenance = _EMPTY_PROVENANCE_SERIES
+    if static_series:
+        output_static_df = pd.concat(
+            static_series, axis=1, sort=True, verify_integrity=True
+        ).rename_axis(index=CommonFields.LOCATION_ID)
+    else:
+        output_static_df = _EMPTY_REGIONAL_ATTRIBUTES_DF
+
     return MultiRegionDataset(
-        timeseries=output_wide.stack().unstack(PdFields.VARIABLE).sort_index(),
+        timeseries=output_timeseries_wide_variables,
         provenance=output_provenance.sort_index(),
+        static=output_static_df,
     )
+
+
+def _aggregate_ignoring_nas(df_in: pd.DataFrame) -> Mapping:
+    aggregated = {}
+    for field in df_in.columns:
+        if field == CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE:
+            licensed_beds = df_in[CommonFields.LICENSED_BEDS]
+            occupancy_rates = df_in[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+            aggregated[field] = (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
+        elif field == CommonFields.ICU_TYPICAL_OCCUPANCY_RATE:
+            icu_beds = df_in[CommonFields.ICU_BEDS]
+            occupancy_rates = df_in[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+            aggregated[field] = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
+        else:
+            aggregated[field] = df_in[field].sum()
+    return aggregated
+
+
+def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiRegionDataset:
+    """Returns a dataset with NA static values for the state PR aggregated from counties."""
+    pr_county_mask = (dataset.static[CommonFields.STATE] == "PR") & (
+        dataset.static[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+    )
+    if not pr_county_mask.any():
+        return dataset
+    pr_counties = dataset.static.loc[pr_county_mask]
+    aggregated = _aggregate_ignoring_nas(pr_counties.select_dtypes(include="number"))
+    pr_location_id = pipeline.Region.from_state("PR").location_id
+
+    patched_static = dataset.static.copy()
+    for field, aggregated_value in aggregated.items():
+        if pd.isna(patched_static.at[pr_location_id, field]):
+            patched_static.at[pr_location_id, field] = aggregated_value
+
+    return dataclasses.replace(dataset, static=patched_static)

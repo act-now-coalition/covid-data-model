@@ -6,46 +6,42 @@ from libs import google_sheet_helpers
 from libs.datasets.sources import fips_population
 from libs import notebook_helpers
 from libs.datasets import combined_datasets
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 import gspread
 import gspread_formatting
+
 
 LOCATION_GROUP_KEY = "location_group"
 COMBINED_DATA_KEY = "Combined Data"
 
 
 def load_all_latest_sources():
-    latest = combined_datasets.load_us_latest_dataset()
+    combined_df = (
+        combined_datasets.load_us_timeseries_dataset().static_and_timeseries_latest_with_fips()
+    )
+    combined_df["source"] = "Combined"
     sources = notebook_helpers.load_data_sources_by_name()
-    sources_latest = {name: source.latest_values() for name, source in sources.items()}
-    combined_latest_data = latest.data.copy()
-    combined_latest_data["source"] = "Combined"
-    sources_latest[COMBINED_DATA_KEY] = combined_latest_data
+    sources_latest = {name: source for name, source in sources.items()}
+    sources_latest[COMBINED_DATA_KEY] = combined_df
 
-    for source_name in sources_latest:
-        data = sources_latest[source_name]
-
+    for source_name, data in sources_latest.items():
         # Drop unknown sources
         invalid_locations = (data[CommonFields.FIPS].str.endswith("999")) | (
             data[CommonFields.FIPS].str.startswith("90")
         )
         data = data.loc[~invalid_locations]
-        sources_latest[source_name] = LatestValuesDataset(data)
+        sources_latest[source_name] = data
 
     return sources_latest
 
 
-def build_data_availability_report(latest: LatestValuesDataset) -> pd.DataFrame:
+def build_data_availability_report(data: pd.DataFrame) -> pd.DataFrame:
     """Builds report containing counts of locations with values.
 
     Args:
-        latest: Dataset to summarize.
+        data: Dataset to summarize.
 
     Returns:
     """
-
-    data = latest.data.copy()
-
     if "population" not in data.columns:
         pop = fips_population.FIPSPopulation.local()
         pop_map = pop.data.set_index("fips")["population"]
@@ -78,28 +74,6 @@ def build_data_availability_report(latest: LatestValuesDataset) -> pd.DataFrame:
     )
 
     return counts_per_location.rename({LOCATION_GROUP_KEY: "num_locations"}, axis="columns")
-
-
-def build_data_availability_for_field(
-    latest_dataset: LatestValuesDataset, field: str
-) -> pd.DataFrame:
-    """Builds data availability report for a specific field.
-
-    Args:
-        latest_dataset: Dataset with multiple data sources
-        field: Name of field to select.
-
-    """
-    data = latest_dataset.data
-    data = data.set_index(
-        [CommonFields.FIPS, CommonFields.AGGREGATE_LEVEL, CommonFields.STATE, "source"]
-    )
-    series = data[field]
-    field_by_source = series.unstack(level=-1)
-    field_by_source.columns = field_by_source.columns.get_level_values(0).values
-    field_by_source = field_by_source.reset_index()
-    field_by_source = LatestValuesDataset(field_by_source)
-    return build_data_availability_report(field_by_source)
 
 
 def update_google_sheet_with_data(sheet, data: pd.DataFrame, worksheet_name):

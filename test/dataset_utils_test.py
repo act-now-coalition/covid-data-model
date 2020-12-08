@@ -7,7 +7,6 @@ import numpy as np
 
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
 from libs.datasets import dataset_utils
-from libs.datasets.combined_datasets import _build_data_and_provenance
 from libs.datasets.dataset_utils import AggregationLevel
 import pytest
 
@@ -71,93 +70,6 @@ def read_csv_and_index_fips_date(csv_str: str) -> pd.DataFrame:
         dtype={CommonFields.FIPS: str},
         low_memory=False,
     ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
-
-
-def test_fill_fields_and_timeseries_from_column():
-    existing_df = read_csv_and_index_fips_date(
-        "fips,state,aggregate_level,county,cnt,date,foo\n"
-        "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-        "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-        "55005,ZZ,county,North County,,2020-05-03,ef\n"
-        "55006,ZZ,county,South County,4,2020-05-04,gh\n"
-        "55,ZZ,state,Grand State,41,2020-05-01,ij\n"
-        "55,ZZ,state,Grand State,43,2020-05-03,kl\n"
-    )
-    new_df = read_csv_and_index_fips_date(
-        "fips,state,aggregate_level,county,cnt,date\n"
-        "55006,ZZ,county,South County,44,2020-05-04\n"
-        "55007,ZZ,county,West County,28,2020-05-03\n"
-        "55,ZZ,state,Grand State,42,2020-05-02\n"
-    )
-
-    datasets = {"existing": existing_df, "new": new_df}
-
-    result, _ = _build_data_and_provenance(
-        {"cnt": ["existing", "new"], "foo": ["existing"]}, datasets
-    )
-
-    expected = read_csv_and_index_fips_date(
-        "fips,state,aggregate_level,county,cnt,date,foo\n"
-        "55005,ZZ,county,North County,1,2020-05-01,ab\n"
-        "55005,ZZ,county,North County,2,2020-05-02,cd\n"
-        "55005,ZZ,county,North County,,2020-05-03,ef\n"
-        "55006,ZZ,county,South County,44,2020-05-04,gh\n"
-        "55007,ZZ,county,West County,28,2020-05-03,\n"
-        "55,ZZ,state,Grand State,,2020-05-01,ij\n"
-        "55,ZZ,state,Grand State,42,2020-05-02,\n"
-        "55,ZZ,state,Grand State,,2020-05-03,kl\n"
-    )
-    assert to_dict(["fips", "date"], result) == to_dict(["fips", "date"], expected)
-
-
-def test_fill_fields_with_data_source_add_column():
-    # existing_df does not have a current_icu column. Check that it doesn't cause a crash.
-    existing_df = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,preserved\n"
-        "55005,ZZ,county,North County,ab\n"
-        "55,ZZ,state,Grand State,cd\n",
-    )
-    new_df = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu\n"
-        "55007,ZZ,county,West County,28\n"
-        "55,ZZ,state,Grand State,64\n",
-    )
-
-    datasets = {"existing": existing_df, "new": new_df}
-
-    result, _ = _build_data_and_provenance(
-        {"current_icu": ["new"], "preserved": ["existing"]}, datasets
-    )
-
-    expected = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu,preserved\n"
-        "55005,ZZ,county,North County,,ab\n"
-        "55007,ZZ,county,West County,28,\n"
-        "55,ZZ,state,Grand State,64,cd\n",
-    )
-    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
-
-
-def test_fill_fields_with_data_source_no_rows_input():
-    existing_df = read_csv_and_index_fips("fips,state,aggregate_level,county,preserved\n")
-    new_df = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu\n"
-        "55007,ZZ,county,West County,28\n"
-        "55,ZZ,state,Grand State,64\n",
-    )
-
-    datasets = {"existing": existing_df, "new": new_df}
-
-    result, _ = _build_data_and_provenance(
-        {"current_icu": ["new"], "preserved": ["existing"]}, datasets
-    )
-
-    expected = read_csv_and_index_fips(
-        "fips,state,aggregate_level,county,current_icu,preserved\n"
-        "55007,ZZ,county,West County,28,\n"
-        "55,ZZ,state,Grand State,64,\n"
-    )
-    assert to_dict(["fips"], result) == to_dict(["fips"], expected)
 
 
 def column_as_set(
