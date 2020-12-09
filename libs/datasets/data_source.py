@@ -2,7 +2,7 @@ from typing import Type, Optional
 
 import pandas as pd
 
-from libs.datasets.dataset_utils import LATEST_VALUES_INDEX_FIELDS
+from libs.datasets.dataset_utils import STATIC_INDEX_FIELDS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets.timeseries import MultiRegionDataset
 from functools import lru_cache
@@ -50,7 +50,7 @@ class DataSource(object):
             #     dataset.add_fips_provenance(self.provenance)
             return dataset
 
-        if set(self.INDEX_FIELD_MAP.keys()) == set(LATEST_VALUES_INDEX_FIELDS):
+        if set(self.INDEX_FIELD_MAP.keys()) == set(STATIC_INDEX_FIELDS):
             return MultiRegionDataset.new_without_timeseries().add_fips_static_df(self.data)
 
         raise ValueError("Unexpected index fields")
