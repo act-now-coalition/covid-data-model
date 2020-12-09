@@ -2,7 +2,7 @@ from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 
 
 class CDCTestingDataset(data_source.DataSource):
@@ -11,7 +11,7 @@ class CDCTestingDataset(data_source.DataSource):
 
     DATA_PATH = "data/testing-cdc/timeseries-common.csv"
 
-    INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
+    INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
 
     COMMON_FIELD_MAP = {f: f for f in {CommonFields.TEST_POSITIVITY_7D}}
 
