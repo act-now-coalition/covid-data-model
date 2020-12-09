@@ -42,11 +42,15 @@ def test_pyseir_end_to_end_dc(tmp_path):
     # Runs over a single state which tests state filtering + running over more than
     # a single fips.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
-        region = Region.from_state("DC")
-
-        one_region_input = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
-        region_pipelines = [RegionPipeline.run(one_region_input)]
-        region_pipelines = _patch_nola_infection_rate_in_pipelines(region_pipelines)
+        regions_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(state="DC")
+        regions = [one_region for _, one_region in regions_dataset.iter_one_regions()]
+        region_pipelines = parallel_utils.parallel_map(RegionPipeline.run, regions)
         # Checking to make sure that build all for states properly filters and only
         # returns DC data
         assert len(region_pipelines) == 2
+
+        model_output = pyseir.cli.PyseirOutputDatasets.from_pipeline_output(region_pipelines)
+        # TODO(tom): Work out why these have only one region where there are two regions in the
+        #  input
+        assert len([model_output.icu.iter_one_regions()]) == 1
+        assert len([model_output.infection_rate.iter_one_regions()]) == 1
