@@ -134,7 +134,14 @@ def run_infer_rt(state, states_only):
     type=pathlib.Path,
     help="Directory to deploy " "webui output.",
 )
-def build_all(states, output_dir, level, fips):
+@click.option(
+    "--generate-api-v2",
+    default=False,
+    is_flag=True,
+    type=bool,
+    help="Generate API v2 output after PySEIR finishes",
+)
+def build_all(states, output_dir, level, fips, generate_api_v2: bool):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
     states = [us.states.lookup(state).abbr for state in states]
@@ -154,9 +161,10 @@ def build_all(states, output_dir, level, fips):
     model_output = PyseirOutputDatasets.from_pipeline_output(region_pipelines)
     model_output.write(output_dir, root)
 
-    api_v2_pipeline.generate_api_v2_from_loaded_data(
-        model_output, output_dir, regions_dataset, root
-    )
+    if generate_api_v2:
+        api_v2_pipeline.generate_api_v2_from_loaded_data(
+            model_output, output_dir, regions_dataset, root
+        )
 
 
 @final
