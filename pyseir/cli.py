@@ -3,7 +3,6 @@ from typing import Optional, List
 import dataclasses
 import sys
 import os
-from dataclasses import dataclass
 import logging
 
 import pandas as pd
@@ -21,14 +20,13 @@ from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionDataset
-from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from pyseir.rt import infer_rt
 from pyseir.icu import infer_icu
 import pyseir.rt.patches
 
 import pyseir.utils
 from pyseir.rt import infer_rt
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
+from pyseir.run import OneRegionPipeline
 from pyseir.utils import SummaryArtifact
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
@@ -61,62 +59,9 @@ def _states_region_list(state: Optional[str], default: List[str]) -> List[pipeli
         return [pipeline.Region.from_state(s) for s in default]
 
 
-@dataclass
-class RegionPipelineInput:
-    region: pipeline.Region
-    regional_combined_dataset: OneRegionTimeseriesDataset
-
-    @staticmethod
-    def build_all(regions: MultiRegionDataset) -> List["RegionPipelineInput"]:
-        """Builds the input objects used to run the pipeline."""
-        return [
-            RegionPipelineInput(region, dataset) for region, dataset in regions.iter_one_regions()
-        ]
-
-
-@dataclass
-class RegionPipeline:
-    """Runs the pipeline for one region stores the output."""
-
-    region: pipeline.Region
-    infer_df: pd.DataFrame
-    icu_data: Optional[OneRegionTimeseriesDataset]
-    _combined_data: OneRegionTimeseriesDataset
-
-    @staticmethod
-    def run(input: OneRegionTimeseriesDataset) -> "RegionPipeline":
-        # `infer_df` does not have the NEW_ORLEANS patch applied. TODO(tom): Rename to something like
-        # infection_rate.
-        infer_rt_input = infer_rt.RegionalInput.from_regional_data(input)
-        try:
-            infer_df = infer_rt.run_rt(infer_rt_input)
-        except Exception:
-            root.exception(f"run_rt failed for {input.region}")
-            infer_df = pd.DataFrame()
-
-        icu_data = None
-
-        # TODO: Re-enable for CBSAs once typical utilization number aggregation fixed.
-        if input.region.level is not AggregationLevel.CBSA:
-            icu_input = infer_icu.RegionalInput.from_regional_data(input)
-            try:
-                icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-                    icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-                )
-            except KeyError:
-                root.exception(f"Failed to run icu data for {input.region}")
-
-        return RegionPipeline(
-            region=input.region, infer_df=infer_df, icu_data=icu_data, _combined_data=input,
-        )
-
-    def population(self) -> float:
-        return self._combined_data.latest[CommonFields.POPULATION]
-
-
 def _patch_nola_infection_rate_in_pipelines(
-    pipelines: List[RegionPipeline],
-) -> List[RegionPipeline]:
+    pipelines: List[OneRegionPipeline],
+) -> List[OneRegionPipeline]:
     """Returns a new list of pipeline objects with New Orleans infection rate patched."""
     pipeline_map = {p.region: p for p in pipelines}
 
@@ -203,13 +148,15 @@ def build_all(states, output_dir, level, fips):
     )
     regions = [one_region for _, one_region in regions_dataset.iter_one_regions()]
     root.info(f"Executing pipeline for {len(regions)} regions")
-    region_pipelines = parallel_utils.parallel_map(RegionPipeline.run, regions)
+    region_pipelines = parallel_utils.parallel_map(OneRegionPipeline.run, regions)
     region_pipelines = _patch_nola_infection_rate_in_pipelines(region_pipelines)
 
     model_output = PyseirOutputDatasets.from_pipeline_output(region_pipelines)
     model_output.write(output_dir, root)
 
-    api_v2_pipeline.loaded_generate_api_v2(model_output, output_dir, regions_dataset, root)
+    api_v2_pipeline.generate_api_v2_from_loaded_data(
+        model_output, output_dir, regions_dataset, root
+    )
 
 
 @final
@@ -242,7 +189,7 @@ class PyseirOutputDatasets:
         return PyseirOutputDatasets(icu=icu_data, infection_rate=rt_data)
 
     @staticmethod
-    def from_pipeline_output(pipelines: List["RegionPipeline"]) -> "PyseirOutputDatasets":
+    def from_pipeline_output(pipelines: List["OneRegionPipeline"]) -> "PyseirOutputDatasets":
         infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
         infection_rate_ds = MultiRegionDataset.from_geodata_timeseries_df(infection_rate_metric_df)
 

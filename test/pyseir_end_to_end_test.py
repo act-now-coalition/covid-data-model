@@ -2,16 +2,12 @@ import unittest
 
 import pyseir.cli
 from libs import parallel_utils
-from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.pipeline import Region
-from pyseir.cli import RegionPipeline
+from pyseir.run import OneRegionPipeline
 import pyseir.utils
-from pyseir.cli import RegionPipelineInput
-from pyseir.cli import _cache_global_datasets
 from pyseir.cli import _patch_nola_infection_rate_in_pipelines
-from pyseir.cli import root
 import pytest
 
 # turns all warnings into errors for this module
@@ -27,7 +23,7 @@ def test_pyseir_end_to_end_idaho(tmp_path):
 
         # prepare data
         one_region_input = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
-        region_pipelines = [RegionPipeline.run(one_region_input)]
+        region_pipelines = [OneRegionPipeline.run(one_region_input)]
         region_pipelines = _patch_nola_infection_rate_in_pipelines(region_pipelines)
 
         model_output = pyseir.cli.PyseirOutputDatasets.from_pipeline_output(region_pipelines)
@@ -44,7 +40,7 @@ def test_pyseir_end_to_end_dc(tmp_path):
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
         regions_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(state="DC")
         regions = [one_region for _, one_region in regions_dataset.iter_one_regions()]
-        region_pipelines = parallel_utils.parallel_map(RegionPipeline.run, regions)
+        region_pipelines = parallel_utils.parallel_map(OneRegionPipeline.run, regions)
         # Checking to make sure that build all for states properly filters and only
         # returns DC data
         assert len(region_pipelines) == 2

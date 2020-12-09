@@ -6,8 +6,7 @@ import time
 import pydantic
 import structlog
 
-import pyseir.cli
-import pyseir.utils
+import pyseir.run
 from libs import test_positivity
 
 from libs.pipelines.api_v2_paths import APIOutputPathBuilder
@@ -246,8 +245,8 @@ def deploy_csv_api_output(
     dataset_deployer.write_nested_csv(rows, output_path, keys_to_skip=keys_to_skip)
 
 
-def loaded_generate_api_v2(
-    model_output: "pyseir.cli.PyseirOutputDatasets",
+def generate_api_v2_from_loaded_data(
+    model_output: pyseir.run.PyseirOutputDatasets,
     output: pathlib.Path,
     selected_dataset: MultiRegionDataset,
     log,

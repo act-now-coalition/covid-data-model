@@ -12,6 +12,7 @@ from covidactnow.datapublic.common_fields import PdFields
 
 import api
 import pyseir.cli
+import pyseir.run
 
 from api import update_open_api_spec
 from libs import test_positivity
@@ -22,7 +23,7 @@ from libs.datasets.dataset_utils import AggregationLevel
 import pyseir.utils
 import pandas as pd
 
-from libs.pipelines.api_v2_pipeline import loaded_generate_api_v2
+from libs.pipelines.api_v2_pipeline import generate_api_v2_from_loaded_data
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -139,5 +140,5 @@ def generate_api_v2(model_output_dir, output, level, state, fips):
     )
     _logger.info(f"Loading all regional inputs.")
 
-    model_output = pyseir.cli.PyseirOutputDatasets.read(model_output_dir)
-    loaded_generate_api_v2(model_output, output, selected_dataset, _logger)
+    model_output = pyseir.run.PyseirOutputDatasets.read(model_output_dir)
+    generate_api_v2_from_loaded_data(model_output, output, selected_dataset, _logger)
